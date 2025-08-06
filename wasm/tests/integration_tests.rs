@@ -1,8 +1,7 @@
-use vec2art::{convert, get_default_params};
+use vec2art::{convert_native, get_default_params_native};
 use std::fs;
 
 #[test]
-#[cfg(target_arch = "wasm32")]
 fn test_edge_detection_with_sample_image() {
     // Create a simple test image (100x100 white square with black border)
     let mut image_data: Vec<u8> = Vec::new();
@@ -24,10 +23,10 @@ fn test_edge_detection_with_sample_image() {
     dynamic_image.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageFormat::Png).unwrap();
     
     // Get default parameters
-    let params_json = get_default_params("edge_detector").unwrap();
+    let params_json = get_default_params_native("edge_detector").unwrap();
     
     // Convert
-    let result = convert(&png_bytes, &params_json);
+    let result = convert_native(&png_bytes, &params_json);
     
     assert!(result.is_ok());
     let svg = result.unwrap();
@@ -43,7 +42,6 @@ fn test_edge_detection_with_sample_image() {
 }
 
 #[test]
-#[cfg(target_arch = "wasm32")]
 fn test_path_tracer_with_sample_image() {
     // Create a simple colored image
     let image = image::ImageBuffer::from_fn(100, 100, |x, _y| {
@@ -61,8 +59,8 @@ fn test_path_tracer_with_sample_image() {
     let mut png_bytes = Vec::new();
     dynamic_image.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageFormat::Png).unwrap();
     
-    let params_json = get_default_params("path_tracer").unwrap();
-    let result = convert(&png_bytes, &params_json);
+    let params_json = get_default_params_native("path_tracer").unwrap();
+    let result = convert_native(&png_bytes, &params_json);
     
     assert!(result.is_ok());
     let svg = result.unwrap();
@@ -75,7 +73,6 @@ fn test_path_tracer_with_sample_image() {
 }
 
 #[test]
-#[cfg(target_arch = "wasm32")]
 fn test_geometric_fitter_with_sample_image() {
     // Create a simple image with geometric shapes
     let image = image::ImageBuffer::from_fn(100, 100, |x, y| {
@@ -97,7 +94,7 @@ fn test_geometric_fitter_with_sample_image() {
     
     // Use smaller parameters for faster testing
     let params_json = r#"{
-        "algorithm": "geometric_fitter",
+        "algorithm": "GeometricFitter",
         "shape_types": ["Circle", "Rectangle"],
         "max_shapes": 10,
         "population_size": 20,
@@ -106,8 +103,11 @@ fn test_geometric_fitter_with_sample_image() {
         "target_fitness": 0.8
     }"#;
     
-    let result = convert(&png_bytes, params_json);
+    let result = convert_native(&png_bytes, params_json);
     
+    if let Err(e) = &result {
+        println!("GeometricFitter conversion failed: {:?}", e);
+    }
     assert!(result.is_ok());
     let svg = result.unwrap();
     
@@ -119,7 +119,6 @@ fn test_geometric_fitter_with_sample_image() {
 }
 
 #[test]
-#[cfg(target_arch = "wasm32")]
 fn test_all_algorithms_with_real_image() {
     // This test expects you to place a test image file
     let test_image_path = "tests/fixtures/test_image.png";
@@ -132,18 +131,18 @@ fn test_all_algorithms_with_real_image() {
     let image_bytes = fs::read(test_image_path).unwrap();
     
     // Test edge detection
-    let params = get_default_params("edge_detector").unwrap();
-    let svg = convert(&image_bytes, &params).unwrap();
+    let params = get_default_params_native("edge_detector").unwrap();
+    let svg = convert_native(&image_bytes, &params).unwrap();
     fs::write("real_image_edges.svg", &svg).unwrap();
     
     // Test path tracer
-    let params = get_default_params("path_tracer").unwrap();
-    let svg = convert(&image_bytes, &params).unwrap();
+    let params = get_default_params_native("path_tracer").unwrap();
+    let svg = convert_native(&image_bytes, &params).unwrap();
     fs::write("real_image_paths.svg", &svg).unwrap();
     
     // Test geometric fitter (with reduced settings for speed)
     let params = r#"{
-        "algorithm": "geometric_fitter",
+        "algorithm": "GeometricFitter",
         "shape_types": ["Circle", "Rectangle", "Triangle"],
         "max_shapes": 50,
         "population_size": 30,
@@ -151,7 +150,7 @@ fn test_all_algorithms_with_real_image() {
         "mutation_rate": 0.05,
         "target_fitness": 0.85
     }"#;
-    let svg = convert(&image_bytes, params).unwrap();
+    let svg = convert_native(&image_bytes, params).unwrap();
     fs::write("real_image_geometric.svg", &svg).unwrap();
     
     println!("All real image tests completed - check the .svg output files");

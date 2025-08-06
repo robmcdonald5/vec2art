@@ -174,33 +174,123 @@ export const settingsStore = createSettingsStore();
 
 ## Type Safety with Zod
 
-### Conversion Parameters Schema
+### Enhanced Conversion Parameters Schema
 ```typescript
 // lib/types/conversion.ts
 import { z } from 'zod';
 
+// Algorithm selection with advanced options
+export const AlgorithmSchema = z.enum([
+  'potrace',           // High-quality bi-level tracing
+  'vtracer',          // Fast O(n) color tracing
+  'autotrace',        // Centerline tracing
+  'path_tracer',      // Custom path tracer
+  'geometric_fitter', // Shape approximation
+  'edge_detector',    // Edge-based vectorization
+  'hybrid'            // Automatic selection
+]);
+
+// Pre-processing options
+export const PreprocessingSchema = z.object({
+  denoise: z.boolean().default(true),
+  noiseSigma: z.number().min(0).max(5).default(1.0),
+  colorQuantization: z.boolean().default(true),
+  numColors: z.number().min(2).max(256).default(8),
+  quantizationMethod: z.enum(['kmeans', 'octree', 'median_cut']).default('kmeans'),
+  adaptiveThreshold: z.boolean().default(false),
+  thresholdMethod: z.enum(['otsu', 'adaptive', 'fixed']).default('otsu'),
+  scaleImage: z.boolean().default(false),
+  scaleFactor: z.number().min(0.1).max(4.0).default(1.0)
+});
+
+// Post-processing options
+export const PostprocessingSchema = z.object({
+  simplifyPaths: z.boolean().default(true),
+  simplificationEpsilon: z.number().min(0).max(10).default(2.0),
+  fitCurves: z.boolean().default(true),
+  curveTolerance: z.number().min(0).max(1).default(0.2),
+  removeSpeckles: z.boolean().default(true),
+  speckleSize: z.number().min(0).max(100).default(10),
+  optimizeSvg: z.boolean().default(true),
+  targetNodeCount: z.number().min(100).max(10000).default(2000)
+});
+
+// Algorithm-specific parameters
+export const PotraceParamsSchema = z.object({
+  turnpolicy: z.enum(['black', 'white', 'left', 'right', 'minority', 'majority']).default('minority'),
+  turdsize: z.number().min(0).max(100).default(2),
+  alphamax: z.number().min(0).max(1.3334).default(1.0),
+  opticurve: z.boolean().default(true),
+  opttolerance: z.number().min(0).max(1).default(0.2)
+});
+
+export const VtracerParamsSchema = z.object({
+  colorPrecision: z.number().min(1).max(8).default(6),
+  layerDifference: z.number().min(0).max(256).default(16),
+  cornerThreshold: z.number().min(0).max(180).default(60),
+  lengthThreshold: z.number().min(0).max(10).default(4.0),
+  maxIterations: z.number().min(1).max(20).default(10),
+  spliceThreshold: z.number().min(0).max(180).default(45)
+});
+
+export const AutotraceParamsSchema = z.object({
+  centerline: z.boolean().default(true),
+  preserveWidth: z.boolean().default(true),
+  removeAdjacentCorners: z.boolean().default(true),
+  lineThreshold: z.number().min(0).max(10).default(1.0),
+  lineReversionThreshold: z.number().min(0).max(10).default(0.01)
+});
+
 export const PathTracerParamsSchema = z.object({
-  numColors: z.number().min(2).max(256),
-  curveSmoothing: z.number().min(0).max(1),
-  suppressSpeckles: z.number().min(0).max(1)
+  threshold: z.number().min(0).max(1).default(0.5),
+  numColors: z.number().min(2).max(256).default(8),
+  curveSmoothing: z.number().min(0).max(1).default(0.5),
+  suppressSpeckles: z.number().min(0).max(100).default(10),
+  cornerThreshold: z.number().min(0).max(180).default(60),
+  optimizeCurves: z.boolean().default(true)
 });
 
 export const GeometricFitterParamsSchema = z.object({
-  shapeType: z.enum(['circles', 'rectangles', 'triangles']),
-  maxShapes: z.number().min(10).max(10000),
-  minSize: z.number().min(1).max(100)
+  shapeTypes: z.array(z.enum(['circle', 'rectangle', 'triangle', 'ellipse'])).default(['circle', 'rectangle']),
+  maxShapes: z.number().min(10).max(10000).default(100),
+  populationSize: z.number().min(10).max(1000).default(100),
+  generations: z.number().min(10).max(10000).default(100),
+  mutationRate: z.number().min(0).max(1).default(0.1),
+  targetFitness: z.number().min(0).max(1).default(0.95)
 });
 
 export const EdgeDetectorParamsSchema = z.object({
-  threshold: z.number().min(0).max(255),
-  kernel: z.enum(['sobel', 'canny', 'laplacian'])
+  method: z.enum(['canny', 'sobel']).default('canny'),
+  thresholdLow: z.number().min(0).max(255).default(50),
+  thresholdHigh: z.number().min(0).max(255).default(150),
+  gaussianSigma: z.number().min(0).max(5).default(1.0),
+  simplification: z.number().min(0).max(10).default(2.0),
+  minPathLength: z.number().min(1).max(100).default(10)
 });
 
+// Main conversion parameters
 export const ConversionParametersSchema = z.object({
-  algorithm: z.enum(['path_tracer', 'geometric_fitter', 'edge_detector']),
+  algorithm: AlgorithmSchema,
+  preprocessing: PreprocessingSchema.optional(),
+  postprocessing: PostprocessingSchema.optional(),
+  
+  // Algorithm-specific parameters
+  potrace: PotraceParamsSchema.optional(),
+  vtracer: VtracerParamsSchema.optional(),
+  autotrace: AutotraceParamsSchema.optional(),
   pathTracer: PathTracerParamsSchema.optional(),
   geometricFitter: GeometricFitterParamsSchema.optional(),
-  edgeDetector: EdgeDetectorParamsSchema.optional()
+  edgeDetector: EdgeDetectorParamsSchema.optional(),
+  
+  // Performance options
+  useWorkers: z.boolean().default(true),
+  workerCount: z.number().min(1).max(16).optional(),
+  tileSizePx: z.number().min(128).max(1024).default(256),
+  
+  // Output options
+  outputFormat: z.enum(['svg', 'path_data']).default('svg'),
+  svgPrecision: z.number().min(0).max(6).default(2),
+  includeMetadata: z.boolean().default(true)
 });
 
 export type ConversionParameters = z.infer<typeof ConversionParametersSchema>;
@@ -235,39 +325,160 @@ export const ImageUploadSchema = z.object({
 
 ## WASM Integration
 
-### Loading the WASM Module
+### Advanced WASM Module Loading with Feature Detection
 ```typescript
 // lib/utils/wasm-loader.ts
-import init, { convert, init_workers } from '$lib/wasm/vec2art';
 import { ConversionParametersSchema } from '$lib/types/conversion';
 import type { ConversionParameters } from '$lib/types/conversion';
 
-let wasmInitialized = false;
+interface WasmCapabilities {
+    simd: boolean;
+    threads: boolean;
+    sharedMemory: boolean;
+    maxMemory: number;
+}
 
-export async function initializeWasm() {
-    if (!wasmInitialized) {
-        await init();
-        // Initialize Web Workers for parallel processing
-        await init_workers(navigator.hardwareConcurrency || 4);
-        wasmInitialized = true;
+interface WasmModule {
+    VectorizationEngine: new() => any;
+    init_workers?: (count: number) => Promise<void>;
+}
+
+let wasmModule: WasmModule | null = null;
+let engine: any = null;
+let capabilities: WasmCapabilities | null = null;
+
+/**
+ * Detect browser capabilities for optimal WASM binary selection
+ */
+export async function detectCapabilities(): Promise<WasmCapabilities> {
+    if (capabilities) return capabilities;
+    
+    const simd = await checkSIMDSupport();
+    const threads = typeof SharedArrayBuffer !== 'undefined' && 
+                   'crossOriginIsolated' in self && 
+                   self.crossOriginIsolated;
+    const sharedMemory = threads;
+    const maxMemory = navigator.deviceMemory ? navigator.deviceMemory * 1024 : 4096;
+    
+    capabilities = { simd, threads, sharedMemory, maxMemory };
+    return capabilities;
+}
+
+async function checkSIMDSupport(): Promise<boolean> {
+    try {
+        // Use wasm-feature-detect library
+        const { simd } = await import('wasm-feature-detect');
+        return await simd();
+    } catch {
+        return false;
     }
 }
 
+/**
+ * Load the optimal WASM binary based on browser capabilities
+ */
+export async function initializeWasm(onProgress?: (message: string) => void) {
+    if (wasmModule && engine) return;
+    
+    onProgress?.('Detecting browser capabilities...');
+    const caps = await detectCapabilities();
+    
+    let modulePath: string;
+    if (caps.threads && caps.simd) {
+        modulePath = '/wasm/vec2art_full.wasm';
+        onProgress?.('Loading high-performance WASM (SIMD + Threads)...');
+    } else if (caps.simd) {
+        modulePath = '/wasm/vec2art_simd.wasm';
+        onProgress?.('Loading SIMD-optimized WASM...');
+    } else if (caps.threads) {
+        modulePath = '/wasm/vec2art_parallel.wasm';
+        onProgress?.('Loading multi-threaded WASM...');
+    } else {
+        modulePath = '/wasm/vec2art_base.wasm';
+        onProgress?.('Loading standard WASM...');
+    }
+    
+    // Dynamic import based on capabilities
+    const init = await import(/* @vite-ignore */ modulePath);
+    await init.default();
+    wasmModule = init;
+    
+    // Initialize engine
+    engine = new wasmModule.VectorizationEngine();
+    
+    // Initialize workers if supported
+    if (caps.threads && wasmModule.init_workers) {
+        const workerCount = navigator.hardwareConcurrency || 4;
+        onProgress?.(`Initializing ${workerCount} worker threads...`);
+        await wasmModule.init_workers(workerCount);
+    }
+    
+    // Setup shared memory if available
+    if (caps.sharedMemory) {
+        const sharedBuffer = new SharedArrayBuffer(caps.maxMemory * 1024 * 1024);
+        engine.set_shared_memory(sharedBuffer);
+    }
+    
+    onProgress?.('WASM initialization complete!');
+}
+
+/**
+ * Convert image with progress reporting
+ */
 export async function convertImage(
     imageBytes: Uint8Array,
-    params: ConversionParameters
+    params: ConversionParameters,
+    onProgress?: (progress: number, message: string) => void
 ): Promise<string> {
     await initializeWasm();
     
-    // Validate parameters before sending to WASM
+    // Validate parameters
     const validatedParams = ConversionParametersSchema.parse(params);
     
     try {
-        return convert(imageBytes, validatedParams);
+        // Create progress callback for WASM
+        const progressCallback = (progress: number) => {
+            const stages = [
+                'Loading image...',
+                'Pre-processing...',
+                'Color quantization...',
+                'Vectorization...',
+                'Path optimization...',
+                'Generating SVG...'
+            ];
+            const stage = Math.floor(progress * stages.length);
+            onProgress?.(progress, stages[Math.min(stage, stages.length - 1)]);
+        };
+        
+        // Use SharedArrayBuffer if available for zero-copy
+        const caps = await detectCapabilities();
+        if (caps.sharedMemory) {
+            // Zero-copy conversion
+            const sharedView = new Uint8Array(engine.get_shared_memory());
+            sharedView.set(imageBytes);
+            return await engine.convert_with_progress(
+                validatedParams,
+                progressCallback
+            );
+        } else {
+            // Standard conversion with copy
+            return await engine.convert(
+                imageBytes,
+                validatedParams,
+                progressCallback
+            );
+        }
     } catch (error) {
         console.error('Conversion failed:', error);
         throw new Error(`Conversion failed: ${error}`);
     }
+}
+
+/**
+ * Get information about loaded WASM capabilities
+ */
+export function getCapabilities(): WasmCapabilities | null {
+    return capabilities;
 }
 ```
 
@@ -376,67 +587,268 @@ export async function convertImage(
 </div>
 ```
 
-### Control Panel Component
+### Advanced Control Panel with Algorithm Selection
 ```svelte
 <!-- lib/components/ControlPanel.svelte -->
 <script lang="ts">
   import { settingsStore } from '$lib/stores/settings';
-  import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card';
+  import { getCapabilities } from '$lib/utils/wasm-loader';
+  import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '$lib/components/ui/card';
   import { Slider } from '$lib/components/ui/slider';
   import { Button } from '$lib/components/ui/button';
+  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select';
+  import { Switch } from '$lib/components/ui/switch';
+  import { Tabs, TabsContent, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import { Info } from 'lucide-svelte';
   
   const settings = settingsStore;
+  const capabilities = getCapabilities();
   
   export let onConvert: () => void;
   export let isProcessing = false;
+  export let progress = 0;
+  export let progressMessage = '';
+  
+  // Algorithm recommendations based on image type
+  const algorithmInfo = {
+    potrace: 'Best for logos, icons, and simple graphics',
+    vtracer: 'Fast color vectorization with good quality',
+    autotrace: 'Ideal for line art and technical drawings',
+    path_tracer: 'Balanced approach for general images',
+    geometric_fitter: 'Artistic interpretation using shapes',
+    edge_detector: 'Preserves fine details and textures',
+    hybrid: 'Automatically selects the best algorithm'
+  };
 </script>
 
 <Card>
   <CardHeader>
     <CardTitle>Conversion Settings</CardTitle>
+    <CardDescription>
+      {#if capabilities}
+        <span class="text-xs">
+          Performance: 
+          {capabilities.simd ? 'SIMD ✓' : 'SIMD ✗'} | 
+          {capabilities.threads ? 'Threads ✓' : 'Threads ✗'}
+        </span>
+      {/if}
+    </CardDescription>
   </CardHeader>
   <CardContent class="space-y-4">
-    {#if settings.params.algorithm === 'path_tracer' && settings.params.pathTracer}
-      <div>
-        <label class="text-sm font-medium">Number of Colors</label>
-        <Slider
-          value={[settings.params.pathTracer.numColors]}
-          onValueChange={(values) => {
-            settings.updatePathTracerSettings({ numColors: values[0] });
-          }}
-          min={2}
-          max={256}
-          step={1}
-        />
-        <span class="text-xs text-muted-foreground">
-          {settings.params.pathTracer.numColors} colors
-        </span>
-      </div>
+    <Tabs value="basic" class="w-full">
+      <TabsList class="grid w-full grid-cols-3">
+        <TabsTrigger value="basic">Basic</TabsTrigger>
+        <TabsTrigger value="advanced">Advanced</TabsTrigger>
+        <TabsTrigger value="output">Output</TabsTrigger>
+      </TabsList>
       
-      <div>
-        <label class="text-sm font-medium">Curve Smoothing</label>
-        <Slider
-          value={[settings.params.pathTracer.curveSmoothing]}
-          onValueChange={(values) => {
-            settings.updatePathTracerSettings({ curveSmoothing: values[0] });
-          }}
-          min={0}
-          max={1}
-          step={0.01}
-        />
-      </div>
+      <TabsContent value="basic" class="space-y-4">
+        <!-- Algorithm Selection -->
+        <div>
+          <label class="text-sm font-medium">Algorithm</label>
+          <Select
+            value={settings.params.algorithm}
+            onValueChange={(value) => settings.updateAlgorithm(value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select algorithm" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="hybrid">Automatic (Recommended)</SelectItem>
+              <SelectItem value="potrace">Potrace (Bi-level)</SelectItem>
+              <SelectItem value="vtracer">vtracer (Color)</SelectItem>
+              <SelectItem value="autotrace">Autotrace (Centerline)</SelectItem>
+              <SelectItem value="path_tracer">Path Tracer</SelectItem>
+              <SelectItem value="geometric_fitter">Geometric Fitter</SelectItem>
+              <SelectItem value="edge_detector">Edge Detector</SelectItem>
+            </SelectContent>
+          </Select>
+          <p class="text-xs text-muted-foreground mt-1">
+            {algorithmInfo[settings.params.algorithm]}
+          </p>
+        </div>
+        
+        <!-- Color Settings -->
+        {#if settings.params.preprocessing}
+          <div>
+            <label class="text-sm font-medium">Number of Colors</label>
+            <Slider
+              value={[settings.params.preprocessing.numColors]}
+              onValueChange={(values) => {
+                settings.updatePreprocessing({ numColors: values[0] });
+              }}
+              min={2}
+              max={256}
+              step={1}
+            />
+            <span class="text-xs text-muted-foreground">
+              {settings.params.preprocessing.numColors} colors
+            </span>
+          </div>
+        {/if}
+        
+        <!-- Quality Settings -->
+        {#if settings.params.postprocessing}
+          <div>
+            <label class="text-sm font-medium">Path Simplification</label>
+            <Slider
+              value={[settings.params.postprocessing.simplificationEpsilon]}
+              onValueChange={(values) => {
+                settings.updatePostprocessing({ simplificationEpsilon: values[0] });
+              }}
+              min={0}
+              max={10}
+              step={0.1}
+            />
+            <span class="text-xs text-muted-foreground">
+              Lower = more detail, Higher = simpler paths
+            </span>
+          </div>
+        {/if}
+      </TabsContent>
       
-      <div>
-        <label class="text-sm font-medium">Suppress Speckles</label>
-        <Slider
-          value={[settings.params.pathTracer.suppressSpeckles]}
-          onValueChange={(values) => {
-            settings.updatePathTracerSettings({ suppressSpeckles: values[0] });
-          }}
-          min={0}
-          max={1}
-          step={0.01}
-        />
+      <TabsContent value="advanced" class="space-y-4">
+        <!-- Pre-processing Options -->
+        <div class="space-y-2">
+          <h4 class="text-sm font-medium">Pre-processing</h4>
+          
+          <div class="flex items-center justify-between">
+            <label class="text-sm">Denoise</label>
+            <Switch
+              checked={settings.params.preprocessing?.denoise}
+              onCheckedChange={(checked) => {
+                settings.updatePreprocessing({ denoise: checked });
+              }}
+            />
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <label class="text-sm">Adaptive Threshold</label>
+            <Switch
+              checked={settings.params.preprocessing?.adaptiveThreshold}
+              onCheckedChange={(checked) => {
+                settings.updatePreprocessing({ adaptiveThreshold: checked });
+              }}
+            />
+          </div>
+        </div>
+        
+        <!-- Post-processing Options -->
+        <div class="space-y-2">
+          <h4 class="text-sm font-medium">Post-processing</h4>
+          
+          <div class="flex items-center justify-between">
+            <label class="text-sm">Fit Bezier Curves</label>
+            <Switch
+              checked={settings.params.postprocessing?.fitCurves}
+              onCheckedChange={(checked) => {
+                settings.updatePostprocessing({ fitCurves: checked });
+              }}
+            />
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <label class="text-sm">Remove Speckles</label>
+            <Switch
+              checked={settings.params.postprocessing?.removeSpeckles}
+              onCheckedChange={(checked) => {
+                settings.updatePostprocessing({ removeSpeckles: checked });
+              }}
+            />
+          </div>
+        </div>
+        
+        <!-- Performance Options -->
+        {#if capabilities?.threads}
+          <div class="space-y-2">
+            <h4 class="text-sm font-medium">Performance</h4>
+            
+            <div class="flex items-center justify-between">
+              <label class="text-sm">Use Worker Threads</label>
+              <Switch
+                checked={settings.params.useWorkers}
+                onCheckedChange={(checked) => {
+                  settings.updatePerformance({ useWorkers: checked });
+                }}
+              />
+            </div>
+            
+            {#if settings.params.useWorkers}
+              <div>
+                <label class="text-sm">Worker Count</label>
+                <Slider
+                  value={[settings.params.workerCount || navigator.hardwareConcurrency || 4]}
+                  onValueChange={(values) => {
+                    settings.updatePerformance({ workerCount: values[0] });
+                  }}
+                  min={1}
+                  max={navigator.hardwareConcurrency || 4}
+                  step={1}
+                />
+              </div>
+            {/if}
+          </div>
+        {/if}
+      </TabsContent>
+      
+      <TabsContent value="output" class="space-y-4">
+        <!-- SVG Optimization -->
+        <div>
+          <label class="text-sm font-medium">Target Node Count</label>
+          <Slider
+            value={[settings.params.postprocessing?.targetNodeCount || 2000]}
+            onValueChange={(values) => {
+              settings.updatePostprocessing({ targetNodeCount: values[0] });
+            }}
+            min={100}
+            max={10000}
+            step={100}
+          />
+          <span class="text-xs text-muted-foreground">
+            Browser performance target: {settings.params.postprocessing?.targetNodeCount || 2000} nodes
+          </span>
+        </div>
+        
+        <div>
+          <label class="text-sm font-medium">Coordinate Precision</label>
+          <Slider
+            value={[settings.params.svgPrecision || 2]}
+            onValueChange={(values) => {
+              settings.updateOutput({ svgPrecision: values[0] });
+            }}
+            min={0}
+            max={6}
+            step={1}
+          />
+          <span class="text-xs text-muted-foreground">
+            {settings.params.svgPrecision || 2} decimal places
+          </span>
+        </div>
+        
+        <div class="flex items-center justify-between">
+          <label class="text-sm">Include Metadata</label>
+          <Switch
+            checked={settings.params.includeMetadata}
+            onCheckedChange={(checked) => {
+              settings.updateOutput({ includeMetadata: checked });
+            }}
+          />
+        </div>
+      </TabsContent>
+    </Tabs>
+    
+    {#if isProcessing}
+      <div class="space-y-2">
+        <div class="w-full bg-secondary rounded-full h-2">
+          <div 
+            class="bg-primary h-2 rounded-full transition-all duration-300"
+            style="width: {progress * 100}%"
+          />
+        </div>
+        <p class="text-xs text-center text-muted-foreground">
+          {progressMessage}
+        </p>
       </div>
     {/if}
     
@@ -447,6 +859,16 @@ export async function convertImage(
     >
       {isProcessing ? 'Processing...' : 'Convert to SVG'}
     </Button>
+    
+    {#if !capabilities?.threads}
+      <Alert>
+        <Info class="h-4 w-4" />
+        <AlertDescription class="text-xs">
+          Enable SharedArrayBuffer for better performance. 
+          <a href="/help/performance" class="underline">Learn more</a>
+        </AlertDescription>
+      </Alert>
+    {/if}
   </CardContent>
 </Card>
 ```

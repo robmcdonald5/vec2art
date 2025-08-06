@@ -1,6 +1,8 @@
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use log::info;
+use web_sys::js_sys;
+use std::sync::Arc;
 
 pub mod error;
 pub mod algorithms;
@@ -8,6 +10,8 @@ pub mod image_utils;
 pub mod svg_builder;
 pub mod utils;
 pub mod performance;
+pub mod zero_copy;
+pub mod benchmarks;
 
 
 // Optional: Use smaller allocator in production
@@ -72,7 +76,31 @@ pub enum ConversionParameters {
         generations: u32,
         mutation_rate: f32,
         target_fitness: f32,
+    },
+    #[cfg(feature = "vtracer-support")]
+    VTracer {
+        color_mode: String,
+        color_precision: i32,
+        layer_difference: i32,
+        corner_threshold: f64,
+        length_threshold: f64,
+        max_iterations: i32,
+        splice_threshold: f64,
+        filter_speckle: u32,
+        path_precision: u32,
+    },
+    Hybrid {
+        // Automatic algorithm selection
+        preprocessing: PreprocessingOptions,
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreprocessingOptions {
+    pub denoise: bool,
+    pub noise_sigma: f32,
+    pub color_quantization: bool,
+    pub num_colors: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,18 +130,15 @@ impl Default for ConversionParameters {
     }
 }
 
-/// Main conversion function exposed to JavaScript
-#[wasm_bindgen]
-pub fn convert(image_bytes: &[u8], params_json: &str) -> Result<String, JsValue> {
+/// Native conversion function for tests and examples
+pub fn convert_native(image_bytes: &[u8], params_json: &str) -> Result<String, Box<dyn std::error::Error>> {
     info!("Starting image conversion with {} bytes", image_bytes.len());
     
     // Parse parameters
-    let params: ConversionParameters = serde_json::from_str(params_json)
-        .map_err(|e| JsValue::from_str(&format!("Invalid parameters: {}", e)))?;
+    let params: ConversionParameters = serde_json::from_str(params_json)?;
     
     // Load and validate image
-    let image = image_utils::load_image(image_bytes)
-        .map_err(|e| JsValue::from(e))?;
+    let image = image_utils::load_image(image_bytes)?;
     
     info!("Image loaded: {}x{}", image.width(), image.height());
     
@@ -128,15 +153,78 @@ pub fn convert(image_bytes: &[u8], params_json: &str) -> Result<String, JsValue>
         ConversionParameters::GeometricFitter { .. } => {
             algorithms::geometric_fitter::convert(image, params)?
         },
+        #[cfg(feature = "vtracer-support")]
+        ConversionParameters::VTracer { .. } => {
+            algorithms::vtracer_wrapper::VTracerWrapper::convert(image, params)?
+        },
+        ConversionParameters::Hybrid { .. } => {
+            // Automatic algorithm selection
+            select_and_convert(image, params)?
+        },
     };
     
     info!("Conversion complete, SVG size: {} chars", svg.len());
     Ok(svg)
 }
 
-/// Get default parameters for a specific algorithm
+/// Main conversion function exposed to JavaScript
 #[wasm_bindgen]
-pub fn get_default_params(algorithm: &str) -> Result<String, JsValue> {
+pub fn convert(image_bytes: &[u8], params_json: &str) -> Result<String, JsValue> {
+    convert_native(image_bytes, params_json)
+        .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Automatic algorithm selection based on image analysis
+fn select_and_convert(image: image::DynamicImage, params: ConversionParameters) -> error::Result<String> {
+    use algorithms::vtracer_wrapper::HybridVectorizer;
+    
+    let analysis = HybridVectorizer::analyze_image(&image);
+    let recommended = HybridVectorizer::select_algorithm(&analysis);
+    
+    info!("Image analysis: {:?}", analysis);
+    info!("Recommended algorithm: {}", recommended);
+    
+    // Convert to appropriate parameters and process
+    match recommended {
+        algorithms::vtracer_wrapper::RecommendedAlgorithm::PathTracer => {
+            let params = ConversionParameters::PathTracer {
+                threshold: 0.5,
+                num_colors: if analysis.color_count > 16 { 16 } else { analysis.color_count as u8 },
+                curve_smoothing: 0.5,
+                suppress_speckles: 0.1,
+                corner_threshold: 60.0,
+                optimize_curves: true,
+            };
+            algorithms::path_tracer::convert(image, params)
+        },
+        algorithms::vtracer_wrapper::RecommendedAlgorithm::EdgeDetector => {
+            let params = ConversionParameters::EdgeDetector {
+                method: EdgeMethod::Canny,
+                threshold_low: 50.0,
+                threshold_high: 150.0,
+                gaussian_sigma: 1.0,
+                simplification: 2.0,
+                min_path_length: 10,
+            };
+            algorithms::edge_detector::convert(image, params)
+        },
+        _ => {
+            // Default to path tracer
+            let params = ConversionParameters::PathTracer {
+                threshold: 0.5,
+                num_colors: 8,
+                curve_smoothing: 0.5,
+                suppress_speckles: 0.1,
+                corner_threshold: 60.0,
+                optimize_curves: true,
+            };
+            algorithms::path_tracer::convert(image, params)
+        }
+    }
+}
+
+/// Native function to get default parameters for a specific algorithm
+pub fn get_default_params_native(algorithm: &str) -> Result<String, Box<dyn std::error::Error>> {
     let params = match algorithm {
         "edge_detector" => ConversionParameters::EdgeDetector {
             method: EdgeMethod::Canny,
@@ -162,11 +250,17 @@ pub fn get_default_params(algorithm: &str) -> Result<String, JsValue> {
             mutation_rate: 0.05,
             target_fitness: 0.95,
         },
-        _ => return Err(JsValue::from_str(&format!("Unknown algorithm: {}", algorithm))),
+        _ => return Err(format!("Unknown algorithm: {}", algorithm).into()),
     };
     
-    serde_json::to_string(&params)
-        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    Ok(serde_json::to_string(&params)?)
+}
+
+/// Get default parameters for a specific algorithm
+#[wasm_bindgen]
+pub fn get_default_params(algorithm: &str) -> Result<String, JsValue> {
+    get_default_params_native(algorithm)
+        .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 /// Get version information
@@ -175,11 +269,9 @@ pub fn get_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-/// Validate image before processing
-#[wasm_bindgen]
-pub fn validate_image(image_bytes: &[u8]) -> Result<String, JsValue> {
-    let image = image_utils::load_image(image_bytes)
-        .map_err(|e| JsValue::from(e))?;
+/// Native function to validate image before processing
+pub fn validate_image_native(image_bytes: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
+    let image = image_utils::load_image(image_bytes)?;
     
     let info = serde_json::json!({
         "width": image.width(),
@@ -189,6 +281,13 @@ pub fn validate_image(image_bytes: &[u8]) -> Result<String, JsValue> {
     });
     
     Ok(info.to_string())
+}
+
+/// Validate image before processing
+#[wasm_bindgen]
+pub fn validate_image(image_bytes: &[u8]) -> Result<String, JsValue> {
+    validate_image_native(image_bytes)
+        .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 /// Get system performance capabilities

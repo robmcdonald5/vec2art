@@ -1,6 +1,7 @@
 pub mod edge_detector;
 pub mod path_tracer;
 pub mod geometric_fitter;
+pub mod vtracer_wrapper;
 
 use crate::error::Result;
 use crate::ConversionParameters;
@@ -18,7 +19,7 @@ pub trait ConversionAlgorithm {
     fn estimate_time(width: u32, height: u32) -> u32;
 }
 
-/// Common utilities for all algorithms
+/// Performance-optimized utilities for all algorithms
 pub mod utils {
     use image::{DynamicImage, GrayImage, Rgb};
     use crate::error::Result;
@@ -28,9 +29,68 @@ pub mod utils {
         image.to_luma8()
     }
     
-    /// Apply Gaussian blur to an image
+    /// Apply Gaussian blur to an image with SIMD-ready implementation
     pub fn gaussian_blur(image: &GrayImage, sigma: f32) -> GrayImage {
+        // For small sigma, use 3x3 or 5x5 fixed kernels for better performance
+        if sigma <= 0.5 {
+            return apply_gaussian_3x3(image);
+        } else if sigma <= 1.0 {
+            return apply_gaussian_5x5(image);
+        }
+        // Fall back to general implementation for larger sigma
         imageproc::filter::gaussian_blur_f32(image, sigma)
+    }
+    
+    /// Optimized 3x3 Gaussian blur
+    fn apply_gaussian_3x3(image: &GrayImage) -> GrayImage {
+        let kernel = [
+            1.0/16.0, 2.0/16.0, 1.0/16.0,
+            2.0/16.0, 4.0/16.0, 2.0/16.0,
+            1.0/16.0, 2.0/16.0, 1.0/16.0,
+        ];
+        apply_kernel_optimized(image, &kernel, 3)
+    }
+    
+    /// Optimized 5x5 Gaussian blur
+    fn apply_gaussian_5x5(image: &GrayImage) -> GrayImage {
+        let kernel = [
+            1.0/256.0, 4.0/256.0, 6.0/256.0, 4.0/256.0, 1.0/256.0,
+            4.0/256.0, 16.0/256.0, 24.0/256.0, 16.0/256.0, 4.0/256.0,
+            6.0/256.0, 24.0/256.0, 36.0/256.0, 24.0/256.0, 6.0/256.0,
+            4.0/256.0, 16.0/256.0, 24.0/256.0, 16.0/256.0, 4.0/256.0,
+            1.0/256.0, 4.0/256.0, 6.0/256.0, 4.0/256.0, 1.0/256.0,
+        ];
+        apply_kernel_optimized(image, &kernel, 5)
+    }
+    
+    /// Apply convolution kernel with optimization for WASM
+    fn apply_kernel_optimized(image: &GrayImage, kernel: &[f32], size: usize) -> GrayImage {
+        use image::{GrayImage, Luma};
+        
+        let (width, height) = image.dimensions();
+        let mut output = GrayImage::new(width, height);
+        let offset = size / 2;
+        
+        // Process image with boundary handling
+        for y in 0..height {
+            for x in 0..width {
+                let mut sum = 0.0;
+                
+                for ky in 0..size {
+                    for kx in 0..size {
+                        let px = (x as i32 + kx as i32 - offset as i32).clamp(0, width as i32 - 1) as u32;
+                        let py = (y as i32 + ky as i32 - offset as i32).clamp(0, height as i32 - 1) as u32;
+                        
+                        let pixel_value = image.get_pixel(px, py)[0] as f32;
+                        sum += pixel_value * kernel[ky * size + kx];
+                    }
+                }
+                
+                output.put_pixel(x, y, Luma([(sum.clamp(0.0, 255.0)) as u8]));
+            }
+        }
+        
+        output
     }
     
     /// Extract dominant colors from an image using k-means clustering

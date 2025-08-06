@@ -10,26 +10,38 @@ This document provides Rust/WASM-specific implementation guidelines for the vec2
 * `js-sys` - JavaScript primitives and objects
 * `serde` (1.0) + `serde-wasm-bindgen` - Parameter serialization between JS and Rust
 * `console_error_panic_hook` - Better panic messages in browser console
-* `wee_alloc` - Tiny memory allocator optimized for WASM (optional)
+* `wee_alloc` - Tiny memory allocator optimized for WASM
 
-### Image Processing & Algorithms
+### Vectorization Algorithms
+* `vtracer` - Native Rust vectorization with O(n) complexity
+* `potrace` (via cc/bindgen) - Gold standard bi-level tracing
+* `autotrace` (via cc/bindgen) - Centerline tracing support
 * `image` (0.25) - Image decoding and basic operations
-* `imageproc` - Advanced image processing algorithms (edge detection, filtering)
-* `palette` - Color manipulation, quantization, and color space conversions
-* `nalgebra` or `cgmath` - Linear algebra for geometric calculations
-* `kdtree` or `rstar` - Spatial indexing for efficient shape detection
-* `rayon` + `wasm-bindgen-rayon` - Parallel processing support in WASM
+* `imageproc` - Advanced image processing (edge detection, filtering)
 
-### SVG Generation
+### Image Processing
+* `palette` - Color manipulation, quantization, LAB color space
+* `nalgebra` - Linear algebra for geometric calculations
+* `euclid` - 2D geometry primitives
+* `kdtree` or `rstar` - Spatial indexing for shape detection
+
+### Performance & Parallelization
+* `rayon` + `wasm-bindgen-rayon` - Thread pool for Web Workers
+* `wasm-mt` - Low-level Web Worker management
+* `packed_simd_2` - SIMD operations (when stable)
+* `web-sys` with SharedArrayBuffer support
+
+### SVG Generation & Optimization
 * `svg` - Programmatic SVG document creation
-* `lyon` - Path tessellation and geometric algorithms
-* `kurbo` - 2D curves and paths (Bézier, arcs, etc.)
-* `resvg` (optional) - SVG simplification and optimization
+* `lyon` - Path tessellation and Bezier curve fitting
+* `kurbo` - 2D curves and paths (Bézier, arcs)
+* `svgcleaner` - SVG optimization (or custom implementation)
 
 ### Utilities
 * `getrandom` - WASM-compatible random number generation
 * `log` + `console_log` - Logging to browser console
 * `thiserror` - Error handling with proper error types
+* `criterion` - Benchmarking for performance optimization
 
 ---
 
@@ -38,19 +50,56 @@ This document provides Rust/WASM-specific implementation guidelines for the vec2
 ### Cargo.toml Optimization Profiles
 
 ```toml
+# Base release profile
 [profile.release]
-opt-level = "z"          # Optimize for size (critical for web delivery)
+opt-level = 3           # Maximum speed optimization
 lto = true              # Link-time optimization
 codegen-units = 1       # Single codegen unit for better optimization
 strip = true            # Strip symbols
 panic = "abort"         # Smaller binary, no unwinding
 
-[profile.dev]
-opt-level = 1           # Some optimization even in dev for reasonable performance
+# Size-optimized profile for base binary
+[profile.wasm-size]
+inherits = "release"
+opt-level = "z"         # Aggressive size optimization
 
-[profile.wasm-dev]
-inherits = "dev"
+# SIMD-enabled profile
+[profile.wasm-simd]
+inherits = "release"
+opt-level = 3
+
+# Parallel processing profile
+[profile.wasm-parallel]
+inherits = "release"
+opt-level = 3
+
+[profile.dev]
 opt-level = 2           # Better performance during development
+```
+
+### Target-Specific Build Configuration
+
+```toml
+[target.wasm32-unknown-unknown]
+rustflags = [
+    "-C", "link-arg=--max-memory=4294967296",  # 4GB max memory
+    "-C", "link-arg=--initial-memory=16777216", # 16MB initial
+]
+
+# For SIMD builds
+[target.'cfg(simd)'.wasm32-unknown-unknown]
+rustflags = [
+    "-C", "target-feature=+simd128",
+    "-C", "link-arg=--max-memory=4294967296",
+]
+
+# For parallel builds
+[target.'cfg(parallel)'.wasm32-unknown-unknown]
+rustflags = [
+    "-C", "target-feature=+atomics,+bulk-memory,+mutable-globals",
+    "-C", "link-arg=--shared-memory",
+    "-C", "link-arg=--max-memory=4294967296",
+]
 ```
 
 ### Memory Configuration
@@ -73,10 +122,14 @@ pub fn main() {
 ```toml
 [features]
 default = ["basic"]
-basic = ["image/jpeg", "image/png"]
-full = ["image/jpeg", "image/png", "image/webp", "image/gif"]
-production = ["wee_alloc"]
+basic = ["image/jpeg", "image/png", "vtracer"]
+full = ["image/jpeg", "image/png", "image/webp", "image/gif", "vtracer", "potrace", "autotrace"]
+simd = ["packed_simd_2"]
+parallel = ["rayon", "wasm-bindgen-rayon"]
+production = ["wee_alloc", "simd", "parallel"]
 debug = ["console_error_panic_hook"]
+potrace = ["cc", "bindgen"]
+autotrace = ["cc", "bindgen"]
 ```
 
 ---
@@ -174,40 +227,227 @@ impl ImageProcessor {
 
 ## Performance Optimization
 
-### SIMD Support (Future)
+### SIMD Implementation
 
 ```rust
-// When SIMD becomes stable in WASM
 #[cfg(target_feature = "simd128")]
 use std::arch::wasm32::*;
 
-// Design code to be SIMD-ready
-fn process_pixels(pixels: &[u8]) {
-    pixels.chunks_exact(4).for_each(|chunk| {
-        // RGBA processing
-    });
+// Grayscale conversion using SIMD
+pub fn grayscale_simd(rgba_pixels: &[u8], output: &mut [u8]) {
+    #[cfg(target_feature = "simd128")]
+    {
+        // Process 4 pixels at once
+        let r_weight = f32x4_splat(0.299);
+        let g_weight = f32x4_splat(0.587);
+        let b_weight = f32x4_splat(0.114);
+        
+        for (chunk_in, chunk_out) in rgba_pixels.chunks_exact(16)
+            .zip(output.chunks_exact_mut(4)) {
+            
+            // Load 4 RGBA pixels
+            let pixels = v128_load(chunk_in.as_ptr() as *const v128);
+            
+            // Extract channels (complex but fast)
+            let r = u8x16_swizzle(pixels, /* mask for R channel */);
+            let g = u8x16_swizzle(pixels, /* mask for G channel */);
+            let b = u8x16_swizzle(pixels, /* mask for B channel */);
+            
+            // Convert to f32 and compute luminance
+            let r_f32 = f32x4_convert_u32x4(/* ... */);
+            let g_f32 = f32x4_convert_u32x4(/* ... */);
+            let b_f32 = f32x4_convert_u32x4(/* ... */);
+            
+            let lum = f32x4_add(
+                f32x4_add(
+                    f32x4_mul(r_f32, r_weight),
+                    f32x4_mul(g_f32, g_weight)
+                ),
+                f32x4_mul(b_f32, b_weight)
+            );
+            
+            // Convert back and store
+            // ... conversion logic ...
+        }
+    }
+    
+    #[cfg(not(target_feature = "simd128"))]
+    {
+        // Fallback scalar implementation
+        for (i, chunk) in rgba_pixels.chunks_exact(4).enumerate() {
+            let gray = (0.299 * chunk[0] as f32 +
+                       0.587 * chunk[1] as f32 +
+                       0.114 * chunk[2] as f32) as u8;
+            output[i] = gray;
+        }
+    }
+}
+
+// Color distance calculation using SIMD
+pub fn color_distance_simd(pixels1: &[u8], pixels2: &[u8]) -> Vec<f32> {
+    #[cfg(target_feature = "simd128")]
+    {
+        let mut distances = Vec::with_capacity(pixels1.len() / 4);
+        
+        for (p1, p2) in pixels1.chunks_exact(16).zip(pixels2.chunks_exact(16)) {
+            // Process 4 RGB pixels at once
+            let v1 = v128_load(p1.as_ptr() as *const v128);
+            let v2 = v128_load(p2.as_ptr() as *const v128);
+            
+            // Calculate differences
+            let diff = i16x8_sub_sat(
+                u8x16_extend_low_u16x8(v1),
+                u8x16_extend_low_u16x8(v2)
+            );
+            
+            // Square differences
+            let squared = i16x8_mul(diff, diff);
+            
+            // Sum and sqrt
+            // ... implementation ...
+        }
+        
+        distances
+    }
+    
+    #[cfg(not(target_feature = "simd128"))]
+    {
+        // Scalar fallback
+        pixels1.chunks_exact(3)
+            .zip(pixels2.chunks_exact(3))
+            .map(|(p1, p2)| {
+                let dr = p1[0] as f32 - p2[0] as f32;
+                let dg = p1[1] as f32 - p2[1] as f32;
+                let db = p1[2] as f32 - p2[2] as f32;
+                (dr * dr + dg * dg + db * db).sqrt()
+            })
+            .collect()
+    }
 }
 ```
 
-### Parallel Processing
+### Parallel Processing Architecture
 
 ```rust
-// Setup for wasm-bindgen-rayon
-pub use wasm_bindgen_rayon::init_thread_pool;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen_rayon::init_thread_pool;
+use rayon::prelude::*;
+use web_sys::SharedArrayBuffer;
 
+/// Initialize Web Worker pool for parallel processing
 #[wasm_bindgen]
-pub fn init_workers(num_threads: usize) -> Result<(), JsValue> {
-    init_thread_pool(num_threads);
-    Ok(())
+pub struct ParallelEngine {
+    shared_memory: Option<SharedArrayBuffer>,
+    tile_size: usize,
 }
 
-// Use rayon for parallel operations
-use rayon::prelude::*;
+#[wasm_bindgen]
+impl ParallelEngine {
+    pub fn new(num_threads: usize) -> Result<ParallelEngine, JsValue> {
+        init_thread_pool(num_threads);
+        Ok(ParallelEngine {
+            shared_memory: None,
+            tile_size: 256, // Default tile size
+        })
+    }
+    
+    pub fn set_shared_memory(&mut self, buffer: SharedArrayBuffer) {
+        self.shared_memory = Some(buffer);
+    }
+    
+    /// Process image in parallel tiles
+    pub fn process_tiled(&self, width: u32, height: u32) -> Vec<TileResult> {
+        let tiles = self.generate_tiles(width, height);
+        
+        tiles.par_iter()
+            .map(|tile| self.process_tile(tile))
+            .collect()
+    }
+    
+    fn generate_tiles(&self, width: u32, height: u32) -> Vec<Tile> {
+        let mut tiles = Vec::new();
+        let tile_size = self.tile_size as u32;
+        
+        for y in (0..height).step_by(tile_size as usize) {
+            for x in (0..width).step_by(tile_size as usize) {
+                tiles.push(Tile {
+                    x,
+                    y,
+                    width: tile_size.min(width - x),
+                    height: tile_size.min(height - y),
+                });
+            }
+        }
+        
+        tiles
+    }
+    
+    fn process_tile(&self, tile: &Tile) -> TileResult {
+        // Process individual tile
+        // This runs in parallel across Web Workers
+        TileResult {
+            tile: tile.clone(),
+            paths: vec![], // Vectorization results
+        }
+    }
+}
 
-fn parallel_process(data: &[u8]) -> Vec<u8> {
-    data.par_chunks(1024)
-        .flat_map(|chunk| process_chunk(chunk))
-        .collect()
+#[derive(Clone)]
+struct Tile {
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+}
+
+struct TileResult {
+    tile: Tile,
+    paths: Vec<SvgPath>,
+}
+
+/// Parallel color quantization using rayon
+pub fn parallel_quantize(image: &DynamicImage, num_colors: usize) -> Vec<Rgb<u8>> {
+    let pixels: Vec<_> = image.to_rgb8().pixels().cloned().collect();
+    
+    // Parallel k-means clustering
+    let mut centers: Vec<Lab> = (0..num_colors)
+        .into_par_iter()
+        .map(|i| {
+            let idx = i * pixels.len() / num_colors;
+            rgb_to_lab(&pixels[idx])
+        })
+        .collect();
+    
+    for _ in 0..10 {
+        // Assign pixels to clusters in parallel
+        let assignments: Vec<usize> = pixels
+            .par_iter()
+            .map(|pixel| {
+                let lab = rgb_to_lab(pixel);
+                find_nearest_center(&lab, &centers)
+            })
+            .collect();
+        
+        // Update centers in parallel
+        centers = (0..num_colors)
+            .into_par_iter()
+            .map(|i| {
+                let cluster_pixels: Vec<_> = pixels.iter()
+                    .zip(&assignments)
+                    .filter(|(_, &a)| a == i)
+                    .map(|(p, _)| rgb_to_lab(p))
+                    .collect();
+                
+                if cluster_pixels.is_empty() {
+                    centers[i]
+                } else {
+                    compute_mean(&cluster_pixels)
+                }
+            })
+            .collect();
+    }
+    
+    centers.into_iter().map(lab_to_rgb).collect()
 }
 ```
 
@@ -351,51 +591,231 @@ fn measure_operation<T, F: FnOnce() -> T>(name: &str, operation: F) -> T {
 
 ---
 
-## Algorithm Module Structure
+## Advanced Algorithm Architecture
 
-Each algorithm in `src/algorithms/` should follow this pattern:
+### Modular Pipeline Implementation
 
 ```rust
-// src/algorithms/path_tracer.rs
 use crate::error::Vec2ArtError;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PathTracerParams {
-    pub num_colors: u8,
-    pub curve_smoothing: f32,
-    pub suppress_speckles: f32,
+/// Main vectorization pipeline
+pub struct VectorizationPipeline {
+    preprocessor: Box<dyn Preprocessor>,
+    vectorizer: Box<dyn Vectorizer>,
+    postprocessor: Box<dyn Postprocessor>,
+    optimizer: SvgOptimizer,
 }
 
-pub trait ConversionAlgorithm {
-    type Params;
-    
-    fn convert(
-        image: &DynamicImage,
-        params: Self::Params,
-    ) -> Result<String, Vec2ArtError>;
-    
-    fn default_params() -> Self::Params;
-}
-
-pub struct PathTracer;
-
-impl ConversionAlgorithm for PathTracer {
-    type Params = PathTracerParams;
-    
-    fn convert(
-        image: &DynamicImage,
-        params: Self::Params,
+impl VectorizationPipeline {
+    pub fn convert(
+        &self,
+        image: DynamicImage,
+        params: &ConversionParameters,
     ) -> Result<String, Vec2ArtError> {
-        // Implementation
+        // Stage 1: Pre-processing
+        let processed = self.preprocessor.process(&image, params)?;
+        
+        // Stage 2: Vectorization
+        let paths = self.vectorizer.vectorize(&processed, params)?;
+        
+        // Stage 3: Post-processing
+        let optimized_paths = self.postprocessor.process(paths, params)?;
+        
+        // Stage 4: SVG generation
+        let svg = self.optimizer.generate_svg(optimized_paths, params)?;
+        
+        Ok(svg)
+    }
+}
+
+/// Pre-processing trait
+pub trait Preprocessor: Send + Sync {
+    fn process(
+        &self,
+        image: &DynamicImage,
+        params: &ConversionParameters,
+    ) -> Result<ProcessedImage, Vec2ArtError>;
+}
+
+/// Advanced pre-processor with full pipeline
+pub struct AdvancedPreprocessor {
+    noise_reducer: NoiseReducer,
+    quantizer: ColorQuantizer,
+    thresholder: AdaptiveThresholder,
+}
+
+impl Preprocessor for AdvancedPreprocessor {
+    fn process(
+        &self,
+        image: &DynamicImage,
+        params: &ConversionParameters,
+    ) -> Result<ProcessedImage, Vec2ArtError> {
+        let mut processed = image.clone();
+        
+        // Apply Gaussian blur for noise reduction
+        if params.denoise {
+            processed = self.noise_reducer.reduce(&processed, params.noise_sigma)?;
+        }
+        
+        // Color quantization for multi-color images
+        if params.num_colors > 0 {
+            let palette = self.quantizer.quantize(&processed, params.num_colors)?;
+            processed = apply_palette(&processed, &palette)?;
+        }
+        
+        // Adaptive thresholding for bi-level conversion
+        if params.use_threshold {
+            processed = self.thresholder.threshold(&processed)?;
+        }
+        
+        Ok(ProcessedImage {
+            data: processed,
+            metadata: ImageMetadata {
+                original_size: (image.width(), image.height()),
+                palette: self.quantizer.get_palette(),
+            },
+        })
+    }
+}
+
+/// Vectorizer trait for different algorithms
+pub trait Vectorizer: Send + Sync {
+    fn vectorize(
+        &self,
+        image: &ProcessedImage,
+        params: &ConversionParameters,
+    ) -> Result<Vec<VectorPath>, Vec2ArtError>;
+    
+    fn supports_color(&self) -> bool;
+    fn supports_centerline(&self) -> bool;
+    fn complexity(&self) -> AlgorithmComplexity;
+}
+
+/// Hybrid vectorizer that can use multiple algorithms
+pub struct HybridVectorizer {
+    potrace: Option<PotraceVectorizer>,
+    vtracer: VtracerVectorizer,
+    autotrace: Option<AutotraceVectorizer>,
+}
+
+impl HybridVectorizer {
+    pub fn select_best(
+        &self,
+        image: &ProcessedImage,
+        params: &ConversionParameters,
+    ) -> Box<dyn Vectorizer> {
+        // Heuristic selection based on image characteristics
+        if params.centerline_mode {
+            if let Some(ref autotrace) = self.autotrace {
+                return Box::new(autotrace.clone());
+            }
+        }
+        
+        if image.is_bilevel() && self.potrace.is_some() {
+            Box::new(self.potrace.as_ref().unwrap().clone())
+        } else {
+            Box::new(self.vtracer.clone())
+        }
+    }
+}
+
+/// Post-processor for path optimization
+pub struct AdvancedPostprocessor {
+    simplifier: DouglasPeuckerSimplifier,
+    curve_fitter: BezierCurveFitter,
+    merger: PathMerger,
+}
+
+impl Postprocessor for AdvancedPostprocessor {
+    fn process(
+        &self,
+        paths: Vec<VectorPath>,
+        params: &ConversionParameters,
+    ) -> Result<Vec<VectorPath>, Vec2ArtError> {
+        let mut optimized = paths;
+        
+        // Simplify paths
+        optimized = self.simplifier.simplify(optimized, params.simplification_epsilon)?;
+        
+        // Fit Bezier curves
+        if params.use_curves {
+            optimized = self.curve_fitter.fit(optimized, params.curve_tolerance)?;
+        }
+        
+        // Merge similar paths
+        optimized = self.merger.merge(optimized)?;
+        
+        Ok(optimized)
+    }
+}
+```
+
+### Algorithm-Specific Implementations
+
+```rust
+/// Potrace integration (compiled from C)
+#[cfg(feature = "potrace")]
+pub struct PotraceVectorizer {
+    handle: *mut potrace_state_t,
+}
+
+#[cfg(feature = "potrace")]
+impl Vectorizer for PotraceVectorizer {
+    fn vectorize(
+        &self,
+        image: &ProcessedImage,
+        params: &ConversionParameters,
+    ) -> Result<Vec<VectorPath>, Vec2ArtError> {
+        unsafe {
+            // Call Potrace C functions via FFI
+            let bitmap = create_potrace_bitmap(&image.data)?;
+            let trace_params = potrace_params_from_config(params);
+            
+            potrace_trace(self.handle, bitmap, trace_params)?;
+            
+            let paths = extract_potrace_paths(self.handle)?;
+            Ok(paths)
+        }
     }
     
-    fn default_params() -> Self::Params {
-        PathTracerParams {
-            num_colors: 8,
-            curve_smoothing: 0.5,
-            suppress_speckles: 0.1,
-        }
+    fn supports_color(&self) -> bool { false }
+    fn supports_centerline(&self) -> bool { false }
+    fn complexity(&self) -> AlgorithmComplexity { 
+        AlgorithmComplexity::Quadratic // O(n²) for curve fitting
+    }
+}
+
+/// vtracer integration (native Rust)
+pub struct VtracerVectorizer;
+
+impl Vectorizer for VtracerVectorizer {
+    fn vectorize(
+        &self,
+        image: &ProcessedImage,
+        params: &ConversionParameters,
+    ) -> Result<Vec<VectorPath>, Vec2ArtError> {
+        // Use vtracer crate directly
+        let config = vtracer::Config {
+            input_size: image.data.dimensions(),
+            color_mode: vtracer::ColorMode::Color,
+            filter_speckle: params.suppress_speckles as usize,
+            color_precision: params.color_precision,
+            layer_difference: params.layer_difference,
+            corner_threshold: params.corner_threshold,
+            length_threshold: params.length_threshold,
+            splice_threshold: params.splice_threshold,
+            max_iterations: params.max_iterations,
+        };
+        
+        let paths = vtracer::trace(&image.data, config)?;
+        Ok(convert_vtracer_paths(paths))
+    }
+    
+    fn supports_color(&self) -> bool { true }
+    fn supports_centerline(&self) -> bool { false }
+    fn complexity(&self) -> AlgorithmComplexity { 
+        AlgorithmComplexity::Linear // O(n) throughout
     }
 }
 ```

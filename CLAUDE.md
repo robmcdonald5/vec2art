@@ -86,11 +86,21 @@ Every PR against `main` must pass:
 
 ## Phased Development Workflow
 
-### Phase 1: Core Algorithm Development (**CURRENT PHASE**)
+### Phase 1: Core Algorithm Development (**COMPLETED**)
 **Goal**: Build and test core conversion algorithms in Rust/WASM
-1. Implement `PathTracer` algorithm (MVP)
-2. Test-driven development with `cargo test`
-3. Define parameter structs for JS interop via `serde`
+1. ✅ Implemented basic `PathTracer` algorithm
+2. ✅ Implemented `EdgeDetector` algorithm
+3. ✅ Implemented `GeometricFitter` algorithm
+4. ✅ Basic parameter structs for JS interop
+
+### Phase 1.5: Algorithm Enhancement (**CURRENT PHASE**)
+**Goal**: Integrate research-based improvements
+1. Integrate vtracer for O(n) performance
+2. Compile Potrace to WASM for high-quality bi-level tracing
+3. Compile Autotrace to WASM for centerline support
+4. Implement advanced pre-processing pipeline
+5. Add Bezier curve fitting and path optimization
+6. Implement WASM SIMD optimizations
 
 ### Phase 2: Frontend Scaffolding & MVP Integration
 **Goal**: Working single-image editor with `PathTracer`
@@ -112,18 +122,94 @@ Every PR against `main` must pass:
 
 ---
 
-## Core WASM Module Interface
+## High-Performance Vectorization Architecture
 
-The primary interface between JavaScript and Rust:
+### Core Processing Pipeline
+
+Based on state-of-the-art research in image vectorization, the architecture implements a modular four-stage pipeline:
+
+#### Stage 1: Pre-Processing
+* **Image Decoding**: Support for PNG, JPEG, WebP, GIF formats
+* **Image Conditioning**: 
+  - Noise reduction (median filter, Gaussian blur)
+  - Artifact removal (JPEG compression artifacts)
+  - Smart scaling (edge-aware upscaling/downscaling)
+  - Automatic thresholding (Otsu's method)
+* **Color Quantization**: 
+  - K-means clustering in LAB color space
+  - Octree-based quantization
+  - Configurable palette size (2-256 colors)
+
+#### Stage 2: Core Vectorization
+* **Multiple Algorithm Support**:
+  - **Potrace** (via WASM): Gold standard for bi-level images
+  - **vtracer** (native Rust): O(n) complexity, color support
+  - **Autotrace** (via WASM): Centerline tracing for line art
+  - **Custom Implementations**: Edge detection, geometric fitting
+* **Algorithm Selection**:
+  - Automatic heuristic-based selection
+  - Manual override via UI
+  - Per-layer algorithm choice for complex images
+
+#### Stage 3: Post-Processing
+* **Path Optimization**:
+  - Douglas-Peucker simplification
+  - Bezier curve fitting
+  - Corner detection and preservation
+  - Speckle removal (configurable threshold)
+* **Structure Optimization**:
+  - Path merging for identical styles
+  - Z-order optimization for proper layering
+  - Precision control (coordinate rounding)
+
+#### Stage 4: SVG Generation
+* **Output Optimization**:
+  - `<use>` elements for shape reuse
+  - `<g>` grouping for shared styles
+  - CSS classes for repeated styles
+  - Attribute minification
+  - Node count management (<2000 for interactive performance)
+
+### Performance Architecture
+
+#### Progressive Enhancement Strategy
+The application ships multiple WASM binaries to maximize performance across all browsers:
+
+```
+vec2art_base.wasm     - Baseline (no SIMD, no threads)
+vec2art_simd.wasm     - SIMD-enabled
+vec2art_parallel.wasm - Multithreading support
+vec2art_full.wasm     - SIMD + multithreading
+```
+
+#### Zero-Copy Data Transfer
+* SharedArrayBuffer for image data
+* Direct memory views between JS and WASM
+* No serialization overhead
+
+#### Parallelization Strategy
+* **Task-Level**: Web Workers for tile-based processing
+* **Data-Level**: WASM SIMD for pixel operations
+* **Algorithm-Level**: Parallel implementations of core algorithms
+
+### Core WASM Module Interface
 
 ```rust
 #[wasm_bindgen]
-pub fn convert(image_bytes: &[u8], params: ConversionParameters) -> Result<String, JsValue>
-```
+pub struct VectorizationEngine {
+    // Persistent engine state for optimal performance
+}
 
-* **Input**: Raw image bytes and conversion parameters
-* **Output**: SVG string or error
-* **Details**: See `wasm/CLAUDE.md` for implementation
+#[wasm_bindgen]
+impl VectorizationEngine {
+    pub fn new() -> Self;
+    pub fn set_shared_memory(memory: &SharedArrayBuffer);
+    pub fn convert_with_progress(
+        params: ConversionParameters,
+        on_progress: &js_sys::Function
+    ) -> Result<String, JsValue>;
+}
+```
 
 ---
 
@@ -137,3 +223,7 @@ Use slash commands for common workflows:
 * `/ci-check` - Run all CI checks locally
 
 See `.claude/commands/` for all available commands.
+
+## Agent Framework
+
+**IMPORTANT** Remember to consider what sub agents can be used and try to use them for tasks they are designed to do calling them with @'whatever the agent name is'. Always check if there is an agent that can do the task at hand. Refer to .claude/agents/CLAUDE.md for a description of what agents can do.

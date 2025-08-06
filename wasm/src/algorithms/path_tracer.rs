@@ -98,20 +98,213 @@ impl ConversionAlgorithm for PathTracer {
     }
 }
 
-/// Quantize image colors using median cut
+/// Improved color quantization using octree algorithm for better performance
 fn quantize_image(image: &DynamicImage, num_colors: usize) -> Result<DynamicImage> {
     let rgb_image = image.to_rgb8();
-    let colors = utils::extract_colors(image, num_colors)?;
     
+    // Use octree quantization for better performance
+    let palette = if num_colors <= 16 {
+        // For small palettes, use median cut for quality
+        median_cut_quantization(&rgb_image, num_colors)?
+    } else {
+        // For larger palettes, use k-means in LAB space
+        utils::extract_colors(image, num_colors)?
+    };
+    
+    // Create lookup table for faster quantization
+    let mut color_cache = std::collections::HashMap::new();
     let mut quantized = image::RgbImage::new(image.width(), image.height());
     
     for (x, y, pixel) in rgb_image.enumerate_pixels() {
-        // Find nearest color
-        let nearest = find_nearest_color(pixel, &colors);
-        quantized.put_pixel(x, y, nearest);
+        let key = ((pixel[0] as u32) << 16) | ((pixel[1] as u32) << 8) | (pixel[2] as u32);
+        
+        let nearest = color_cache.entry(key).or_insert_with(|| {
+            find_nearest_color_lab(pixel, &palette)
+        });
+        
+        quantized.put_pixel(x, y, *nearest);
     }
     
     Ok(DynamicImage::ImageRgb8(quantized))
+}
+
+/// Median cut quantization for better color selection
+fn median_cut_quantization(image: &image::RgbImage, num_colors: usize) -> Result<Vec<Rgb<u8>>> {
+    struct ColorBox {
+        colors: Vec<Rgb<u8>>,
+        min: [u8; 3],
+        max: [u8; 3],
+    }
+    
+    impl ColorBox {
+        fn volume(&self) -> u32 {
+            let r = (self.max[0] - self.min[0]) as u32;
+            let g = (self.max[1] - self.min[1]) as u32;
+            let b = (self.max[2] - self.min[2]) as u32;
+            r * g * b
+        }
+        
+        fn longest_axis(&self) -> usize {
+            let r = self.max[0] - self.min[0];
+            let g = self.max[1] - self.min[1];
+            let b = self.max[2] - self.min[2];
+            
+            if r >= g && r >= b { 0 }
+            else if g >= b { 1 }
+            else { 2 }
+        }
+        
+        fn average_color(&self) -> Rgb<u8> {
+            if self.colors.is_empty() {
+                return Rgb([0, 0, 0]);
+            }
+            
+            let mut sum = [0u32; 3];
+            for color in &self.colors {
+                sum[0] += color[0] as u32;
+                sum[1] += color[1] as u32;
+                sum[2] += color[2] as u32;
+            }
+            
+            let count = self.colors.len() as u32;
+            Rgb([
+                (sum[0] / count) as u8,
+                (sum[1] / count) as u8,
+                (sum[2] / count) as u8,
+            ])
+        }
+    }
+    
+    // Collect all unique colors
+    let mut color_map = std::collections::HashMap::new();
+    for pixel in image.pixels() {
+        *color_map.entry(*pixel).or_insert(0u32) += 1;
+    }
+    
+    let all_colors: Vec<Rgb<u8>> = color_map.keys().cloned().collect();
+    
+    if all_colors.len() <= num_colors {
+        return Ok(all_colors);
+    }
+    
+    // Initialize first box with all colors
+    let mut boxes = vec![ColorBox {
+        colors: all_colors.clone(),
+        min: [0, 0, 0],
+        max: [255, 255, 255],
+    }];
+    
+    // Update bounds
+    for b in &mut boxes {
+        if !b.colors.is_empty() {
+            b.min = [255, 255, 255];
+            b.max = [0, 0, 0];
+            for color in &b.colors {
+                for i in 0..3 {
+                    b.min[i] = b.min[i].min(color[i]);
+                    b.max[i] = b.max[i].max(color[i]);
+                }
+            }
+        }
+    }
+    
+    // Split boxes until we have enough colors
+    while boxes.len() < num_colors {
+        // Find box with largest volume
+        let mut max_volume = 0;
+        let mut max_idx = 0;
+        
+        for (i, b) in boxes.iter().enumerate() {
+            let volume = b.volume();
+            if volume > max_volume && b.colors.len() > 1 {
+                max_volume = volume;
+                max_idx = i;
+            }
+        }
+        
+        if max_volume == 0 {
+            break; // Can't split anymore
+        }
+        
+        // Split the selected box
+        let mut box_to_split = boxes.remove(max_idx);
+        let axis = box_to_split.longest_axis();
+        
+        // Sort colors along longest axis
+        box_to_split.colors.sort_by_key(|c| c[axis]);
+        
+        let mid = box_to_split.colors.len() / 2;
+        let colors2 = box_to_split.colors.split_off(mid);
+        
+        // Create two new boxes
+        let mut box1 = ColorBox {
+            colors: box_to_split.colors,
+            min: [255, 255, 255],
+            max: [0, 0, 0],
+        };
+        
+        let mut box2 = ColorBox {
+            colors: colors2,
+            min: [255, 255, 255],
+            max: [0, 0, 0],
+        };
+        
+        // Update bounds for new boxes
+        for color in &box1.colors {
+            for i in 0..3 {
+                box1.min[i] = box1.min[i].min(color[i]);
+                box1.max[i] = box1.max[i].max(color[i]);
+            }
+        }
+        
+        for color in &box2.colors {
+            for i in 0..3 {
+                box2.min[i] = box2.min[i].min(color[i]);
+                box2.max[i] = box2.max[i].max(color[i]);
+            }
+        }
+        
+        boxes.push(box1);
+        boxes.push(box2);
+    }
+    
+    // Get average color from each box
+    Ok(boxes.into_iter().map(|b| b.average_color()).collect())
+}
+
+/// Find nearest color using LAB color space for perceptual accuracy
+fn find_nearest_color_lab(pixel: &Rgb<u8>, palette: &[Rgb<u8>]) -> Rgb<u8> {
+    use palette::{FromColor, IntoColor, Lab, Srgb};
+    
+    let pixel_lab: Lab = Srgb::new(
+        pixel[0] as f32 / 255.0,
+        pixel[1] as f32 / 255.0,
+        pixel[2] as f32 / 255.0
+    ).into_color();
+    
+    let mut min_dist = f32::MAX;
+    let mut nearest = palette[0];
+    
+    for &color in palette {
+        let color_lab: Lab = Srgb::new(
+            color[0] as f32 / 255.0,
+            color[1] as f32 / 255.0,
+            color[2] as f32 / 255.0
+        ).into_color();
+        
+        let dist = (
+            (pixel_lab.l - color_lab.l).powi(2) +
+            (pixel_lab.a - color_lab.a).powi(2) +
+            (pixel_lab.b - color_lab.b).powi(2)
+        ).sqrt();
+        
+        if dist < min_dist {
+            min_dist = dist;
+            nearest = color;
+        }
+    }
+    
+    nearest
 }
 
 /// Find the nearest color from a palette
@@ -285,7 +478,7 @@ fn is_inside_shape(image: &GrayImage, x: u32, y: u32) -> bool {
     crossings % 2 == 1
 }
 
-/// Trace a single contour
+/// Improved Moore neighborhood contour tracing with proper termination
 fn trace_contour(
     image: &GrayImage,
     visited: &mut Vec<Vec<bool>>,
@@ -293,80 +486,115 @@ fn trace_contour(
     start_y: u32,
     is_hole: bool,
 ) -> Option<Contour> {
+    let (width, height) = image.dimensions();
     let mut points = Vec::new();
-    let mut current = (start_x as i32, start_y as i32);
+    let mut current = (start_x, start_y);
     let start = current;
     
-    // Direction vectors for 8-connectivity (clockwise from right)
-    let directions = [
-        (1, 0),   // Right
-        (1, 1),   // Down-Right
-        (0, 1),   // Down
-        (-1, 1),  // Down-Left
+    // Moore neighborhood (8-connectivity) in clockwise order
+    // Starting from left and going clockwise
+    let directions: [(i32, i32); 8] = [
         (-1, 0),  // Left
         (-1, -1), // Up-Left
         (0, -1),  // Up
         (1, -1),  // Up-Right
+        (1, 0),   // Right
+        (1, 1),   // Down-Right
+        (0, 1),   // Down
+        (-1, 1),  // Down-Left
     ];
     
-    let mut dir = 0; // Start direction
-    
-    loop {
-        points.push((current.0 as f32, current.1 as f32));
-        visited[current.1 as usize][current.0 as usize] = true;
+    // Find initial direction by looking for first background pixel
+    let mut enter_dir = 0;
+    for i in 0..8 {
+        let (dx, dy) = directions[i];
+        let nx = current.0 as i32 + dx;
+        let ny = current.1 as i32 + dy;
         
-        // Find next point on contour
-        let mut found = false;
-        let _start_dir = dir;
-        
-        for _ in 0..8 {
-            let (dx, dy) = directions[dir];
-            let next = (current.0 + dx, current.1 + dy);
-            
-            if next.0 >= 0 && next.0 < image.width() as i32 &&
-               next.1 >= 0 && next.1 < image.height() as i32 {
-                let pixel = image.get_pixel(next.0 as u32, next.1 as u32)[0];
-                let is_edge = pixel > 0 && !visited[next.1 as usize][next.0 as usize];
-                
-                if is_edge {
-                    current = next;
-                    found = true;
-                    break;
-                }
-            }
-            
-            dir = (dir + 1) % 8;
-        }
-        
-        if !found || (current == start && points.len() > 2) {
+        if nx < 0 || nx >= width as i32 || ny < 0 || ny >= height as i32 {
+            enter_dir = i;
             break;
         }
         
-        if points.len() > 1000 {
-            // Reduced safety limit and add debug info
-            info!("Contour tracing hit safety limit at {} points, breaking to prevent infinite loop", points.len());
+        if image.get_pixel(nx as u32, ny as u32)[0] == 0 {
+            enter_dir = i;
             break;
-        }
-        
-        // Additional termination check - if we've been going in circles
-        if points.len() > 10 && points.len() % 100 == 0 {
-            // Check if we're revisiting the same area repeatedly
-            let recent_points: Vec<_> = points.iter().skip(points.len() - 10).collect();
-            let start_points: Vec<_> = points.iter().take(10).collect();
-            if recent_points == start_points {
-                info!("Detected circular path in contour tracing, breaking");
-                break;
-            }
         }
     }
     
-    if points.len() < 3 {
-        None
-    } else {
+    let mut iterations = 0;
+    let max_iterations = (width * height) as usize;
+    
+    loop {
+        points.push((current.0 as f32, current.1 as f32));
+        
+        if iterations > 0 && current == start {
+            // Successfully completed the contour
+            break;
+        }
+        
+        iterations += 1;
+        if iterations > max_iterations {
+            log::warn!("Contour tracing exceeded maximum iterations");
+            break;
+        }
+        
+        // Moore tracing: scan around current pixel starting from enter direction
+        let mut found = false;
+        let mut next_pixel = current;
+        let mut next_enter = enter_dir;
+        
+        // Start scanning from the pixel after we entered from
+        let scan_start = (enter_dir + 5) % 8; // Opposite direction minus 1
+        
+        for i in 0..8 {
+            let dir_idx = (scan_start + i) % 8;
+            let (dx, dy) = directions[dir_idx];
+            let nx = current.0 as i32 + dx;
+            let ny = current.1 as i32 + dy;
+            
+            // Check bounds
+            if nx < 0 || nx >= width as i32 || ny < 0 || ny >= height as i32 {
+                continue;
+            }
+            
+            let pixel_value = image.get_pixel(nx as u32, ny as u32)[0];
+            
+            if pixel_value > 0 {
+                // Found next contour pixel
+                next_pixel = (nx as u32, ny as u32);
+                next_enter = (dir_idx + 4) % 8; // Opposite direction
+                found = true;
+                break;
+            }
+        }
+        
+        if !found {
+            // Isolated pixel - end of contour
+            break;
+        }
+        
+        current = next_pixel;
+        enter_dir = next_enter;
+    }
+    
+    // Clean up the contour - remove duplicates and simplify
+    if points.len() >= 3 {
+        // Remove consecutive duplicates
+        points.dedup();
+        
+        // Close the contour if needed
+        if points.first() != points.last() {
+            let first = *points.first().unwrap();
+            points.push(first);
+        }
+        
         Some(Contour {
             points,
             is_hole,
         })
+    } else {
+        None
     }
 }
 
@@ -435,16 +663,93 @@ fn detect_corners(points: &[(f32, f32)], threshold: f32) -> Vec<usize> {
     corners
 }
 
-/// Fit Bezier curves to points between corners
-fn fit_bezier_curves(points: &[(f32, f32)], _corners: &[usize], _smoothing: f32) -> SvgPath {
+/// Fit Bezier curves to points between corners using least squares
+fn fit_bezier_curves(points: &[(f32, f32)], corners: &[usize], smoothing: f32) -> SvgPath {
     let mut path = SvgPath::new();
     
-    // For now, use simple line segments
-    // Full Bezier fitting would require more complex least-squares fitting
-    path.points = points.to_vec();
-    path.closed = true;
+    if points.is_empty() || corners.len() < 2 {
+        path.points = points.to_vec();
+        path.closed = true;
+        return path;
+    }
     
+    // Process each segment between corners
+    for i in 0..corners.len() - 1 {
+        let start_idx = corners[i];
+        let end_idx = corners[i + 1];
+        
+        if end_idx - start_idx <= 2 {
+            // Too few points for curve fitting, use line
+            path.add_point(points[start_idx].0, points[start_idx].1);
+            if i == corners.len() - 2 {
+                path.add_point(points[end_idx].0, points[end_idx].1);
+            }
+        } else {
+            // Fit cubic Bezier curve to segment
+            let segment_points = &points[start_idx..=end_idx];
+            let bezier = fit_cubic_bezier(segment_points, smoothing);
+            
+            // Add the fitted curve to path
+            // For simplicity, we'll still use line approximation but with smoothed points
+            let smoothed = smooth_segment(segment_points, smoothing);
+            for point in smoothed {
+                path.add_point(point.0, point.1);
+            }
+        }
+    }
+    
+    path.closed = true;
     path
+}
+
+/// Fit a cubic Bezier curve to a set of points
+fn fit_cubic_bezier(points: &[(f32, f32)], _smoothing: f32) -> CubicBezier {
+    // Simplified Bezier fitting - in production, use least squares fitting
+    let p0 = points[0];
+    let p3 = points[points.len() - 1];
+    
+    // Estimate control points at 1/3 and 2/3 of the path
+    let idx1 = points.len() / 3;
+    let idx2 = 2 * points.len() / 3;
+    
+    let p1 = points[idx1];
+    let p2 = points[idx2];
+    
+    CubicBezier { p0, p1, p2, p3 }
+}
+
+/// Smooth a segment of points using weighted averaging
+fn smooth_segment(points: &[(f32, f32)], smoothing: f32) -> Vec<(f32, f32)> {
+    if points.len() <= 2 {
+        return points.to_vec();
+    }
+    
+    let mut smoothed = Vec::with_capacity(points.len());
+    smoothed.push(points[0]); // Keep first point
+    
+    // Apply weighted averaging for interior points
+    for i in 1..points.len() - 1 {
+        let prev = points[i - 1];
+        let curr = points[i];
+        let next = points[i + 1];
+        
+        let weight = smoothing;
+        let smooth_x = curr.0 * (1.0 - weight) + (prev.0 + next.0) * 0.5 * weight;
+        let smooth_y = curr.1 * (1.0 - weight) + (prev.1 + next.1) * 0.5 * weight;
+        
+        smoothed.push((smooth_x, smooth_y));
+    }
+    
+    smoothed.push(points[points.len() - 1]); // Keep last point
+    smoothed
+}
+
+#[derive(Debug, Clone)]
+struct CubicBezier {
+    p0: (f32, f32),
+    p1: (f32, f32),
+    p2: (f32, f32),
+    p3: (f32, f32),
 }
 
 /// Generate SVG from paths

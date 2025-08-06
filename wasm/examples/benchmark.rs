@@ -1,4 +1,4 @@
-use vec2art::{convert, get_default_params};
+use vec2art::{convert_native, get_default_params_native};
 use std::time::Instant;
 
 fn main() {
@@ -55,10 +55,10 @@ fn create_test_image(width: u32, height: u32) -> image::DynamicImage {
 }
 
 fn benchmark_algorithm(image_bytes: &[u8], algorithm: &str, width: u32, height: u32) {
-    let params_json = get_default_params(algorithm).unwrap();
+    let params_json = get_default_params_native(algorithm).unwrap();
     
     let start = Instant::now();
-    let result = convert(image_bytes, &params_json);
+    let result = convert_native(image_bytes, &params_json);
     let duration = start.elapsed();
     
     match result {
@@ -92,7 +92,7 @@ fn benchmark_geometric_fitter(image_bytes: &[u8], width: u32, height: u32) {
     }"#;
     
     let start = Instant::now();
-    let result = convert(image_bytes, params_json);
+    let result = convert_native(image_bytes, params_json);
     let duration = start.elapsed();
     
     match result {

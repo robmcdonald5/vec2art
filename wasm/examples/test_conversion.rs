@@ -1,4 +1,4 @@
-use vec2art::{convert, get_default_params, validate_image};
+use vec2art::{convert_native, get_default_params_native};
 use std::{env, fs};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,19 +20,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Loading image: {}", image_path);
     let image_bytes = fs::read(image_path)?;
     
-    // Validate image first
+    // Basic image size validation
     println!("Validating image...");
-    match validate_image(&image_bytes) {
-        Ok(info) => println!("Image info: {}", info),
-        Err(e) => {
-            println!("Image validation failed: {:?}", e);
-            return Ok(());
-        }
+    if image_bytes.is_empty() {
+        println!("Error: Image file is empty");
+        return Ok(());
     }
+    println!("Image loaded successfully ({} bytes)", image_bytes.len());
     
     // Get default parameters for the algorithm
     println!("Getting default parameters for: {}", algorithm);
-    let params_json = match get_default_params(algorithm) {
+    let params_json = match get_default_params_native(algorithm) {
         Ok(params) => params,
         Err(e) => {
             println!("Failed to get parameters: {:?}", e);
@@ -46,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Converting with {} algorithm...", algorithm);
     let start_time = std::time::Instant::now();
     
-    match convert(&image_bytes, &params_json) {
+    match convert_native(&image_bytes, &params_json) {
         Ok(svg) => {
             let duration = start_time.elapsed();
             println!("Conversion completed in {:?}", duration);

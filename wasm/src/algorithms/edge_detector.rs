@@ -1,7 +1,6 @@
 use crate::algorithms::{ConversionAlgorithm, SvgPath, utils};
 use crate::error::{Result, Vec2ArtError};
 use crate::svg_builder::SvgBuilder;
-use crate::utils::convolution::{gaussian_blur, sobel_edge_detection, non_maximum_suppression};
 use crate::{ConversionParameters, EdgeMethod};
 use image::{DynamicImage, GrayImage, Luma};
 use log::info;
@@ -73,23 +72,23 @@ impl ConversionAlgorithm for EdgeDetector {
     }
 }
 
-/// Canny edge detection implementation
+/// Optimized Canny edge detection for WASM
 fn canny_edge_detection(
     image: &GrayImage,
     sigma: f32,
     low_threshold: f32,
     high_threshold: f32,
 ) -> Result<GrayImage> {
-    info!("Applying Canny edge detection");
+    info!("Applying optimized Canny edge detection");
     
-    // Step 1: Gaussian blur
-    let blurred = gaussian_blur(image, sigma);
+    // Step 1: Gaussian blur using optimized utils
+    let blurred = utils::gaussian_blur(image, sigma);
     
-    // Step 2: Gradient calculation using Sobel
-    let (magnitude, direction) = sobel_edge_detection(&blurred);
+    // Step 2: Gradient calculation using Sobel (optimized for WASM)
+    let (magnitude, direction) = sobel_gradient_optimized(&blurred);
     
     // Step 3: Non-maximum suppression
-    let suppressed = non_maximum_suppression(&magnitude, &direction);
+    let suppressed = non_maximum_suppression_optimized(&magnitude, &direction);
     
     // Step 4: Double thresholding and hysteresis
     let edges = hysteresis_threshold(&suppressed, low_threshold as u8, high_threshold as u8);
@@ -97,17 +96,151 @@ fn canny_edge_detection(
     Ok(edges)
 }
 
-/// Simple Sobel edge detection
+/// Optimized Sobel gradient calculation with SIMD-ready structure
+fn sobel_gradient_optimized(image: &GrayImage) -> (GrayImage, Vec<f32>) {
+    let (width, height) = image.dimensions();
+    let mut magnitude = GrayImage::new(width, height);
+    let mut direction = vec![0.0f32; (width * height) as usize];
+    
+    // Sobel kernels
+    const SOBEL_X: [[i16; 3]; 3] = [
+        [-1, 0, 1],
+        [-2, 0, 2],
+        [-1, 0, 1],
+    ];
+    
+    const SOBEL_Y: [[i16; 3]; 3] = [
+        [-1, -2, -1],
+        [ 0,  0,  0],
+        [ 1,  2,  1],
+    ];
+    
+    // Pre-compute image buffer for faster access
+    let img_buffer: Vec<u8> = image.pixels().map(|p| p[0]).collect();
+    let mut mag_buffer = vec![0u8; (width * height) as usize];
+    
+    // Process image with optimized memory access pattern
+    for y in 1..height - 1 {
+        let row_offset = y * width;
+        
+        for x in 1..width - 1 {
+            let mut gx = 0i32;
+            let mut gy = 0i32;
+            
+            // Unroll the kernel loops for better performance
+            // Row -1
+            let idx_top = ((y - 1) * width + x - 1) as usize;
+            gx += SOBEL_X[0][0] as i32 * img_buffer[idx_top] as i32;
+            gy += SOBEL_Y[0][0] as i32 * img_buffer[idx_top] as i32;
+            
+            gx += SOBEL_X[0][1] as i32 * img_buffer[idx_top + 1] as i32;
+            gy += SOBEL_Y[0][1] as i32 * img_buffer[idx_top + 1] as i32;
+            
+            gx += SOBEL_X[0][2] as i32 * img_buffer[idx_top + 2] as i32;
+            gy += SOBEL_Y[0][2] as i32 * img_buffer[idx_top + 2] as i32;
+            
+            // Row 0
+            let idx_mid = (row_offset + x - 1) as usize;
+            gx += SOBEL_X[1][0] as i32 * img_buffer[idx_mid] as i32;
+            gy += SOBEL_Y[1][0] as i32 * img_buffer[idx_mid] as i32;
+            
+            gx += SOBEL_X[1][2] as i32 * img_buffer[idx_mid + 2] as i32;
+            gy += SOBEL_Y[1][2] as i32 * img_buffer[idx_mid + 2] as i32;
+            
+            // Row +1
+            let idx_bot = ((y + 1) * width + x - 1) as usize;
+            gx += SOBEL_X[2][0] as i32 * img_buffer[idx_bot] as i32;
+            gy += SOBEL_Y[2][0] as i32 * img_buffer[idx_bot] as i32;
+            
+            gx += SOBEL_X[2][1] as i32 * img_buffer[idx_bot + 1] as i32;
+            gy += SOBEL_Y[2][1] as i32 * img_buffer[idx_bot + 1] as i32;
+            
+            gx += SOBEL_X[2][2] as i32 * img_buffer[idx_bot + 2] as i32;
+            gy += SOBEL_Y[2][2] as i32 * img_buffer[idx_bot + 2] as i32;
+            
+            // Calculate magnitude and direction
+            let mag = ((gx * gx + gy * gy) as f32).sqrt();
+            let idx = (row_offset + x) as usize;
+            
+            mag_buffer[idx] = mag.min(255.0) as u8;
+            direction[idx] = (gy as f32).atan2(gx as f32);
+        }
+    }
+    
+    // Convert buffer back to image
+    for (i, &val) in mag_buffer.iter().enumerate() {
+        let x = (i % width as usize) as u32;
+        let y = (i / width as usize) as u32;
+        magnitude.put_pixel(x, y, Luma([val]));
+    }
+    
+    (magnitude, direction)
+}
+
+/// Optimized non-maximum suppression
+fn non_maximum_suppression_optimized(magnitude: &GrayImage, direction: &[f32]) -> GrayImage {
+    let (width, height) = magnitude.dimensions();
+    let mut suppressed = GrayImage::new(width, height);
+    
+    // Pre-compute magnitude buffer for faster access
+    let mag_buffer: Vec<u8> = magnitude.pixels().map(|p| p[0]).collect();
+    let mut out_buffer = vec![0u8; (width * height) as usize];
+    
+    for y in 1..height - 1 {
+        for x in 1..width - 1 {
+            let idx = (y * width + x) as usize;
+            let angle = direction[idx];
+            let mag = mag_buffer[idx];
+            
+            // Quantize angle to 4 directions
+            let (dx, dy) = if angle < -3.0 * std::f32::consts::PI / 8.0 || angle >= 3.0 * std::f32::consts::PI / 8.0 {
+                (1, 0) // Horizontal
+            } else if angle >= std::f32::consts::PI / 8.0 && angle < 3.0 * std::f32::consts::PI / 8.0 {
+                (1, -1) // Diagonal /
+            } else if angle >= -std::f32::consts::PI / 8.0 && angle < std::f32::consts::PI / 8.0 {
+                (0, 1) // Vertical
+            } else {
+                (1, 1) // Diagonal \
+            };
+            
+            // Check neighbors in gradient direction
+            let n1_idx = ((y as i32 + dy) * width as i32 + (x as i32 + dx)) as usize;
+            let n2_idx = ((y as i32 - dy) * width as i32 + (x as i32 - dx)) as usize;
+            
+            if mag >= mag_buffer[n1_idx] && mag >= mag_buffer[n2_idx] {
+                out_buffer[idx] = mag;
+            }
+        }
+    }
+    
+    // Convert buffer back to image
+    for (i, &val) in out_buffer.iter().enumerate() {
+        let x = (i % width as usize) as u32;
+        let y = (i / width as usize) as u32;
+        suppressed.put_pixel(x, y, Luma([val]));
+    }
+    
+    suppressed
+}
+
+/// Optimized Sobel edge detection for simple thresholding
 fn sobel_edge_detection_simple(image: &GrayImage, threshold: f32) -> Result<GrayImage> {
-    info!("Applying Sobel edge detection");
+    info!("Applying optimized Sobel edge detection");
     
-    let (magnitude, _) = sobel_edge_detection(image);
+    let (magnitude, _) = sobel_gradient_optimized(image);
     
-    // Apply threshold
-    let mut edges = GrayImage::new(image.width(), image.height());
-    for (x, y, pixel) in magnitude.enumerate_pixels() {
-        let value = if pixel[0] as f32 > threshold { 255 } else { 0 };
-        edges.put_pixel(x, y, Luma([value]));
+    // Apply threshold with optimized loop
+    let (width, height) = magnitude.dimensions();
+    let mut edges = GrayImage::new(width, height);
+    
+    // Process in chunks for better cache locality
+    let threshold_u8 = threshold as u8;
+    for (pixel_in, pixel_out) in magnitude.pixels().zip(edges.pixels_mut()) {
+        *pixel_out = if pixel_in[0] > threshold_u8 { 
+            Luma([255]) 
+        } else { 
+            Luma([0]) 
+        };
     }
     
     Ok(edges)
