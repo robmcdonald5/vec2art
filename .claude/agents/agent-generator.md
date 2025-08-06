@@ -1,7 +1,7 @@
 ---
 name: agent-generator
 description: Use this agent when you need to create new specialized agents for specific technologies or development tasks. This agent ensures consistency by following established templates and patterns. Examples: <example>Context: User needs an agent for React development tasks. user: '@agent-generator I need an agent that can help with React component development, hooks, and state management' assistant: 'I'll create a specialized react-developer agent with expertise in React patterns and best practices'</example> <example>Context: User needs a research agent for AWS services. user: '@agent-generator Create an agent that can research AWS best practices, service configurations, and deployment patterns' assistant: 'I'll create an aws-researcher agent that can find authoritative AWS documentation and implementation guidance'</example> <example>Context: User needs a testing agent for a specific framework. user: '@agent-generator I need an agent specialized in Playwright end-to-end testing' assistant: 'I'll create a playwright-developer agent focused on E2E testing patterns and best practices'</example>
-tools: Read, Write, Bash, Glob, TodoWrite
+tools: Bash, Glob, Grep, Read, Edit, MultiEdit, Write, TodoWrite
 model: opus
 color: blue
 ---
