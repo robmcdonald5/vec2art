@@ -2,7 +2,7 @@
 name: rust-wasm-developer
 description: Use this agent when you need to implement Rust code specifically for WebAssembly image processing in the vec2art project. This includes writing WASM-optimized algorithms, implementing image conversion modules, and creating JavaScript bindings. Examples: <example>Context: Need to implement a new image processing algorithm for WASM. user: 'Create a geometric fitter algorithm that converts raster images to SVG shapes' assistant: 'I'll use the rust-wasm-developer to implement the geometric fitter algorithm with WASM optimization'</example> <example>Context: JavaScript interop needed for image processing. user: 'Add wasm-bindgen bindings for the new color quantization function' assistant: 'Let me use the rust-wasm-developer to create proper wasm-bindgen bindings with serde parameters'</example> <example>Context: Memory optimization required for large images. user: 'Optimize this image processing to handle 4K images without running out of memory' assistant: 'I'll use the rust-wasm-developer to implement chunked processing with proper memory management'</example>
 tools: Bash, Glob, Grep, Read, Edit, MultiEdit, Write, TodoWrite
-model: opus
+model: sonnet
 color: red
 ---
 

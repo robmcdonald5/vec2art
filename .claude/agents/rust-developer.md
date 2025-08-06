@@ -2,7 +2,7 @@
 name: rust-developer
 description: Use this agent when you need to implement Rust code for any project requirements. This includes writing structs, traits, functions, handling error management, working with Cargo dependencies, and implementing idiomatic Rust patterns. Examples: <example>Context: Need to implement a new data structure with custom behavior. user: 'Create a thread-safe cache structure that expires entries after 5 minutes' assistant: 'I'll use the rust-developer to implement a thread-safe cache with time-based expiration using Arc, Mutex, and HashMap'</example> <example>Context: Working with file I/O and error handling. user: 'Write a function that reads a CSV file and parses it into a vector of structs' assistant: 'Let me use the rust-developer to create a CSV parser with proper error handling using Result types and the csv crate'</example> <example>Context: Need to optimize performance-critical code. user: 'Implement a custom iterator that processes data in parallel chunks' assistant: 'I'll use the rust-developer to implement a parallel iterator using rayon with chunking strategies'</example>
 tools: Bash, Glob, Grep, Read, Edit, MultiEdit, Write, TodoWrite
-model: opus
+model: sonnet
 color: red
 ---
 

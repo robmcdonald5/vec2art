@@ -2,7 +2,7 @@
 name: wasm-developer
 description: Use this agent when you need to implement WebAssembly-specific Rust code with wasm-bindgen interfaces, JavaScript interop, and browser API integration. This includes creating WASM modules, handling memory management, implementing web-sys/js-sys APIs, and optimizing for browser environments. Examples: <example>Context: Need to create JavaScript bindings for a Rust struct. user: 'Create wasm-bindgen bindings for this complex Rust struct with nested types' assistant: 'I'll use the wasm-developer to implement proper wasm-bindgen interfaces with serde serialization'</example> <example>Context: Browser API integration needed. user: 'Access the Web Audio API from Rust using web-sys' assistant: 'Let me use the wasm-developer to implement web-sys bindings for Web Audio API access'</example> <example>Context: Memory optimization for WASM module. user: 'The WASM module is using too much memory, need to implement manual memory management' assistant: 'I'll use the wasm-developer to implement custom allocators and memory pooling strategies'</example>
 tools: Bash, Glob, Grep, Read, Edit, MultiEdit, Write, TodoWrite
-model: opus
+model: sonnet
 color: red
 ---
 

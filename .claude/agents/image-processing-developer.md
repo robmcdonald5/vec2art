@@ -2,7 +2,7 @@
 name: image-processing-developer
 description: Use this agent when you need to implement image manipulation algorithms in Rust. This includes color quantization, edge detection, filtering, format conversion, and pixel-level operations. Examples: <example>Context: Implementing a custom edge detection algorithm for SVG conversion. user: 'Create a Sobel edge detection filter that works with the image crate' assistant: 'I'll use the image-processing-developer to implement a Sobel edge detection algorithm optimized for your use case'</example> <example>Context: Need to quantize colors for SVG palette generation. user: 'I need a color quantization algorithm that reduces an image to 16 colors using k-means clustering' assistant: 'Let me use the image-processing-developer to implement an efficient k-means color quantization algorithm'</example> <example>Context: Building image preprocessing pipeline for vector conversion. user: 'Create a Gaussian blur filter with adjustable sigma for smoothing before edge detection' assistant: 'I'll use the image-processing-developer to implement a performant Gaussian blur filter with configurable parameters'</example>
 tools: Bash, Glob, Grep, Read, Edit, MultiEdit, Write, TodoWrite
-model: opus
+model: sonnet
 color: red
 ---
 
