@@ -1,9 +1,18 @@
 @echo off
 setlocal enabledelayedexpansion
+
+REM Ensure we're running from the wasm directory
+if not exist Cargo.toml (
+    echo Error: This script must be run from the wasm directory
+    echo Please navigate to the wasm folder and run this script again
+    pause
+    exit /b 1
+)
+
 echo 🧪 Vec2Art Algorithm Testing Suite
 echo ==================================
 
-REM Create directories
+REM Create directories (relative to wasm folder - these are the correct paths)
 if not exist examples mkdir examples
 if not exist examples\images_in mkdir examples\images_in
 if not exist examples\images_out mkdir examples\images_out

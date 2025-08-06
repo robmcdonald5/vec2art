@@ -1,9 +1,16 @@
 #!/bin/bash
 
+# Ensure we're running from the wasm directory
+if [ ! -f "Cargo.toml" ]; then
+    echo "Error: This script must be run from the wasm directory"
+    echo "Please navigate to the wasm folder and run this script again"
+    exit 1
+fi
+
 echo "🧪 Vec2Art Algorithm Testing Suite"
 echo "=================================="
 
-# Create directories
+# Create directories (relative to wasm folder - these are the correct paths)
 mkdir -p examples/images_in
 mkdir -p examples/images_out
 

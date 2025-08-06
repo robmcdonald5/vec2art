@@ -26,8 +26,10 @@
 !**/examples/**/*.svg  # Allow example SVGs in source control if they're reference examples
 
 # Test image outputs  
-/examples/images_out/
-/wasm/examples/images_out/
+/examples/                    # Ignore any accidentally created root examples folder
+/examplesimages_in/          # Ignore incorrectly named directories
+/examplesimages_out/         # Ignore incorrectly named directories  
+/wasm/examples/images_out/   # Correct output directory (should be ignored)
 **/test_*output*.svg
 **/test_edge_output.svg
 **/test_path_output.svg
