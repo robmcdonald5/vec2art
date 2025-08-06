@@ -1,8 +1,7 @@
 use svg::Document;
-use svg::node::element::{Circle, Group, Path, Polygon, Rectangle, Text, Ellipse};
+use svg::node::element::{Circle, Group, Path, Polygon, Rectangle, Ellipse};
 use svg::node::element::path::Data;
 use crate::algorithms::SvgPath;
-use crate::error::Result;
 
 /// Builder for creating SVG documents
 pub struct SvgBuilder {
@@ -33,7 +32,7 @@ impl SvgBuilder {
         use svg::node::element::{Title, Description};
         
         self.document = self.document
-            .add(Title::new().add(svg::node::Text::new(title)))
+            .add(Title::new(title))
             .add(Description::new().add(svg::node::Text::new(description)));
         
         self

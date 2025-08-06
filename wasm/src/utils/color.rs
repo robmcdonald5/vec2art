@@ -1,11 +1,11 @@
-use image::{Rgb, Rgba};
-use palette::{FromColor, IntoColor, Lab, Lch, Srgb, Hsv};
+use image::Rgb;
+use palette::{FromColor, IntoColor, Lab, Srgb, Hsv};
 
 /// Convert RGB to HSV color space
 pub fn rgb_to_hsv(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
     let srgb = Srgb::new(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0);
     let hsv: Hsv = srgb.into_color();
-    (hsv.hue.to_positive_degrees(), hsv.saturation, hsv.value)
+    (hsv.hue.into_positive_degrees(), hsv.saturation, hsv.value)
 }
 
 /// Convert HSV to RGB color space

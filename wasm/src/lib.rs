@@ -8,7 +8,6 @@ pub mod image_utils;
 pub mod svg_builder;
 pub mod utils;
 
-use error::Vec2ArtError;
 
 // Optional: Use smaller allocator in production
 #[cfg(feature = "wee_alloc")]
@@ -21,7 +20,6 @@ pub fn init() {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
     
-    #[cfg(feature = "console_log")]
     console_log::init_with_level(log::Level::Debug).expect("Failed to initialize logger");
     
     info!("Vec2Art WASM module initialized");

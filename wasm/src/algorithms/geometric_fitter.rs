@@ -70,7 +70,7 @@ impl ConversionAlgorithm for GeometricFitter {
         "Approximates images using geometric shapes via genetic algorithm"
     }
     
-    fn estimate_time(width: u32, height: u32) -> u32 {
+    fn estimate_time(_width: u32, _height: u32) -> u32 {
         // Rough estimate: ~5000ms for standard settings
         5000
     }
@@ -525,7 +525,7 @@ impl GeneticAlgorithm {
     
     fn tournament_select(&mut self) -> Individual {
         let tournament_size = 3;
-        let mut best = None;
+        let mut best: Option<Individual> = None;
         
         for _ in 0..tournament_size {
             let idx = self.rng.gen_range(0..self.population.len());

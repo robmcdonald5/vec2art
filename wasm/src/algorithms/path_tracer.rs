@@ -4,9 +4,8 @@ use crate::svg_builder::{SvgBuilder, rgb_to_hex};
 use crate::utils::geometry::Point;
 use crate::ConversionParameters;
 use image::{DynamicImage, GrayImage, Luma, Rgb};
-use kurbo::{BezPath, CubicBez, Point as KurboPoint};
 use log::info;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashSet, VecDeque};
 
 pub struct PathTracer;
 
@@ -32,28 +31,39 @@ impl ConversionAlgorithm for PathTracer {
                 // Process each color layer
                 let mut all_paths = Vec::new();
                 
-                for color in colors {
+                for (i, color) in colors.iter().enumerate() {
+                    info!("Processing color layer {}/{}: {:?}", i + 1, colors.len(), color);
+                    
                     // Create binary image for this color
-                    let binary = create_binary_layer(&quantized, &color, threshold);
+                    info!("Creating binary layer...");
+                    let binary = create_binary_layer(&quantized, color, threshold);
                     
                     // Remove small speckles
+                    info!("Removing speckles...");
                     let cleaned = remove_speckles(&binary, suppress_speckles as usize);
                     
                     // Find contours
+                    info!("Finding contours...");
                     let contours = find_contours(&cleaned);
+                    info!("Found {} contours", contours.len());
                     
                     // Convert contours to paths
-                    for contour in contours {
+                    info!("Converting {} contours to paths...", contours.len());
+                    for (j, contour) in contours.into_iter().enumerate() {
+                        if j % 10 == 0 {
+                            info!("Processing contour {}", j);
+                        }
                         if let Some(path) = contour_to_path(
                             contour,
                             curve_smoothing,
                             corner_threshold,
                             optimize_curves,
-                            &color,
+                            color,
                         ) {
                             all_paths.push(path);
                         }
                     }
+                    info!("Completed color layer {}", i + 1);
                 }
                 
                 // Generate SVG
@@ -298,7 +308,7 @@ fn trace_contour(
         
         // Find next point on contour
         let mut found = false;
-        let start_dir = dir;
+        let _start_dir = dir;
         
         for _ in 0..8 {
             let (dx, dy) = directions[dir];
@@ -307,11 +317,7 @@ fn trace_contour(
             if next.0 >= 0 && next.0 < image.width() as i32 &&
                next.1 >= 0 && next.1 < image.height() as i32 {
                 let pixel = image.get_pixel(next.0 as u32, next.1 as u32)[0];
-                let is_edge = if is_hole {
-                    pixel > 0  // For holes, we trace the outside
-                } else {
-                    pixel > 0 && !visited[next.1 as usize][next.0 as usize]
-                };
+                let is_edge = pixel > 0 && !visited[next.1 as usize][next.0 as usize];
                 
                 if is_edge {
                     current = next;
@@ -327,9 +333,21 @@ fn trace_contour(
             break;
         }
         
-        if points.len() > 10000 {
-            // Safety check to prevent infinite loops
+        if points.len() > 1000 {
+            // Reduced safety limit and add debug info
+            info!("Contour tracing hit safety limit at {} points, breaking to prevent infinite loop", points.len());
             break;
+        }
+        
+        // Additional termination check - if we've been going in circles
+        if points.len() > 10 && points.len() % 100 == 0 {
+            // Check if we're revisiting the same area repeatedly
+            let recent_points: Vec<_> = points.iter().skip(points.len() - 10).collect();
+            let start_points: Vec<_> = points.iter().take(10).collect();
+            if recent_points == start_points {
+                info!("Detected circular path in contour tracing, breaking");
+                break;
+            }
         }
     }
     
@@ -409,7 +427,7 @@ fn detect_corners(points: &[(f32, f32)], threshold: f32) -> Vec<usize> {
 }
 
 /// Fit Bezier curves to points between corners
-fn fit_bezier_curves(points: &[(f32, f32)], corners: &[usize], smoothing: f32) -> SvgPath {
+fn fit_bezier_curves(points: &[(f32, f32)], _corners: &[usize], _smoothing: f32) -> SvgPath {
     let mut path = SvgPath::new();
     
     // For now, use simple line segments

@@ -1,0 +1,12 @@
+C:\Users\McDon\Repos\vec2art\wasm\target\debug\deps\equator-b164bb20d83a1bf7.d: C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\lib.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\decompose.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec\by_val.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec\debug.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec\sized.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\structures.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\traits.rs
+
+C:\Users\McDon\Repos\vec2art\wasm\target\debug\deps\libequator-b164bb20d83a1bf7.rmeta: C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\lib.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\decompose.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec\by_val.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec\debug.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec\sized.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\structures.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\traits.rs
+
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\lib.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\decompose.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec\by_val.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec\debug.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\spec\sized.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\structures.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\equator-0.4.2\src\traits.rs:

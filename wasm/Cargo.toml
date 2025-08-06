@@ -26,7 +26,7 @@ web-sys = { version = "0.3", features = [
     "Window",
 ] }
 js-sys = "0.3"
-console_error_panic_hook = "0.1"
+console_error_panic_hook = { version = "0.1", optional = true }
 log = "0.4"
 console_log = "1.0"
 thiserror = "2.0"
@@ -62,6 +62,6 @@ inherits = "dev"
 opt-level = 2           # Better performance during development
 
 [features]
-default = ["console_error_panic_hook", "console_log"]
+default = ["console_error_panic_hook"]
 production = ["wee_alloc"]
 # parallel = ["wasm-bindgen-rayon", "rayon"]

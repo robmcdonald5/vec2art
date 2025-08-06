@@ -1,0 +1,13 @@
+C:\Users\McDon\Repos\vec2art\wasm\target\debug\deps\half-7925326e7b611e5b.d: C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\lib.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\bfloat.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\bfloat\convert.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\binary16.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\binary16\arch.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\binary16\arch\x86.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\leading_zeros.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\slice.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\vec.rs
+
+C:\Users\McDon\Repos\vec2art\wasm\target\debug\deps\libhalf-7925326e7b611e5b.rmeta: C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\lib.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\bfloat.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\bfloat\convert.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\binary16.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\binary16\arch.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\binary16\arch\x86.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\leading_zeros.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\slice.rs C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\vec.rs
+
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\lib.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\bfloat.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\bfloat\convert.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\binary16.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\binary16\arch.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\binary16\arch\x86.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\leading_zeros.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\slice.rs:
+C:\Users\McDon\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\half-2.6.0\src\vec.rs:

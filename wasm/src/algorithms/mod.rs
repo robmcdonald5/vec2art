@@ -20,7 +20,7 @@ pub trait ConversionAlgorithm {
 
 /// Common utilities for all algorithms
 pub mod utils {
-    use image::{DynamicImage, GrayImage, Rgb, Rgba};
+    use image::{DynamicImage, GrayImage, Rgb};
     use crate::error::Result;
     
     /// Convert any image to grayscale
@@ -35,13 +35,13 @@ pub mod utils {
     
     /// Extract dominant colors from an image using k-means clustering
     pub fn extract_colors(image: &DynamicImage, num_colors: usize) -> Result<Vec<Rgb<u8>>> {
-        use palette::{FromColor, IntoColor, Lab, Pixel, Srgb};
+        use palette::{FromColor, IntoColor, Lab, Srgb};
         
         let pixels: Vec<Lab> = image
             .to_rgb8()
             .pixels()
             .map(|p| {
-                let rgb = Srgb::from_raw(&p.0).into_format::<f32>();
+                let rgb = Srgb::new(p[0] as f32 / 255.0, p[1] as f32 / 255.0, p[2] as f32 / 255.0);
                 Lab::from_color(rgb)
             })
             .collect();
@@ -78,7 +78,7 @@ pub mod utils {
                 if !cluster.is_empty() {
                     let sum = cluster.iter().fold(
                         Lab::new(0.0, 0.0, 0.0),
-                        |acc, c| Lab::new(
+                        |acc: Lab, c| Lab::new(
                             acc.l + c.l,
                             acc.a + c.a,
                             acc.b + c.b,
@@ -106,7 +106,7 @@ pub mod utils {
             .collect())
     }
     
-    fn color_distance(a: &Lab, b: &Lab) -> f32 {
+    fn color_distance(a: &palette::Lab, b: &palette::Lab) -> f32 {
         let dl = a.l - b.l;
         let da = a.a - b.a;
         let db = a.b - b.b;

@@ -12,7 +12,7 @@ pub fn convolve_3x3(image: &GrayImage, kernel: [[f32; 3]; 3]) -> GrayImage {
             for ky in 0..3 {
                 for kx in 0..3 {
                     let px = image.get_pixel(x + kx - 1, y + ky - 1)[0];
-                    sum += px as f32 * kernel[ky][kx];
+                    sum += px as f32 * kernel[ky as usize][kx as usize];
                 }
             }
             

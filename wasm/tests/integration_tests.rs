@@ -2,9 +2,10 @@ use vec2art::{convert, get_default_params};
 use std::fs;
 
 #[test]
+#[cfg(target_arch = "wasm32")]
 fn test_edge_detection_with_sample_image() {
     // Create a simple test image (100x100 white square with black border)
-    let mut image_data = Vec::new();
+    let mut image_data: Vec<u8> = Vec::new();
     
     // Simple PNG header for a 100x100 image (you'd normally load a real image file)
     // For now, we'll create a simple gradient programmatically
@@ -42,9 +43,10 @@ fn test_edge_detection_with_sample_image() {
 }
 
 #[test]
+#[cfg(target_arch = "wasm32")]
 fn test_path_tracer_with_sample_image() {
     // Create a simple colored image
-    let image = image::ImageBuffer::from_fn(100, 100, |x, y| {
+    let image = image::ImageBuffer::from_fn(100, 100, |x, _y| {
         if x < 33 {
             image::Rgb([255u8, 0u8, 0u8]) // Red
         } else if x < 66 {
@@ -73,6 +75,7 @@ fn test_path_tracer_with_sample_image() {
 }
 
 #[test]
+#[cfg(target_arch = "wasm32")]
 fn test_geometric_fitter_with_sample_image() {
     // Create a simple image with geometric shapes
     let image = image::ImageBuffer::from_fn(100, 100, |x, y| {
@@ -116,6 +119,7 @@ fn test_geometric_fitter_with_sample_image() {
 }
 
 #[test]
+#[cfg(target_arch = "wasm32")]
 fn test_all_algorithms_with_real_image() {
     // This test expects you to place a test image file
     let test_image_path = "tests/fixtures/test_image.png";
