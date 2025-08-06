@@ -19,6 +19,8 @@ After any significant code change, architectural decision, or workflow modificat
 
 When bugs are fixed, complicated algorithms or methods are implemented, or general missteps are addressed, consider if it is a good idea to document these changes. The purpose is to ensure critical big-picture ideas are continually documented in the root `CLAUDE.md`, while smaller, but still important, architectural decisions are tracked without cluttering this document.
 
+When you decide updating is needed within CLAUDE.md file(s) also consider if any existing agents and / commands need updated regarding the problem or paradigm change. Take care to not mess up the formating of these agents and commands if making changes.
+
 If you believe an update is needed, please state the proposed change and its location (root or sub-folder) and ask for my approval to update or add documentation.
 
 ---
