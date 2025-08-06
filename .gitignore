@@ -1,0 +1,153 @@
+# ===========================
+# RUST/WASM BUILD ARTIFACTS
+# ===========================
+
+# Rust build directory (contains all compiled artifacts)
+/wasm/target/
+**/target/
+
+# Cargo lock file (keep for libraries, ignore for applications - this is a library)
+# /wasm/Cargo.lock
+
+# Rust backup files
+**/*.rs.bk
+
+# WASM generated files  
+**/pkg/
+**/*.wasm
+**/*.wasm.d.ts
+
+# ===========================
+# TEST & OUTPUT FILES
+# ===========================
+
+# Generated SVG test outputs
+**/*.svg
+!**/examples/**/*.svg  # Allow example SVGs in source control if they're reference examples
+
+# Test image outputs  
+/examples/images_out/
+/wasm/examples/images_out/
+**/test_*output*.svg
+**/test_edge_output.svg
+**/test_path_output.svg
+**/test_geometric_output.svg
+
+# Test artifacts
+/wasm/test_*.svg
+**/benchmark_results/
+
+# ===========================  
+# FRONTEND BUILD ARTIFACTS
+# ===========================
+
+# Node.js dependencies
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/.pnpm-debug.log*
+
+# SvelteKit build outputs
+/frontend/.svelte-kit/
+/frontend/build/
+/frontend/dist/
+**/.svelte-kit/
+
+# Package lock files (keep npm, ignore yarn/pnpm alternatives)
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# ===========================
+# DEVELOPMENT ENVIRONMENT
+# ===========================
+
+# IDE and editor files
+**/.vscode/settings.json
+**/.idea/
+**/*.swp
+**/*.swo
+**/*~
+
+# OS generated files
+**/.DS_Store
+**/.DS_Store?
+**/._*
+**/.Spotlight-V100
+**/.Trashes
+**/ehthumbs.db
+**/Thumbs.db
+**/Desktop.ini
+
+# ===========================
+# TEMPORARY & CACHE FILES  
+# ===========================
+
+# General temporary files
+**/tmp/
+**/temp/
+**/.tmp/
+**/.temp/
+**/*.tmp
+**/*.temp
+
+# Cache directories
+**/.cache/
+**/dist-cache/
+**/.parcel-cache/
+**/.rollup.cache/
+
+# Log files
+**/*.log
+**/logs/
+
+# ===========================
+# ENVIRONMENT & SECRETS
+# ===========================
+
+# Environment files (keep .env.example if you have one)
+**/.env
+**/.env.local  
+**/.env.*.local
+
+# Secret files
+**/secrets.json
+**/config/secrets.js
+
+# ===========================
+# BACKUP & VERSION FILES
+# ===========================
+
+# Backup files
+**/*.bak
+**/*.backup
+**/*.old
+
+# Version control conflicts
+**/*.orig
+
+# ===========================
+# PERFORMANCE & DEBUG
+# ===========================
+
+# Performance monitoring  
+**/flamegraph.svg
+**/perf.data*
+
+# Debug files
+**/*.pdb
+**/*.dmp
+**/core.*
+
+# ===========================
+# DEPLOYMENT & CI/CD
+# ===========================
+
+# Deployment artifacts
+**/deploy/
+**/deployment/
+**/.vercel/
+**/.netlify/
+
+# CI/CD temporary files
+**/.github/workflows/tmp/
