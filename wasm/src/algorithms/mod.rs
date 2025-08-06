@@ -78,7 +78,7 @@ pub mod utils {
                 if !cluster.is_empty() {
                     let sum = cluster.iter().fold(
                         Lab::new(0.0, 0.0, 0.0),
-                        |acc: Lab, c| Lab::new(
+                        |acc: Lab<palette::white_point::D65>, c| Lab::new(
                             acc.l + c.l,
                             acc.a + c.a,
                             acc.b + c.b,

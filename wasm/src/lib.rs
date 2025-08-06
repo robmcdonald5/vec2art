@@ -7,6 +7,7 @@ pub mod algorithms;
 pub mod image_utils;
 pub mod svg_builder;
 pub mod utils;
+pub mod performance;
 
 
 // Optional: Use smaller allocator in production
@@ -21,6 +22,26 @@ pub fn init() {
     console_error_panic_hook::set_once();
     
     console_log::init_with_level(log::Level::Debug).expect("Failed to initialize logger");
+    
+    // Initialize performance capabilities
+    let capabilities = performance::initialize_capabilities();
+    info!("Capabilities: threads={}, parallel={}, gpu={}", 
+          capabilities.logical_processors,
+          capabilities.can_use_parallel_processing(),
+          capabilities.can_use_gpu_acceleration());
+    
+    // Initialize thread pool if parallel processing is available
+    if let Err(e) = performance::init_thread_pool() {
+        info!("Thread pool initialization failed: {:?}", e);
+    }
+    
+    // Initialize GPU acceleration asynchronously (fire and forget)
+    // Note: This spawns a background task since we can't await in the sync init function
+    wasm_bindgen_futures::spawn_local(async {
+        if let Err(e) = performance::gpu_acceleration::initialize_gpu().await {
+            info!("GPU initialization failed: {:?}", e);
+        }
+    });
     
     info!("Vec2Art WASM module initialized");
 }
@@ -168,4 +189,24 @@ pub fn validate_image(image_bytes: &[u8]) -> Result<String, JsValue> {
     });
     
     Ok(info.to_string())
+}
+
+/// Get system performance capabilities
+#[wasm_bindgen]
+pub fn get_capabilities() -> String {
+    let caps = performance::get_capabilities();
+    let gpu_available = performance::gpu_acceleration::is_gpu_available();
+    
+    serde_json::json!({
+        "webWorkersAvailable": caps.web_workers_available,
+        "sharedArrayBufferAvailable": caps.shared_array_buffer_available,
+        "webgpuAvailable": caps.webgpu_available,
+        "gpuAcceleratorInitialized": gpu_available,
+        "logicalProcessors": caps.logical_processors,
+        "memoryLimitMB": caps.memory_limit_mb,
+        "simdAvailable": caps.simd_available,
+        "canUseParallelProcessing": caps.can_use_parallel_processing(),
+        "canUseGpuAcceleration": caps.can_use_gpu_acceleration(),
+        "recommendedThreadCount": caps.recommended_thread_count()
+    }).to_string()
 }

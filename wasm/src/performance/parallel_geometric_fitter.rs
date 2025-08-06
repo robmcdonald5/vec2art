@@ -1,24 +1,27 @@
-use crate::algorithms::ConversionAlgorithm;
+// ConversionAlgorithm not needed in parallel implementation
 use crate::error::{Result, Vec2ArtError};
 use crate::svg_builder::{SvgBuilder, rgb_to_hex};
+#[cfg(feature = "parallel")]
+use crate::performance::{get_capabilities, PerfTimer, calculate_optimal_chunk_size};
+
+#[cfg(not(feature = "parallel"))]
+use crate::performance::{get_capabilities, PerfTimer};
 use crate::{ConversionParameters, ShapeType};
 use image::{DynamicImage, Rgb, RgbImage};
 use log::info;
 use rand::prelude::*;
 use rand::rngs::SmallRng;
 
-pub struct GeometricFitter;
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
-impl ConversionAlgorithm for GeometricFitter {
-    fn convert(image: DynamicImage, params: ConversionParameters) -> Result<String> {
-        // Use parallel implementation if available
-        #[cfg(feature = "parallel")]
-        {
-            let capabilities = crate::performance::get_capabilities();
-            if capabilities.can_use_parallel_processing() {
-                return crate::performance::parallel_geometric_fitter::ParallelGeometricFitter::convert_optimized(image, params);
-            }
-        }
+pub struct ParallelGeometricFitter;
+
+impl ParallelGeometricFitter {
+    /// Optimized convert function that uses parallel processing when available
+    pub fn convert_optimized(image: DynamicImage, params: ConversionParameters) -> Result<String> {
+        let _timer = PerfTimer::new("ParallelGeometricFitter::convert_optimized");
+        let capabilities = get_capabilities();
         
         match params {
             ConversionParameters::GeometricFitter {
@@ -29,13 +32,14 @@ impl ConversionAlgorithm for GeometricFitter {
                 mutation_rate,
                 target_fitness,
             } => {
-                info!("Starting geometric fitting with {} shapes", max_shapes);
+                info!("Starting parallel geometric fitting with {} shapes", max_shapes);
+                info!("Using {} threads for genetic algorithm", capabilities.recommended_thread_count());
                 
                 let rgb_image = image.to_rgb8();
                 let (width, height) = (image.width(), image.height());
                 
-                // Initialize genetic algorithm
-                let mut ga = GeneticAlgorithm::new(
+                // Initialize parallel genetic algorithm
+                let mut ga = ParallelGeneticAlgorithm::new(
                     rgb_image,
                     shape_types,
                     max_shapes,
@@ -46,7 +50,9 @@ impl ConversionAlgorithm for GeometricFitter {
                 // Evolve population
                 let mut best_fitness = 0.0;
                 for generation in 0..generations {
-                    ga.evolve();
+                    let _gen_timer = PerfTimer::new(&format!("Generation {}", generation));
+                    
+                    ga.evolve_parallel();
                     
                     let current_fitness = ga.best_fitness();
                     if current_fitness > best_fitness {
@@ -58,6 +64,14 @@ impl ConversionAlgorithm for GeometricFitter {
                         info!("Target fitness reached at generation {}", generation);
                         break;
                     }
+                    
+                    // Early termination if fitness plateaus
+                    if generation > 10 && generation % 10 == 0 {
+                        if (current_fitness - best_fitness).abs() < 0.001 {
+                            info!("Fitness plateaued at generation {}, stopping early", generation);
+                            break;
+                        }
+                    }
                 }
                 
                 // Get best solution
@@ -66,26 +80,17 @@ impl ConversionAlgorithm for GeometricFitter {
                 // Generate SVG
                 let svg = generate_svg(&best_shapes, width, height);
                 
-                info!("Geometric fitting complete with {} shapes", best_shapes.len());
+                info!("Parallel geometric fitting complete with {} shapes", best_shapes.len());
                 Ok(svg)
             }
             _ => Err(Vec2ArtError::InvalidParameters(
-                "GeometricFitter requires GeometricFitter parameters".to_string()
+                "ParallelGeometricFitter requires GeometricFitter parameters".to_string()
             ))
         }
     }
-    
-    fn description() -> &'static str {
-        "Approximates images using geometric shapes via genetic algorithm"
-    }
-    
-    fn estimate_time(_width: u32, _height: u32) -> u32 {
-        // Rough estimate: ~5000ms for standard settings
-        5000
-    }
 }
 
-/// Shape representation for genetic algorithm
+/// Shape representation for genetic algorithm (same as original)
 #[derive(Clone, Debug)]
 struct Shape {
     shape_type: ShapeType,
@@ -189,26 +194,57 @@ impl Individual {
         image
     }
     
-    fn calculate_fitness(&mut self, target: &RgbImage) {
+    fn calculate_fitness_parallel(&mut self, target: &RgbImage) {
         let rendered = self.render(target.width(), target.height());
-        
-        let mut total_diff = 0u64;
-        for (p1, p2) in rendered.pixels().zip(target.pixels()) {
-            for i in 0..3 {
-                let diff = (p1[i] as i32 - p2[i] as i32).abs();
-                total_diff += diff as u64;
-            }
-        }
-        
-        let max_diff = 255u64 * 3 * (target.width() * target.height()) as u64;
-        self.fitness = 1.0 - (total_diff as f32 / max_diff as f32);
+        self.fitness = calculate_fitness_parallel(&rendered, target);
     }
 }
 
-/// Render a shape onto an image
-fn render_shape(image: &mut RgbImage, shape: &Shape) {
-    let (_width, _height) = (image.width(), image.height());
+/// Parallel fitness calculation
+fn calculate_fitness_parallel(rendered: &RgbImage, target: &RgbImage) -> f32 {
+    let _timer = PerfTimer::new("Parallel fitness calculation");
     
+    #[cfg(feature = "parallel")]
+    {
+        let capabilities = get_capabilities();
+        if capabilities.can_use_parallel_processing() {
+            let pixels: Vec<_> = rendered.pixels().zip(target.pixels()).collect();
+            let chunk_size = calculate_optimal_chunk_size(pixels.len(), capabilities.recommended_thread_count());
+            
+            let total_diff: u64 = pixels
+                .par_chunks(chunk_size)
+                .map(|chunk| {
+                    let mut chunk_diff = 0u64;
+                    for (p1, p2) in chunk {
+                        for i in 0..3 {
+                            let diff = (p1[i] as i32 - p2[i] as i32).abs();
+                            chunk_diff += diff as u64;
+                        }
+                    }
+                    chunk_diff
+                })
+                .sum();
+            
+            let max_diff = 255u64 * 3 * (target.width() * target.height()) as u64;
+            return 1.0 - (total_diff as f32 / max_diff as f32);
+        }
+    }
+    
+    // Fallback to serial processing
+    let mut total_diff = 0u64;
+    for (p1, p2) in rendered.pixels().zip(target.pixels()) {
+        for i in 0..3 {
+            let diff = (p1[i] as i32 - p2[i] as i32).abs();
+            total_diff += diff as u64;
+        }
+    }
+    
+    let max_diff = 255u64 * 3 * (target.width() * target.height()) as u64;
+    1.0 - (total_diff as f32 / max_diff as f32)
+}
+
+/// Render a shape onto an image (same as original implementation)
+fn render_shape(image: &mut RgbImage, shape: &Shape) {
     match shape.shape_type {
         ShapeType::Circle => {
             render_circle(image, shape.x, shape.y, shape.size1, shape.color, shape.opacity);
@@ -251,7 +287,7 @@ fn render_shape(image: &mut RgbImage, shape: &Shape) {
     }
 }
 
-/// Render a circle
+/// Render a circle (same as original implementation)
 fn render_circle(image: &mut RgbImage, cx: f32, cy: f32, radius: f32, color: Rgb<u8>, opacity: f32) {
     let (width, height) = (image.width(), image.height());
     
@@ -273,7 +309,7 @@ fn render_circle(image: &mut RgbImage, cx: f32, cy: f32, radius: f32, color: Rgb
     }
 }
 
-/// Render a rectangle
+/// Render a rectangle (same as original implementation)
 fn render_rectangle(
     image: &mut RgbImage,
     cx: f32,
@@ -338,7 +374,7 @@ fn render_rectangle(
     }
 }
 
-/// Render a triangle
+/// Render a triangle (same as original implementation)
 fn render_triangle(
     image: &mut RgbImage,
     cx: f32,
@@ -383,7 +419,7 @@ fn render_triangle(
     }
 }
 
-/// Render an ellipse
+/// Render an ellipse (same as original implementation)
 fn render_ellipse(
     image: &mut RgbImage,
     cx: f32,
@@ -422,7 +458,7 @@ fn render_ellipse(
     }
 }
 
-/// Check if a point is inside a triangle using barycentric coordinates
+/// Check if a point is inside a triangle using barycentric coordinates (same as original)
 fn point_in_triangle(px: f32, py: f32, vertices: &[(f32, f32)]) -> bool {
     let (x1, y1) = vertices[0];
     let (x2, y2) = vertices[1];
@@ -440,7 +476,7 @@ fn point_in_triangle(px: f32, py: f32, vertices: &[(f32, f32)]) -> bool {
     a >= 0.0 && b >= 0.0 && c >= 0.0
 }
 
-/// Blend a pixel with a color using alpha blending
+/// Blend a pixel with a color using alpha blending (same as original)
 fn blend_pixel(pixel: &mut Rgb<u8>, color: Rgb<u8>, opacity: f32) {
     for i in 0..3 {
         let old = pixel[i] as f32;
@@ -449,8 +485,8 @@ fn blend_pixel(pixel: &mut Rgb<u8>, color: Rgb<u8>, opacity: f32) {
     }
 }
 
-/// Genetic algorithm for shape fitting
-struct GeneticAlgorithm {
+/// Parallel genetic algorithm for shape fitting
+struct ParallelGeneticAlgorithm {
     population: Vec<Individual>,
     target_image: RgbImage,
     shape_types: Vec<ShapeType>,
@@ -459,7 +495,7 @@ struct GeneticAlgorithm {
     rng: SmallRng,
 }
 
-impl GeneticAlgorithm {
+impl ParallelGeneticAlgorithm {
     fn new(
         target_image: RgbImage,
         shape_types: Vec<ShapeType>,
@@ -467,29 +503,83 @@ impl GeneticAlgorithm {
         population_size: u32,
         mutation_rate: f32,
     ) -> Self {
+        let _timer = PerfTimer::new("Initialize parallel genetic algorithm");
         let mut rng = SmallRng::from_entropy();
         let (width, height) = (target_image.width(), target_image.height());
         
-        // Initialize random population
-        let mut population = Vec::new();
-        for _ in 0..population_size {
-            let num_shapes = rng.gen_range(1..=max_shapes);
-            let mut shapes = Vec::new();
-            
-            for _ in 0..num_shapes {
-                shapes.push(Shape::random(width, height, &shape_types, &mut rng));
+        // Initialize random population in parallel
+        let population = {
+            #[cfg(feature = "parallel")]
+            {
+                let capabilities = get_capabilities();
+                if capabilities.can_use_parallel_processing() {
+                    let individuals: Vec<_> = (0..population_size).collect();
+                    let chunk_size = calculate_optimal_chunk_size(individuals.len(), capabilities.recommended_thread_count());
+                    
+                    let population_chunks: Vec<_> = individuals
+                        .par_chunks(chunk_size)
+                        .map(|chunk| {
+                            let mut local_rng = SmallRng::from_entropy();
+                            chunk.iter().map(|_| {
+                                let num_shapes = local_rng.gen_range(1..=max_shapes);
+                                let mut shapes = Vec::new();
+                                
+                                for _ in 0..num_shapes {
+                                    shapes.push(Shape::random(width, height, &shape_types, &mut local_rng));
+                                }
+                                
+                                let mut individual = Individual::new(shapes);
+                                individual.calculate_fitness_parallel(&target_image);
+                                individual
+                            }).collect::<Vec<_>>()
+                        })
+                        .collect();
+                    
+                    population_chunks.into_iter().flatten().collect()
+                } else {
+                    // Fallback to serial initialization
+                    let mut population = Vec::new();
+                    for _ in 0..population_size {
+                        let num_shapes = rng.gen_range(1..=max_shapes);
+                        let mut shapes = Vec::new();
+                        
+                        for _ in 0..num_shapes {
+                            shapes.push(Shape::random(width, height, &shape_types, &mut rng));
+                        }
+                        
+                        let mut individual = Individual::new(shapes);
+                        individual.calculate_fitness_parallel(&target_image);
+                        population.push(individual);
+                    }
+                    population
+                }
             }
             
-            let mut individual = Individual::new(shapes);
-            individual.calculate_fitness(&target_image);
-            population.push(individual);
-        }
+            #[cfg(not(feature = "parallel"))]
+            {
+                let mut population = Vec::new();
+                for _ in 0..population_size {
+                    let num_shapes = rng.gen_range(1..=max_shapes);
+                    let mut shapes = Vec::new();
+                    
+                    for _ in 0..num_shapes {
+                        shapes.push(Shape::random(width, height, &shape_types, &mut rng));
+                    }
+                    
+                    let mut individual = Individual::new(shapes);
+                    individual.calculate_fitness_parallel(&target_image);
+                    population.push(individual);
+                }
+                population
+            }
+        };
         
         // Sort by fitness
-        population.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
+        let mut sorted_population = population;
+        sorted_population.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
         
         Self {
-            population,
+            population: sorted_population,
             target_image,
             shape_types,
             max_shapes,
@@ -498,7 +588,8 @@ impl GeneticAlgorithm {
         }
     }
     
-    fn evolve(&mut self) {
+    fn evolve_parallel(&mut self) {
+        let _timer = PerfTimer::new("Parallel evolution");
         let pop_size = self.population.len();
         let elite_size = pop_size / 4;
         let mut new_population = Vec::new();
@@ -508,23 +599,88 @@ impl GeneticAlgorithm {
             new_population.push(self.population[i].clone());
         }
         
-        // Generate offspring
-        while new_population.len() < pop_size {
-            // Tournament selection
-            let parent1 = self.tournament_select();
-            let parent2 = self.tournament_select();
+        // Generate offspring in parallel
+        let offspring_count = pop_size - elite_size;
+        let offspring = {
+            #[cfg(feature = "parallel")]
+            {
+                let capabilities = get_capabilities();
+                if capabilities.can_use_parallel_processing() && offspring_count > 10 {
+                    let indices: Vec<_> = (0..offspring_count).collect();
+                    let chunk_size = calculate_optimal_chunk_size(indices.len(), capabilities.recommended_thread_count());
+                    
+                    indices
+                        .par_chunks(chunk_size)
+                        .map(|chunk| {
+                            let mut local_rng = SmallRng::from_entropy();
+                            chunk.iter().map(|_| {
+                                // Tournament selection
+                                let parent1 = self.tournament_select_local(&mut local_rng);
+                                let parent2 = self.tournament_select_local(&mut local_rng);
+                                
+                                // Crossover
+                                let mut child = self.crossover_local(&parent1, &parent2, &mut local_rng);
+                                
+                                // Mutation
+                                self.mutate_local(&mut child, &mut local_rng);
+                                
+                                // Calculate fitness
+                                child.calculate_fitness_parallel(&self.target_image);
+                                
+                                child
+                            }).collect::<Vec<_>>()
+                        })
+                        .collect::<Vec<_>>()
+                        .into_iter()
+                        .flatten()
+                        .collect()
+                } else {
+                    // Fallback to serial generation
+                    let mut offspring = Vec::new();
+                    for _ in 0..offspring_count {
+                        // Tournament selection
+                        let parent1 = self.tournament_select();
+                        let parent2 = self.tournament_select();
+                        
+                        // Crossover
+                        let mut child = self.crossover(&parent1, &parent2);
+                        
+                        // Mutation
+                        self.mutate(&mut child);
+                        
+                        // Calculate fitness
+                        child.calculate_fitness_parallel(&self.target_image);
+                        
+                        offspring.push(child);
+                    }
+                    offspring
+                }
+            }
             
-            // Crossover
-            let mut child = self.crossover(&parent1, &parent2);
-            
-            // Mutation
-            self.mutate(&mut child);
-            
-            // Calculate fitness
-            child.calculate_fitness(&self.target_image);
-            
-            new_population.push(child);
-        }
+            #[cfg(not(feature = "parallel"))]
+            {
+                let mut offspring = Vec::new();
+                for _ in 0..offspring_count {
+                    // Tournament selection
+                    let parent1 = self.tournament_select();
+                    let parent2 = self.tournament_select();
+                    
+                    // Crossover
+                    let mut child = self.crossover(&parent1, &parent2);
+                    
+                    // Mutation
+                    self.mutate(&mut child);
+                    
+                    // Calculate fitness
+                    child.calculate_fitness_parallel(&self.target_image);
+                    
+                    offspring.push(child);
+                }
+                offspring
+            }
+        };
+        
+        new_population.extend(offspring);
         
         // Sort by fitness
         new_population.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
@@ -548,6 +704,22 @@ impl GeneticAlgorithm {
         best.unwrap()
     }
     
+    fn tournament_select_local(&self, rng: &mut SmallRng) -> Individual {
+        let tournament_size = 3;
+        let mut best: Option<Individual> = None;
+        
+        for _ in 0..tournament_size {
+            let idx = rng.gen_range(0..self.population.len());
+            let individual = &self.population[idx];
+            
+            if best.is_none() || individual.fitness > best.as_ref().unwrap().fitness {
+                best = Some(individual.clone());
+            }
+        }
+        
+        best.unwrap()
+    }
+    
     fn crossover(&mut self, parent1: &Individual, parent2: &Individual) -> Individual {
         let mut child_shapes = Vec::new();
         
@@ -555,6 +727,31 @@ impl GeneticAlgorithm {
         let max_len = parent1.shapes.len().max(parent2.shapes.len());
         for i in 0..max_len {
             if self.rng.gen_bool(0.5) {
+                if i < parent1.shapes.len() {
+                    child_shapes.push(parent1.shapes[i].clone());
+                }
+            } else {
+                if i < parent2.shapes.len() {
+                    child_shapes.push(parent2.shapes[i].clone());
+                }
+            }
+        }
+        
+        // Ensure we don't exceed max shapes
+        if child_shapes.len() > self.max_shapes as usize {
+            child_shapes.truncate(self.max_shapes as usize);
+        }
+        
+        Individual::new(child_shapes)
+    }
+    
+    fn crossover_local(&self, parent1: &Individual, parent2: &Individual, rng: &mut SmallRng) -> Individual {
+        let mut child_shapes = Vec::new();
+        
+        // Uniform crossover
+        let max_len = parent1.shapes.len().max(parent2.shapes.len());
+        for i in 0..max_len {
+            if rng.gen_bool(0.5) {
                 if i < parent1.shapes.len() {
                     child_shapes.push(parent1.shapes[i].clone());
                 }
@@ -597,6 +794,30 @@ impl GeneticAlgorithm {
         }
     }
     
+    fn mutate_local(&self, individual: &mut Individual, rng: &mut SmallRng) {
+        let (width, height) = (self.target_image.width(), self.target_image.height());
+        
+        // Mutate existing shapes
+        for shape in &mut individual.shapes {
+            shape.mutate(self.mutation_rate, width, height, rng);
+        }
+        
+        // Add new shape
+        if rng.gen::<f32>() < self.mutation_rate * 0.1 {
+            if individual.shapes.len() < self.max_shapes as usize {
+                individual.shapes.push(Shape::random(width, height, &self.shape_types, rng));
+            }
+        }
+        
+        // Remove random shape
+        if rng.gen::<f32>() < self.mutation_rate * 0.1 {
+            if individual.shapes.len() > 1 {
+                let idx = rng.gen_range(0..individual.shapes.len());
+                individual.shapes.remove(idx);
+            }
+        }
+    }
+    
     fn best_fitness(&self) -> f32 {
         self.population[0].fitness
     }
@@ -606,10 +827,10 @@ impl GeneticAlgorithm {
     }
 }
 
-/// Generate SVG from shapes
+/// Generate SVG from shapes (same as original implementation)
 fn generate_svg(shapes: &[Shape], width: u32, height: u32) -> String {
     let mut builder = SvgBuilder::new(width, height)
-        .with_metadata("Vec2Art Geometric Fitter", "Geometrically fitted vector graphics")
+        .with_metadata("Vec2Art Parallel Geometric Fitter", "Parallel geometrically fitted vector graphics")
         .with_background("#ffffff");
     
     for shape in shapes {
@@ -670,34 +891,4 @@ fn generate_svg(shapes: &[Shape], width: u32, height: u32) -> String {
     }
     
     builder.build()
-}
-
-pub fn convert(image: DynamicImage, params: ConversionParameters) -> Result<String> {
-    GeometricFitter::convert(image, params)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_geometric_fitter_creation() {
-        let params = ConversionParameters::GeometricFitter {
-            shape_types: vec![ShapeType::Circle, ShapeType::Rectangle],
-            max_shapes: 10,
-            population_size: 10,
-            generations: 5,
-            mutation_rate: 0.1,
-            target_fitness: 0.9,
-        };
-        
-        // Create a simple test image
-        let img = DynamicImage::new_rgb8(100, 100);
-        let result = GeometricFitter::convert(img, params);
-        
-        assert!(result.is_ok());
-        let svg = result.unwrap();
-        assert!(svg.contains("<svg"));
-        assert!(svg.contains("</svg>"));
-    }
 }

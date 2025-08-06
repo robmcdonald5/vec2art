@@ -11,6 +11,15 @@ pub struct PathTracer;
 
 impl ConversionAlgorithm for PathTracer {
     fn convert(image: DynamicImage, params: ConversionParameters) -> Result<String> {
+        // Use parallel implementation if available
+        #[cfg(feature = "parallel")]
+        {
+            let capabilities = crate::performance::get_capabilities();
+            if capabilities.can_use_parallel_processing() {
+                return crate::performance::parallel_path_tracer::ParallelPathTracer::convert_optimized(image, params);
+            }
+        }
+        
         match params {
             ConversionParameters::PathTracer {
                 threshold,
