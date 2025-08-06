@@ -1,47 +1,28 @@
-# CLAUDE.md
+# CLAUDE.md (Local Scope: vec2art)
 
-This file provides guidance to Claude when working on the `vec2art` project. It outlines the project architecture, technology stack, and the development workflow.
-
-## Project Overview
-
-`vec2art` is a browser-based tool for converting raster images (JPG, PNG, WebP) into stylized SVG art using a Rust-powered WebAssembly (WASM) module. The project emphasizes client-side processing for user privacy and high performance.
+This file provides **project‑specific** guidance for the **vec2art** project. It covers architecture, tech stack, directory structure, development phases, and custom commands. Refer to the **global `CLAUDE.md`** for cross‑project best practices and agent workflows.
 
 ---
 
-## Core Directive: Maintain This Document 📜
+## Project Overview
 
-After any significant code change, architectural decision, or workflow modification, you must pause and consider if this `CLAUDE.md` file needs to be updated to reflect the change.
-
-### Decision Framework for Updates
-
-* **Global Rules**: If the change affects the overall project structure, high-level strategy, or cross-cutting concerns, the update belongs in this **root `CLAUDE.md` file**.
-* **Local Rules**: If the change introduces rules or conventions that are specific to a single directory (e.g., a new required format for all algorithms in `wasm/src/algorithms/`), you should propose creating a **new, more specific `CLAUDE.md` file inside that subdirectory**.
-
-When bugs are fixed, complicated algorithms or methods are implemented, or general missteps are addressed, consider if it is a good idea to document these changes. The purpose is to ensure critical big-picture ideas are continually documented in the root `CLAUDE.md`, while smaller, but still important, architectural decisions are tracked without cluttering this document.
-
-When you decide updating is needed within CLAUDE.md file(s) also consider if any existing agents and / commands need updated regarding the problem or paradigm change. Take care to not mess up the formating of these agents and commands if making changes.
-
-If you believe an update is needed, please state the proposed change and its location (root or sub-folder) and ask for my approval to update or add documentation.
+`vec2art` is a browser‑based tool that converts raster images (JPG, PNG, WebP) into stylized SVG art via a Rust‑powered WebAssembly (WASM) module, prioritizing client‑side performance and privacy.
 
 ---
 
 ## Technology Stack
 
-This project is composed of a Rust/WASM core processing module and a SvelteKit frontend.
+### Core Processing (Rust/WASM)
+- **Language:** Rust  
+- **Compilation Target:** WebAssembly  
+- **Build Tools:** `wasm-pack`, `cargo`, `wasm-opt`  
+- **Key Purpose:** Image processing algorithms & SVG generation
 
-### Core Processing Stack (Rust/WASM)
-* **Language**: Rust
-* **Compilation Target**: WebAssembly (WASM)
-* **Build Tools**: `wasm-pack`, `cargo`, `wasm-opt`
-* **Key Purpose**: Image processing algorithms and SVG generation
-* **Details**: See `wasm/CLAUDE.md` for implementation specifics
-
-### Frontend Stack (SvelteKit)
-* **Framework**: SvelteKit 5 + Tailwind CSS 4
-* **Language**: TypeScript
-* **Package Manager**: `npm`
-* **Testing**: `vitest` for unit tests, `playwright` for end-to-end tests
-* **Details**: See `frontend/CLAUDE.md` for implementation specifics
+### Frontend (SvelteKit)
+- **Framework:** SvelteKit 5 + Tailwind CSS 4  
+- **Language:** TypeScript  
+- **Package Manager:** `npm`  
+- **Testing:** `vitest` (unit), `playwright` (E2E)
 
 ---
 
@@ -128,24 +109,6 @@ Every PR against `main` must pass:
 1. End-to-end testing with Playwright
 2. WASM optimization for size and speed
 3. Deploy to static hosting (Vercel/Cloudflare Pages)
-
----
-
-## Agent Invocation Framework
-
-### Main Session: "General Contractor"
-The primary Claude session holds full project context and handles:
-* Multi-file changes and architectural decisions
-* Complex business logic requiring full context
-* Code review and agent output validation
-
-### Specialist Agents: "Subcontractors"
-Use `@-mention` agents for:
-1. **Repetitive tasks**: Component generation, test files
-2. **Low-context tasks**: Single function refactoring
-3. **Precise formats**: Algorithm modules following trait definitions
-
-**Note**: Agents are stateless—each invocation is independent.
 
 ---
 
