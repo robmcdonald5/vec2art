@@ -1,7 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo test:*)",
+      "Bash(test_runner.bat)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo run:*)",
+      "WebFetch(domain:www.mdpi.com)",
+      "WebFetch(domain:mdpi-res.com)",
+      "WebFetch(domain:blog.poespas.me)",
+      "Bash(RUST_LOG=info cargo test test_edge_detection_with_sample_image -- --nocapture)",
+      "Bash(taskkill:*)",
+      "Bash(powershell:*)"
     ],
     "deny": []
   }

@@ -14,21 +14,21 @@ impl GpuAccelerator {
     /// Initialize GPU acceleration if WebGPU is available
     pub async fn new() -> Self {
         let (adapter, device) = Self::initialize_webgpu().await;
-        
+
         if device.is_some() {
             info!("✅ GPU acceleration initialized successfully");
         } else {
             info!("❌ GPU acceleration not available, falling back to CPU processing");
         }
-        
+
         Self { device, adapter }
     }
-    
+
     /// Check if GPU acceleration is available
     pub fn is_available(&self) -> bool {
         self.device.is_some()
     }
-    
+
     /// Initialize WebGPU adapter and device
     async fn initialize_webgpu() -> (Option<JsValue>, Option<JsValue>) {
         // Get navigator.gpu
@@ -39,9 +39,9 @@ impl GpuAccelerator {
                 return (None, None);
             }
         };
-        
+
         let navigator = window.navigator();
-        
+
         // Check if GPU is available
         let gpu = match js_sys::Reflect::get(&navigator, &JsValue::from_str("gpu")) {
             Ok(gpu) if !gpu.is_undefined() => gpu,
@@ -50,9 +50,10 @@ impl GpuAccelerator {
                 return (None, None);
             }
         };
-        
+
         // Request adapter
-        let adapter_promise = match js_sys::Reflect::get(&gpu, &JsValue::from_str("requestAdapter")) {
+        let adapter_promise = match js_sys::Reflect::get(&gpu, &JsValue::from_str("requestAdapter"))
+        {
             Ok(request_adapter_fn) => {
                 let request_adapter = request_adapter_fn.dyn_into::<js_sys::Function>().unwrap();
                 match request_adapter.call0(&gpu) {
@@ -68,7 +69,7 @@ impl GpuAccelerator {
                 return (None, None);
             }
         };
-        
+
         // Await adapter
         let adapter = match JsFuture::from(js_sys::Promise::from(adapter_promise)).await {
             Ok(adapter) if !adapter.is_null() => Some(adapter),
@@ -81,30 +82,31 @@ impl GpuAccelerator {
                 None
             }
         };
-        
+
         let adapter = match adapter {
             Some(adapter) => adapter,
             None => return (None, None),
         };
-        
+
         // Request device using js_sys
-        let device_promise = match js_sys::Reflect::get(&adapter, &JsValue::from_str("requestDevice")) {
-            Ok(request_device_fn) => {
-                let request_device = request_device_fn.dyn_into::<js_sys::Function>().unwrap();
-                match request_device.call0(&adapter) {
-                    Ok(promise) => promise,
-                    Err(e) => {
-                        warn!("Failed to request WebGPU device: {:?}", e);
-                        return (Some(adapter), None);
+        let device_promise =
+            match js_sys::Reflect::get(&adapter, &JsValue::from_str("requestDevice")) {
+                Ok(request_device_fn) => {
+                    let request_device = request_device_fn.dyn_into::<js_sys::Function>().unwrap();
+                    match request_device.call0(&adapter) {
+                        Ok(promise) => promise,
+                        Err(e) => {
+                            warn!("Failed to request WebGPU device: {:?}", e);
+                            return (Some(adapter), None);
+                        }
                     }
                 }
-            }
-            Err(e) => {
-                warn!("WebGPU requestDevice not available: {:?}", e);
-                return (Some(adapter), None);
-            }
-        };
-        
+                Err(e) => {
+                    warn!("WebGPU requestDevice not available: {:?}", e);
+                    return (Some(adapter), None);
+                }
+            };
+
         // Await device
         let device = match JsFuture::from(js_sys::Promise::from(device_promise)).await {
             Ok(device) => Some(device),
@@ -113,10 +115,10 @@ impl GpuAccelerator {
                 None
             }
         };
-        
+
         (Some(adapter), device)
     }
-    
+
     /// Accelerate image processing operations using GPU compute shaders
     pub async fn process_image_gpu(
         &self,
@@ -129,9 +131,9 @@ impl GpuAccelerator {
             Some(device) => device,
             None => return Err(JsValue::from_str("GPU device not available")),
         };
-        
+
         info!("🚀 Processing image on GPU...");
-        
+
         // This is a placeholder implementation
         // Full WebGPU compute shader implementation would require:
         // 1. Creating compute shader modules
@@ -139,11 +141,13 @@ impl GpuAccelerator {
         // 3. Creating bind groups
         // 4. Dispatching compute work
         // 5. Reading back results
-        
+
         // For now, return an error indicating the feature is not yet implemented
-        Err(JsValue::from_str("GPU acceleration implementation is a work in progress"))
+        Err(JsValue::from_str(
+            "GPU acceleration implementation is a work in progress",
+        ))
     }
-    
+
     /// Get GPU information for debugging
     pub fn get_gpu_info(&self) -> String {
         if let Some(adapter) = &self.adapter {
@@ -152,7 +156,7 @@ impl GpuAccelerator {
                 Ok(info) if !info.is_undefined() => {
                     format!("GPU Adapter: {:?}", info)
                 }
-                _ => "GPU Adapter: Information not available".to_string()
+                _ => "GPU Adapter: Information not available".to_string(),
             }
         } else {
             "GPU Adapter: Not available".to_string()
@@ -213,7 +217,7 @@ impl GpuShaders {
             output_image[index] = input_image[index];
         }
     "#;
-    
+
     /// Sobel edge detection compute shader (WGSL)
     pub const SOBEL_EDGE_DETECTION: &'static str = r#"
         @group(0) @binding(0) var<storage, read> input_image: array<u32>;
@@ -286,9 +290,10 @@ impl GpuAccelerator {
             width,
             height,
             GpuOperation::GaussianBlur { sigma },
-        ).await
+        )
+        .await
     }
-    
+
     /// Apply Sobel edge detection using GPU compute shader
     pub async fn sobel_edge_detection_gpu(
         &self,
@@ -296,14 +301,10 @@ impl GpuAccelerator {
         width: u32,
         height: u32,
     ) -> Result<Vec<u8>, JsValue> {
-        self.process_image_gpu(
-            image_data,
-            width,
-            height,
-            GpuOperation::SobelEdgeDetection,
-        ).await
+        self.process_image_gpu(image_data, width, height, GpuOperation::SobelEdgeDetection)
+            .await
     }
-    
+
     /// Apply color quantization using GPU compute shader
     pub async fn color_quantization_gpu(
         &self,
@@ -317,7 +318,8 @@ impl GpuAccelerator {
             width,
             height,
             GpuOperation::ColorQuantization { num_colors },
-        ).await
+        )
+        .await
     }
 }
 
@@ -331,14 +333,14 @@ pub async fn initialize_gpu() -> Result<(), JsValue> {
         if GPU_ACCELERATOR.is_none() {
             let accelerator = GpuAccelerator::new().await;
             let is_available = accelerator.is_available();
-            
+
             if is_available {
                 info!("🎮 GPU acceleration initialized successfully");
                 info!("🔍 {}", accelerator.get_gpu_info());
             } else {
                 info!("💻 GPU acceleration not available, using CPU fallback");
             }
-            
+
             GPU_ACCELERATOR = Some(accelerator);
         }
     }
@@ -347,9 +349,9 @@ pub async fn initialize_gpu() -> Result<(), JsValue> {
 
 /// Get global GPU accelerator instance
 pub fn get_gpu_accelerator() -> Option<&'static GpuAccelerator> {
-    unsafe { 
+    unsafe {
         #[allow(static_mut_refs)]
-        GPU_ACCELERATOR.as_ref() 
+        GPU_ACCELERATOR.as_ref()
     }
 }
 
@@ -362,24 +364,21 @@ pub fn is_gpu_available() -> bool {
 }
 
 /// Utility function to determine optimal processing method
-pub fn recommend_processing_method(
-    image_size: u32,
-    operation_complexity: f32,
-) -> ProcessingMethod {
+pub fn recommend_processing_method(image_size: u32, operation_complexity: f32) -> ProcessingMethod {
     let capabilities = crate::performance::get_capabilities();
-    
+
     // For very large images or complex operations, prefer GPU if available
     if image_size > 4_000_000 || operation_complexity > 0.8 {
         if is_gpu_available() {
             return ProcessingMethod::Gpu;
         }
     }
-    
+
     // For medium-sized images, prefer parallel CPU processing
     if image_size > 1_000_000 && capabilities.can_use_parallel_processing() {
         return ProcessingMethod::ParallelCpu;
     }
-    
+
     // For small images, single-threaded CPU is fine
     ProcessingMethod::SingleThreadCpu
 }

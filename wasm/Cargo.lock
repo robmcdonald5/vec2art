@@ -2065,6 +2065,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-bindgen-rayon",
  "wasm-bindgen-test",
+ "wasm-tracing-allocator",
  "web-sys",
  "wee_alloc",
 ]
@@ -2235,6 +2236,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "wasm-tracing-allocator"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00638b0f463575ce0ad7fe03809c9b86b2a3abbb6c1f2e4d5569572b74ca65ae"
+dependencies = [
+ "wasm-bindgen",
 ]
 
 [[package]]

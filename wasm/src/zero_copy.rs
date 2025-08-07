@@ -1,7 +1,7 @@
-use wasm_bindgen::prelude::*;
 use js_sys;
-use std::sync::Arc;
 use std::cell::RefCell;
+use std::sync::Arc;
+use wasm_bindgen::prelude::*;
 
 /// Zero-copy vectorization engine with optimized memory handling
 #[wasm_bindgen]
@@ -24,7 +24,7 @@ impl VectorizationEngine {
             height: 0,
         }
     }
-    
+
     /// Set shared memory buffer for zero-copy operations
     #[wasm_bindgen]
     pub fn set_shared_memory(&mut self, buffer: js_sys::ArrayBuffer) {
@@ -32,19 +32,25 @@ impl VectorizationEngine {
         self.shared_memory = Some(Arc::new(buffer));
         log::info!("ArrayBuffer set with {} bytes", byte_length);
     }
-    
+
     /// Check if shared memory is available
     #[wasm_bindgen]
     pub fn has_shared_memory(&self) -> bool {
         self.shared_memory.is_some()
     }
-    
+
     /// Load image from shared memory or regular array
     #[wasm_bindgen]
-    pub fn load_image(&mut self, width: u32, height: u32, offset: usize, length: usize) -> Result<(), JsValue> {
+    pub fn load_image(
+        &mut self,
+        width: u32,
+        height: u32,
+        offset: usize,
+        length: usize,
+    ) -> Result<(), JsValue> {
         self.width = width;
         self.height = height;
-        
+
         if let Some(ref shared_buffer) = self.shared_memory {
             // Zero-copy: create a view into shared memory
             let array = js_sys::Uint8Array::new_with_byte_offset_and_length(
@@ -52,32 +58,37 @@ impl VectorizationEngine {
                 offset as u32,
                 length as u32,
             );
-            
+
             // Copy to internal buffer for processing
             // Note: In a true zero-copy implementation, we'd work directly with the view
             let mut buffer = vec![0u8; length];
             array.copy_to(&mut buffer);
-            
+
             *self.image_buffer.borrow_mut() = Some(buffer);
-            
+
             log::info!("Image loaded from ArrayBuffer: {}x{}", width, height);
             Ok(())
         } else {
             Err(JsValue::from_str("ArrayBuffer not initialized"))
         }
     }
-    
+
     /// Load image from regular Uint8Array (fallback)
     #[wasm_bindgen]
-    pub fn load_image_fallback(&mut self, data: &[u8], width: u32, height: u32) -> Result<(), JsValue> {
+    pub fn load_image_fallback(
+        &mut self,
+        data: &[u8],
+        width: u32,
+        height: u32,
+    ) -> Result<(), JsValue> {
         self.width = width;
         self.height = height;
         *self.image_buffer.borrow_mut() = Some(data.to_vec());
-        
+
         log::info!("Image loaded via fallback: {}x{}", width, height);
         Ok(())
     }
-    
+
     /// Convert with progress callback
     #[wasm_bindgen]
     pub fn convert_with_progress(
@@ -85,27 +96,27 @@ impl VectorizationEngine {
         params_json: &str,
         progress_callback: &js_sys::Function,
     ) -> Result<String, JsValue> {
-        use crate::{ConversionParameters, image_utils};
-        
+        use crate::{image_utils, ConversionParameters};
+
         // Parse parameters
         let params: ConversionParameters = serde_json::from_str(params_json)
             .map_err(|e| JsValue::from_str(&format!("Invalid parameters: {}", e)))?;
-        
+
         // Get image buffer
         let image_buffer = self.image_buffer.borrow();
-        let buffer = image_buffer.as_ref()
+        let buffer = image_buffer
+            .as_ref()
             .ok_or_else(|| JsValue::from_str("No image loaded"))?;
-        
+
         // Report progress: Loading
         let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.1));
-        
+
         // Load image
-        let image = image_utils::load_image(buffer)
-            .map_err(|e| JsValue::from(e))?;
-        
+        let image = image_utils::load_image(buffer).map_err(|e| JsValue::from(e))?;
+
         // Report progress: Pre-processing
         let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.3));
-        
+
         // Convert based on algorithm with progress reporting
         let svg = match params {
             ConversionParameters::EdgeDetector { .. } => {
@@ -113,29 +124,32 @@ impl VectorizationEngine {
                 let result = crate::algorithms::edge_detector::convert(image, params)?;
                 let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
                 result
-            },
+            }
             ConversionParameters::PathTracer { .. } => {
                 let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.5));
                 let result = crate::algorithms::path_tracer::convert(image, params)?;
                 let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
                 result
-            },
+            }
             ConversionParameters::GeometricFitter { .. } => {
-                return Err(JsValue::from_str("GeometricFitter is disabled due to high memory usage issues"));
-            },
+                return Err(JsValue::from_str(
+                    "GeometricFitter is disabled pending major refactor - use EdgeDetector or PathTracer instead",
+                ));
+            }
             #[cfg(feature = "vtracer-support")]
             ConversionParameters::VTracer { .. } => {
                 let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.5));
-                let result = crate::algorithms::vtracer_wrapper::VTracerWrapper::convert(image, params)?;
+                let result =
+                    crate::algorithms::vtracer_wrapper::VTracerWrapper::convert(image, params)?;
                 let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
                 result
-            },
+            }
             ConversionParameters::Hybrid { .. } => {
                 let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.4));
                 let result = crate::select_and_convert(image, params)?;
                 let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
                 result
-            },
+            }
             #[cfg(feature = "potrace")]
             ConversionParameters::Potrace { .. } => {
                 let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.5));
@@ -143,7 +157,11 @@ impl VectorizationEngine {
                 {
                     let external = crate::external::ExternalAlgorithms::new();
                     let paths = external.convert_with_potrace(image, params)?;
-                    let result = crate::svg_builder::generate_svg_from_paths(&paths, image.width(), image.height());
+                    let result = crate::svg_builder::generate_svg_from_paths(
+                        &paths,
+                        image.width(),
+                        image.height(),
+                    );
                     let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
                     result
                 }
@@ -151,7 +169,7 @@ impl VectorizationEngine {
                 {
                     return Err(JsValue::from_str("Potrace support not compiled"));
                 }
-            },
+            }
             #[cfg(feature = "autotrace")]
             ConversionParameters::AutotraceOutline { .. } => {
                 let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.5));
@@ -159,7 +177,11 @@ impl VectorizationEngine {
                 {
                     let external = crate::external::ExternalAlgorithms::new();
                     let paths = external.convert_with_autotrace_outline(image, params)?;
-                    let result = crate::svg_builder::generate_svg_from_paths(&paths, image.width(), image.height());
+                    let result = crate::svg_builder::generate_svg_from_paths(
+                        &paths,
+                        image.width(),
+                        image.height(),
+                    );
                     let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
                     result
                 }
@@ -167,7 +189,7 @@ impl VectorizationEngine {
                 {
                     return Err(JsValue::from_str("Autotrace support not compiled"));
                 }
-            },
+            }
             #[cfg(feature = "autotrace")]
             ConversionParameters::AutotraceCenterline { .. } => {
                 let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.5));
@@ -175,7 +197,11 @@ impl VectorizationEngine {
                 {
                     let external = crate::external::ExternalAlgorithms::new();
                     let paths = external.convert_with_autotrace_centerline(image, params)?;
-                    let result = crate::svg_builder::generate_svg_from_paths(&paths, image.width(), image.height());
+                    let result = crate::svg_builder::generate_svg_from_paths(
+                        &paths,
+                        image.width(),
+                        image.height(),
+                    );
                     let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
                     result
                 }
@@ -183,30 +209,30 @@ impl VectorizationEngine {
                 {
                     return Err(JsValue::from_str("Autotrace support not compiled"));
                 }
-            },
+            }
         };
-        
+
         // Report completion
         let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(1.0));
-        
+
         Ok(svg)
     }
-    
+
     /// Get image analysis for algorithm recommendation
     #[wasm_bindgen]
     pub fn analyze_image(&self) -> Result<String, JsValue> {
         use crate::algorithms::vtracer_wrapper::HybridVectorizer;
-        
+
         let image_buffer = self.image_buffer.borrow();
-        let buffer = image_buffer.as_ref()
+        let buffer = image_buffer
+            .as_ref()
             .ok_or_else(|| JsValue::from_str("No image loaded"))?;
-        
-        let image = crate::image_utils::load_image(buffer)
-            .map_err(|e| JsValue::from(e))?;
-        
+
+        let image = crate::image_utils::load_image(buffer).map_err(|e| JsValue::from(e))?;
+
         let analysis = HybridVectorizer::analyze_image(&image);
         let recommended = HybridVectorizer::select_algorithm(&analysis);
-        
+
         let result = serde_json::json!({
             "width": analysis.width,
             "height": analysis.height,
@@ -220,10 +246,10 @@ impl VectorizationEngine {
             "isPhotographic": analysis.is_photographic,
             "recommendedAlgorithm": format!("{:?}", recommended),
         });
-        
+
         Ok(result.to_string())
     }
-    
+
     /// Clear internal buffers
     #[wasm_bindgen]
     pub fn clear(&mut self) {
@@ -244,7 +270,7 @@ pub async fn init_workers(_count: usize) -> Result<(), JsValue> {
         log::info!("Initialized {} worker threads", _count);
         Ok(())
     }
-    
+
     #[cfg(not(feature = "parallel"))]
     {
         log::warn!("Parallel processing not enabled in build");
@@ -268,13 +294,14 @@ pub fn get_memory_stats() -> String {
     serde_json::json!({
         "error": "Memory API not available in current build",
         "note": "Enable experimental features for memory statistics"
-    }).to_string()
+    })
+    .to_string()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_engine_creation() {
         let engine = VectorizationEngine::new();
