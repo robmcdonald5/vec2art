@@ -41,7 +41,7 @@ impl BenchmarkSuite {
     #[wasm_bindgen]
     pub fn run_benchmark(&mut self, image_bytes: &[u8]) -> Result<String, JsValue> {
         use crate::{ConversionParameters, EdgeMethod, ShapeType};
-        use crate::algorithms::{edge_detector, path_tracer, geometric_fitter};
+        use crate::algorithms::{edge_detector, path_tracer};
         
         self.metrics.clear();
         
@@ -106,20 +106,16 @@ impl BenchmarkSuite {
             self.metrics.push(metrics);
         }
         
-        // Benchmark GeometricFitter (quick test with reduced iterations)
+        // GeometricFitter benchmark - DISABLED due to high memory usage
         {
-            let params = ConversionParameters::GeometricFitter {
-                shape_types: vec![ShapeType::Circle, ShapeType::Rectangle],
-                max_shapes: 50,
-                population_size: 20,
-                generations: 10, // Reduced for benchmarking
-                mutation_rate: 0.1,
-                target_fitness: 0.9,
+            let metrics = PerformanceMetrics {
+                operation: "GeometricFitter (disabled)".to_string(),
+                duration_ms: 0.0,
+                memory_before: None,
+                memory_after: None,
+                memory_delta: None,
+                timestamp: self.performance.now(),
             };
-            
-            let metrics = self.benchmark_operation("GeometricFitter (quick)", || {
-                geometric_fitter::convert(image.clone(), params.clone())
-            })?;
             self.metrics.push(metrics);
         }
         

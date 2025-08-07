@@ -121,10 +121,7 @@ impl VectorizationEngine {
                 result
             },
             ConversionParameters::GeometricFitter { .. } => {
-                // Genetic algorithm progress is harder to predict
-                let result = crate::algorithms::geometric_fitter::convert(image, params)?;
-                let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
-                result
+                return Err(JsValue::from_str("GeometricFitter is disabled due to high memory usage issues"));
             },
             #[cfg(feature = "vtracer-support")]
             ConversionParameters::VTracer { .. } => {

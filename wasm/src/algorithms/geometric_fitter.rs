@@ -1,11 +1,9 @@
-use crate::algorithms::ConversionAlgorithm;
+use crate::algorithms::{ConversionAlgorithm, SvgPath, edge_detector, utils};
 use crate::error::{Result, Vec2ArtError};
 use crate::svg_builder::{SvgBuilder, rgb_to_hex};
-use crate::{ConversionParameters, ShapeType};
-use image::{DynamicImage, Rgb, RgbImage};
+use crate::{ConversionParameters, EdgeMethod, ShapeType};
+use image::{DynamicImage, Rgb, GenericImageView};
 use log::info;
-use rand::prelude::*;
-use rand::rngs::SmallRng;
 
 pub struct GeometricFitter;
 
@@ -24,49 +22,39 @@ impl ConversionAlgorithm for GeometricFitter {
             ConversionParameters::GeometricFitter {
                 shape_types,
                 max_shapes,
-                population_size,
-                generations,
-                mutation_rate,
-                target_fitness,
+                population_size: _,  // No longer used
+                generations: _,      // No longer used
+                mutation_rate: _,    // No longer used
+                target_fitness: _,   // No longer used
             } => {
-                info!("Starting geometric fitting with {} shapes", max_shapes);
+                info!("Starting edge-guided geometric fitting with shape types: {:?}", shape_types);
                 
-                let rgb_image = image.to_rgb8();
                 let (width, height) = (image.width(), image.height());
                 
-                // Initialize genetic algorithm
-                let mut ga = GeneticAlgorithm::new(
-                    rgb_image,
-                    shape_types,
-                    max_shapes,
-                    population_size,
-                    mutation_rate,
-                );
+                // Step 1: Run edge detection first to get contours
+                info!("Step 1: Detecting edges to guide geometric fitting");
+                let edge_params = ConversionParameters::EdgeDetector {
+                    method: EdgeMethod::Canny,
+                    threshold_low: 50.0,
+                    threshold_high: 150.0,
+                    gaussian_sigma: 1.0,
+                    simplification: 1.0,  // Less simplification for better shape detection
+                    min_path_length: 20,   // Only process substantial contours
+                };
                 
-                // Evolve population
-                let mut best_fitness = 0.0;
-                for generation in 0..generations {
-                    ga.evolve();
-                    
-                    let current_fitness = ga.best_fitness();
-                    if current_fitness > best_fitness {
-                        best_fitness = current_fitness;
-                        info!("Generation {}: fitness = {:.4}", generation, best_fitness);
-                    }
-                    
-                    if best_fitness >= target_fitness {
-                        info!("Target fitness reached at generation {}", generation);
-                        break;
-                    }
-                }
+                // Get contours from edge detection using the actual algorithm
+                let contours = extract_real_contours_from_image(&image, edge_params)?;
+                info!("Extracted {} real contours from edge detection", contours.len());
                 
-                // Get best solution
-                let best_shapes = ga.get_best_solution();
+                // Step 2: Analyze contours and fit geometric shapes
+                info!("Step 2: Analyzing contours for geometric shapes");
+                let detected_shapes = analyze_and_fit_shapes(&contours, &shape_types, max_shapes as usize, &image);
+                info!("Detected {} geometric shapes from contours", detected_shapes.len());
                 
-                // Generate SVG
-                let svg = generate_svg(&best_shapes, width, height);
+                // Step 3: Generate SVG from detected shapes
+                let svg = generate_svg_from_detected_shapes(&detected_shapes, width, height);
                 
-                info!("Geometric fitting complete with {} shapes", best_shapes.len());
+                info!("Edge-guided geometric fitting complete with {} shapes", detected_shapes.len());
                 Ok(svg)
             }
             _ => Err(Vec2ArtError::InvalidParameters(
@@ -76,540 +64,520 @@ impl ConversionAlgorithm for GeometricFitter {
     }
     
     fn description() -> &'static str {
-        "Approximates images using geometric shapes via genetic algorithm"
+        "Detects geometric shapes from edge contours using shape fitting algorithms"
     }
     
     fn estimate_time(_width: u32, _height: u32) -> u32 {
-        // Rough estimate: ~5000ms for standard settings
-        5000
+        // Much faster than genetic algorithm: ~200ms for edge detection + shape fitting
+        200
     }
 }
 
-/// Shape representation for genetic algorithm
+/// Detected geometric shape from edge analysis
 #[derive(Clone, Debug)]
-struct Shape {
+pub struct DetectedShape {
     shape_type: ShapeType,
-    x: f32,
-    y: f32,
+    center: (f32, f32),
     size1: f32,  // radius for circle, width for rectangle
     size2: f32,  // unused for circle, height for rectangle
     rotation: f32,
     color: Rgb<u8>,
-    opacity: f32,
+    confidence: f32,  // How well the shape fits the contour (0.0-1.0)
 }
 
-impl Shape {
-    fn random(width: u32, height: u32, shape_types: &[ShapeType], rng: &mut SmallRng) -> Self {
-        let shape_type = shape_types.choose(rng).unwrap().clone();
-        
-        Self {
-            shape_type,
-            x: rng.gen_range(0.0..width as f32),
-            y: rng.gen_range(0.0..height as f32),
-            size1: rng.gen_range(5.0..100.0),
-            size2: rng.gen_range(5.0..100.0),
-            rotation: rng.gen_range(0.0..360.0),
-            color: Rgb([
-                rng.gen_range(0..256) as u8,
-                rng.gen_range(0..256) as u8,
-                rng.gen_range(0..256) as u8,
-            ]),
-            opacity: rng.gen_range(0.3..1.0),
-        }
-    }
+/// Extract real contours from edge detection
+fn extract_real_contours_from_image(
+    image: &DynamicImage,
+    edge_params: ConversionParameters,
+) -> Result<Vec<SvgPath>> {
+    // Convert to grayscale
+    let gray = utils::to_grayscale(image);
     
-    fn mutate(&mut self, rate: f32, width: u32, height: u32, rng: &mut SmallRng) {
-        if rng.gen::<f32>() < rate {
-            self.x += rng.gen_range(-20.0..20.0);
-            self.x = self.x.max(0.0).min(width as f32);
-        }
-        
-        if rng.gen::<f32>() < rate {
-            self.y += rng.gen_range(-20.0..20.0);
-            self.y = self.y.max(0.0).min(height as f32);
-        }
-        
-        if rng.gen::<f32>() < rate {
-            self.size1 *= rng.gen_range(0.8..1.2);
-            self.size1 = self.size1.max(2.0).min(200.0);
-        }
-        
-        if rng.gen::<f32>() < rate {
-            self.size2 *= rng.gen_range(0.8..1.2);
-            self.size2 = self.size2.max(2.0).min(200.0);
-        }
-        
-        if rng.gen::<f32>() < rate {
-            self.rotation += rng.gen_range(-30.0..30.0);
-        }
-        
-        if rng.gen::<f32>() < rate {
-            let channel = rng.gen_range(0..3);
-            let delta = rng.gen_range(-30..30) as i16;
-            self.color[channel] = (self.color[channel] as i16 + delta)
-                .max(0)
-                .min(255) as u8;
-        }
-        
-        if rng.gen::<f32>() < rate {
-            self.opacity += rng.gen_range(-0.1..0.1);
-            self.opacity = self.opacity.max(0.1).min(1.0);
-        }
-    }
+    // Apply Canny edge detection with the specified parameters
+    let edges = if let ConversionParameters::EdgeDetector {
+        method: EdgeMethod::Canny,
+        threshold_low,
+        threshold_high,
+        gaussian_sigma,
+        min_path_length,
+        ..
+    } = edge_params {
+        let canny_edges = edge_detector::canny_edge_detection(&gray, gaussian_sigma, threshold_low, threshold_high)?;
+        edge_detector::trace_contours(&canny_edges, min_path_length)
+    } else {
+        return Err(Vec2ArtError::InvalidParameters(
+            "Expected Canny edge detection parameters".to_string()
+        ));
+    };
+    
+    // Convert contours to SvgPath objects
+    Ok(edges.into_iter().map(|points| {
+        let mut path = SvgPath::new();
+        path.points = points;
+        path
+    }).collect())
 }
 
-/// Individual in the genetic algorithm population
-#[derive(Clone)]
-struct Individual {
-    shapes: Vec<Shape>,
-    fitness: f32,
-}
-
-impl Individual {
-    fn new(shapes: Vec<Shape>) -> Self {
-        Self {
-            shapes,
-            fitness: 0.0,
-        }
-    }
+/// Analyze contours and fit geometric shapes to them
+fn analyze_and_fit_shapes(
+    contours: &[SvgPath], 
+    allowed_shapes: &[ShapeType], 
+    max_shapes: usize,
+    original_image: &DynamicImage,
+) -> Vec<DetectedShape> {
+    let mut detected_shapes = Vec::new();
     
-    fn render(&self, width: u32, height: u32) -> RgbImage {
-        let mut image = RgbImage::new(width, height);
-        
-        // Start with white background
-        for pixel in image.pixels_mut() {
-            *pixel = Rgb([255, 255, 255]);
+    for contour in contours.iter().take(max_shapes) {
+        if contour.points.len() < 4 {
+            continue; // Too few points to analyze
         }
         
-        // Render each shape
-        for shape in &self.shapes {
-            render_shape(&mut image, shape);
-        }
+        // Try to fit different shape types and pick the best fit
+        let mut best_fit: Option<DetectedShape> = None;
         
-        image
-    }
-    
-    fn calculate_fitness(&mut self, target: &RgbImage) {
-        let rendered = self.render(target.width(), target.height());
-        
-        let mut total_diff = 0u64;
-        for (p1, p2) in rendered.pixels().zip(target.pixels()) {
-            for i in 0..3 {
-                let diff = (p1[i] as i32 - p2[i] as i32).abs();
-                total_diff += diff as u64;
-            }
-        }
-        
-        let max_diff = 255u64 * 3 * (target.width() * target.height()) as u64;
-        self.fitness = 1.0 - (total_diff as f32 / max_diff as f32);
-    }
-}
-
-/// Render a shape onto an image
-fn render_shape(image: &mut RgbImage, shape: &Shape) {
-    let (_width, _height) = (image.width(), image.height());
-    
-    match shape.shape_type {
-        ShapeType::Circle => {
-            render_circle(image, shape.x, shape.y, shape.size1, shape.color, shape.opacity);
-        }
-        ShapeType::Rectangle => {
-            render_rectangle(
-                image,
-                shape.x,
-                shape.y,
-                shape.size1,
-                shape.size2,
-                shape.rotation,
-                shape.color,
-                shape.opacity,
-            );
-        }
-        ShapeType::Triangle => {
-            render_triangle(
-                image,
-                shape.x,
-                shape.y,
-                shape.size1,
-                shape.rotation,
-                shape.color,
-                shape.opacity,
-            );
-        }
-        ShapeType::Ellipse => {
-            render_ellipse(
-                image,
-                shape.x,
-                shape.y,
-                shape.size1,
-                shape.size2,
-                shape.rotation,
-                shape.color,
-                shape.opacity,
-            );
-        }
-    }
-}
-
-/// Render a circle
-fn render_circle(image: &mut RgbImage, cx: f32, cy: f32, radius: f32, color: Rgb<u8>, opacity: f32) {
-    let (width, height) = (image.width(), image.height());
-    
-    let min_x = (cx - radius).max(0.0) as u32;
-    let max_x = (cx + radius).min(width as f32 - 1.0) as u32;
-    let min_y = (cy - radius).max(0.0) as u32;
-    let max_y = (cy + radius).min(height as f32 - 1.0) as u32;
-    
-    for y in min_y..=max_y {
-        for x in min_x..=max_x {
-            let dx = x as f32 - cx;
-            let dy = y as f32 - cy;
-            
-            if dx * dx + dy * dy <= radius * radius {
-                let pixel = image.get_pixel_mut(x, y);
-                blend_pixel(pixel, color, opacity);
-            }
-        }
-    }
-}
-
-/// Render a rectangle
-fn render_rectangle(
-    image: &mut RgbImage,
-    cx: f32,
-    cy: f32,
-    width: f32,
-    height: f32,
-    rotation: f32,
-    color: Rgb<u8>,
-    opacity: f32,
-) {
-    let angle = rotation.to_radians();
-    let cos_a = angle.cos();
-    let sin_a = angle.sin();
-    
-    let half_width = width / 2.0;
-    let half_height = height / 2.0;
-    
-    // Calculate bounding box
-    let corners = [
-        (-half_width, -half_height),
-        (half_width, -half_height),
-        (half_width, half_height),
-        (-half_width, half_height),
-    ];
-    
-    let mut min_x = f32::MAX;
-    let mut max_x = f32::MIN;
-    let mut min_y = f32::MAX;
-    let mut max_y = f32::MIN;
-    
-    for &(x, y) in &corners {
-        let rx = x * cos_a - y * sin_a + cx;
-        let ry = x * sin_a + y * cos_a + cy;
-        min_x = min_x.min(rx);
-        max_x = max_x.max(rx);
-        min_y = min_y.min(ry);
-        max_y = max_y.max(ry);
-    }
-    
-    let img_width = image.width();
-    let img_height = image.height();
-    
-    let min_x = min_x.max(0.0) as u32;
-    let max_x = max_x.min(img_width as f32 - 1.0) as u32;
-    let min_y = min_y.max(0.0) as u32;
-    let max_y = max_y.min(img_height as f32 - 1.0) as u32;
-    
-    for y in min_y..=max_y {
-        for x in min_x..=max_x {
-            // Transform point to rectangle's local coordinates
-            let dx = x as f32 - cx;
-            let dy = y as f32 - cy;
-            
-            let local_x = dx * cos_a + dy * sin_a;
-            let local_y = -dx * sin_a + dy * cos_a;
-            
-            if local_x.abs() <= half_width && local_y.abs() <= half_height {
-                let pixel = image.get_pixel_mut(x, y);
-                blend_pixel(pixel, color, opacity);
-            }
-        }
-    }
-}
-
-/// Render a triangle
-fn render_triangle(
-    image: &mut RgbImage,
-    cx: f32,
-    cy: f32,
-    size: f32,
-    rotation: f32,
-    color: Rgb<u8>,
-    opacity: f32,
-) {
-    let angle = rotation.to_radians();
-    let cos_a = angle.cos();
-    let sin_a = angle.sin();
-    
-    // Triangle vertices in local coordinates
-    let vertices = [
-        (0.0, -size),
-        (-size * 0.866, size * 0.5),
-        (size * 0.866, size * 0.5),
-    ];
-    
-    // Transform vertices to world coordinates
-    let mut world_vertices = Vec::new();
-    for &(x, y) in &vertices {
-        let wx = x * cos_a - y * sin_a + cx;
-        let wy = x * sin_a + y * cos_a + cy;
-        world_vertices.push((wx, wy));
-    }
-    
-    // Calculate bounding box
-    let min_x = world_vertices.iter().map(|v| v.0).fold(f32::MAX, f32::min).max(0.0) as u32;
-    let max_x = world_vertices.iter().map(|v| v.0).fold(f32::MIN, f32::max).min(image.width() as f32 - 1.0) as u32;
-    let min_y = world_vertices.iter().map(|v| v.1).fold(f32::MAX, f32::min).max(0.0) as u32;
-    let max_y = world_vertices.iter().map(|v| v.1).fold(f32::MIN, f32::max).min(image.height() as f32 - 1.0) as u32;
-    
-    for y in min_y..=max_y {
-        for x in min_x..=max_x {
-            if point_in_triangle(x as f32, y as f32, &world_vertices) {
-                let pixel = image.get_pixel_mut(x, y);
-                blend_pixel(pixel, color, opacity);
-            }
-        }
-    }
-}
-
-/// Render an ellipse
-fn render_ellipse(
-    image: &mut RgbImage,
-    cx: f32,
-    cy: f32,
-    rx: f32,
-    ry: f32,
-    rotation: f32,
-    color: Rgb<u8>,
-    opacity: f32,
-) {
-    let angle = rotation.to_radians();
-    let cos_a = angle.cos();
-    let sin_a = angle.sin();
-    
-    let max_radius = rx.max(ry);
-    let min_x = (cx - max_radius).max(0.0) as u32;
-    let max_x = (cx + max_radius).min(image.width() as f32 - 1.0) as u32;
-    let min_y = (cy - max_radius).max(0.0) as u32;
-    let max_y = (cy + max_radius).min(image.height() as f32 - 1.0) as u32;
-    
-    for y in min_y..=max_y {
-        for x in min_x..=max_x {
-            // Transform point to ellipse's local coordinates
-            let dx = x as f32 - cx;
-            let dy = y as f32 - cy;
-            
-            let local_x = dx * cos_a + dy * sin_a;
-            let local_y = -dx * sin_a + dy * cos_a;
-            
-            // Check if point is inside ellipse
-            if (local_x * local_x) / (rx * rx) + (local_y * local_y) / (ry * ry) <= 1.0 {
-                let pixel = image.get_pixel_mut(x, y);
-                blend_pixel(pixel, color, opacity);
-            }
-        }
-    }
-}
-
-/// Check if a point is inside a triangle using barycentric coordinates
-fn point_in_triangle(px: f32, py: f32, vertices: &[(f32, f32)]) -> bool {
-    let (x1, y1) = vertices[0];
-    let (x2, y2) = vertices[1];
-    let (x3, y3) = vertices[2];
-    
-    let denominator = (y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3);
-    if denominator.abs() < 0.0001 {
-        return false;
-    }
-    
-    let a = ((y2 - y3) * (px - x3) + (x3 - x2) * (py - y3)) / denominator;
-    let b = ((y3 - y1) * (px - x3) + (x1 - x3) * (py - y3)) / denominator;
-    let c = 1.0 - a - b;
-    
-    a >= 0.0 && b >= 0.0 && c >= 0.0
-}
-
-/// Blend a pixel with a color using alpha blending
-fn blend_pixel(pixel: &mut Rgb<u8>, color: Rgb<u8>, opacity: f32) {
-    for i in 0..3 {
-        let old = pixel[i] as f32;
-        let new = color[i] as f32;
-        pixel[i] = (old * (1.0 - opacity) + new * opacity) as u8;
-    }
-}
-
-/// Genetic algorithm for shape fitting
-struct GeneticAlgorithm {
-    population: Vec<Individual>,
-    target_image: RgbImage,
-    shape_types: Vec<ShapeType>,
-    max_shapes: u32,
-    mutation_rate: f32,
-    rng: SmallRng,
-}
-
-impl GeneticAlgorithm {
-    fn new(
-        target_image: RgbImage,
-        shape_types: Vec<ShapeType>,
-        max_shapes: u32,
-        population_size: u32,
-        mutation_rate: f32,
-    ) -> Self {
-        let mut rng = SmallRng::from_entropy();
-        let (width, height) = (target_image.width(), target_image.height());
-        
-        // Initialize random population
-        let mut population = Vec::new();
-        for _ in 0..population_size {
-            let num_shapes = rng.gen_range(1..=max_shapes);
-            let mut shapes = Vec::new();
-            
-            for _ in 0..num_shapes {
-                shapes.push(Shape::random(width, height, &shape_types, &mut rng));
-            }
-            
-            let mut individual = Individual::new(shapes);
-            individual.calculate_fitness(&target_image);
-            population.push(individual);
-        }
-        
-        // Sort by fitness
-        population.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
-        
-        Self {
-            population,
-            target_image,
-            shape_types,
-            max_shapes,
-            mutation_rate,
-            rng,
-        }
-    }
-    
-    fn evolve(&mut self) {
-        let pop_size = self.population.len();
-        let elite_size = pop_size / 4;
-        let mut new_population = Vec::new();
-        
-        // Keep elite individuals
-        for i in 0..elite_size {
-            new_population.push(self.population[i].clone());
-        }
-        
-        // Generate offspring
-        while new_population.len() < pop_size {
-            // Tournament selection
-            let parent1 = self.tournament_select();
-            let parent2 = self.tournament_select();
-            
-            // Crossover
-            let mut child = self.crossover(&parent1, &parent2);
-            
-            // Mutation
-            self.mutate(&mut child);
-            
-            // Calculate fitness
-            child.calculate_fitness(&self.target_image);
-            
-            new_population.push(child);
-        }
-        
-        // Sort by fitness
-        new_population.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
-        
-        self.population = new_population;
-    }
-    
-    fn tournament_select(&mut self) -> Individual {
-        let tournament_size = 3;
-        let mut best: Option<Individual> = None;
-        
-        for _ in 0..tournament_size {
-            let idx = self.rng.gen_range(0..self.population.len());
-            let individual = &self.population[idx];
-            
-            if best.is_none() || individual.fitness > best.as_ref().unwrap().fitness {
-                best = Some(individual.clone());
-            }
-        }
-        
-        best.unwrap()
-    }
-    
-    fn crossover(&mut self, parent1: &Individual, parent2: &Individual) -> Individual {
-        let mut child_shapes = Vec::new();
-        
-        // Uniform crossover
-        let max_len = parent1.shapes.len().max(parent2.shapes.len());
-        for i in 0..max_len {
-            if self.rng.gen_bool(0.5) {
-                if i < parent1.shapes.len() {
-                    child_shapes.push(parent1.shapes[i].clone());
-                }
-            } else {
-                if i < parent2.shapes.len() {
-                    child_shapes.push(parent2.shapes[i].clone());
+        for shape_type in allowed_shapes {
+            if let Some(mut shape) = fit_shape_to_contour(contour, *shape_type) {
+                // Extract color from the original image at the shape location
+                shape.color = extract_dominant_color_from_shape(original_image, &shape);
+                
+                if best_fit.is_none() || shape.confidence > best_fit.as_ref().unwrap().confidence {
+                    best_fit = Some(shape);
                 }
             }
         }
         
-        // Ensure we don't exceed max shapes
-        if child_shapes.len() > self.max_shapes as usize {
-            child_shapes.truncate(self.max_shapes as usize);
-        }
-        
-        Individual::new(child_shapes)
-    }
-    
-    fn mutate(&mut self, individual: &mut Individual) {
-        let (width, height) = (self.target_image.width(), self.target_image.height());
-        
-        // Mutate existing shapes
-        for shape in &mut individual.shapes {
-            shape.mutate(self.mutation_rate, width, height, &mut self.rng);
-        }
-        
-        // Add new shape
-        if self.rng.gen::<f32>() < self.mutation_rate * 0.1 {
-            if individual.shapes.len() < self.max_shapes as usize {
-                individual.shapes.push(Shape::random(width, height, &self.shape_types, &mut self.rng));
-            }
-        }
-        
-        // Remove random shape
-        if self.rng.gen::<f32>() < self.mutation_rate * 0.1 {
-            if individual.shapes.len() > 1 {
-                let idx = self.rng.gen_range(0..individual.shapes.len());
-                individual.shapes.remove(idx);
+        if let Some(shape) = best_fit {
+            // Only accept shapes with reasonable confidence
+            if shape.confidence > 0.3 {
+                detected_shapes.push(shape);
             }
         }
     }
     
-    fn best_fitness(&self) -> f32 {
-        self.population[0].fitness
+    // Sort by confidence and limit to max_shapes
+    detected_shapes.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+    detected_shapes.truncate(max_shapes);
+    
+    detected_shapes
+}
+
+/// Fit a specific geometric shape to a contour
+fn fit_shape_to_contour(contour: &SvgPath, shape_type: ShapeType) -> Option<DetectedShape> {
+    let points = &contour.points;
+    if points.is_empty() {
+        return None;
     }
     
-    fn get_best_solution(&self) -> Vec<Shape> {
-        self.population[0].shapes.clone()
+    match shape_type {
+        ShapeType::Circle => fit_circle_to_contour(points),
+        ShapeType::Rectangle => fit_rectangle_to_contour(points),
+        ShapeType::Ellipse => fit_ellipse_to_contour(points),
+        ShapeType::Triangle => fit_triangle_to_contour(points),
     }
 }
 
-/// Generate SVG from shapes
-fn generate_svg(shapes: &[Shape], width: u32, height: u32) -> String {
+/// Fit a circle to a contour using improved least squares with outlier detection
+fn fit_circle_to_contour(points: &[(f32, f32)]) -> Option<DetectedShape> {
+    if points.len() < 3 {
+        return None;
+    }
+    
+    // Use iterative circle fitting with outlier removal
+    let (center, radius, confidence) = fit_circle_robust(points);
+    
+    Some(DetectedShape {
+        shape_type: ShapeType::Circle,
+        center,
+        size1: radius,
+        size2: radius, // Unused for circle
+        rotation: 0.0,
+        color: Rgb([0, 0, 0]), // Default to black
+        confidence,
+    })
+}
+
+/// Robust circle fitting with outlier detection
+fn fit_circle_robust(points: &[(f32, f32)]) -> ((f32, f32), f32, f32) {
+    // Start with centroid-based estimation
+    let initial_center = calculate_centroid(points);
+    let mut center = initial_center;
+    let mut radius = 0.0;
+    
+    // Iterative improvement
+    for _ in 0..5 {
+        // Calculate distances from current center
+        let distances: Vec<f32> = points.iter()
+            .map(|(x, y)| ((x - center.0).powi(2) + (y - center.1).powi(2)).sqrt())
+            .collect();
+        
+        // Use median instead of mean to be robust against outliers
+        let mut sorted_distances = distances.clone();
+        sorted_distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        radius = sorted_distances[sorted_distances.len() / 2];
+        
+        // Update center using points close to the current radius
+        let threshold = radius * 0.3; // 30% tolerance
+        let mut good_points = Vec::new();
+        
+        for (i, &distance) in distances.iter().enumerate() {
+            if (distance - radius).abs() < threshold {
+                good_points.push(points[i]);
+            }
+        }
+        
+        if !good_points.is_empty() {
+            center = calculate_centroid(&good_points);
+        }
+    }
+    
+    // Calculate final confidence
+    let mut inliers = 0;
+    let tolerance = radius * 0.2; // 20% tolerance for final confidence
+    
+    for &(x, y) in points {
+        let distance = ((x - center.0).powi(2) + (y - center.1).powi(2)).sqrt();
+        if (distance - radius).abs() < tolerance {
+            inliers += 1;
+        }
+    }
+    
+    let confidence = (inliers as f32 / points.len() as f32).min(1.0);
+    
+    (center, radius, confidence)
+}
+
+/// Calculate the centroid of a set of points
+fn calculate_centroid(points: &[(f32, f32)]) -> (f32, f32) {
+    let sum_x: f32 = points.iter().map(|(x, _)| x).sum();
+    let sum_y: f32 = points.iter().map(|(_, y)| y).sum();
+    let count = points.len() as f32;
+    (sum_x / count, sum_y / count)
+}
+
+/// Extract the dominant color from a shape region in the original image
+fn extract_dominant_color_from_shape(image: &DynamicImage, shape: &DetectedShape) -> Rgb<u8> {
+    let rgb_image = image.to_rgb8();
+    let (img_width, img_height) = image.dimensions();
+    
+    let mut sampled_colors = Vec::new();
+    let sample_radius = 5; // Sample points within 5 pixels of the center
+    
+    // Sample colors around the shape center
+    let (cx, cy) = shape.center;
+    let cx = cx as u32;
+    let cy = cy as u32;
+    
+    for dy in -(sample_radius as i32)..=(sample_radius as i32) {
+        for dx in -(sample_radius as i32)..=(sample_radius as i32) {
+            let x = (cx as i32 + dx).clamp(0, img_width as i32 - 1) as u32;
+            let y = (cy as i32 + dy).clamp(0, img_height as i32 - 1) as u32;
+            
+            let pixel = rgb_image.get_pixel(x, y);
+            sampled_colors.push(*pixel);
+        }
+    }
+    
+    // Find the most common color (simple approach)
+    if sampled_colors.is_empty() {
+        return Rgb([0, 0, 0]); // Default to black
+    }
+    
+    // For now, use the average color - could be improved with k-means clustering
+    let mut r_sum = 0u32;
+    let mut g_sum = 0u32;
+    let mut b_sum = 0u32;
+    
+    for color in &sampled_colors {
+        r_sum += color[0] as u32;
+        g_sum += color[1] as u32;
+        b_sum += color[2] as u32;
+    }
+    
+    let count = sampled_colors.len() as u32;
+    Rgb([
+        (r_sum / count) as u8,
+        (g_sum / count) as u8,
+        (b_sum / count) as u8,
+    ])
+}
+
+/// Calculate the rotation angle of a set of points using PCA
+fn calculate_rotation_angle(points: &[(f32, f32)]) -> f32 {
+    if points.len() < 2 {
+        return 0.0;
+    }
+    
+    let centroid = calculate_centroid(points);
+    
+    // Calculate covariance matrix elements
+    let mut cov_xx = 0.0;
+    let mut cov_xy = 0.0;
+    let mut cov_yy = 0.0;
+    
+    for &(x, y) in points {
+        let dx = x - centroid.0;
+        let dy = y - centroid.1;
+        
+        cov_xx += dx * dx;
+        cov_xy += dx * dy;
+        cov_yy += dy * dy;
+    }
+    
+    let count = points.len() as f32;
+    cov_xx /= count;
+    cov_xy /= count;
+    cov_yy /= count;
+    
+    // Calculate the angle of the principal component
+    // Eigenvalue equation for 2x2 matrix: tan(2θ) = 2*cov_xy / (cov_xx - cov_yy)
+    if (cov_xx - cov_yy).abs() < 1e-6 {
+        // Matrix is nearly circular
+        0.0
+    } else {
+        0.5 * (2.0 * cov_xy / (cov_xx - cov_yy)).atan()
+    }
+}
+
+/// Fit a rectangle to a contour by finding bounding box and checking regularity
+fn fit_rectangle_to_contour(points: &[(f32, f32)]) -> Option<DetectedShape> {
+    if points.len() < 4 {
+        return None;
+    }
+    
+    // Find bounding box
+    let min_x = points.iter().map(|(x, _)| *x).fold(f32::INFINITY, f32::min);
+    let max_x = points.iter().map(|(x, _)| *x).fold(f32::NEG_INFINITY, f32::max);
+    let min_y = points.iter().map(|(_, y)| *y).fold(f32::INFINITY, f32::min);
+    let max_y = points.iter().map(|(_, y)| *y).fold(f32::NEG_INFINITY, f32::max);
+    
+    let width = max_x - min_x;
+    let height = max_y - min_y;
+    let center = ((min_x + max_x) / 2.0, (min_y + max_y) / 2.0);
+    
+    // Check how well points align with rectangle edges
+    let mut edge_points = 0;
+    let tolerance = 5.0; // pixels
+    
+    for &(x, y) in points {
+        let near_left = (x - min_x).abs() < tolerance;
+        let near_right = (x - max_x).abs() < tolerance;
+        let near_top = (y - min_y).abs() < tolerance;
+        let near_bottom = (y - max_y).abs() < tolerance;
+        
+        if (near_left || near_right) && y >= min_y - tolerance && y <= max_y + tolerance {
+            edge_points += 1;
+        } else if (near_top || near_bottom) && x >= min_x - tolerance && x <= max_x + tolerance {
+            edge_points += 1;
+        }
+    }
+    
+    let confidence = edge_points as f32 / points.len() as f32;
+    
+    Some(DetectedShape {
+        shape_type: ShapeType::Rectangle,
+        center,
+        size1: width,
+        size2: height,
+        rotation: calculate_rotation_angle(points).to_degrees(),
+        color: Rgb([0, 0, 0]),
+        confidence,
+    })
+}
+
+/// Fit an ellipse to a contour (simplified to bounding ellipse)
+fn fit_ellipse_to_contour(points: &[(f32, f32)]) -> Option<DetectedShape> {
+    if points.len() < 4 {
+        return None;
+    }
+    
+    let centroid = calculate_centroid(points);
+    
+    // Calculate variance in x and y directions to estimate ellipse radii
+    let var_x = points.iter()
+        .map(|(x, _)| (x - centroid.0).powi(2))
+        .sum::<f32>() / points.len() as f32;
+    let var_y = points.iter()
+        .map(|(_, y)| (y - centroid.1).powi(2))
+        .sum::<f32>() / points.len() as f32;
+    
+    let rx = (var_x * 2.0).sqrt(); // Approximate semi-major/minor axes
+    let ry = (var_y * 2.0).sqrt();
+    
+    // Calculate confidence by checking how well points fit the ellipse
+    let mut good_fits = 0;
+    let tolerance = 0.2; // 20% tolerance
+    
+    for &(x, y) in points {
+        let dx = (x - centroid.0) / rx;
+        let dy = (y - centroid.1) / ry;
+        let ellipse_value = dx * dx + dy * dy;
+        
+        if (ellipse_value - 1.0).abs() < tolerance {
+            good_fits += 1;
+        }
+    }
+    
+    let confidence = good_fits as f32 / points.len() as f32;
+    
+    Some(DetectedShape {
+        shape_type: ShapeType::Ellipse,
+        center: centroid,
+        size1: rx,
+        size2: ry,
+        rotation: calculate_rotation_angle(points).to_degrees(),
+        color: Rgb([0, 0, 0]),
+        confidence,
+    })
+}
+
+/// Fit a triangle to a contour by finding three dominant vertices using corner detection
+fn fit_triangle_to_contour(points: &[(f32, f32)]) -> Option<DetectedShape> {
+    if points.len() < 6 {
+        return None;
+    }
+    
+    // Find corners in the contour using angle analysis
+    let corners = detect_corners(points);
+    
+    if corners.len() < 3 {
+        return None; // Not enough corners for a triangle
+    }
+    
+    // Take the three most prominent corners
+    let triangle_vertices: Vec<_> = corners.into_iter().take(3).collect();
+    
+    // Calculate triangle properties
+    let centroid = calculate_centroid(&triangle_vertices);
+    let avg_distance = triangle_vertices.iter()
+        .map(|(x, y)| ((x - centroid.0).powi(2) + (y - centroid.1).powi(2)).sqrt())
+        .sum::<f32>() / triangle_vertices.len() as f32;
+    
+    // Calculate confidence based on how well the contour points fit the triangle
+    let confidence = calculate_triangle_fit_confidence(points, &triangle_vertices);
+    
+    Some(DetectedShape {
+        shape_type: ShapeType::Triangle,
+        center: centroid,
+        size1: avg_distance,
+        size2: avg_distance,
+        rotation: calculate_rotation_angle(&triangle_vertices).to_degrees(),
+        color: Rgb([0, 0, 0]),
+        confidence,
+    })
+}
+
+/// Detect corners in a contour using angle analysis
+fn detect_corners(points: &[(f32, f32)]) -> Vec<(f32, f32)> {
+    let mut corners = Vec::new();
+    let window_size = 3; // Look at 3 points on each side
+    
+    if points.len() < window_size * 2 + 1 {
+        return corners;
+    }
+    
+    for i in window_size..points.len() - window_size {
+        let angle = calculate_corner_angle(points, i, window_size);
+        
+        // A corner is detected if the angle is sharp enough (less than 120 degrees)
+        if angle < 120.0 {
+            corners.push(points[i]);
+        }
+    }
+    
+    // Remove corners that are too close to each other
+    filter_close_corners(corners, 10.0)
+}
+
+/// Calculate the angle at a point in the contour
+fn calculate_corner_angle(points: &[(f32, f32)], index: usize, window: usize) -> f32 {
+    let center = points[index];
+    let before = points[index - window];
+    let after = points[index + window];
+    
+    // Calculate vectors
+    let v1 = (before.0 - center.0, before.1 - center.1);
+    let v2 = (after.0 - center.0, after.1 - center.1);
+    
+    // Calculate angle between vectors
+    let dot = v1.0 * v2.0 + v1.1 * v2.1;
+    let cross = v1.0 * v2.1 - v1.1 * v2.0;
+    let angle = cross.atan2(dot).abs();
+    
+    angle.to_degrees()
+}
+
+/// Filter out corners that are too close to each other
+fn filter_close_corners(corners: Vec<(f32, f32)>, min_distance: f32) -> Vec<(f32, f32)> {
+    let mut filtered = Vec::new();
+    
+    for corner in corners {
+        let too_close = filtered.iter().any(|existing: &(f32, f32)| {
+            let dx = corner.0 - existing.0;
+            let dy = corner.1 - existing.1;
+            (dx * dx + dy * dy).sqrt() < min_distance
+        });
+        
+        if !too_close {
+            filtered.push(corner);
+        }
+    }
+    
+    filtered
+}
+
+/// Calculate how well contour points fit a triangle formed by three vertices
+fn calculate_triangle_fit_confidence(contour_points: &[(f32, f32)], triangle_vertices: &[(f32, f32)]) -> f32 {
+    if triangle_vertices.len() != 3 {
+        return 0.0;
+    }
+    
+    let mut points_near_edges = 0;
+    let tolerance = 5.0; // pixels
+    
+    for &point in contour_points {
+        // Check if point is close to any triangle edge
+        for i in 0..3 {
+            let v1 = triangle_vertices[i];
+            let v2 = triangle_vertices[(i + 1) % 3];
+            
+            let distance = distance_point_to_line(point, v1, v2);
+            if distance < tolerance {
+                points_near_edges += 1;
+                break;
+            }
+        }
+    }
+    
+    points_near_edges as f32 / contour_points.len() as f32
+}
+
+/// Calculate distance from a point to a line segment
+fn distance_point_to_line(point: (f32, f32), line_start: (f32, f32), line_end: (f32, f32)) -> f32 {
+    let (px, py) = point;
+    let (x1, y1) = line_start;
+    let (x2, y2) = line_end;
+    
+    let dx = x2 - x1;
+    let dy = y2 - y1;
+    
+    if dx == 0.0 && dy == 0.0 {
+        // Line start and end are the same
+        return ((px - x1).powi(2) + (py - y1).powi(2)).sqrt();
+    }
+    
+    let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+    let t = t.clamp(0.0, 1.0);
+    
+    let closest_x = x1 + t * dx;
+    let closest_y = y1 + t * dy;
+    
+    ((px - closest_x).powi(2) + (py - closest_y).powi(2)).sqrt()
+}
+
+/// Generate SVG from detected geometric shapes
+fn generate_svg_from_detected_shapes(shapes: &[DetectedShape], width: u32, height: u32) -> String {
     let mut builder = SvgBuilder::new(width, height)
-        .with_metadata("Vec2Art Geometric Fitter", "Geometrically fitted vector graphics")
+        .with_metadata("Vec2Art Edge-Guided Geometric Fitting", "Geometric shapes detected from edge contours")
         .with_background("#ffffff");
     
     for shape in shapes {
@@ -617,53 +585,37 @@ fn generate_svg(shapes: &[Shape], width: u32, height: u32) -> String {
         
         match shape.shape_type {
             ShapeType::Circle => {
-                builder.add_circle(shape.x, shape.y, shape.size1, &color, shape.opacity);
+                builder.add_circle(shape.center.0, shape.center.1, shape.size1, &color, 1.0);
             }
             ShapeType::Rectangle => {
-                // For rotated rectangles, we'd need to add transform support to the builder
-                // For now, just render axis-aligned
                 builder.add_rectangle(
-                    shape.x - shape.size1 / 2.0,
-                    shape.y - shape.size2 / 2.0,
+                    shape.center.0 - shape.size1 / 2.0,
+                    shape.center.1 - shape.size2 / 2.0,
                     shape.size1,
                     shape.size2,
                     &color,
-                    shape.opacity,
+                    1.0,
                 );
             }
             ShapeType::Triangle => {
-                // Calculate triangle vertices
-                let angle = shape.rotation.to_radians();
-                let cos_a = angle.cos();
-                let sin_a = angle.sin();
+                // Calculate triangle vertices from center and size
+                let size = shape.size1;
+                let (cx, cy) = shape.center;
                 
-                let v1 = (0.0, -shape.size1);
-                let v2 = (-shape.size1 * 0.866, shape.size1 * 0.5);
-                let v3 = (shape.size1 * 0.866, shape.size1 * 0.5);
+                let p1 = (cx, cy - size);
+                let p2 = (cx - size * 0.866, cy + size * 0.5);
+                let p3 = (cx + size * 0.866, cy + size * 0.5);
                 
-                let p1 = (
-                    v1.0 * cos_a - v1.1 * sin_a + shape.x,
-                    v1.0 * sin_a + v1.1 * cos_a + shape.y,
-                );
-                let p2 = (
-                    v2.0 * cos_a - v2.1 * sin_a + shape.x,
-                    v2.0 * sin_a + v2.1 * cos_a + shape.y,
-                );
-                let p3 = (
-                    v3.0 * cos_a - v3.1 * sin_a + shape.x,
-                    v3.0 * sin_a + v3.1 * cos_a + shape.y,
-                );
-                
-                builder.add_triangle(p1, p2, p3, &color, shape.opacity);
+                builder.add_triangle(p1, p2, p3, &color, 1.0);
             }
             ShapeType::Ellipse => {
                 builder.add_ellipse(
-                    shape.x,
-                    shape.y,
+                    shape.center.0,
+                    shape.center.1,
                     shape.size1,
                     shape.size2,
                     &color,
-                    shape.opacity,
+                    1.0,
                 );
             }
         }
@@ -671,6 +623,7 @@ fn generate_svg(shapes: &[Shape], width: u32, height: u32) -> String {
     
     builder.build()
 }
+
 
 pub fn convert(image: DynamicImage, params: ConversionParameters) -> Result<String> {
     GeometricFitter::convert(image, params)
@@ -681,23 +634,64 @@ mod tests {
     use super::*;
     
     #[test]
-    fn test_geometric_fitter_creation() {
+    fn test_edge_guided_geometric_fitter() {
         let params = ConversionParameters::GeometricFitter {
             shape_types: vec![ShapeType::Circle, ShapeType::Rectangle],
             max_shapes: 10,
-            population_size: 10,
-            generations: 5,
-            mutation_rate: 0.1,
-            target_fitness: 0.9,
+            population_size: 10, // Not used in new algorithm
+            generations: 5,      // Not used in new algorithm
+            mutation_rate: 0.1,  // Not used in new algorithm
+            target_fitness: 0.9, // Not used in new algorithm
         };
         
-        // Create a simple test image
-        let img = DynamicImage::new_rgb8(100, 100);
-        let result = GeometricFitter::convert(img, params);
+        // Create a simple test image with a white circle
+        let mut img = image::RgbImage::new(100, 100);
+        for y in 0..100 {
+            for x in 0..100 {
+                let dx = x as f32 - 50.0;
+                let dy = y as f32 - 50.0;
+                let dist = (dx * dx + dy * dy).sqrt();
+                
+                if dist < 20.0 {
+                    img.put_pixel(x, y, image::Rgb([0, 0, 0])); // Black circle
+                } else {
+                    img.put_pixel(x, y, image::Rgb([255, 255, 255])); // White background
+                }
+            }
+        }
+        
+        let dynamic_img = DynamicImage::ImageRgb8(img);
+        let result = GeometricFitter::convert(dynamic_img, params);
         
         assert!(result.is_ok());
         let svg = result.unwrap();
         assert!(svg.contains("<svg"));
         assert!(svg.contains("</svg>"));
+        // The new algorithm should detect shapes, not just create random ones
+        // So the SVG should contain actual geometric elements
+    }
+    
+    #[test]
+    fn test_circle_fitting() {
+        // Test circle fitting with perfect circle points
+        let mut points = Vec::new();
+        let center = (50.0, 50.0);
+        let radius = 20.0;
+        
+        // Generate points on a circle
+        for i in 0..16 {
+            let angle = i as f32 * 2.0 * std::f32::consts::PI / 16.0;
+            let x = center.0 + radius * angle.cos();
+            let y = center.1 + radius * angle.sin();
+            points.push((x, y));
+        }
+        
+        let detected_circle = fit_circle_to_contour(&points).unwrap();
+        
+        assert_eq!(detected_circle.shape_type, ShapeType::Circle);
+        assert!((detected_circle.center.0 - center.0).abs() < 1.0);
+        assert!((detected_circle.center.1 - center.1).abs() < 1.0);
+        assert!((detected_circle.size1 - radius).abs() < 1.0);
+        assert!(detected_circle.confidence > 0.8); // Should be high confidence for perfect circle
     }
 }

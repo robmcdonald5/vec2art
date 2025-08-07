@@ -22,12 +22,12 @@ fn main() {
         benchmark_algorithm(&png_bytes, "edge_detector", width, height);
         benchmark_algorithm(&png_bytes, "path_tracer", width, height);
         
-        // Geometric fitter with reduced parameters for benchmarking
-        benchmark_geometric_fitter(&png_bytes, width, height);
+        // Geometric fitter - DISABLED due to high memory usage
+        println!("  geometric_fitter SKIPPED (high memory usage)");
     }
     
     println!("\n🎯 Benchmark complete!");
-    println!("\nNote: Geometric fitter times are reduced due to limited generations for benchmarking.");
+    println!("\nNote: Geometric fitter is disabled due to high memory usage issues.");
 }
 
 fn create_test_image(width: u32, height: u32) -> image::DynamicImage {

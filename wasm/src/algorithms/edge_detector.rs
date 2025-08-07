@@ -72,8 +72,8 @@ impl ConversionAlgorithm for EdgeDetector {
     }
 }
 
-/// Optimized Canny edge detection for WASM
-fn canny_edge_detection(
+/// Optimized Canny edge detection for WASM  
+pub fn canny_edge_detection(
     image: &GrayImage,
     sigma: f32,
     low_threshold: f32,
@@ -295,7 +295,7 @@ fn hysteresis_threshold(image: &GrayImage, low: u8, high: u8) -> GrayImage {
 }
 
 /// Trace contours from an edge image
-fn trace_contours(edges: &GrayImage, min_length: u32) -> Vec<Vec<(f32, f32)>> {
+pub fn trace_contours(edges: &GrayImage, min_length: u32) -> Vec<Vec<(f32, f32)>> {
     let (width, height) = edges.dimensions();
     let mut visited = vec![vec![false; width as usize]; height as usize];
     let mut contours = Vec::new();

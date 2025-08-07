@@ -8,13 +8,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     if args.len() < 2 {
         println!("Usage: {} <image_path> [algorithm] [output_path]", args[0]);
-        println!("Algorithms: edge_detector, path_tracer, geometric_fitter");
+        println!("Algorithms: edge_detector, path_tracer (geometric_fitter disabled)");
         println!("Example: {} test.jpg edge_detector output.svg", args[0]);
         return Ok(());
     }
     
     let image_path = &args[1];
     let algorithm = args.get(2).map(|s| s.as_str()).unwrap_or("edge_detector");
+    
+    // Disable geometric_fitter due to high memory usage
+    if algorithm == "geometric_fitter" {
+        println!("Warning: geometric_fitter is disabled due to high memory usage issues");
+        println!("Available algorithms: edge_detector, path_tracer");
+        return Ok(());
+    }
     let output_path = args.get(3).map(|s| s.as_str()).unwrap_or("output.svg");
     
     println!("Loading image: {}", image_path);

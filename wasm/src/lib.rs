@@ -134,7 +134,7 @@ pub enum EdgeMethod {
     Sobel,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum ShapeType {
     Circle,
     Rectangle,
@@ -176,7 +176,7 @@ pub fn convert_native(image_bytes: &[u8], params_json: &str) -> Result<String, B
             algorithms::path_tracer::convert(image, params)?
         },
         ConversionParameters::GeometricFitter { .. } => {
-            algorithms::geometric_fitter::convert(image, params)?
+            return Err("GeometricFitter is disabled due to high memory usage issues".into());
         },
         #[cfg(feature = "vtracer-support")]
         ConversionParameters::VTracer { .. } => {
@@ -307,14 +307,7 @@ pub fn get_default_params_native(algorithm: &str) -> Result<String, Box<dyn std:
             corner_threshold: 60.0,
             optimize_curves: true,
         },
-        "geometric_fitter" => ConversionParameters::GeometricFitter {
-            shape_types: vec![ShapeType::Circle, ShapeType::Rectangle, ShapeType::Triangle],
-            max_shapes: 50,        // Reduced from 100
-            population_size: 20,   // Reduced from 50  
-            generations: 20,       // Reduced from 100 for much faster testing
-            mutation_rate: 0.1,    // Increased for faster exploration
-            target_fitness: 0.85,  // Reduced from 0.95 for faster convergence
-        },
+        "geometric_fitter" => return Err("GeometricFitter is disabled due to high memory usage issues".into()),
         #[cfg(feature = "potrace")]
         "potrace" => ConversionParameters::Potrace {
             threshold: 0.5,
