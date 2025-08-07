@@ -1,0 +1,42 @@
+[package]
+name = "vectorize-cli"
+version = "0.1.0"
+edition = "2021"
+description = "CLI tool for testing and benchmarking vectorize-core"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-org/vec2art"
+
+[[bin]]
+name = "vectorize"
+path = "src/main.rs"
+
+[dependencies]
+# Core vectorization library
+vectorize-core = { path = "../vectorize-core" }
+
+# CLI framework
+clap = { workspace = true }
+
+# Image processing
+image = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Utilities
+log = { workspace = true }
+env_logger = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Performance
+rayon = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+tempfile = "3.8"
+
+[[bench]]
+name = "cli_bench"
+harness = false

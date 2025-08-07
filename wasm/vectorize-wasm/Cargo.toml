@@ -1,0 +1,45 @@
+[package]
+name = "vectorize-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "WebAssembly wrapper for vectorize-core"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-org/vec2art"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Core vectorization library
+vectorize-core = { path = "../vectorize-core" }
+
+# Image processing (needed for ImageBuffer)
+image = { workspace = true }
+
+# WebAssembly bindings
+wasm-bindgen = { workspace = true, features = ["serde-serialize"] }
+js-sys = { workspace = true }
+web-sys = { workspace = true, features = [
+  "console",
+  "ImageData",
+  "Performance",
+  "PerformanceEntry",
+  "PerformanceMark",
+  "PerformanceMeasure",
+] }
+
+# Error handling and panic hooks
+console_error_panic_hook = { workspace = true }
+wee_alloc = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Logging
+log = { workspace = true }
+console_log = "0.2"
+
+# Enable optimizations for wasm builds
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Oz", "--enable-simd"]

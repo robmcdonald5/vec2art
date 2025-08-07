@@ -15,7 +15,8 @@
       "Bash(RUST_LOG=info cargo test test_edge_detection_with_sample_image -- --nocapture)",
       "Bash(taskkill:*)",
       "Bash(powershell:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(tree:*)"
     ],
     "deny": []
   }

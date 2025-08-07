@@ -1,0 +1,27 @@
+[build]
+# Enable unstable features for better optimization
+rustflags = [
+    "-C", "target-cpu=native",  # Optimize for the current CPU when building natively
+]
+
+[target.wasm32-unknown-unknown]
+# WebAssembly-specific optimizations
+rustflags = [
+    "-C", "opt-level=3",
+    "-C", "lto=fat",           # Enable link-time optimization
+    "-C", "codegen-units=1",   # Single codegen unit for better optimization
+    "--cfg", "web_sys_unstable_apis",  # Enable unstable web APIs
+]
+
+# Use wasm-opt for further optimization
+runner = "wasm-opt -Os --enable-simd --enable-bulk-memory"
+
+[env]
+# Set SIMD and bulk memory features for wasm builds
+RUSTFLAGS_wasm32_unknown_unknown = "-C target-feature=+simd128,+bulk-memory"
+
+[alias]
+# Convenient aliases for development
+wasm-build = "build --target wasm32-unknown-unknown --release"
+wasm-test = "test --target wasm32-unknown-unknown"
+bench-native = "bench --workspace --exclude vectorize-wasm"

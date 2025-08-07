@@ -1,0 +1,48 @@
+[workspace]
+members = [
+    "vectorize-core",
+    "vectorize-cli", 
+    "vectorize-wasm"
+]
+resolver = "2"
+
+[workspace.dependencies]
+# Core image processing
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+rayon = "1.8"
+nalgebra = { version = "0.33", default-features = false }
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Utilities
+clap = { version = "4.4", features = ["derive"] }
+log = "0.4"
+env_logger = "0.11"
+
+# WebAssembly support
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+web-sys = "0.3"
+console_error_panic_hook = "0.1"
+wee_alloc = "0.4"
+
+# Development dependencies
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[profile.release]
+# Optimize for performance
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+# Faster compilation for development
+opt-level = 0
+debug = true

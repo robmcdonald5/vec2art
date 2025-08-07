@@ -17,49 +17,51 @@ This document tracks the development plan for a high-performance, *browser-execu
 
 ---
 
-## Phase 1: Native Core Development 🚧 (Highest Priority)
+## Phase 1: Native Core Development ✅ (Core Structure Complete)
+
+> **Status Update (Aug 7, 2025)**: Core workspace structure and placeholder implementations are complete. All three crates (`vectorize-core`, `vectorize-cli`, `vectorize-wasm`) are set up with proper module organization and compilation infrastructure. Next steps involve implementing the actual algorithms and adding comprehensive testing.
 
 ### Workspace & Tooling
-- [ ] Initialize Cargo **workspace** under `wasm/` with members: `vectorize-core`, `vectorize-cli`, `vectorize-wasm`
-- [ ] Add `rust-toolchain.toml` (pin stable + rustfmt + clippy)
-- [ ] Create `.cargo/config.toml` (enable opt-level/perf flags; wasm32 features in a per-target section)
+- [x] Initialize Cargo **workspace** under `wasm/` with members: `vectorize-core`, `vectorize-cli`, `vectorize-wasm`
+- [x] Add `rust-toolchain.toml` (pin stable + rustfmt + clippy)
+- [x] Create `.cargo/config.toml` (enable opt-level/perf flags; wasm32 features in a per-target section)
 
 ### Core Crate: `vectorize-core`
-- [ ] Public API: `vectorize_logo_rgba`, `vectorize_regions_rgba` (+ params structs)
-- [ ] Error model (`error.rs`) and config types (`config.rs`)
-- [ ] **Preprocessing**
-  - [ ] Resize/downscale utilities (SIMD-friendly)
-  - [ ] sRGB ↔ **CIELAB** conversions
-  - [ ] Edge-preserving denoise (bilateral/guided)
-  - [ ] Thresholding (Otsu + adaptive)
-  - [ ] Morphology (open/close)
-  - [ ] Connected components filtering
-- [ ] **Algorithms**
-  - [ ] **Logo/Line-Art:** threshold → morphology → contour tracing
-  - [ ] **Color Regions:** k-means in Lab (K=16–32), region labeling/merging
+- [x] Public API: `vectorize_logo_rgba`, `vectorize_regions_rgba` (+ params structs)
+- [x] Error model (`error.rs`) and config types (`config.rs`)
+- [x] **Preprocessing** (placeholder implementations)
+  - [x] Resize/downscale utilities (SIMD-friendly)
+  - [x] sRGB ↔ **CIELAB** conversions
+  - [x] Edge-preserving denoise (bilateral/guided)
+  - [x] Thresholding (Otsu + adaptive)
+  - [x] Morphology (open/close)
+  - [x] Connected components filtering
+- [x] **Algorithms** (placeholder implementations)
+  - [x] **Logo/Line-Art:** threshold → morphology → contour tracing
+  - [x] **Color Regions:** k-means in Lab (K=16–32), region labeling/merging
   - [ ] **Quantization** Median cut quantization
   - [ ] **SLIC** SLIC superpixels (+ merge small/adjacent regions)
   - [ ] **Edge/Centerline:** Canny → thinning/skeleton → centerline paths
-- [ ] **Curves & Paths**
-  - [ ] Ramer-Douglas-Peucker (RDP) simplification
-  - [ ] Visvalingam-Whyatt simplification
-  - [ ] Piecewise **cubic Bézier** fitting (error-bounded)
-- [ ] **SVG Builder**
-  - [ ] Path/shape emitter; even-odd fill for holes
-  - [ ] Path optimization (coordinate rounding, node/area limits)
-  - [ ] Draw-order sorting (area/luminance)
+- [x] **Curves & Paths** (placeholder implementations)
+  - [x] Ramer-Douglas-Peucker (RDP) simplification
+  - [x] Visvalingam-Whyatt simplification
+  - [x] Piecewise **cubic Bézier** fitting (error-bounded)
+- [x] **SVG Builder** (placeholder implementations)
+  - [x] Path/shape emitter; even-odd fill for holes
+  - [x] Path optimization (coordinate rounding, node/area limits)
+  - [x] Draw-order sorting (area/luminance)
 
 ### CLI Crate: `vectorize-cli`
-- [ ] Commands: `convert`, `batch`, `benchmark`
-- [ ] Read images (via `image`), write SVGs; configurable params
+- [x] Commands: `convert`, `batch`, `benchmark`
+- [x] Read images (via `image`), write SVGs; configurable params
 - [ ] **Snapshot tests** (golden SVGs) with `insta`
-- [ ] **Benches** with `criterion` on a small, fixed corpus
+- [x] **Benches** with `criterion` on a small, fixed corpus
 
 ### Testing & Validation
-- [ ] Unit tests per module (preprocessing, algorithms, curves, svg)
+- [x] Unit tests per module (preprocessing, algorithms, curves, svg)
 - [ ] **Golden SVG** snapshots (diff on PR)
 - [ ] SVG validity checks by parsing with `usvg` and rasterizing with `resvg` (smoke tests)
-- [ ] Determinism: fixed seeds for k-means / sampling
+- [x] Determinism: fixed seeds for k-means / sampling
 
 ---
 
