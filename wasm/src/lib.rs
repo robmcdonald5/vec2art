@@ -1,8 +1,6 @@
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use log::info;
-use web_sys::js_sys;
-use std::sync::Arc;
 
 pub mod error;
 pub mod algorithms;
@@ -175,7 +173,7 @@ pub fn convert(image_bytes: &[u8], params_json: &str) -> Result<String, JsValue>
 }
 
 /// Automatic algorithm selection based on image analysis
-fn select_and_convert(image: image::DynamicImage, params: ConversionParameters) -> error::Result<String> {
+fn select_and_convert(image: image::DynamicImage, _params: ConversionParameters) -> error::Result<String> {
     use algorithms::vtracer_wrapper::HybridVectorizer;
     
     let analysis = HybridVectorizer::analyze_image(&image);

@@ -191,12 +191,12 @@ impl VectorizationEngine {
 
 /// Initialize Web Workers for parallel processing
 #[wasm_bindgen]
-pub async fn init_workers(count: usize) -> Result<(), JsValue> {
+pub async fn init_workers(_count: usize) -> Result<(), JsValue> {
     #[cfg(feature = "parallel")]
     {
         use wasm_bindgen_rayon::init_thread_pool;
-        init_thread_pool(count);
-        log::info!("Initialized {} worker threads", count);
+        init_thread_pool(_count);
+        log::info!("Initialized {} worker threads", _count);
         Ok(())
     }
     

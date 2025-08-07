@@ -150,6 +150,7 @@ impl Default for Capabilities {
 static mut CAPABILITIES: Option<Capabilities> = None;
 
 /// Initialize and cache capabilities detection
+#[allow(static_mut_refs)]
 pub fn initialize_capabilities() -> &'static Capabilities {
     unsafe {
         if CAPABILITIES.is_none() {
@@ -162,16 +163,19 @@ pub fn initialize_capabilities() -> &'static Capabilities {
 /// Get cached capabilities
 pub fn get_capabilities() -> &'static Capabilities {
     unsafe {
-        static DEFAULT_CAPABILITIES: Capabilities = Capabilities {
-            web_workers_available: false,
-            shared_array_buffer_available: false,
-            webgpu_available: false,
-            logical_processors: 1,
-            memory_limit_mb: 256,
-            simd_available: false,
-        };
-        
-        CAPABILITIES.as_ref().unwrap_or(&DEFAULT_CAPABILITIES)
+        #[allow(static_mut_refs)]
+        {
+            static DEFAULT_CAPABILITIES: Capabilities = Capabilities {
+                web_workers_available: false,
+                shared_array_buffer_available: false,
+                webgpu_available: false,
+                logical_processors: 1,
+                memory_limit_mb: 256,
+                simd_available: false,
+            };
+            
+            CAPABILITIES.as_ref().unwrap_or(&DEFAULT_CAPABILITIES)
+        }
     }
 }
 

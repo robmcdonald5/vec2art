@@ -322,7 +322,7 @@ pub fn quick_benchmark(image_bytes: &[u8], algorithm: &str) -> Result<String, Js
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    
     
     #[test]
     #[cfg(target_arch = "wasm32")]

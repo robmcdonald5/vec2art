@@ -4,7 +4,6 @@ use std::fs;
 #[test]
 fn test_edge_detection_with_sample_image() {
     // Create a simple test image (100x100 white square with black border)
-    let mut image_data: Vec<u8> = Vec::new();
     
     // Simple PNG header for a 100x100 image (you'd normally load a real image file)
     // For now, we'll create a simple gradient programmatically

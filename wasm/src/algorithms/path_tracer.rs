@@ -274,7 +274,7 @@ fn median_cut_quantization(image: &image::RgbImage, num_colors: usize) -> Result
 
 /// Find nearest color using LAB color space for perceptual accuracy
 fn find_nearest_color_lab(pixel: &Rgb<u8>, palette: &[Rgb<u8>]) -> Rgb<u8> {
-    use palette::{FromColor, IntoColor, Lab, Srgb};
+    use palette::{IntoColor, Lab, Srgb};
     
     let pixel_lab: Lab = Srgb::new(
         pixel[0] as f32 / 255.0,
@@ -308,6 +308,7 @@ fn find_nearest_color_lab(pixel: &Rgb<u8>, palette: &[Rgb<u8>]) -> Rgb<u8> {
 }
 
 /// Find the nearest color from a palette
+#[allow(dead_code)]
 fn find_nearest_color(pixel: &Rgb<u8>, palette: &[Rgb<u8>]) -> Rgb<u8> {
     let mut min_dist = f32::MAX;
     let mut nearest = palette[0];
@@ -481,7 +482,7 @@ fn is_inside_shape(image: &GrayImage, x: u32, y: u32) -> bool {
 /// Improved Moore neighborhood contour tracing with proper termination
 fn trace_contour(
     image: &GrayImage,
-    visited: &mut Vec<Vec<bool>>,
+    _visited: &mut Vec<Vec<bool>>,
     start_x: u32,
     start_y: u32,
     is_hole: bool,
@@ -687,7 +688,7 @@ fn fit_bezier_curves(points: &[(f32, f32)], corners: &[usize], smoothing: f32) -
         } else {
             // Fit cubic Bezier curve to segment
             let segment_points = &points[start_idx..=end_idx];
-            let bezier = fit_cubic_bezier(segment_points, smoothing);
+            let _bezier = fit_cubic_bezier(segment_points, smoothing);
             
             // Add the fitted curve to path
             // For simplicity, we'll still use line approximation but with smoothed points
@@ -745,6 +746,7 @@ fn smooth_segment(points: &[(f32, f32)], smoothing: f32) -> Vec<(f32, f32)> {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct CubicBezier {
     p0: (f32, f32),
     p1: (f32, f32),

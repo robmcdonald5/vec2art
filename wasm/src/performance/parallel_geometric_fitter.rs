@@ -704,6 +704,7 @@ impl ParallelGeneticAlgorithm {
         best.unwrap()
     }
     
+    #[allow(dead_code)]
     fn tournament_select_local(&self, rng: &mut SmallRng) -> Individual {
         let tournament_size = 3;
         let mut best: Option<Individual> = None;
@@ -745,6 +746,7 @@ impl ParallelGeneticAlgorithm {
         Individual::new(child_shapes)
     }
     
+    #[allow(dead_code)]
     fn crossover_local(&self, parent1: &Individual, parent2: &Individual, rng: &mut SmallRng) -> Individual {
         let mut child_shapes = Vec::new();
         
@@ -794,6 +796,7 @@ impl ParallelGeneticAlgorithm {
         }
     }
     
+    #[allow(dead_code)]
     fn mutate_local(&self, individual: &mut Individual, rng: &mut SmallRng) {
         let (width, height) = (self.target_image.width(), self.target_image.height());
         

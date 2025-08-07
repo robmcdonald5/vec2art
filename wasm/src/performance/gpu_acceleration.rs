@@ -327,6 +327,7 @@ static mut GPU_ACCELERATOR: Option<GpuAccelerator> = None;
 /// Initialize GPU accelerator
 pub async fn initialize_gpu() -> Result<(), JsValue> {
     unsafe {
+        #[allow(static_mut_refs)]
         if GPU_ACCELERATOR.is_none() {
             let accelerator = GpuAccelerator::new().await;
             let is_available = accelerator.is_available();
@@ -346,7 +347,10 @@ pub async fn initialize_gpu() -> Result<(), JsValue> {
 
 /// Get global GPU accelerator instance
 pub fn get_gpu_accelerator() -> Option<&'static GpuAccelerator> {
-    unsafe { GPU_ACCELERATOR.as_ref() }
+    unsafe { 
+        #[allow(static_mut_refs)]
+        GPU_ACCELERATOR.as_ref() 
+    }
 }
 
 /// Check if GPU acceleration is available globally

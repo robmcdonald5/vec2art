@@ -1,8 +1,7 @@
-use crate::algorithms::{ConversionAlgorithm, SvgPath};
+use crate::algorithms::ConversionAlgorithm;
 use crate::error::{Result, Vec2ArtError};
 use crate::ConversionParameters;
 use image::DynamicImage;
-use log::info;
 
 #[cfg(feature = "vtracer-support")]
 use vtracer;
@@ -11,7 +10,7 @@ use vtracer;
 pub struct VTracerWrapper;
 
 impl ConversionAlgorithm for VTracerWrapper {
-    fn convert(image: DynamicImage, params: ConversionParameters) -> Result<String> {
+    fn convert(_image: DynamicImage, _params: ConversionParameters) -> Result<String> {
         #[cfg(not(feature = "vtracer-support"))]
         {
             return Err(Vec2ArtError::InvalidParameters(
