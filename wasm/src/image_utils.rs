@@ -118,9 +118,12 @@ mod tests {
     #[test]
     fn test_dimension_validation() {
         assert!(validate_dimensions(100, 100).is_ok());
-        assert!(validate_dimensions(4096, 4096).is_ok());
-        assert!(validate_dimensions(0, 100).is_err());
-        assert!(validate_dimensions(100, 0).is_err());
-        assert!(validate_dimensions(5000, 5000).is_err());
+        assert!(validate_dimensions(4096, 4096).is_ok()); // 16M pixels - OK
+        assert!(validate_dimensions(5656, 5656).is_ok()); // ~32M pixels - just under limit
+        assert!(validate_dimensions(0, 100).is_err()); // Zero width
+        assert!(validate_dimensions(100, 0).is_err()); // Zero height
+        assert!(validate_dimensions(10000, 10000).is_err()); // Exceeds max dimensions
+        assert!(validate_dimensions(8192, 8192).is_err()); // Exceeds max pixels (67M > 32M)
+        assert!(validate_dimensions(8000, 5000).is_err()); // Exceeds max pixels (40M > 32M)
     }
 }
