@@ -11,6 +11,10 @@ pub mod performance;
 pub mod zero_copy;
 pub mod benchmarks;
 
+// External algorithm integrations (C libraries)
+#[cfg(any(feature = "potrace", feature = "autotrace"))]
+pub mod external;
+
 
 // Optional: Use smaller allocator in production
 #[cfg(feature = "wee_alloc")]
@@ -87,6 +91,29 @@ pub enum ConversionParameters {
         filter_speckle: u32,
         path_precision: u32,
     },
+    #[cfg(feature = "potrace")]
+    Potrace {
+        threshold: f32,
+        curve_smoothing: f32,
+        corner_threshold: f32,
+        optimize_curves: bool,
+        turdsize: f32,  // Speckle filter size
+    },
+    #[cfg(feature = "autotrace")]
+    AutotraceOutline {
+        corner_threshold: f32,
+        line_threshold: f32,
+        despeckle_level: f32,
+        filter_iterations: u32,
+    },
+    #[cfg(feature = "autotrace")]
+    AutotraceCenterline {
+        corner_threshold: f32,
+        line_threshold: f32,
+        despeckle_level: f32,
+        preserve_width: bool,
+        filter_iterations: u32,
+    },
     Hybrid {
         // Automatic algorithm selection
         preprocessing: PreprocessingOptions,
@@ -155,8 +182,48 @@ pub fn convert_native(image_bytes: &[u8], params_json: &str) -> Result<String, B
         ConversionParameters::VTracer { .. } => {
             algorithms::vtracer_wrapper::VTracerWrapper::convert(image, params)?
         },
+        #[cfg(feature = "potrace")]
+        ConversionParameters::Potrace { .. } => {
+            // Convert using Potrace external library
+            #[cfg(any(feature = "potrace", feature = "autotrace"))]
+            {
+                let external = external::ExternalAlgorithms::new();
+                let paths = external.convert_with_potrace(image, params)?;
+                svg_builder::generate_svg_from_paths(&paths, image.width(), image.height())
+            }
+            #[cfg(not(any(feature = "potrace", feature = "autotrace")))]
+            {
+                return Err("Potrace support not compiled".into());
+            }
+        },
+        #[cfg(feature = "autotrace")]
+        ConversionParameters::AutotraceOutline { .. } => {
+            #[cfg(any(feature = "potrace", feature = "autotrace"))]
+            {
+                let external = external::ExternalAlgorithms::new();
+                let paths = external.convert_with_autotrace_outline(image, params)?;
+                svg_builder::generate_svg_from_paths(&paths, image.width(), image.height())
+            }
+            #[cfg(not(any(feature = "potrace", feature = "autotrace")))]
+            {
+                return Err("Autotrace support not compiled".into());
+            }
+        },
+        #[cfg(feature = "autotrace")]
+        ConversionParameters::AutotraceCenterline { .. } => {
+            #[cfg(any(feature = "potrace", feature = "autotrace"))]
+            {
+                let external = external::ExternalAlgorithms::new();
+                let paths = external.convert_with_autotrace_centerline(image, params)?;
+                svg_builder::generate_svg_from_paths(&paths, image.width(), image.height())
+            }
+            #[cfg(not(any(feature = "potrace", feature = "autotrace")))]
+            {
+                return Err("Autotrace support not compiled".into());
+            }
+        },
         ConversionParameters::Hybrid { .. } => {
-            // Automatic algorithm selection
+            // Automatic algorithm selection - now includes external algorithms
             select_and_convert(image, params)?
         },
     };
@@ -242,11 +309,34 @@ pub fn get_default_params_native(algorithm: &str) -> Result<String, Box<dyn std:
         },
         "geometric_fitter" => ConversionParameters::GeometricFitter {
             shape_types: vec![ShapeType::Circle, ShapeType::Rectangle, ShapeType::Triangle],
-            max_shapes: 100,
-            population_size: 50,
-            generations: 100,
-            mutation_rate: 0.05,
-            target_fitness: 0.95,
+            max_shapes: 50,        // Reduced from 100
+            population_size: 20,   // Reduced from 50  
+            generations: 20,       // Reduced from 100 for much faster testing
+            mutation_rate: 0.1,    // Increased for faster exploration
+            target_fitness: 0.85,  // Reduced from 0.95 for faster convergence
+        },
+        #[cfg(feature = "potrace")]
+        "potrace" => ConversionParameters::Potrace {
+            threshold: 0.5,
+            curve_smoothing: 0.2,
+            corner_threshold: 60.0,
+            optimize_curves: true,
+            turdsize: 2.0,  // Filter speckles smaller than 2 pixels
+        },
+        #[cfg(feature = "autotrace")]
+        "autotrace_outline" => ConversionParameters::AutotraceOutline {
+            corner_threshold: 60.0,
+            line_threshold: 0.5,
+            despeckle_level: 2.0,
+            filter_iterations: 4,
+        },
+        #[cfg(feature = "autotrace")]
+        "autotrace_centerline" => ConversionParameters::AutotraceCenterline {
+            corner_threshold: 60.0,
+            line_threshold: 0.5,
+            despeckle_level: 2.0,
+            preserve_width: true,
+            filter_iterations: 4,
         },
         _ => return Err(format!("Unknown algorithm: {}", algorithm).into()),
     };

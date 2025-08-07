@@ -72,9 +72,9 @@ impl From<image::ImageError> for Vec2ArtError {
 pub type Result<T> = std::result::Result<T, Vec2ArtError>;
 
 /// Constants for validation
-pub const MAX_IMAGE_WIDTH: u32 = 4096;
-pub const MAX_IMAGE_HEIGHT: u32 = 4096;
-pub const MAX_IMAGE_PIXELS: u32 = MAX_IMAGE_WIDTH * MAX_IMAGE_HEIGHT;
+pub const MAX_IMAGE_WIDTH: u32 = 8192;   // Increased from 4096
+pub const MAX_IMAGE_HEIGHT: u32 = 8192;  // Increased from 4096  
+pub const MAX_IMAGE_PIXELS: u32 = 32_000_000; // ~32MP, practical limit for WASM memory
 
 /// Validate image dimensions
 pub fn validate_dimensions(width: u32, height: u32) -> Result<()> {

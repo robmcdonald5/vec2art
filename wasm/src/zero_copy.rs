@@ -139,6 +139,54 @@ impl VectorizationEngine {
                 let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
                 result
             },
+            #[cfg(feature = "potrace")]
+            ConversionParameters::Potrace { .. } => {
+                let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.5));
+                #[cfg(any(feature = "potrace", feature = "autotrace"))]
+                {
+                    let external = crate::external::ExternalAlgorithms::new();
+                    let paths = external.convert_with_potrace(image, params)?;
+                    let result = crate::svg_builder::generate_svg_from_paths(&paths, image.width(), image.height());
+                    let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
+                    result
+                }
+                #[cfg(not(any(feature = "potrace", feature = "autotrace")))]
+                {
+                    return Err(JsValue::from_str("Potrace support not compiled"));
+                }
+            },
+            #[cfg(feature = "autotrace")]
+            ConversionParameters::AutotraceOutline { .. } => {
+                let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.5));
+                #[cfg(any(feature = "potrace", feature = "autotrace"))]
+                {
+                    let external = crate::external::ExternalAlgorithms::new();
+                    let paths = external.convert_with_autotrace_outline(image, params)?;
+                    let result = crate::svg_builder::generate_svg_from_paths(&paths, image.width(), image.height());
+                    let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
+                    result
+                }
+                #[cfg(not(any(feature = "potrace", feature = "autotrace")))]
+                {
+                    return Err(JsValue::from_str("Autotrace support not compiled"));
+                }
+            },
+            #[cfg(feature = "autotrace")]
+            ConversionParameters::AutotraceCenterline { .. } => {
+                let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.5));
+                #[cfg(any(feature = "potrace", feature = "autotrace"))]
+                {
+                    let external = crate::external::ExternalAlgorithms::new();
+                    let paths = external.convert_with_autotrace_centerline(image, params)?;
+                    let result = crate::svg_builder::generate_svg_from_paths(&paths, image.width(), image.height());
+                    let _ = progress_callback.call1(&JsValue::NULL, &JsValue::from_f64(0.9));
+                    result
+                }
+                #[cfg(not(any(feature = "potrace", feature = "autotrace")))]
+                {
+                    return Err(JsValue::from_str("Autotrace support not compiled"));
+                }
+            },
         };
         
         // Report completion

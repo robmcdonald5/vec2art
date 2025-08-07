@@ -48,6 +48,9 @@ wee_alloc = { version = "0.4", optional = true }
 wasm-bindgen-rayon = { version = "1.0", optional = true }
 rayon = { version = "1.5", optional = true }
 
+[build-dependencies]
+cc = { version = "1.0", optional = true }
+
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -79,8 +82,11 @@ opt-level = 2           # Better performance during development
 
 [features]
 default = ["console_error_panic_hook"]
-production = ["wee_alloc", "vtracer"]
+production = ["wee_alloc", "vtracer", "potrace", "autotrace"]
 parallel = ["wasm-bindgen-rayon", "rayon"]
 vtracer-support = ["vtracer"]
 lyon-support = ["lyon"]
+potrace = ["cc"]
+autotrace = ["cc"]
+external-libs = ["potrace", "autotrace"]
 simd = []  # Placeholder for future SIMD support

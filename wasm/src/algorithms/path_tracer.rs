@@ -51,10 +51,11 @@ impl ConversionAlgorithm for PathTracer {
                     info!("Removing speckles...");
                     let cleaned = remove_speckles(&binary, suppress_speckles as usize);
                     
-                    // Find contours
+                    // Find contours with speckle filtering
                     info!("Finding contours...");
-                    let contours = find_contours(&cleaned);
-                    info!("Found {} contours", contours.len());
+                    let min_contour_area = (suppress_speckles * 4.0).max(2.0); // Convert speckle threshold to area
+                    let contours = find_contours_filtered(&cleaned, min_contour_area);
+                    info!("Found {} contours after filtering", contours.len());
                     
                     // Convert contours to paths
                     info!("Converting {} contours to paths...", contours.len());
@@ -428,8 +429,14 @@ struct Contour {
     is_hole: bool,
 }
 
-/// Find all contours in a binary image
+/// Find all contours in a binary image with speckle filtering (unused - kept for compatibility)
+#[allow(dead_code)]
 fn find_contours(image: &GrayImage) -> Vec<Contour> {
+    find_contours_filtered(image, 4.0)
+}
+
+/// Find all contours in a binary image with size filtering
+fn find_contours_filtered(image: &GrayImage, min_area: f32) -> Vec<Contour> {
     let (width, height) = image.dimensions();
     let mut contours = Vec::new();
     let mut visited = vec![vec![false; width as usize]; height as usize];
@@ -461,7 +468,36 @@ fn find_contours(image: &GrayImage) -> Vec<Contour> {
         }
     }
     
-    contours
+    // Filter contours by minimum area to suppress speckles
+    let original_count = contours.len();
+    let filtered_contours: Vec<Contour> = contours.into_iter()
+        .filter(|contour| {
+            let area = calculate_contour_area(&contour.points);
+            area >= min_area
+        })
+        .collect();
+    
+    info!("Filtered {} small contours, kept {} contours", 
+          original_count - filtered_contours.len(), 
+          filtered_contours.len());
+    
+    filtered_contours
+}
+
+/// Calculate the area of a contour using the shoelace formula
+fn calculate_contour_area(points: &[(f32, f32)]) -> f32 {
+    if points.len() < 3 {
+        return 0.0;
+    }
+    
+    let mut area = 0.0;
+    for i in 0..points.len() {
+        let j = (i + 1) % points.len();
+        area += points[i].0 * points[j].1;
+        area -= points[j].0 * points[i].1;
+    }
+    
+    (area / 2.0).abs()
 }
 
 /// Check if a point is inside a shape (for finding holes)

@@ -2038,6 +2038,7 @@ dependencies = [
 name = "vec2art"
 version = "0.1.0"
 dependencies = [
+ "cc",
  "console_error_panic_hook",
  "console_log",
  "criterion",
