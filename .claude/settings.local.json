@@ -14,7 +14,8 @@
       "WebFetch(domain:blog.poespas.me)",
       "Bash(RUST_LOG=info cargo test test_edge_detection_with_sample_image -- --nocapture)",
       "Bash(taskkill:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

@@ -9,7 +9,7 @@
 1. **Outline**
   When prompted break up the task at hand into a `todo list`.
 
-2. **Deligate**
+2. **Delegate**
   Task sub-agents with completing these `todo` tasks using `@'relevant-agent-name'` call(s).
 
 3. **Analyze**
@@ -21,7 +21,7 @@
 ---
 
 ## Quality & Standards
-  All agents when completing tasks musk follow these standards.
+  All agents when completing tasks must follow these standards.
 
 - **Formatting**  
   Apply language‑specific formatters (e.g., `rustfmt`, `prettier`, `black`, `autopep8`, etc..) and enforce them in CI.
@@ -33,7 +33,7 @@
   Maintain automated unit and integration tests that maintain high relevant coverage.
 
 - **Documentation**  
-  As architecture of the project updates `CLAUDE.md` files need to continue to be updated inclduing this document.
+  As architecture of the project updates `CLAUDE.md` files need to continue to be updated including this document.
   Large full project scope architecture changes should be kept and continually updated in the `Full Project Scope` section of this CLAUDE.md document.
   Local scope changes such as specific changes to parts of the code base that only affect a certain subset of the project should be put in localscope CLAUDE.md files in subfolders Examples of this are: `frontend`, `backend`, `wasm`, etc.. 
 
