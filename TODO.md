@@ -1,179 +1,163 @@
 # TODO.md
 
-## Project: vec2art - Image to SVG Converter
+## Project: vec2art — Image → SVG (Rust/WASM)
 
-This document tracks the ongoing development tasks for the vec2art project, a high-performance browser-based tool that converts raster images to stylized SVG art using Rust/WASM.
+This document tracks the development plan for a high-performance, *browser-executed* raster-to-SVG tool. It reflects the updated workspace layout (`vectorize-core`, `vectorize-cli`, `vectorize-wasm`) and the requirements for WASM threads/SIMD and SvelteKit COOP/COEP headers.
 
 ---
 
 ## Completed Tasks ✅
 
 ### Project Setup & Documentation
-- [x] Review initial research document for image-to-SVG conversion architecture
-- [x] Update root CLAUDE.md with high-level architecture overview
-- [x] Update wasm/CLAUDE.md with Rust/WASM implementation guidelines
-- [x] Update frontend/CLAUDE.md with SvelteKit 5 frontend specifications
-- [x] Create TODO.md for project task tracking
+- [x] Research image→SVG pipelines and architecture
+- [x] Draft CLAUDE.md files (root, wasm, frontend)
+- [x] Create initial TODO.md for task tracking
+
+> Keep these living docs updated as APIs/UX evolve.
 
 ---
 
-## Phase 1: Native Core Development 🚧
+## Phase 1: Native Core Development 🚧 (Highest Priority)
 
-### Core Infrastructure
-- [ ] Set up Rust project structure with workspace configuration
-- [ ] Create `vectorize-core` library crate
-- [ ] Create `vectorize-cli` binary crate for testing
-- [ ] Set up basic CI/CD pipeline with GitHub Actions
+### Workspace & Tooling
+- [ ] Initialize Cargo **workspace** under `wasm/` with members: `vectorize-core`, `vectorize-cli`, `vectorize-wasm`
+- [ ] Add `rust-toolchain.toml` (pin stable + rustfmt + clippy)
+- [ ] Create `.cargo/config.toml` (enable opt-level/perf flags; wasm32 features in a per-target section)
 
-### Image Processing Foundation
-- [ ] Implement image loading with `image` crate
-- [ ] Add basic preprocessing (resize, grayscale conversion)
-- [ ] Implement colorspace conversions (sRGB ↔ CIELAB)
+### Core Crate: `vectorize-core`
+- [ ] Public API: `vectorize_logo_rgba`, `vectorize_regions_rgba` (+ params structs)
+- [ ] Error model (`error.rs`) and config types (`config.rs`)
+- [ ] **Preprocessing**
+  - [ ] Resize/downscale utilities (SIMD-friendly)
+  - [ ] sRGB ↔ **CIELAB** conversions
+  - [ ] Edge-preserving denoise (bilateral/guided)
+  - [ ] Thresholding (Otsu + adaptive)
+  - [ ] Morphology (open/close)
+  - [ ] Connected components filtering
+- [ ] **Algorithms**
+  - [ ] **Logo/Line-Art:** threshold → morphology → contour tracing
+  - [ ] **Color Regions:** k-means in Lab (K=16–32), region labeling/merging
+  - [ ] **Quantization** Median cut quantization
+  - [ ] **SLIC** SLIC superpixels (+ merge small/adjacent regions)
+  - [ ] **Edge/Centerline:** Canny → thinning/skeleton → centerline paths
+- [ ] **Curves & Paths**
+  - [ ] Ramer-Douglas-Peucker (RDP) simplification
+  - [ ] Visvalingam-Whyatt simplification
+  - [ ] Piecewise **cubic Bézier** fitting (error-bounded)
+- [ ] **SVG Builder**
+  - [ ] Path/shape emitter; even-odd fill for holes
+  - [ ] Path optimization (coordinate rounding, node/area limits)
+  - [ ] Draw-order sorting (area/luminance)
 
-### Algorithm Implementation - Logo/Line-Art Mode
-- [ ] Implement Otsu thresholding for binarization
-- [ ] Add morphological operations (open/close)
-- [ ] Implement contour tracing algorithm
-- [ ] Add connected components filtering
+### CLI Crate: `vectorize-cli`
+- [ ] Commands: `convert`, `batch`, `benchmark`
+- [ ] Read images (via `image`), write SVGs; configurable params
+- [ ] **Snapshot tests** (golden SVGs) with `insta`
+- [ ] **Benches** with `criterion` on a small, fixed corpus
 
-### Algorithm Implementation - Color Regions Mode
-- [ ] Implement k-means color quantization
-- [ ] Add median cut quantization as alternative
-- [ ] Implement region labeling and merging
-- [ ] Add SLIC superpixels (optional enhancement)
-
-### Algorithm Implementation - Edge/Centerline Mode
-- [ ] Implement Canny edge detection
-- [ ] Add edge thinning/skeletonization
-- [ ] Implement centerline extraction
-
-### Path Optimization
-- [ ] Implement Ramer-Douglas-Peucker (RDP) simplification
-- [ ] Add Visvalingam-Whyatt simplification
-- [ ] Implement piecewise cubic Bézier fitting
-- [ ] Add error-bounded curve fitting
-
-### SVG Generation
-- [ ] Create SVG builder module
-- [ ] Implement path optimization (coordinate rounding, node limits)
-- [ ] Add draw order sorting algorithms
-- [ ] Implement SVG output with configurable options
-
-### Testing & Benchmarking
-- [ ] Set up golden SVG snapshot tests
-- [ ] Add unit tests for each algorithm
-- [ ] Implement criterion benchmarks
-- [ ] Create test image corpus (logos, photos, line art)
+### Testing & Validation
+- [ ] Unit tests per module (preprocessing, algorithms, curves, svg)
+- [ ] **Golden SVG** snapshots (diff on PR)
+- [ ] SVG validity checks by parsing with `usvg` and rasterizing with `resvg` (smoke tests)
+- [ ] Determinism: fixed seeds for k-means / sampling
 
 ---
 
-## Phase 2: WASM Integration 🔮
+## Phase 2: WASM Integration 🔮 (CPU-only)
 
-### WASM Setup
-- [ ] Create `vectorize-wasm` crate with wasm-bindgen
-- [ ] Set up wasm-pack build configuration
-- [ ] Implement JavaScript bindings for core functions
-- [ ] Add TypeScript definitions generation
+### Crate: `vectorize-wasm`
+- [ ] `wasm-bindgen` wrapper (export minimal functions)
+- [ ] Zero-copy I/O (accept `Uint8Array`/`ImageData` memory view once)
+- [ ] Build with `+simd128` target feature (when available)
+- [ ] **Threads:** integrate `wasm-bindgen-rayon` and thread-pool init
 
-### Performance Optimization
-- [ ] Implement zero-copy memory management
-- [ ] Add SIMD support (+simd128 target feature)
-- [ ] Implement Web Worker integration
-- [ ] Add multi-threading support with SharedArrayBuffer
+### Browser Requirements
+- [ ] Add **COOP/COEP** headers so `SharedArrayBuffer` & threads work
+- [ ] Single-thread fallback (no SAB) and smaller K for low-end devices
+- [ ] Progressive/tiling processing for large images
+- [ ] Memory usage guardrails (caps, early downscale)
 
-### Browser Compatibility
-- [ ] Create single-threaded fallback
-- [ ] Implement progressive processing for large images
-- [ ] Add memory usage monitoring and limits
-- [ ] Test across major browsers
+### Demo harness (`vectorize-wasm/www`)
+- [ ] Minimal ESM loader (`main.ts`) and example HTML
+- [ ] Local dev server with COOP/COEP headers
+- [ ] TypeScript definitions for the WASM API
 
 ---
 
-## Phase 3: Frontend Development 🎨
+## Phase 3: Frontend (SvelteKit 5 + Tailwind 4 + TS) 🎨
 
-### Project Setup
-- [ ] Initialize SvelteKit 5 project
-- [ ] Configure Tailwind CSS 4
-- [ ] Set up TypeScript with strict mode
-- [ ] Configure Vite for WASM loading
+### Setup
+- [ ] Initialize SvelteKit project, Tailwind, strict TS
+- [ ] Configure Vite WASM loading;
 
-### Core UI Components
-- [ ] Create image upload component (drag & drop)
-- [ ] Implement SVG preview with pan/zoom
-- [ ] Add algorithm selection UI
-- [ ] Create parameter adjustment controls
+### UI/UX
+- [ ] Drag-and-drop image upload
+- [ ] SVG preview (pan/zoom), parameter controls, algorithm presets
+- [ ] Progress + cancellation; batch mode (queue)
+- [ ] Export (download SVG), copy to clipboard
+- [ ] Dark mode
 
 ### WASM Integration
-- [ ] Implement WASM module loader
-- [ ] Add Web Worker wrapper for processing
-- [ ] Create progress tracking system
-- [ ] Handle COOP/COEP headers configuration
+- [ ] WASM module loader + **Web Worker** wrapper
+- [ ] Thread pool initialization when cross-origin isolated
+- [ ] Frontend fallback path for single-thread / no-SIMD
 
-### User Experience
-- [ ] Add real-time preview updates
-- [ ] Implement batch processing support
-- [ ] Create export options UI
-- [ ] Add dark mode support
+### Headers / Hosting
+- [ ] Dev: set COOP/COEP in `hooks.server.ts` (or server adapter)
+- [ ] Prod: configure host (Netlify/Vercel/Cloudflare) for COOP/COEP
+- [ ] Document hosting limitations (e.g., GitHub Pages lacks headers)
 
-### Testing
-- [ ] Set up Vitest for unit tests
-- [ ] Configure Playwright for E2E tests
-- [ ] Add accessibility testing
-- [ ] Implement visual regression tests
+### Frontend Testing
+- [ ] Vitest unit tests
+- [ ] Playwright E2E tests (file upload → SVG output)
+- [ ] Accessibility checks
+- [ ] Visual regression tests (DOM screenshots)
 
 ---
 
-## Phase 4: Enhancement & Optimization 🚀
+## Phase 4: Enhancements & Optimization 🚀
 
 ### Stylized Modes
-- [ ] Implement low-poly (Delaunay) mode
-- [ ] Add stipple/dot art mode
-- [ ] Create halftone pattern mode
-- [ ] Add artistic filter combinations
+- [ ] Low-poly (Delaunay)
+- [ ] Stipple / dot art (Poisson disk; path ordering)
+- [ ] Halftone patterns
+- [ ] Preset styles (logo/photo/illustration/sketch)
 
-### Advanced Features
-- [ ] Add preset configurations
-- [ ] Implement undo/redo functionality
-- [ ] Create comparison view (before/after)
-- [ ] Add batch processing with queue
+### Performance
+- [ ] Profile hot paths (SIMD-friendly loops; buffer reuse)
+- [ ] Adaptive quality (auto ε / min-area based on image size)
+- [ ] WASM bundle size trimming (dead-code, features)
 
-### Performance Improvements
-- [ ] Profile and optimize hot paths
-- [ ] Implement adaptive quality settings
-- [ ] Add GPU acceleration (optional)
-- [ ] Optimize WASM bundle size
+### Advanced
+- [ ] Undo/redo, before/after compare
+- [ ] Batch processing with queue + export set
+- [ ] Tiling pipeline for huge images
 
-### Documentation & Deployment
-- [ ] Write comprehensive API documentation
-- [ ] Create user guide with examples
-- [ ] Set up demo site with examples
-- [ ] Configure production deployment
+### Documentation & Deploy
+- [ ] API reference (`docs/api.md`)
+- [ ] User guide with examples
+- [ ] Public demo site (with COOP/COEP) + sample gallery
+- [ ] Production deployment & monitoring
 
 ---
 
 ## Known Issues & Bugs 🐛
 
-_No issues reported yet_
+- _None recorded yet_
 
 ---
 
 ## Future Considerations 💭
 
-- Machine learning-based vectorization
-- Plugin system for custom algorithms
-- Desktop application via Tauri
-- Cloud processing option for large files
-- Integration with design tools (Figma, Adobe)
+- ML-assisted vectorization
+- Plugin system for custom passes
+- Cloud processing option for very large files
+- MCP server possibility
 
 ---
 
 ## Notes
 
-- Priority: Phase 1 (Native Core) is highest priority
-- Testing: Each phase should include comprehensive testing
-- Documentation: Update CLAUDE.md files as architecture evolves
-- Performance: Regular benchmarking to prevent regressions
-
----
-
-_Last Updated: [Current Date]_
+- Prioritize **Phase 1** for stable, fast algorithms before WASM polish.
+- Keep params/data structures identical between native & WASM.
+- Document hosting requirements for cross-origin isolation (threads).

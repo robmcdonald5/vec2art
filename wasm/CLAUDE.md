@@ -10,16 +10,19 @@ This directory contains the core image-to-SVG vectorization engine written in Ru
 
 ```
 wasm/
-├── Cargo.toml                      # Workspace manifest
-├── Cargo.lock                      # Dependency lockfile
-├── build.rs                        # Build script for C bindings
-├── CLAUDE.md                       # This documentation file
+├── Cargo.toml                      # Workspace manifest (members: vectorize-core, vectorize-cli, vectorize-wasm)
+├── rust-toolchain.toml             # Pin toolchain/components (e.g., stable + rustfmt + clippy)
+├── .cargo/
+│   └── config.toml                 # Target cfgs (wasm32 flags: +simd128; optional atomics), build settings
+├── .gitignore                      # Ignore /target, /pkg, node_modules, artifacts
+├── LICENSE
+├── CLAUDE.md                       # Repo-local agent guidance
 ├── README.md                       # Project-specific readme
 │
-├── vectorize-core/                 # Core Rust library (platform-agnostic)
+├── vectorize-core/                 # Core Rust library (platform-agnostic, no JS/WASM deps)
 │   ├── Cargo.toml
 │   ├── src/
-│   │   ├── lib.rs                  # Main library entry point
+│   │   ├── lib.rs                  # Main library entry point (public API)
 │   │   ├── error.rs                # Custom error types
 │   │   ├── config.rs               # Configuration structs
 │   │   │
@@ -63,16 +66,20 @@ wasm/
 │   │       ├── mod.rs
 │   │       ├── geometry.rs         # Point, Vec2, geometric primitives
 │   │       ├── color.rs            # Color manipulation and conversion
-│   │       ├── image_utils.rs      # Image I/O and basic operations
+│   │       ├── image_utils.rs      # Image buffers & basic ops (I/O kept in CLI)
 │   │       ├── math.rs             # Math utilities and constants
-│   │       └── memory.rs           # Memory management helpers
+│   │       └── memory.rs           # Memory helpers / buffer pools
 │   │
-│   └── tests/                      # Unit tests
-│       ├── algorithm_tests.rs
-│       ├── preprocessing_tests.rs
-│       └── integration_tests.rs
+│   ├── tests/                      # Unit tests
+│   │   ├── algorithm_tests.rs
+│   │   ├── preprocessing_tests.rs
+│   │   └── integration_tests.rs
+│   └── benches/                    # Criterion benches for hot loops
+│       ├── simplify_bench.rs
+│       ├── bezier_fit_bench.rs
+│       └── segmentation_bench.rs
 │
-├── vectorize-cli/                  # Native CLI for testing
+├── vectorize-cli/                  # Native CLI for dev/bench/snapshots
 │   ├── Cargo.toml
 │   ├── src/
 │   │   ├── main.rs                 # CLI entry point
@@ -90,64 +97,71 @@ wasm/
 │       │   ├── photo_test.jpg
 │       │   ├── line_art.png
 │       │   └── complex_image.png
-│       └── images_out/             # Expected output SVGs
+│       └── images_out/             # Expected output SVGs (goldens)
 │           ├── logo_test_binary.svg
 │           ├── photo_test_regions.svg
 │           └── line_art_edges.svg
 │
-├── vectorize-wasm/                 # WASM bindings
+├── vectorize-wasm/                 # WASM bindings (thin wrapper over core)
 │   ├── Cargo.toml
 │   ├── src/
-│   │   ├── lib.rs                  # WASM entry point
-│   │   ├── bindings.rs             # JavaScript bindings
-│   │   ├── memory.rs               # Zero-copy memory management
-│   │   ├── threading.rs            # Web Worker integration
-│   │   ├── workers/                # Web Worker scripts
-│   │   │   ├── processor.rs        # Main processing worker
-│   │   │   └── coordinator.rs      # Multi-worker coordination
+│   │   ├── lib.rs                  # WASM entry point (wasm-bindgen exports)
+│   │   ├── bindings.rs             # JS/TS-friendly wrappers & types
+│   │   ├── memory.rs               # Zero-copy view into WASM memory
+│   │   ├── threading.rs            # wasm-bindgen-rayon init & helpers
+│   │   ├── workers/                # (Optional) Worker-coordination utils
+│   │   │   ├── mod.rs
+│   │   │   ├── processor.rs        # Work splitting / message protocol
+│   │   │   └── coordinator.rs      # Multi-worker orchestration
 │   │   └── utils.rs                # WASM-specific utilities
 │   │
-│   ├── pkg/                        # Generated WASM output (gitignored)
-│   └── www/                        # Simple test HTML page
-│       ├── index.html
-│       ├── index.js
-│       └── package.json
+│   ├── pkg/                        # wasm-pack output (gitignored)
+│   └── www/                        # Minimal dev/demo site
+│       ├── index.html              # Test harness
+│       ├── main.ts                 # ESM loader; init_thread_pool() call
+│       ├── server.mjs              # Dev server w/ COOP/COEP headers
+│       ├── vite.config.ts          # Optional: Vite bundling config
+│       ├── package.json            # For local demo only
+│       ├── public/
+│       │   └── _headers            # Netlify-style COOP/COEP (threads-ready)
+│       └── tsconfig.json
 │
-├── tests/                          # Integration tests
-│   ├── golden/                     # Golden SVG references
+├── tests/                          # Cross-crate integration tests
+│   ├── golden/                     # Golden SVG references (snapshots)
 │   │   ├── logo_mode/
 │   │   ├── color_regions/
 │   │   └── edge_mode/
-│   ├── snapshots.rs                # Snapshot testing
-│   ├── performance.rs              # Performance regression tests
-│   └── wasm_integration.rs         # WASM-specific tests
+│   ├── snapshots.rs                # insta-style snapshot tests
+│   ├── performance.rs              # Perf regressions (smoke-level)
+│   └── wasm_integration.rs         # Browser/wasm smoke tests (headless)
 │
-├── benches/                        # Performance benchmarks
-│   ├── algorithm_bench.rs          # Algorithm benchmarks
-│   ├── preprocessing_bench.rs      # Preprocessing benchmarks
-│   └── end_to_end_bench.rs         # Full pipeline benchmarks
+├── benches/                        # End-to-end benches (CLI invokes core)
+│   ├── algorithm_bench.rs
+│   ├── preprocessing_bench.rs
+│   └── end_to_end_bench.rs
 │
-├── external/                       # External C/C++ code
-│   ├── potrace/                    # Potrace C wrapper (optional)
+├── external/                       # Optional C/C++ wrappers (off by default)
+│   ├── potrace/
 │   │   ├── potrace_wrapper.c
 │   │   ├── potrace_wrapper.h
 │   │   └── build.rs
-│   └── autotrace/                  # AutoTrace C wrapper (optional)
+│   └── autotrace/
 │       ├── autotrace_wrapper.c
 │       ├── autotrace_wrapper.h
 │       └── build.rs
 │
-├── scripts/                        # Build and utility scripts
-│   ├── build_wasm.sh              # WASM build script
-│   ├── test_all.sh                # Run all tests
-│   ├── benchmark.sh               # Run benchmarks
-│   └── generate_bindings.sh       # Generate TypeScript definitions
+├── scripts/                        # Build & utility scripts
+│   ├── build_wasm.sh               # wasm-pack build (release/dev)
+│   ├── build_wasm.ps1              # Windows-friendly build script
+│   ├── test_all.sh                 # Run unit/integration/snapshots
+│   ├── benchmark.sh                # Run benches with criterion
+│   └── generate_bindings.sh        # Generate/update TypeScript d.ts
 │
-└── docs/                          # Additional documentation
-    ├── algorithms.md              # Algorithm implementation details
-    ├── performance.md             # Performance optimization guide
-    ├── wasm_integration.md        # WASM integration guide
-    └── api.md                     # API documentation
+└── docs/                           # Additional documentation
+    ├── algorithms.md               # Algorithm implementation details
+    ├── performance.md              # Perf optimization guide
+    ├── wasm_integration.md         # Threads/SIMD, COOP/COEP notes
+    └── api.md                      # Public API documentation
 ```
 
 ## Module Organization
