@@ -1,21 +1,21 @@
 # vec2art Algorithm Test Report 
  
-**Generated:** Thu 08/07/2025 21:32:55.06 
+**Generated:** Fri 08/08/2025 10:47:24.09 
  
 | Image | Algorithm | Status | Time (s) | Warnings | Output Size | 
 |-------|-----------|--------|----------|----------|-------------| 
-test1 | logo | SUCCESS | 0 | 377 | 648215 | 
-test1 | regions | SUCCESS | 1 | 0 | 72960 | 
-test2 | logo | SUCCESS | 1 | 407 | 468668 | 
-test2 | regions | SUCCESS | 1 | 0 | 74923 | 
-test3 | logo | SUCCESS | 0 | 185 | 181642 | 
-test3 | regions | SUCCESS | 1 | 0 | 71263 | 
-test_checkerboard | logo | SUCCESS | 1 | 13 | 13310 | 
-test_checkerboard | regions | SUCCESS | 0 | 0 | 10304 | 
-test_gradient | logo | SUCCESS | 0 | 52 | 11028 | 
-test_gradient | regions | SUCCESS | 0 | 0 | 3226 | 
-test_shapes | logo | SUCCESS | 0 | 1 | 835 | 
-test_shapes | regions | SUCCESS | 1 | 0 | 863 | 
+test1 | logo | SUCCESS | 0 | 0 | 28094 | 
+test1 | regions | SUCCESS | 1 | 0 | 14746 | 
+test2 | logo | SUCCESS | 0 | 0 | 6457 | 
+test2 | regions | SUCCESS | 0 | 0 | 800 | 
+test3 | logo | SUCCESS | 1 | 0 | 7670 | 
+test3 | regions | SUCCESS | 1 | 0 | 827 | 
+test_checkerboard | logo | SUCCESS | 0 | 0 | 3677 | 
+test_checkerboard | regions | SUCCESS | 1 | 1 | 33160 | 
+test_gradient | logo | SUCCESS | 0 | 0 | 257 | 
+test_gradient | regions | SUCCESS | 0 | 0 | 7295 | 
+test_shapes | logo | SUCCESS | 1 | 0 | 312 | 
+test_shapes | regions | SUCCESS | 0 | 1 | 3435 | 
  
 ## Summary 
  

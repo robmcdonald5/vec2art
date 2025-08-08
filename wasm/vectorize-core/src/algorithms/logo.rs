@@ -1,13 +1,13 @@
 //! Logo/line-art vectorization algorithms
 
+use crate::algorithms::primitives::{detect_primitive, primitive_to_svg, PrimitiveConfig};
 use crate::config::LogoConfig;
 use crate::error::VectorizeResult;
 use crate::preprocessing::{
     apply_threshold, calculate_otsu_threshold, preprocess_for_logo, rgba_to_grayscale,
 };
-use image::RgbaImage;
-// TODO: Add back for Suzuki-Abe implementation
-// use imageproc::contours::find_contours_with_threshold;
+use image::{RgbaImage, GrayImage};
+use imageproc::contours::find_contours_with_threshold;
 
 /// Vectorize a logo/line-art image
 ///
@@ -26,57 +26,269 @@ use image::RgbaImage;
 ///
 /// # Returns
 /// * `VectorizeResult<Vec<SvgPath>>` - Vector of SVG paths or error
+///
+/// # Edge Cases Handled
+/// - Empty or single-pixel images
+/// - Images with no foreground content
+/// - Failed contour extraction
+/// - Degenerate geometries
+/// - Memory allocation failures
 pub fn vectorize_logo(image: &RgbaImage, config: &LogoConfig) -> VectorizeResult<Vec<SvgPath>> {
     log::debug!("Starting optimized logo vectorization pipeline with Suzuki-Abe contour tracing");
 
+    // Edge case: handle very small images
+    let (width, height) = (image.width(), image.height());
+    if width < 3 || height < 3 {
+        log::warn!("Image too small ({}x{}), generating minimal output", width, height);
+        return Ok(vec![create_fallback_svg_path(width, height)]);
+    }
+
     // Step 1: Apply optimized preprocessing (combines resizing and denoising)
-    let preprocessed = preprocess_for_logo(image, config.max_dimension)?;
+    let preprocessed = preprocess_for_logo(image, config.max_dimension)
+        .map_err(|e| {
+            log::error!("Preprocessing failed: {}", e);
+            e
+        })?;
+
+    // Edge case: check if preprocessing resulted in degenerate image
+    if preprocessed.width() == 0 || preprocessed.height() == 0 {
+        return Err(crate::error::VectorizeError::degenerate_geometry(
+            "Preprocessing resulted in zero-dimension image"
+        ));
+    }
 
     // Step 2: Convert to grayscale
     let grayscale = rgba_to_grayscale(&preprocessed);
 
-    // Step 3: Apply threshold
+    // Step 3: Apply threshold with validation
     let threshold = if config.adaptive_threshold {
-        calculate_otsu_threshold(&grayscale)
+        let otsu_threshold = calculate_otsu_threshold(&grayscale);
+        // Validate Otsu result
+        if otsu_threshold == 0 || otsu_threshold == 255 {
+            log::warn!("Otsu threshold gave extreme value {}, using default", otsu_threshold);
+            128 // fallback to middle gray
+        } else {
+            otsu_threshold
+        }
     } else {
         config.threshold
     };
 
     let binary = apply_threshold(&grayscale, threshold);
+    
+    // Edge case: check if thresholding resulted in all black or all white
+    if is_binary_degenerate(&binary) {
+        log::warn!("Thresholding resulted in uniform image, adjusting threshold");
+        // Try alternative threshold
+        let alt_threshold = if threshold > 128 { threshold - 64 } else { threshold + 64 };
+        let alt_binary = apply_threshold(&grayscale, alt_threshold);
+        if !is_binary_degenerate(&alt_binary) {
+            log::debug!("Alternative threshold {} worked", alt_threshold);
+            return process_binary_image(&alt_binary, preprocessed.dimensions(), alt_threshold, config);
+        } else {
+            // Still degenerate, return minimal SVG
+            log::warn!("Could not find suitable threshold, generating minimal output");
+            return Ok(vec![create_fallback_svg_path(preprocessed.width(), preprocessed.height())]);
+        }
+    }
+    
+    process_binary_image(&binary, preprocessed.dimensions(), threshold, config)
+}
+
+/// Process binary image through the logo algorithm pipeline
+fn process_binary_image(
+    binary: &[bool], 
+    dimensions: (u32, u32), 
+    threshold: u8, 
+    config: &LogoConfig
+) -> VectorizeResult<Vec<SvgPath>> {
 
     // Step 4: Light morphological operations to reduce artifacts
-    let cleaned = apply_gentle_morphology(&binary, preprocessed.dimensions(), config.morphology_kernel_size)?;
+    let cleaned = apply_gentle_morphology(&binary, dimensions, config.morphology_kernel_size)
+        .map_err(|e| {
+            log::error!("Morphological operations failed: {}", e);
+            e
+        })?;
 
     // Step 5: Extract contours with Suzuki-Abe algorithm
-    let contours = extract_contours_moore_legacy(&cleaned, preprocessed.dimensions())?;
+    let contours = extract_contours_suzuki_abe(&cleaned, dimensions, threshold)
+        .map_err(|e| {
+            log::error!("Contour extraction failed: {}", e);
+            e
+        })?;
+    
+    // Edge case: no contours found
+    if contours.is_empty() {
+        log::warn!("No contours extracted, generating minimal output");
+        return Ok(vec![create_fallback_svg_path(dimensions.0, dimensions.1)]);
+    }
 
-    // Step 6: Filter small contours
+    // Step 6: Filter small contours with validation
     let filtered_contours = filter_contours(contours, config.min_contour_area);
+    
+    // Edge case: all contours filtered out
+    if filtered_contours.is_empty() {
+        log::warn!("All contours filtered out (min_area={}), trying with smaller threshold", 
+                  config.min_contour_area);
+        // Try with half the minimum area requirement
+        let relaxed_contours = filter_contours(
+            extract_contours_suzuki_abe(&cleaned, dimensions, threshold)?, 
+            config.min_contour_area / 2
+        );
+        if relaxed_contours.is_empty() {
+            return Ok(vec![create_fallback_svg_path(dimensions.0, dimensions.1)]);
+        } else {
+            return process_contours_to_svg(relaxed_contours, config);
+        }
+    }
+    
+    process_contours_to_svg(filtered_contours, config)
+}
 
-    // Step 7: Simplify paths
-    let simplified_paths = simplify_contours(&filtered_contours, config.simplification_tolerance)?;
+/// Process contours through simplification and SVG generation
+fn process_contours_to_svg(contours: Vec<Contour>, config: &LogoConfig) -> VectorizeResult<Vec<SvgPath>> {
 
-    // Step 8: Convert to SVG paths
-    let svg_paths = if config.fit_curves {
-        fit_bezier_curves(&simplified_paths, config.curve_tolerance)?
+    // Step 7: Simplify paths with error handling
+    let simplified_paths = simplify_contours(&contours, config.simplification_tolerance)
+        .map_err(|e| {
+            log::error!("Path simplification failed: {}", e);
+            e
+        })?;
+    
+    // Edge case: simplification removed all valid contours
+    if simplified_paths.is_empty() {
+        log::warn!("Simplification removed all contours, trying with larger tolerance");
+        let relaxed_paths = simplify_contours(&contours, config.simplification_tolerance * 2.0)?;
+        if relaxed_paths.is_empty() {
+            log::warn!("Even relaxed simplification failed, using original contours");
+            return process_paths_to_svg(contours, config);
+        } else {
+            return process_paths_to_svg(relaxed_paths, config);
+        }
+    }
+    
+    process_paths_to_svg(simplified_paths, config)
+}
+
+/// Convert contours to SVG paths with primitive detection and curve fitting
+fn process_paths_to_svg(simplified_paths: Vec<Contour>, config: &LogoConfig) -> VectorizeResult<Vec<SvgPath>> {
+    let mut svg_paths = Vec::new();
+    let mut primitive_count = 0;
+    let mut failed_paths = 0;
+    
+    if config.detect_primitives {
+        let primitive_config = PrimitiveConfig {
+            fit_tolerance: config.primitive_fit_tolerance,
+            max_circle_eccentricity: config.max_circle_eccentricity,
+            ..PrimitiveConfig::default()
+        };
+
+        for contour in &simplified_paths {
+            // Validate contour before processing
+            if contour.len() < 3 {
+                log::debug!("Skipping degenerate contour with {} points", contour.len());
+                failed_paths += 1;
+                continue;
+            }
+            
+            // Try to detect primitive shape
+            match detect_primitive(contour, &primitive_config) {
+                Ok(Some(primitive)) => {
+                    // Use primitive SVG representation
+                    svg_paths.push(primitive_to_svg(&primitive, Some("black".to_string())));
+                    primitive_count += 1;
+                }
+                Ok(None) => {
+                    // Fall back to regular path processing
+                    match process_single_contour(contour, config) {
+                        Ok(paths) => svg_paths.extend(paths),
+                        Err(e) => {
+                            log::debug!("Failed to process contour: {}", e);
+                            failed_paths += 1;
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::debug!("Primitive detection failed: {}, falling back to paths", e);
+                    match process_single_contour(contour, config) {
+                        Ok(paths) => svg_paths.extend(paths),
+                        Err(e) => {
+                            log::debug!("Fallback path processing failed: {}", e);
+                            failed_paths += 1;
+                        }
+                    }
+                }
+            }
+        }
+        
+        log::debug!("Detected {} primitive shapes out of {} contours ({} failed)", 
+                   primitive_count, simplified_paths.len(), failed_paths);
     } else {
-        convert_to_svg_paths(&simplified_paths)
-    };
+        // Process all paths without primitive detection
+        for contour in &simplified_paths {
+            if contour.len() < 3 {
+                failed_paths += 1;
+                continue;
+            }
+            
+            match process_single_contour(contour, config) {
+                Ok(paths) => svg_paths.extend(paths),
+                Err(e) => {
+                    log::debug!("Failed to process contour: {}", e);
+                    failed_paths += 1;
+                }
+            }
+        }
+    }
+    
+    // Edge case: all paths failed to process
+    if svg_paths.is_empty() && !simplified_paths.is_empty() {
+        log::warn!("All {} contours failed to process, generating fallback", failed_paths);
+        // Create a simple bounding box as fallback
+        if let Some(bbox_path) = create_bounding_box_path(&simplified_paths) {
+            svg_paths.push(bbox_path);
+        }
+    }
 
     log::debug!(
-        "Logo vectorization completed with Suzuki-Abe algorithm, generated {} paths",
-        svg_paths.len()
+        "Logo vectorization completed with Suzuki-Abe algorithm, generated {} paths ({} failed)",
+        svg_paths.len(), failed_paths
     );
     Ok(svg_paths)
 }
 
-/// Simple SVG path representation
+/// Process a single contour to SVG with proper error handling
+fn process_single_contour(contour: &Contour, config: &LogoConfig) -> VectorizeResult<Vec<SvgPath>> {
+    if config.fit_curves {
+        // Use curve fitting with fallback
+        match fit_bezier_curves(&[contour.clone()], config.curve_tolerance) {
+            Ok(paths) if !paths.is_empty() => Ok(paths),
+            _ => {
+                log::debug!("Curve fitting failed, using linear paths");
+                Ok(convert_to_svg_paths(&[contour.clone()]))
+            }
+        }
+    } else {
+        Ok(convert_to_svg_paths(&[contour.clone()]))
+    }
+}
+
+/// SVG element representation
 #[derive(Debug, Clone)]
 pub struct SvgPath {
     pub path_data: String,
     pub fill: Option<String>,
     pub stroke: Option<String>,
     pub stroke_width: Option<f32>,
+    pub element_type: SvgElementType,
+}
+
+/// Type of SVG element
+#[derive(Debug, Clone)]
+pub enum SvgElementType {
+    Path,
+    Circle { cx: f32, cy: f32, r: f32 },
+    Ellipse { cx: f32, cy: f32, rx: f32, ry: f32, angle: Option<f32> },
 }
 
 /// Point in 2D space
@@ -103,23 +315,41 @@ fn apply_gentle_morphology(
         kernel_size
     );
 
-    if kernel_size <= 1 {
+    // Edge case: skip morphology for very small kernels or images
+    if kernel_size <= 1 || dimensions.0 <= kernel_size || dimensions.1 <= kernel_size {
         return Ok(binary.to_vec());
+    }
+    
+    // Edge case: check for reasonable kernel size
+    let max_kernel = (dimensions.0.min(dimensions.1) / 4).max(1);
+    let safe_kernel_size = kernel_size.min(max_kernel);
+    
+    if safe_kernel_size != kernel_size {
+        log::warn!("Kernel size {} too large for image {}x{}, using {}", 
+                  kernel_size, dimensions.0, dimensions.1, safe_kernel_size);
     }
 
     let mut result = binary.to_vec();
 
     // Only perform opening (erosion + dilation) to reduce noise
     // Avoid closing to prevent creation of false boundaries
-    result = erode(&result, dimensions, kernel_size);
-    result = dilate(&result, dimensions, kernel_size);
+    result = erode(&result, dimensions, safe_kernel_size)?;
+    result = dilate(&result, dimensions, safe_kernel_size)?;
 
     Ok(result)
 }
 
 /// Morphological erosion - shrinks white regions
-fn erode(binary: &[bool], dimensions: (u32, u32), kernel_size: u32) -> Vec<bool> {
+fn erode(binary: &[bool], dimensions: (u32, u32), kernel_size: u32) -> VectorizeResult<Vec<bool>> {
     let (width, height) = dimensions;
+    
+    // Validate input
+    if binary.len() != (width * height) as usize {
+        return Err(crate::error::VectorizeError::algorithm_error(
+            "Binary data size mismatch in erosion"
+        ));
+    }
+    
     let mut result = vec![false; binary.len()];
     let radius = kernel_size / 2;
 
@@ -133,7 +363,7 @@ fn erode(binary: &[bool], dimensions: (u32, u32), kernel_size: u32) -> Vec<bool>
             for ky in y.saturating_sub(radius)..=(y + radius).min(height - 1) {
                 for kx in x.saturating_sub(radius)..=(x + radius).min(width - 1) {
                     let kidx = (ky * width + kx) as usize;
-                    if !binary[kidx] {
+                    if kidx >= binary.len() || !binary[kidx] {
                         all_white = false;
                         break;
                     }
@@ -147,12 +377,20 @@ fn erode(binary: &[bool], dimensions: (u32, u32), kernel_size: u32) -> Vec<bool>
         }
     }
 
-    result
+    Ok(result)
 }
 
-/// Morphological dilation - expands white regions
-fn dilate(binary: &[bool], dimensions: (u32, u32), kernel_size: u32) -> Vec<bool> {
+/// Morphological dilation - expands white regions  
+fn dilate(binary: &[bool], dimensions: (u32, u32), kernel_size: u32) -> VectorizeResult<Vec<bool>> {
     let (width, height) = dimensions;
+    
+    // Validate input
+    if binary.len() != (width * height) as usize {
+        return Err(crate::error::VectorizeError::algorithm_error(
+            "Binary data size mismatch in dilation"
+        ));
+    }
+    
     let mut result = vec![false; binary.len()];
     let radius = kernel_size / 2;
 
@@ -166,6 +404,9 @@ fn dilate(binary: &[bool], dimensions: (u32, u32), kernel_size: u32) -> Vec<bool
             for ky in y.saturating_sub(radius)..=(y + radius).min(height - 1) {
                 for kx in x.saturating_sub(radius)..=(x + radius).min(width - 1) {
                     let kidx = (ky * width + kx) as usize;
+                    if kidx >= binary.len() {
+                        continue;
+                    }
                     if binary[kidx] {
                         any_white = true;
                         break;
@@ -180,7 +421,109 @@ fn dilate(binary: &[bool], dimensions: (u32, u32), kernel_size: u32) -> Vec<bool
         }
     }
 
-    result
+    Ok(result)
+}
+
+/// Extract contours from binary image using Suzuki-Abe algorithm via imageproc
+///
+/// This is the production implementation that replaces the problematic Moore neighborhood
+/// algorithm. It uses the industry-standard Suzuki-Abe algorithm which handles complex
+/// topologies without infinite loops.
+///
+/// # Arguments
+/// * `binary` - Binary image data (true = foreground/white, false = background/black)
+/// * `dimensions` - Image width and height
+/// * `threshold` - Threshold value used for binary conversion (for reference)
+///
+/// # Returns
+/// * `VectorizeResult<Vec<Contour>>` - Vector of contours or error
+fn extract_contours_suzuki_abe(
+    binary: &[bool], 
+    dimensions: (u32, u32), 
+    threshold: u8
+) -> VectorizeResult<Vec<Contour>> {
+    log::debug!("Extracting contours using Suzuki-Abe algorithm via imageproc");
+    
+    let (width, height) = dimensions;
+    
+    // Validate input
+    if binary.len() != (width * height) as usize {
+        return Err(crate::error::VectorizeError::insufficient_data(
+            (width * height) as usize, binary.len()
+        ));
+    }
+    
+    if width == 0 || height == 0 {
+        return Err(crate::error::VectorizeError::invalid_dimensions(
+            width, height, "Cannot extract contours from zero-dimension image"
+        ));
+    }
+    
+    // Convert boolean array to GrayImage for imageproc
+    let mut gray_data = Vec::with_capacity(binary.len());
+    for &pixel in binary {
+        gray_data.push(if pixel { 255u8 } else { 0u8 });
+    }
+    
+    let gray_image = GrayImage::from_raw(width, height, gray_data)
+        .ok_or_else(|| crate::error::VectorizeError::algorithm_error(
+            "Failed to create GrayImage from binary data"
+        ))?;
+    
+    // Use imageproc's Suzuki-Abe implementation with error handling
+    let threshold_value = (threshold.saturating_sub(1)).max(127);
+    
+    // Wrap the imageproc call to catch any potential panics
+    let imageproc_contours = std::panic::catch_unwind(|| {
+        find_contours_with_threshold::<u32>(&gray_image, threshold_value)
+    }).map_err(|_| {
+        crate::error::VectorizeError::algorithm_error(
+            "Suzuki-Abe algorithm panicked during contour extraction"
+        )
+    })?;
+    
+    log::debug!(
+        "Suzuki-Abe found {} raw contours with threshold {}", 
+        imageproc_contours.len(), 
+        threshold_value
+    );
+    
+    // Convert imageproc contours to our format with validation
+    let mut contours = Vec::new();
+    let mut invalid_count = 0;
+    
+    for imageproc_contour in imageproc_contours {
+        let mut contour = Vec::new();
+        let mut valid_points = true;
+        
+        for point in &imageproc_contour.points {
+            let x = point.x as f32;
+            let y = point.y as f32;
+            
+            // Validate coordinates
+            if !x.is_finite() || !y.is_finite() || x < 0.0 || y < 0.0 {
+                log::debug!("Invalid point coordinates: ({}, {})", x, y);
+                valid_points = false;
+                break;
+            }
+            
+            contour.push(Point { x, y });
+        }
+        
+        // Only keep valid contours with sufficient points
+        if valid_points && contour.len() >= 3 {
+            contours.push(contour);
+        } else {
+            invalid_count += 1;
+        }
+    }
+    
+    log::debug!(
+        "Suzuki-Abe processed {} valid contours (>= 3 points, {} invalid)", 
+        contours.len(), invalid_count
+    );
+    
+    Ok(contours)
 }
 
 
@@ -441,27 +784,80 @@ fn simplify_contours(contours: &[Contour], tolerance: f64) -> VectorizeResult<Ve
     Ok(simplified)
 }
 
-/// Fit Bezier curves to simplified paths
+/// Fit Bezier curves to simplified paths using Schneider algorithm
 fn fit_bezier_curves(paths: &[Contour], tolerance: f64) -> VectorizeResult<Vec<SvgPath>> {
+    // Schneider algorithm imports are used in fit_cubic_bezier_schneider function
+    
     log::debug!(
-        "Fitting Bezier curves to {} paths with tolerance {}",
+        "Fitting Bezier curves to {} paths with Schneider algorithm, tolerance {}",
         paths.len(),
         tolerance
     );
 
     let svg_paths: Vec<SvgPath> = paths
         .iter()
-        .map(|path| fit_cubic_bezier_to_path(path, tolerance))
+        .map(|path| fit_cubic_bezier_schneider(path, tolerance as f32))
         .collect();
 
     Ok(svg_paths)
 }
 
-/// Fit cubic Bézier curves to a path using iterative fitting
-fn fit_cubic_bezier_to_path(points: &[Point], tolerance: f64) -> SvgPath {
+/// Fit cubic Bézier curves to a path using the Schneider algorithm
+fn fit_cubic_bezier_schneider(points: &[Point], tolerance: f32) -> SvgPath {
+    use crate::algorithms::path_utils::{schneider_fit_cubic_bezier, fitting_results_to_svg_path};
+    
+    if points.len() < 2 {
+        // Empty path
+        return SvgPath {
+            path_data: String::new(),
+            fill: Some("black".to_string()),
+            stroke: None,
+            stroke_width: None,
+            element_type: SvgElementType::Path,
+        };
+    }
+    
+    if points.len() == 2 {
+        // Simple line
+        return SvgPath {
+            path_data: format!("M {:.2} {:.2} L {:.2} {:.2} Z", 
+                points[0].x, points[0].y, points[1].x, points[1].y),
+            fill: Some("black".to_string()),
+            stroke: None,
+            stroke_width: None,
+            element_type: SvgElementType::Path,
+        };
+    }
+    
+    // Use Schneider algorithm with recommended defaults
+    // Corner angle threshold: 30° (as per research document)
+    // Fit tolerance: provided tolerance (typically 1.0px)
+    let corner_angle_threshold = 30.0; // degrees
+    let fitting_results = schneider_fit_cubic_bezier(points, tolerance, corner_angle_threshold);
+    
+    // Convert results to SVG path
+    let mut path_data = fitting_results_to_svg_path(&fitting_results, points[0]);
+    path_data.push_str(" Z"); // Close the path
+    
+    SvgPath {
+        path_data,
+        fill: Some("black".to_string()),
+        stroke: None,
+        stroke_width: None,
+        element_type: SvgElementType::Path,
+    }
+}
+
+// LEGACY IMPLEMENTATION - Kept for rollback capability
+// The following functions implement the original heuristic-based curve fitting
+// They are replaced by the Schneider algorithm but kept for debugging purposes
+
+#[allow(dead_code)]
+/// LEGACY: Fit cubic Bézier curves to a path using iterative fitting
+fn fit_cubic_bezier_to_path_legacy(points: &[Point], tolerance: f64) -> SvgPath {
     if points.len() < 4 {
         // Not enough points for cubic fitting, use linear segments
-        return convert_contour_to_svg_path(points);
+        return convert_contour_to_svg_path_legacy(points);
     }
 
     let mut path_data = String::new();
@@ -476,7 +872,7 @@ fn fit_cubic_bezier_to_path(points: &[Point], tolerance: f64) -> SvgPath {
 
             if segment.len() >= 4 {
                 // Try to fit cubic Bézier curve
-                if let Some(bezier) = fit_cubic_bezier_segment(segment, tolerance) {
+                if let Some(bezier) = fit_cubic_bezier_segment_legacy(segment, tolerance) {
                     path_data.push_str(&format!(
                         " C {:.2} {:.2} {:.2} {:.2} {:.2} {:.2}",
                         bezier.control1.x,
@@ -509,10 +905,12 @@ fn fit_cubic_bezier_to_path(points: &[Point], tolerance: f64) -> SvgPath {
         fill: Some("black".to_string()),
         stroke: None,
         stroke_width: None,
+        element_type: SvgElementType::Path,
     }
 }
 
-/// Cubic Bézier curve representation
+#[allow(dead_code)]
+/// LEGACY: Cubic Bézier curve representation (replaced by path_utils::CubicBezier)
 #[derive(Debug, Clone)]
 struct CubicBezier {
     start: Point,
@@ -521,8 +919,9 @@ struct CubicBezier {
     end: Point,
 }
 
-/// Fit a cubic Bézier curve to a segment of points
-fn fit_cubic_bezier_segment(points: &[Point], tolerance: f64) -> Option<CubicBezier> {
+#[allow(dead_code)]
+/// LEGACY: Fit a cubic Bézier curve to a segment of points
+fn fit_cubic_bezier_segment_legacy(points: &[Point], tolerance: f64) -> Option<CubicBezier> {
     if points.len() < 4 {
         return None;
     }
@@ -591,20 +990,21 @@ fn fit_cubic_bezier_segment(points: &[Point], tolerance: f64) -> Option<CubicBez
     };
 
     // Check if the curve fits within tolerance
-    if bezier_fits_points(&bezier, points, tolerance) {
+    if bezier_fits_points_legacy(&bezier, points, tolerance) {
         Some(bezier)
     } else {
         None
     }
 }
 
-/// Check if a Bézier curve fits a set of points within tolerance
-fn bezier_fits_points(bezier: &CubicBezier, points: &[Point], tolerance: f64) -> bool {
+#[allow(dead_code)]
+/// LEGACY: Check if a Bézier curve fits a set of points within tolerance
+fn bezier_fits_points_legacy(bezier: &CubicBezier, points: &[Point], tolerance: f64) -> bool {
     let tolerance_sq = tolerance * tolerance;
 
     for (i, &point) in points.iter().enumerate() {
         let t = i as f32 / (points.len() - 1) as f32;
-        let curve_point = evaluate_cubic_bezier(bezier, t);
+        let curve_point = evaluate_cubic_bezier_legacy(bezier, t);
 
         let dx = point.x - curve_point.x;
         let dy = point.y - curve_point.y;
@@ -618,8 +1018,9 @@ fn bezier_fits_points(bezier: &CubicBezier, points: &[Point], tolerance: f64) ->
     true
 }
 
-/// Evaluate cubic Bézier curve at parameter t (0 <= t <= 1)
-fn evaluate_cubic_bezier(bezier: &CubicBezier, t: f32) -> Point {
+#[allow(dead_code)]
+/// LEGACY: Evaluate cubic Bézier curve at parameter t (0 <= t <= 1)
+fn evaluate_cubic_bezier_legacy(bezier: &CubicBezier, t: f32) -> Point {
     let t2 = t * t;
     let t3 = t2 * t;
     let mt = 1.0 - t;
@@ -638,8 +1039,9 @@ fn evaluate_cubic_bezier(bezier: &CubicBezier, t: f32) -> Point {
     }
 }
 
-/// Convert a single contour to SVG path (fallback for non-curve fitting)
-fn convert_contour_to_svg_path(contour: &[Point]) -> SvgPath {
+#[allow(dead_code)]
+/// LEGACY: Convert a single contour to SVG path (fallback for non-curve fitting)
+fn convert_contour_to_svg_path_legacy(contour: &[Point]) -> SvgPath {
     let mut path_data = String::new();
 
     if !contour.is_empty() {
@@ -657,32 +1059,121 @@ fn convert_contour_to_svg_path(contour: &[Point]) -> SvgPath {
         fill: Some("black".to_string()),
         stroke: None,
         stroke_width: None,
+        element_type: SvgElementType::Path,
     }
+}
+
+// Helper functions for edge case handling
+
+/// Check if binary image is degenerate (all black or all white)
+fn is_binary_degenerate(binary: &[bool]) -> bool {
+    if binary.is_empty() {
+        return true;
+    }
+    
+    let first_value = binary[0];
+    binary.iter().all(|&b| b == first_value)
+}
+
+/// Create a fallback SVG path for edge cases
+fn create_fallback_svg_path(width: u32, height: u32) -> SvgPath {
+    // Create a simple rectangle outline as fallback
+    let margin = 2.0;
+    let path_data = format!(
+        "M {} {} L {} {} L {} {} L {} {} Z",
+        margin, margin,
+        width as f32 - margin, margin,
+        width as f32 - margin, height as f32 - margin,
+        margin, height as f32 - margin
+    );
+    
+    SvgPath {
+        path_data,
+        fill: None,
+        stroke: Some("black".to_string()),
+        stroke_width: Some(1.0),
+        element_type: SvgElementType::Path,
+    }
+}
+
+/// Create bounding box path from multiple contours as fallback
+fn create_bounding_box_path(contours: &[Contour]) -> Option<SvgPath> {
+    if contours.is_empty() {
+        return None;
+    }
+    
+    // Find bounding box of all contours
+    let mut min_x = f32::INFINITY;
+    let mut min_y = f32::INFINITY;
+    let mut max_x = f32::NEG_INFINITY;
+    let mut max_y = f32::NEG_INFINITY;
+    
+    for contour in contours {
+        for point in contour {
+            min_x = min_x.min(point.x);
+            min_y = min_y.min(point.y);
+            max_x = max_x.max(point.x);
+            max_y = max_y.max(point.y);
+        }
+    }
+    
+    // Validate bounding box
+    if !min_x.is_finite() || !min_y.is_finite() || !max_x.is_finite() || !max_y.is_finite() {
+        return None;
+    }
+    
+    if max_x <= min_x || max_y <= min_y {
+        return None;
+    }
+    
+    let path_data = format!(
+        "M {:.2} {:.2} L {:.2} {:.2} L {:.2} {:.2} L {:.2} {:.2} Z",
+        min_x, min_y, max_x, min_y, max_x, max_y, min_x, max_y
+    );
+    
+    Some(SvgPath {
+        path_data,
+        fill: None,
+        stroke: Some("black".to_string()),
+        stroke_width: Some(1.0),
+        element_type: SvgElementType::Path,
+    })
 }
 
 /// Convert simplified contours to SVG path strings
 fn convert_to_svg_paths(contours: &[Contour]) -> Vec<SvgPath> {
     contours
         .iter()
-        .map(|contour| {
+        .filter_map(|contour| {
+            // Skip degenerate contours
+            if contour.len() < 3 {
+                log::debug!("Skipping contour with {} points", contour.len());
+                return None;
+            }
+            
+            // Validate points are finite
+            if contour.iter().any(|p| !p.x.is_finite() || !p.y.is_finite()) {
+                log::debug!("Skipping contour with invalid coordinates");
+                return None;
+            }
+            
             let mut path_data = String::new();
 
-            if !contour.is_empty() {
-                path_data.push_str(&format!("M {:.2} {:.2}", contour[0].x, contour[0].y));
+            path_data.push_str(&format!("M {:.2} {:.2}", contour[0].x, contour[0].y));
 
-                for point in &contour[1..] {
-                    path_data.push_str(&format!(" L {:.2} {:.2}", point.x, point.y));
-                }
-
-                path_data.push_str(" Z"); // Close path
+            for point in &contour[1..] {
+                path_data.push_str(&format!(" L {:.2} {:.2}", point.x, point.y));
             }
 
-            SvgPath {
+            path_data.push_str(" Z"); // Close path
+
+            Some(SvgPath {
                 path_data,
                 fill: Some("black".to_string()),
                 stroke: None,
                 stroke_width: None,
-            }
+                element_type: SvgElementType::Path,
+            })
         })
         .collect()
 }

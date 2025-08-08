@@ -8,7 +8,6 @@ rustflags = [
 # WebAssembly-specific optimizations
 rustflags = [
     "-C", "opt-level=3",
-    "-C", "lto=fat",           # Enable link-time optimization
     "-C", "codegen-units=1",   # Single codegen unit for better optimization
     "--cfg", "web_sys_unstable_apis",  # Enable unstable web APIs
 ]

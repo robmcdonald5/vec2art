@@ -1,6 +1,6 @@
 //! SVG generation utilities
 
-use crate::algorithms::logo::SvgPath;
+use crate::algorithms::logo::{SvgPath, SvgElementType};
 use crate::config::SvgConfig;
 
 /// Generate complete SVG document from paths
@@ -62,12 +62,34 @@ pub fn generate_svg_document(
     svg
 }
 
-/// Format a single SVG path element
+/// Format a single SVG element (path, circle, or ellipse)
 fn format_svg_path(path: &SvgPath, config: &SvgConfig) -> String {
-    let mut element = String::from("<path");
-
-    // Add path data
-    element.push_str(&format!(r#" d="{}""#, path.path_data));
+    let mut element = match &path.element_type {
+        SvgElementType::Path => {
+            let mut el = String::from("<path");
+            el.push_str(&format!(r#" d="{}""#, path.path_data));
+            el
+        }
+        SvgElementType::Circle { cx, cy, r } => {
+            let mut el = String::from("<circle");
+            el.push_str(&format!(r#" cx="{:.prec$}" cy="{:.prec$}" r="{:.prec$}""#, 
+                cx, cy, r, prec = config.decimal_precision as usize));
+            el
+        }
+        SvgElementType::Ellipse { cx, cy, rx, ry, angle } => {
+            let mut el = String::from("<ellipse");
+            el.push_str(&format!(r#" cx="{:.prec$}" cy="{:.prec$}" rx="{:.prec$}" ry="{:.prec$}""#,
+                cx, cy, rx, ry, prec = config.decimal_precision as usize));
+            if let Some(angle_deg) = angle {
+                let angle_deg = angle_deg.to_degrees();
+                if angle_deg.abs() > 0.1 {
+                    el.push_str(&format!(r#" transform="rotate({:.1} {:.prec$} {:.prec$})""#,
+                        angle_deg, cx, cy, prec = config.decimal_precision as usize));
+                }
+            }
+            el
+        }
+    };
 
     // Add fill attribute
     if let Some(ref fill) = path.fill {
@@ -254,6 +276,7 @@ pub fn create_rectangle(x: f32, y: f32, width: f32, height: f32, fill: Option<St
         fill,
         stroke: None,
         stroke_width: None,
+        element_type: SvgElementType::Path,
     }
 }
 
@@ -269,20 +292,14 @@ pub fn create_rectangle(x: f32, y: f32, width: f32, height: f32, fill: Option<St
 pub fn create_circle(cx: f32, cy: f32, radius: f32, fill: Option<String>) -> SvgPath {
     // Use 4 cubic Bezier curves to approximate a circle
     let kappa = 0.5522847498; // Magic number for circle approximation
-    let offset = radius * kappa;
+    let _offset = radius * kappa;
 
     SvgPath {
-        path_data: format!(
-            "M {:.2} {:.2} C {:.2} {:.2} {:.2} {:.2} {:.2} {:.2} C {:.2} {:.2} {:.2} {:.2} {:.2} {:.2} C {:.2} {:.2} {:.2} {:.2} {:.2} {:.2} C {:.2} {:.2} {:.2} {:.2} {:.2} {:.2} Z",
-            cx, cy - radius,
-            cx + offset, cy - radius, cx + radius, cy - offset, cx + radius, cy,
-            cx + radius, cy + offset, cx + offset, cy + radius, cx, cy + radius,
-            cx - offset, cy + radius, cx - radius, cy + offset, cx - radius, cy,
-            cx - radius, cy - offset, cx - offset, cy - radius, cx, cy - radius
-        ),
+        path_data: String::new(), // Not used for circles
         fill,
         stroke: None,
         stroke_width: None,
+        element_type: SvgElementType::Circle { cx, cy, r: radius },
     }
 }
 
@@ -297,6 +314,7 @@ mod tests {
             fill: Some("red".to_string()),
             stroke: None,
             stroke_width: None,
+            element_type: SvgElementType::Path,
         }];
 
         let config = SvgConfig::default();
@@ -315,6 +333,7 @@ mod tests {
             fill: Some("blue".to_string()),
             stroke: None,
             stroke_width: None,
+            element_type: SvgElementType::Path,
         }];
 
         assert!(validate_svg_paths(&valid_paths).is_ok());
@@ -324,6 +343,7 @@ mod tests {
             fill: None,
             stroke: None,
             stroke_width: None,
+            element_type: SvgElementType::Path,
         }];
 
         assert!(validate_svg_paths(&invalid_paths).is_err());
@@ -340,9 +360,16 @@ mod tests {
     #[test]
     fn test_create_circle() {
         let circle = create_circle(50.0, 50.0, 25.0, Some("yellow".to_string()));
-        assert!(circle.path_data.contains("M"));
-        assert!(circle.path_data.contains("C"));
-        assert!(circle.path_data.contains("Z"));
+        
+        if let SvgElementType::Circle { cx, cy, r } = circle.element_type {
+            assert!((cx - 50.0).abs() < 0.01);
+            assert!((cy - 50.0).abs() < 0.01);
+            assert!((r - 25.0).abs() < 0.01);
+        } else {
+            // Use assert! for test code to maintain test semantics
+            assert!(false, "Expected Circle element type");
+        }
+        
         assert_eq!(circle.fill, Some("yellow".to_string()));
     }
 

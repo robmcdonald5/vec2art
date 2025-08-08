@@ -585,12 +585,13 @@ mod tests {
 
         // The center pixel should have changed (smoothed)
         let _original_pixel = img.get_pixel(10, 10);
-        let filtered_pixel = filtered.get_pixel(10, 10);
+        let _filtered_pixel = filtered.get_pixel(10, 10);
 
         // Due to the bilateral filtering, the center pixel should be different
         // (it might be same or different depending on the filter parameters)
         // Let's just check that the filter ran without error
-        assert!(filtered_pixel[0] <= 255); // Valid pixel value
+        // u8 values are always <= 255, so this assertion is always true
+        // The test validates that filtering completes without error
     }
 
     #[test]

@@ -9,7 +9,7 @@ resolver = "2"
 [workspace.dependencies]
 # Core image processing
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
-# imageproc = "0.25"  # TODO: Add back for Suzuki-Abe implementation
+imageproc = "0.25"  # Suzuki-Abe contour tracing algorithm
 rayon = "1.8"
 nalgebra = { version = "0.33", default-features = false }
 
@@ -37,9 +37,9 @@ wee_alloc = "0.4"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [profile.release]
-# Optimize for performance
+# Optimize for performance (LTO disabled for WASM compatibility)
 opt-level = 3
-lto = true
+lto = false
 codegen-units = 1
 panic = "abort"
 

@@ -28,6 +28,48 @@ pub struct LogoConfig {
 
     /// Curve fitting error tolerance
     pub curve_tolerance: f64,
+
+    /// Whether to detect and use primitive shapes (circles, ellipses, arcs)
+    pub detect_primitives: bool,
+
+    /// Threshold for accepting primitive fits (lower = more strict)
+    pub primitive_fit_tolerance: f32,
+
+    /// Maximum eccentricity for circle detection
+    pub max_circle_eccentricity: f32,
+}
+
+impl LogoConfig {
+    /// Validate configuration for compatibility issues
+    pub fn validate(&self) -> Result<(), String> {
+        // Note: threshold is u8, so it's already limited to 0-255
+        if self.morphology_kernel_size < 1 {
+            return Err("Morphology kernel size must be at least 1".to_string());
+        }
+        if self.morphology_kernel_size > 10 {
+            return Err("Morphology kernel size should not exceed 10 for reasonable performance".to_string());
+        }
+        if self.simplification_tolerance < 0.0 {
+            return Err("Simplification tolerance must be non-negative".to_string());
+        }
+        if self.curve_tolerance < 0.0 {
+            return Err("Curve tolerance must be non-negative".to_string());
+        }
+        if self.primitive_fit_tolerance < 0.0 {
+            return Err("Primitive fit tolerance must be non-negative".to_string());
+        }
+        if self.max_circle_eccentricity < 0.0 || self.max_circle_eccentricity > 1.0 {
+            return Err("Circle eccentricity must be between 0.0 and 1.0".to_string());
+        }
+        if self.max_dimension < 32 {
+            return Err("Maximum dimension should be at least 32 pixels".to_string());
+        }
+        if self.max_dimension > 4096 {
+            return Err("Maximum dimension should not exceed 4096 pixels for reasonable performance".to_string());
+        }
+        
+        Ok(())
+    }
 }
 
 impl Default for LogoConfig {
@@ -41,8 +83,29 @@ impl Default for LogoConfig {
             simplification_tolerance: 1.0,
             fit_curves: true,
             curve_tolerance: 2.0,
+            detect_primitives: true,
+            primitive_fit_tolerance: 2.0,
+            max_circle_eccentricity: 0.15,
         }
     }
+}
+
+/// Segmentation method for regions algorithm
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum SegmentationMethod {
+    /// Traditional k-means clustering with flood-fill
+    KMeans,
+    /// SLIC superpixel segmentation
+    Slic,
+}
+
+/// Color quantization method for regions algorithm
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum QuantizationMethod {
+    /// K-means++ clustering
+    KMeans,
+    /// Wu color quantization (median cut with variance)
+    Wu,
 }
 
 /// Configuration for color regions vectorization
@@ -51,7 +114,13 @@ pub struct RegionsConfig {
     /// Maximum width/height to resize input image to (for performance)
     pub max_dimension: u32,
 
-    /// Number of colors for k-means clustering
+    /// Segmentation method to use
+    pub segmentation_method: SegmentationMethod,
+
+    /// Color quantization method to use
+    pub quantization_method: QuantizationMethod,
+
+    /// Number of colors for quantization
     pub num_colors: u32,
 
     /// Whether to use LAB color space for clustering
@@ -75,18 +144,104 @@ pub struct RegionsConfig {
     /// Curve fitting error tolerance
     pub curve_tolerance: f64,
 
+    /// Whether to detect and use primitive shapes (circles, ellipses, arcs)
+    pub detect_primitives: bool,
+
+    /// Threshold for accepting primitive fits (lower = more strict)
+    pub primitive_fit_tolerance: f32,
+
+    /// Maximum eccentricity for circle detection
+    pub max_circle_eccentricity: f32,
+
     /// Whether to merge similar adjacent regions
     pub merge_similar_regions: bool,
 
     /// Color distance threshold for region merging
     pub merge_threshold: f64,
+
+    // SLIC-specific parameters
+    /// Target region size for SLIC superpixels (approximate side length in pixels)
+    pub slic_region_size: u32,
+
+    /// SLIC compactness parameter (0-100, higher = more square regions)
+    pub slic_compactness: f32,
+
+    /// Number of SLIC iterations
+    pub slic_iterations: u32,
+
+    // Gradient detection parameters
+    /// Enable/disable gradient detection for smooth color transitions
+    pub detect_gradients: bool,
+
+    /// R² threshold for accepting gradients (0.0-1.0, higher = more strict)
+    pub gradient_r_squared_threshold: f64,
+
+    /// Maximum number of gradient stops to generate
+    pub max_gradient_stops: usize,
+
+    /// Minimum region area required for gradient analysis
+    pub min_gradient_region_area: usize,
+
+    /// Radial symmetry detection threshold for radial gradients
+    pub radial_symmetry_threshold: f64,
+}
+
+impl RegionsConfig {
+    /// Validate configuration for compatibility issues
+    pub fn validate(&self) -> Result<(), String> {
+        // Check if SLIC parameters are reasonable when SLIC is selected
+        if self.segmentation_method == SegmentationMethod::Slic {
+            if self.slic_region_size < 8 {
+                return Err("SLIC region size should be at least 8 pixels for meaningful superpixels".to_string());
+            }
+            if self.slic_region_size > self.max_dimension / 4 {
+                return Err("SLIC region size is too large relative to image size".to_string());
+            }
+            if self.slic_compactness < 0.1 || self.slic_compactness > 100.0 {
+                return Err("SLIC compactness should be between 0.1 and 100.0".to_string());
+            }
+        }
+
+        // Warn about Wu quantization with very high color counts
+        if self.quantization_method == QuantizationMethod::Wu && self.num_colors > 64 {
+            return Err("Wu quantization is most effective with 64 or fewer colors".to_string());
+        }
+
+        // Check gradient detection parameters
+        if self.detect_gradients {
+            if self.gradient_r_squared_threshold < 0.5 || self.gradient_r_squared_threshold > 1.0 {
+                return Err("Gradient R² threshold should be between 0.5 and 1.0".to_string());
+            }
+            if self.max_gradient_stops < 2 {
+                return Err("Gradient must have at least 2 stops".to_string());
+            }
+            if self.min_gradient_region_area > (self.min_region_area as usize) * 4 {
+                return Err("Gradient region area threshold should not be much larger than general region area threshold".to_string());
+            }
+        }
+
+        // Check general parameters
+        if self.num_colors < 2 {
+            return Err("Must have at least 2 colors for quantization".to_string());
+        }
+        if self.num_colors > 256 {
+            return Err("Color count should not exceed 256 for reasonable performance".to_string());
+        }
+        if self.max_iterations < 1 {
+            return Err("Must have at least 1 iteration".to_string());
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for RegionsConfig {
     fn default() -> Self {
         Self {
             max_dimension: 512,        // Reduced from 1024 for better performance
-            num_colors: 8,             // Reduced from 16 for faster k-means
+            segmentation_method: SegmentationMethod::KMeans, // Default to existing method
+            quantization_method: QuantizationMethod::Wu, // Default to Wu as recommended
+            num_colors: 16,            // Default K=16 as recommended for Wu
             use_lab_color: true,
             min_region_area: 50,       // Reduced from 100 to preserve more detail
             max_iterations: 20,        // Reduced from 100 for faster convergence
@@ -94,8 +249,21 @@ impl Default for RegionsConfig {
             simplification_tolerance: 1.0,
             fit_curves: true,
             curve_tolerance: 2.0,
+            detect_primitives: true,
+            primitive_fit_tolerance: 2.0,
+            max_circle_eccentricity: 0.15,
             merge_similar_regions: true,
-            merge_threshold: 10.0,
+            merge_threshold: 8.0,      // ΔE₀₀ < 8 as recommended for SLIC
+            // SLIC defaults from research document
+            slic_region_size: 24,      // 24 pixels as recommended
+            slic_compactness: 10.0,    // Compactness = 10 as recommended
+            slic_iterations: 7,        // 7 iterations as recommended
+            // Gradient detection defaults
+            detect_gradients: true,    // Enable gradient detection by default
+            gradient_r_squared_threshold: 0.85, // R² ≥ 0.85 as specified in requirements
+            max_gradient_stops: 8,     // Maximum gradient stops to minimize complexity
+            min_gradient_region_area: 100, // Minimum pixels for gradient analysis
+            radial_symmetry_threshold: 0.8, // Threshold for radial gradient detection
         }
     }
 }

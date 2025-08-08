@@ -23,7 +23,8 @@
       "Bash(RUST_BACKTRACE=1 cargo test -p vectorize-core test_vectorize_regions_rgba -- --nocapture)",
       "Bash(time cargo run --release --bin vectorize-cli -- logo examples/images_in/test1.png examples/outputs/test1_logo_optimized.svg)",
       "Bash(time cargo run --release --bin vectorize-cli -- regions examples/images_in/test3.png examples/outputs/test3_regions_optimized.svg)",
-      "Bash(cargo doc:*)"
+      "Bash(cargo doc:*)",
+      "Bash(RUST_BACKTRACE=1 cargo test test_regions_algorithm_edge_cases --release -- --nocapture)"
     ],
     "deny": []
   }
