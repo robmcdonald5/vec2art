@@ -77,6 +77,14 @@ enum Commands {
         /// Simplification epsilon as diagonal fraction (alternative to --simplify-px)
         #[arg(long)]
         simplify_diag_frac: Option<f64>,
+
+        /// Use stroke rendering instead of filled shapes
+        #[arg(long)]
+        use_stroke: bool,
+
+        /// Stroke width in pixels (when using stroke mode)
+        #[arg(long, default_value = "1.2")]
+        stroke_width: f32,
     },
 
     /// Vectorize using color regions algorithm  
@@ -138,6 +146,22 @@ enum Commands {
         /// Maximum number of gradient stops to generate
         #[arg(long, default_value = "8")]
         max_gradient_stops: usize,
+
+        /// LAB ΔE threshold for merging regions (lower = more strict)
+        #[arg(long, default_value = "1.8")]
+        de_merge_threshold: f64,
+
+        /// LAB ΔE threshold for splitting regions (higher = more strict)
+        #[arg(long, default_value = "3.5")]
+        de_split_threshold: f64,
+
+        /// Apply palette regularization to reduce final color count
+        #[arg(long)]
+        palette_regularization: bool,
+
+        /// Target number of colors for palette regularization
+        #[arg(long, default_value = "12")]
+        palette_regularization_k: u32,
 
         /// Simplification epsilon in pixels (or use --simplify-diag-frac for fraction)
         #[arg(long, default_value = "2.0")]
@@ -521,6 +545,8 @@ fn main() -> Result<()> {
             max_circle_eccentricity,
             simplify_px,
             simplify_diag_frac,
+            use_stroke,
+            stroke_width,
         } => vectorize_logo_command(
             input,
             output, 
@@ -532,6 +558,8 @@ fn main() -> Result<()> {
             max_circle_eccentricity,
             simplify_px,
             simplify_diag_frac,
+            use_stroke,
+            stroke_width,
         ),
         Commands::Regions {
             input,
@@ -549,6 +577,10 @@ fn main() -> Result<()> {
             detect_gradients,
             gradient_r2_threshold,
             max_gradient_stops,
+            de_merge_threshold,
+            de_split_threshold,
+            palette_regularization,
+            palette_regularization_k,
             simplify_px,
             simplify_diag_frac,
         } => vectorize_regions_command(
@@ -567,6 +599,10 @@ fn main() -> Result<()> {
             detect_gradients,
             gradient_r2_threshold,
             max_gradient_stops,
+            de_merge_threshold,
+            de_split_threshold,
+            palette_regularization,
+            palette_regularization_k,
             simplify_px,
             simplify_diag_frac,
         ),
@@ -754,6 +790,8 @@ fn vectorize_logo_command(
     max_circle_eccentricity: f32,
     simplify_px: f64,
     simplify_diag_frac: Option<f64>,
+    use_stroke: bool,
+    stroke_width: f32,
 ) -> Result<()> {
     log::info!("Loading image: {}", input.display());
     let img = image::open(&input)
@@ -773,6 +811,8 @@ fn vectorize_logo_command(
     config.detect_primitives = detect_primitives;
     config.primitive_fit_tolerance = primitive_tolerance;
     config.max_circle_eccentricity = max_circle_eccentricity;
+    config.use_stroke = use_stroke;
+    config.stroke_width = stroke_width;
     
     // Set simplification epsilon
     config.simplification_epsilon = if let Some(frac) = simplify_diag_frac {
@@ -784,11 +824,25 @@ fn vectorize_logo_command(
     log::info!("Starting logo vectorization with config: {:?}", config);
     let start_time = Instant::now();
 
-    let svg_content =
-        vectorize_logo_rgba(&img, &config).with_context(|| "Logo vectorization failed")?;
+    // Auto-retry loop for quality improvements
+    let mut retries = 0;
+    let svg_content = loop {
+        let svg_result = vectorize_logo_rgba(&img, &config)
+            .with_context(|| "Logo vectorization failed")?;
+            
+        // Calculate stats for retry logic
+        let stats = analyze_svg_output(&svg_result, img.width() * img.height())?;
+        
+        if maybe_retry_logo(&stats, &mut config, &mut retries) {
+            log::info!("Retrying logo vectorization with adjusted config (attempt {})", retries + 1);
+            continue;
+        }
+        
+        break svg_result;
+    };
 
     let elapsed = start_time.elapsed();
-    log::info!("Vectorization completed in {:.2}s", elapsed.as_secs_f64());
+    log::info!("Vectorization completed in {:.2}s with {} retries", elapsed.as_secs_f64(), retries);
 
     // Write SVG to output file
     fs::write(&output, &svg_content)
@@ -798,7 +852,7 @@ fn vectorize_logo_command(
     
     // Collect telemetry data and write dump
     write_logo_telemetry(
-        &input, &output, &img, &config, &svg_content, elapsed.as_secs_f64(), 0
+        &input, &output, &img, &config, &svg_content, elapsed.as_secs_f64(), retries
     )?;
     
     Ok(())
@@ -820,6 +874,10 @@ fn vectorize_regions_command(
     detect_gradients: bool,
     gradient_r2_threshold: f64,
     max_gradient_stops: usize,
+    de_merge_threshold: f64,
+    de_split_threshold: f64,
+    palette_regularization: bool,
+    palette_regularization_k: u32,
     simplify_px: f64,
     simplify_diag_frac: Option<f64>,
 ) -> Result<()> {
@@ -848,6 +906,10 @@ fn vectorize_regions_command(
     config.detect_gradients = detect_gradients;
     config.gradient_r_squared_threshold = gradient_r2_threshold;
     config.max_gradient_stops = max_gradient_stops;
+    config.de_merge_threshold = de_merge_threshold;
+    config.de_split_threshold = de_split_threshold;
+    config.palette_regularization = palette_regularization;
+    config.palette_regularization_k = palette_regularization_k;
     
     // Set simplification epsilon
     config.simplification_epsilon = if let Some(frac) = simplify_diag_frac {
@@ -859,11 +921,25 @@ fn vectorize_regions_command(
     log::info!("Starting regions vectorization with config: {:?}", config);
     let start_time = Instant::now();
 
-    let svg_content =
-        vectorize_regions_rgba(&img, &config).with_context(|| "Regions vectorization failed")?;
+    // Auto-retry loop for quality improvements
+    let mut retries = 0;
+    let svg_content = loop {
+        let svg_result = vectorize_regions_rgba(&img, &config)
+            .with_context(|| "Regions vectorization failed")?;
+            
+        // Calculate stats for retry logic
+        let stats = analyze_svg_output(&svg_result, img.width() * img.height())?;
+        
+        if maybe_retry_regions(&stats, &mut config, &mut retries) {
+            log::info!("Retrying regions vectorization with adjusted config (attempt {})", retries + 1);
+            continue;
+        }
+        
+        break svg_result;
+    };
 
     let elapsed = start_time.elapsed();
-    log::info!("Vectorization completed in {:.2}s", elapsed.as_secs_f64());
+    log::info!("Vectorization completed in {:.2}s with {} retries", elapsed.as_secs_f64(), retries);
 
     // Write SVG to output file
     fs::write(&output, &svg_content)
@@ -873,7 +949,7 @@ fn vectorize_regions_command(
     
     // Collect telemetry data and write dump
     write_regions_telemetry(
-        &input, &output, &img, &config, &svg_content, elapsed.as_secs_f64(), 0
+        &input, &output, &img, &config, &svg_content, elapsed.as_secs_f64(), retries
     )?;
     
     Ok(())
@@ -1013,6 +1089,8 @@ fn batch_command(
                 max_circle_eccentricity,
                 simplify_px,
                 simplify_diag_frac,
+                true,  // use_stroke default
+                1.2,   // stroke_width default
             ),
             "regions" => vectorize_regions_command(
                 image_file.clone(),
@@ -1030,6 +1108,10 @@ fn batch_command(
                 detect_gradients,
                 gradient_r2_threshold,
                 max_gradient_stops,
+                1.8,    // de_merge_threshold default
+                3.5,    // de_split_threshold default
+                true,   // palette_regularization default
+                12,     // palette_regularization_k default
                 simplify_px,
                 simplify_diag_frac,
             ),
@@ -1492,13 +1574,13 @@ fn write_regions_telemetry(
         } else {
             None
         },
-        de_merge: if config.merge_similar_regions {
-            Some(config.merge_threshold)  // Assuming this is LAB ΔE
+        de_merge: Some(config.de_merge_threshold),  // Always capture ΔE merge threshold
+        de_split: Some(config.de_split_threshold), // Always capture ΔE split threshold
+        palette_k: if config.palette_regularization {
+            Some(config.palette_regularization_k)
         } else {
-            None
+            Some(config.num_colors)
         },
-        de_split: None, // Would need to implement region splitting analysis
-        palette_k: Some(config.num_colors),
         sauvola_k: None,
         sauvola_window: None,
         morph_kernel_px: None,
@@ -1521,7 +1603,11 @@ fn write_regions_telemetry(
         "slic_step_px": config.slic_step_px,
         "slic_compactness": config.slic_compactness,
         "slic_iterations": config.slic_iterations,
-        "detect_gradients": config.detect_gradients
+        "detect_gradients": config.detect_gradients,
+        "de_merge_threshold": config.de_merge_threshold,
+        "de_split_threshold": config.de_split_threshold,
+        "palette_regularization": config.palette_regularization,
+        "palette_regularization_k": config.palette_regularization_k
     });
     
     let backend_name = match config.segmentation_method {
@@ -1589,7 +1675,6 @@ fn analyze_svg_output(svg_content: &str, _image_pixels: u32) -> Result<Stats> {
 /// Auto-retry guard system - checks for bad outputs and adjusts parameters
 // Retry guard system - ready for activation when needed
 // To activate: refactor vectorize_logo_command to loop with retry logic
-#[allow(dead_code)]
 fn maybe_retry_logo(
     stats: &Stats, 
     config: &mut LogoConfig, 
@@ -1626,7 +1711,6 @@ fn maybe_retry_logo(
 /// Auto-retry guard system for regions
 // Retry guard system - ready for activation when needed  
 // To activate: refactor vectorize_regions_command to loop with retry logic
-#[allow(dead_code)]
 fn maybe_retry_regions(
     stats: &Stats, 
     config: &mut RegionsConfig, 

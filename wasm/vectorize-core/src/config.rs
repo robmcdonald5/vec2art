@@ -117,8 +117,8 @@ impl Default for LogoConfig {
         Self {
             max_dimension: 512,        // Reduced from 1024 for better performance
             threshold: 128,
-            adaptive_threshold: false,
-            morphology_kernel_size: 2, // Reduced from 3 to minimize artifacts
+            adaptive_threshold: true,  // Enable adaptive threshold by default
+            morphology_kernel_size: 1, // Reduce from 2 to minimize artifacts
             min_contour_area: 25,      // Reduced from 50 to keep more detail
             simplification_epsilon: Epsilon::DiagFrac(0.0035), // Gentle for logos
             fit_curves: true,
@@ -126,8 +126,8 @@ impl Default for LogoConfig {
             detect_primitives: true,
             primitive_fit_tolerance: 2.0,
             max_circle_eccentricity: 0.15,
-            use_stroke: false,         // Default to fill mode
-            stroke_width: 1.0,         // Default stroke width for stroke mode
+            use_stroke: true,          // Enable stroke mode by default
+            stroke_width: 1.2,         // Better stroke width for quality
         }
     }
 }
@@ -226,6 +226,19 @@ pub struct RegionsConfig {
 
     /// Radial symmetry detection threshold for radial gradients
     pub radial_symmetry_threshold: f64,
+
+    // LAB ΔE merge/split parameters
+    /// LAB ΔE threshold for merging regions (lower = more strict)
+    pub de_merge_threshold: f64,
+
+    /// LAB ΔE threshold for splitting regions (higher = more strict)
+    pub de_split_threshold: f64,
+
+    /// Whether to apply palette regularization
+    pub palette_regularization: bool,
+
+    /// Target number of colors for palette regularization
+    pub palette_regularization_k: u32,
 }
 
 impl RegionsConfig {
@@ -281,7 +294,7 @@ impl Default for RegionsConfig {
     fn default() -> Self {
         Self {
             max_dimension: 512,        // Reduced from 1024 for better performance
-            segmentation_method: SegmentationMethod::KMeans, // Default to existing method
+            segmentation_method: SegmentationMethod::Slic, // Switch to SLIC by default
             quantization_method: QuantizationMethod::Wu, // Default to Wu as recommended
             num_colors: 16,            // Default K=16 as recommended for Wu
             use_lab_color: true,
@@ -295,7 +308,7 @@ impl Default for RegionsConfig {
             primitive_fit_tolerance: 2.0,
             max_circle_eccentricity: 0.15,
             merge_similar_regions: true,
-            merge_threshold: 2.0,      // LAB ΔE_ab < 2 for proper region merging
+            merge_threshold: 1.8,      // LAB ΔE < 1.8 for merge threshold  
             // SLIC defaults - step size in pixels (not area)
             slic_step_px: 40,          // GOOD DEFAULT @1080p (~40px step size)
             slic_compactness: 10.0,    // Compactness = 10 as recommended
@@ -306,6 +319,11 @@ impl Default for RegionsConfig {
             max_gradient_stops: 8,     // Maximum gradient stops to minimize complexity
             min_gradient_region_area: 100, // Minimum pixels for gradient analysis
             radial_symmetry_threshold: 0.8, // Threshold for radial gradient detection
+            // LAB ΔE merge/split defaults
+            de_merge_threshold: 1.8,     // LAB ΔE threshold for merging regions
+            de_split_threshold: 3.5,     // LAB ΔE threshold for splitting regions  
+            palette_regularization: true, // Enable palette regularization by default
+            palette_regularization_k: 12, // Target 10-16 colors after regularization
         }
     }
 }

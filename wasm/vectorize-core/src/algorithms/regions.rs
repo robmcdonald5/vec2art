@@ -2652,6 +2652,428 @@ fn sort_contours_by_z_order(contours: &HashMap<usize, Contour>) -> Vec<(usize, &
     contours_with_areas
 }
 
+/// Enhanced region merging/splitting logic based on LAB ΔE thresholds
+pub fn enhanced_region_merge_split(
+    region_map: HashMap<u32, Vec<(usize, usize)>>,
+    quantized: &[Color],
+    dimensions: (u32, u32),
+    config: &RegionsConfig,
+) -> VectorizeResult<HashMap<u32, Vec<(usize, usize)>>> {
+    log::debug!("Starting enhanced region merge/split with ΔE merge={:.1}, split={:.1}", 
+               config.de_merge_threshold, config.de_split_threshold);
+    
+    let mut regions = region_map;
+    let (width, _height) = dimensions;
+    
+    // Step 1: Split regions that have high internal ΔE variance
+    regions = split_high_variance_regions(regions, quantized, width, config)?;
+    
+    // Step 2: Merge adjacent regions with low ΔE differences
+    regions = merge_similar_adjacent_regions(regions, quantized, width, config)?;
+    
+    log::debug!("Enhanced merge/split completed: {} final regions", regions.len());
+    Ok(regions)
+}
+
+/// Split regions that have high internal color variance (ΔE > split threshold)
+fn split_high_variance_regions(
+    mut regions: HashMap<u32, Vec<(usize, usize)>>,
+    quantized: &[Color],
+    width: u32,
+    config: &RegionsConfig,
+) -> VectorizeResult<HashMap<u32, Vec<(usize, usize)>>> {
+    let split_threshold = config.de_split_threshold;
+    let mut next_region_id = regions.keys().max().unwrap_or(&0) + 1;
+    let mut regions_to_split = Vec::new();
+    
+    // Identify regions that need splitting
+    for (&region_id, pixels) in &regions {
+        if should_split_region(pixels, quantized, width, split_threshold) {
+            regions_to_split.push(region_id);
+        }
+    }
+    
+    log::debug!("Splitting {} regions with high internal ΔE variance", regions_to_split.len());
+    
+    // Split the identified regions
+    for region_id in regions_to_split {
+        if let Some(pixels) = regions.remove(&region_id) {
+            let split_regions = split_region_by_color_variance(&pixels, quantized, width, split_threshold);
+            
+            for (i, split_pixels) in split_regions.into_iter().enumerate() {
+                if !split_pixels.is_empty() {
+                    if i == 0 {
+                        // Reuse the original region ID for the first split
+                        regions.insert(region_id, split_pixels);
+                    } else {
+                        // Create new region IDs for additional splits
+                        regions.insert(next_region_id, split_pixels);
+                        next_region_id += 1;
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(regions)
+}
+
+/// Check if a region should be split based on internal color variance
+fn should_split_region(pixels: &[(usize, usize)], quantized: &[Color], width: u32, split_threshold: f64) -> bool {
+    if pixels.len() < 10 {
+        return false; // Don't split very small regions
+    }
+    
+    let max_delta_e = calculate_max_internal_delta_e(pixels, quantized, width);
+    max_delta_e > split_threshold
+}
+
+/// Calculate the maximum internal ΔE within a region
+fn calculate_max_internal_delta_e(pixels: &[(usize, usize)], quantized: &[Color], width: u32) -> f64 {
+    let mut max_delta_e: f64 = 0.0;
+    
+    // Sample pixels if region is very large (performance optimization)
+    let sample_pixels: Vec<_> = if pixels.len() > 100 {
+        pixels.iter().step_by(pixels.len() / 50).cloned().collect()
+    } else {
+        pixels.to_vec()
+    };
+    
+    for &(x1, y1) in &sample_pixels {
+        for &(x2, y2) in &sample_pixels {
+            if x1 == x2 && y1 == y2 { continue; }
+            
+            let idx1 = (y1 * width as usize + x1) as usize;
+            let idx2 = (y2 * width as usize + x2) as usize;
+            
+            if idx1 < quantized.len() && idx2 < quantized.len() {
+                let delta_e = quantized[idx1].distance(&quantized[idx2]) as f64;
+                max_delta_e = max_delta_e.max(delta_e);
+            }
+        }
+    }
+    
+    max_delta_e
+}
+
+/// Split a region by clustering pixels based on color similarity
+fn split_region_by_color_variance(
+    pixels: &[(usize, usize)], 
+    quantized: &[Color], 
+    width: u32,
+    split_threshold: f64
+) -> Vec<Vec<(usize, usize)>> {
+    // Extract colors for the pixels in this region
+    let region_colors: Vec<Color> = pixels.iter()
+        .map(|&(x, y)| {
+            let idx = (y * width as usize + x) as usize;
+            quantized.get(idx).copied().unwrap_or(Color::Rgb(0, 0, 0))
+        })
+        .collect();
+    
+    // Simple 2-way clustering based on color distance
+    if region_colors.len() < 2 {
+        return vec![pixels.to_vec()];
+    }
+    
+    // Find the two most different colors as initial centroids
+    let mut max_distance = 0.0;
+    let mut centroid1_idx = 0;
+    let mut centroid2_idx = 1;
+    
+    for i in 0..region_colors.len() {
+        for j in i+1..region_colors.len() {
+            let distance = region_colors[i].distance(&region_colors[j]) as f64;
+            if distance > max_distance {
+                max_distance = distance;
+                centroid1_idx = i;
+                centroid2_idx = j;
+            }
+        }
+    }
+    
+    // If colors are too similar, don't split
+    if max_distance < split_threshold {
+        return vec![pixels.to_vec()];
+    }
+    
+    let centroid1 = region_colors[centroid1_idx];
+    let centroid2 = region_colors[centroid2_idx];
+    
+    // Assign pixels to clusters
+    let mut cluster1 = Vec::new();
+    let mut cluster2 = Vec::new();
+    
+    for (i, &pixel) in pixels.iter().enumerate() {
+        let color = region_colors[i];
+        let dist1 = color.distance(&centroid1);
+        let dist2 = color.distance(&centroid2);
+        
+        if dist1 <= dist2 {
+            cluster1.push(pixel);
+        } else {
+            cluster2.push(pixel);
+        }
+    }
+    
+    // Return non-empty clusters
+    let mut result = Vec::new();
+    if !cluster1.is_empty() { result.push(cluster1); }
+    if !cluster2.is_empty() { result.push(cluster2); }
+    
+    result
+}
+
+/// Merge adjacent regions with LAB ΔE below merge threshold
+fn merge_similar_adjacent_regions(
+    mut regions: HashMap<u32, Vec<(usize, usize)>>,
+    quantized: &[Color],
+    width: u32,
+    config: &RegionsConfig,
+) -> VectorizeResult<HashMap<u32, Vec<(usize, usize)>>> {
+    let merge_threshold = config.de_merge_threshold;
+    let mut changed = true;
+    
+    while changed {
+        changed = false;
+        let region_ids: Vec<u32> = regions.keys().cloned().collect();
+        
+        for &region1_id in &region_ids {
+            if !regions.contains_key(&region1_id) { continue; }
+            
+            for &region2_id in &region_ids {
+                if region1_id >= region2_id || !regions.contains_key(&region2_id) { continue; }
+                
+                // Check if regions should be merged
+                if should_merge_regions(&regions[&region1_id], &regions[&region2_id], quantized, width, merge_threshold) {
+                    // Merge region2 into region1
+                    let region2_pixels = regions.remove(&region2_id).unwrap();
+                    if let Some(region1_pixels) = regions.get_mut(&region1_id) {
+                        region1_pixels.extend(region2_pixels);
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+            
+            if changed { break; }
+        }
+    }
+    
+    log::debug!("Region merging completed: {} regions remain", regions.len());
+    Ok(regions)
+}
+
+/// Check if two regions should be merged based on LAB ΔE and adjacency
+fn should_merge_regions(
+    region1: &[(usize, usize)], 
+    region2: &[(usize, usize)],
+    quantized: &[Color], 
+    width: u32,
+    merge_threshold: f64
+) -> bool {
+    // Check if regions are adjacent
+    if !are_regions_adjacent(region1, region2) {
+        return false;
+    }
+    
+    // Calculate representative colors for each region
+    let color1 = calculate_region_representative_color(region1, quantized, width);
+    let color2 = calculate_region_representative_color(region2, quantized, width);
+    
+    // Check ΔE distance
+    let delta_e = color1.distance(&color2) as f64;
+    delta_e < merge_threshold
+}
+
+/// Check if two regions are adjacent (share a boundary)
+fn are_regions_adjacent(region1: &[(usize, usize)], region2: &[(usize, usize)]) -> bool {
+    // Simple adjacency check - could be optimized with spatial indexing
+    for &(x1, y1) in region1 {
+        for &(x2, y2) in region2 {
+            let dx = (x1 as i32 - x2 as i32).abs();
+            let dy = (y1 as i32 - y2 as i32).abs();
+            
+            // Adjacent if within 8-connected neighborhood
+            if dx <= 1 && dy <= 1 && !(dx == 0 && dy == 0) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Calculate representative color for a region (medoid color)
+fn calculate_region_representative_color(pixels: &[(usize, usize)], quantized: &[Color], width: u32) -> Color {
+    if pixels.is_empty() {
+        return Color::Rgb(0, 0, 0);
+    }
+    
+    // Extract colors for the region
+    let region_colors: Vec<Color> = pixels.iter()
+        .map(|&(x, y)| {
+            let idx = (y * width as usize + x) as usize;
+            quantized.get(idx).copied().unwrap_or(Color::Rgb(0, 0, 0))
+        })
+        .collect();
+    
+    // Find medoid (color with minimum average distance to all others)
+    let mut best_color = region_colors[0];
+    let mut min_total_distance = f32::INFINITY;
+    
+    for &candidate in &region_colors {
+        let total_distance: f32 = region_colors.iter()
+            .map(|&other| candidate.distance(&other))
+            .sum();
+        
+        if total_distance < min_total_distance {
+            min_total_distance = total_distance;
+            best_color = candidate;
+        }
+    }
+    
+    best_color
+}
+
+/// Apply palette regularization to reduce final color count
+pub fn regularize_palette(
+    regions: HashMap<u32, Vec<(usize, usize)>>,
+    quantized: &[Color],
+    width: u32,
+    target_colors: usize
+) -> VectorizeResult<(HashMap<u32, Vec<(usize, usize)>>, Vec<Color>)> {
+    log::debug!("Starting palette regularization: {} regions -> {} target colors", regions.len(), target_colors);
+    
+    // Step 1: Extract representative colors from regions (medoids)
+    let medoids: Vec<Color> = regions.values()
+        .map(|pixels| calculate_region_representative_color(pixels, quantized, width))
+        .collect();
+    
+    // Step 2: K-means cluster medoids to target_colors
+    let centroids = kmeans_cluster_colors(&medoids, target_colors)?;
+    
+    // Step 3: Merge regions assigned to the same centroid
+    let region_assignments = assign_regions_to_centroids(&regions, quantized, width, &centroids);
+    let merged_regions = merge_regions_by_assignment(regions, region_assignments);
+    
+    log::debug!("Palette regularization completed: {} final regions", merged_regions.len());
+    Ok((merged_regions, centroids))
+}
+
+/// Cluster colors using K-means
+fn kmeans_cluster_colors(colors: &[Color], k: usize) -> VectorizeResult<Vec<Color>> {
+    if colors.is_empty() || k == 0 {
+        return Ok(Vec::new());
+    }
+    
+    if k >= colors.len() {
+        return Ok(colors.to_vec());
+    }
+    
+    // Convert to LAB for clustering
+    let lab_colors: Vec<(f32, f32, f32)> = colors.iter().map(|c| c.to_lab()).collect();
+    
+    // Initialize centroids using k-means++
+    let mut centroids = initialize_centroids_kmeans_plus_plus(&lab_colors, k);
+    
+    // Perform k-means iterations
+    for _ in 0..20 { // Max iterations
+        let mut new_centroids = vec![(0.0f32, 0.0f32, 0.0f32); k];
+        let mut counts = vec![0; k];
+        let mut changed = false;
+        
+        // Assign points to nearest centroid
+        for &color in &lab_colors {
+            let mut min_distance = f32::INFINITY;
+            let mut best_centroid = 0;
+            
+            for (i, &centroid) in centroids.iter().enumerate() {
+                let distance = lab_distance(color, centroid);
+                if distance < min_distance {
+                    min_distance = distance;
+                    best_centroid = i;
+                }
+            }
+            
+            new_centroids[best_centroid].0 += color.0;
+            new_centroids[best_centroid].1 += color.1;
+            new_centroids[best_centroid].2 += color.2;
+            counts[best_centroid] += 1;
+        }
+        
+        // Update centroids
+        for i in 0..k {
+            if counts[i] > 0 {
+                new_centroids[i].0 /= counts[i] as f32;
+                new_centroids[i].1 /= counts[i] as f32;
+                new_centroids[i].2 /= counts[i] as f32;
+                
+                if lab_distance(centroids[i], new_centroids[i]) > 1.0 {
+                    changed = true;
+                }
+                centroids[i] = new_centroids[i];
+            }
+        }
+        
+        if !changed { break; }
+    }
+    
+    Ok(centroids.into_iter().map(|(l, a, b)| Color::Lab(l, a, b)).collect())
+}
+
+/// Assign regions to nearest color centroids
+fn assign_regions_to_centroids(
+    regions: &HashMap<u32, Vec<(usize, usize)>>,
+    quantized: &[Color],
+    width: u32,
+    centroids: &[Color]
+) -> HashMap<u32, usize> {
+    let mut assignments = HashMap::new();
+    
+    for (&region_id, pixels) in regions {
+        let region_color = calculate_region_representative_color(pixels, quantized, width);
+        
+        let mut min_distance = f32::INFINITY;
+        let mut best_centroid = 0;
+        
+        for (i, centroid) in centroids.iter().enumerate() {
+            let distance = region_color.distance(centroid);
+            if distance < min_distance {
+                min_distance = distance;
+                best_centroid = i;
+            }
+        }
+        
+        assignments.insert(region_id, best_centroid);
+    }
+    
+    assignments
+}
+
+/// Merge regions assigned to the same centroid
+fn merge_regions_by_assignment(
+    regions: HashMap<u32, Vec<(usize, usize)>>,
+    assignments: HashMap<u32, usize>
+) -> HashMap<u32, Vec<(usize, usize)>> {
+    let mut merged = HashMap::new();
+    let mut centroid_to_region_id = HashMap::new();
+    let mut next_id = 0u32;
+    
+    for (region_id, pixels) in regions {
+        let centroid_id = assignments.get(&region_id).copied().unwrap_or(0);
+        
+        let merged_region_id = *centroid_to_region_id.entry(centroid_id).or_insert_with(|| {
+            let id = next_id;
+            next_id += 1;
+            id
+        });
+        
+        merged.entry(merged_region_id).or_insert_with(Vec::new).extend(pixels);
+    }
+    
+    merged
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

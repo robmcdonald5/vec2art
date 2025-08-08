@@ -517,6 +517,11 @@ impl From<WasmRegionsConfig> for RegionsConfig {
             max_gradient_stops: wasm_config.max_gradient_stops as usize,
             min_gradient_region_area: wasm_config.min_gradient_region_area as usize,
             radial_symmetry_threshold: wasm_config.radial_symmetry_threshold,
+            // LAB ΔE parameters - use sensible defaults for WASM
+            de_merge_threshold: 1.8,
+            de_split_threshold: 3.5,
+            palette_regularization: true,
+            palette_regularization_k: 12,
         }
     }
 }

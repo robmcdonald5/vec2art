@@ -769,6 +769,79 @@ fn calculate_contour_area(contour: &[Point]) -> f32 {
     (area / 2.0).abs()
 }
 
+/// Calculate perimeter of a contour
+fn calculate_perimeter(contour: &[Point]) -> f64 {
+    if contour.len() < 2 {
+        return 0.0;
+    }
+    
+    let mut perimeter = 0.0;
+    for i in 0..contour.len() {
+        let j = (i + 1) % contour.len();
+        let dx = (contour[j].x - contour[i].x) as f64;
+        let dy = (contour[j].y - contour[i].y) as f64;
+        perimeter += (dx * dx + dy * dy).sqrt();
+    }
+    perimeter
+}
+
+/// Calculate solidity (area / convex hull area) of a contour
+fn calculate_solidity(contour: &[Point], area: f64) -> f64 {
+    if contour.len() < 3 {
+        return 1.0;
+    }
+    
+    // Simple convex hull area approximation using bounding box
+    let mut min_x = f32::INFINITY;
+    let mut max_x = f32::NEG_INFINITY;
+    let mut min_y = f32::INFINITY;
+    let mut max_y = f32::NEG_INFINITY;
+    
+    for point in contour {
+        min_x = min_x.min(point.x);
+        max_x = max_x.max(point.x);
+        min_y = min_y.min(point.y);
+        max_y = max_y.max(point.y);
+    }
+    
+    let bbox_area = ((max_x - min_x) * (max_y - min_y)) as f64;
+    if bbox_area > 0.0 {
+        area / bbox_area
+    } else {
+        1.0
+    }
+}
+
+/// Classify contour as stroke-like or fill-like based on geometry
+fn classify_contour_as_stroke(contour: &[Point], area: f64) -> bool {
+    if contour.len() < 3 {
+        return true; // Treat degenerate contours as strokes
+    }
+    
+    let perimeter = calculate_perimeter(contour);
+    let solidity = calculate_solidity(contour, area);
+    
+    // Thinness ratio: 4πA/P² (circle = 1, thin shapes → 0)
+    let thinness = if perimeter > 0.0 {
+        (4.0 * std::f64::consts::PI * area) / (perimeter * perimeter)
+    } else {
+        0.0
+    };
+    
+    // Classify as stroke if:
+    // - Low solidity (not filling its bounding box well)
+    // - Very thin (low thinness ratio)
+    // - Small area (likely noise/thin features)
+    let is_stroke = solidity < 0.4 || thinness < 0.15 || area < 100.0;
+    
+    log::debug!(
+        "Contour classification: area={:.1}, perimeter={:.1}, solidity={:.3}, thinness={:.3} -> {}",
+        area, perimeter, solidity, thinness, if is_stroke { "stroke" } else { "fill" }
+    );
+    
+    is_stroke
+}
+
 /// Simplify contours using Douglas-Peucker algorithm
 fn simplify_contours(contours: &[Contour], tolerance: f64) -> VectorizeResult<Vec<Contour>> {
     use crate::algorithms::path_utils::douglas_peucker_simplify;
@@ -820,7 +893,7 @@ fn fit_cubic_bezier_schneider(points: &[Point], tolerance: f32, config: &LogoCon
         // Simple line
         let path_data = format!("M {:.2} {:.2} L {:.2} {:.2} Z", 
             points[0].x, points[0].y, points[1].x, points[1].y);
-        return create_styled_svg_path(path_data, config);
+        return create_classified_svg_path(path_data, points, config);
     }
     
     // Use Schneider algorithm with recommended defaults
@@ -833,7 +906,7 @@ fn fit_cubic_bezier_schneider(points: &[Point], tolerance: f32, config: &LogoCon
     let mut path_data = fitting_results_to_svg_path(&fitting_results, points[0]);
     path_data.push_str(" Z"); // Close the path
     
-    create_styled_svg_path(path_data, config)
+    create_classified_svg_path(path_data, points, config)
 }
 
 // LEGACY IMPLEMENTATION - Kept for rollback capability
@@ -1063,7 +1136,7 @@ fn is_binary_degenerate(binary: &[bool]) -> bool {
     binary.iter().all(|&b| b == first_value)
 }
 
-/// Create SVG path with appropriate fill/stroke based on configuration
+/// Create SVG path with appropriate fill/stroke based on configuration and contour classification
 fn create_styled_svg_path(path_data: String, config: &LogoConfig) -> SvgPath {
     if config.use_stroke {
         SvgPath {
@@ -1076,6 +1149,32 @@ fn create_styled_svg_path(path_data: String, config: &LogoConfig) -> SvgPath {
     } else {
         SvgPath {
             path_data,
+            fill: Some("black".to_string()),
+            stroke: None,
+            stroke_width: None,
+            element_type: SvgElementType::Path,
+        }
+    }
+}
+
+/// Create SVG path with contour-specific styling based on stroke vs fill classification
+fn create_classified_svg_path(path_data: String, contour: &[Point], config: &LogoConfig) -> SvgPath {
+    let area = calculate_contour_area(contour) as f64;
+    let use_stroke_for_contour = classify_contour_as_stroke(contour, area);
+    
+    if config.use_stroke || use_stroke_for_contour {
+        // Render as stroke with proper line caps and joins
+        SvgPath {
+            path_data,
+            fill: None,
+            stroke: Some("black".to_string()),
+            stroke_width: Some(config.stroke_width),
+            element_type: SvgElementType::Path,
+        }
+    } else {
+        // Render as filled path with proper fill rule for holes
+        SvgPath {
+            path_data: format!("{}", path_data), // Could add fill-rule="evenodd" to path_data
             fill: Some("black".to_string()),
             stroke: None,
             stroke_width: None,
@@ -1176,7 +1275,7 @@ fn convert_to_svg_paths(contours: &[Contour], config: &LogoConfig) -> Vec<SvgPat
 
             path_data.push_str(" Z"); // Close path
 
-            Some(create_styled_svg_path(path_data, config))
+            Some(create_classified_svg_path(path_data, contour, config))
         })
         .collect()
 }

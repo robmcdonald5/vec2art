@@ -34,6 +34,17 @@ if not exist "%IMAGE_DIR%" (
 echo [OK] Working directory confirmed
 echo [OK] Image directory found: %IMAGE_DIR%
 
+:: Count and list all available images
+set /a IMAGE_COUNT=0
+echo [INFO] Available images:
+for %%F in ("%IMAGE_DIR%\*.png" "%IMAGE_DIR%\*.jpg" "%IMAGE_DIR%\*.jpeg" "%IMAGE_DIR%\*.webp") do (
+    if exist "%%F" (
+        set /a IMAGE_COUNT+=1
+        echo   - %%~nxF
+    )
+)
+echo [INFO] Found !IMAGE_COUNT! images to test
+
 :: Build project
 echo [INFO] Building project in release mode...
 cargo build --release --bin vectorize-cli > build.log 2>&1
@@ -64,7 +75,7 @@ echo  TESTING ALGORITHMS
 echo ================================================================================
 
 :: Test each image
-for %%F in ("%IMAGE_DIR%\*.png" "%IMAGE_DIR%\*.jpg") do (
+for %%F in ("%IMAGE_DIR%\*.png" "%IMAGE_DIR%\*.jpg" "%IMAGE_DIR%\*.jpeg" "%IMAGE_DIR%\*.webp") do (
     if exist "%%F" (
         set "IMAGE_NAME=%%~nF"
         set "IMAGE_PATH=%%F"
