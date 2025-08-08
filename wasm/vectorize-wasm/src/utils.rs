@@ -6,10 +6,10 @@ use wasm_bindgen::prelude::*;
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
-    
+
     #[wasm_bindgen(js_namespace = console)]
     fn time(s: &str);
-    
+
     #[wasm_bindgen(js_namespace = console)]
     fn timeEnd(s: &str);
 }

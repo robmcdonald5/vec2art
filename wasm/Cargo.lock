@@ -937,6 +937,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "env_logger",
+ "fastrand",
  "image",
  "log",
  "nalgebra",

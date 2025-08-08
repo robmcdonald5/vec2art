@@ -17,9 +17,9 @@ This document tracks the development plan for a high-performance, *browser-execu
 
 ---
 
-## Phase 1: Native Core Development ✅ (Core Structure Complete)
+## Phase 1: Native Core Development ✅ (Functionally Complete)
 
-> **Status Update (Aug 7, 2025)**: Core workspace structure and placeholder implementations are complete. All three crates (`vectorize-core`, `vectorize-cli`, `vectorize-wasm`) are set up with proper module organization and compilation infrastructure. Next steps involve implementing the actual algorithms and adding comprehensive testing.
+> **Status Update (Aug 8, 2025)**: Phase 1 is functionally complete with working algorithms and significant performance optimizations. All three crates are implemented with actual algorithm logic (not placeholders). Logo algorithm has functional but problematic Moore neighborhood contour tracing that causes infinite loops on complex images. Regions algorithm achieved dramatic performance improvements from 50-130s to <1s processing time through optimized k-means and unified preprocessing. CLI is fully functional with proper argument parsing. Ready for Phase 1.5 contour tracing algorithm replacement.
 
 ### Workspace & Tooling
 - [x] Initialize Cargo **workspace** under `wasm/` with members: `vectorize-core`, `vectorize-cli`, `vectorize-wasm`
@@ -36,24 +36,25 @@ This document tracks the development plan for a high-performance, *browser-execu
   - [x] Thresholding (Otsu + adaptive)
   - [x] Morphology (open/close)
   - [x] Connected components filtering
-- [x] **Algorithms** (placeholder implementations)
-  - [x] **Logo/Line-Art:** threshold → morphology → contour tracing
-  - [x] **Color Regions:** k-means in Lab (K=16–32), region labeling/merging
+- [x] **Algorithms** (functional implementations)
+  - [x] **Logo/Line-Art:** threshold → morphology → contour tracing (⚠️ Moore neighborhood infinite loop issues)
+  - [x] **Color Regions:** parallel k-means in Lab (K=16–32), optimized from 50-130s to <1s processing
   - [ ] **Quantization** Median cut quantization
   - [ ] **SLIC** SLIC superpixels (+ merge small/adjacent regions)
   - [ ] **Edge/Centerline:** Canny → thinning/skeleton → centerline paths
-- [x] **Curves & Paths** (placeholder implementations)
-  - [x] Ramer-Douglas-Peucker (RDP) simplification
-  - [x] Visvalingam-Whyatt simplification
+- [x] **Curves & Paths** (functional implementations)
+  - [x] Ramer-Douglas-Peucker (RDP) simplification with configurable epsilon
+  - [x] Visvalingam-Whyatt simplification with area thresholds
   - [x] Piecewise **cubic Bézier** fitting (error-bounded)
-- [x] **SVG Builder** (placeholder implementations)
-  - [x] Path/shape emitter; even-odd fill for holes
-  - [x] Path optimization (coordinate rounding, node/area limits)
-  - [x] Draw-order sorting (area/luminance)
+- [x] **SVG Builder** (functional implementations)
+  - [x] Path/shape emitter with proper even-odd fill for holes
+  - [x] Path optimization with coordinate rounding and area limits
+  - [x] Draw-order sorting by area and luminance
 
 ### CLI Crate: `vectorize-cli`
 - [x] Commands: `convert`, `batch`, `benchmark`
-- [x] Read images (via `image`), write SVGs; configurable params
+- [x] Read images (via `image`), write SVGs with full parameter support
+- [x] **Positional argument parsing** (input.png output.svg --mode logo)
 - [ ] **Snapshot tests** (golden SVGs) with `insta`
 - [x] **Benches** with `criterion` on a small, fixed corpus
 
@@ -62,16 +63,38 @@ This document tracks the development plan for a high-performance, *browser-execu
 - [ ] **Golden SVG** snapshots (diff on PR)
 - [ ] SVG validity checks by parsing with `usvg` and rasterizing with `resvg` (smoke tests)
 - [x] Determinism: fixed seeds for k-means / sampling
+- [x] **Performance benchmarking**: Regions algorithm optimized from 50-130s to <1s
+
+---
+
+## Phase 1.5: Critical Algorithm Fixes 🔧 (Suzuki-Abe Implementation)
+
+> **Priority**: CRITICAL - Must be completed before Phase 2 to ensure production-ready logo algorithm
+
+### Issue Resolution
+- [x] **Identified Problem**: Moore neighborhood contour tracing causes infinite loops on complex/real images (300+ warnings)
+- [x] **Research Completed**: 4 specialized research agents analyzed alternatives and implementation approaches
+- [ ] **Implement Suzuki-Abe**: Replace Moore neighborhood with industry-standard Suzuki-Abe algorithm via `imageproc` crate
+- [ ] **Integration Testing**: Verify infinite loop resolution on problematic test cases
+- [ ] **Performance Validation**: Ensure Suzuki-Abe maintains or improves performance vs Moore neighborhood
+- [ ] **Algorithm Comparison**: Document performance and quality differences between approaches
+
+### Research Findings Summary
+- **Suzuki-Abe Algorithm**: Industry standard for contour detection, handles complex topologies, no infinite loop issues
+- **imageproc Integration**: `find_contours_with_threshold()` provides direct drop-in replacement
+- **Expected Benefits**: Eliminates infinite loops, handles holes correctly, maintains performance
+- **Implementation Path**: Replace Moore neighborhood in `algorithms/logo_mode.rs` with imageproc call
 
 ---
 
 ## Phase 2: WASM Integration 🔮 (CPU-only)
 
 ### Crate: `vectorize-wasm`
-- [ ] `wasm-bindgen` wrapper (export minimal functions)
-- [ ] Zero-copy I/O (accept `Uint8Array`/`ImageData` memory view once)
-- [ ] Build with `+simd128` target feature (when available)
-- [ ] **Threads:** integrate `wasm-bindgen-rayon` and thread-pool init
+- [x] `wasm-bindgen` wrapper with functional exports
+- [x] Zero-copy I/O infrastructure (accept `Uint8Array`/`ImageData`)
+- [x] Build configuration with `+simd128` target feature
+- [x] **Threads:** `wasm-bindgen-rayon` integration structure ready
+- [ ] **Production Testing**: End-to-end browser testing with actual images
 
 ### Browser Requirements
 - [ ] Add **COOP/COEP** headers so `SharedArrayBuffer` & threads work
@@ -145,21 +168,44 @@ This document tracks the development plan for a high-performance, *browser-execu
 
 ## Known Issues & Bugs 🐛
 
-- _None recorded yet_
+### Critical Issues
+- **Moore Neighborhood Infinite Loops**: Logo algorithm experiences infinite loops on complex real-world images
+  - **Symptoms**: 300+ "cannot trace boundary" warnings, processing hangs
+  - **Root Cause**: Moore neighborhood algorithm fails on complex topologies
+  - **Solution**: Replace with Suzuki-Abe algorithm via imageproc (Phase 1.5)
+  - **Status**: Research complete, implementation pending
+
+### Performance Notes
+- **Regions Algorithm**: Successfully optimized from 50-130s to <1s processing time
+- **Image Standardization**: All images processed at max 512x512 for consistent performance
+- **Parallel K-means**: Significant speedup achieved through proper parallelization
 
 ---
 
 ## Future Considerations 💭
 
-- ML-assisted vectorization
-- Plugin system for custom passes
-- Cloud processing option for very large files
-- MCP server possibility
+### Algorithm Enhancements
+- **Alternative Contour Algorithms**: Explore Moore neighborhood variants or hybrid approaches
+- **Advanced Preprocessing**: Research adaptive preprocessing based on image content analysis
+- **ML-assisted vectorization**: Explore neural network approaches for specific use cases
+
+### Architecture Extensions
+- **Plugin system** for custom algorithm passes
+- **Cloud processing** option for very large files
+- **MCP server** possibility for external integrations
+- **GPU acceleration** as optional enhancement (Phase 4+)
 
 ---
 
 ## Notes
 
-- Prioritize **Phase 1** for stable, fast algorithms before WASM polish.
+### Development Priorities
+- **Phase 1.5 is CRITICAL**: Must resolve contour tracing infinite loops before proceeding to Phase 2
+- **Suzuki-Abe Integration**: Well-researched solution with clear implementation path
 - Keep params/data structures identical between native & WASM.
 - Document hosting requirements for cross-origin isolation (threads).
+
+### Performance Achievements
+- **Regions algorithm**: 50-130s → <1s processing time (50-130x improvement)
+- **Unified preprocessing**: Consistent image standardization at 512x512
+- **Parallel k-means**: Proper multi-threading implementation

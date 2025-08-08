@@ -9,6 +9,7 @@ resolver = "2"
 [workspace.dependencies]
 # Core image processing
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+imageproc = { version = "0.25", default-features = false, features = ["contours"] }
 rayon = "1.8"
 nalgebra = { version = "0.33", default-features = false }
 

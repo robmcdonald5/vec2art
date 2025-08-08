@@ -9,6 +9,7 @@ repository = "https://github.com/your-org/vec2art"
 [dependencies]
 # Core image processing
 image = { workspace = true }
+imageproc = { workspace = true }
 rayon = { workspace = true }
 nalgebra = { workspace = true }
 
@@ -21,6 +22,7 @@ serde = { workspace = true }
 
 # Utilities
 log = { workspace = true }
+fastrand = "2.0"
 
 [dev-dependencies]
 criterion = { workspace = true }

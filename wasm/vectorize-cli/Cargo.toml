@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/your-org/vec2art"
 
 [[bin]]
-name = "vectorize"
+name = "vectorize-cli"
 path = "src/main.rs"
 
 [dependencies]

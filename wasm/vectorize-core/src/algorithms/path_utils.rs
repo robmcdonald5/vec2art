@@ -1,6 +1,6 @@
 //! Path manipulation utilities for vectorization algorithms
 
-use crate::algorithms::logo::{Point, Contour};
+use crate::algorithms::logo::Point;
 
 /// Douglas-Peucker path simplification algorithm
 ///
@@ -17,7 +17,7 @@ pub fn douglas_peucker_simplify(points: &[Point], tolerance: f64) -> Vec<Point> 
     if points.len() <= 2 {
         return points.to_vec();
     }
-    
+
     let tolerance_sq = tolerance * tolerance;
     simplify_recursive(points, 0, points.len() - 1, tolerance_sq)
 }
@@ -26,11 +26,11 @@ fn simplify_recursive(points: &[Point], start: usize, end: usize, tolerance_sq: 
     if end <= start + 1 {
         return vec![points[start], points[end]];
     }
-    
+
     // Find the point with maximum distance from line segment
     let mut max_distance_sq = 0.0;
     let mut max_index = start;
-    
+
     for i in start + 1..end {
         let distance_sq = perpendicular_distance_squared(&points[i], &points[start], &points[end]);
         if distance_sq > max_distance_sq {
@@ -38,7 +38,7 @@ fn simplify_recursive(points: &[Point], start: usize, end: usize, tolerance_sq: 
             max_index = i;
         }
     }
-    
+
     if max_distance_sq <= tolerance_sq {
         // All points are within tolerance, return line segment
         vec![points[start], points[end]]
@@ -46,7 +46,7 @@ fn simplify_recursive(points: &[Point], start: usize, end: usize, tolerance_sq: 
         // Recursively simplify both segments
         let mut left = simplify_recursive(points, start, max_index, tolerance_sq);
         let right = simplify_recursive(points, max_index, end, tolerance_sq);
-        
+
         // Merge results (remove duplicate middle point)
         left.pop();
         left.extend(right);
@@ -58,17 +58,17 @@ fn simplify_recursive(points: &[Point], start: usize, end: usize, tolerance_sq: 
 fn perpendicular_distance_squared(point: &Point, line_start: &Point, line_end: &Point) -> f64 {
     let dx = line_end.x - line_start.x;
     let dy = line_end.y - line_start.y;
-    
+
     if dx == 0.0 && dy == 0.0 {
         // Degenerate line segment, return distance to point
         let pdx = point.x - line_start.x;
         let pdy = point.y - line_start.y;
         return (pdx * pdx + pdy * pdy) as f64;
     }
-    
+
     let length_sq = (dx * dx + dy * dy) as f64;
     let t = ((point.x - line_start.x) * dx + (point.y - line_start.y) * dy) as f64 / length_sq;
-    
+
     if t < 0.0 {
         // Point projects before line start
         let pdx = point.x - line_start.x;
@@ -104,17 +104,17 @@ pub fn visvalingam_whyatt_simplify(points: &[Point], min_area: f64) -> Vec<Point
     if points.len() <= 2 {
         return points.to_vec();
     }
-    
+
     let mut simplified = points.to_vec();
-    
+
     loop {
         if simplified.len() <= 2 {
             break;
         }
-        
+
         let mut min_effective_area = f64::INFINITY;
         let mut min_index = 1; // Can't remove first or last point
-        
+
         // Find point with minimum effective area
         for i in 1..simplified.len() - 1 {
             let area = triangle_area(&simplified[i - 1], &simplified[i], &simplified[i + 1]);
@@ -123,15 +123,15 @@ pub fn visvalingam_whyatt_simplify(points: &[Point], min_area: f64) -> Vec<Point
                 min_index = i;
             }
         }
-        
+
         if min_effective_area > min_area {
             break; // All remaining points have area above threshold
         }
-        
+
         // Remove the point with minimum effective area
         simplified.remove(min_index);
     }
-    
+
     simplified
 }
 
@@ -153,31 +153,39 @@ pub fn smooth_path(points: &[Point], window_size: usize) -> Vec<Point> {
     if points.len() <= 2 || window_size <= 1 {
         return points.to_vec();
     }
-    
-    let window_size = if window_size % 2 == 0 { window_size + 1 } else { window_size };
+
+    let window_size = if window_size % 2 == 0 {
+        window_size + 1
+    } else {
+        window_size
+    };
     let half_window = window_size / 2;
     let mut smoothed = Vec::with_capacity(points.len());
-    
+
     for i in 0..points.len() {
         let start = if i >= half_window { i - half_window } else { 0 };
-        let end = if i + half_window < points.len() { i + half_window + 1 } else { points.len() };
-        
+        let end = if i + half_window < points.len() {
+            i + half_window + 1
+        } else {
+            points.len()
+        };
+
         let mut sum_x = 0.0;
         let mut sum_y = 0.0;
         let mut count = 0;
-        
+
         for j in start..end {
             sum_x += points[j].x;
             sum_y += points[j].y;
             count += 1;
         }
-        
+
         smoothed.push(Point {
             x: sum_x / count as f32,
             y: sum_y / count as f32,
         });
     }
-    
+
     smoothed
 }
 
@@ -192,14 +200,14 @@ pub fn calculate_path_length(points: &[Point]) -> f32 {
     if points.len() < 2 {
         return 0.0;
     }
-    
+
     let mut length = 0.0;
     for i in 1..points.len() {
         let dx = points[i].x - points[i - 1].x;
         let dy = points[i].y - points[i - 1].y;
         length += (dx * dx + dy * dy).sqrt();
     }
-    
+
     length
 }
 
@@ -215,24 +223,24 @@ pub fn resample_path(points: &[Point], target_spacing: f32) -> Vec<Point> {
     if points.len() < 2 || target_spacing <= 0.0 {
         return points.to_vec();
     }
-    
+
     let total_length = calculate_path_length(points);
     let num_points = (total_length / target_spacing) as usize + 1;
-    
+
     let mut resampled = Vec::with_capacity(num_points);
     resampled.push(points[0]); // Always include first point
-    
+
     let mut current_distance = 0.0;
     let mut target_distance = target_spacing;
     let mut segment_index = 0;
-    
+
     while target_distance < total_length && segment_index < points.len() - 1 {
         let segment_start = points[segment_index];
         let segment_end = points[segment_index + 1];
         let segment_dx = segment_end.x - segment_start.x;
         let segment_dy = segment_end.y - segment_start.y;
         let segment_length = (segment_dx * segment_dx + segment_dy * segment_dy).sqrt();
-        
+
         if current_distance + segment_length >= target_distance {
             // Target point is on this segment
             let t = (target_distance - current_distance) / segment_length;
@@ -248,7 +256,7 @@ pub fn resample_path(points: &[Point], target_spacing: f32) -> Vec<Point> {
             segment_index += 1;
         }
     }
-    
+
     // Always include last point
     if let Some(&last_point) = points.last() {
         if let Some(&last_resampled) = resampled.last() {
@@ -259,7 +267,7 @@ pub fn resample_path(points: &[Point], target_spacing: f32) -> Vec<Point> {
             }
         }
     }
-    
+
     resampled
 }
 
@@ -275,7 +283,7 @@ mod tests {
             Point { x: 2.0, y: -0.1 },
             Point { x: 3.0, y: 0.0 },
         ];
-        
+
         let simplified = douglas_peucker_simplify(&points, 0.2);
         assert_eq!(simplified.len(), 2); // Should simplify to line
         assert_eq!(simplified[0], points[0]);
@@ -287,7 +295,7 @@ mod tests {
         let p1 = Point { x: 0.0, y: 0.0 };
         let p2 = Point { x: 1.0, y: 0.0 };
         let p3 = Point { x: 0.0, y: 1.0 };
-        
+
         let area = triangle_area(&p1, &p2, &p3);
         assert!((area - 0.5).abs() < 1e-6);
     }
@@ -299,7 +307,7 @@ mod tests {
             Point { x: 3.0, y: 0.0 },
             Point { x: 3.0, y: 4.0 },
         ];
-        
+
         let length = calculate_path_length(&points);
         assert!((length - 7.0).abs() < 1e-6); // 3 + 4 = 7
     }
@@ -311,7 +319,7 @@ mod tests {
             Point { x: 1.0, y: 10.0 }, // Outlier
             Point { x: 2.0, y: 0.0 },
         ];
-        
+
         let smoothed = smooth_path(&points, 3);
         assert!(smoothed[1].y < points[1].y); // Should reduce outlier
     }
