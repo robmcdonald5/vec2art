@@ -147,17 +147,8 @@ fn process_binary_image(
 
 /// Process contours through simplification and SVG generation
 fn process_contours_to_svg(contours: Vec<Contour>, dimensions: (u32, u32), config: &LogoConfig) -> VectorizeResult<Vec<SvgPath>> {
-    use crate::algorithms::path_utils::calculate_douglas_peucker_epsilon;
-    
-    // Calculate proper Douglas-Peucker epsilon based on image diagonal
-    let epsilon = if config.simplification_tolerance > 0.0 {
-        // If user provided a specific tolerance, use a reasonable factor
-        let factor = (config.simplification_tolerance / 100.0).clamp(0.003, 0.007);
-        calculate_douglas_peucker_epsilon(dimensions.0, dimensions.1, factor)
-    } else {
-        // Use default factor (0.005)
-        calculate_douglas_peucker_epsilon(dimensions.0, dimensions.1, 0.005)
-    };
+    // Calculate proper Douglas-Peucker epsilon from config
+    let epsilon = config.simplification_epsilon.resolve_pixels(dimensions.0, dimensions.1);
     
     log::debug!("Using Douglas-Peucker epsilon: {:.3} pixels (image: {}x{})", 
                epsilon, dimensions.0, dimensions.1);

@@ -1395,7 +1395,7 @@ fn slic_segmentation(
     config: &RegionsConfig,
 ) -> VectorizeResult<(HashMap<usize, Vec<(u32, u32)>>, Vec<Color>)> {
     let (width, height) = image.dimensions();
-    let region_size = config.slic_region_size as f32;
+    let region_size = config.slic_step_px as f32;
     let compactness = config.slic_compactness;
     let iterations = config.slic_iterations;
 

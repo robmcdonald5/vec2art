@@ -9,7 +9,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use vectorize_core::{vectorize_logo_rgba, vectorize_regions_rgba, vectorize_trace_low_rgba, LogoConfig, RegionsConfig, TraceLowConfig, TraceBackend, SegmentationMethod, QuantizationMethod};
+use vectorize_core::{vectorize_logo_rgba, vectorize_regions_rgba, vectorize_trace_low_rgba, LogoConfig, RegionsConfig, TraceLowConfig, TraceBackend, SegmentationMethod, QuantizationMethod, Epsilon};
+use vectorize_core::telemetry::{make_dump, write_json_dump, append_runs_csv, Resolved, Guards, Stats};
+use serde_json::json;
 
 mod ssim;
 mod svg_analysis;
@@ -68,9 +70,13 @@ enum Commands {
         #[arg(long, default_value = "0.15")]
         max_circle_eccentricity: f32,
 
-        /// Simplification tolerance
-        #[arg(long, default_value = "1.0")]
-        simplify: f64,
+        /// Simplification epsilon in pixels (or use --simplify-diag-frac for fraction)
+        #[arg(long, default_value = "1.5")]
+        simplify_px: f64,
+        
+        /// Simplification epsilon as diagonal fraction (alternative to --simplify-px)
+        #[arg(long)]
+        simplify_diag_frac: Option<f64>,
     },
 
     /// Vectorize using color regions algorithm  
@@ -109,9 +115,9 @@ enum Commands {
         #[arg(long, default_value = "2.0")]
         merge_threshold: f64,
 
-        /// Target region size for SLIC superpixels (approximate side length in pixels)
-        #[arg(long, default_value = "800")]
-        slic_region_size: u32,
+        /// SLIC step size in pixels (not area - actual step length)
+        #[arg(long, default_value = "40")]
+        slic_step_px: u32,
 
         /// SLIC compactness parameter (0-100, higher = more square regions)
         #[arg(long, default_value = "10.0")]
@@ -133,9 +139,13 @@ enum Commands {
         #[arg(long, default_value = "8")]
         max_gradient_stops: usize,
 
-        /// Simplification tolerance
-        #[arg(long, default_value = "1.0")]
-        simplify: f64,
+        /// Simplification epsilon in pixels (or use --simplify-diag-frac for fraction)
+        #[arg(long, default_value = "2.0")]
+        simplify_px: f64,
+        
+        /// Simplification epsilon as diagonal fraction (alternative to --simplify-px)
+        #[arg(long)]
+        simplify_diag_frac: Option<f64>,
     },
 
     /// Vectorize using low-detail tracing algorithm
@@ -277,9 +287,9 @@ enum Commands {
         #[arg(long, default_value = "2.0")]
         merge_threshold: f64,
 
-        /// Target region size for SLIC superpixels
-        #[arg(long, default_value = "800")]
-        slic_region_size: u32,
+        /// SLIC step size in pixels (not area - actual step length)
+        #[arg(long, default_value = "40")]
+        slic_step_px: u32,
 
         /// SLIC compactness parameter
         #[arg(long, default_value = "10.0")]
@@ -302,9 +312,13 @@ enum Commands {
         max_gradient_stops: usize,
 
         // Common options
-        /// Simplification tolerance
-        #[arg(long, default_value = "1.0")]
-        simplify: f64,
+        /// Simplification epsilon in pixels (or use --simplify-diag-frac for fraction)
+        #[arg(long, default_value = "1.5")]
+        simplify_px: f64,
+        
+        /// Simplification epsilon as diagonal fraction (alternative to --simplify-px)
+        #[arg(long)]
+        simplify_diag_frac: Option<f64>,
     },
 }
 
@@ -314,7 +328,8 @@ fn validate_cli_arguments(command: &Commands) -> Result<()> {
         Commands::Logo { 
             primitive_tolerance, 
             max_circle_eccentricity, 
-            simplify, 
+            simplify_px,
+            simplify_diag_frac,
             .. 
         } => {
             if *primitive_tolerance < 0.0 {
@@ -323,8 +338,13 @@ fn validate_cli_arguments(command: &Commands) -> Result<()> {
             if *max_circle_eccentricity < 0.0 || *max_circle_eccentricity > 1.0 {
                 return Err(anyhow::anyhow!("Circle eccentricity must be between 0.0 and 1.0"));
             }
-            if *simplify < 0.0 {
-                return Err(anyhow::anyhow!("Simplification tolerance must be non-negative"));
+            if *simplify_px < 0.0 {
+                return Err(anyhow::anyhow!("Simplification epsilon (pixels) must be non-negative"));
+            }
+            if let Some(frac) = simplify_diag_frac {
+                if *frac < 0.0 {
+                    return Err(anyhow::anyhow!("Simplification epsilon (diagonal fraction) must be non-negative"));
+                }
             }
         }
         Commands::Regions { 
@@ -332,12 +352,13 @@ fn validate_cli_arguments(command: &Commands) -> Result<()> {
             quantization_method,
             segmentation_method,
             merge_threshold,
-            slic_region_size,
+            slic_step_px,
             slic_compactness,
             slic_iterations,
             gradient_r2_threshold,
             max_gradient_stops,
-            simplify,
+            simplify_px,
+            simplify_diag_frac,
             .. 
         } => {
             // Validate color count
@@ -355,8 +376,8 @@ fn validate_cli_arguments(command: &Commands) -> Result<()> {
 
             // Validate SLIC parameters when SLIC is selected
             if *segmentation_method == SegmentationMethod::Slic {
-                if *slic_region_size < 8 {
-                    return Err(anyhow::anyhow!("SLIC region size should be at least 8 pixels"));
+                if *slic_step_px < 12 || *slic_step_px > 120 {
+                    return Err(anyhow::anyhow!("SLIC step (px) should be ~12–120 for 720p–4K images"));
                 }
                 if *slic_compactness < 0.1 || *slic_compactness > 100.0 {
                     return Err(anyhow::anyhow!("SLIC compactness should be between 0.1 and 100.0"));
@@ -379,8 +400,13 @@ fn validate_cli_arguments(command: &Commands) -> Result<()> {
                 return Err(anyhow::anyhow!("Merge threshold must be non-negative"));
             }
 
-            if *simplify < 0.0 {
-                return Err(anyhow::anyhow!("Simplification tolerance must be non-negative"));
+            if *simplify_px < 0.0 {
+                return Err(anyhow::anyhow!("Simplification epsilon (pixels) must be non-negative"));
+            }
+            if let Some(frac) = simplify_diag_frac {
+                if *frac < 0.0 {
+                    return Err(anyhow::anyhow!("Simplification epsilon (diagonal fraction) must be non-negative"));
+                }
             }
         }
         Commands::TraceLow {
@@ -406,12 +432,13 @@ fn validate_cli_arguments(command: &Commands) -> Result<()> {
             primitive_tolerance,
             max_circle_eccentricity,
             merge_threshold,
-            slic_region_size,
+            slic_step_px,
             slic_compactness,
             slic_iterations: _,
             gradient_r2_threshold,
             max_gradient_stops,
-            simplify,
+            simplify_px,
+            simplify_diag_frac,
             .. 
         } => {
             // Validate algorithm
@@ -433,8 +460,8 @@ fn validate_cli_arguments(command: &Commands) -> Result<()> {
                 log::warn!("Wu quantization is most effective with 64 or fewer colors");
             }
             if *segmentation_method == SegmentationMethod::Slic {
-                if *slic_region_size < 8 {
-                    return Err(anyhow::anyhow!("SLIC region size should be at least 8 pixels"));
+                if *slic_step_px < 12 || *slic_step_px > 120 {
+                    return Err(anyhow::anyhow!("SLIC step (px) should be ~12–120 for 720p–4K images"));
                 }
                 if *slic_compactness < 0.1 || *slic_compactness > 100.0 {
                     return Err(anyhow::anyhow!("SLIC compactness should be between 0.1 and 100.0"));
@@ -446,8 +473,16 @@ fn validate_cli_arguments(command: &Commands) -> Result<()> {
             if *max_gradient_stops < 2 {
                 return Err(anyhow::anyhow!("Gradient must have at least 2 stops"));
             }
-            if *merge_threshold < 0.0 || *simplify < 0.0 {
-                return Err(anyhow::anyhow!("Thresholds must be non-negative"));
+            if *merge_threshold < 0.0 {
+                return Err(anyhow::anyhow!("Merge threshold must be non-negative"));
+            }
+            if *simplify_px < 0.0 {
+                return Err(anyhow::anyhow!("Simplification epsilon (pixels) must be non-negative"));
+            }
+            if let Some(frac) = simplify_diag_frac {
+                if *frac < 0.0 {
+                    return Err(anyhow::anyhow!("Simplification epsilon (diagonal fraction) must be non-negative"));
+                }
             }
         }
         _ => {} // No validation needed for other commands
@@ -484,7 +519,8 @@ fn main() -> Result<()> {
             detect_primitives,
             primitive_tolerance,
             max_circle_eccentricity,
-            simplify,
+            simplify_px,
+            simplify_diag_frac,
         } => vectorize_logo_command(
             input,
             output, 
@@ -494,7 +530,8 @@ fn main() -> Result<()> {
             detect_primitives,
             primitive_tolerance,
             max_circle_eccentricity,
-            simplify,
+            simplify_px,
+            simplify_diag_frac,
         ),
         Commands::Regions {
             input,
@@ -506,13 +543,14 @@ fn main() -> Result<()> {
             lab_color,
             merge_similar_regions,
             merge_threshold,
-            slic_region_size,
+            slic_step_px,
             slic_compactness,
             slic_iterations,
             detect_gradients,
             gradient_r2_threshold,
             max_gradient_stops,
-            simplify,
+            simplify_px,
+            simplify_diag_frac,
         } => vectorize_regions_command(
             input,
             output,
@@ -523,13 +561,14 @@ fn main() -> Result<()> {
             lab_color,
             merge_similar_regions,
             merge_threshold,
-            slic_region_size,
+            slic_step_px,
             slic_compactness,
             slic_iterations,
             detect_gradients,
             gradient_r2_threshold,
             max_gradient_stops,
-            simplify,
+            simplify_px,
+            simplify_diag_frac,
         ),
         Commands::TraceLow {
             input,
@@ -580,24 +619,25 @@ fn main() -> Result<()> {
             lab_color,
             merge_similar_regions,
             merge_threshold,
-            slic_region_size,
+            slic_step_px,
             slic_compactness,
             slic_iterations,
             detect_gradients,
             gradient_r2_threshold,
             max_gradient_stops,
             // Common options
-            simplify,
+            simplify_px,
+            simplify_diag_frac,
         } => batch_command(
             input, output, algorithm, config, pattern,
             // Logo options
             threshold, adaptive, detect_primitives, primitive_tolerance, max_circle_eccentricity,
             // Regions options
             colors, quantization_method, segmentation_method, lab_color, merge_similar_regions,
-            merge_threshold, slic_region_size, slic_compactness, slic_iterations, detect_gradients,
+            merge_threshold, slic_step_px, slic_compactness, slic_iterations, detect_gradients,
             gradient_r2_threshold, max_gradient_stops,
             // Common options
-            simplify,
+            simplify_px, simplify_diag_frac,
         ),
     }
 }
@@ -712,7 +752,8 @@ fn vectorize_logo_command(
     detect_primitives: bool,
     primitive_tolerance: f32,
     max_circle_eccentricity: f32,
-    simplify: f64,
+    simplify_px: f64,
+    simplify_diag_frac: Option<f64>,
 ) -> Result<()> {
     log::info!("Loading image: {}", input.display());
     let img = image::open(&input)
@@ -732,7 +773,13 @@ fn vectorize_logo_command(
     config.detect_primitives = detect_primitives;
     config.primitive_fit_tolerance = primitive_tolerance;
     config.max_circle_eccentricity = max_circle_eccentricity;
-    config.simplification_tolerance = simplify;
+    
+    // Set simplification epsilon
+    config.simplification_epsilon = if let Some(frac) = simplify_diag_frac {
+        Epsilon::DiagFrac(frac)
+    } else {
+        Epsilon::Pixels(simplify_px)
+    };
 
     log::info!("Starting logo vectorization with config: {:?}", config);
     let start_time = Instant::now();
@@ -744,10 +791,16 @@ fn vectorize_logo_command(
     log::info!("Vectorization completed in {:.2}s", elapsed.as_secs_f64());
 
     // Write SVG to output file
-    fs::write(&output, svg_content)
+    fs::write(&output, &svg_content)
         .with_context(|| format!("Failed to write SVG to: {}", output.display()))?;
 
     log::info!("SVG saved to: {}", output.display());
+    
+    // Collect telemetry data and write dump
+    write_logo_telemetry(
+        &input, &output, &img, &config, &svg_content, elapsed.as_secs_f64(), 0
+    )?;
+    
     Ok(())
 }
 
@@ -761,13 +814,14 @@ fn vectorize_regions_command(
     lab_color: bool,
     merge_similar_regions: bool,
     merge_threshold: f64,
-    slic_region_size: u32,
+    slic_step_px: u32,
     slic_compactness: f32,
     slic_iterations: u32,
     detect_gradients: bool,
     gradient_r2_threshold: f64,
     max_gradient_stops: usize,
-    simplify: f64,
+    simplify_px: f64,
+    simplify_diag_frac: Option<f64>,
 ) -> Result<()> {
     log::info!("Loading image: {}", input.display());
     let img = image::open(&input)
@@ -788,13 +842,19 @@ fn vectorize_regions_command(
     config.use_lab_color = lab_color;
     config.merge_similar_regions = merge_similar_regions;
     config.merge_threshold = merge_threshold;
-    config.slic_region_size = slic_region_size;
+    config.slic_step_px = slic_step_px;
     config.slic_compactness = slic_compactness;
     config.slic_iterations = slic_iterations;
     config.detect_gradients = detect_gradients;
     config.gradient_r_squared_threshold = gradient_r2_threshold;
     config.max_gradient_stops = max_gradient_stops;
-    config.simplification_tolerance = simplify;
+    
+    // Set simplification epsilon
+    config.simplification_epsilon = if let Some(frac) = simplify_diag_frac {
+        Epsilon::DiagFrac(frac)
+    } else {
+        Epsilon::Pixels(simplify_px)
+    };
 
     log::info!("Starting regions vectorization with config: {:?}", config);
     let start_time = Instant::now();
@@ -806,10 +866,16 @@ fn vectorize_regions_command(
     log::info!("Vectorization completed in {:.2}s", elapsed.as_secs_f64());
 
     // Write SVG to output file
-    fs::write(&output, svg_content)
+    fs::write(&output, &svg_content)
         .with_context(|| format!("Failed to write SVG to: {}", output.display()))?;
 
     log::info!("SVG saved to: {}", output.display());
+    
+    // Collect telemetry data and write dump
+    write_regions_telemetry(
+        &input, &output, &img, &config, &svg_content, elapsed.as_secs_f64(), 0
+    )?;
+    
     Ok(())
 }
 
@@ -889,14 +955,15 @@ fn batch_command(
     lab_color: bool,
     merge_similar_regions: bool,
     merge_threshold: f64,
-    slic_region_size: u32,
+    slic_step_px: u32,
     slic_compactness: f32,
     slic_iterations: u32,
     detect_gradients: bool,
     gradient_r2_threshold: f64,
     max_gradient_stops: usize,
     // Common options
-    simplify: f64,
+    simplify_px: f64,
+    simplify_diag_frac: Option<f64>,
 ) -> Result<()> {
     log::info!(
         "Batch processing from {} to {} using {} algorithm",
@@ -944,7 +1011,8 @@ fn batch_command(
                 detect_primitives,
                 primitive_tolerance,
                 max_circle_eccentricity,
-                simplify,
+                simplify_px,
+                simplify_diag_frac,
             ),
             "regions" => vectorize_regions_command(
                 image_file.clone(),
@@ -956,13 +1024,14 @@ fn batch_command(
                 lab_color,
                 merge_similar_regions,
                 merge_threshold,
-                slic_region_size,
+                slic_step_px,
                 slic_compactness,
                 slic_iterations,
                 detect_gradients,
                 gradient_r2_threshold,
                 max_gradient_stops,
-                simplify,
+                simplify_px,
+                simplify_diag_frac,
             ),
             _ => return Err(anyhow::anyhow!("Invalid algorithm '{}'. Use 'logo' or 'regions'", algorithm)),
         };
@@ -1315,4 +1384,283 @@ fn parse_trace_backend(s: &str) -> Result<TraceBackend, String> {
             s
         )),
     }
+}
+
+/// Write telemetry data for logo vectorization
+fn write_logo_telemetry(
+    input_path: &PathBuf,
+    output_path: &PathBuf,
+    image: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+    config: &LogoConfig,
+    svg_content: &str,
+    processing_time: f64,
+    retries: u32,
+) -> Result<()> {
+    let (width, height) = image.dimensions();
+    
+    // Calculate resolved parameters
+    let dp_eps_px = config.simplification_epsilon.resolve_pixels(width, height);
+    
+    // Analyze SVG output for statistics
+    let stats = analyze_svg_output(svg_content, width * height)?;
+    
+    let resolved = Resolved {
+        dp_eps_px,
+        min_stroke_px: if config.use_stroke { Some(config.stroke_width) } else { None },
+        slic_step_px: None,
+        slic_iters: None,
+        slic_compactness: None,
+        de_merge: None,
+        de_split: None,
+        palette_k: None,
+        sauvola_k: None, // Note: using adaptive threshold instead of Sauvola
+        sauvola_window: None,
+        morph_kernel_px: Some(config.morphology_kernel_size),
+        min_region_area_px: Some(config.min_contour_area),
+    };
+    
+    let guards = Guards {
+        retries,
+        edge_barrier_thresh: Some(config.threshold as u32),
+        area_floor_px: Some(config.min_contour_area),
+    };
+    
+    let cli_args = json!({
+        "threshold": config.threshold,
+        "adaptive": config.adaptive_threshold,
+        "detect_primitives": config.detect_primitives,
+        "primitive_tolerance": config.primitive_fit_tolerance,
+        "max_circle_eccentricity": config.max_circle_eccentricity,
+        "use_stroke": config.use_stroke,
+        "stroke_width": config.stroke_width
+    });
+    
+    let dump = make_dump(
+        input_path.to_str().unwrap_or("unknown"),
+        width,
+        height,
+        "logo",
+        None,
+        cli_args,
+        resolved,
+        guards,
+        stats,
+    );
+    
+    write_json_dump(output_path, &dump)
+        .with_context(|| "Failed to write telemetry JSON")?;
+    append_runs_csv(output_path, &dump)
+        .with_context(|| "Failed to append to runs CSV")?;
+        
+    log::info!("Telemetry saved: resolved epsilon = {:.3}px", dp_eps_px);
+    Ok(())
+}
+
+/// Write telemetry data for regions vectorization
+fn write_regions_telemetry(
+    input_path: &PathBuf,
+    output_path: &PathBuf,
+    image: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+    config: &RegionsConfig,
+    svg_content: &str,
+    processing_time: f64,
+    retries: u32,
+) -> Result<()> {
+    let (width, height) = image.dimensions();
+    
+    // Calculate resolved parameters
+    let dp_eps_px = config.simplification_epsilon.resolve_pixels(width, height);
+    
+    // Analyze SVG output for statistics
+    let stats = analyze_svg_output(svg_content, width * height)?;
+    
+    let resolved = Resolved {
+        dp_eps_px,
+        min_stroke_px: None,
+        slic_step_px: if config.segmentation_method == SegmentationMethod::Slic {
+            Some(config.slic_step_px)
+        } else {
+            None
+        },
+        slic_iters: if config.segmentation_method == SegmentationMethod::Slic {
+            Some(config.slic_iterations)
+        } else {
+            None
+        },
+        slic_compactness: if config.segmentation_method == SegmentationMethod::Slic {
+            Some(config.slic_compactness)
+        } else {
+            None
+        },
+        de_merge: if config.merge_similar_regions {
+            Some(config.merge_threshold)  // Assuming this is LAB ΔE
+        } else {
+            None
+        },
+        de_split: None, // Would need to implement region splitting analysis
+        palette_k: Some(config.num_colors),
+        sauvola_k: None,
+        sauvola_window: None,
+        morph_kernel_px: None,
+        min_region_area_px: Some(config.min_region_area),
+    };
+    
+    let guards = Guards {
+        retries,
+        edge_barrier_thresh: None,
+        area_floor_px: Some(config.min_region_area),
+    };
+    
+    let cli_args = json!({
+        "colors": config.num_colors,
+        "quantization_method": config.quantization_method,
+        "segmentation_method": config.segmentation_method,
+        "use_lab_color": config.use_lab_color,
+        "merge_similar_regions": config.merge_similar_regions,
+        "merge_threshold": config.merge_threshold,
+        "slic_step_px": config.slic_step_px,
+        "slic_compactness": config.slic_compactness,
+        "slic_iterations": config.slic_iterations,
+        "detect_gradients": config.detect_gradients
+    });
+    
+    let backend_name = match config.segmentation_method {
+        SegmentationMethod::Slic => "superpixel",
+        SegmentationMethod::KMeans => "kmeans",
+    };
+    
+    let dump = make_dump(
+        input_path.to_str().unwrap_or("unknown"),
+        width,
+        height,
+        "regions",
+        Some(backend_name),
+        cli_args,
+        resolved,
+        guards,
+        stats,
+    );
+    
+    write_json_dump(output_path, &dump)
+        .with_context(|| "Failed to write telemetry JSON")?;
+    append_runs_csv(output_path, &dump)
+        .with_context(|| "Failed to append to runs CSV")?;
+        
+    log::info!("Telemetry saved: resolved epsilon = {:.3}px, slic_step = {}px", 
+               dp_eps_px, config.slic_step_px);
+    Ok(())
+}
+
+/// Analyze SVG output to extract statistics
+fn analyze_svg_output(svg_content: &str, _image_pixels: u32) -> Result<Stats> {
+    use crate::svg_analysis::analyze_svg;
+    
+    let analysis = analyze_svg(svg_content)
+        .context("Failed to analyze SVG output")?;
+    
+    // Estimate colors from SVG
+    let k_colors = analysis.color_count.max(1);
+    
+    // Calculate max region percentage (rough estimate based on paths)
+    let max_region_pct = if analysis.path_count > 0 {
+        1.0 / analysis.path_count as f32
+    } else {
+        1.0
+    };
+    
+    // Estimate quad percentage from path complexity
+    let pct_quads = if analysis.path_commands > 0 {
+        // Rough estimate: assume higher path complexity means more curves/quads
+        (analysis.avg_path_complexity / 10.0).min(1.0) as f32
+    } else {
+        0.0
+    };
+    
+    Ok(Stats {
+        paths: analysis.path_count,
+        median_vertices: analysis.avg_path_complexity as f32,
+        pct_quads,
+        k_colors,
+        max_region_pct,
+        svg_bytes: svg_content.len() as u64,
+    })
+}
+
+/// Auto-retry guard system - checks for bad outputs and adjusts parameters
+fn maybe_retry_logo(
+    stats: &Stats, 
+    config: &mut LogoConfig, 
+    tries: &mut u32
+) -> bool {
+    if *tries >= 2 { return false; }
+    let mut retry = false;
+    
+    // If too many small paths, reduce simplification
+    if stats.paths > 500 && stats.median_vertices < 6.0 {
+        // Reduce epsilon by 30% to get more detail
+        match &mut config.simplification_epsilon {
+            Epsilon::Pixels(px) => *px *= 0.7,
+            Epsilon::DiagFrac(frac) => *frac *= 0.7,
+        }
+        retry = true;
+        log::info!("Retry: too many small paths, reducing simplification epsilon");
+    }
+    
+    // If paths are too complex (too many quads), increase simplification
+    if stats.pct_quads > 0.6 {
+        match &mut config.simplification_epsilon {
+            Epsilon::Pixels(px) => *px *= 1.5,
+            Epsilon::DiagFrac(frac) => *frac *= 1.5,
+        }
+        retry = true;
+        log::info!("Retry: too complex paths, increasing simplification epsilon");
+    }
+    
+    if retry { *tries += 1; }
+    retry
+}
+
+/// Auto-retry guard system for regions
+fn maybe_retry_regions(
+    stats: &Stats, 
+    config: &mut RegionsConfig, 
+    tries: &mut u32
+) -> bool {
+    if *tries >= 2 { return false; }
+    let mut retry = false;
+    
+    if stats.k_colors < 6 {
+        // Increase palette & reduce merging
+        config.num_colors = config.num_colors.max(8);
+        if config.merge_similar_regions {
+            config.merge_threshold = (config.merge_threshold - 0.5).max(1.0);
+        }
+        retry = true;
+        log::info!("Retry: too few colors ({}), increasing palette to {} and reducing merge threshold to {:.1}", 
+                  stats.k_colors, config.num_colors, config.merge_threshold);
+    }
+    
+    if stats.pct_quads > 0.6 {
+        // Reduce simplification
+        match &mut config.simplification_epsilon {
+            Epsilon::Pixels(px) => *px *= 0.5,
+            Epsilon::DiagFrac(frac) => *frac *= 0.5,
+        }
+        retry = true;
+        log::info!("Retry: too many quads ({:.1}%), halving simplification epsilon", stats.pct_quads * 100.0);
+    }
+    
+    if stats.max_region_pct > 0.35 {
+        // Force finer segmentation
+        if config.segmentation_method == SegmentationMethod::Slic {
+            config.slic_step_px = (config.slic_step_px as f32 * 0.8) as u32;
+            config.slic_step_px = config.slic_step_px.max(12); // Don't go below minimum
+        }
+        retry = true;
+        log::info!("Retry: regions too large ({:.1}%), reducing SLIC step to {}px", 
+                  stats.max_region_pct * 100.0, config.slic_step_px);
+    }
+    
+    if retry { *tries += 1; }
+    retry
 }

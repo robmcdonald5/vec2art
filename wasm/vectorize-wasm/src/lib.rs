@@ -56,7 +56,11 @@ impl WasmLogoConfig {
             adaptive_threshold: default_config.adaptive_threshold,
             morphology_kernel_size: default_config.morphology_kernel_size,
             min_contour_area: default_config.min_contour_area,
-            simplification_tolerance: default_config.simplification_tolerance,
+            // Note: WASM still uses tolerance for backward compatibility
+            simplification_tolerance: match default_config.simplification_epsilon {
+                vectorize_core::Epsilon::Pixels(px) => px,
+                vectorize_core::Epsilon::DiagFrac(frac) => frac * 100.0, // Convert to rough tolerance
+            },
             fit_curves: default_config.fit_curves,
             curve_tolerance: default_config.curve_tolerance,
             detect_primitives: default_config.detect_primitives,
@@ -173,7 +177,7 @@ impl From<WasmLogoConfig> for LogoConfig {
             adaptive_threshold: wasm_config.adaptive_threshold,
             morphology_kernel_size: wasm_config.morphology_kernel_size,
             min_contour_area: wasm_config.min_contour_area,
-            simplification_tolerance: wasm_config.simplification_tolerance,
+            simplification_epsilon: vectorize_core::Epsilon::Pixels(wasm_config.simplification_tolerance),
             fit_curves: wasm_config.fit_curves,
             curve_tolerance: wasm_config.curve_tolerance,
             detect_primitives: wasm_config.detect_primitives,
@@ -230,7 +234,11 @@ impl WasmRegionsConfig {
             min_region_area: default_config.min_region_area,
             max_iterations: default_config.max_iterations,
             convergence_threshold: default_config.convergence_threshold,
-            simplification_tolerance: default_config.simplification_tolerance,
+            // Note: WASM still uses tolerance for backward compatibility
+            simplification_tolerance: match default_config.simplification_epsilon {
+                vectorize_core::Epsilon::Pixels(px) => px,
+                vectorize_core::Epsilon::DiagFrac(frac) => frac * 100.0, // Convert to rough tolerance
+            },
             fit_curves: default_config.fit_curves,
             curve_tolerance: default_config.curve_tolerance,
             detect_primitives: default_config.detect_primitives,
@@ -238,7 +246,7 @@ impl WasmRegionsConfig {
             max_circle_eccentricity: default_config.max_circle_eccentricity,
             merge_similar_regions: default_config.merge_similar_regions,
             merge_threshold: default_config.merge_threshold,
-            slic_region_size: default_config.slic_region_size,
+            slic_region_size: default_config.slic_step_px,
             slic_compactness: default_config.slic_compactness,
             slic_iterations: default_config.slic_iterations,
             // Gradient detection fields
@@ -492,7 +500,7 @@ impl From<WasmRegionsConfig> for RegionsConfig {
             min_region_area: wasm_config.min_region_area,
             max_iterations: wasm_config.max_iterations,
             convergence_threshold: wasm_config.convergence_threshold,
-            simplification_tolerance: wasm_config.simplification_tolerance,
+            simplification_epsilon: vectorize_core::Epsilon::Pixels(wasm_config.simplification_tolerance),
             fit_curves: wasm_config.fit_curves,
             curve_tolerance: wasm_config.curve_tolerance,
             detect_primitives: wasm_config.detect_primitives,
@@ -500,7 +508,7 @@ impl From<WasmRegionsConfig> for RegionsConfig {
             max_circle_eccentricity: wasm_config.max_circle_eccentricity,
             merge_similar_regions: wasm_config.merge_similar_regions,
             merge_threshold: wasm_config.merge_threshold,
-            slic_region_size: wasm_config.slic_region_size,
+            slic_step_px: wasm_config.slic_region_size,
             slic_compactness: wasm_config.slic_compactness,
             slic_iterations: wasm_config.slic_iterations,
             // Gradient detection fields

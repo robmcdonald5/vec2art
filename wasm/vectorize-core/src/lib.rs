@@ -10,6 +10,7 @@ pub mod error;
 pub mod preprocessing;
 pub mod svg;
 pub mod svg_gradients;
+pub mod telemetry;
 
 #[cfg(test)]
 mod edge_case_tests;
@@ -238,7 +239,7 @@ mod input_validation {
         }
         
         // Additional edge case validation
-        validate_tolerance(config.simplification_tolerance, "simplification")?;
+        // Simplification epsilon validation is handled in config.validate()
         validate_tolerance(config.curve_tolerance, "curve")?;
         
         if config.morphology_kernel_size > 50 {
@@ -268,7 +269,7 @@ mod input_validation {
         // Additional edge case validation
         validate_color_count(config.num_colors)?;
         validate_iterations(config.max_iterations)?;
-        validate_tolerance(config.simplification_tolerance, "simplification")?;
+        // Simplification epsilon validation is handled in config.validate()
         validate_tolerance(config.curve_tolerance, "curve")?;
         validate_tolerance(config.merge_threshold, "merge")?;
         

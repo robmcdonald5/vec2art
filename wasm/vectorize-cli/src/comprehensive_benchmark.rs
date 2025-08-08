@@ -173,18 +173,18 @@ impl BenchmarkSuite {
         let test_configs = vec![
             ("default", LogoConfig::default()),
             ("high_quality", LogoConfig {
-                simplification_tolerance: 0.5,
+                simplification_epsilon: vectorize_core::Epsilon::Pixels(0.5),
                 curve_tolerance: 1.0,
                 fit_curves: true,
                 ..LogoConfig::default()
             }),
             ("fast", LogoConfig {
-                simplification_tolerance: 2.0,
+                simplification_epsilon: vectorize_core::Epsilon::Pixels(2.0),
                 fit_curves: false,
                 ..LogoConfig::default()
             }),
             ("precision", LogoConfig {
-                simplification_tolerance: 0.1,
+                simplification_epsilon: vectorize_core::Epsilon::Pixels(0.1),
                 curve_tolerance: 0.5,
                 fit_curves: true,
                 ..LogoConfig::default()
@@ -229,7 +229,7 @@ impl BenchmarkSuite {
                 ..RegionsConfig::default()
             }),
             ("high_precision", RegionsConfig {
-                simplification_tolerance: 0.5,
+                simplification_epsilon: vectorize_core::Epsilon::Pixels(0.5),
                 curve_tolerance: 1.0,
                 fit_curves: true,
                 ..RegionsConfig::default()

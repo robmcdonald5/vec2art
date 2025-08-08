@@ -2,6 +2,28 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Douglas-Peucker epsilon specification - either explicit pixels or fraction of diagonal
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Epsilon {
+    /// Explicit epsilon value in pixels
+    Pixels(f64),
+    /// Epsilon as fraction of image diagonal (sqrt(w² + h²))
+    DiagFrac(f64),
+}
+
+impl Epsilon {
+    /// Resolve epsilon to pixels given image dimensions
+    pub fn resolve_pixels(&self, width: u32, height: u32) -> f64 {
+        match *self {
+            Epsilon::Pixels(px) => px,
+            Epsilon::DiagFrac(frac) => {
+                let diag = ((width as f64).powi(2) + (height as f64).powi(2)).sqrt();
+                frac * diag
+            }
+        }
+    }
+}
+
 /// Configuration for logo/line-art vectorization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogoConfig {
@@ -20,8 +42,8 @@ pub struct LogoConfig {
     /// Minimum contour area to keep (filters noise)
     pub min_contour_area: u32,
 
-    /// Path simplification tolerance (Douglas-Peucker)
-    pub simplification_tolerance: f64,
+    /// Path simplification epsilon (Douglas-Peucker)
+    pub simplification_epsilon: Epsilon,
 
     /// Whether to fit Bezier curves to simplified paths
     pub fit_curves: bool,
@@ -55,8 +77,14 @@ impl LogoConfig {
         if self.morphology_kernel_size > 10 {
             return Err("Morphology kernel size should not exceed 10 for reasonable performance".to_string());
         }
-        if self.simplification_tolerance < 0.0 {
-            return Err("Simplification tolerance must be non-negative".to_string());
+        match self.simplification_epsilon {
+            Epsilon::Pixels(px) if px < 0.0 => {
+                return Err("Simplification epsilon (pixels) must be non-negative".to_string());
+            }
+            Epsilon::DiagFrac(frac) if frac < 0.0 => {
+                return Err("Simplification epsilon (diagonal fraction) must be non-negative".to_string());
+            }
+            _ => {}
         }
         if self.curve_tolerance < 0.0 {
             return Err("Curve tolerance must be non-negative".to_string());
@@ -92,7 +120,7 @@ impl Default for LogoConfig {
             adaptive_threshold: false,
             morphology_kernel_size: 2, // Reduced from 3 to minimize artifacts
             min_contour_area: 25,      // Reduced from 50 to keep more detail
-            simplification_tolerance: 1.0,
+            simplification_epsilon: Epsilon::DiagFrac(0.0035), // Gentle for logos
             fit_curves: true,
             curve_tolerance: 2.0,
             detect_primitives: true,
@@ -149,8 +177,8 @@ pub struct RegionsConfig {
     /// Convergence threshold for k-means
     pub convergence_threshold: f64,
 
-    /// Path simplification tolerance (Douglas-Peucker)
-    pub simplification_tolerance: f64,
+    /// Path simplification epsilon (Douglas-Peucker)
+    pub simplification_epsilon: Epsilon,
 
     /// Whether to fit Bezier curves to simplified paths
     pub fit_curves: bool,
@@ -174,8 +202,8 @@ pub struct RegionsConfig {
     pub merge_threshold: f64,
 
     // SLIC-specific parameters
-    /// Target region size for SLIC superpixels (approximate side length in pixels)
-    pub slic_region_size: u32,
+    /// SLIC step size in pixels (not area - actual step length)
+    pub slic_step_px: u32,
 
     /// SLIC compactness parameter (0-100, higher = more square regions)
     pub slic_compactness: f32,
@@ -205,17 +233,14 @@ impl RegionsConfig {
     pub fn validate(&self) -> Result<(), String> {
         // Check if SLIC parameters are reasonable when SLIC is selected
         if self.segmentation_method == SegmentationMethod::Slic {
-            if self.slic_region_size < 100 {
-                return Err("SLIC region size should be at least 100 pixels for proper superpixel segmentation".to_string());
-            }
-            if self.slic_region_size > 2000 {
-                return Err("SLIC region size should not exceed 2000 pixels for reasonable segmentation quality".to_string());
+            if self.slic_step_px < 12 || self.slic_step_px > 120 {
+                return Err("SLIC step (px) should be ~12–120 for 720p–4K images".to_string());
             }
             if self.slic_compactness < 0.1 || self.slic_compactness > 100.0 {
                 return Err("SLIC compactness should be between 0.1 and 100.0".to_string());
             }
-            if self.slic_iterations < 5 {
-                return Err("SLIC iterations should be at least 5 for proper convergence".to_string());
+            if self.slic_iterations < 10 {
+                return Err("SLIC iterations should be at least 10 for proper convergence".to_string());
             }
         }
 
@@ -263,7 +288,7 @@ impl Default for RegionsConfig {
             min_region_area: 50,       // Reduced from 100 to preserve more detail
             max_iterations: 20,        // Reduced from 100 for faster convergence
             convergence_threshold: 0.01, // More sensitive threshold for early termination
-            simplification_tolerance: 1.0,
+            simplification_epsilon: Epsilon::DiagFrac(0.0050), // Modest for regions
             fit_curves: true,
             curve_tolerance: 2.0,
             detect_primitives: true,
@@ -271,8 +296,8 @@ impl Default for RegionsConfig {
             max_circle_eccentricity: 0.15,
             merge_similar_regions: true,
             merge_threshold: 2.0,      // LAB ΔE_ab < 2 for proper region merging
-            // SLIC defaults - 500-1500px per superpixel for proper segmentation
-            slic_region_size: 800,     // Target ~800px per superpixel (within 500-1500 range)
+            // SLIC defaults - step size in pixels (not area)
+            slic_step_px: 40,          // GOOD DEFAULT @1080p (~40px step size)
             slic_compactness: 10.0,    // Compactness = 10 as recommended
             slic_iterations: 10,       // ≥10 iterations for proper convergence
             // Gradient detection defaults
