@@ -179,6 +179,8 @@ impl From<WasmLogoConfig> for LogoConfig {
             detect_primitives: wasm_config.detect_primitives,
             primitive_fit_tolerance: wasm_config.primitive_fit_tolerance,
             max_circle_eccentricity: wasm_config.max_circle_eccentricity,
+            use_stroke: false, // Default to fill for backward compatibility
+            stroke_width: 1.5,  // Default stroke width
         }
     }
 }

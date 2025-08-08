@@ -6,7 +6,7 @@ echo.
 echo ================================================================================
 echo  VEC2ART ALGORITHM TESTBED
 echo ================================================================================
-echo Testing both logo and regions algorithms on all test images
+echo Testing logo, regions, and trace-low algorithms on all test images
 echo.
 
 :: Configuration
@@ -142,6 +142,42 @@ for %%F in ("%IMAGE_DIR%\*.png" "%IMAGE_DIR%\*.jpg") do (
         
         :: Add to report
         echo !IMAGE_NAME! ^| regions ^| !REGIONS_STATUS! ^| !REGIONS_DURATION! ^| !REGIONS_WARNINGS! ^| !REGIONS_SIZE! ^| >> "%OUTPUT_DIR%\report.md"
+        
+        :: Test Trace-Low Algorithm (Edge backend)
+        echo [TEST] Trace-low edge algorithm...
+        set "TRACE_OUTPUT=%OUTPUT_DIR%\!IMAGE_NAME!-trace-edge.svg"
+        
+        :: Measure time and run command
+        set "START_TIME=!TIME!"
+        cargo run --release --bin vectorize-cli -- trace-low "!IMAGE_PATH!" "!TRACE_OUTPUT!" --backend edge --detail 0.3 > "%OUTPUT_DIR%\!IMAGE_NAME!-trace.log" 2>&1
+        set "TRACE_EXIT_CODE=!ERRORLEVEL!"
+        set "END_TIME=!TIME!"
+        
+        :: Calculate execution time
+        call :calculate_time_diff "!START_TIME!" "!END_TIME!" TRACE_DURATION
+        
+        :: Count warnings
+        findstr /c:"WARN" "%OUTPUT_DIR%\!IMAGE_NAME!-trace.log" > "%OUTPUT_DIR%\temp_count.txt"
+        for /f %%c in ('find /c /v "" ^< "%OUTPUT_DIR%\temp_count.txt"') do set "TRACE_WARNINGS=%%c"
+        if !TRACE_WARNINGS! EQU 0 set "TRACE_WARNINGS=0"
+        del "%OUTPUT_DIR%\temp_count.txt" 2>nul
+        
+        :: Check if output file exists and get size
+        if exist "!TRACE_OUTPUT!" (
+            for %%A in ("!TRACE_OUTPUT!") do set "TRACE_SIZE=%%~zA"
+            set "TRACE_STATUS=SUCCESS"
+            set /a SUCCESSFUL_TESTS+=1
+            echo [OK] Trace-low completed - Time: !TRACE_DURATION!s, Warnings: !TRACE_WARNINGS!, Size: !TRACE_SIZE! bytes
+        ) else (
+            set "TRACE_SIZE=0"
+            set "TRACE_STATUS=FAILED"
+            set /a FAILED_TESTS+=1
+            echo [ERROR] Trace-low failed - Exit code: !TRACE_EXIT_CODE!, Warnings: !TRACE_WARNINGS!
+        )
+        set /a TOTAL_TESTS+=1
+        
+        :: Add to report
+        echo !IMAGE_NAME! ^| trace-edge ^| !TRACE_STATUS! ^| !TRACE_DURATION! ^| !TRACE_WARNINGS! ^| !TRACE_SIZE! ^| >> "%OUTPUT_DIR%\report.md"
         
         :: Warning analysis
         if !LOGO_WARNINGS! GTR 50 (

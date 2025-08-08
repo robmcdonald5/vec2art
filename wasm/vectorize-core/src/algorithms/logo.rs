@@ -138,18 +138,32 @@ fn process_binary_image(
         if relaxed_contours.is_empty() {
             return Ok(vec![create_fallback_svg_path(dimensions.0, dimensions.1)]);
         } else {
-            return process_contours_to_svg(relaxed_contours, config);
+            return process_contours_to_svg(relaxed_contours, dimensions, config);
         }
     }
     
-    process_contours_to_svg(filtered_contours, config)
+    process_contours_to_svg(filtered_contours, dimensions, config)
 }
 
 /// Process contours through simplification and SVG generation
-fn process_contours_to_svg(contours: Vec<Contour>, config: &LogoConfig) -> VectorizeResult<Vec<SvgPath>> {
+fn process_contours_to_svg(contours: Vec<Contour>, dimensions: (u32, u32), config: &LogoConfig) -> VectorizeResult<Vec<SvgPath>> {
+    use crate::algorithms::path_utils::calculate_douglas_peucker_epsilon;
+    
+    // Calculate proper Douglas-Peucker epsilon based on image diagonal
+    let epsilon = if config.simplification_tolerance > 0.0 {
+        // If user provided a specific tolerance, use a reasonable factor
+        let factor = (config.simplification_tolerance / 100.0).clamp(0.003, 0.007);
+        calculate_douglas_peucker_epsilon(dimensions.0, dimensions.1, factor)
+    } else {
+        // Use default factor (0.005)
+        calculate_douglas_peucker_epsilon(dimensions.0, dimensions.1, 0.005)
+    };
+    
+    log::debug!("Using Douglas-Peucker epsilon: {:.3} pixels (image: {}x{})", 
+               epsilon, dimensions.0, dimensions.1);
 
     // Step 7: Simplify paths with error handling
-    let simplified_paths = simplify_contours(&contours, config.simplification_tolerance)
+    let simplified_paths = simplify_contours(&contours, epsilon)
         .map_err(|e| {
             log::error!("Path simplification failed: {}", e);
             e
@@ -158,7 +172,7 @@ fn process_contours_to_svg(contours: Vec<Contour>, config: &LogoConfig) -> Vecto
     // Edge case: simplification removed all valid contours
     if simplified_paths.is_empty() {
         log::warn!("Simplification removed all contours, trying with larger tolerance");
-        let relaxed_paths = simplify_contours(&contours, config.simplification_tolerance * 2.0)?;
+        let relaxed_paths = simplify_contours(&contours, epsilon * 2.0)?;
         if relaxed_paths.is_empty() {
             log::warn!("Even relaxed simplification failed, using original contours");
             return process_paths_to_svg(contours, config);
@@ -261,15 +275,15 @@ fn process_paths_to_svg(simplified_paths: Vec<Contour>, config: &LogoConfig) -> 
 fn process_single_contour(contour: &Contour, config: &LogoConfig) -> VectorizeResult<Vec<SvgPath>> {
     if config.fit_curves {
         // Use curve fitting with fallback
-        match fit_bezier_curves(&[contour.clone()], config.curve_tolerance) {
+        match fit_bezier_curves(&[contour.clone()], config.curve_tolerance, config) {
             Ok(paths) if !paths.is_empty() => Ok(paths),
             _ => {
                 log::debug!("Curve fitting failed, using linear paths");
-                Ok(convert_to_svg_paths(&[contour.clone()]))
+                Ok(convert_to_svg_paths(&[contour.clone()], config))
             }
         }
     } else {
-        Ok(convert_to_svg_paths(&[contour.clone()]))
+        Ok(convert_to_svg_paths(&[contour.clone()], config))
     }
 }
 
@@ -785,7 +799,7 @@ fn simplify_contours(contours: &[Contour], tolerance: f64) -> VectorizeResult<Ve
 }
 
 /// Fit Bezier curves to simplified paths using Schneider algorithm
-fn fit_bezier_curves(paths: &[Contour], tolerance: f64) -> VectorizeResult<Vec<SvgPath>> {
+fn fit_bezier_curves(paths: &[Contour], tolerance: f64, config: &LogoConfig) -> VectorizeResult<Vec<SvgPath>> {
     // Schneider algorithm imports are used in fit_cubic_bezier_schneider function
     
     log::debug!(
@@ -796,37 +810,26 @@ fn fit_bezier_curves(paths: &[Contour], tolerance: f64) -> VectorizeResult<Vec<S
 
     let svg_paths: Vec<SvgPath> = paths
         .iter()
-        .map(|path| fit_cubic_bezier_schneider(path, tolerance as f32))
+        .map(|path| fit_cubic_bezier_schneider(path, tolerance as f32, config))
         .collect();
 
     Ok(svg_paths)
 }
 
 /// Fit cubic Bézier curves to a path using the Schneider algorithm
-fn fit_cubic_bezier_schneider(points: &[Point], tolerance: f32) -> SvgPath {
+fn fit_cubic_bezier_schneider(points: &[Point], tolerance: f32, config: &LogoConfig) -> SvgPath {
     use crate::algorithms::path_utils::{schneider_fit_cubic_bezier, fitting_results_to_svg_path};
     
     if points.len() < 2 {
         // Empty path
-        return SvgPath {
-            path_data: String::new(),
-            fill: Some("black".to_string()),
-            stroke: None,
-            stroke_width: None,
-            element_type: SvgElementType::Path,
-        };
+        return create_styled_svg_path(String::new(), config);
     }
     
     if points.len() == 2 {
         // Simple line
-        return SvgPath {
-            path_data: format!("M {:.2} {:.2} L {:.2} {:.2} Z", 
-                points[0].x, points[0].y, points[1].x, points[1].y),
-            fill: Some("black".to_string()),
-            stroke: None,
-            stroke_width: None,
-            element_type: SvgElementType::Path,
-        };
+        let path_data = format!("M {:.2} {:.2} L {:.2} {:.2} Z", 
+            points[0].x, points[0].y, points[1].x, points[1].y);
+        return create_styled_svg_path(path_data, config);
     }
     
     // Use Schneider algorithm with recommended defaults
@@ -839,13 +842,7 @@ fn fit_cubic_bezier_schneider(points: &[Point], tolerance: f32) -> SvgPath {
     let mut path_data = fitting_results_to_svg_path(&fitting_results, points[0]);
     path_data.push_str(" Z"); // Close the path
     
-    SvgPath {
-        path_data,
-        fill: Some("black".to_string()),
-        stroke: None,
-        stroke_width: None,
-        element_type: SvgElementType::Path,
-    }
+    create_styled_svg_path(path_data, config)
 }
 
 // LEGACY IMPLEMENTATION - Kept for rollback capability
@@ -1075,6 +1072,27 @@ fn is_binary_degenerate(binary: &[bool]) -> bool {
     binary.iter().all(|&b| b == first_value)
 }
 
+/// Create SVG path with appropriate fill/stroke based on configuration
+fn create_styled_svg_path(path_data: String, config: &LogoConfig) -> SvgPath {
+    if config.use_stroke {
+        SvgPath {
+            path_data,
+            fill: None,
+            stroke: Some("black".to_string()),
+            stroke_width: Some(config.stroke_width),
+            element_type: SvgElementType::Path,
+        }
+    } else {
+        SvgPath {
+            path_data,
+            fill: Some("black".to_string()),
+            stroke: None,
+            stroke_width: None,
+            element_type: SvgElementType::Path,
+        }
+    }
+}
+
 /// Create a fallback SVG path for edge cases
 fn create_fallback_svg_path(width: u32, height: u32) -> SvgPath {
     // Create a simple rectangle outline as fallback
@@ -1141,7 +1159,7 @@ fn create_bounding_box_path(contours: &[Contour]) -> Option<SvgPath> {
 }
 
 /// Convert simplified contours to SVG path strings
-fn convert_to_svg_paths(contours: &[Contour]) -> Vec<SvgPath> {
+fn convert_to_svg_paths(contours: &[Contour], config: &LogoConfig) -> Vec<SvgPath> {
     contours
         .iter()
         .filter_map(|contour| {
@@ -1167,13 +1185,7 @@ fn convert_to_svg_paths(contours: &[Contour]) -> Vec<SvgPath> {
 
             path_data.push_str(" Z"); // Close path
 
-            Some(SvgPath {
-                path_data,
-                fill: Some("black".to_string()),
-                stroke: None,
-                stroke_width: None,
-                element_type: SvgElementType::Path,
-            })
+            Some(create_styled_svg_path(path_data, config))
         })
         .collect()
 }

@@ -1924,7 +1924,7 @@ fn merge_similar_regions_with_colors(
                 if let Some(&adjacent_color) = region_colors.get(&adjacent_id) {
                     let color_distance = lab_distance(region_color, adjacent_color);
                     
-                    // Use delta E00 threshold as recommended (ΔE₀₀ < 8)
+                    // Use LAB ΔE_ab threshold as recommended (ΔE_ab < 2)
                     if color_distance < threshold as f32 {
                         // Merge smaller region into larger region
                         let region1_size = regions.get(&region_id).map(|r| r.len()).unwrap_or(0);
@@ -2431,12 +2431,19 @@ fn convert_regions_to_svg_with_gradients(
 ) -> Vec<SvgPath> {
     let width = (quantized.len() as f64).sqrt() as u32;
 
-    contours
-        .iter()
-        .map(|(&region_id, contour)| {
+    // Sort contours by z-order for proper layering
+    let sorted_contours = sort_contours_by_z_order(contours);
+    
+    log::debug!("Z-ordering: Processing {} contours in proper layer order", sorted_contours.len());
+
+    sorted_contours
+        .into_iter()
+        .map(|(region_id, contour, area)| {
             if contour.is_empty() {
                 return create_empty_svg_path();
             }
+
+            log::trace!("Processing region {} with area {:.2}", region_id, area);
 
             // Check if this region should use a gradient
             let fill = if let Some(analysis) = gradient_analyses.get(&region_id) {
@@ -2480,14 +2487,21 @@ fn convert_regions_to_svg_with_primitives_and_gradients(
         ..PrimitiveConfig::default()
     };
 
+    // Sort contours by z-order for proper layering
+    let sorted_contours = sort_contours_by_z_order(contours);
+    
+    log::debug!("Z-ordering with primitives: Processing {} contours in proper layer order", sorted_contours.len());
+
     let mut svg_paths = Vec::new();
     let mut primitive_count = 0;
     let mut gradient_count = 0;
 
-    for (&region_id, contour) in contours.iter() {
+    for (region_id, contour, area) in sorted_contours {
         if contour.is_empty() {
             continue;
         }
+
+        log::trace!("Processing region {} with area {:.2} for primitive detection", region_id, area);
 
         // Determine fill color or gradient
         let fill = if let Some(analysis) = gradient_analyses.get(&region_id) {
@@ -2591,6 +2605,51 @@ fn create_empty_svg_path() -> SvgPath {
         stroke_width: None,
         element_type: SvgElementType::Path,
     }
+}
+
+/// Sort contours by z-order for proper SVG layering
+/// Returns contours sorted by: largest first (background), then small to large (detail on top)
+fn sort_contours_by_z_order(contours: &HashMap<usize, Contour>) -> Vec<(usize, &Contour, f32)> {
+    if contours.is_empty() {
+        return Vec::new();
+    }
+    
+    // Calculate areas for all contours
+    let mut contours_with_areas: Vec<(usize, &Contour, f32)> = contours
+        .iter()
+        .map(|(&region_id, contour)| {
+            let area = calculate_contour_area(contour);
+            (region_id, contour, area)
+        })
+        .collect();
+    
+    // Find the largest area (likely background)
+    let max_area = contours_with_areas
+        .iter()
+        .map(|(_, _, area)| *area)
+        .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+        .unwrap_or(0.0);
+    
+    // Sort according to z-order rules:
+    // 1. Background (largest area) first
+    // 2. All other regions sorted small to large (so small details appear on top)
+    contours_with_areas.sort_by(|a, b| {
+        let (_, _, area_a) = a;
+        let (_, _, area_b) = b;
+        
+        // Check if either is the background (largest)
+        let is_background_a = (*area_a - max_area).abs() < f32::EPSILON;
+        let is_background_b = (*area_b - max_area).abs() < f32::EPSILON;
+        
+        match (is_background_a, is_background_b) {
+            (true, false) => std::cmp::Ordering::Less,    // Background first
+            (false, true) => std::cmp::Ordering::Greater,
+            (true, true) => std::cmp::Ordering::Equal,    // Both are background (unlikely but handle)
+            (false, false) => area_a.partial_cmp(area_b).unwrap_or(std::cmp::Ordering::Equal), // Small to large
+        }
+    });
+    
+    contours_with_areas
 }
 
 #[cfg(test)]

@@ -17,6 +17,7 @@ mod edge_case_tests;
 // Re-export main types for convenience
 pub use config::*;
 pub use error::*;
+pub use algorithms::{TraceBackend, TraceLowConfig, vectorize_trace_low};
 
 // Import for timeout handling  
 // Removed unused time imports
@@ -151,6 +152,59 @@ pub fn vectorize_regions_rgba(
     Ok(svg_document)
 }
 
+/// Main entry point for trace-low vectorization
+///
+/// This function takes an RGBA image buffer and converts it to SVG paths
+/// using low-detail tracing algorithms optimized for sparse output.
+///
+/// # Arguments
+/// * `image` - Input RGBA image buffer
+/// * `config` - Configuration parameters for the trace-low process
+///
+/// # Returns
+/// * `Result<String, VectorizeError>` - SVG string or error
+///
+/// # Errors
+/// Returns error for:
+/// - Invalid image dimensions (0x0, too large, extreme aspect ratios)
+/// - Insufficient image data
+/// - Invalid configuration parameters
+/// - Algorithm failures
+pub fn vectorize_trace_low_rgba(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    config: &TraceLowConfig,
+) -> Result<String, VectorizeError> {
+    use input_validation::validate_image_input;
+    
+    log::info!("Starting trace-low vectorization with config: {:?}", config);
+
+    // Comprehensive input validation
+    validate_image_input(image)?;
+    validate_trace_low_config(config)?;
+    
+    // Check for edge cases that would make processing impossible
+    if is_empty_or_single_color_image(image) {
+        log::warn!("Image appears to be empty or single color, generating minimal SVG");
+        return Ok(generate_minimal_svg(image.width(), image.height(), "trace-low"));
+    }
+
+    // Use the trace-low algorithm
+    let svg_paths = vectorize_trace_low(image, config)?;
+
+    // Handle case where no paths were generated
+    if svg_paths.is_empty() {
+        log::warn!("No paths generated, creating minimal SVG");
+        return Ok(generate_minimal_svg(image.width(), image.height(), "trace-low"));
+    }
+
+    // Generate complete SVG document
+    let svg_config = SvgConfig::default();
+    let svg_document =
+        svg::generate_svg_document(&svg_paths, image.width(), image.height(), &svg_config);
+
+    Ok(svg_document)
+}
+
 // Helper functions for input validation and edge case handling
 mod input_validation {
     use super::*;
@@ -230,6 +284,31 @@ mod input_validation {
             return Err(VectorizeError::invalid_parameter_combination(
                 format!("Convergence threshold {} out of range (0.0, 100.0]", 
                     config.convergence_threshold)
+            ));
+        }
+        
+        Ok(())
+    }
+    
+    /// Validate trace-low specific configuration
+    pub fn validate_trace_low_config(config: &TraceLowConfig) -> VectorizeResult<()> {
+        // Validate detail parameter range
+        if config.detail < 0.0 || config.detail > 1.0 {
+            return Err(VectorizeError::invalid_parameter_combination(
+                format!("Detail parameter {} out of range [0.0, 1.0]", config.detail)
+            ));
+        }
+        
+        // Validate stroke width
+        if config.stroke_px_at_1080p <= 0.0 {
+            return Err(VectorizeError::invalid_parameter_combination(
+                format!("Stroke width {} must be positive", config.stroke_px_at_1080p)
+            ));
+        }
+        
+        if config.stroke_px_at_1080p > 50.0 {
+            return Err(VectorizeError::invalid_parameter_combination(
+                format!("Stroke width {} too large (max: 50.0)", config.stroke_px_at_1080p)
             ));
         }
         

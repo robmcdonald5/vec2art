@@ -37,6 +37,12 @@ pub struct LogoConfig {
 
     /// Maximum eccentricity for circle detection
     pub max_circle_eccentricity: f32,
+
+    /// Whether to render paths as strokes instead of fills
+    pub use_stroke: bool,
+
+    /// Stroke width in pixels (when use_stroke is true)
+    pub stroke_width: f32,
 }
 
 impl LogoConfig {
@@ -67,6 +73,12 @@ impl LogoConfig {
         if self.max_dimension > 4096 {
             return Err("Maximum dimension should not exceed 4096 pixels for reasonable performance".to_string());
         }
+        if self.stroke_width <= 0.0 {
+            return Err("Stroke width must be positive".to_string());
+        }
+        if self.stroke_width > 50.0 {
+            return Err("Stroke width should not exceed 50 pixels".to_string());
+        }
         
         Ok(())
     }
@@ -86,6 +98,8 @@ impl Default for LogoConfig {
             detect_primitives: true,
             primitive_fit_tolerance: 2.0,
             max_circle_eccentricity: 0.15,
+            use_stroke: false,         // Default to fill mode
+            stroke_width: 1.0,         // Default stroke width for stroke mode
         }
     }
 }
@@ -191,14 +205,17 @@ impl RegionsConfig {
     pub fn validate(&self) -> Result<(), String> {
         // Check if SLIC parameters are reasonable when SLIC is selected
         if self.segmentation_method == SegmentationMethod::Slic {
-            if self.slic_region_size < 8 {
-                return Err("SLIC region size should be at least 8 pixels for meaningful superpixels".to_string());
+            if self.slic_region_size < 100 {
+                return Err("SLIC region size should be at least 100 pixels for proper superpixel segmentation".to_string());
             }
-            if self.slic_region_size > self.max_dimension / 4 {
-                return Err("SLIC region size is too large relative to image size".to_string());
+            if self.slic_region_size > 2000 {
+                return Err("SLIC region size should not exceed 2000 pixels for reasonable segmentation quality".to_string());
             }
             if self.slic_compactness < 0.1 || self.slic_compactness > 100.0 {
                 return Err("SLIC compactness should be between 0.1 and 100.0".to_string());
+            }
+            if self.slic_iterations < 5 {
+                return Err("SLIC iterations should be at least 5 for proper convergence".to_string());
             }
         }
 
@@ -253,11 +270,11 @@ impl Default for RegionsConfig {
             primitive_fit_tolerance: 2.0,
             max_circle_eccentricity: 0.15,
             merge_similar_regions: true,
-            merge_threshold: 8.0,      // ΔE₀₀ < 8 as recommended for SLIC
-            // SLIC defaults from research document
-            slic_region_size: 24,      // 24 pixels as recommended
+            merge_threshold: 2.0,      // LAB ΔE_ab < 2 for proper region merging
+            // SLIC defaults - 500-1500px per superpixel for proper segmentation
+            slic_region_size: 800,     // Target ~800px per superpixel (within 500-1500 range)
             slic_compactness: 10.0,    // Compactness = 10 as recommended
-            slic_iterations: 7,        // 7 iterations as recommended
+            slic_iterations: 10,       // ≥10 iterations for proper convergence
             // Gradient detection defaults
             detect_gradients: true,    // Enable gradient detection by default
             gradient_r_squared_threshold: 0.85, // R² ≥ 0.85 as specified in requirements

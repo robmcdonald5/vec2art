@@ -2,6 +2,24 @@
 
 use crate::algorithms::logo::Point;
 
+/// Calculate appropriate Douglas-Peucker epsilon based on image dimensions
+///
+/// Uses the recommended scaling of 0.003-0.007 × image_diagonal_px for proper
+/// path simplification that adapts to image size.
+///
+/// # Arguments
+/// * `image_width` - Width of the source image in pixels
+/// * `image_height` - Height of the source image in pixels
+/// * `simplification_factor` - Factor between 0.003-0.007 (default: 0.005)
+///
+/// # Returns
+/// * `f64` - Appropriate epsilon value in pixels
+pub fn calculate_douglas_peucker_epsilon(image_width: u32, image_height: u32, simplification_factor: f64) -> f64 {
+    let diagonal = ((image_width as f64).powi(2) + (image_height as f64).powi(2)).sqrt();
+    let factor = simplification_factor.clamp(0.003, 0.007);
+    diagonal * factor
+}
+
 /// Douglas-Peucker path simplification algorithm
 ///
 /// Reduces the number of points in a path while preserving its overall shape
@@ -9,7 +27,7 @@ use crate::algorithms::logo::Point;
 ///
 /// # Arguments
 /// * `points` - Input path as a series of points
-/// * `tolerance` - Maximum allowed perpendicular distance from simplified line
+/// * `tolerance` - Maximum allowed perpendicular distance from simplified line (in pixels)
 ///
 /// # Returns
 /// * `Vec<Point>` - Simplified path
@@ -906,6 +924,21 @@ impl FittingResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_calculate_douglas_peucker_epsilon() {
+        // Test with a 1024x768 image (common resolution)
+        let epsilon = calculate_douglas_peucker_epsilon(1024, 768, 0.005);
+        let expected_diagonal = ((1024.0_f64).powi(2) + (768.0_f64).powi(2)).sqrt();
+        let expected_epsilon = expected_diagonal * 0.005;
+        assert!((epsilon - expected_epsilon).abs() < 1e-10);
+        
+        // Test clamping of factor
+        let epsilon_low = calculate_douglas_peucker_epsilon(1024, 768, 0.001); // Below 0.003
+        let epsilon_high = calculate_douglas_peucker_epsilon(1024, 768, 0.01); // Above 0.007
+        assert!((epsilon_low - expected_diagonal * 0.003).abs() < 1e-10);
+        assert!((epsilon_high - expected_diagonal * 0.007).abs() < 1e-10);
+    }
 
     #[test]
     fn test_douglas_peucker_simplify() {

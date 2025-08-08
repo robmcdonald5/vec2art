@@ -79,10 +79,13 @@
 ### Vectorization Modes
 The system supports multiple algorithmic approaches for different artistic styles and use cases:
 
-1. **Logo/Line-Art Mode** — Binary tracing for high-contrast images (logos, sketches, scans)
-2. **Color Regions Mode** — Quantization/superpixel-based posterization for photos and illustrations
-3. **Edge/Centerline Mode** — Stroke-based rendering for drawn/outline effects
-4. **Stylized Modes** — Creative effects including low-poly, stipple, and halftone patterns
+1. **Logo/Line-Art Mode** — Binary tracing with Suzuki-Abe contours and primitive shape detection (✅ production-ready)
+2. **Color Regions Mode** — Wu color quantization and SLIC superpixel-based posterization with gradient detection (✅ production-ready)
+3. **Trace-Low Mode** — Fast, low-detail tracing with 3 backends:
+   - **Edge Backend** — Canny edge detection for sparse outlines (✅ fully functional)
+   - **Centerline Backend** — Skeleton-based tracing for line art (🚧 stubbed for future)
+   - **Superpixel Backend** — Large region fills for cell-shaded effects (🚧 stubbed for future)
+4. **Stylized Modes** — Creative effects including low-poly, stipple, and halftone patterns (📋 planned)
 
 ### Processing Pipeline
 1. **Input Processing** — Accept raster images (PNG, JPG, WebP)
@@ -107,11 +110,17 @@ The system supports multiple algorithmic approaches for different artistic style
 
 ## Current Status
 
-### Implementation Complete (Phase 1.5)
-- **Core Algorithms**: Production-ready logo and regions vectorization
-- **Advanced Features**: Wu color quantization, SLIC superpixels, Suzuki-Abe contours, primitive detection, gradient emission
-- **Performance**: Sub-second processing with multi-threading optimization
-- **Quality**: Comprehensive test coverage with zero algorithm warnings
+### Implementation Complete (Phase 1.5+)
+- **Core Algorithms**: Production-ready logo, regions, and trace-low (edge) vectorization
+- **Advanced Features**: 
+  - Wu color quantization with proper bug fixes (no more solid color outputs)
+  - SLIC superpixels with updated parameters (800px per superpixel vs 24px)
+  - Suzuki-Abe contours with fixed Douglas-Peucker epsilon scaling
+  - Primitive detection and gradient emission
+  - Enhanced CLI with 20+ parameters for fine control
+- **New Trace-Low Mode**: Fast low-detail tracing with edge backend producing excellent results
+- **Performance**: Sub-second processing with proper z-ordering and LAB ΔE thresholds
+- **Quality**: Comprehensive test coverage with 18 integration tests (3 algorithms × 6 test images) and extensive unit test suite
 
 ### Architecture
 
@@ -121,9 +130,11 @@ The system supports multiple algorithmic approaches for different artistic style
 - **`vectorize-wasm/`** — WebAssembly bindings for browser integration
 
 #### Key Features
-- **Logo Mode**: Binary tracing with Suzuki-Abe contour detection and primitive shape recognition
-- **Regions Mode**: Advanced color quantization and superpixel segmentation
-- **Performance**: Multi-threaded processing, SIMD optimization, <1s conversion times
-- **Quality**: Industry-standard algorithms with comprehensive parameter control
+- **Logo Mode**: Binary tracing with Suzuki-Abe contours, primitive shape recognition, and stroke support
+- **Regions Mode**: Wu quantization and SLIC superpixel segmentation with gradient detection
+- **Trace-Low Mode**: Fast edge detection producing excellent sparse outlines
+- **Enhanced CLI**: 20+ parameters including algorithm-specific tuning (Wu vs KMeans, SLIC vs KMeans, primitive tolerances, gradient thresholds)
+- **Performance**: Multi-threaded processing, proper z-ordering (background first, small to large)
+- **Quality**: Fixed algorithm parameters (pixel-based epsilons, LAB ΔE 2.0 vs 8.0), comprehensive test coverage
 
 ## IMPORTANT REMEMBER TO UPDATE TODO LIST WHEN TASKS ARE UPDATED/COMPLETED/REMOVED/ADDED

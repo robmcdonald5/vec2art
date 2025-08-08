@@ -9,7 +9,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use vectorize_core::{vectorize_logo_rgba, vectorize_regions_rgba, LogoConfig, RegionsConfig, SegmentationMethod, QuantizationMethod};
+use vectorize_core::{vectorize_logo_rgba, vectorize_regions_rgba, vectorize_trace_low_rgba, LogoConfig, RegionsConfig, TraceLowConfig, TraceBackend, SegmentationMethod, QuantizationMethod};
 
 mod ssim;
 mod svg_analysis;
@@ -106,11 +106,11 @@ enum Commands {
         merge_similar_regions: bool,
 
         /// Color distance threshold for region merging
-        #[arg(long, default_value = "8.0")]
+        #[arg(long, default_value = "2.0")]
         merge_threshold: f64,
 
         /// Target region size for SLIC superpixels (approximate side length in pixels)
-        #[arg(long, default_value = "24")]
+        #[arg(long, default_value = "800")]
         slic_region_size: u32,
 
         /// SLIC compactness parameter (0-100, higher = more square regions)
@@ -118,7 +118,7 @@ enum Commands {
         slic_compactness: f32,
 
         /// Number of SLIC iterations
-        #[arg(long, default_value = "7")]
+        #[arg(long, default_value = "10")]
         slic_iterations: u32,
 
         /// Enable gradient detection for smooth color transitions
@@ -136,6 +136,35 @@ enum Commands {
         /// Simplification tolerance
         #[arg(long, default_value = "1.0")]
         simplify: f64,
+    },
+
+    /// Vectorize using low-detail tracing algorithm
+    TraceLow {
+        /// Input image file
+        input: PathBuf,
+
+        /// Output SVG file
+        output: PathBuf,
+
+        /// Tracing backend to use
+        #[arg(long, default_value = "edge", value_parser = parse_trace_backend)]
+        backend: TraceBackend,
+
+        /// Detail level (0.0 = very sparse, 1.0 = more detail)
+        #[arg(long, default_value = "0.3")]
+        detail: f32,
+
+        /// Stroke width at 1080p reference resolution
+        #[arg(long, default_value = "1.2")]
+        stroke_width: f32,
+
+        /// Random seed for reproducible results
+        #[arg(long, default_value = "0")]
+        seed: u64,
+
+        /// Output statistics to CSV file
+        #[arg(long)]
+        stats: Option<PathBuf>,
     },
 
     /// Benchmark vectorization performance
@@ -245,11 +274,11 @@ enum Commands {
         merge_similar_regions: bool,
 
         /// Color distance threshold for region merging
-        #[arg(long, default_value = "8.0")]
+        #[arg(long, default_value = "2.0")]
         merge_threshold: f64,
 
         /// Target region size for SLIC superpixels
-        #[arg(long, default_value = "24")]
+        #[arg(long, default_value = "800")]
         slic_region_size: u32,
 
         /// SLIC compactness parameter
@@ -257,7 +286,7 @@ enum Commands {
         slic_compactness: f32,
 
         /// Number of SLIC iterations
-        #[arg(long, default_value = "7")]
+        #[arg(long, default_value = "10")]
         slic_iterations: u32,
 
         /// Enable gradient detection
@@ -352,6 +381,21 @@ fn validate_cli_arguments(command: &Commands) -> Result<()> {
 
             if *simplify < 0.0 {
                 return Err(anyhow::anyhow!("Simplification tolerance must be non-negative"));
+            }
+        }
+        Commands::TraceLow {
+            detail,
+            stroke_width,
+            ..
+        } => {
+            if *detail < 0.0 || *detail > 1.0 {
+                return Err(anyhow::anyhow!("Detail parameter must be between 0.0 and 1.0"));
+            }
+            if *stroke_width <= 0.0 {
+                return Err(anyhow::anyhow!("Stroke width must be positive"));
+            }
+            if *stroke_width > 50.0 {
+                return Err(anyhow::anyhow!("Stroke width should not exceed 50.0 for reasonable output"));
             }
         }
         Commands::Batch { 
@@ -487,6 +531,23 @@ fn main() -> Result<()> {
             max_gradient_stops,
             simplify,
         ),
+        Commands::TraceLow {
+            input,
+            output,
+            backend,
+            detail,
+            stroke_width,
+            seed,
+            stats,
+        } => vectorize_trace_low_command(
+            input,
+            output,
+            backend,
+            detail,
+            stroke_width,
+            seed,
+            stats,
+        ),
         Commands::Benchmark {
             input,
             algorithm,
@@ -539,6 +600,107 @@ fn main() -> Result<()> {
             simplify,
         ),
     }
+}
+
+fn vectorize_trace_low_command(
+    input: PathBuf,
+    output: PathBuf,
+    backend: TraceBackend,
+    detail: f32,
+    stroke_width: f32,
+    seed: u64,
+    stats: Option<PathBuf>,
+) -> Result<()> {
+    log::info!("Loading image: {}", input.display());
+    let img = image::open(&input)
+        .with_context(|| format!("Failed to open image: {}", input.display()))?
+        .to_rgba8();
+
+    // Set seed for reproducible results
+    if seed != 0 {
+        log::info!("Using seed {} for reproducible results", seed);
+        // Note: Seed handling would be implemented when needed for randomized algorithms
+    }
+
+    // Create configuration
+    let config = TraceLowConfig {
+        backend,
+        detail,
+        stroke_px_at_1080p: stroke_width,
+    };
+
+    log::info!("Starting trace-low vectorization with backend {:?}, detail {:.2}", 
+               config.backend, config.detail);
+    let start_time = Instant::now();
+
+    let svg_content = vectorize_trace_low_rgba(&img, &config)
+        .with_context(|| "Trace-low vectorization failed")?;
+
+    let elapsed = start_time.elapsed();
+    log::info!("Vectorization completed in {:.2}s", elapsed.as_secs_f64());
+
+    // Write SVG to output file
+    fs::write(&output, svg_content)
+        .with_context(|| format!("Failed to write SVG to: {}", output.display()))?;
+
+    log::info!("SVG saved to: {}", output.display());
+
+    // Write statistics if requested
+    if let Some(stats_path) = stats {
+        write_trace_low_stats(&img, &config, elapsed.as_secs_f64(), &stats_path)?;
+        log::info!("Statistics saved to: {}", stats_path.display());
+    }
+
+    Ok(())
+}
+
+fn write_trace_low_stats(
+    image: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+    config: &TraceLowConfig,
+    processing_time: f64,
+    output_path: &PathBuf,
+) -> Result<()> {
+    use std::io::Write;
+
+    let (width, height) = image.dimensions();
+    let pixel_count = width as u64 * height as u64;
+
+    // Create CSV header if file doesn't exist
+    let write_header = !output_path.exists();
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(output_path)
+        .with_context(|| format!("Failed to open stats file: {}", output_path.display()))?;
+
+    if write_header {
+        writeln!(
+            file,
+            "width,height,pixels,backend,detail,stroke_width,processing_time_s,throughput_mpx_per_s"
+        )?;
+    }
+
+    let throughput = (pixel_count as f64 / 1_000_000.0) / processing_time;
+    let backend_str = match config.backend {
+        TraceBackend::Edge => "edge",
+        TraceBackend::Centerline => "centerline",
+        TraceBackend::Superpixel => "superpixel",
+    };
+
+    writeln!(
+        file,
+        "{},{},{},{},{:.3},{:.1},{:.3},{:.2}",
+        width,
+        height,
+        pixel_count,
+        backend_str,
+        config.detail,
+        config.stroke_px_at_1080p,
+        processing_time,
+        throughput
+    )?;
+
+    Ok(())
 }
 
 fn vectorize_logo_command(
@@ -1137,6 +1299,19 @@ fn parse_segmentation_method(s: &str) -> Result<SegmentationMethod, String> {
         "slic" => Ok(SegmentationMethod::Slic),
         _ => Err(format!(
             "Invalid segmentation method '{}'. Valid options: kmeans, slic",
+            s
+        )),
+    }
+}
+
+/// Parse trace backend from string
+fn parse_trace_backend(s: &str) -> Result<TraceBackend, String> {
+    match s.to_lowercase().as_str() {
+        "edge" => Ok(TraceBackend::Edge),
+        "centerline" => Ok(TraceBackend::Centerline),
+        "superpixel" => Ok(TraceBackend::Superpixel),
+        _ => Err(format!(
+            "Invalid trace backend '{}'. Valid options: edge, centerline, superpixel",
             s
         )),
     }

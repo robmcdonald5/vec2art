@@ -1,0 +1,2 @@
+width,height,pixels,backend,detail,stroke_width,processing_time_s,throughput_mpx_per_s
+200,200,40000,edge,0.500,1.2,0.036,1.11
