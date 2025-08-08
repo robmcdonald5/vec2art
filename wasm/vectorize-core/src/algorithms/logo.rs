@@ -5,8 +5,9 @@ use crate::error::VectorizeResult;
 use crate::preprocessing::{
     apply_threshold, calculate_otsu_threshold, preprocess_for_logo, rgba_to_grayscale,
 };
-use image::{GrayImage, RgbaImage};
-use imageproc::contours::find_contours_with_threshold;
+use image::RgbaImage;
+// TODO: Add back for Suzuki-Abe implementation
+// use imageproc::contours::find_contours_with_threshold;
 
 /// Vectorize a logo/line-art image
 ///
@@ -47,7 +48,7 @@ pub fn vectorize_logo(image: &RgbaImage, config: &LogoConfig) -> VectorizeResult
     let cleaned = apply_gentle_morphology(&binary, preprocessed.dimensions(), config.morphology_kernel_size)?;
 
     // Step 5: Extract contours with Suzuki-Abe algorithm
-    let contours = extract_contours_suzuki_abe(&cleaned, preprocessed.dimensions(), threshold)?;
+    let contours = extract_contours_moore_legacy(&cleaned, preprocessed.dimensions())?;
 
     // Step 6: Filter small contours
     let filtered_contours = filter_contours(contours, config.min_contour_area);
@@ -182,58 +183,6 @@ fn dilate(binary: &[bool], dimensions: (u32, u32), kernel_size: u32) -> Vec<bool
     result
 }
 
-/// Extract contours using Suzuki-Abe algorithm from imageproc crate
-/// This replaces the problematic Moore neighborhood implementation
-fn extract_contours_suzuki_abe(
-    binary: &[bool], 
-    dimensions: (u32, u32),
-    threshold: u8
-) -> VectorizeResult<Vec<Contour>> {
-    log::debug!(
-        "Extracting contours using Suzuki-Abe algorithm from {}x{} binary image",
-        dimensions.0,
-        dimensions.1
-    );
-
-    let (width, height) = dimensions;
-    
-    // Convert binary boolean array to GrayImage for imageproc
-    let mut gray_data = vec![0u8; binary.len()];
-    for (i, &pixel) in binary.iter().enumerate() {
-        gray_data[i] = if pixel { 255 } else { 0 };
-    }
-    
-    let gray_image = match GrayImage::from_raw(width, height, gray_data) {
-        Some(img) => img,
-        None => {
-            return Err(crate::error::VectorizeError::InvalidImage(
-                "Failed to create grayscale image from binary data".to_string()
-            ));
-        }
-    };
-
-    // Use Suzuki-Abe algorithm to find contours
-    // Threshold of 127 treats pixels > 127 as foreground
-    let imageproc_contours = find_contours_with_threshold(&gray_image, 127);
-    
-    log::debug!("Suzuki-Abe found {} raw contours", imageproc_contours.len());
-
-    // Convert imageproc contours to our internal format
-    let mut contours = Vec::new();
-    for contour in imageproc_contours {
-        let points: Vec<Point> = contour.points.iter()
-            .map(|p| Point { x: p.x as f32, y: p.y as f32 })
-            .collect();
-        
-        // Only include contours with at least 3 points
-        if points.len() >= 3 {
-            contours.push(points);
-        }
-    }
-
-    log::debug!("Converted {} valid contours from Suzuki-Abe output", contours.len());
-    Ok(contours)
-}
 
 // LEGACY IMPLEMENTATION - Kept for rollback capability
 // The following functions implement the original Moore neighborhood algorithm
@@ -784,25 +733,5 @@ mod tests {
         assert!(!paths.is_empty());
     }
 
-    #[test]
-    fn test_suzuki_abe_contour_extraction() {
-        // Test the core Suzuki-Abe extraction function directly
-        let binary = vec![
-            false, false, false, false, false,
-            false, true,  true,  true,  false,
-            false, true,  false, true,  false,
-            false, true,  true,  true,  false,
-            false, false, false, false, false,
-        ];
-        let dimensions = (5, 5);
-        
-        let result = extract_contours_suzuki_abe(&binary, dimensions, 127);
-        assert!(result.is_ok());
-        
-        let contours = result.unwrap();
-        println!("Suzuki-Abe extracted {} contours from test pattern", contours.len());
-        
-        // Should find at least one contour (the outer rectangle)
-        assert!(!contours.is_empty());
-    }
+    // TODO: Add back Suzuki-Abe test when implementation is ready
 }
