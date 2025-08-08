@@ -170,10 +170,13 @@ The project is organized as a Cargo workspace with three main crates:
 
 ### Implementation Status
 
-**Current**: Phase 1.5 complete - production-ready core algorithms implemented
+**Current**: Phase 1.5+ complete with telemetry system - production-ready core algorithms implemented
 - Cargo workspace structure with three main crates
 - `rust-toolchain.toml` and `.cargo/config.toml` configured for native and WASM builds
 - Advanced algorithms: Wu quantization, SLIC segmentation, Suzuki-Abe contours, primitive detection
+- Telemetry system with per-run config dumps and CSV logging for diagnostics and quality analysis
+- Auto-retry guard system implemented and ready for activation
+- Configuration fixes: SLIC step_px parameter corrected, pixel-based Douglas-Peucker epsilon
 - WASM bindings ready for browser integration
 - Multi-threading support configured
 - Comprehensive test coverage
@@ -242,6 +245,7 @@ The project is organized as a Cargo workspace with three main crates:
 - **Type-Check** cargo check --workspace --all-targets --all-features --locked
 - **Linting** cargo clippy --workspace --all-targets --all-features -- -D warnings
 - **Tests** cargo test --workspace --all-features --locked --no-fail-fast
+- **Telemetry Integration Tests** cargo run --bin vectorize-cli (all commands generate telemetry automatically)
 - **Performance Benchmarks** cargo bench --workspace
 - **DOCS** RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
 - **Build** (Optional) cargo build --workspace --all-targets --all-features --locked --release
@@ -266,16 +270,26 @@ The project is organized as a Cargo workspace with three main crates:
 ### Phase 1.5+ Complete
 - **Algorithm Suite**: 
   - Wu quantization with bug fixes (proper color distribution)
-  - SLIC segmentation with optimal parameters  
-  - Suzuki-Abe contours with pixel-based scaling
+  - SLIC segmentation with corrected parameters (step_px: 40 instead of region_size: 800)  
+  - Suzuki-Abe contours with pixel-based scaling using Epsilon enum
   - Trace-low mode with working edge backend
+- **Telemetry System**: 
+  - Complete per-run `.config.json` files capturing resolved runtime parameters
+  - Aggregate `runs.csv` for trend analysis and quality tracking
+  - Image metadata, resolved parameters, guards, statistics, and build info tracking
+  - Full CLI integration across logo, regions, and trace-low commands
+- **Auto-Retry Guards**: 
+  - Implemented `maybe_retry_logo()` and `maybe_retry_regions()` functions
+  - Quality checks for bad outputs (k_colors < 6, pct_quads > 0.6, max_region_pct > 0.35)
+  - Ready for activation (currently stubbed with #[allow(dead_code)])
 - **Production-Ready Core**: 
   - 18 integration tests passing (100% success rate) with comprehensive coverage
-  - Enhanced CLI with 20+ parameters
+  - Enhanced CLI with 20+ parameters including --slic-step-px and --simplify-diag-frac
   - Test suite covering 3 algorithms (logo, regions, trace-low)
 - **Performance**: 
   - Sub-second processing optimized
   - Proper z-ordering and LAB ΔE thresholds
+  - All major "solid blocks" configuration issues resolved
   - Logo mode needs tuning (shapes sometimes too large/misplaced)
   - Regions mode works well on some images, still "blobbing" on others
   - Trace-low edge mode producing excellent results

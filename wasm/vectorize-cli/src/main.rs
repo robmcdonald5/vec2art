@@ -697,7 +697,7 @@ fn vectorize_trace_low_command(
 fn write_trace_low_stats(
     image: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
-    processing_time: f64,
+    _processing_time: f64,
     output_path: &PathBuf,
 ) -> Result<()> {
     use std::io::Write;
@@ -720,7 +720,7 @@ fn write_trace_low_stats(
         )?;
     }
 
-    let throughput = (pixel_count as f64 / 1_000_000.0) / processing_time;
+    let throughput = (pixel_count as f64 / 1_000_000.0) / _processing_time;
     let backend_str = match config.backend {
         TraceBackend::Edge => "edge",
         TraceBackend::Centerline => "centerline",
@@ -736,7 +736,7 @@ fn write_trace_low_stats(
         backend_str,
         config.detail,
         config.stroke_px_at_1080p,
-        processing_time,
+        _processing_time,
         throughput
     )?;
 
@@ -1393,7 +1393,7 @@ fn write_logo_telemetry(
     image: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
     config: &LogoConfig,
     svg_content: &str,
-    processing_time: f64,
+    _processing_time: f64,
     retries: u32,
 ) -> Result<()> {
     let (width, height) = image.dimensions();
@@ -1463,7 +1463,7 @@ fn write_regions_telemetry(
     image: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
     config: &RegionsConfig,
     svg_content: &str,
-    processing_time: f64,
+    _processing_time: f64,
     retries: u32,
 ) -> Result<()> {
     let (width, height) = image.dimensions();
@@ -1587,6 +1587,9 @@ fn analyze_svg_output(svg_content: &str, _image_pixels: u32) -> Result<Stats> {
 }
 
 /// Auto-retry guard system - checks for bad outputs and adjusts parameters
+// Retry guard system - ready for activation when needed
+// To activate: refactor vectorize_logo_command to loop with retry logic
+#[allow(dead_code)]
 fn maybe_retry_logo(
     stats: &Stats, 
     config: &mut LogoConfig, 
@@ -1621,6 +1624,9 @@ fn maybe_retry_logo(
 }
 
 /// Auto-retry guard system for regions
+// Retry guard system - ready for activation when needed  
+// To activate: refactor vectorize_regions_command to loop with retry logic
+#[allow(dead_code)]
 fn maybe_retry_regions(
     stats: &Stats, 
     config: &mut RegionsConfig, 

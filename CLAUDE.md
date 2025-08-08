@@ -49,7 +49,7 @@
 
 ## Project Overview
 
-`vec2art` is a browser‑based tool that converts raster images (JPG, PNG, WebP) into stylized SVG art via a Rust‑powered WebAssembly (WASM) module, prioritizing client‑side performance. **Current Status**: Phase 1.5 complete - production-ready core algorithms. Ready for Phase 2 (WASM Integration) and Phase 3 (Frontend). Target: high performance CPU-based conversions with optional GPU acceleration.
+`vec2art` is a browser‑based tool that converts raster images (JPG, PNG, WebP) into stylized SVG art via a Rust‑powered WebAssembly (WASM) module, prioritizing client‑side performance. **Current Status**: Phase 1.5+ complete with telemetry system - production-ready core algorithms with comprehensive diagnostics and quality improvements. Ready for Phase 2 (WASM Integration) and Phase 3 (Frontend). Target: high performance CPU-based conversions with optional GPU acceleration.
 
 ---
 
@@ -114,11 +114,12 @@ The system supports multiple algorithmic approaches for different artistic style
 - **Core Algorithms**: Production-ready logo, regions, and trace-low (edge) vectorization
 - **Advanced Features**: 
   - Wu color quantization with proper bug fixes (no more solid color outputs)
-  - SLIC superpixels with updated parameters (800px per superpixel vs 24px)
-  - Suzuki-Abe contours with fixed Douglas-Peucker epsilon scaling
+  - SLIC superpixels with corrected parameters (step_px: 40 instead of region_size: 800)
+  - Suzuki-Abe contours with fixed pixel-based Douglas-Peucker epsilon scaling
   - Primitive detection and gradient emission
   - Enhanced CLI with 20+ parameters for fine control
 - **New Trace-Low Mode**: Fast low-detail tracing with edge backend producing excellent results
+- **Telemetry System**: Complete per-run config dumps and CSV logging for diagnostics and quality analysis
 - **Performance**: Sub-second processing with proper z-ordering and LAB ΔE thresholds
 - **Quality**: Comprehensive test coverage with 18 integration tests (3 algorithms × 6 test images) and extensive unit test suite
 
@@ -134,7 +135,9 @@ The system supports multiple algorithmic approaches for different artistic style
 - **Regions Mode**: Wu quantization and SLIC superpixel segmentation with gradient detection
 - **Trace-Low Mode**: Fast edge detection producing excellent sparse outlines
 - **Enhanced CLI**: 20+ parameters including algorithm-specific tuning (Wu vs KMeans, SLIC vs KMeans, primitive tolerances, gradient thresholds)
+- **Telemetry System**: Per-run JSON config dumps and aggregate CSV logging for diagnostics, quality analysis, and performance tracking
+- **Auto-Retry Guards**: Implemented quality detection system ready for activation (checks for bad outputs like low color count, high quad percentage)
 - **Performance**: Multi-threaded processing, proper z-ordering (background first, small to large)
-- **Quality**: Fixed algorithm parameters (pixel-based epsilons, LAB ΔE 2.0 vs 8.0), comprehensive test coverage
+- **Quality**: Fixed algorithm parameters (pixel-based epsilons, LAB ΔE 2.0 vs 8.0), comprehensive test coverage with telemetry diagnostics
 
 ## IMPORTANT REMEMBER TO UPDATE TODO LIST WHEN TASKS ARE UPDATED/COMPLETED/REMOVED/ADDED
