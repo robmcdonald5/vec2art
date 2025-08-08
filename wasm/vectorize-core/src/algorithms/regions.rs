@@ -35,8 +35,13 @@ pub fn vectorize_regions(
 
     // Step 1: Apply optimized preprocessing (combines resizing and denoising)
     let preprocessed = preprocess_for_regions(image, config.max_dimension)?;
+    log::debug!("Preprocessed image: {}x{} -> {}x{}", 
+               image.width(), image.height(),
+               preprocessed.width(), preprocessed.height());
 
     // Step 2-5: Apply segmentation based on chosen method
+    log::debug!("Using segmentation method: {:?}, quantization: {:?}", 
+               config.segmentation_method, config.quantization_method);
     let (region_map, quantized) = match config.segmentation_method {
         SegmentationMethod::KMeans => {
             // Traditional k-means approach with configurable quantization
@@ -57,16 +62,23 @@ pub fn vectorize_regions(
 
     // Step 6: Merge similar regions (optional)
     let merged_regions = if config.merge_similar_regions {
-        merge_similar_regions_with_colors(&region_map, &quantized, &preprocessed, config.merge_threshold)?
+        log::debug!("Merging similar regions with threshold {}", config.merge_threshold);
+        let merged = merge_similar_regions_with_colors(&region_map, &quantized, &preprocessed, config.merge_threshold)?;
+        log::debug!("Region merging: {} -> {} regions", region_map.len(), merged.len());
+        merged
     } else {
+        log::debug!("Skipping region merging");
         region_map
     };
 
     // Step 7: Extract region boundaries
     let contours = extract_region_contours(&merged_regions, preprocessed.dimensions())?;
+    log::debug!("Extracted {} contours from {} regions", contours.len(), merged_regions.len());
 
     // Step 8: Filter small regions
     let filtered_contours = filter_regions_by_area(contours, config.min_region_area);
+    log::debug!("Filtered regions by area: {} remaining (min_area={})", 
+               filtered_contours.len(), config.min_region_area);
 
     // Step 9: Analyze regions for gradient patterns if enabled
     let gradient_analyses = if config.detect_gradients {
@@ -92,6 +104,14 @@ pub fn vectorize_regions(
     };
 
     let gradient_count = gradient_analyses.values().filter(|a| a.use_gradient).count();
+    
+    // Debug: Analyze final SVG paths
+    let mut path_types = HashMap::new();
+    for path in &svg_paths {
+        *path_types.entry(format!("{:?}", path.element_type)).or_insert(0) += 1;
+    }
+    log::debug!("Final SVG paths by type: {:?}", path_types);
+    
     log::debug!(
         "Regions vectorization completed, generated {} paths ({} with gradients)",
         svg_paths.len(),
@@ -526,9 +546,50 @@ fn wu_color_quantization(
     // Convert all colors to LAB once for consistent processing
     let lab_colors: Vec<(f32, f32, f32)> = colors.par_iter().map(|c| c.to_lab()).collect();
 
+    // Debug: Analyze input color distribution
+    if lab_colors.len() <= 20 {
+        log::debug!("Wu input colors (LAB): {:?}", lab_colors);
+    } else {
+        let mut l_values: Vec<f32> = lab_colors.iter().map(|(l, _, _)| *l).collect();
+        let mut a_values: Vec<f32> = lab_colors.iter().map(|(_, a, _)| *a).collect();
+        let mut b_values: Vec<f32> = lab_colors.iter().map(|(_, _, b)| *b).collect();
+        l_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        a_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        b_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        
+        log::debug!("Wu input color ranges - L: [{:.1}, {:.1}], A: [{:.1}, {:.1}], B: [{:.1}, {:.1}]",
+                   l_values[0], l_values[l_values.len()-1],
+                   a_values[0], a_values[a_values.len()-1],
+                   b_values[0], b_values[b_values.len()-1]);
+    }
+
     // Build 3D histogram with reasonable quantization (32 bins per channel)
     const HIST_SIZE: usize = 32;
-    let histogram = build_3d_histogram(&lab_colors, HIST_SIZE);
+    let (histogram, lab_range) = build_3d_histogram(&lab_colors, HIST_SIZE);
+    
+    // Debug: Log the LAB range used for histogram
+    log::debug!("Wu LAB range used: L[{:.1}, {:.1}], A[{:.1}, {:.1}], B[{:.1}, {:.1}]",
+               lab_range.min_l, lab_range.max_l,
+               lab_range.min_a, lab_range.max_a, 
+               lab_range.min_b, lab_range.max_b);
+    
+    // Debug: Analyze histogram distribution
+    let mut filled_bins = 0;
+    let mut max_bin_count = 0;
+    for l in 0..HIST_SIZE {
+        for a in 0..HIST_SIZE {
+            for b in 0..HIST_SIZE {
+                if histogram[l][a][b] > 0 {
+                    filled_bins += 1;
+                    max_bin_count = max_bin_count.max(histogram[l][a][b]);
+                }
+            }
+        }
+    }
+    log::debug!("Wu histogram: {}/{} bins filled ({}%), max bin count: {}", 
+               filled_bins, HIST_SIZE * HIST_SIZE * HIST_SIZE,
+               (filled_bins * 100) / (HIST_SIZE * HIST_SIZE * HIST_SIZE),
+               max_bin_count);
 
     // Calculate moments for variance computation
     let moments = calculate_histogram_moments(&histogram, HIST_SIZE);
@@ -570,11 +631,48 @@ fn wu_color_quantization(
         }
     }
 
+    // Debug: Log final box information
+    log::debug!("Wu final boxes count: {}", boxes.len());
+    for (i, box_item) in boxes.iter().enumerate() {
+        log::debug!("Wu Box {}: L[{}-{}], A[{}-{}], B[{}-{}], volume={:.2}",
+                   i, box_item.min_l, box_item.max_l,
+                   box_item.min_a, box_item.max_a,
+                   box_item.min_b, box_item.max_b,
+                   box_item.volume);
+    }
+
     // Extract palette from final boxes
-    let centroids = extract_palette_from_boxes(&boxes, &histogram, HIST_SIZE);
+    let centroids = extract_palette_from_boxes(&boxes, &histogram, HIST_SIZE, &lab_range);
+    
+    // Debug: Log final palette colors
+    log::debug!("Wu final palette ({} colors):", centroids.len());
+    for (i, (l, a, b)) in centroids.iter().enumerate() {
+        // Convert to RGB for easier debugging
+        let (r, g, b_rgb) = lab_to_rgb(*l, *a, *b);
+        log::debug!("  Color {}: LAB({:.1}, {:.1}, {:.1}) -> RGB({}, {}, {})",
+                   i, l, a, b, r, g, b_rgb);
+    }
 
     // Assign each original color to nearest centroid
     let labels = assign_colors_to_centroids(&lab_colors, &centroids);
+    
+    // Debug: Analyze color assignment distribution
+    let mut assignment_counts = vec![0; centroids.len()];
+    for &label in &labels {
+        if label < assignment_counts.len() {
+            assignment_counts[label] += 1;
+        }
+    }
+    log::debug!("Wu color assignments: {:?}", assignment_counts);
+    
+    // Check for degenerate case where all colors map to same centroid
+    let unique_labels: std::collections::HashSet<usize> = labels.iter().cloned().collect();
+    if unique_labels.len() == 1 {
+        log::warn!("Wu quantization PROBLEM: All {} colors mapped to single centroid {}", 
+                  labels.len(), labels[0]);
+    } else {
+        log::debug!("Wu quantization: {} unique labels assigned", unique_labels.len());
+    }
 
     let duration = start_time.elapsed();
     log::debug!("Wu quantization completed in {:.2}ms with {} final colors", 
@@ -611,8 +709,19 @@ struct WuMoments {
     moment2: Vec<Vec<Vec<(f32, f32, f32)>>>, // Sum of squares
 }
 
+/// Color range information for Wu quantization
+#[derive(Debug, Clone)]
+struct LabRange {
+    min_l: f32,
+    max_l: f32,
+    min_a: f32,
+    max_a: f32,
+    min_b: f32,
+    max_b: f32,
+}
+
 /// Build 3D histogram from LAB colors
-fn build_3d_histogram(lab_colors: &[(f32, f32, f32)], hist_size: usize) -> Vec<Vec<Vec<u32>>> {
+fn build_3d_histogram(lab_colors: &[(f32, f32, f32)], hist_size: usize) -> (Vec<Vec<Vec<u32>>>, LabRange) {
     let mut histogram = vec![vec![vec![0u32; hist_size]; hist_size]; hist_size];
     
     // Find LAB bounds for proper quantization
@@ -645,7 +754,16 @@ fn build_3d_histogram(lab_colors: &[(f32, f32, f32)], hist_size: usize) -> Vec<V
         histogram[l_bin][a_bin][b_bin] += 1;
     }
     
-    histogram
+    let range = LabRange {
+        min_l,
+        max_l,
+        min_a,
+        max_a,
+        min_b,
+        max_b,
+    };
+    
+    (histogram, range)
 }
 
 /// Calculate moments for variance computation
@@ -1196,7 +1314,7 @@ fn count_pixels_in_box(
 }
 
 /// Extract palette from final Wu boxes
-fn extract_palette_from_boxes(boxes: &[WuBox], histogram: &[Vec<Vec<u32>>], hist_size: usize) -> Vec<(f32, f32, f32)> {
+fn extract_palette_from_boxes(boxes: &[WuBox], histogram: &[Vec<Vec<u32>>], hist_size: usize, lab_range: &LabRange) -> Vec<(f32, f32, f32)> {
     boxes
         .iter()
         .map(|box_item| {
@@ -1211,11 +1329,14 @@ fn extract_palette_from_boxes(boxes: &[WuBox], histogram: &[Vec<Vec<u32>>], hist
                     for b in box_item.min_b..=box_item.max_b {
                         let pixel_count = histogram[l][a][b];
                         if pixel_count > 0 {
-                            // Convert bin indices back to LAB values
-                            // Assuming LAB ranges: L[0,100], A[-127,127], B[-127,127]
-                            let lab_l = (l as f32 / (hist_size - 1) as f32) * 100.0;
-                            let lab_a = (a as f32 / (hist_size - 1) as f32) * 254.0 - 127.0;
-                            let lab_b = (b as f32 / (hist_size - 1) as f32) * 254.0 - 127.0;
+                            // Convert bin indices back to LAB values using actual ranges
+                            let l_ratio = l as f32 / (hist_size - 1) as f32;
+                            let a_ratio = a as f32 / (hist_size - 1) as f32;
+                            let b_ratio = b as f32 / (hist_size - 1) as f32;
+                            
+                            let lab_l = lab_range.min_l + l_ratio * (lab_range.max_l - lab_range.min_l);
+                            let lab_a = lab_range.min_a + a_ratio * (lab_range.max_a - lab_range.min_a);
+                            let lab_b = lab_range.min_b + b_ratio * (lab_range.max_b - lab_range.min_b);
                             
                             sum_l += lab_l * pixel_count as f32;
                             sum_a += lab_a * pixel_count as f32;
@@ -1233,10 +1354,14 @@ fn extract_palette_from_boxes(boxes: &[WuBox], histogram: &[Vec<Vec<u32>>], hist
                     sum_b / count as f32,
                 )
             } else {
-                // Fallback: use box center
-                let center_l = ((box_item.min_l + box_item.max_l) as f32 / 2.0 / (hist_size - 1) as f32) * 100.0;
-                let center_a = ((box_item.min_a + box_item.max_a) as f32 / 2.0 / (hist_size - 1) as f32) * 254.0 - 127.0;
-                let center_b = ((box_item.min_b + box_item.max_b) as f32 / 2.0 / (hist_size - 1) as f32) * 254.0 - 127.0;
+                // Fallback: use box center with actual ranges
+                let l_center_ratio = (box_item.min_l + box_item.max_l) as f32 / 2.0 / (hist_size - 1) as f32;
+                let a_center_ratio = (box_item.min_a + box_item.max_a) as f32 / 2.0 / (hist_size - 1) as f32;
+                let b_center_ratio = (box_item.min_b + box_item.max_b) as f32 / 2.0 / (hist_size - 1) as f32;
+                
+                let center_l = lab_range.min_l + l_center_ratio * (lab_range.max_l - lab_range.min_l);
+                let center_a = lab_range.min_a + a_center_ratio * (lab_range.max_a - lab_range.min_a);
+                let center_b = lab_range.min_b + b_center_ratio * (lab_range.max_b - lab_range.min_b);
                 (center_l, center_a, center_b)
             }
         })
@@ -1314,11 +1439,49 @@ fn slic_segmentation(
         slic_update_step(&mut centers, &lab_image, &labels, (width, height));
     }
 
+    // Debug: Analyze SLIC labels distribution before region map creation
+    let mut label_counts: HashMap<usize, usize> = HashMap::new();
+    for &label in &labels {
+        *label_counts.entry(label).or_insert(0) += 1;
+    }
+    let unique_labels = label_counts.len();
+    let largest_region = label_counts.values().max().unwrap_or(&0);
+    let smallest_region = label_counts.values().min().unwrap_or(&0);
+    log::debug!("SLIC raw labels: {} unique, largest region: {} pixels, smallest: {} pixels",
+               unique_labels, largest_region, smallest_region);
+    
     // Step 4: Enforce connectivity and create region map
     let region_map = create_slic_region_map(&labels, (width, height))?;
+    
+    // Debug: Analyze final region map
+    let mut region_sizes: Vec<usize> = region_map.values().map(|pixels| pixels.len()).collect();
+    region_sizes.sort_by(|a, b| b.cmp(a)); // Sort descending
+    log::debug!("SLIC final regions: {} regions, sizes: {:?}", 
+               region_map.len(), 
+               if region_sizes.len() <= 10 { format!("{:?}", region_sizes) } 
+               else { format!("{:?}...", &region_sizes[0..10]) });
 
     // Step 5: Create quantized colors for each region
     let quantized = create_quantized_from_slic(&centers, &labels);
+    
+    // Debug: Analyze quantized colors
+    let mut unique_colors = std::collections::HashSet::new();
+    for color in &quantized {
+        match color {
+            Color::Lab(l, a, b) => {
+                unique_colors.insert(format!("LAB({:.1},{:.1},{:.1})", l, a, b));
+            }
+            Color::Rgb(r, g, b) => {
+                unique_colors.insert(format!("RGB({},{},{})", r, g, b));
+            }
+        }
+    }
+    log::debug!("SLIC quantized colors: {} total, {} unique colors",
+               quantized.len(), unique_colors.len());
+    
+    if unique_colors.len() <= 10 {
+        log::debug!("SLIC unique colors: {:?}", unique_colors);
+    }
 
     log::debug!(
         "SLIC segmentation completed: {} regions generated",
@@ -2188,16 +2351,23 @@ pub fn vectorize_regions_with_gradient_info(
 
     // Step 6: Merge similar regions (optional)
     let merged_regions = if config.merge_similar_regions {
-        merge_similar_regions_with_colors(&region_map, &quantized, &preprocessed, config.merge_threshold)?
+        log::debug!("Merging similar regions with threshold {}", config.merge_threshold);
+        let merged = merge_similar_regions_with_colors(&region_map, &quantized, &preprocessed, config.merge_threshold)?;
+        log::debug!("Region merging: {} -> {} regions", region_map.len(), merged.len());
+        merged
     } else {
+        log::debug!("Skipping region merging");
         region_map
     };
 
     // Step 7: Extract region boundaries
     let contours = extract_region_contours(&merged_regions, preprocessed.dimensions())?;
+    log::debug!("Extracted {} contours from {} regions", contours.len(), merged_regions.len());
 
     // Step 8: Filter small regions
     let filtered_contours = filter_regions_by_area(contours, config.min_region_area);
+    log::debug!("Filtered regions by area: {} remaining (min_area={})", 
+               filtered_contours.len(), config.min_region_area);
 
     // Step 9: Analyze regions for gradient patterns if enabled
     let gradient_analyses = if config.detect_gradients {
@@ -2223,6 +2393,14 @@ pub fn vectorize_regions_with_gradient_info(
     };
 
     let gradient_count = gradient_analyses.values().filter(|a| a.use_gradient).count();
+    
+    // Debug: Analyze final SVG paths
+    let mut path_types = HashMap::new();
+    for path in &svg_paths {
+        *path_types.entry(format!("{:?}", path.element_type)).or_insert(0) += 1;
+    }
+    log::debug!("Final SVG paths by type: {:?}", path_types);
+    
     log::debug!(
         "Regions vectorization completed, generated {} paths ({} with gradients)",
         svg_paths.len(),
