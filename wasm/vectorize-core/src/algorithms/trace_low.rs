@@ -15,7 +15,7 @@ use std::collections::VecDeque;
 use rayon::prelude::*;
 
 /// Available tracing backends for low-detail vectorization
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum TraceBackend {
     /// Canny edge detection + contour following (sparse outlines)
     Edge,
@@ -26,7 +26,7 @@ pub enum TraceBackend {
 }
 
 /// Configuration for trace-low algorithms
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct TraceLowConfig {
     /// Selected tracing backend
     pub backend: TraceBackend,

@@ -3,6 +3,12 @@
 pub mod rag;
 pub mod adaptive_quantization;
 
+#[cfg(test)]
+mod rag_tests;
+
+#[cfg(test)]
+mod adaptive_quantization_tests;
+
 // Re-export main types
 pub use rag::{
     RegionAdjacencyGraph,

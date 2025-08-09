@@ -7,7 +7,7 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 
 /// Configuration for adaptive quantization
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct AdaptiveQuantizationConfig {
     /// Initial number of clusters (will be reduced by merging)
     pub initial_clusters: usize,

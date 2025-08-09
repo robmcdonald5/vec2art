@@ -3169,7 +3169,7 @@ mod tests {
         let mut config = RegionsConfig::default();
         config.segmentation_method = SegmentationMethod::Slic;
         config.min_region_area = 1; // Lower minimum area for test
-        config.slic_region_size = 4; // Smaller region size for 8x8 image
+        config.slic_step_px = 4; // Smaller step size for 8x8 image
         config.slic_iterations = 3; // Fewer iterations for test
         config.merge_similar_regions = false; // Disable merging for clearer test
 

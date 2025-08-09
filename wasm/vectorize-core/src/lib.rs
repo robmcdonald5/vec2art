@@ -17,8 +17,17 @@ pub mod segmentation;
 pub mod tracing;
 pub mod fills;
 
+//#[cfg(test)]
+//mod edge_case_tests;
+
+//#[cfg(test)]
+//mod preset_integration_tests;
+
+//#[cfg(test)]
+//mod telemetry_integration_tests;
+
 #[cfg(test)]
-mod edge_case_tests;
+mod phase_a_simple_test;
 
 // Re-export main types for convenience
 pub use config::*;

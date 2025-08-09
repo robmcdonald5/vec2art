@@ -1,7 +1,7 @@
 //! Advanced curve fitting algorithms with least-squares optimization
 
 use crate::error::{VectorizeError, VectorizeResult};
-use nalgebra::{Matrix2, Vector2};
+// nalgebra types removed - using simplified math instead
 
 /// Point in 2D space
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -201,7 +201,7 @@ pub fn two_stage_fit(
 }
 
 /// Douglas-Peucker line simplification
-fn douglas_peucker(points: &[Point2D], epsilon: f64) -> VectorizeResult<Vec<Point2D>> {
+pub(crate) fn douglas_peucker(points: &[Point2D], epsilon: f64) -> VectorizeResult<Vec<Point2D>> {
     if points.len() <= 2 {
         return Ok(points.to_vec());
     }
@@ -232,7 +232,7 @@ fn douglas_peucker(points: &[Point2D], epsilon: f64) -> VectorizeResult<Vec<Poin
 }
 
 /// Detect corners based on angle change
-fn detect_corners(points: &[Point2D], angle_threshold: f64) -> Vec<usize> {
+pub(crate) fn detect_corners(points: &[Point2D], angle_threshold: f64) -> Vec<usize> {
     let mut corners = vec![0];
     
     for i in 1..points.len() - 1 {
@@ -256,14 +256,14 @@ fn detect_corners(points: &[Point2D], angle_threshold: f64) -> Vec<usize> {
 }
 
 /// Calculate angle between two vectors in radians
-fn angle_between_vectors(v1: &Point2D, v2: &Point2D) -> f64 {
+pub(crate) fn angle_between_vectors(v1: &Point2D, v2: &Point2D) -> f64 {
     let dot = v1.dot(v2);
     let det = v1.x * v2.y - v1.y * v2.x;
     det.atan2(dot)
 }
 
 /// Estimate tangent at a point
-fn estimate_tangent(points: &[Point2D], index: usize, is_start: bool) -> Point2D {
+pub(crate) fn estimate_tangent(points: &[Point2D], index: usize, is_start: bool) -> Point2D {
     let n = points.len();
     
     let tangent = if is_start && index + 1 < n {
@@ -295,7 +295,7 @@ fn estimate_tangent(points: &[Point2D], index: usize, is_start: bool) -> Point2D
 }
 
 /// Chord length parameterization
-fn chord_length_parameterization(points: &[Point2D]) -> Vec<f64> {
+pub(crate) fn chord_length_parameterization(points: &[Point2D]) -> Vec<f64> {
     let mut params = vec![0.0];
     let mut total_length = 0.0;
     
@@ -315,7 +315,7 @@ fn chord_length_parameterization(points: &[Point2D]) -> Vec<f64> {
 }
 
 /// Estimate initial control point magnitude
-fn estimate_control_magnitude(p0: &Point2D, p3: &Point2D, tangent: &Point2D, n_points: usize) -> f64 {
+fn estimate_control_magnitude(p0: &Point2D, p3: &Point2D, _tangent: &Point2D, n_points: usize) -> f64 {
     let chord_length = p0.distance_to(p3);
     chord_length / (3.0 * (n_points as f64).sqrt())
 }
@@ -403,7 +403,7 @@ fn calculate_max_error(points: &[Point2D], curve: &CubicBezier, params: &[f64]) 
 }
 
 /// Calculate perpendicular distance from point to line
-fn perpendicular_distance(point: &Point2D, line_start: &Point2D, line_end: &Point2D) -> f64 {
+pub(crate) fn perpendicular_distance(point: &Point2D, line_start: &Point2D, line_end: &Point2D) -> f64 {
     let dx = line_end.x - line_start.x;
     let dy = line_end.y - line_start.y;
     
@@ -423,7 +423,7 @@ fn perpendicular_distance(point: &Point2D, line_start: &Point2D, line_end: &Poin
 }
 
 /// Create a linear Bézier (straight line)
-fn create_linear_bezier(p0: &Point2D, p3: &Point2D) -> CubicBezier {
+pub(crate) fn create_linear_bezier(p0: &Point2D, p3: &Point2D) -> CubicBezier {
     let p1 = Point2D::new(
         p0.x + (p3.x - p0.x) / 3.0,
         p0.y + (p3.y - p0.y) / 3.0,

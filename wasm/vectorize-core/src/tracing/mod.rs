@@ -2,6 +2,9 @@
 
 pub mod fit;
 
+#[cfg(test)]
+mod fit_tests;
+
 // Re-export main types
 pub use fit::{
     Point2D,

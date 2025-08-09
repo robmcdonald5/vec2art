@@ -3,7 +3,7 @@
 use crate::error::{VectorizeError, VectorizeResult};
 use crate::preprocessing::{lab_distance, lab_to_rgb, rgb_to_lab};
 use image::{ImageBuffer, Rgba};
-use nalgebra::{Matrix2, Vector2};
+use nalgebra::Vector2;
 use std::collections::HashMap;
 
 /// Gradient fill type
@@ -222,7 +222,7 @@ fn fit_radial_gradient_pca(
 }
 
 /// Create gradient stops at optimal positions
-fn create_gradient_stops(
+pub(crate) fn create_gradient_stops(
     data: &[(f32, (f32, f32, f32))],
     min_pos: f32,
     max_pos: f32,
@@ -289,7 +289,7 @@ fn create_gradient_stops(
 }
 
 /// Calculate means for position and color
-fn calculate_means(
+pub(crate) fn calculate_means(
     pixels: &[(u32, u32)],
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
 ) -> VectorizeResult<(f32, f32, (f32, f32, f32))> {
@@ -319,7 +319,7 @@ fn calculate_means(
 }
 
 /// Calculate principal axis using simplified PCA
-fn calculate_principal_axis(
+pub(crate) fn calculate_principal_axis(
     pixels: &[(u32, u32)],
     mean_x: f32,
     mean_y: f32,
@@ -377,7 +377,7 @@ fn calculate_principal_axis(
 }
 
 /// Calculate color variance in dataset
-fn calculate_color_variance(data: &[(f32, (f32, f32, f32))]) -> f32 {
+pub(crate) fn calculate_color_variance(data: &[(f32, (f32, f32, f32))]) -> f32 {
     if data.is_empty() {
         return 0.0;
     }
@@ -411,7 +411,7 @@ fn calculate_color_variance(data: &[(f32, (f32, f32, f32))]) -> f32 {
 }
 
 /// Calculate quantile positions for gradient stops
-fn calculate_quantiles(num_stops: usize) -> Vec<f32> {
+pub(crate) fn calculate_quantiles(num_stops: usize) -> Vec<f32> {
     let mut quantiles = Vec::new();
     for i in 0..num_stops {
         quantiles.push(i as f32 / (num_stops - 1) as f32);
@@ -420,7 +420,7 @@ fn calculate_quantiles(num_stops: usize) -> Vec<f32> {
 }
 
 /// Calculate error for flat fill
-fn calculate_flat_fill_error(
+pub(crate) fn calculate_flat_fill_error(
     pixels: &[(u32, u32)],
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     mean_lab: (f32, f32, f32),
@@ -437,7 +437,7 @@ fn calculate_flat_fill_error(
 }
 
 /// Calculate error for gradient fill
-fn calculate_gradient_error(
+pub(crate) fn calculate_gradient_error(
     pixels: &[(u32, u32)],
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     gradient_type: &GradientType,
@@ -466,7 +466,7 @@ fn calculate_gradient_error(
 }
 
 /// Calculate position along linear gradient
-fn calculate_linear_position(
+pub(crate) fn calculate_linear_position(
     x: f32,
     y: f32,
     start: (f32, f32),
@@ -485,7 +485,7 @@ fn calculate_linear_position(
 }
 
 /// Calculate position along radial gradient
-fn calculate_radial_position(
+pub(crate) fn calculate_radial_position(
     x: f32,
     y: f32,
     center: (f32, f32),
@@ -503,7 +503,7 @@ fn calculate_radial_position(
 }
 
 /// Interpolate color at position in gradient
-fn interpolate_gradient_color(t: f32, stops: &[GradientStop]) -> (f32, f32, f32) {
+pub(crate) fn interpolate_gradient_color(t: f32, stops: &[GradientStop]) -> (f32, f32, f32) {
     if stops.is_empty() {
         return (50.0, 0.0, 0.0); // Default gray
     }

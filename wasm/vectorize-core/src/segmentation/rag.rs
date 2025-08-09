@@ -3,7 +3,7 @@
 use crate::error::{VectorizeError, VectorizeResult};
 use crate::preprocessing::{lab_distance, rgb_to_lab};
 use image::{ImageBuffer, Rgba};
-use rayon::prelude::*;
+// rayon removed - using standard iteration instead
 use std::collections::{HashMap, HashSet, BinaryHeap};
 use std::cmp::Ordering;
 
@@ -239,7 +239,7 @@ impl RegionAdjacencyGraph {
             let mut merges_to_perform = Vec::new();
             
             // Find regions to merge
-            for (&(r1, r2), &boundary_length) in self.adjacencies.iter() {
+            for (&(r1, r2), &_boundary_length) in self.adjacencies.iter() {
                 if let (Some(props1), Some(props2)) = 
                     (self.region_props.get(&r1), self.region_props.get(&r2)) {
                     
@@ -309,6 +309,12 @@ impl RegionAdjacencyGraph {
     /// Get final segmentation after merging
     pub fn get_final_segmentation(&self) -> HashMap<usize, Vec<(u32, u32)>> {
         self.regions.clone()
+    }
+
+    /// Test-specific method to access merge_regions
+    #[cfg(test)]
+    pub(crate) fn test_merge_regions(&mut self, r1: usize, r2: usize) -> VectorizeResult<()> {
+        self.merge_regions(r1, r2)
     }
 }
 
@@ -382,7 +388,7 @@ fn calculate_region_properties(
 }
 
 /// Calculate merge weight for two regions
-fn calculate_merge_weight(
+pub(crate) fn calculate_merge_weight(
     props1: &RegionProperties,
     props2: &RegionProperties,
     boundary_length: usize,
@@ -406,7 +412,7 @@ fn calculate_internal_difference(
 }
 
 /// Merge properties of two regions
-fn merge_region_properties(
+pub(crate) fn merge_region_properties(
     props1: &RegionProperties,
     props2: &RegionProperties,
 ) -> RegionProperties {

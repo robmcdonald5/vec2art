@@ -2,6 +2,9 @@
 
 pub mod gradients;
 
+#[cfg(test)]
+mod gradients_tests;
+
 // Re-export main types
 pub use gradients::{
     Gradient,

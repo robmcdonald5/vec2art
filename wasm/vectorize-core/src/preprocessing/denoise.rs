@@ -110,7 +110,7 @@ fn guided_filter_channel(
 }
 
 /// Box filter (mean filter) implementation
-fn box_filter(
+pub(crate) fn box_filter(
     input: &[f32],
     width: u32,
     height: u32,

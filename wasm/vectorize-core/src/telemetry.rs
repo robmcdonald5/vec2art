@@ -23,7 +23,7 @@ pub struct RunInput {
     pub diag_px: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct Resolved {
     // Geometry / simplification
     pub dp_eps_px: f64,
@@ -46,14 +46,14 @@ pub struct Resolved {
     pub min_region_area_px: Option<u32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct Guards {
     pub retries: u32,
     pub edge_barrier_thresh: Option<u32>, // e.g., Sobel magnitude 0..255
     pub area_floor_px: Option<u32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct Stats {
     pub paths: u32,
     pub median_vertices: f32,

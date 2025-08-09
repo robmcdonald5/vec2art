@@ -17,8 +17,10 @@ use clap::ValueEnum;
 mod ssim;
 mod svg_analysis;
 mod comprehensive_benchmark;
+mod phase_a_benchmark;
 
 use comprehensive_benchmark::{BenchmarkSuite, BenchmarkConfig, BenchmarkReport};
+use phase_a_benchmark::{PhaseABenchmarkSuite, PhaseABenchmarkConfig};
 
 /// Preset configurations for common use cases
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -280,6 +282,41 @@ enum Commands {
         /// Baseline results file for comparison (JSON format)
         #[arg(long)]
         baseline: Option<PathBuf>,
+    },
+
+    /// Run Phase A benchmark validation (roadmap compliance testing)
+    PhaseABench {
+        /// Examples directory containing test images (defaults to auto-discovery)
+        #[arg(long)]
+        examples_dir: Option<PathBuf>,
+
+        /// Number of timing iterations for stable measurements
+        #[arg(long, default_value = "5")]
+        iterations: usize,
+
+        /// Output directory for results and debug artifacts
+        #[arg(short, long, default_value = "phase_a_benchmark_results")]
+        output: PathBuf,
+
+        /// Disable debug image generation
+        #[arg(long)]
+        no_debug_images: bool,
+
+        /// Baseline results for comparison (if any)
+        #[arg(long)]
+        baseline: Option<PathBuf>,
+
+        /// Override ΔE quality threshold (default: 6.0)
+        #[arg(long)]
+        delta_e_threshold: Option<f64>,
+
+        /// Override SSIM quality threshold (default: 0.93)
+        #[arg(long)]
+        ssim_threshold: Option<f64>,
+
+        /// Override timing threshold in seconds for 1024px images (default: 2.5)
+        #[arg(long)]
+        timing_threshold: Option<f64>,
     },
 
     /// Batch process multiple images
@@ -712,6 +749,25 @@ fn main() -> Result<()> {
             no_debug_images,
             baseline,
         } => comprehensive_benchmark_command(input, iterations, output, !no_debug_images, baseline),
+        Commands::PhaseABench {
+            examples_dir,
+            iterations,
+            output,
+            no_debug_images,
+            baseline,
+            delta_e_threshold,
+            ssim_threshold,
+            timing_threshold,
+        } => phase_a_benchmark_command(
+            examples_dir,
+            iterations,
+            output,
+            !no_debug_images,
+            baseline,
+            delta_e_threshold,
+            ssim_threshold,
+            timing_threshold,
+        ),
         Commands::Batch {
             input,
             output,
@@ -886,16 +942,17 @@ fn run_preset_command(
                 de_merge_threshold: 2.5,
                 de_split_threshold: 8.0,
                 palette_regularization: true,
-                palette_regularization_k: 0.02,
-                simplify_epsilon: Epsilon::DiagonalFraction(
+                palette_regularization_k: 30, // Target ~30 colors for photo preset
+                simplification_epsilon: Epsilon::DiagFrac(
                     dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0015)
                 ),
+                fit_curves: true,
                 curve_tolerance: 0.8,
                 min_region_area: 20,
                 max_iterations: 30,
                 convergence_threshold: 0.5,
                 detect_primitives: false,
-                primitive_tolerance: 0.0,
+                primitive_fit_tolerance: 0.0,
                 max_circle_eccentricity: 0.0,
             };
             
@@ -923,16 +980,17 @@ fn run_preset_command(
                 de_merge_threshold: 5.0,
                 de_split_threshold: 15.0,
                 palette_regularization: true,
-                palette_regularization_k: 0.05,
-                simplify_epsilon: Epsilon::DiagonalFraction(
+                palette_regularization_k: 10, // Target ~10 colors for posterized preset
+                simplification_epsilon: Epsilon::DiagFrac(
                     dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.002)
                 ),
+                fit_curves: true,
                 curve_tolerance: 1.0,
                 min_region_area: 50,
                 max_iterations: 20,
                 convergence_threshold: 1.0,
                 detect_primitives: false,
-                primitive_tolerance: 0.0,
+                primitive_fit_tolerance: 0.0,
                 max_circle_eccentricity: 0.0,
             };
             
@@ -945,11 +1003,12 @@ fn run_preset_command(
                 max_dimension: 1024,
                 threshold: 128,
                 adaptive_threshold: true,
-                morphology_enabled: true,
                 morphology_kernel_size: 2,
-                simplify_epsilon: Epsilon::DiagonalFraction(
+                min_contour_area: 25,
+                simplification_epsilon: Epsilon::DiagFrac(
                     dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.001)
                 ),
+                fit_curves: true,
                 curve_tolerance: 0.5,
                 detect_primitives: true,
                 primitive_fit_tolerance: 2.0,
@@ -998,20 +1057,21 @@ fn vectorize_regions_with_config(
     println!("  Output: {}", output.display());
     
     // Write telemetry
+    let (width, height) = img.dimensions();
     let dump = make_dump(
-        &input,
-        &output,
-        &img,
+        input.to_str().unwrap_or("unknown"),
+        width,
+        height,
         "regions",
-        serde_json::to_value(&config).ok(),
+        Some("superpixel"), // Assuming SLIC segmentation for photo preset
+        serde_json::to_value(&config).unwrap_or_default(),
         Resolved::default(),
         Guards::default(),
         Stats::default(),
-        Some(format!("preset-photo")),
-    )?;
+    );
     
-    write_json_dump(&dump)?;
-    append_runs_csv(&dump)?;
+    write_json_dump(&output, &dump)?;
+    append_runs_csv(&output, &dump)?;
     
     Ok(())
 }
@@ -1045,20 +1105,21 @@ fn vectorize_logo_with_config(
     println!("  Output: {}", output.display());
     
     // Write telemetry
+    let (width, height) = img.dimensions();
     let dump = make_dump(
-        &input,
-        &output,
-        &img,
+        input.to_str().unwrap_or("unknown"),
+        width,
+        height,
         "logo",
-        serde_json::to_value(&config).ok(),
+        None, // No backend for logo mode
+        serde_json::to_value(&config).unwrap_or_default(),
         Resolved::default(),
         Guards::default(),
         Stats::default(),
-        Some(format!("preset-logo")),
-    )?;
+    );
     
-    write_json_dump(&dump)?;
-    append_runs_csv(&dump)?;
+    write_json_dump(&output, &dump)?;
+    append_runs_csv(&output, &dump)?;
     
     Ok(())
 }
@@ -2037,4 +2098,194 @@ fn maybe_retry_regions(
     
     if retry { *tries += 1; }
     retry
+}
+
+/// Run Phase A benchmark validation command
+fn phase_a_benchmark_command(
+    examples_dir: Option<PathBuf>,
+    iterations: usize,
+    output_dir: PathBuf,
+    save_debug_images: bool,
+    baseline_path: Option<PathBuf>,
+    delta_e_threshold: Option<f64>,
+    ssim_threshold: Option<f64>,
+    timing_threshold: Option<f64>,
+) -> Result<()> {
+    log::info!("Starting Phase A benchmark validation");
+
+    // Configure benchmark thresholds
+    let mut quality_thresholds = phase_a_benchmark::QualityThresholds::default();
+    if let Some(threshold) = delta_e_threshold {
+        quality_thresholds.max_delta_e = threshold;
+    }
+    if let Some(threshold) = ssim_threshold {
+        quality_thresholds.min_ssim = threshold;
+    }
+    if let Some(threshold) = timing_threshold {
+        quality_thresholds.max_processing_time = threshold;
+    }
+
+    // Create benchmark configuration
+    let config = PhaseABenchmarkConfig {
+        test_images: Vec::new(),
+        output_dir,
+        timing_iterations: iterations,
+        save_debug_images,
+        quality_thresholds,
+        baseline_results: baseline_path,
+    };
+
+    // Create benchmark suite
+    let mut suite = PhaseABenchmarkSuite::new(config);
+
+    // Auto-discover test images
+    let examples_path = examples_dir.unwrap_or_else(|| {
+        // Try to find examples directory relative to current location
+        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        
+        // Look for examples directory in common locations
+        let search_paths = vec![
+            current_dir.join("examples"),
+            current_dir.join("../examples"),
+            current_dir.join("../../examples"),
+            current_dir.join("wasm/examples"),
+            current_dir.parent().map(|p| p.join("examples")).unwrap_or_else(|| PathBuf::from("examples")),
+        ];
+
+        for path in search_paths {
+            if path.exists() && path.is_dir() {
+                return path;
+            }
+        }
+
+        // Default fallback
+        PathBuf::from("examples")
+    });
+
+    log::info!("Looking for test images in: {}", examples_path.display());
+
+    suite.auto_discover_test_images(&examples_path)
+        .with_context(|| format!("Failed to discover test images in {}", examples_path.display()))?;
+
+    if suite.config().test_images.is_empty() {
+        return Err(anyhow::anyhow!(
+            "No test images found in {}. Please ensure the examples/images_in directory exists and contains test images.",
+            examples_path.display()
+        ));
+    }
+
+    log::info!("Running Phase A benchmark with {} test images", suite.config().test_images.len());
+
+    // Run benchmark
+    let report = suite.run_phase_a_benchmark()
+        .context("Phase A benchmark execution failed")?;
+
+    // Print results summary
+    print_phase_a_summary(&report);
+
+    // Save detailed reports
+    suite.save_report(&report)
+        .context("Failed to save Phase A benchmark report")?;
+
+    // Validate overall success
+    if report.summary.pass_rate < 50.0 {
+        log::warn!("Low pass rate ({:.1}%) - Phase A targets may not be met", report.summary.pass_rate);
+    } else if report.summary.pass_rate >= 80.0 {
+        log::info!("Excellent pass rate ({:.1}%) - Phase A targets exceeded!", report.summary.pass_rate);
+    }
+
+    log::info!("Phase A benchmark validation completed successfully");
+    log::info!("Detailed results saved to: {}", suite.config().output_dir.display());
+
+    Ok(())
+}
+
+/// Print Phase A benchmark summary to console
+fn print_phase_a_summary(report: &phase_a_benchmark::PhaseABenchmarkReport) {
+    println!("\n=== PHASE A BENCHMARK VALIDATION RESULTS ===");
+    println!("Total Tests: {}", report.summary.total_tests);
+    println!("Overall Pass Rate: {:.1}% ({}/{})", 
+             report.summary.pass_rate, 
+             report.summary.tests_passed, 
+             report.summary.total_tests);
+    
+    // Roadmap targets validation
+    println!("\n=== ROADMAP TARGET COMPLIANCE ===");
+    println!("ΔE Target (≤ {:.1}): {:.1}% pass rate (avg: {:.2})", 
+             report.summary.thresholds.max_delta_e, 
+             report.summary.delta_e_pass_rate, 
+             report.summary.avg_delta_e);
+    
+    let delta_e_status = if report.summary.delta_e_pass_rate >= 80.0 { "✓ EXCELLENT" }
+                        else if report.summary.delta_e_pass_rate >= 60.0 { "✓ GOOD" }
+                        else { "✗ NEEDS IMPROVEMENT" };
+    println!("  Status: {}", delta_e_status);
+    
+    println!("SSIM Target (≥ {:.2}): {:.1}% pass rate (avg: {:.3})", 
+             report.summary.thresholds.min_ssim, 
+             report.summary.ssim_pass_rate, 
+             report.summary.avg_ssim);
+    
+    let ssim_status = if report.summary.ssim_pass_rate >= 80.0 { "✓ EXCELLENT" }
+                     else if report.summary.ssim_pass_rate >= 60.0 { "✓ GOOD" }
+                     else { "✗ NEEDS IMPROVEMENT" };
+    println!("  Status: {}", ssim_status);
+    
+    println!("Timing Target (≤ {:.1}s): {:.1}% pass rate (avg: {:.3}s)", 
+             report.summary.thresholds.max_processing_time, 
+             report.summary.timing_pass_rate, 
+             report.summary.avg_processing_time);
+    
+    let timing_status = if report.summary.timing_pass_rate >= 80.0 { "✓ EXCELLENT" }
+                       else if report.summary.timing_pass_rate >= 60.0 { "✓ GOOD" }
+                       else { "✗ NEEDS IMPROVEMENT" };
+    println!("  Status: {}", timing_status);
+    
+    // Algorithm breakdown
+    println!("\n=== ALGORITHM PERFORMANCE ===");
+    let mut algorithm_stats: std::collections::HashMap<String, Vec<&phase_a_benchmark::PhaseAResult>> = 
+        std::collections::HashMap::new();
+    
+    for result in &report.results {
+        algorithm_stats.entry(result.preset_name.clone())
+            .or_insert_with(Vec::new)
+            .push(result);
+    }
+    
+    for (preset_name, results) in algorithm_stats {
+        let pass_count = results.iter().filter(|r| r.overall_pass).count();
+        let pass_rate = pass_count as f64 / results.len() as f64 * 100.0;
+        let avg_delta_e = results.iter().map(|r| r.delta_e_metrics.median_delta_e).sum::<f64>() / results.len() as f64;
+        let avg_ssim = results.iter().map(|r| r.ssim_result.ssim).sum::<f64>() / results.len() as f64;
+        let avg_time = results.iter().map(|r| r.timing_metrics.median_time).sum::<f64>() / results.len() as f64;
+        
+        println!("{}: {:.1}% pass rate | ΔE: {:.2} | SSIM: {:.3} | Time: {:.3}s",
+                preset_name, pass_rate, avg_delta_e, avg_ssim, avg_time);
+    }
+    
+    // Top failures for improvement guidance
+    let mut failed_results: Vec<&phase_a_benchmark::PhaseAResult> = 
+        report.results.iter().filter(|r| !r.overall_pass).collect();
+    
+    if !failed_results.is_empty() {
+        failed_results.sort_by(|a, b| {
+            let a_score = a.delta_e_metrics.median_delta_e + (1.0 - a.ssim_result.ssim) * 10.0;
+            let b_score = b.delta_e_metrics.median_delta_e + (1.0 - b.ssim_result.ssim) * 10.0;
+            b_score.partial_cmp(&a_score).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        
+        println!("\n=== TOP FAILURES (for improvement focus) ===");
+        for (i, result) in failed_results.iter().take(3).enumerate() {
+            println!("{}. {} | {} | ΔE: {:.2} | SSIM: {:.3} | Time: {:.3}s",
+                    i + 1,
+                    result.image_spec.name,
+                    result.preset_name,
+                    result.delta_e_metrics.median_delta_e,
+                    result.ssim_result.ssim,
+                    result.timing_metrics.median_time);
+        }
+    }
+    
+    println!("\nDetailed CSV report: {}/phase_a_benchmark_results.csv", 
+             report.config.output_dir.display());
 }
