@@ -26,6 +26,12 @@ chrono = { version = "0.4", features = ["clock"] }
 log = { workspace = true }
 fastrand = "2.0"
 
+# Phase B refinement dependencies
+resvg = { workspace = true }
+tiny-skia = { workspace = true }
+palette = { workspace = true }
+dssim = { workspace = true }
+
 [dev-dependencies]
 criterion = { workspace = true }
 env_logger = { workspace = true }

@@ -354,3 +354,77 @@ impl Default for SvgConfig {
         }
     }
 }
+
+/// Configuration for Phase B error-driven refinement
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RefineConfig {
+    /// Maximum refinement iterations (roadmap: 2-3)
+    pub max_iterations: u32,
+    
+    /// Maximum total refinement time in milliseconds (roadmap: 600ms)
+    pub max_time_ms: u64,
+    
+    /// Target ΔE threshold for convergence (roadmap: 6.0)
+    pub target_delta_e: f64,
+    
+    /// Target SSIM threshold for convergence (roadmap: 0.93)  
+    pub target_ssim: f64,
+    
+    /// Error analysis tile size in pixels (roadmap: 32)
+    pub tile_size: u32,
+    
+    /// Maximum tiles to process per iteration (roadmap: 5-8)
+    pub max_tiles_per_iteration: u32,
+    
+    /// Error plateau threshold for early termination (roadmap: 0.5)
+    pub error_plateau_threshold: f64,
+}
+
+impl RefineConfig {
+    /// Validate refinement configuration
+    pub fn validate(&self) -> Result<(), String> {
+        if self.max_iterations == 0 {
+            return Err("Max iterations must be at least 1".to_string());
+        }
+        if self.max_iterations > 10 {
+            return Err("Max iterations should not exceed 10 for reasonable performance".to_string());
+        }
+        if self.max_time_ms == 0 {
+            return Err("Time budget must be positive".to_string());
+        }
+        if self.max_time_ms > 5000 {
+            return Err("Time budget should not exceed 5000ms for reasonable performance".to_string());
+        }
+        if self.target_delta_e <= 0.0 {
+            return Err("Target ΔE must be positive".to_string());
+        }
+        if self.target_ssim <= 0.0 || self.target_ssim >= 1.0 {
+            return Err("Target SSIM must be between 0.0 and 1.0".to_string());
+        }
+        if self.tile_size < 4 || self.tile_size > 128 {
+            return Err("Tile size must be between 4 and 128 pixels".to_string());
+        }
+        if self.max_tiles_per_iteration == 0 {
+            return Err("Must process at least 1 tile per iteration".to_string());
+        }
+        if self.error_plateau_threshold < 0.0 {
+            return Err("Error plateau threshold must be non-negative".to_string());
+        }
+        
+        Ok(())
+    }
+}
+
+impl Default for RefineConfig {
+    fn default() -> Self {
+        Self {
+            max_iterations: 2,           // Conservative default per roadmap
+            max_time_ms: 600,           // Roadmap requirement
+            target_delta_e: 6.0,       // Roadmap quality target
+            target_ssim: 0.93,         // Roadmap quality target
+            tile_size: 32,             // Roadmap specification
+            max_tiles_per_iteration: 5, // Conservative default
+            error_plateau_threshold: 0.5, // Roadmap specification
+        }
+    }
+}

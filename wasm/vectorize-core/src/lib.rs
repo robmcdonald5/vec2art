@@ -17,6 +17,9 @@ pub mod segmentation;
 pub mod tracing;
 pub mod fills;
 
+// Phase B refinement module
+pub mod refine;
+
 //#[cfg(test)]
 //mod edge_case_tests;
 
