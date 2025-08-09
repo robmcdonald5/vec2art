@@ -39,6 +39,16 @@
 /wasm/test_*.svg
 **/benchmark_results/
 
+# Telemetry output files (generated during testing/development)
+*.config.json
+**/*.config.json
+runs.csv
+**/runs.csv
+**/telemetry.json
+**/benchmark.csv
+**/*_stats.csv
+**/statistics.csv
+
 # ===========================  
 # FRONTEND BUILD ARTIFACTS
 # ===========================

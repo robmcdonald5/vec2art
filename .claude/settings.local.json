@@ -14,7 +14,18 @@
       "WebFetch(domain:blog.poespas.me)",
       "Bash(RUST_LOG=info cargo test test_edge_detection_with_sample_image -- --nocapture)",
       "Bash(taskkill:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(RUST_LOG=debug cargo test test_vectorize_regions -- --nocapture)",
+      "Bash(cargo fix:*)",
+      "Bash(time cargo run --release --bin vectorize-cli -- logo examples/images_in/test1.png examples/outputs/test1_logo_clean.svg)",
+      "Bash(RUST_BACKTRACE=1 cargo test -p vectorize-core test_vectorize_regions_rgba -- --nocapture)",
+      "Bash(time cargo run --release --bin vectorize-cli -- logo examples/images_in/test1.png examples/outputs/test1_logo_optimized.svg)",
+      "Bash(time cargo run --release --bin vectorize-cli -- regions examples/images_in/test3.png examples/outputs/test3_regions_optimized.svg)",
+      "Bash(cargo doc:*)",
+      "Bash(RUST_BACKTRACE=1 cargo test test_regions_algorithm_edge_cases --release -- --nocapture)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }
