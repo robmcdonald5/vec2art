@@ -185,6 +185,13 @@ impl From<WasmLogoConfig> for LogoConfig {
             max_circle_eccentricity: wasm_config.max_circle_eccentricity,
             use_stroke: false, // Default to fill for backward compatibility
             stroke_width: 1.5,  // Default stroke width
+            // Adaptive parameters - use defaults for WASM interface
+            enable_adaptive_parameters: true, // Enable by default to improve quality
+            base_primitive_fit_tolerance: wasm_config.primitive_fit_tolerance, 
+            base_min_contour_area: wasm_config.min_contour_area,
+            base_morphology_kernel_size: wasm_config.morphology_kernel_size,
+            max_primitive_size_fraction: 0.25, // Max primitive size as 25% of diagonal
+            min_primitive_size_px: 4.0, // Minimum primitive size in pixels
         }
     }
 }

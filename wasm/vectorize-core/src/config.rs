@@ -65,6 +65,25 @@ pub struct LogoConfig {
 
     /// Stroke width in pixels (when use_stroke is true)
     pub stroke_width: f32,
+
+    // Adaptive parameter settings
+    /// Enable adaptive parameter tuning based on image content
+    pub enable_adaptive_parameters: bool,
+
+    /// Base primitive fit tolerance for adaptive scaling
+    pub base_primitive_fit_tolerance: f32,
+
+    /// Base minimum contour area for adaptive scaling  
+    pub base_min_contour_area: u32,
+
+    /// Base morphology kernel size for adaptive scaling
+    pub base_morphology_kernel_size: u32,
+
+    /// Maximum allowed primitive size as fraction of image diagonal
+    pub max_primitive_size_fraction: f32,
+
+    /// Minimum allowed primitive size in pixels
+    pub min_primitive_size_px: f32,
 }
 
 impl LogoConfig {
@@ -107,8 +126,72 @@ impl LogoConfig {
         if self.stroke_width > 50.0 {
             return Err("Stroke width should not exceed 50 pixels".to_string());
         }
+
+        // Validate adaptive parameters
+        if self.enable_adaptive_parameters {
+            if self.base_primitive_fit_tolerance < 0.0 {
+                return Err("Base primitive fit tolerance must be non-negative".to_string());
+            }
+            if self.max_primitive_size_fraction <= 0.0 || self.max_primitive_size_fraction > 1.0 {
+                return Err("Max primitive size fraction must be between 0.0 and 1.0".to_string());
+            }
+            if self.min_primitive_size_px < 1.0 {
+                return Err("Min primitive size must be at least 1 pixel".to_string());
+            }
+            if self.base_morphology_kernel_size < 1 {
+                return Err("Base morphology kernel size must be at least 1".to_string());
+            }
+        }
         
         Ok(())
+    }
+
+    /// Calculate adaptive parameters based on image analysis
+    pub fn with_adaptive_parameters(&self, image_dims: (u32, u32), content_analysis: &ImageContentAnalysis) -> Self {
+        if !self.enable_adaptive_parameters {
+            return self.clone();
+        }
+
+        let mut adaptive_config = self.clone();
+        
+        // Calculate image diagonal for reference
+        let diagonal = ((image_dims.0 as f64).powi(2) + (image_dims.1 as f64).powi(2)).sqrt();
+        let image_area = (image_dims.0 * image_dims.1) as f64;
+        
+        // Adaptive primitive fit tolerance based on content complexity and resolution
+        let complexity_factor = match content_analysis.complexity_level {
+            ComplexityLevel::Low => 0.8,      // Stricter tolerance for simple content
+            ComplexityLevel::Medium => 1.0,   // Base tolerance
+            ComplexityLevel::High => 1.3,     // Looser tolerance for complex content
+        };
+        
+        let resolution_factor = (diagonal / 512.0).min(2.0).max(0.5); // Scale by resolution
+        adaptive_config.primitive_fit_tolerance = 
+            (self.base_primitive_fit_tolerance * complexity_factor * resolution_factor as f32).max(0.5);
+
+        // Adaptive minimum contour area based on image size and content density
+        let density_factor = match content_analysis.content_density {
+            ContentDensity::Sparse => 0.7,   // Smaller areas for sparse content
+            ContentDensity::Medium => 1.0,   // Base area
+            ContentDensity::Dense => 1.5,    // Larger areas for dense content
+        };
+        
+        let size_factor = (image_area / 262144.0).sqrt().max(0.3).min(3.0); // Scale by image area
+        adaptive_config.min_contour_area = 
+            ((self.base_min_contour_area as f64 * density_factor * size_factor) as u32).max(4);
+
+        // Adaptive morphology kernel based on image size and noise level
+        let noise_factor = match content_analysis.noise_level {
+            NoiseLevel::Low => 1.0,      // Base kernel size
+            NoiseLevel::Medium => 1.2,   // Slightly larger kernel
+            NoiseLevel::High => 1.5,     // Larger kernel for noisy images
+        };
+        
+        let morph_size_factor = (diagonal / 512.0).sqrt().max(0.5).min(2.0);
+        adaptive_config.morphology_kernel_size = 
+            ((self.base_morphology_kernel_size as f64 * noise_factor * morph_size_factor) as u32).max(1).min(5);
+
+        adaptive_config
     }
 }
 
@@ -128,6 +211,89 @@ impl Default for LogoConfig {
             max_circle_eccentricity: 0.15,
             use_stroke: true,          // Enable stroke mode by default
             stroke_width: 1.2,         // Better stroke width for quality
+            // Adaptive parameters
+            enable_adaptive_parameters: true, // Enable by default to improve quality
+            base_primitive_fit_tolerance: 2.0, // Base value for adaptive scaling
+            base_min_contour_area: 25,  // Base value for adaptive scaling
+            base_morphology_kernel_size: 1, // Base value for adaptive scaling
+            max_primitive_size_fraction: 0.25, // Max primitive size as 25% of diagonal
+            min_primitive_size_px: 4.0, // Minimum primitive size in pixels
+        }
+    }
+}
+
+/// Content complexity level for adaptive parameter tuning
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ComplexityLevel {
+    /// Simple content with few shapes and smooth curves
+    Low,
+    /// Moderate complexity with mixed shapes
+    Medium,
+    /// High complexity with many small details and intricate shapes
+    High,
+}
+
+/// Content density for adaptive parameter tuning
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ContentDensity {
+    /// Sparse content with lots of empty space
+    Sparse,
+    /// Moderate content density
+    Medium,
+    /// Dense content with minimal empty space
+    Dense,
+}
+
+/// Noise level for adaptive parameter tuning
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum NoiseLevel {
+    /// Clean image with minimal noise
+    Low,
+    /// Some noise present
+    Medium,
+    /// Noisy image requiring more aggressive filtering
+    High,
+}
+
+/// Image content analysis for adaptive parameter calculation
+#[derive(Debug, Clone)]
+pub struct ImageContentAnalysis {
+    /// Complexity level of the image content
+    pub complexity_level: ComplexityLevel,
+    /// Content density classification
+    pub content_density: ContentDensity,
+    /// Noise level assessment
+    pub noise_level: NoiseLevel,
+    /// Estimated number of distinct shapes
+    pub shape_count_estimate: usize,
+    /// Average shape size as fraction of image area
+    pub avg_shape_size_fraction: f64,
+    /// Dominant shape types present
+    pub dominant_shape_types: Vec<ShapeType>,
+}
+
+/// Shape type classification for content analysis
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ShapeType {
+    /// Geometric shapes (circles, rectangles, etc.)
+    Geometric,
+    /// Organic/curved shapes
+    Organic,
+    /// Text-like shapes
+    Text,
+    /// Line-like shapes
+    Linear,
+}
+
+impl Default for ImageContentAnalysis {
+    fn default() -> Self {
+        Self {
+            complexity_level: ComplexityLevel::Medium,
+            content_density: ContentDensity::Medium,
+            noise_level: NoiseLevel::Low,
+            shape_count_estimate: 5,
+            avg_shape_size_fraction: 0.1,
+            dominant_shape_types: vec![ShapeType::Geometric],
         }
     }
 }

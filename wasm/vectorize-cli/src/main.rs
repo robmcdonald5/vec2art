@@ -1015,6 +1015,13 @@ fn run_preset_command(
                 max_circle_eccentricity: 0.15,
                 use_stroke: false,
                 stroke_width: 1.0,
+                // Adaptive parameters
+                enable_adaptive_parameters: true, // Enable by default for CLI
+                base_primitive_fit_tolerance: 2.0,
+                base_min_contour_area: 25,
+                base_morphology_kernel_size: 2,
+                max_primitive_size_fraction: 0.25,
+                min_primitive_size_px: 4.0,
             };
             
             vectorize_logo_with_config(input, output, config)

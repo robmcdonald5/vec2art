@@ -1,7 +1,8 @@
 //! Logo/line-art vectorization algorithms
 
 use crate::algorithms::primitives::{detect_primitive, primitive_to_svg, PrimitiveConfig};
-use crate::config::LogoConfig;
+use crate::algorithms::image_analysis::analyze_image_content;
+use crate::config::{LogoConfig, ImageContentAnalysis};
 use crate::error::VectorizeResult;
 use crate::preprocessing::{
     apply_threshold, calculate_otsu_threshold, preprocess_for_logo, rgba_to_grayscale,
@@ -57,12 +58,16 @@ pub fn vectorize_logo(image: &RgbaImage, config: &LogoConfig) -> VectorizeResult
         ));
     }
 
-    // Step 2: Convert to grayscale
-    let grayscale = rgba_to_grayscale(&preprocessed);
+    // Step 2: Convert to grayscale (both Vec<u8> and GrayImage formats)
+    let grayscale_vec = rgba_to_grayscale(&preprocessed);
+    let grayscale_image = GrayImage::from_raw(preprocessed.width(), preprocessed.height(), grayscale_vec.clone())
+        .ok_or_else(|| crate::error::VectorizeError::algorithm_error(
+            "Failed to create GrayImage from grayscale data"
+        ))?;
 
     // Step 3: Apply threshold with validation
     let threshold = if config.adaptive_threshold {
-        let otsu_threshold = calculate_otsu_threshold(&grayscale);
+        let otsu_threshold = calculate_otsu_threshold(&grayscale_vec);
         // Validate Otsu result
         if otsu_threshold == 0 || otsu_threshold == 255 {
             log::warn!("Otsu threshold gave extreme value {}, using default", otsu_threshold);
@@ -74,17 +79,17 @@ pub fn vectorize_logo(image: &RgbaImage, config: &LogoConfig) -> VectorizeResult
         config.threshold
     };
 
-    let binary = apply_threshold(&grayscale, threshold);
+    let binary = apply_threshold(&grayscale_vec, threshold);
     
     // Edge case: check if thresholding resulted in all black or all white
     if is_binary_degenerate(&binary) {
         log::warn!("Thresholding resulted in uniform image, adjusting threshold");
         // Try alternative threshold
         let alt_threshold = if threshold > 128 { threshold - 64 } else { threshold + 64 };
-        let alt_binary = apply_threshold(&grayscale, alt_threshold);
+        let alt_binary = apply_threshold(&grayscale_vec, alt_threshold);
         if !is_binary_degenerate(&alt_binary) {
             log::debug!("Alternative threshold {} worked", alt_threshold);
-            return process_binary_image(&alt_binary, preprocessed.dimensions(), alt_threshold, config);
+            return process_binary_image_with_analysis(&alt_binary, preprocessed.dimensions(), alt_threshold, config, &preprocessed, &grayscale_image);
         } else {
             // Still degenerate, return minimal SVG
             log::warn!("Could not find suitable threshold, generating minimal output");
@@ -92,16 +97,65 @@ pub fn vectorize_logo(image: &RgbaImage, config: &LogoConfig) -> VectorizeResult
         }
     }
     
-    process_binary_image(&binary, preprocessed.dimensions(), threshold, config)
+    process_binary_image_with_analysis(&binary, preprocessed.dimensions(), threshold, config, &preprocessed, &grayscale_image)
 }
 
-/// Process binary image through the logo algorithm pipeline
+/// Process binary image through the logo algorithm pipeline with full content analysis
+fn process_binary_image_with_analysis(
+    binary: &[bool], 
+    dimensions: (u32, u32), 
+    threshold: u8, 
+    config: &LogoConfig,
+    rgba_image: &RgbaImage,
+    grayscale: &GrayImage
+) -> VectorizeResult<Vec<SvgPath>> {
+    // Analyze image content for adaptive parameters if enabled
+    let adaptive_config = if config.enable_adaptive_parameters {
+        let content_analysis = analyze_image_content(rgba_image, grayscale, binary, dimensions)
+            .unwrap_or_else(|e| {
+                log::warn!("Content analysis failed: {}, using defaults", e);
+                ImageContentAnalysis::default()
+            });
+        config.with_adaptive_parameters(dimensions, &content_analysis)
+    } else {
+        config.clone()
+    };
+
+    process_binary_image_core(&binary, dimensions, threshold, &adaptive_config)
+}
+
+/// Process binary image through the logo algorithm pipeline (legacy interface)
 fn process_binary_image(
     binary: &[bool], 
     dimensions: (u32, u32), 
     threshold: u8, 
     config: &LogoConfig
 ) -> VectorizeResult<Vec<SvgPath>> {
+    // Use default analysis when we don't have access to original images
+    let adaptive_config = if config.enable_adaptive_parameters {
+        let default_analysis = ImageContentAnalysis::default();
+        config.with_adaptive_parameters(dimensions, &default_analysis)
+    } else {
+        config.clone()
+    };
+
+    process_binary_image_core(&binary, dimensions, threshold, &adaptive_config)
+}
+
+/// Core binary image processing logic
+fn process_binary_image_core(
+    binary: &[bool], 
+    dimensions: (u32, u32), 
+    threshold: u8, 
+    config: &LogoConfig
+) -> VectorizeResult<Vec<SvgPath>> {
+
+    log::debug!(
+        "Using adaptive parameters: primitive_tolerance={:.2}, min_area={}, morph_kernel={}",
+        config.primitive_fit_tolerance,
+        config.min_contour_area,
+        config.morphology_kernel_size
+    );
 
     // Step 4: Light morphological operations to reduce artifacts
     let cleaned = apply_gentle_morphology(&binary, dimensions, config.morphology_kernel_size)
@@ -199,9 +253,22 @@ fn process_paths_to_svg(simplified_paths: Vec<Contour>, config: &LogoConfig) -> 
             // Try to detect primitive shape
             match detect_primitive(contour, &primitive_config) {
                 Ok(Some(primitive)) => {
-                    // Use primitive SVG representation
-                    svg_paths.push(primitive_to_svg(&primitive, Some("black".to_string())));
-                    primitive_count += 1;
+                    // Validate primitive size before using it
+                    if is_primitive_size_valid(&primitive, config) {
+                        // Use primitive SVG representation
+                        svg_paths.push(primitive_to_svg(&primitive, Some("black".to_string())));
+                        primitive_count += 1;
+                    } else {
+                        log::debug!("Primitive rejected due to size validation, falling back to path");
+                        // Fall back to regular path processing
+                        match process_single_contour(contour, config) {
+                            Ok(paths) => svg_paths.extend(paths),
+                            Err(e) => {
+                                log::debug!("Fallback path processing failed: {}", e);
+                                failed_paths += 1;
+                            }
+                        }
+                    }
                 }
                 Ok(None) => {
                     // Fall back to regular path processing
@@ -1278,6 +1345,85 @@ fn convert_to_svg_paths(contours: &[Contour], config: &LogoConfig) -> Vec<SvgPat
             Some(create_classified_svg_path(path_data, contour, config))
         })
         .collect()
+}
+
+/// Validate primitive size to prevent oversized shapes
+fn is_primitive_size_valid(primitive: &crate::algorithms::primitives::DetectedPrimitive, config: &LogoConfig) -> bool {
+    use crate::algorithms::primitives::DetectedPrimitive;
+    
+    let size = match primitive {
+        DetectedPrimitive::Circle { radius, .. } => *radius * 2.0, // diameter
+        DetectedPrimitive::Ellipse { radius_x, radius_y, .. } => {
+            // Use the larger axis as the characteristic size
+            (*radius_x).max(*radius_y) * 2.0
+        }
+        DetectedPrimitive::Arc { radius, start_angle, end_angle, .. } => {
+            // For arcs, consider both radius and arc length
+            let angle_span = (end_angle - start_angle).abs();
+            let arc_length = radius * angle_span;
+            (*radius * 2.0).max(arc_length) // Use larger of diameter or arc length
+        }
+    };
+    
+    // Check against minimum size
+    if size < config.min_primitive_size_px {
+        log::debug!("Primitive size {:.1} too small (min: {:.1})", size, config.min_primitive_size_px);
+        return false;
+    }
+    
+    // For adaptive mode, we need image dimensions to calculate the diagonal
+    // Since we don't have access to dimensions here, we'll use a conservative approach
+    // This could be improved by passing dimensions through the call chain
+    let conservative_max_size = 200.0; // Conservative maximum for typical logo images
+    
+    if size > conservative_max_size {
+        log::debug!("Primitive size {:.1} too large (max: {:.1})", size, conservative_max_size);
+        return false;
+    }
+    
+    true
+}
+
+/// Enhanced primitive validation with image dimension context
+fn is_primitive_size_valid_with_context(
+    primitive: &crate::algorithms::primitives::DetectedPrimitive, 
+    config: &LogoConfig,
+    image_dimensions: (u32, u32)
+) -> bool {
+    use crate::algorithms::primitives::DetectedPrimitive;
+    
+    let size = match primitive {
+        DetectedPrimitive::Circle { radius, .. } => *radius * 2.0, // diameter
+        DetectedPrimitive::Ellipse { radius_x, radius_y, .. } => {
+            // Use the larger axis as the characteristic size
+            (*radius_x).max(*radius_y) * 2.0
+        }
+        DetectedPrimitive::Arc { radius, start_angle, end_angle, .. } => {
+            // For arcs, consider both radius and arc length
+            let angle_span = (end_angle - start_angle).abs();
+            let arc_length = radius * angle_span;
+            (*radius * 2.0).max(arc_length) // Use larger of diameter or arc length
+        }
+    };
+    
+    // Check against minimum size
+    if size < config.min_primitive_size_px {
+        log::debug!("Primitive size {:.1} too small (min: {:.1})", size, config.min_primitive_size_px);
+        return false;
+    }
+    
+    // Calculate maximum allowed size based on image diagonal
+    let (width, height) = image_dimensions;
+    let diagonal = ((width as f32).powi(2) + (height as f32).powi(2)).sqrt();
+    let max_size = diagonal * config.max_primitive_size_fraction;
+    
+    if size > max_size {
+        log::debug!("Primitive size {:.1} too large (max: {:.1}, {:.1}% of diagonal {:.1})", 
+                   size, max_size, config.max_primitive_size_fraction * 100.0, diagonal);
+        return false;
+    }
+    
+    true
 }
 
 #[cfg(test)]
