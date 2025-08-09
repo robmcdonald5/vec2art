@@ -12,12 +12,26 @@ use std::time::Instant;
 use vectorize_core::{vectorize_logo_rgba, vectorize_regions_rgba, vectorize_trace_low_rgba, LogoConfig, RegionsConfig, TraceLowConfig, TraceBackend, SegmentationMethod, QuantizationMethod, Epsilon};
 use vectorize_core::telemetry::{make_dump, write_json_dump, append_runs_csv, Resolved, Guards, Stats};
 use serde_json::json;
+use clap::ValueEnum;
 
 mod ssim;
 mod svg_analysis;
 mod comprehensive_benchmark;
 
 use comprehensive_benchmark::{BenchmarkSuite, BenchmarkConfig, BenchmarkReport};
+
+/// Preset configurations for common use cases
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum PresetType {
+    /// High-fidelity mode for photographs with gradients and refinement
+    Photo,
+    /// Fixed palette posterization (stylized)
+    Posterized,
+    /// Binary tracing for logos and line art
+    Logo,
+    /// Low-poly triangulation (future)
+    LowPoly,
+}
 
 #[derive(Parser)]
 #[command(name = "vectorize")]
@@ -38,6 +52,31 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Vectorize using preset configurations
+    Preset {
+        /// Input image file
+        input: PathBuf,
+
+        /// Output SVG file
+        output: PathBuf,
+
+        /// Preset name (photo, posterized, logo, lowpoly)
+        #[arg(value_enum)]
+        preset: PresetType,
+
+        /// Override max palette size for photo preset
+        #[arg(long)]
+        max_palette: Option<u32>,
+
+        /// Override target regions for photo preset
+        #[arg(long)]
+        regions_target: Option<usize>,
+
+        /// Override DP epsilon in pixels
+        #[arg(long)]
+        dp_epsilon: Option<f32>,
+    },
+
     /// Vectorize using logo/line-art algorithm
     Logo {
         /// Input image file
@@ -349,6 +388,28 @@ enum Commands {
 /// Validate CLI arguments for compatibility and ranges
 fn validate_cli_arguments(command: &Commands) -> Result<()> {
     match command {
+        Commands::Preset {
+            max_palette,
+            regions_target,
+            dp_epsilon,
+            ..
+        } => {
+            if let Some(palette) = max_palette {
+                if *palette < 2 || *palette > 256 {
+                    return Err(anyhow::anyhow!("Max palette must be between 2 and 256"));
+                }
+            }
+            if let Some(regions) = regions_target {
+                if *regions < 10 || *regions > 10000 {
+                    return Err(anyhow::anyhow!("Regions target must be between 10 and 10000"));
+                }
+            }
+            if let Some(epsilon) = dp_epsilon {
+                if *epsilon < 0.0 || *epsilon > 100.0 {
+                    return Err(anyhow::anyhow!("DP epsilon must be between 0.0 and 100.0"));
+                }
+            }
+        }
         Commands::Logo { 
             primitive_tolerance, 
             max_circle_eccentricity, 
@@ -534,6 +595,21 @@ fn main() -> Result<()> {
     validate_cli_arguments(&cli.command)?;
 
     match cli.command {
+        Commands::Preset {
+            input,
+            output,
+            preset,
+            max_palette,
+            regions_target,
+            dp_epsilon,
+        } => run_preset_command(
+            input,
+            output,
+            preset,
+            max_palette,
+            regions_target,
+            dp_epsilon,
+        ),
         Commands::Logo {
             input,
             output,
@@ -776,6 +852,214 @@ fn write_trace_low_stats(
         throughput
     )?;
 
+    Ok(())
+}
+
+/// Run preset command with predefined configurations
+fn run_preset_command(
+    input: PathBuf,
+    output: PathBuf,
+    preset: PresetType,
+    max_palette: Option<u32>,
+    regions_target: Option<usize>,
+    dp_epsilon: Option<f32>,
+) -> Result<()> {
+    match preset {
+        PresetType::Photo => {
+            // Photo preset: segmentation-first with gradients and high fidelity
+            let config = RegionsConfig {
+                num_colors: max_palette.unwrap_or(40),
+                max_dimension: 1024,
+                segmentation_method: SegmentationMethod::Slic,
+                quantization_method: QuantizationMethod::Wu,
+                use_lab_color: true,
+                merge_similar_regions: true,
+                merge_threshold: 2.0, // Low ΔE threshold for photo quality
+                detect_gradients: true,
+                gradient_r_squared_threshold: 0.7,
+                max_gradient_stops: 3,
+                min_gradient_region_area: 50,
+                radial_symmetry_threshold: 0.8,
+                slic_step_px: 20,
+                slic_compactness: 15.0,
+                slic_iterations: 10,
+                de_merge_threshold: 2.5,
+                de_split_threshold: 8.0,
+                palette_regularization: true,
+                palette_regularization_k: 0.02,
+                simplify_epsilon: Epsilon::DiagonalFraction(
+                    dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0015)
+                ),
+                curve_tolerance: 0.8,
+                min_region_area: 20,
+                max_iterations: 30,
+                convergence_threshold: 0.5,
+                detect_primitives: false,
+                primitive_tolerance: 0.0,
+                max_circle_eccentricity: 0.0,
+            };
+            
+            vectorize_regions_with_config(input, output, config)
+        }
+        
+        PresetType::Posterized => {
+            // Posterized preset: fixed palette with stylized output
+            let config = RegionsConfig {
+                num_colors: max_palette.unwrap_or(12),
+                max_dimension: 1024,
+                segmentation_method: SegmentationMethod::KMeans,
+                quantization_method: QuantizationMethod::Wu,
+                use_lab_color: true,
+                merge_similar_regions: true,
+                merge_threshold: 5.0, // Higher threshold for more merging
+                detect_gradients: false, // No gradients for posterized look
+                gradient_r_squared_threshold: 0.0,
+                max_gradient_stops: 0,
+                min_gradient_region_area: 0,
+                radial_symmetry_threshold: 0.0,
+                slic_step_px: 40,
+                slic_compactness: 10.0,
+                slic_iterations: 5,
+                de_merge_threshold: 5.0,
+                de_split_threshold: 15.0,
+                palette_regularization: true,
+                palette_regularization_k: 0.05,
+                simplify_epsilon: Epsilon::DiagonalFraction(
+                    dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.002)
+                ),
+                curve_tolerance: 1.0,
+                min_region_area: 50,
+                max_iterations: 20,
+                convergence_threshold: 1.0,
+                detect_primitives: false,
+                primitive_tolerance: 0.0,
+                max_circle_eccentricity: 0.0,
+            };
+            
+            vectorize_regions_with_config(input, output, config)
+        }
+        
+        PresetType::Logo => {
+            // Logo preset: high-quality binary tracing
+            let config = LogoConfig {
+                max_dimension: 1024,
+                threshold: 128,
+                adaptive_threshold: true,
+                morphology_enabled: true,
+                morphology_kernel_size: 2,
+                simplify_epsilon: Epsilon::DiagonalFraction(
+                    dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.001)
+                ),
+                curve_tolerance: 0.5,
+                detect_primitives: true,
+                primitive_fit_tolerance: 2.0,
+                max_circle_eccentricity: 0.15,
+                use_stroke: false,
+                stroke_width: 1.0,
+            };
+            
+            vectorize_logo_with_config(input, output, config)
+        }
+        
+        PresetType::LowPoly => {
+            // Low-poly preset: placeholder for future implementation
+            eprintln!("Low-poly preset not yet implemented. Using posterized preset instead.");
+            run_preset_command(input, output, PresetType::Posterized, max_palette, regions_target, dp_epsilon)
+        }
+    }
+}
+
+/// Helper function to vectorize regions with config
+fn vectorize_regions_with_config(
+    input: PathBuf,
+    output: PathBuf,
+    config: RegionsConfig,
+) -> Result<()> {
+    let start = Instant::now();
+    
+    // Load image
+    let img = image::open(&input)
+        .with_context(|| format!("Failed to open input image: {}", input.display()))?
+        .to_rgba8();
+    
+    println!("Processing {} ({}x{}) with photo preset...", 
+             input.display(), img.width(), img.height());
+    
+    // Run vectorization
+    let svg = vectorize_regions_rgba(&img, &config)
+        .context("Failed to vectorize image")?;
+    
+    // Save output
+    fs::write(&output, svg)
+        .with_context(|| format!("Failed to write output file: {}", output.display()))?;
+    
+    let elapsed = start.elapsed();
+    println!("✓ Vectorization complete in {:.2}s", elapsed.as_secs_f32());
+    println!("  Output: {}", output.display());
+    
+    // Write telemetry
+    let dump = make_dump(
+        &input,
+        &output,
+        &img,
+        "regions",
+        serde_json::to_value(&config).ok(),
+        Resolved::default(),
+        Guards::default(),
+        Stats::default(),
+        Some(format!("preset-photo")),
+    )?;
+    
+    write_json_dump(&dump)?;
+    append_runs_csv(&dump)?;
+    
+    Ok(())
+}
+
+/// Helper function to vectorize logo with config
+fn vectorize_logo_with_config(
+    input: PathBuf,
+    output: PathBuf,
+    config: LogoConfig,
+) -> Result<()> {
+    let start = Instant::now();
+    
+    // Load image
+    let img = image::open(&input)
+        .with_context(|| format!("Failed to open input image: {}", input.display()))?
+        .to_rgba8();
+    
+    println!("Processing {} ({}x{}) with logo preset...", 
+             input.display(), img.width(), img.height());
+    
+    // Run vectorization
+    let svg = vectorize_logo_rgba(&img, &config)
+        .context("Failed to vectorize image")?;
+    
+    // Save output
+    fs::write(&output, svg)
+        .with_context(|| format!("Failed to write output file: {}", output.display()))?;
+    
+    let elapsed = start.elapsed();
+    println!("✓ Vectorization complete in {:.2}s", elapsed.as_secs_f32());
+    println!("  Output: {}", output.display());
+    
+    // Write telemetry
+    let dump = make_dump(
+        &input,
+        &output,
+        &img,
+        "logo",
+        serde_json::to_value(&config).ok(),
+        Resolved::default(),
+        Guards::default(),
+        Stats::default(),
+        Some(format!("preset-logo")),
+    )?;
+    
+    write_json_dump(&dump)?;
+    append_runs_csv(&dump)?;
+    
     Ok(())
 }
 

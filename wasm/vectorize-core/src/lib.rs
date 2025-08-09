@@ -12,6 +12,11 @@ pub mod svg;
 pub mod svg_gradients;
 pub mod telemetry;
 
+// New Phase A modules
+pub mod segmentation;
+pub mod tracing;
+pub mod fills;
+
 #[cfg(test)]
 mod edge_case_tests;
 

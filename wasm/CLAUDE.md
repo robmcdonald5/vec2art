@@ -8,7 +8,7 @@ This directory contains the core image-to-SVG vectorization engine written in Ru
 
 ## Project Structure
 
-```
+```Rust/WASM
 wasm/
 ├── Cargo.toml                      # Workspace manifest (members: vectorize-core, vectorize-cli, vectorize-wasm)
 ├── rust-toolchain.toml             # Pin toolchain/components (e.g., stable + rustfmt + clippy)
@@ -171,6 +171,7 @@ The project is organized as a Cargo workspace with three main crates:
 ### Implementation Status
 
 **Current**: Phase 1.5+ complete with telemetry system - production-ready core algorithms implemented
+
 - Cargo workspace structure with three main crates
 - `rust-toolchain.toml` and `.cargo/config.toml` configured for native and WASM builds
 - Advanced algorithms: Wu quantization, SLIC segmentation, Suzuki-Abe contours, primitive detection
@@ -186,6 +187,7 @@ The project is organized as a Cargo workspace with three main crates:
 ## Development Guidelines
 
 ### Algorithm Implementation
+
 - Develop algorithms as pure Rust functions without platform assumptions
 - Use trait-based design for swappable implementations
 - Maintain deterministic behavior (fixed seeds for randomization)
@@ -194,6 +196,7 @@ The project is organized as a Cargo workspace with three main crates:
 - Validate robustness on complex real-world images
 
 ### Performance Optimization
+
 - **Parallelism:** Use `rayon` for data parallelism (scanlines, regions, contours)
 - **SIMD:** Write SIMD-friendly loops; use explicit SIMD where beneficial
 - **Memory:** Pre-allocate buffers; use arena allocators for temporary data
@@ -201,18 +204,21 @@ The project is organized as a Cargo workspace with three main crates:
 - **Profiling:** Regular benchmarking with `criterion`; profile with `perf`/`flamegraph`
 
 ### WASM-Specific Considerations
+
 - **Threading:** Implement both single-threaded and multi-threaded paths
 - **Memory Limits:** Implement progressive processing for large images
 - **SIMD:** Compile with `+simd128` target feature when available
 - **Size Optimization:** Use `wasm-opt` for production builds
 
 ### Error Handling
+
 - Use `Result<T, E>` with custom error types
 - Graceful degradation (fallback algorithms if optimal path fails)
 - Clear error messages for debugging
 - Detect and prevent infinite loops in contour tracing
 
 ### Testing Strategy
+
 - **Unit Tests:** Test individual algorithms and utilities
 - **Integration Tests:** End-to-end image → SVG conversion with real-world images
 - **Snapshot Tests:** Compare output SVGs against golden references
@@ -222,6 +228,7 @@ The project is organized as a Cargo workspace with three main crates:
 ## Key Dependencies
 
 ### Core Processing
+
 - `image` — Image loading and basic operations
 - `imageproc` — Advanced image processing operations (Canny edge detection, etc.)
 - `nalgebra` or `cgmath` — Linear algebra for geometric operations
@@ -229,11 +236,13 @@ The project is organized as a Cargo workspace with three main crates:
 - `lab` — LAB color space conversions for improved color quantization
 
 ### WASM
+
 - `wasm-bindgen` — JavaScript bindings
 - `wasm-bindgen-rayon` — Threading support
 - `web-sys` — Web API access
 
 ### Development
+
 - `criterion` — Benchmarking framework
 - `proptest` — Property-based testing
 - `insta` — Snapshot testing
@@ -241,6 +250,7 @@ The project is organized as a Cargo workspace with three main crates:
 - `clap` — Command-line argument parsing with comprehensive parameter support
 
 ### CI Pipeline Rust
+
 - **Formatting** cargo fmt --all -- --check
 - **Type-Check** cargo check --workspace --all-targets --all-features --locked
 - **Linting** cargo clippy --workspace --all-targets --all-features -- -D warnings
@@ -254,6 +264,7 @@ The project is organized as a Cargo workspace with three main crates:
     2. cargo install cargo-deny  && cargo deny check
 
 ### CI Pipeline WASM
+
 - **Formatting** cargo fmt --all -- --check
 - **Type-Check** cargo check --workspace --all-targets --all-features --locked --target wasm32-wasi
 - **Linting** cargo clippy --workspace --all-targets --all-features --locked --target wasm32-wasi -- -D warnings
@@ -268,25 +279,26 @@ The project is organized as a Cargo workspace with three main crates:
 ## Development Status
 
 ### Phase 1.5+ Complete
-- **Algorithm Suite**: 
+
+- **Algorithm Suite**:
   - Wu quantization with bug fixes (proper color distribution)
   - SLIC segmentation with corrected parameters (step_px: 40 instead of region_size: 800)  
   - Suzuki-Abe contours with pixel-based scaling using Epsilon enum
   - Trace-low mode with working edge backend
-- **Telemetry System**: 
+- **Telemetry System**:
   - Complete per-run `.config.json` files capturing resolved runtime parameters
   - Aggregate `runs.csv` for trend analysis and quality tracking
   - Image metadata, resolved parameters, guards, statistics, and build info tracking
   - Full CLI integration across logo, regions, and trace-low commands
-- **Auto-Retry Guards**: 
+- **Auto-Retry Guards**:
   - Implemented `maybe_retry_logo()` and `maybe_retry_regions()` functions
   - Quality checks for bad outputs (k_colors < 6, pct_quads > 0.6, max_region_pct > 0.35)
   - Ready for activation (currently stubbed with #[allow(dead_code)])
-- **Production-Ready Core**: 
+- **Production-Ready Core**:
   - 18 integration tests passing (100% success rate) with comprehensive coverage
   - Enhanced CLI with 20+ parameters including --slic-step-px and --simplify-diag-frac
   - Test suite covering 3 algorithms (logo, regions, trace-low)
-- **Performance**: 
+- **Performance**:
   - Sub-second processing optimized
   - Proper z-ordering and LAB ΔE thresholds
   - All major "solid blocks" configuration issues resolved
@@ -295,6 +307,7 @@ The project is organized as a Cargo workspace with three main crates:
   - Trace-low edge mode producing excellent results
 
 ### Ready for Phase 2
+
 - WASM browser integration (infrastructure complete)
 - Multi-threading support configured  
 - SIMD optimization ready
