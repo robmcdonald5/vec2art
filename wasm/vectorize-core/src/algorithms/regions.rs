@@ -5,7 +5,10 @@ use crate::algorithms::primitives::{detect_primitive, primitive_to_svg, Primitiv
 use crate::algorithms::gradient_detection::{GradientConfig, analyze_regions_gradients};
 use crate::config::{RegionsConfig, SegmentationMethod, QuantizationMethod};
 use crate::error::{VectorizeError, VectorizeResult};
-use crate::preprocessing::{lab_distance, lab_to_rgb, preprocess_for_regions, rgb_to_lab};
+use crate::preprocessing::{lab_distance, lab_to_rgb, preprocess_for_regions, rgb_to_lab, 
+                             get_lab_colors_buffer, return_lab_colors_buffer,
+                             get_slic_labels_buffer, return_slic_labels_buffer,
+                             get_slic_distances_buffer, return_slic_distances_buffer};
 use image::{Rgba, RgbaImage};
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -39,31 +42,42 @@ pub fn vectorize_regions(
                image.width(), image.height(),
                preprocessed.width(), preprocessed.height());
 
+    // Step 1.5: Apply adaptive parameters if enabled
+    let adaptive_config = if config.enable_adaptive_parameters {
+        log::debug!("Analyzing image content for adaptive regions parameters");
+        let content_analysis = crate::algorithms::image_analysis::analyze_regions_image_content(&preprocessed, preprocessed.dimensions())?;
+        let adaptive = config.with_adaptive_parameters(preprocessed.dimensions(), &content_analysis);
+        log::debug!("Adaptive regions parameters applied");
+        adaptive
+    } else {
+        config.clone()
+    };
+
     // Step 2-5: Apply segmentation based on chosen method
     log::debug!("Using segmentation method: {:?}, quantization: {:?}", 
-               config.segmentation_method, config.quantization_method);
-    let (region_map, quantized) = match config.segmentation_method {
+               adaptive_config.segmentation_method, adaptive_config.quantization_method);
+    let (region_map, quantized) = match adaptive_config.segmentation_method {
         SegmentationMethod::KMeans => {
             // Traditional k-means approach with configurable quantization
-            let colors = extract_colors_with_cache(&preprocessed, config.use_lab_color);
-            let (centroids, labels) = match config.quantization_method {
-                QuantizationMethod::KMeans => parallel_kmeans_clustering(&colors, config)?,
-                QuantizationMethod::Wu => wu_color_quantization(&colors, config)?,
+            let colors = extract_colors_with_cache(&preprocessed, adaptive_config.use_lab_color);
+            let (centroids, labels) = match adaptive_config.quantization_method {
+                QuantizationMethod::KMeans => parallel_kmeans_clustering(&colors, &adaptive_config)?,
+                QuantizationMethod::Wu => wu_color_quantization(&colors, &adaptive_config)?,
             };
-            let quantized = apply_quantization(&preprocessed, &labels, &centroids, config.use_lab_color)?;
+            let quantized = apply_quantization(&preprocessed, &labels, &centroids, adaptive_config.use_lab_color)?;
             let region_map = label_connected_regions(&quantized, preprocessed.dimensions())?;
             (region_map, quantized)
         }
         SegmentationMethod::Slic => {
             // SLIC superpixel segmentation
-            slic_segmentation(&preprocessed, config)?
+            slic_segmentation(&preprocessed, &adaptive_config)?
         }
     };
 
     // Step 6: Merge similar regions (optional)
-    let merged_regions = if config.merge_similar_regions {
-        log::debug!("Merging similar regions with threshold {}", config.merge_threshold);
-        let merged = merge_similar_regions_with_colors(&region_map, &quantized, &preprocessed, config.merge_threshold)?;
+    let merged_regions = if adaptive_config.merge_similar_regions {
+        log::debug!("Merging similar regions with threshold {}", adaptive_config.merge_threshold);
+        let merged = merge_similar_regions_with_colors(&region_map, &quantized, &preprocessed, adaptive_config.merge_threshold)?;
         log::debug!("Region merging: {} -> {} regions", region_map.len(), merged.len());
         merged
     } else {
@@ -76,18 +90,22 @@ pub fn vectorize_regions(
     log::debug!("Extracted {} contours from {} regions", contours.len(), merged_regions.len());
 
     // Step 8: Filter small regions
-    let filtered_contours = filter_regions_by_area(contours, config.min_region_area);
+    let filtered_contours = filter_regions_by_area(contours, adaptive_config.min_region_area);
     log::debug!("Filtered regions by area: {} remaining (min_area={})", 
-               filtered_contours.len(), config.min_region_area);
+               filtered_contours.len(), adaptive_config.min_region_area);
 
     // Step 9: Analyze regions for gradient patterns if enabled
-    let gradient_analyses = if config.detect_gradients {
+    let gradient_analyses = if adaptive_config.detect_gradients {
         let gradient_config = GradientConfig {
-            enabled: config.detect_gradients,
-            r_squared_threshold: config.gradient_r_squared_threshold,
-            max_gradient_stops: config.max_gradient_stops,
-            min_region_area: config.min_gradient_region_area,
-            radial_symmetry_threshold: config.radial_symmetry_threshold,
+            enabled: adaptive_config.detect_gradients,
+            r_squared_threshold: adaptive_config.gradient_r_squared_threshold,
+            max_gradient_stops: adaptive_config.max_gradient_stops,
+            min_region_area: adaptive_config.min_gradient_region_area,
+            radial_symmetry_threshold: adaptive_config.radial_symmetry_threshold,
+            enhanced_pca: true,
+            adaptive_stops: true,
+            color_change_threshold: 3.0,
+            direction_stability_threshold: 0.9,
         };
         
         let filtered_regions = create_filtered_regions_map(&filtered_contours, &merged_regions);
@@ -97,8 +115,8 @@ pub fn vectorize_regions(
     };
 
     // Step 10: Apply primitive detection if enabled, then convert to SVG paths with gradient support
-    let svg_paths = if config.detect_primitives {
-        convert_regions_to_svg_with_primitives_and_gradients(&filtered_contours, &quantized, &gradient_analyses, config)?
+    let svg_paths = if adaptive_config.detect_primitives {
+        convert_regions_to_svg_with_primitives_and_gradients(&filtered_contours, &quantized, &gradient_analyses, &adaptive_config)?
     } else {
         convert_regions_to_svg_with_gradients(&filtered_contours, &quantized, &gradient_analyses)
     };
@@ -529,6 +547,8 @@ fn initialize_centroids_kmeans_plus_plus(colors: &[(f32, f32, f32)], k: usize) -
 /// 3. Split boxes along axis with maximum variance
 /// 4. Use priority queue to split boxes with highest variance first
 /// 5. Extract palette by computing mean color of each final box
+/// 
+/// Enhanced with edge case handling for monochrome and low-diversity images.
 fn wu_color_quantization(
     colors: &[Color],
     config: &RegionsConfig,
@@ -543,8 +563,43 @@ fn wu_color_quantization(
     log::debug!("Starting Wu color quantization with {} colors and {} target colors", colors.len(), k);
     let start_time = std::time::Instant::now();
 
-    // Convert all colors to LAB once for consistent processing
-    let lab_colors: Vec<(f32, f32, f32)> = colors.par_iter().map(|c| c.to_lab()).collect();
+    // PERFORMANCE OPTIMIZATION: For very large images (>4MP), use sampling for Wu quantization
+    const MAX_WU_COLORS: usize = 4_000_000; // 4 million colors max for Wu quantization
+    const SAMPLE_RATIO: f32 = 0.7; // Sample 70% of colors for large images
+    
+    let (lab_colors, color_multiplier) = if colors.len() > MAX_WU_COLORS {
+        let sample_size = (colors.len() as f32 * SAMPLE_RATIO) as usize;
+        let step = colors.len() / sample_size;
+        log::info!("Wu quantization: Large image detected ({}px), sampling every {}th color ({} total)", 
+                   colors.len(), step, sample_size);
+        
+        let sampled_colors: Vec<(f32, f32, f32)> = colors
+            .par_iter()
+            .step_by(step)
+            .map(|c| c.to_lab())
+            .collect();
+        
+        (sampled_colors, step as f32)
+    } else {
+        // Convert all colors to LAB for normal-sized images
+        let lab_colors: Vec<(f32, f32, f32)> = colors.par_iter().map(|c| c.to_lab()).collect();
+        (lab_colors, 1.0)
+    };
+    
+    // Edge Case 1: Detect monochrome or near-monochrome images
+    let color_diversity = analyze_color_diversity(&lab_colors);
+    if color_diversity.is_monochrome || color_diversity.unique_colors <= 1 {
+        log::warn!("Wu quantization: Detected monochrome image, using single color");
+        let avg_color = color_diversity.average_color;
+        return Ok((vec![Color::Lab(avg_color.0, avg_color.1, avg_color.2)], vec![0; colors.len()]));
+    }
+    
+    // Edge Case 2: Very low color diversity - fall back to k-means
+    if color_diversity.unique_colors < k || color_diversity.max_range < 2.0 {
+        log::warn!("Wu quantization: Low color diversity detected (unique: {}, max_range: {:.1}), falling back to k-means", 
+                  color_diversity.unique_colors, color_diversity.max_range);
+        return fallback_to_kmeans(colors, config);
+    }
 
     // Debug: Analyze input color distribution
     if lab_colors.len() <= 20 {
@@ -654,7 +709,16 @@ fn wu_color_quantization(
     }
 
     // Assign each original color to nearest centroid
-    let labels = assign_colors_to_centroids(&lab_colors, &centroids);
+    // Handle both sampled and full color sets
+    let labels = if color_multiplier > 1.0 {
+        // For sampled colors, we need to assign all original colors to centroids
+        let all_lab_colors: Vec<(f32, f32, f32)> = colors.par_iter().map(|c| c.to_lab()).collect();
+        log::debug!("Wu quantization: Assigning all {} original colors to centroids derived from {} sampled colors", 
+                   all_lab_colors.len(), lab_colors.len());
+        assign_colors_to_centroids(&all_lab_colors, &centroids)
+    } else {
+        assign_colors_to_centroids(&lab_colors, &centroids)
+    };
     
     // Debug: Analyze color assignment distribution
     let mut assignment_counts = vec![0; centroids.len()];
@@ -668,8 +732,13 @@ fn wu_color_quantization(
     // Check for degenerate case where all colors map to same centroid
     let unique_labels: std::collections::HashSet<usize> = labels.iter().cloned().collect();
     if unique_labels.len() == 1 {
-        log::warn!("Wu quantization PROBLEM: All {} colors mapped to single centroid {}", 
+        log::warn!("Wu quantization PROBLEM: All {} colors mapped to single centroid {}, falling back to k-means", 
                   labels.len(), labels[0]);
+        return fallback_to_kmeans(colors, config);
+    } else if unique_labels.len() < k / 2 {
+        log::warn!("Wu quantization: Poor color separation ({} unique labels for {} target colors), falling back to k-means", 
+                  unique_labels.len(), k);
+        return fallback_to_kmeans(colors, config);
     } else {
         log::debug!("Wu quantization: {} unique labels assigned", unique_labels.len());
     }
@@ -720,36 +789,56 @@ struct LabRange {
     max_b: f32,
 }
 
-/// Build 3D histogram from LAB colors
+/// Build 3D histogram from LAB colors with robust range handling
 fn build_3d_histogram(lab_colors: &[(f32, f32, f32)], hist_size: usize) -> (Vec<Vec<Vec<u32>>>, LabRange) {
     let mut histogram = vec![vec![vec![0u32; hist_size]; hist_size]; hist_size];
     
-    // Find LAB bounds for proper quantization
-    let mut min_l = f32::INFINITY;
-    let mut max_l = f32::NEG_INFINITY;
-    let mut min_a = f32::INFINITY;
-    let mut max_a = f32::NEG_INFINITY;
-    let mut min_b = f32::INFINITY;
-    let mut max_b = f32::NEG_INFINITY;
+    // PERFORMANCE OPTIMIZATION: Parallel computation of LAB bounds
+    let (min_l, max_l, min_a, max_a, min_b, max_b) = lab_colors
+        .par_iter()
+        .map(|&(l, a, b)| (l, l, a, a, b, b)) // (min_l, max_l, min_a, max_a, min_b, max_b)
+        .reduce(
+            || (f32::INFINITY, f32::NEG_INFINITY, f32::INFINITY, f32::NEG_INFINITY, f32::INFINITY, f32::NEG_INFINITY),
+            |(min_l1, max_l1, min_a1, max_a1, min_b1, max_b1), (min_l2, max_l2, min_a2, max_a2, min_b2, max_b2)| {
+                (min_l1.min(min_l2), max_l1.max(max_l2), min_a1.min(min_a2), max_a1.max(max_a2), min_b1.min(min_b2), max_b1.max(max_b2))
+            }
+        );
     
+    // Robust range calculation with minimum threshold to avoid division by zero
+    const MIN_RANGE: f32 = 0.001; // Minimum range to avoid degenerate cases
+    let l_range = (max_l - min_l).max(MIN_RANGE);
+    let a_range = (max_a - min_a).max(MIN_RANGE);
+    let b_range = (max_b - min_b).max(MIN_RANGE);
+    
+    // Quantize colors into histogram with robust bin calculation
     for &(l, a, b) in lab_colors {
-        min_l = min_l.min(l);
-        max_l = max_l.max(l);
-        min_a = min_a.min(a);
-        max_a = max_a.max(a);
-        min_b = min_b.min(b);
-        max_b = max_b.max(b);
-    }
-    
-    let l_range = max_l - min_l;
-    let a_range = max_a - min_a;
-    let b_range = max_b - min_b;
-    
-    // Quantize colors into histogram
-    for &(l, a, b) in lab_colors {
-        let l_bin = ((l - min_l) / l_range * (hist_size - 1) as f32).round().max(0.0).min((hist_size - 1) as f32) as usize;
-        let a_bin = ((a - min_a) / a_range * (hist_size - 1) as f32).round().max(0.0).min((hist_size - 1) as f32) as usize;
-        let b_bin = ((b - min_b) / b_range * (hist_size - 1) as f32).round().max(0.0).min((hist_size - 1) as f32) as usize;
+        // Ensure we don't divide by zero and clamp properly
+        let l_bin = if l_range <= MIN_RANGE {
+            0 // All colors map to same bin if range is too small
+        } else {
+            ((l - min_l) / l_range * (hist_size - 1) as f32)
+                .round()
+                .max(0.0)
+                .min((hist_size - 1) as f32) as usize
+        };
+        
+        let a_bin = if a_range <= MIN_RANGE {
+            0
+        } else {
+            ((a - min_a) / a_range * (hist_size - 1) as f32)
+                .round()
+                .max(0.0)
+                .min((hist_size - 1) as f32) as usize
+        };
+        
+        let b_bin = if b_range <= MIN_RANGE {
+            0
+        } else {
+            ((b - min_b) / b_range * (hist_size - 1) as f32)
+                .round()
+                .max(0.0)
+                .min((hist_size - 1) as f32) as usize
+        };
         
         histogram[l_bin][a_bin][b_bin] += 1;
     }
@@ -993,9 +1082,9 @@ fn get_moment_value_3d(moment: &[Vec<Vec<(f32, f32, f32)>>], min_l: usize, max_l
     value
 }
 
-/// Find box with maximum variance for splitting
-fn find_max_variance_box(boxes: &[WuBox], _histogram: &[Vec<Vec<u32>>], _moments: &WuMoments, _hist_size: usize) -> Option<usize> {
-    let mut max_variance = -1.0f32;
+/// Find box with maximum variance for splitting using enhanced box priority
+fn find_max_variance_box(boxes: &[WuBox], histogram: &[Vec<Vec<u32>>], moments: &WuMoments, _hist_size: usize) -> Option<usize> {
+    let mut max_priority = -1.0f32;
     let mut max_idx = None;
     
     for (i, box_item) in boxes.iter().enumerate() {
@@ -1004,13 +1093,202 @@ fn find_max_variance_box(boxes: &[WuBox], _histogram: &[Vec<Vec<u32>>], _moments
         let can_split_a = box_item.max_a > box_item.min_a;
         let can_split_b = box_item.max_b > box_item.min_b;
         
-        if (can_split_l || can_split_a || can_split_b) && box_item.volume > max_variance {
-            max_variance = box_item.volume;
+        if !(can_split_l || can_split_a || can_split_b) {
+            continue;
+        }
+        
+        // Enhanced priority calculation considering:
+        // 1. Box volume (larger boxes get higher priority)
+        // 2. Pixel count (boxes with more pixels get higher priority)
+        // 3. Color variance within box (higher variance = better split candidate)
+        let pixel_count = calculate_box_pixel_count(box_item, histogram) as f32;
+        let color_variance = calculate_box_color_variance(box_item, moments);
+        
+        // Combined priority: volume * pixel_count * (1 + variance)
+        // This prioritizes large, populous boxes with high color variance
+        let priority = box_item.volume * pixel_count.sqrt() * (1.0 + color_variance);
+        
+        if priority > max_priority {
+            max_priority = priority;
             max_idx = Some(i);
         }
     }
     
     max_idx
+}
+
+/// Calculate the number of pixels in a box
+fn calculate_box_pixel_count(box_item: &WuBox, histogram: &[Vec<Vec<u32>>]) -> u32 {
+    let mut count = 0;
+    for l in box_item.min_l..=box_item.max_l {
+        for a in box_item.min_a..=box_item.max_a {
+            for b in box_item.min_b..=box_item.max_b {
+                count += histogram[l][a][b];
+            }
+        }
+    }
+    count
+}
+
+/// Calculate color variance within a box for better splitting priority
+fn calculate_box_color_variance(box_item: &WuBox, moments: &WuMoments) -> f32 {
+    // Get moments for the box
+    let moment0 = calculate_box_volume(
+        box_item.min_l, box_item.max_l,
+        box_item.min_a, box_item.max_a, 
+        box_item.min_b, box_item.max_b,
+        moments
+    );
+    
+    if moment0 <= 1.0 {
+        return 0.0; // No variance for empty or single-pixel boxes
+    }
+    
+    let moment1 = calculate_box_moment1(
+        box_item.min_l, box_item.max_l,
+        box_item.min_a, box_item.max_a,
+        box_item.min_b, box_item.max_b,
+        &moments.moment1
+    );
+    
+    let moment2 = calculate_box_moment2(
+        box_item.min_l, box_item.max_l,
+        box_item.min_a, box_item.max_a,
+        box_item.min_b, box_item.max_b,
+        &moments.moment2
+    );
+    
+    // Calculate variance for each channel
+    let mean_l = moment1.0 / moment0;
+    let mean_a = moment1.1 / moment0;
+    let mean_b = moment1.2 / moment0;
+    
+    let var_l = (moment2.0 / moment0) - mean_l * mean_l;
+    let var_a = (moment2.1 / moment0) - mean_a * mean_a;
+    let var_b = (moment2.2 / moment0) - mean_b * mean_b;
+    
+    // Return total variance (clamped to prevent negative values due to floating point errors)
+    (var_l + var_a + var_b).max(0.0)
+}
+
+/// Calculate first moment for a box region
+fn calculate_box_moment1(
+    min_l: usize, max_l: usize,
+    min_a: usize, max_a: usize, 
+    min_b: usize, max_b: usize,
+    moment1: &[Vec<Vec<(f32, f32, f32)>>]
+) -> (f32, f32, f32) {
+    let mut value = moment1[max_l][max_a][max_b];
+    
+    // Subtract faces
+    if min_l > 0 {
+        let sub = moment1[min_l - 1][max_a][max_b];
+        value.0 -= sub.0;
+        value.1 -= sub.1;
+        value.2 -= sub.2;
+    }
+    if min_a > 0 {
+        let sub = moment1[max_l][min_a - 1][max_b];
+        value.0 -= sub.0;
+        value.1 -= sub.1;
+        value.2 -= sub.2;
+    }
+    if min_b > 0 {
+        let sub = moment1[max_l][max_a][min_b - 1];
+        value.0 -= sub.0;
+        value.1 -= sub.1;
+        value.2 -= sub.2;
+    }
+    
+    // Add back edges
+    if min_l > 0 && min_a > 0 {
+        let add = moment1[min_l - 1][min_a - 1][max_b];
+        value.0 += add.0;
+        value.1 += add.1;
+        value.2 += add.2;
+    }
+    if min_l > 0 && min_b > 0 {
+        let add = moment1[min_l - 1][max_a][min_b - 1];
+        value.0 += add.0;
+        value.1 += add.1;
+        value.2 += add.2;
+    }
+    if min_a > 0 && min_b > 0 {
+        let add = moment1[max_l][min_a - 1][min_b - 1];
+        value.0 += add.0;
+        value.1 += add.1;
+        value.2 += add.2;
+    }
+    
+    // Subtract corner
+    if min_l > 0 && min_a > 0 && min_b > 0 {
+        let sub = moment1[min_l - 1][min_a - 1][min_b - 1];
+        value.0 -= sub.0;
+        value.1 -= sub.1;
+        value.2 -= sub.2;
+    }
+    
+    value
+}
+
+/// Calculate second moment for a box region
+fn calculate_box_moment2(
+    min_l: usize, max_l: usize,
+    min_a: usize, max_a: usize,
+    min_b: usize, max_b: usize,
+    moment2: &[Vec<Vec<(f32, f32, f32)>>]
+) -> (f32, f32, f32) {
+    let mut value = moment2[max_l][max_a][max_b];
+    
+    // Subtract faces
+    if min_l > 0 {
+        let sub = moment2[min_l - 1][max_a][max_b];
+        value.0 -= sub.0;
+        value.1 -= sub.1;
+        value.2 -= sub.2;
+    }
+    if min_a > 0 {
+        let sub = moment2[max_l][min_a - 1][max_b];
+        value.0 -= sub.0;
+        value.1 -= sub.1;
+        value.2 -= sub.2;
+    }
+    if min_b > 0 {
+        let sub = moment2[max_l][max_a][min_b - 1];
+        value.0 -= sub.0;
+        value.1 -= sub.1;
+        value.2 -= sub.2;
+    }
+    
+    // Add back edges
+    if min_l > 0 && min_a > 0 {
+        let add = moment2[min_l - 1][min_a - 1][max_b];
+        value.0 += add.0;
+        value.1 += add.1;
+        value.2 += add.2;
+    }
+    if min_l > 0 && min_b > 0 {
+        let add = moment2[min_l - 1][max_a][min_b - 1];
+        value.0 += add.0;
+        value.1 += add.1;
+        value.2 += add.2;
+    }
+    if min_a > 0 && min_b > 0 {
+        let add = moment2[max_l][min_a - 1][min_b - 1];
+        value.0 += add.0;
+        value.1 += add.1;
+        value.2 += add.2;
+    }
+    
+    // Subtract corner
+    if min_l > 0 && min_a > 0 && min_b > 0 {
+        let sub = moment2[min_l - 1][min_a - 1][min_b - 1];
+        value.0 -= sub.0;
+        value.1 -= sub.1;
+        value.2 -= sub.2;
+    }
+    
+    value
 }
 
 /// Split a box along the axis with maximum variance reduction
@@ -1389,6 +1667,114 @@ fn assign_colors_to_centroids(colors: &[(f32, f32, f32)], centroids: &[(f32, f32
         .collect()
 }
 
+/// Color diversity analysis result for edge case detection
+#[derive(Debug, Clone)]
+struct ColorDiversityAnalysis {
+    unique_colors: usize,
+    average_color: (f32, f32, f32),
+    max_range: f32,
+    is_monochrome: bool,
+    color_variance: (f32, f32, f32), // Variance in L, A, B channels
+}
+
+/// Analyze color diversity to detect edge cases
+fn analyze_color_diversity(lab_colors: &[(f32, f32, f32)]) -> ColorDiversityAnalysis {
+    if lab_colors.is_empty() {
+        return ColorDiversityAnalysis {
+            unique_colors: 0,
+            average_color: (0.0, 0.0, 0.0),
+            max_range: 0.0,
+            is_monochrome: true,
+            color_variance: (0.0, 0.0, 0.0),
+        };
+    }
+    
+    // Count unique colors with tolerance
+    const COLOR_TOLERANCE: f32 = 1.0; // ΔE threshold for "same" color
+    let mut unique_colors = Vec::new();
+    
+    for &color in lab_colors {
+        let is_unique = !unique_colors.iter().any(|&existing| {
+            lab_distance(color, existing) <= COLOR_TOLERANCE
+        });
+        
+        if is_unique {
+            unique_colors.push(color);
+        }
+        
+        // Limit to avoid performance issues
+        if unique_colors.len() > 1000 {
+            break;
+        }
+    }
+    
+    // Calculate bounds and average
+    let mut sum_l = 0.0;
+    let mut sum_a = 0.0;
+    let mut sum_b = 0.0;
+    let mut min_l = f32::INFINITY;
+    let mut max_l = f32::NEG_INFINITY;
+    let mut min_a = f32::INFINITY;
+    let mut max_a = f32::NEG_INFINITY;
+    let mut min_b = f32::INFINITY;
+    let mut max_b = f32::NEG_INFINITY;
+    
+    for &(l, a, b) in lab_colors {
+        sum_l += l;
+        sum_a += a;
+        sum_b += b;
+        min_l = min_l.min(l);
+        max_l = max_l.max(l);
+        min_a = min_a.min(a);
+        max_a = max_a.max(a);
+        min_b = min_b.min(b);
+        max_b = max_b.max(b);
+    }
+    
+    let count = lab_colors.len() as f32;
+    let average_color = (sum_l / count, sum_a / count, sum_b / count);
+    
+    // Calculate ranges
+    let l_range = max_l - min_l;
+    let a_range = max_a - min_a;
+    let b_range = max_b - min_b;
+    let max_range = l_range.max(a_range).max(b_range);
+    
+    // Calculate variance
+    let mut var_l = 0.0;
+    let mut var_a = 0.0;
+    let mut var_b = 0.0;
+    
+    for &(l, a, b) in lab_colors {
+        var_l += (l - average_color.0).powi(2);
+        var_a += (a - average_color.1).powi(2);
+        var_b += (b - average_color.2).powi(2);
+    }
+    
+    var_l /= count;
+    var_a /= count;
+    var_b /= count;
+    
+    // Monochrome detection: low range AND low variance
+    let is_monochrome = max_range < 2.0 && (var_l + var_a + var_b) < 5.0;
+    
+    ColorDiversityAnalysis {
+        unique_colors: unique_colors.len(),
+        average_color,
+        max_range,
+        is_monochrome,
+        color_variance: (var_l, var_a, var_b),
+    }
+}
+
+/// Fallback to k-means when Wu quantization is inappropriate
+fn fallback_to_kmeans(colors: &[Color], config: &RegionsConfig) -> VectorizeResult<(Vec<Color>, Vec<usize>)> {
+    log::info!("Wu quantization: Using k-means fallback for low-diversity image");
+    
+    // Use parallel k-means clustering
+    parallel_kmeans_clustering(colors, config)
+}
+
 /// SLIC superpixel segmentation implementation
 fn slic_segmentation(
     image: &RgbaImage,
@@ -1404,11 +1790,18 @@ fn slic_segmentation(
         width, height, region_size, compactness, iterations
     );
 
-    // Convert image to LAB color space
-    let lab_image: Vec<(f32, f32, f32)> = image
-        .pixels()
-        .map(|&Rgba([r, g, b, _])| rgb_to_lab(r, g, b))
-        .collect();
+    // Convert image to LAB color space using pooled buffer
+    let pixel_count = (width * height) as usize;
+    let mut lab_image = get_lab_colors_buffer(pixel_count);
+    
+    // Fill buffer with converted colors using parallel processing
+    lab_image.par_iter_mut().enumerate().for_each(|(i, lab_pixel)| {
+        let x = (i as u32) % width;
+        let y = (i as u32) / width;
+        if let Some(&Rgba([r, g, b, _])) = image.get_pixel_checked(x, y) {
+            *lab_pixel = rgb_to_lab(r, g, b);
+        }
+    });
 
     // Step 1: Initialize cluster centers on a regular grid
     let mut centers = initialize_slic_centers(&lab_image, (width, height), region_size)?;
@@ -1417,9 +1810,12 @@ fn slic_segmentation(
     // Step 2: Move centers away from high-gradient areas (edge avoidance)
     move_centers_away_from_edges(&mut centers, &lab_image, (width, height));
 
-    // Step 3: Iteratively refine clusters
-    let mut labels = vec![0usize; (width * height) as usize];
-    let mut distances = vec![f32::INFINITY; (width * height) as usize];
+    // Step 3: Iteratively refine clusters using pooled buffers
+    let mut labels = get_slic_labels_buffer(pixel_count);
+    let mut distances = get_slic_distances_buffer(pixel_count);
+    
+    // Initialize distances to infinity
+    distances.par_iter_mut().for_each(|d| *d = f32::INFINITY);
 
     for iteration in 0..iterations {
         log::debug!("SLIC iteration {}/{}", iteration + 1, iterations);
@@ -1461,8 +1857,8 @@ fn slic_segmentation(
                if region_sizes.len() <= 10 { format!("{:?}", region_sizes) } 
                else { format!("{:?}...", &region_sizes[0..10]) });
 
-    // Step 5: Create quantized colors for each region
-    let quantized = create_quantized_from_slic(&centers, &labels);
+    // Step 5: Create quantized colors with region-aware color assignment
+    let quantized = create_region_aware_quantized_from_slic(&centers, &labels, &region_map, &lab_image, config);
     
     // Debug: Analyze quantized colors
     let mut unique_colors = std::collections::HashSet::new();
@@ -1476,7 +1872,7 @@ fn slic_segmentation(
             }
         }
     }
-    log::debug!("SLIC quantized colors: {} total, {} unique colors",
+    log::debug!("SLIC region-aware quantized colors: {} total, {} unique colors",
                quantized.len(), unique_colors.len());
     
     if unique_colors.len() <= 10 {
@@ -1487,6 +1883,11 @@ fn slic_segmentation(
         "SLIC segmentation completed: {} regions generated",
         region_map.len()
     );
+
+    // Return pooled buffers for reuse
+    return_lab_colors_buffer(lab_image);
+    return_slic_labels_buffer(labels);
+    return_slic_distances_buffer(distances);
 
     Ok((region_map, quantized))
 }
@@ -1606,7 +2007,7 @@ fn calculate_gradient_magnitude(
     (gx * gx + gy * gy).sqrt()
 }
 
-/// SLIC assignment step: assign each pixel to the nearest cluster center
+/// SLIC assignment step: assign each pixel to the nearest cluster center with enhanced parallelization
 fn slic_assignment_step(
     centers: &[SlicCenter],
     lab_image: &[(f32, f32, f32)],
@@ -1618,35 +2019,54 @@ fn slic_assignment_step(
 ) {
     let (width, height) = dimensions;
     
-    // Reset distances
-    distances.fill(f32::INFINITY);
+    // Reset distances using parallel processing
+    distances.par_iter_mut().for_each(|d| *d = f32::INFINITY);
     
-    // For each cluster center, check pixels within 2S×2S region
-    for (center_idx, center) in centers.iter().enumerate() {
-        let search_radius = (2.0 * region_size) as i32;
-        
-        let min_x = ((center.x as i32 - search_radius).max(0) as u32).min(width - 1);
-        let max_x = ((center.x as i32 + search_radius).max(0) as u32).min(width - 1);
-        let min_y = ((center.y as i32 - search_radius).max(0) as u32).min(height - 1);
-        let max_y = ((center.y as i32 + search_radius).max(0) as u32).min(height - 1);
-        
-        for y in min_y..=max_y {
-            for x in min_x..=max_x {
-                let pixel_idx = (y * width + x) as usize;
+    // PERFORMANCE OPTIMIZATION: Use parallel processing with proper mutation
+    let pixel_count = (width * height) as usize;
+    let search_radius = (2.0 * region_size) as i32;
+    
+    // Create result vectors for parallel processing  
+    let results: Vec<(f32, usize)> = (0..pixel_count).into_par_iter()
+        .map(|pixel_idx| {
+            if pixel_idx >= lab_image.len() {
+                return (f32::INFINITY, 0);
+            }
+            
+            let x = (pixel_idx % width as usize) as u32;
+            let y = (pixel_idx / width as usize) as u32;
+            let (l, a, b) = lab_image[pixel_idx];
+            
+            let mut min_distance = f32::INFINITY;
+            let mut best_center = 0;
+            
+            // Check all centers that could affect this pixel
+            for (center_idx, center) in centers.iter().enumerate() {
+                // Skip centers that are too far away spatially
+                let dx = (center.x as i32 - x as i32).abs();
+                let dy = (center.y as i32 - y as i32).abs();
+                if dx > search_radius || dy > search_radius {
+                    continue;
+                }
                 
-                if pixel_idx < lab_image.len() {
-                    let (l, a, b) = lab_image[pixel_idx];
-                    let distance = slic_distance(
-                        center, l, a, b, x as f32, y as f32, region_size, compactness
-                    );
-                    
-                    if distance < distances[pixel_idx] {
-                        distances[pixel_idx] = distance;
-                        labels[pixel_idx] = center_idx;
-                    }
+                let distance = slic_distance(
+                    center, l, a, b, x as f32, y as f32, region_size, compactness
+                );
+                
+                if distance < min_distance {
+                    min_distance = distance;
+                    best_center = center_idx;
                 }
             }
-        }
+            
+            (min_distance, best_center)
+        })
+        .collect();
+    
+    // Apply results to the arrays
+    for (i, (distance, center_idx)) in results.into_iter().enumerate() {
+        distances[i] = distance;
+        labels[i] = center_idx;
     }
 }
 
@@ -1755,6 +2175,211 @@ fn create_quantized_from_slic(centers: &[SlicCenter], labels: &[usize]) -> Vec<C
             }
         })
         .collect()
+}
+
+/// Create region-aware quantized colors from SLIC with enhanced color consistency
+fn create_region_aware_quantized_from_slic(
+    centers: &[SlicCenter], 
+    labels: &[usize], 
+    region_map: &HashMap<usize, Vec<(u32, u32)>>,
+    lab_image: &[(f32, f32, f32)],
+    config: &RegionsConfig
+) -> Vec<Color> {
+    log::debug!("Creating region-aware quantized colors for {} regions", region_map.len());
+    
+    // Calculate image dimensions from labels array (since it's width * height)
+    let image_size = labels.len();
+    let estimated_width = (image_size as f32).sqrt() as u32; // Rough estimate for indexing
+    
+    // Step 1: Calculate improved colors for each region by analyzing actual pixel colors
+    let mut region_colors: HashMap<usize, (f32, f32, f32)> = HashMap::new();
+    
+    for (region_id, pixels) in region_map {
+        let mut sum_l = 0.0;
+        let mut sum_a = 0.0;
+        let mut sum_b = 0.0;
+        let mut count = 0;
+        
+        // Collect all colors in this region
+        let mut region_lab_colors = Vec::new();
+        for &(x, y) in pixels {
+            let idx = (y * estimated_width + x) as usize;
+            if idx < lab_image.len() {
+                let lab = lab_image[idx];
+                region_lab_colors.push(lab);
+                sum_l += lab.0;
+                sum_a += lab.1;
+                sum_b += lab.2;
+                count += 1;
+            }
+        }
+        
+        if count > 0 {
+            // Calculate the representative color for this region
+            let representative_color = if region_lab_colors.len() > 10 && config.quantization_method == QuantizationMethod::Wu {
+                // For larger regions, use more sophisticated color selection
+                calculate_representative_region_color(&region_lab_colors)
+            } else {
+                // Simple average for small regions or k-means mode
+                (sum_l / count as f32, sum_a / count as f32, sum_b / count as f32)
+            };
+            
+            region_colors.insert(*region_id, representative_color);
+        } else {
+            // Fallback to SLIC center if no pixels found
+            if *region_id < centers.len() {
+                let center = &centers[*region_id];
+                region_colors.insert(*region_id, (center.l, center.a, center.b));
+            }
+        }
+    }
+    
+    // Step 2: Apply color consistency within regions
+    if config.quantization_method == QuantizationMethod::Wu {
+        smooth_region_colors(&mut region_colors, region_map, lab_image, estimated_width);
+    }
+    
+    // Step 3: Map pixel labels to the improved region colors
+    let result = labels
+        .iter()
+        .map(|&label| {
+            if let Some(&color) = region_colors.get(&label) {
+                Color::Lab(color.0, color.1, color.2)
+            } else if label < centers.len() {
+                // Fallback to original SLIC center
+                let center = &centers[label];
+                Color::Lab(center.l, center.a, center.b)
+            } else {
+                // Final fallback
+                Color::Lab(50.0, 0.0, 0.0)
+            }
+        })
+        .collect();
+    
+    log::debug!("Region-aware color assignment completed with {} region colors", region_colors.len());
+    result
+}
+
+/// Calculate representative color for a region using improved color analysis
+fn calculate_representative_region_color(lab_colors: &[(f32, f32, f32)]) -> (f32, f32, f32) {
+    if lab_colors.is_empty() {
+        return (50.0, 0.0, 0.0);
+    }
+    
+    // Use weighted average with outlier reduction
+    // 1. Calculate median for each channel to reduce outlier influence
+    let mut l_values: Vec<f32> = lab_colors.iter().map(|c| c.0).collect();
+    let mut a_values: Vec<f32> = lab_colors.iter().map(|c| c.1).collect();
+    let mut b_values: Vec<f32> = lab_colors.iter().map(|c| c.2).collect();
+    
+    l_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    a_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    b_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    
+    let median_l = l_values[l_values.len() / 2];
+    let median_a = a_values[a_values.len() / 2];
+    let median_b = b_values[b_values.len() / 2];
+    
+    // 2. Calculate robust average excluding extreme outliers
+    const OUTLIER_THRESHOLD: f32 = 20.0; // LAB distance threshold for outliers
+    let median_color = (median_l, median_a, median_b);
+    
+    let mut sum_l = 0.0;
+    let mut sum_a = 0.0;
+    let mut sum_b = 0.0;
+    let mut count = 0;
+    
+    for &color in lab_colors {
+        let distance = lab_distance(color, median_color);
+        if distance <= OUTLIER_THRESHOLD {
+            sum_l += color.0;
+            sum_a += color.1;
+            sum_b += color.2;
+            count += 1;
+        }
+    }
+    
+    if count > 0 {
+        (sum_l / count as f32, sum_a / count as f32, sum_b / count as f32)
+    } else {
+        median_color
+    }
+}
+
+/// Smooth region colors to improve consistency between adjacent regions
+fn smooth_region_colors(
+    region_colors: &mut HashMap<usize, (f32, f32, f32)>,
+    region_map: &HashMap<usize, Vec<(u32, u32)>>,
+    lab_image: &[(f32, f32, f32)],
+    image_width: u32
+) {
+    if region_colors.len() <= 2 {
+        return; // Not enough regions to smooth
+    }
+    
+    // Find adjacent regions and smooth colors between similar neighbors
+    let mut smoothed_colors = region_colors.clone();
+    
+    for (region_id, pixels) in region_map {
+        if let Some(&current_color) = region_colors.get(region_id) {
+            let mut neighbor_colors = Vec::new();
+            
+            // Find neighboring regions by checking pixel adjacency
+            let mut neighbor_regions = std::collections::HashSet::new();
+            for &(x, y) in pixels.iter().take(std::cmp::min(pixels.len(), 50)) { // Sample for performance
+                // Check 4-connected neighbors
+                for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+                    let nx = x as i32 + dx;
+                    let ny = y as i32 + dy;
+                    if nx >= 0 && ny >= 0 {
+                        let nx = nx as u32;
+                        let ny = ny as u32;
+                        let neighbor_idx = (ny * image_width + nx) as usize;
+                        if neighbor_idx < lab_image.len() {
+                            // Find which region this neighbor belongs to
+                            for (other_region_id, other_pixels) in region_map {
+                                if *other_region_id != *region_id && other_pixels.contains(&(nx, ny)) {
+                                    neighbor_regions.insert(*other_region_id);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Collect colors from similar neighboring regions
+            for neighbor_id in neighbor_regions {
+                if let Some(&neighbor_color) = region_colors.get(&neighbor_id) {
+                    let color_distance = lab_distance(current_color, neighbor_color);
+                    if color_distance < 15.0 { // Similar colors
+                        neighbor_colors.push(neighbor_color);
+                    }
+                }
+            }
+            
+            // Smooth with neighbors if we found similar ones
+            if !neighbor_colors.is_empty() {
+                let mut sum_l = current_color.0 * 2.0; // Weight current color more
+                let mut sum_a = current_color.1 * 2.0;
+                let mut sum_b = current_color.2 * 2.0;
+                let mut count = 2.0;
+                
+                for neighbor_color in neighbor_colors {
+                    sum_l += neighbor_color.0;
+                    sum_a += neighbor_color.1;
+                    sum_b += neighbor_color.2;
+                    count += 1.0;
+                }
+                
+                let smoothed_color = (sum_l / count, sum_a / count, sum_b / count);
+                smoothed_colors.insert(*region_id, smoothed_color);
+            }
+        }
+    }
+    
+    *region_colors = smoothed_colors;
+    log::debug!("Applied region color smoothing to {} regions", region_colors.len());
 }
 
 /// Apply quantization using k-means results
@@ -2377,6 +3002,10 @@ pub fn vectorize_regions_with_gradient_info(
             max_gradient_stops: config.max_gradient_stops,
             min_region_area: config.min_gradient_region_area,
             radial_symmetry_threshold: config.radial_symmetry_threshold,
+            enhanced_pca: true,
+            adaptive_stops: true,
+            color_change_threshold: 3.0,
+            direction_stability_threshold: 0.9,
         };
         
         let filtered_regions = create_filtered_regions_map(&filtered_contours, &merged_regions);

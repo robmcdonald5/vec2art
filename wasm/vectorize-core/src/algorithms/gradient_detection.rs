@@ -27,6 +27,14 @@ pub struct GradientConfig {
     pub min_region_area: usize,
     /// Radial symmetry detection threshold
     pub radial_symmetry_threshold: f64,
+    /// Enable enhanced PCA analysis with direction stability
+    pub enhanced_pca: bool,
+    /// Enable adaptive stop placement based on color quantiles
+    pub adaptive_stops: bool,
+    /// Color change threshold for stop placement (ΔE)
+    pub color_change_threshold: f32,
+    /// Direction stability threshold for linear gradients
+    pub direction_stability_threshold: f64,
 }
 
 impl Default for GradientConfig {
@@ -37,6 +45,10 @@ impl Default for GradientConfig {
             max_gradient_stops: 8,
             min_region_area: 100,
             radial_symmetry_threshold: 0.8,
+            enhanced_pca: true,
+            adaptive_stops: true,
+            color_change_threshold: 3.0, // ΔE threshold for meaningful color changes
+            direction_stability_threshold: 0.9,
         }
     }
 }
@@ -184,7 +196,7 @@ struct PixelData {
     b: f32,
 }
 
-/// Detect linear gradient using PCA on spatial coordinates and color values
+/// Detect linear gradient using enhanced PCA analysis
 fn detect_linear_gradient(
     pixels: &[PixelData],
     config: &GradientConfig,
@@ -201,60 +213,25 @@ fn detect_linear_gradient(
     let n = pixels.len() as f32;
     let x_mean = pixels.iter().map(|p| p.x).sum::<f32>() / n;
     let y_mean = pixels.iter().map(|p| p.y).sum::<f32>() / n;
-    let _l_mean = pixels.iter().map(|p| p.l).sum::<f32>() / n;
-    let _a_mean = pixels.iter().map(|p| p.a).sum::<f32>() / n;
-    let _b_mean = pixels.iter().map(|p| p.b).sum::<f32>() / n;
+    let l_mean = pixels.iter().map(|p| p.l).sum::<f32>() / n;
+    let a_mean = pixels.iter().map(|p| p.a).sum::<f32>() / n;
+    let b_mean = pixels.iter().map(|p| p.b).sum::<f32>() / n;
 
-    // Perform PCA on spatial coordinates to find principal direction
-    let mut xx = 0.0f32;
-    let mut xy = 0.0f32;
-    let mut yy = 0.0f32;
+    // Enhanced PCA analysis considering both spatial and color variance
+    let (principal_x, principal_y, eigenvalue_ratio) = if config.enhanced_pca {
+        enhanced_pca_analysis(pixels, x_mean, y_mean, l_mean, a_mean, b_mean)?
+    } else {
+        basic_pca_analysis(pixels, x_mean, y_mean)?
+    };
 
-    for pixel in pixels {
-        let dx = pixel.x - x_mean;
-        let dy = pixel.y - y_mean;
-        
-        xx += dx * dx;
-        xy += dx * dy;
-        yy += dy * dy;
-    }
-
-    xx /= n;
-    xy /= n;
-    yy /= n;
-
-    // Find eigenvalues and eigenvectors of the covariance matrix
-    let trace = xx + yy;
-    let det = xx * yy - xy * xy;
-    let discriminant = trace * trace - 4.0 * det;
-
-    if discriminant < 0.0 {
+    // Direction stability check for enhanced PCA
+    if config.enhanced_pca && eigenvalue_ratio < config.direction_stability_threshold {
         return Ok(GradientAnalysis {
             gradient_type: GradientType::None,
             use_gradient: false,
             size_benefit: 0,
         });
     }
-
-    let sqrt_discriminant = discriminant.sqrt();
-    let eigenvalue1 = (trace + sqrt_discriminant) / 2.0;
-    let _eigenvalue2 = (trace - sqrt_discriminant) / 2.0;
-
-    // Principal direction (eigenvector for largest eigenvalue)
-    let (principal_x, principal_y) = if xy.abs() > 1e-6 {
-        let vx = eigenvalue1 - yy;
-        let vy = xy;
-        let norm = (vx * vx + vy * vy).sqrt();
-        if norm > 1e-6 {
-            (vx / norm, vy / norm)
-        } else {
-            (1.0, 0.0)
-        }
-    } else if xx > yy {
-        (1.0, 0.0)
-    } else {
-        (0.0, 1.0)
-    };
 
     // Project pixels onto principal axis
     let mut projections = Vec::new();
@@ -284,8 +261,13 @@ fn detect_linear_gradient(
     let (a_slope, a_intercept, a_r2) = linear_regression(&projections.iter().map(|(proj, (_, a, _))| (*proj, *a)).collect::<Vec<_>>());
     let (b_slope, b_intercept, b_r2) = linear_regression(&projections.iter().map(|(proj, (_, _, b))| (*proj, *b)).collect::<Vec<_>>());
 
-    // Combined R² (average of individual channel R²)
-    let combined_r2 = (l_r2 + a_r2 + b_r2) / 3.0;
+    // Enhanced R² calculation with perceptual weighting
+    let combined_r2 = if config.enhanced_pca {
+        // Weight L channel more heavily as it's more perceptually important
+        l_r2 * 0.6 + a_r2 * 0.2 + b_r2 * 0.2
+    } else {
+        (l_r2 + a_r2 + b_r2) / 3.0
+    };
 
     if combined_r2 < config.r_squared_threshold {
         return Ok(GradientAnalysis {
@@ -295,14 +277,26 @@ fn detect_linear_gradient(
         });
     }
 
-    // Generate gradient stops
-    let stops = generate_linear_gradient_stops(
-        min_proj, max_proj,
-        l_slope, l_intercept,
-        a_slope, a_intercept,
-        b_slope, b_intercept,
-        config.max_gradient_stops,
-    );
+    // Generate gradient stops with adaptive placement
+    let stops = if config.adaptive_stops {
+        generate_adaptive_linear_gradient_stops(
+            &projections,
+            min_proj, max_proj,
+            l_slope, l_intercept,
+            a_slope, a_intercept,
+            b_slope, b_intercept,
+            config.max_gradient_stops,
+            config.color_change_threshold,
+        )
+    } else {
+        generate_linear_gradient_stops(
+            min_proj, max_proj,
+            l_slope, l_intercept,
+            a_slope, a_intercept,
+            b_slope, b_intercept,
+            config.max_gradient_stops,
+        )
+    };
 
     // Calculate start and end points in image coordinates
     let start = Point {
@@ -528,6 +522,285 @@ fn generate_radial_gradient_stops(
 /// Generate unique gradient ID for SVG
 pub fn generate_gradient_id(region_id: usize, gradient_type: &str) -> String {
     format!("gradient-{}-{}", gradient_type, region_id)
+}
+
+/// Enhanced PCA analysis considering both spatial and color variance
+fn enhanced_pca_analysis(
+    pixels: &[PixelData],
+    x_mean: f32, y_mean: f32,
+    l_mean: f32, a_mean: f32, b_mean: f32,
+) -> VectorizeResult<(f32, f32, f64)> {
+    let n = pixels.len() as f32;
+    
+    // Build combined spatial-color covariance matrix (5x5)
+    // We'll focus on the spatial part but weight by color variance
+    let mut spatial_cov = [[0.0f32; 2]; 2]; // 2x2 for x,y
+    
+    // Calculate spatial covariance weighted by color intensity
+    for pixel in pixels {
+        let dx = pixel.x - x_mean;
+        let dy = pixel.y - y_mean;
+        let dl = pixel.l - l_mean;
+        let da = pixel.a - a_mean;
+        let db = pixel.b - b_mean;
+        
+        // Color variance (using ΔE approximation)
+        let color_var = (dl * dl + da * da + db * db).sqrt();
+        
+        // Weight spatial covariance by color variance to emphasize areas with color changes
+        let weight = (1.0 + color_var * 0.1).min(3.0); // Cap the weight
+        
+        spatial_cov[0][0] += dx * dx * weight;
+        spatial_cov[0][1] += dx * dy * weight;
+        spatial_cov[1][0] += dx * dy * weight;
+        spatial_cov[1][1] += dy * dy * weight;
+    }
+    
+    // Normalize
+    for i in 0..2 {
+        for j in 0..2 {
+            spatial_cov[i][j] /= n;
+        }
+    }
+    
+    // Find eigenvalues and eigenvectors of the spatial covariance matrix
+    let xx = spatial_cov[0][0];
+    let xy = spatial_cov[0][1];
+    let yy = spatial_cov[1][1];
+    
+    let trace = xx + yy;
+    let det = xx * yy - xy * xy;
+    let discriminant = trace * trace - 4.0 * det;
+    
+    if discriminant < 0.0 {
+        return Ok((1.0, 0.0, 0.0)); // Default to horizontal direction
+    }
+    
+    let sqrt_discriminant = discriminant.sqrt();
+    let eigenvalue1 = (trace + sqrt_discriminant) / 2.0;
+    let eigenvalue2 = (trace - sqrt_discriminant) / 2.0;
+    
+    // Calculate eigenvalue ratio for direction stability
+    let eigenvalue_ratio = if eigenvalue1 > 1e-6 {
+        (eigenvalue1 - eigenvalue2) / eigenvalue1
+    } else {
+        0.0
+    };
+    
+    // Principal direction (eigenvector for largest eigenvalue)
+    let (principal_x, principal_y) = if xy.abs() > 1e-6 {
+        let vx = eigenvalue1 - yy;
+        let vy = xy;
+        let norm = (vx * vx + vy * vy).sqrt();
+        if norm > 1e-6 {
+            (vx / norm, vy / norm)
+        } else {
+            (1.0, 0.0)
+        }
+    } else if xx > yy {
+        (1.0, 0.0)
+    } else {
+        (0.0, 1.0)
+    };
+    
+    Ok((principal_x, principal_y, eigenvalue_ratio as f64))
+}
+
+/// Basic PCA analysis using only spatial coordinates (original implementation)
+fn basic_pca_analysis(
+    pixels: &[PixelData],
+    x_mean: f32, y_mean: f32,
+) -> VectorizeResult<(f32, f32, f64)> {
+    let n = pixels.len() as f32;
+    let mut xx = 0.0f32;
+    let mut xy = 0.0f32;
+    let mut yy = 0.0f32;
+
+    for pixel in pixels {
+        let dx = pixel.x - x_mean;
+        let dy = pixel.y - y_mean;
+        
+        xx += dx * dx;
+        xy += dx * dy;
+        yy += dy * dy;
+    }
+
+    xx /= n;
+    xy /= n;
+    yy /= n;
+
+    // Find eigenvalues and eigenvectors of the covariance matrix
+    let trace = xx + yy;
+    let det = xx * yy - xy * xy;
+    let discriminant = trace * trace - 4.0 * det;
+
+    if discriminant < 0.0 {
+        return Ok((1.0, 0.0, 0.0));
+    }
+
+    let sqrt_discriminant = discriminant.sqrt();
+    let eigenvalue1 = (trace + sqrt_discriminant) / 2.0;
+    let eigenvalue2 = (trace - sqrt_discriminant) / 2.0;
+    
+    let eigenvalue_ratio = if eigenvalue1 > 1e-6 {
+        (eigenvalue1 - eigenvalue2) / eigenvalue1
+    } else {
+        0.0
+    };
+
+    // Principal direction (eigenvector for largest eigenvalue)
+    let (principal_x, principal_y) = if xy.abs() > 1e-6 {
+        let vx = eigenvalue1 - yy;
+        let vy = xy;
+        let norm = (vx * vx + vy * vy).sqrt();
+        if norm > 1e-6 {
+            (vx / norm, vy / norm)
+        } else {
+            (1.0, 0.0)
+        }
+    } else if xx > yy {
+        (1.0, 0.0)
+    } else {
+        (0.0, 1.0)
+    };
+    
+    Ok((principal_x, principal_y, eigenvalue_ratio as f64))
+}
+
+/// Generate adaptive gradient stops based on color distribution quantiles
+fn generate_adaptive_linear_gradient_stops(
+    projections: &[(f32, (f32, f32, f32))],
+    min_proj: f32,
+    max_proj: f32,
+    l_slope: f32, l_intercept: f32,
+    a_slope: f32, a_intercept: f32,
+    b_slope: f32, b_intercept: f32,
+    max_stops: usize,
+    color_change_threshold: f32,
+) -> Vec<GradientStop> {
+    let mut stops = Vec::new();
+    let range = max_proj - min_proj;
+
+    if range < 1e-6 {
+        // Single color
+        stops.push(GradientStop {
+            offset: 0.0,
+            color: (l_intercept, a_intercept, b_intercept),
+        });
+        return stops;
+    }
+
+    // Sort projections by position
+    let mut sorted_projections = projections.to_vec();
+    sorted_projections.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    
+    // Start with the endpoints
+    stops.push(GradientStop {
+        offset: 0.0,
+        color: (
+            l_slope * min_proj + l_intercept,
+            a_slope * min_proj + a_intercept,
+            b_slope * min_proj + b_intercept,
+        ),
+    });
+    
+    // Add intermediate stops based on color change analysis
+    let mut current_color = stops[0].color;
+    let mut last_offset = 0.0;
+    
+    // Divide the range into segments and check for significant color changes
+    let segments = (max_stops - 1).max(10); // Use more segments for analysis
+    
+    for i in 1..segments {
+        let t = i as f32 / segments as f32;
+        let proj_value = min_proj + t * range;
+        let test_color = (
+            l_slope * proj_value + l_intercept,
+            a_slope * proj_value + a_intercept,
+            b_slope * proj_value + b_intercept,
+        );
+        
+        // Calculate ΔE between current and test color
+        let delta_e = lab_distance_simple(current_color, test_color);
+        
+        // Add stop if color change is significant and we haven't reached max stops
+        if delta_e > color_change_threshold && stops.len() < max_stops && (t - last_offset) > 0.1 {
+            stops.push(GradientStop {
+                offset: t,
+                color: test_color,
+            });
+            current_color = test_color;
+            last_offset = t;
+        }
+    }
+    
+    // Always end with the final color
+    if stops.len() == 1 || stops[stops.len() - 1].offset < 1.0 {
+        stops.push(GradientStop {
+            offset: 1.0,
+            color: (
+                l_slope * max_proj + l_intercept,
+                a_slope * max_proj + a_intercept,
+                b_slope * max_proj + b_intercept,
+            ),
+        });
+    }
+    
+    // Ensure we don't have too many stops
+    if stops.len() > max_stops {
+        // Keep the most important stops (largest color changes)
+        optimize_gradient_stops(stops, max_stops)
+    } else {
+        stops
+    }
+}
+
+/// Simple LAB distance calculation for gradient analysis
+fn lab_distance_simple(color1: (f32, f32, f32), color2: (f32, f32, f32)) -> f32 {
+    let dl = color1.0 - color2.0;
+    let da = color1.1 - color2.1;
+    let db = color1.2 - color2.2;
+    (dl * dl + da * da + db * db).sqrt()
+}
+
+/// Optimize gradient stops by removing less important ones
+fn optimize_gradient_stops(stops: Vec<GradientStop>, max_stops: usize) -> Vec<GradientStop> {
+    if stops.len() <= max_stops {
+        return stops;
+    }
+    
+    // Keep the first and last stops always
+    let first = stops[0].clone();
+    let last = stops[stops.len() - 1].clone();
+    
+    // Calculate importance scores for intermediate stops
+    let mut scored_stops = Vec::new();
+    for i in 1..stops.len()-1 {
+        let prev_color = stops[i-1].color;
+        let curr_color = stops[i].color;
+        let next_color = stops[i+1].color;
+        
+        // Importance is based on color change before and after
+        let change_before = lab_distance_simple(prev_color, curr_color);
+        let change_after = lab_distance_simple(curr_color, next_color);
+        let importance = change_before + change_after;
+        
+        scored_stops.push((importance, i, stops[i].clone()));
+    }
+    
+    // Sort by importance (descending)
+    scored_stops.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+    
+    // Take the most important intermediate stops
+    let mut result = vec![first];
+    for i in 0..(max_stops - 2).min(scored_stops.len()) {
+        result.push(scored_stops[i].2.clone());
+    }
+    result.push(last);
+    
+    // Sort by offset to maintain order
+    result.sort_by(|a, b| a.offset.partial_cmp(&b.offset).unwrap());
+    result
 }
 
 /// Analyze multiple regions for gradient patterns

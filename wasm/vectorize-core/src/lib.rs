@@ -20,6 +20,10 @@ pub mod fills;
 // Phase B refinement module
 pub mod refine;
 
+// Phase A+B integration testing (conditional compilation for tests)
+#[cfg(test)]
+pub mod integration_tests;
+
 //#[cfg(test)]
 //mod edge_case_tests;
 
@@ -67,8 +71,10 @@ pub fn vectorize_logo_rgba(
     use algorithms::logo::vectorize_logo;
     use svg::generate_svg_document;
     use input_validation::{validate_image_input, validate_logo_config};
+    use preprocessing::{ResolutionConfig, analyze_resolution_requirements, apply_resolution_processing, 
+                        adjust_logo_config, scale_svg_coordinates};
 
-    log::info!("Starting logo vectorization with config: {:?}", config);
+    log::info!("Starting PERFORMANCE-OPTIMIZED logo vectorization with config: {:?}", config);
 
     // Comprehensive input validation
     validate_image_input(image)?;
@@ -80,8 +86,25 @@ pub fn vectorize_logo_rgba(
         return Ok(generate_minimal_svg(image.width(), image.height(), "logo"));
     }
 
-    // Use the implemented logo algorithm
-    let svg_paths = vectorize_logo(image, config)?;
+    // PERFORMANCE OPTIMIZATION: Analyze resolution requirements
+    let resolution_config = ResolutionConfig::default();
+    let resolution_analysis = analyze_resolution_requirements(image, &resolution_config);
+    
+    // Apply resolution-aware processing
+    let processing_image = apply_resolution_processing(image, &resolution_analysis)?;
+    
+    // Adjust configuration based on resolution scaling
+    let adjusted_config = adjust_logo_config(config, &resolution_analysis.parameter_adjustments);
+    
+    log::info!(
+        "Resolution-optimized processing: {}x{} -> {}x{} (scale: {:.3})",
+        image.width(), image.height(),
+        processing_image.width(), processing_image.height(),
+        resolution_analysis.scale_factor
+    );
+
+    // Use the implemented logo algorithm with optimized config
+    let svg_paths = vectorize_logo(&processing_image, &adjusted_config)?;
 
     // Handle case where no paths were generated
     if svg_paths.is_empty() {
@@ -91,10 +114,12 @@ pub fn vectorize_logo_rgba(
 
     // Generate complete SVG document
     let svg_config = SvgConfig::default();
-    let svg_document =
-        generate_svg_document(&svg_paths, image.width(), image.height(), &svg_config);
+    let svg_document = generate_svg_document(&svg_paths, processing_image.width(), processing_image.height(), &svg_config);
 
-    Ok(svg_document)
+    // Scale SVG back to original resolution if needed
+    let final_svg = scale_svg_coordinates(&svg_document, &resolution_analysis)?;
+
+    Ok(final_svg)
 }
 
 /// Main entry point for color regions vectorization
@@ -123,8 +148,10 @@ pub fn vectorize_regions_rgba(
 ) -> Result<String, VectorizeError> {
     use algorithms::regions::vectorize_regions;
     use input_validation::{validate_image_input, validate_regions_config};
+    use preprocessing::{ResolutionConfig, analyze_resolution_requirements, apply_resolution_processing, 
+                        adjust_regions_config, scale_svg_coordinates};
 
-    log::info!("Starting regions vectorization with config: {:?}", config);
+    log::info!("Starting PERFORMANCE-OPTIMIZED regions vectorization with config: {:?}", config);
 
     // Comprehensive input validation
     validate_image_input(image)?;
@@ -143,8 +170,25 @@ pub fn vectorize_regions_rgba(
         // Continue with adjusted expectations rather than failing
     }
 
-    // Use the implemented regions algorithm
-    let svg_paths = vectorize_regions(image, config)?;
+    // PERFORMANCE OPTIMIZATION: Analyze resolution requirements
+    let resolution_config = ResolutionConfig::default();
+    let resolution_analysis = analyze_resolution_requirements(image, &resolution_config);
+    
+    // Apply resolution-aware processing
+    let processing_image = apply_resolution_processing(image, &resolution_analysis)?;
+    
+    // Adjust configuration based on resolution scaling
+    let adjusted_config = adjust_regions_config(config, &resolution_analysis.parameter_adjustments);
+    
+    log::info!(
+        "Resolution-optimized processing: {}x{} -> {}x{} (scale: {:.3})",
+        image.width(), image.height(),
+        processing_image.width(), processing_image.height(),
+        resolution_analysis.scale_factor
+    );
+
+    // Use the implemented regions algorithm with optimized config
+    let svg_paths = vectorize_regions(&processing_image, &adjusted_config)?;
 
     // Handle case where no paths were generated
     if svg_paths.is_empty() {
@@ -154,20 +198,23 @@ pub fn vectorize_regions_rgba(
 
     // Generate complete SVG document
     let svg_config = SvgConfig::default();
-    let svg_document = if config.detect_gradients {
+    let svg_document = if adjusted_config.detect_gradients {
         // If gradient detection is enabled, we need to re-run the regions algorithm
         // to get the gradient analyses and use gradient-aware SVG generation
         use algorithms::regions::{vectorize_regions_with_gradient_info};
         
-        let (paths, gradients) = vectorize_regions_with_gradient_info(image, config)?;
+        let (paths, gradients) = vectorize_regions_with_gradient_info(&processing_image, &adjusted_config)?;
         svg_gradients::generate_svg_document_with_gradients(
-            &paths, &gradients, image.width(), image.height(), &svg_config
+            &paths, &gradients, processing_image.width(), processing_image.height(), &svg_config
         )
     } else {
-        svg::generate_svg_document(&svg_paths, image.width(), image.height(), &svg_config)
+        svg::generate_svg_document(&svg_paths, processing_image.width(), processing_image.height(), &svg_config)
     };
 
-    Ok(svg_document)
+    // Scale SVG back to original resolution if needed
+    let final_svg = scale_svg_coordinates(&svg_document, &resolution_analysis)?;
+
+    Ok(final_svg)
 }
 
 /// Main entry point for trace-low vectorization
@@ -193,8 +240,10 @@ pub fn vectorize_trace_low_rgba(
     config: &TraceLowConfig,
 ) -> Result<String, VectorizeError> {
     use input_validation::validate_image_input;
+    use preprocessing::{ResolutionConfig, analyze_resolution_requirements, apply_resolution_processing, 
+                        adjust_trace_low_config, scale_svg_coordinates};
     
-    log::info!("Starting trace-low vectorization with config: {:?}", config);
+    log::info!("Starting PERFORMANCE-OPTIMIZED trace-low vectorization with config: {:?}", config);
 
     // Comprehensive input validation
     validate_image_input(image)?;
@@ -206,8 +255,25 @@ pub fn vectorize_trace_low_rgba(
         return Ok(generate_minimal_svg(image.width(), image.height(), "trace-low"));
     }
 
-    // Use the trace-low algorithm
-    let svg_paths = vectorize_trace_low(image, config)?;
+    // PERFORMANCE OPTIMIZATION: Analyze resolution requirements
+    let resolution_config = ResolutionConfig::default();
+    let resolution_analysis = analyze_resolution_requirements(image, &resolution_config);
+    
+    // Apply resolution-aware processing
+    let processing_image = apply_resolution_processing(image, &resolution_analysis)?;
+    
+    // Adjust configuration based on resolution scaling
+    let adjusted_config = adjust_trace_low_config(config, &resolution_analysis.parameter_adjustments);
+    
+    log::info!(
+        "Resolution-optimized processing: {}x{} -> {}x{} (scale: {:.3})",
+        image.width(), image.height(),
+        processing_image.width(), processing_image.height(),
+        resolution_analysis.scale_factor
+    );
+
+    // Use the trace-low algorithm with optimized config
+    let svg_paths = vectorize_trace_low(&processing_image, &adjusted_config)?;
 
     // Handle case where no paths were generated
     if svg_paths.is_empty() {
@@ -217,10 +283,12 @@ pub fn vectorize_trace_low_rgba(
 
     // Generate complete SVG document
     let svg_config = SvgConfig::default();
-    let svg_document =
-        svg::generate_svg_document(&svg_paths, image.width(), image.height(), &svg_config);
+    let svg_document = svg::generate_svg_document(&svg_paths, processing_image.width(), processing_image.height(), &svg_config);
 
-    Ok(svg_document)
+    // Scale SVG back to original resolution if needed
+    let final_svg = scale_svg_coordinates(&svg_document, &resolution_analysis)?;
+
+    Ok(final_svg)
 }
 
 // Helper functions for input validation and edge case handling

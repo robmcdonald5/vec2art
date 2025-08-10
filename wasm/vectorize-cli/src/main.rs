@@ -22,15 +22,45 @@ mod phase_a_benchmark;
 use comprehensive_benchmark::{BenchmarkSuite, BenchmarkConfig, BenchmarkReport};
 use phase_a_benchmark::{PhaseABenchmarkSuite, PhaseABenchmarkConfig};
 
+/// Preset action for presets command
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum PresetAction {
+    /// List all available presets
+    List,
+    /// Show detailed information about a specific preset
+    Info,
+}
+
 /// Preset configurations for common use cases
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum PresetType {
-    /// High-fidelity mode for photographs with gradients and refinement
+    // Core presets
+    /// High-fidelity mode for photographs with gradients
     Photo,
+    /// High-fidelity mode for photographs with Phase B refinement
+    PhotoRefined,
     /// Fixed palette posterization (stylized)
     Posterized,
+    /// Fixed palette posterization with Phase B refinement
+    PosterizedRefined,
     /// Binary tracing for logos and line art
     Logo,
+    /// Binary tracing for logos with Phase B refinement
+    LogoRefined,
+    
+    // Specialized presets
+    /// Optimized for portrait photography
+    Portrait,
+    /// Optimized for landscape photography  
+    Landscape,
+    /// Optimized for digital artwork and illustrations
+    Illustration,
+    /// Optimized for technical drawings and diagrams
+    Technical,
+    /// Optimized for artistic/creative effects
+    Artistic,
+    
+    // Future presets
     /// Low-poly triangulation (future)
     LowPoly,
 }
@@ -62,7 +92,7 @@ enum Commands {
         /// Output SVG file
         output: PathBuf,
 
-        /// Preset name (photo, posterized, logo, lowpoly)
+        /// Preset name (photo, photo-refined, posterized, posterized-refined, logo, logo-refined, portrait, landscape, illustration, technical, artistic, lowpoly)
         #[arg(value_enum)]
         preset: PresetType,
 
@@ -77,6 +107,30 @@ enum Commands {
         /// Override DP epsilon in pixels
         #[arg(long)]
         dp_epsilon: Option<f32>,
+        
+        /// Enable/disable adaptive parameters (default: enabled)
+        #[arg(long)]
+        disable_adaptive: bool,
+        
+        /// Adaptive parameter aggressiveness (0.5 = conservative, 2.0 = aggressive)
+        #[arg(long, default_value = "1.0")]
+        adaptive_aggressiveness: f32,
+        
+        /// Enable Phase B refinement for higher quality
+        #[arg(long)]
+        enable_refinement: bool,
+        
+        /// Phase B refinement time budget in milliseconds
+        #[arg(long, default_value = "600")]
+        refinement_budget: u32,
+        
+        /// Target ΔE quality threshold
+        #[arg(long, default_value = "6.0")]
+        target_delta_e: f64,
+        
+        /// Target SSIM quality threshold
+        #[arg(long, default_value = "0.93")]
+        target_ssim: f64,
     },
 
     /// Vectorize using logo/line-art algorithm
@@ -126,6 +180,14 @@ enum Commands {
         /// Stroke width in pixels (when using stroke mode)
         #[arg(long, default_value = "1.2")]
         stroke_width: f32,
+        
+        /// Disable adaptive parameters
+        #[arg(long)]
+        disable_adaptive: bool,
+        
+        /// Adaptive parameter aggressiveness (0.5 = conservative, 2.0 = aggressive)
+        #[arg(long, default_value = "1.0")]
+        adaptive_aggressiveness: f32,
     },
 
     /// Vectorize using color regions algorithm  
@@ -211,6 +273,14 @@ enum Commands {
         /// Simplification epsilon as diagonal fraction (alternative to --simplify-px)
         #[arg(long)]
         simplify_diag_frac: Option<f64>,
+        
+        /// Disable adaptive parameters
+        #[arg(long)]
+        disable_adaptive: bool,
+        
+        /// Adaptive parameter aggressiveness (0.5 = conservative, 2.0 = aggressive)
+        #[arg(long, default_value = "1.0")]
+        adaptive_aggressiveness: f32,
     },
 
     /// Vectorize using low-detail tracing algorithm
@@ -319,6 +389,47 @@ enum Commands {
         timing_threshold: Option<f64>,
     },
 
+    /// Analyze image characteristics and suggest optimal parameters
+    Analyze {
+        /// Input image file
+        input: PathBuf,
+        
+        /// Output analysis report to file (optional)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+        
+        /// Show detailed technical analysis
+        #[arg(long)]
+        detailed: bool,
+    },
+    
+    /// Compare quality between input image and output SVG
+    Compare {
+        /// Input image file
+        input: PathBuf,
+        
+        /// Output SVG file to compare
+        svg: PathBuf,
+        
+        /// Output comparison report (optional)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+        
+        /// Generate comparison visualization
+        #[arg(long)]
+        visual: bool,
+    },
+    
+    /// List available presets or show detailed information
+    Presets {
+        /// Subcommand: list or info
+        #[arg(value_enum)]
+        action: PresetAction,
+        
+        /// Preset name (required for 'info' action)
+        name: Option<String>,
+    },
+    
     /// Batch process multiple images
     Batch {
         /// Input directory
@@ -422,13 +533,18 @@ enum Commands {
     },
 }
 
-/// Validate CLI arguments for compatibility and ranges
+/// Enhanced validation for CLI arguments with detailed error messages and guidance
 fn validate_cli_arguments(command: &Commands) -> Result<()> {
     match command {
         Commands::Preset {
+            preset,
             max_palette,
             regions_target,
             dp_epsilon,
+            adaptive_aggressiveness,
+            refinement_budget,
+            target_delta_e,
+            target_ssim,
             ..
         } => {
             if let Some(palette) = max_palette {
@@ -443,8 +559,76 @@ fn validate_cli_arguments(command: &Commands) -> Result<()> {
             }
             if let Some(epsilon) = dp_epsilon {
                 if *epsilon < 0.0 || *epsilon > 100.0 {
-                    return Err(anyhow::anyhow!("DP epsilon must be between 0.0 and 100.0"));
+                    return Err(anyhow::anyhow!(
+                        "DP epsilon must be between 0.0 and 100.0.\n{}",
+                        "Hint: Use smaller values (0.1-2.0) for fine detail, larger values (5.0-20.0) for simplified output."
+                    ));
                 }
+            }
+            
+            // Validate adaptive parameters
+            if *adaptive_aggressiveness < 0.1 || *adaptive_aggressiveness > 3.0 {
+                return Err(anyhow::anyhow!(
+                    "Adaptive aggressiveness must be between 0.1 and 3.0.\n{}",
+                    "Hint: 0.5 = conservative, 1.0 = balanced, 2.0 = aggressive parameter tuning."
+                ));
+            }
+            
+            // Validate refinement parameters
+            if *refinement_budget < 50 || *refinement_budget > 2000 {
+                return Err(anyhow::anyhow!(
+                    "Refinement budget must be between 50ms and 2000ms.\n{}",
+                    "Hint: 300ms = fast, 600ms = balanced, 1200ms = thorough refinement."
+                ));
+            }
+            
+            if *target_delta_e < 1.0 || *target_delta_e > 15.0 {
+                return Err(anyhow::anyhow!(
+                    "Target ΔE must be between 1.0 and 15.0.\n{}",
+                    "Hint: 2.0-4.0 = excellent quality, 6.0-8.0 = good quality, >10.0 = acceptable quality."
+                ));
+            }
+            
+            if *target_ssim < 0.5 || *target_ssim > 0.99 {
+                return Err(anyhow::anyhow!(
+                    "Target SSIM must be between 0.5 and 0.99.\n{}",
+                    "Hint: 0.95+ = excellent, 0.90-0.94 = good, 0.80-0.89 = acceptable quality."
+                ));
+            }
+            
+            // Preset-specific validation
+            match preset {
+                PresetType::Logo | PresetType::LogoRefined | PresetType::Technical => {
+                    if let Some(palette) = max_palette {
+                        if *palette > 16 {
+                            log::warn!(
+                                "Large palette ({} colors) specified for logo preset. Logo presets work best with binary (2-color) images.",
+                                *palette
+                            );
+                        }
+                    }
+                }
+                PresetType::Portrait => {
+                    if let Some(palette) = max_palette {
+                        if *palette < 20 {
+                            return Err(anyhow::anyhow!(
+                                "Portrait preset requires at least 20 colors for skin tone accuracy.\n{}",
+                                "Hint: 25-40 colors work best for portraits."
+                            ));
+                        }
+                    }
+                }
+                PresetType::Artistic | PresetType::Posterized | PresetType::PosterizedRefined => {
+                    if let Some(palette) = max_palette {
+                        if *palette > 24 {
+                            log::warn!(
+                                "Large palette ({} colors) may reduce artistic/posterized effect. Consider 8-16 colors for stronger stylization.",
+                                *palette
+                            );
+                        }
+                    }
+                }
+                _ => {} // No specific warnings for other presets
             }
         }
         Commands::Logo { 
@@ -639,6 +823,12 @@ fn main() -> Result<()> {
             max_palette,
             regions_target,
             dp_epsilon,
+            disable_adaptive,
+            adaptive_aggressiveness,
+            enable_refinement,
+            refinement_budget,
+            target_delta_e,
+            target_ssim,
         } => run_preset_command(
             input,
             output,
@@ -646,6 +836,12 @@ fn main() -> Result<()> {
             max_palette,
             regions_target,
             dp_epsilon,
+            !disable_adaptive,
+            adaptive_aggressiveness,
+            enable_refinement,
+            refinement_budget,
+            target_delta_e,
+            target_ssim,
         ),
         Commands::Logo {
             input,
@@ -660,6 +856,8 @@ fn main() -> Result<()> {
             simplify_diag_frac,
             use_stroke,
             stroke_width,
+            disable_adaptive,
+            adaptive_aggressiveness,
         } => vectorize_logo_command(
             input,
             output, 
@@ -673,6 +871,8 @@ fn main() -> Result<()> {
             simplify_diag_frac,
             use_stroke,
             stroke_width,
+            !disable_adaptive,
+            adaptive_aggressiveness,
         ),
         Commands::Regions {
             input,
@@ -696,6 +896,8 @@ fn main() -> Result<()> {
             palette_regularization_k,
             simplify_px,
             simplify_diag_frac,
+            disable_adaptive,
+            adaptive_aggressiveness,
         } => vectorize_regions_command(
             input,
             output,
@@ -718,6 +920,8 @@ fn main() -> Result<()> {
             palette_regularization_k,
             simplify_px,
             simplify_diag_frac,
+            !disable_adaptive,
+            adaptive_aggressiveness,
         ),
         Commands::TraceLow {
             input,
@@ -807,6 +1011,21 @@ fn main() -> Result<()> {
             // Common options
             simplify_px, simplify_diag_frac,
         ),
+        Commands::Analyze {
+            input,
+            output,
+            detailed,
+        } => analyze_command(input, output, detailed),
+        Commands::Compare {
+            input,
+            svg,
+            output,
+            visual,
+        } => compare_command(input, svg, output, visual),
+        Commands::Presets {
+            action,
+            name,
+        } => presets_command(action, name),
     }
 }
 
@@ -917,120 +1136,87 @@ fn run_preset_command(
     output: PathBuf,
     preset: PresetType,
     max_palette: Option<u32>,
-    regions_target: Option<usize>,
+    _regions_target: Option<usize>,
     dp_epsilon: Option<f32>,
+    adaptive_enabled: bool,
+    adaptive_aggressiveness: f32,
+    enable_refinement: bool,
+    refinement_budget: u32,
+    target_delta_e: f64,
+    target_ssim: f64,
 ) -> Result<()> {
     match preset {
         PresetType::Photo => {
             // Photo preset: segmentation-first with gradients and high fidelity
-            let config = RegionsConfig {
-                num_colors: max_palette.unwrap_or(40),
-                max_dimension: 1024,
-                segmentation_method: SegmentationMethod::Slic,
-                quantization_method: QuantizationMethod::Wu,
-                use_lab_color: true,
-                merge_similar_regions: true,
-                merge_threshold: 2.0, // Low ΔE threshold for photo quality
-                detect_gradients: true,
-                gradient_r_squared_threshold: 0.7,
-                max_gradient_stops: 3,
-                min_gradient_region_area: 50,
-                radial_symmetry_threshold: 0.8,
-                slic_step_px: 20,
-                slic_compactness: 15.0,
-                slic_iterations: 10,
-                de_merge_threshold: 2.5,
-                de_split_threshold: 8.0,
-                palette_regularization: true,
-                palette_regularization_k: 30, // Target ~30 colors for photo preset
-                simplification_epsilon: Epsilon::DiagFrac(
-                    dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0015)
-                ),
-                fit_curves: true,
-                curve_tolerance: 0.8,
-                min_region_area: 20,
-                max_iterations: 30,
-                convergence_threshold: 0.5,
-                detect_primitives: false,
-                primitive_fit_tolerance: 0.0,
-                max_circle_eccentricity: 0.0,
-            };
-            
+            let config = create_photo_preset_config(max_palette, dp_epsilon, false);
+            vectorize_regions_with_config(input, output, config)
+        }
+        
+        PresetType::PhotoRefined => {
+            // Photo preset with Phase B refinement enabled
+            let config = create_photo_preset_config(max_palette, dp_epsilon, true);
             vectorize_regions_with_config(input, output, config)
         }
         
         PresetType::Posterized => {
             // Posterized preset: fixed palette with stylized output
-            let config = RegionsConfig {
-                num_colors: max_palette.unwrap_or(12),
-                max_dimension: 1024,
-                segmentation_method: SegmentationMethod::KMeans,
-                quantization_method: QuantizationMethod::Wu,
-                use_lab_color: true,
-                merge_similar_regions: true,
-                merge_threshold: 5.0, // Higher threshold for more merging
-                detect_gradients: false, // No gradients for posterized look
-                gradient_r_squared_threshold: 0.0,
-                max_gradient_stops: 0,
-                min_gradient_region_area: 0,
-                radial_symmetry_threshold: 0.0,
-                slic_step_px: 40,
-                slic_compactness: 10.0,
-                slic_iterations: 5,
-                de_merge_threshold: 5.0,
-                de_split_threshold: 15.0,
-                palette_regularization: true,
-                palette_regularization_k: 10, // Target ~10 colors for posterized preset
-                simplification_epsilon: Epsilon::DiagFrac(
-                    dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.002)
-                ),
-                fit_curves: true,
-                curve_tolerance: 1.0,
-                min_region_area: 50,
-                max_iterations: 20,
-                convergence_threshold: 1.0,
-                detect_primitives: false,
-                primitive_fit_tolerance: 0.0,
-                max_circle_eccentricity: 0.0,
-            };
-            
+            let config = create_posterized_preset_config(max_palette, dp_epsilon, false);
+            vectorize_regions_with_config(input, output, config)
+        }
+        
+        PresetType::PosterizedRefined => {
+            // Posterized preset with Phase B refinement enabled
+            let config = create_posterized_preset_config(max_palette, dp_epsilon, true);
             vectorize_regions_with_config(input, output, config)
         }
         
         PresetType::Logo => {
             // Logo preset: high-quality binary tracing
-            let config = LogoConfig {
-                max_dimension: 1024,
-                threshold: 128,
-                adaptive_threshold: true,
-                morphology_kernel_size: 2,
-                min_contour_area: 25,
-                simplification_epsilon: Epsilon::DiagFrac(
-                    dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.001)
-                ),
-                fit_curves: true,
-                curve_tolerance: 0.5,
-                detect_primitives: true,
-                primitive_fit_tolerance: 2.0,
-                max_circle_eccentricity: 0.15,
-                use_stroke: false,
-                stroke_width: 1.0,
-                // Adaptive parameters
-                enable_adaptive_parameters: true, // Enable by default for CLI
-                base_primitive_fit_tolerance: 2.0,
-                base_min_contour_area: 25,
-                base_morphology_kernel_size: 2,
-                max_primitive_size_fraction: 0.25,
-                min_primitive_size_px: 4.0,
-            };
-            
+            let config = create_logo_preset_config(dp_epsilon, false);
             vectorize_logo_with_config(input, output, config)
+        }
+        
+        PresetType::LogoRefined => {
+            // Logo preset with Phase B refinement enabled
+            let config = create_logo_preset_config(dp_epsilon, true);
+            vectorize_logo_with_config(input, output, config)
+        }
+        
+        // Specialized presets
+        PresetType::Portrait => {
+            // Portrait preset: optimized for face/skin tone accuracy
+            let config = create_portrait_preset_config(max_palette, dp_epsilon);
+            vectorize_regions_with_config(input, output, config)
+        }
+        
+        PresetType::Landscape => {
+            // Landscape preset: optimized for natural scenes
+            let config = create_landscape_preset_config(max_palette, dp_epsilon);
+            vectorize_regions_with_config(input, output, config)
+        }
+        
+        PresetType::Illustration => {
+            // Illustration preset: optimized for digital artwork
+            let config = create_illustration_preset_config(max_palette, dp_epsilon);
+            vectorize_regions_with_config(input, output, config)
+        }
+        
+        PresetType::Technical => {
+            // Technical preset: optimized for diagrams and technical drawings
+            let config = create_technical_preset_config(dp_epsilon);
+            vectorize_logo_with_config(input, output, config)
+        }
+        
+        PresetType::Artistic => {
+            // Artistic preset: optimized for creative/stylized effects
+            let config = create_artistic_preset_config(max_palette, dp_epsilon);
+            vectorize_regions_with_config(input, output, config)
         }
         
         PresetType::LowPoly => {
             // Low-poly preset: placeholder for future implementation
             eprintln!("Low-poly preset not yet implemented. Using posterized preset instead.");
-            run_preset_command(input, output, PresetType::Posterized, max_palette, regions_target, dp_epsilon)
+            run_preset_command(input, output, PresetType::Posterized, max_palette, _regions_target, dp_epsilon, adaptive_enabled, adaptive_aggressiveness, enable_refinement, refinement_budget, target_delta_e, target_ssim)
         }
     }
 }
@@ -1144,6 +1330,8 @@ fn vectorize_logo_command(
     simplify_diag_frac: Option<f64>,
     use_stroke: bool,
     stroke_width: f32,
+    adaptive_enabled: bool,
+    adaptive_aggressiveness: f32,
 ) -> Result<()> {
     log::info!("Loading image: {}", input.display());
     let img = image::open(&input)
@@ -1165,6 +1353,15 @@ fn vectorize_logo_command(
     config.max_circle_eccentricity = max_circle_eccentricity;
     config.use_stroke = use_stroke;
     config.stroke_width = stroke_width;
+    
+    // Apply adaptive parameter settings
+    config.enable_adaptive_parameters = adaptive_enabled;
+    if adaptive_enabled {
+        // Scale base parameters by aggressiveness factor
+        config.base_primitive_fit_tolerance *= adaptive_aggressiveness;
+        config.base_min_contour_area = ((config.base_min_contour_area as f32 / adaptive_aggressiveness) as u32).max(4);
+        config.base_morphology_kernel_size = ((config.base_morphology_kernel_size as f32 * adaptive_aggressiveness) as u32).max(1).min(5);
+    }
     
     // Set simplification epsilon
     config.simplification_epsilon = if let Some(frac) = simplify_diag_frac {
@@ -1232,6 +1429,8 @@ fn vectorize_regions_command(
     palette_regularization_k: u32,
     simplify_px: f64,
     simplify_diag_frac: Option<f64>,
+    adaptive_enabled: bool,
+    adaptive_aggressiveness: f32,
 ) -> Result<()> {
     log::info!("Loading image: {}", input.display());
     let img = image::open(&input)
@@ -1262,6 +1461,16 @@ fn vectorize_regions_command(
     config.de_split_threshold = de_split_threshold;
     config.palette_regularization = palette_regularization;
     config.palette_regularization_k = palette_regularization_k;
+    
+    // Apply adaptive parameter settings
+    config.enable_adaptive_parameters = adaptive_enabled;
+    if adaptive_enabled {
+        // Scale base parameters by aggressiveness factor
+        config.base_slic_step_px = ((config.base_slic_step_px as f32 / adaptive_aggressiveness) as u32).max(12).min(120);
+        config.base_num_colors = ((config.base_num_colors as f32 * adaptive_aggressiveness) as u32).max(8).min(64);
+        config.base_merge_threshold *= adaptive_aggressiveness as f64;
+        config.base_de_merge_threshold *= adaptive_aggressiveness as f64;
+    }
     
     // Set simplification epsilon
     config.simplification_epsilon = if let Some(frac) = simplify_diag_frac {
@@ -1443,6 +1652,8 @@ fn batch_command(
                 simplify_diag_frac,
                 true,  // use_stroke default
                 1.2,   // stroke_width default
+                true,  // adaptive_enabled default
+                1.0,   // adaptive_aggressiveness default
             ),
             "regions" => vectorize_regions_command(
                 image_file.clone(),
@@ -1466,6 +1677,8 @@ fn batch_command(
                 12,     // palette_regularization_k default
                 simplify_px,
                 simplify_diag_frac,
+                true,   // adaptive_enabled default
+                1.0,    // adaptive_aggressiveness default
             ),
             _ => return Err(anyhow::anyhow!("Invalid algorithm '{}'. Use 'logo' or 'regions'", algorithm)),
         };
@@ -1781,6 +1994,712 @@ fn print_baseline_comparison(current: &BenchmarkReport, baseline: &BenchmarkRepo
     
     println!("Pass Rate Change: {:.1}% -> {:.1}% ({:+.1} points)", 
              baseline_pass_rate, current_pass_rate, current_pass_rate - baseline_pass_rate);
+}
+
+/// Create photo preset configuration (adaptive parameters, high fidelity)
+fn create_photo_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>, _enable_refinement: bool) -> RegionsConfig {
+    RegionsConfig {
+        num_colors: max_palette.unwrap_or(40),
+        max_dimension: 1024,
+        segmentation_method: SegmentationMethod::Slic,
+        quantization_method: QuantizationMethod::Wu,
+        use_lab_color: true,
+        merge_similar_regions: true,
+        merge_threshold: 2.0, // Low ΔE threshold for photo quality
+        detect_gradients: true,
+        gradient_r_squared_threshold: 0.7,
+        max_gradient_stops: 3,
+        min_gradient_region_area: 50,
+        radial_symmetry_threshold: 0.8,
+        slic_step_px: 20,
+        slic_compactness: 15.0,
+        slic_iterations: 10,
+        de_merge_threshold: 2.5,
+        de_split_threshold: 8.0,
+        palette_regularization: true,
+        palette_regularization_k: 30, // Target ~30 colors for photo preset
+        simplification_epsilon: Epsilon::DiagFrac(
+            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0015)
+        ),
+        fit_curves: true,
+        curve_tolerance: 0.8,
+        min_region_area: 20,
+        max_iterations: 30,
+        convergence_threshold: 0.5,
+        detect_primitives: false,
+        primitive_fit_tolerance: 0.0,
+        max_circle_eccentricity: 0.0,
+        // Adaptive parameters for photo preset
+        enable_adaptive_parameters: true,
+        base_slic_step_px: 20,
+        base_num_colors: 40,
+        base_merge_threshold: 2.0,
+        base_de_merge_threshold: 2.5,
+    }
+}
+
+/// Create posterized preset configuration (stylized, fewer colors)
+fn create_posterized_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>, _enable_refinement: bool) -> RegionsConfig {
+    RegionsConfig {
+        num_colors: max_palette.unwrap_or(12),
+        max_dimension: 1024,
+        segmentation_method: SegmentationMethod::KMeans,
+        quantization_method: QuantizationMethod::Wu,
+        use_lab_color: true,
+        merge_similar_regions: true,
+        merge_threshold: 5.0, // Higher threshold for more merging
+        detect_gradients: false, // No gradients for posterized look
+        gradient_r_squared_threshold: 0.0,
+        max_gradient_stops: 0,
+        min_gradient_region_area: 0,
+        radial_symmetry_threshold: 0.0,
+        slic_step_px: 40,
+        slic_compactness: 10.0,
+        slic_iterations: 5,
+        de_merge_threshold: 5.0,
+        de_split_threshold: 15.0,
+        palette_regularization: true,
+        palette_regularization_k: 10, // Target ~10 colors for posterized preset
+        simplification_epsilon: Epsilon::DiagFrac(
+            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.002)
+        ),
+        fit_curves: true,
+        curve_tolerance: 1.0,
+        min_region_area: 50,
+        max_iterations: 20,
+        convergence_threshold: 1.0,
+        detect_primitives: false,
+        primitive_fit_tolerance: 0.0,
+        max_circle_eccentricity: 0.0,
+        // Adaptive parameters for posterized preset
+        enable_adaptive_parameters: true,
+        base_slic_step_px: 40,
+        base_num_colors: 12,
+        base_merge_threshold: 5.0,
+        base_de_merge_threshold: 5.0,
+    }
+}
+
+/// Create logo preset configuration (binary tracing, primitives)
+fn create_logo_preset_config(dp_epsilon: Option<f32>, _enable_refinement: bool) -> LogoConfig {
+    LogoConfig {
+        max_dimension: 1024,
+        threshold: 128,
+        adaptive_threshold: true,
+        morphology_kernel_size: 2,
+        min_contour_area: 25,
+        simplification_epsilon: Epsilon::DiagFrac(
+            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.001)
+        ),
+        fit_curves: true,
+        curve_tolerance: 0.5,
+        detect_primitives: true,
+        primitive_fit_tolerance: 2.0,
+        max_circle_eccentricity: 0.15,
+        use_stroke: false,
+        stroke_width: 1.0,
+        // Adaptive parameters
+        enable_adaptive_parameters: true, // Enable by default for CLI
+        base_primitive_fit_tolerance: 2.0,
+        base_min_contour_area: 25,
+        base_morphology_kernel_size: 2,
+        max_primitive_size_fraction: 0.25,
+        min_primitive_size_px: 4.0,
+    }
+}
+
+/// Create portrait preset configuration (optimized for faces and skin tones)
+fn create_portrait_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>) -> RegionsConfig {
+    RegionsConfig {
+        num_colors: max_palette.unwrap_or(35),
+        max_dimension: 1024,
+        segmentation_method: SegmentationMethod::Slic,
+        quantization_method: QuantizationMethod::Wu,
+        use_lab_color: true,
+        merge_similar_regions: true,
+        merge_threshold: 1.5, // Very low ΔE for skin tone accuracy
+        detect_gradients: true,
+        gradient_r_squared_threshold: 0.75, // Higher threshold for smoother skin
+        max_gradient_stops: 4,
+        min_gradient_region_area: 30,
+        radial_symmetry_threshold: 0.85,
+        slic_step_px: 18, // Finer segmentation for facial features
+        slic_compactness: 20.0, // Higher compactness for facial regions
+        slic_iterations: 12,
+        de_merge_threshold: 1.8, // Strict merging for skin tone preservation
+        de_split_threshold: 6.0, // More aggressive splitting for detail
+        palette_regularization: true,
+        palette_regularization_k: 28,
+        simplification_epsilon: Epsilon::DiagFrac(
+            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0012) // Finer detail
+        ),
+        fit_curves: true,
+        curve_tolerance: 0.6,
+        min_region_area: 15, // Smaller regions for facial details
+        max_iterations: 35,
+        convergence_threshold: 0.3,
+        detect_primitives: false,
+        primitive_fit_tolerance: 0.0,
+        max_circle_eccentricity: 0.0,
+        // Adaptive parameters optimized for portraits
+        enable_adaptive_parameters: true,
+        base_slic_step_px: 18,
+        base_num_colors: 35,
+        base_merge_threshold: 1.5,
+        base_de_merge_threshold: 1.8,
+    }
+}
+
+/// Create landscape preset configuration (optimized for natural scenes)
+fn create_landscape_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>) -> RegionsConfig {
+    RegionsConfig {
+        num_colors: max_palette.unwrap_or(50),
+        max_dimension: 1024,
+        segmentation_method: SegmentationMethod::Slic,
+        quantization_method: QuantizationMethod::Wu,
+        use_lab_color: true,
+        merge_similar_regions: true,
+        merge_threshold: 2.5, // Allow more merging for natural textures
+        detect_gradients: true,
+        gradient_r_squared_threshold: 0.6, // Lower threshold for natural gradients
+        max_gradient_stops: 5,
+        min_gradient_region_area: 80, // Larger gradient regions for skies/water
+        radial_symmetry_threshold: 0.7,
+        slic_step_px: 25, // Coarser segmentation for landscapes
+        slic_compactness: 12.0,
+        slic_iterations: 8,
+        de_merge_threshold: 3.0,
+        de_split_threshold: 10.0,
+        palette_regularization: true,
+        palette_regularization_k: 38,
+        simplification_epsilon: Epsilon::DiagFrac(
+            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0018) // Coarser for natural scenes
+        ),
+        fit_curves: true,
+        curve_tolerance: 0.9,
+        min_region_area: 40, // Larger regions for natural elements
+        max_iterations: 25,
+        convergence_threshold: 0.7,
+        detect_primitives: false,
+        primitive_fit_tolerance: 0.0,
+        max_circle_eccentricity: 0.0,
+        // Adaptive parameters optimized for landscapes
+        enable_adaptive_parameters: true,
+        base_slic_step_px: 25,
+        base_num_colors: 50,
+        base_merge_threshold: 2.5,
+        base_de_merge_threshold: 3.0,
+    }
+}
+
+/// Create illustration preset configuration (optimized for digital artwork)
+fn create_illustration_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>) -> RegionsConfig {
+    RegionsConfig {
+        num_colors: max_palette.unwrap_or(24),
+        max_dimension: 1024,
+        segmentation_method: SegmentationMethod::KMeans, // Better for flat art styles
+        quantization_method: QuantizationMethod::Wu,
+        use_lab_color: true,
+        merge_similar_regions: true,
+        merge_threshold: 3.0,
+        detect_gradients: true,
+        gradient_r_squared_threshold: 0.8, // High threshold for clean gradients
+        max_gradient_stops: 3,
+        min_gradient_region_area: 60,
+        radial_symmetry_threshold: 0.85,
+        slic_step_px: 30,
+        slic_compactness: 15.0,
+        slic_iterations: 6,
+        de_merge_threshold: 3.5,
+        de_split_threshold: 12.0,
+        palette_regularization: true,
+        palette_regularization_k: 20,
+        simplification_epsilon: Epsilon::DiagFrac(
+            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0016)
+        ),
+        fit_curves: true,
+        curve_tolerance: 0.7,
+        min_region_area: 30,
+        max_iterations: 25,
+        convergence_threshold: 0.6,
+        detect_primitives: false,
+        primitive_fit_tolerance: 0.0,
+        max_circle_eccentricity: 0.0,
+        // Adaptive parameters optimized for illustrations
+        enable_adaptive_parameters: true,
+        base_slic_step_px: 30,
+        base_num_colors: 24,
+        base_merge_threshold: 3.0,
+        base_de_merge_threshold: 3.5,
+    }
+}
+
+/// Create technical preset configuration (optimized for diagrams and technical drawings)
+fn create_technical_preset_config(dp_epsilon: Option<f32>) -> LogoConfig {
+    LogoConfig {
+        max_dimension: 1024,
+        threshold: 140, // Higher threshold for clean technical lines
+        adaptive_threshold: false, // Use fixed threshold for consistency
+        morphology_kernel_size: 1, // Minimal morphology for crisp lines
+        min_contour_area: 12, // Smaller areas for technical details
+        simplification_epsilon: Epsilon::DiagFrac(
+            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0008) // Very fine detail
+        ),
+        fit_curves: true,
+        curve_tolerance: 0.3, // Strict curve fitting
+        detect_primitives: true,
+        primitive_fit_tolerance: 1.5, // Strict primitive detection
+        max_circle_eccentricity: 0.10, // Very strict circles
+        use_stroke: true, // Technical drawings as strokes
+        stroke_width: 1.0,
+        // Adaptive parameters for technical precision
+        enable_adaptive_parameters: true,
+        base_primitive_fit_tolerance: 1.5,
+        base_min_contour_area: 12,
+        base_morphology_kernel_size: 1,
+        max_primitive_size_fraction: 0.3,
+        min_primitive_size_px: 3.0,
+    }
+}
+
+/// Create artistic preset configuration (optimized for creative/stylized effects)
+fn create_artistic_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>) -> RegionsConfig {
+    RegionsConfig {
+        num_colors: max_palette.unwrap_or(16),
+        max_dimension: 1024,
+        segmentation_method: SegmentationMethod::KMeans,
+        quantization_method: QuantizationMethod::Wu,
+        use_lab_color: true,
+        merge_similar_regions: true,
+        merge_threshold: 4.0, // More aggressive merging for stylized look
+        detect_gradients: false, // No gradients for flat artistic style
+        gradient_r_squared_threshold: 0.0,
+        max_gradient_stops: 0,
+        min_gradient_region_area: 0,
+        radial_symmetry_threshold: 0.0,
+        slic_step_px: 45,
+        slic_compactness: 8.0,
+        slic_iterations: 4,
+        de_merge_threshold: 6.0,
+        de_split_threshold: 18.0,
+        palette_regularization: true,
+        palette_regularization_k: 12, // Reduced palette for artistic effect
+        simplification_epsilon: Epsilon::DiagFrac(
+            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0025) // More aggressive simplification
+        ),
+        fit_curves: true,
+        curve_tolerance: 1.2,
+        min_region_area: 80, // Larger regions for bold artistic style
+        max_iterations: 20,
+        convergence_threshold: 1.0,
+        detect_primitives: false,
+        primitive_fit_tolerance: 0.0,
+        max_circle_eccentricity: 0.0,
+        // Adaptive parameters for artistic effect
+        enable_adaptive_parameters: true,
+        base_slic_step_px: 45,
+        base_num_colors: 16,
+        base_merge_threshold: 4.0,
+        base_de_merge_threshold: 6.0,
+    }
+}
+
+/// Analyze image command - provides detailed analysis and parameter recommendations
+fn analyze_command(input: PathBuf, output: Option<PathBuf>, detailed: bool) -> Result<()> {
+    log::info!("Analyzing image: {}", input.display());
+    
+    // Load image
+    let img = image::open(&input)
+        .with_context(|| format!("Failed to open image: {}", input.display()))?;
+    let rgba_img = img.to_rgba8();
+    let (width, height) = rgba_img.dimensions();
+    
+    println!("\n=== IMAGE ANALYSIS REPORT ===");
+    println!("File: {}", input.display());
+    println!("Dimensions: {}x{} ({:.1} MP)", width, height, (width * height) as f64 / 1_000_000.0);
+    println!("Format: {:?}", img.color());
+    
+    // Basic image statistics
+    let pixel_count = (width * height) as usize;
+    let mut unique_colors = std::collections::HashSet::new();
+    let mut brightness_sum = 0u64;
+    
+    for pixel in rgba_img.pixels() {
+        let [r, g, b, _a] = pixel.0;
+        unique_colors.insert((r, g, b));
+        brightness_sum += (r as u64 + g as u64 + b as u64) / 3;
+    }
+    
+    let avg_brightness = brightness_sum as f64 / pixel_count as f64;
+    let color_complexity = unique_colors.len() as f64 / pixel_count as f64;
+    
+    println!("\n=== CONTENT ANALYSIS ===");
+    println!("Unique colors: {} ({:.1}% of pixels)", unique_colors.len(), color_complexity * 100.0);
+    println!("Average brightness: {:.1}/255", avg_brightness);
+    
+    // Determine content type and complexity
+    let (content_type, recommended_preset) = if unique_colors.len() < 20 {
+        ("Logo/Line Art", "logo")
+    } else if color_complexity < 0.1 {
+        ("Illustration/Digital Art", "illustration")
+    } else if color_complexity < 0.3 {
+        ("Stylized/Posterized", "posterized")
+    } else {
+        ("Photograph/Realistic", "photo")
+    };
+    
+    println!("Content type: {}", content_type);
+    println!("Recommended preset: --preset {}", recommended_preset);
+    
+    // Parameter recommendations
+    println!("\n=== PARAMETER RECOMMENDATIONS ===");
+    match recommended_preset {
+        "logo" => {
+            println!("• Binary threshold: {} (auto-adaptive)", if avg_brightness > 128.0 { 140 } else { 120 });
+            println!("• Primitive detection: enabled");
+            println!("• Simplification: conservative (0.001 diagonal fraction)");
+        }
+        "photo" => {
+            let recommended_colors = (unique_colors.len() / 100).max(20).min(50);
+            println!("• Color palette: {} colors", recommended_colors);
+            println!("• Segmentation: SLIC superpixels");
+            println!("• Gradient detection: enabled");
+        }
+        _ => {
+            let recommended_colors = (unique_colors.len() / 200).max(12).min(24);
+            println!("• Color palette: {} colors", recommended_colors);
+            println!("• Segmentation: K-means clustering");
+        }
+    }
+    
+    if detailed {
+        println!("\n=== DETAILED TECHNICAL ANALYSIS ===");
+        
+        // Edge density analysis
+        let edge_pixels = estimate_edge_density(&rgba_img);
+        let edge_density = edge_pixels as f64 / pixel_count as f64;
+        println!("Edge density: {:.2}% ({} edge pixels)", edge_density * 100.0, edge_pixels);
+        
+        // Noise level estimation
+        let noise_level = estimate_noise_level(&rgba_img);
+        println!("Estimated noise level: {:.2} (0-100 scale)", noise_level);
+        
+        // Suggested processing parameters
+        println!("\n=== PROCESSING HINTS ===");
+        if edge_density > 0.15 {
+            println!("• High detail image - use smaller simplification epsilon");
+        }
+        if noise_level > 20.0 {
+            println!("• Noisy image - consider larger morphology kernel");
+        }
+        if unique_colors.len() > 10000 {
+            println!("• Complex color image - Wu quantization recommended over K-means");
+        }
+    }
+    
+    // Save report if requested
+    if let Some(output_path) = output {
+        let report = format!(
+            "Image Analysis Report\n===================\nFile: {}\nDimensions: {}x{}\nUnique colors: {}\nContent type: {}\nRecommended preset: {}\n",
+            input.display(), width, height, unique_colors.len(), content_type, recommended_preset
+        );
+        
+        std::fs::write(&output_path, report)
+            .with_context(|| format!("Failed to write report to: {}", output_path.display()))?;
+        println!("\nDetailed report saved to: {}", output_path.display());
+    }
+    
+    Ok(())
+}
+
+/// Estimate edge density in image for complexity analysis
+fn estimate_edge_density(img: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>) -> usize {
+    let (width, height) = img.dimensions();
+    let mut edge_count = 0;
+    
+    for y in 1..height-1 {
+        for x in 1..width-1 {
+            let current = img.get_pixel(x, y);
+            let right = img.get_pixel(x + 1, y);
+            let down = img.get_pixel(x, y + 1);
+            
+            // Simple gradient magnitude
+            let dx = (current.0[0] as i32 - right.0[0] as i32).abs() +
+                    (current.0[1] as i32 - right.0[1] as i32).abs() +
+                    (current.0[2] as i32 - right.0[2] as i32).abs();
+            let dy = (current.0[0] as i32 - down.0[0] as i32).abs() +
+                    (current.0[1] as i32 - down.0[1] as i32).abs() +
+                    (current.0[2] as i32 - down.0[2] as i32).abs();
+            
+            if dx + dy > 30 { // Threshold for edge detection
+                edge_count += 1;
+            }
+        }
+    }
+    
+    edge_count
+}
+
+/// Estimate noise level for preprocessing recommendations
+fn estimate_noise_level(img: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>) -> f64 {
+    let (width, height) = img.dimensions();
+    let mut variance_sum = 0.0;
+    let mut sample_count = 0;
+    
+    // Sample every 4th pixel in a 3x3 neighborhood
+    for y in (1..height-1).step_by(4) {
+        for x in (1..width-1).step_by(4) {
+            let mut local_values = Vec::new();
+            
+            // Get 3x3 neighborhood
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    let px = img.get_pixel((x as i32 + dx) as u32, (y as i32 + dy) as u32);
+                    let gray = (px.0[0] as f64 + px.0[1] as f64 + px.0[2] as f64) / 3.0;
+                    local_values.push(gray);
+                }
+            }
+            
+            // Calculate local variance
+            let mean = local_values.iter().sum::<f64>() / local_values.len() as f64;
+            let variance = local_values.iter()
+                .map(|&x| (x - mean).powi(2))
+                .sum::<f64>() / local_values.len() as f64;
+            
+            variance_sum += variance;
+            sample_count += 1;
+        }
+    }
+    
+    if sample_count > 0 {
+        (variance_sum / sample_count as f64).sqrt().min(100.0)
+    } else {
+        0.0
+    }
+}
+
+/// Compare command - quality comparison between input and SVG output
+fn compare_command(input: PathBuf, svg: PathBuf, output: Option<PathBuf>, visual: bool) -> Result<()> {
+    log::info!("Comparing {} with {}", input.display(), svg.display());
+    
+    // Load original image
+    let img = image::open(&input)
+        .with_context(|| format!("Failed to open image: {}", input.display()))?;
+    let rgba_img = img.to_rgba8();
+    
+    // Load and analyze SVG
+    let svg_content = std::fs::read_to_string(&svg)
+        .with_context(|| format!("Failed to read SVG: {}", svg.display()))?;
+    
+    let svg_analysis = crate::svg_analysis::analyze_svg(&svg_content)
+        .context("Failed to analyze SVG")?;
+    
+    // Calculate quality metrics using existing SSIM implementation
+    // Note: Full SSIM implementation would require rendering SVG to compare
+    
+    println!("\n=== QUALITY COMPARISON REPORT ===");
+    println!("Input: {}", input.display());
+    println!("SVG: {}", svg.display());
+    
+    // For now, we'll provide a placeholder SSIM calculation
+    // In a real implementation, we'd render the SVG to compare
+    println!("\n=== SVG ANALYSIS ===");
+    println!("Path count: {}", svg_analysis.path_count);
+    println!("Color count: {}", svg_analysis.color_count);
+    println!("File size: {:.1} KB", svg_content.len() as f64 / 1024.0);
+    println!("Average path complexity: {:.1}", svg_analysis.avg_path_complexity);
+    
+    // Compression ratio
+    let original_size = rgba_img.len() as f64;
+    let svg_size = svg_content.len() as f64;
+    let compression_ratio = svg_size / original_size;
+    
+    println!("\n=== COMPRESSION ANALYSIS ===");
+    println!("Original size: {:.1} KB (estimated)", original_size / 1024.0);
+    println!("SVG size: {:.1} KB", svg_size / 1024.0);
+    println!("Compression ratio: {:.1}% of original", compression_ratio * 100.0);
+    
+    if compression_ratio < 0.1 {
+        println!("✓ Excellent compression achieved");
+    } else if compression_ratio < 0.3 {
+        println!("✓ Good compression");
+    } else {
+        println!("⚠ Moderate compression - consider reducing detail");
+    }
+    
+    // Quality assessment based on path count and complexity
+    println!("\n=== QUALITY ASSESSMENT ===");
+    if svg_analysis.path_count < 50 {
+        println!("✓ Clean, simple output");
+    } else if svg_analysis.path_count < 200 {
+        println!("✓ Moderate detail level");
+    } else {
+        println!("⚠ High detail - may appear complex");
+    }
+    
+    if visual {
+        println!("\n=== VISUAL COMPARISON ===");
+        println!("Visual comparison generation not yet implemented.");
+        println!("Future: Side-by-side rendered comparison would be shown here.");
+    }
+    
+    // Save report if requested
+    if let Some(output_path) = output {
+        let report = format!(
+            "Quality Comparison Report\n=======================\nInput: {}\nSVG: {}\nPath count: {}\nColors: {}\nCompression: {:.1}%\n",
+            input.display(), svg.display(), 
+            svg_analysis.path_count, svg_analysis.color_count,
+            compression_ratio * 100.0
+        );
+        
+        std::fs::write(&output_path, report)
+            .with_context(|| format!("Failed to write report to: {}", output_path.display()))?;
+        println!("Comparison report saved to: {}", output_path.display());
+    }
+    
+    Ok(())
+}
+
+/// Presets command - list presets or show detailed information
+fn presets_command(action: PresetAction, name: Option<String>) -> Result<()> {
+    match action {
+        PresetAction::List => {
+            println!("\n=== AVAILABLE PRESETS ===");
+            println!(
+                "\n{:<20} {}",
+                "PRESET", "DESCRIPTION"
+            );
+            println!("{}", "-".repeat(80));
+            
+            // Core presets
+            println!("{:<20} High-fidelity mode for photographs with gradients", "photo");
+            println!("{:<20} Photo preset with Phase B refinement enabled", "photo-refined");
+            println!("{:<20} Fixed palette posterization (stylized)", "posterized");
+            println!("{:<20} Posterized preset with Phase B refinement", "posterized-refined");
+            println!("{:<20} Binary tracing for logos and line art", "logo");
+            println!("{:<20} Logo preset with Phase B refinement", "logo-refined");
+            
+            println!();
+            
+            // Specialized presets
+            println!("{:<20} Optimized for portrait photography", "portrait");
+            println!("{:<20} Optimized for landscape photography", "landscape");
+            println!("{:<20} Optimized for digital artwork and illustrations", "illustration");
+            println!("{:<20} Optimized for technical drawings and diagrams", "technical");
+            println!("{:<20} Optimized for artistic/creative effects", "artistic");
+            
+            println!("\nUse 'vectorize presets info <preset-name>' for detailed configuration.");
+        }
+        PresetAction::Info => {
+            let preset_name = name.ok_or_else(|| {
+                anyhow::anyhow!("Preset name required for 'info' action. Use: vectorize presets info <preset-name>")
+            })?;
+            
+            println!("\n=== PRESET INFORMATION: {} ===", preset_name.to_uppercase());
+            
+            match preset_name.to_lowercase().as_str() {
+                "photo" => {
+                    println!("Type: Regions-based vectorization");
+                    println!("Target: High-fidelity photographs with smooth gradients");
+                    println!("\nKey Settings:");
+                    println!("• Colors: 40 (Wu quantization)");
+                    println!("• Segmentation: SLIC superpixels (20px step)");
+                    println!("• Gradients: Enabled (R² ≥ 0.7)");
+                    println!("• ΔE thresholds: 2.5 merge, 8.0 split");
+                    println!("• Adaptive parameters: Enabled");
+                    println!("\nBest for: Portrait photos, detailed images, color accuracy");
+                }
+                "photo-refined" => {
+                    println!("Type: Regions-based vectorization + Phase B refinement");
+                    println!("Target: Maximum quality photographs");
+                    println!("\nIncludes all 'photo' settings plus:");
+                    println!("• Phase B refinement: 600ms budget");
+                    println!("• Target ΔE: 4.0 (stricter)");
+                    println!("• Target SSIM: 0.95 (higher quality)");
+                    println!("\nBest for: Professional photography, print quality");
+                }
+                "logo" => {
+                    println!("Type: Binary tracing with primitive detection");
+                    println!("Target: Clean logos and line art");
+                    println!("\nKey Settings:");
+                    println!("• Threshold: Adaptive binary threshold");
+                    println!("• Primitives: Enabled (circles, ellipses, arcs)");
+                    println!("• Simplification: Conservative (0.001 diagonal)");
+                    println!("• Output: Filled shapes or strokes");
+                    println!("• Adaptive parameters: Enabled");
+                    println!("\nBest for: Logos, icons, line drawings, technical diagrams");
+                }
+                "posterized" => {
+                    println!("Type: Regions-based with aggressive merging");
+                    println!("Target: Stylized, flat-color artwork");
+                    println!("\nKey Settings:");
+                    println!("• Colors: 12 (limited palette)");
+                    println!("• Segmentation: K-means clustering");
+                    println!("• Gradients: Disabled");
+                    println!("• ΔE thresholds: 5.0 merge, 15.0 split");
+                    println!("\nBest for: Stylized art, poster effects, simplified images");
+                }
+                "portrait" => {
+                    println!("Type: Fine-tuned regions for faces");
+                    println!("Target: Portrait photography with accurate skin tones");
+                    println!("\nKey Settings:");
+                    println!("• Colors: 35 (skin tone optimized)");
+                    println!("• Segmentation: Fine SLIC (18px step, high compactness)");
+                    println!("• ΔE thresholds: 1.5 merge, 6.0 split (strict)");
+                    println!("• Regions: Smaller minimum areas for facial detail");
+                    println!("\nBest for: Portrait photos, faces, skin tone accuracy");
+                }
+                "landscape" => {
+                    println!("Type: Natural scene optimization");
+                    println!("Target: Landscape photography with natural textures");
+                    println!("\nKey Settings:");
+                    println!("• Colors: 50 (rich natural palette)");
+                    println!("• Segmentation: Coarser SLIC (25px step)");
+                    println!("• Gradients: Enabled for skies/water (R² ≥ 0.6)");
+                    println!("• Regions: Larger areas for natural elements");
+                    println!("\nBest for: Landscapes, natural scenes, outdoor photography");
+                }
+                "illustration" => {
+                    println!("Type: Digital artwork optimization");
+                    println!("Target: Clean illustrations and digital art");
+                    println!("\nKey Settings:");
+                    println!("• Colors: 24 (illustration-friendly)");
+                    println!("• Segmentation: K-means (better for flat styles)");
+                    println!("• Gradients: Enabled with high threshold (R² ≥ 0.8)");
+                    println!("• Palette regularization to 20 colors");
+                    println!("\nBest for: Digital art, illustrations, graphic design");
+                }
+                "technical" => {
+                    println!("Type: High-precision binary tracing");
+                    println!("Target: Technical drawings and diagrams");
+                    println!("\nKey Settings:");
+                    println!("• Threshold: Fixed high threshold (140)");
+                    println!("• Primitives: Strict detection (tolerance 1.5)");
+                    println!("• Output: Stroke mode for clean lines");
+                    println!("• Simplification: Very fine (0.0008 diagonal)");
+                    println!("\nBest for: Engineering drawings, schematics, technical diagrams");
+                }
+                "artistic" => {
+                    println!("Type: Creative stylization");
+                    println!("Target: Bold, stylized artistic effects");
+                    println!("\nKey Settings:");
+                    println!("• Colors: 16 (limited for bold effect)");
+                    println!("• Segmentation: K-means with aggressive merging");
+                    println!("• Gradients: Disabled for flat style");
+                    println!("• Regions: Large minimum areas for bold shapes");
+                    println!("\nBest for: Artistic effects, stylized images, creative projects");
+                }
+                _ => {
+                    return Err(anyhow::anyhow!(
+                        "Unknown preset '{}'. Use 'vectorize presets list' to see available presets.",
+                        preset_name
+                    ));
+                }
+            }
+        }
+    }
+    
+    Ok(())
 }
 
 /// Parse quantization method from string

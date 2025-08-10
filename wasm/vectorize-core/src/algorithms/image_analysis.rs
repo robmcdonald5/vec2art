@@ -4,6 +4,64 @@ use crate::config::{ImageContentAnalysis, ComplexityLevel, ContentDensity, Noise
 use crate::error::VectorizeResult;
 use image::{RgbaImage, GrayImage};
 
+/// Analyze photographic image content for regions mode adaptive parameters
+pub fn analyze_regions_image_content(
+    rgba_image: &RgbaImage,
+    dimensions: (u32, u32),
+) -> VectorizeResult<ImageContentAnalysis> {
+    log::debug!("Analyzing photographic image content for regions adaptive parameters");
+
+    let (width, height) = dimensions;
+    let _total_pixels = (width * height) as usize;
+
+    // Convert to LAB for better color analysis
+    let lab_colors: Vec<(f32, f32, f32)> = rgba_image
+        .pixels()
+        .map(|&pixel| {
+            let [r, g, b, _] = pixel.0;
+            rgb_to_lab(r, g, b)
+        })
+        .collect();
+
+    // Analyze color diversity and complexity
+    let color_complexity = analyze_color_complexity(&lab_colors);
+    let edge_density = analyze_edge_density(rgba_image);
+    let texture_complexity = analyze_texture_complexity(rgba_image, dimensions);
+
+    // Determine complexity level based on photographic characteristics
+    let complexity_level = if color_complexity > 0.8 || edge_density > 0.3 || texture_complexity > 0.7 {
+        ComplexityLevel::High
+    } else if color_complexity > 0.5 || edge_density > 0.15 || texture_complexity > 0.4 {
+        ComplexityLevel::Medium
+    } else {
+        ComplexityLevel::Low
+    };
+
+    // Content density for photographic images
+    let content_density = analyze_photographic_density(&lab_colors, edge_density);
+    
+    // Noise level for photographic images
+    let noise_level = analyze_photographic_noise(rgba_image, dimensions);
+
+    // Estimate superpixel regions (different from logo shapes)
+    let estimated_regions = estimate_natural_regions(color_complexity, edge_density, dimensions);
+    let avg_region_size = 1.0 / estimated_regions.max(1.0);
+
+    log::debug!(
+        "Regions content analysis: complexity={:?}, density={:?}, noise={:?}, estimated_regions={:.1}",
+        complexity_level, content_density, noise_level, estimated_regions
+    );
+
+    Ok(ImageContentAnalysis {
+        complexity_level,
+        content_density,
+        noise_level,
+        shape_count_estimate: estimated_regions as usize,
+        avg_shape_size_fraction: avg_region_size,
+        dominant_shape_types: vec![ShapeType::Organic], // Photos typically contain organic shapes
+    })
+}
+
 /// Analyze image content to determine adaptive parameters
 pub fn analyze_image_content(
     _rgba_image: &RgbaImage,
@@ -348,6 +406,248 @@ fn analyze_shape_characteristics(
     };
     
     (shape_count, avg_shape_size_fraction, dominant_shape_types)
+}
+
+/// RGB to LAB color conversion
+fn rgb_to_lab(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
+    // Convert RGB to XYZ first
+    let r = (r as f32 / 255.0).powf(2.2);
+    let g = (g as f32 / 255.0).powf(2.2);
+    let b = (b as f32 / 255.0).powf(2.2);
+    
+    let x = r * 0.4124 + g * 0.3576 + b * 0.1805;
+    let y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+    let z = r * 0.0193 + g * 0.1192 + b * 0.9505;
+    
+    // Convert XYZ to LAB
+    let xn = 0.95047; // D65 illuminant
+    let yn = 1.0;
+    let zn = 1.08883;
+    
+    let fx = lab_f(x / xn);
+    let fy = lab_f(y / yn);
+    let fz = lab_f(z / zn);
+    
+    let l = 116.0 * fy - 16.0;
+    let a = 500.0 * (fx - fy);
+    let b_lab = 200.0 * (fy - fz);
+    
+    (l, a, b_lab)
+}
+
+fn lab_f(t: f32) -> f32 {
+    if t > 0.008856 {
+        t.powf(1.0 / 3.0)
+    } else {
+        (903.3 * t + 16.0) / 116.0
+    }
+}
+
+/// Analyze color complexity using LAB color variance
+fn analyze_color_complexity(lab_colors: &[(f32, f32, f32)]) -> f64 {
+    if lab_colors.is_empty() {
+        return 0.0;
+    }
+
+    // Calculate variance in LAB space
+    let mean_l = lab_colors.iter().map(|&(l, _, _)| l as f64).sum::<f64>() / lab_colors.len() as f64;
+    let mean_a = lab_colors.iter().map(|&(_, a, _)| a as f64).sum::<f64>() / lab_colors.len() as f64;
+    let mean_b = lab_colors.iter().map(|&(_, _, b)| b as f64).sum::<f64>() / lab_colors.len() as f64;
+    
+    let var_l = lab_colors.iter()
+        .map(|&(l, _, _)| (l as f64 - mean_l).powi(2))
+        .sum::<f64>() / lab_colors.len() as f64;
+    let var_a = lab_colors.iter()
+        .map(|&(_, a, _)| (a as f64 - mean_a).powi(2))
+        .sum::<f64>() / lab_colors.len() as f64;
+    let var_b = lab_colors.iter()
+        .map(|&(_, _, b)| (b as f64 - mean_b).powi(2))
+        .sum::<f64>() / lab_colors.len() as f64;
+    
+    // Normalize complexity score (0-1 range)
+    let total_variance = var_l + var_a + var_b;
+    (total_variance / 10000.0).min(1.0) // Empirically determined normalization
+}
+
+/// Analyze edge density using simple gradient magnitude
+fn analyze_edge_density(rgba_image: &RgbaImage) -> f64 {
+    let (width, height) = rgba_image.dimensions();
+    let mut edge_count = 0;
+    let mut total_pixels = 0;
+    
+    // Simple Sobel-like edge detection
+    for y in 1..height-1 {
+        for x in 1..width-1 {
+            let center = rgba_image.get_pixel(x, y);
+            let right = rgba_image.get_pixel(x + 1, y);
+            let down = rgba_image.get_pixel(x, y + 1);
+            
+            // Calculate gradient magnitude in grayscale
+            let center_gray = (center[0] as f32 * 0.299 + center[1] as f32 * 0.587 + center[2] as f32 * 0.114) as i32;
+            let right_gray = (right[0] as f32 * 0.299 + right[1] as f32 * 0.587 + right[2] as f32 * 0.114) as i32;
+            let down_gray = (down[0] as f32 * 0.299 + down[1] as f32 * 0.587 + down[2] as f32 * 0.114) as i32;
+            
+            let gx = right_gray - center_gray;
+            let gy = down_gray - center_gray;
+            let magnitude = ((gx * gx + gy * gy) as f32).sqrt();
+            
+            if magnitude > 20.0 { // Threshold for edge detection
+                edge_count += 1;
+            }
+            total_pixels += 1;
+        }
+    }
+    
+    if total_pixels == 0 {
+        0.0
+    } else {
+        edge_count as f64 / total_pixels as f64
+    }
+}
+
+/// Analyze texture complexity using local standard deviation
+fn analyze_texture_complexity(rgba_image: &RgbaImage, dimensions: (u32, u32)) -> f64 {
+    let (width, height) = dimensions;
+    let window_size = 5;
+    let half_window = window_size / 2;
+    
+    let mut texture_values = Vec::new();
+    
+    // Sample texture in a grid pattern for performance
+    let step = (width.min(height) / 20).max(5);
+    
+    for y in (half_window..height - half_window).step_by(step as usize) {
+        for x in (half_window..width - half_window).step_by(step as usize) {
+            let local_std = calculate_local_std_dev(rgba_image, x, y, window_size);
+            texture_values.push(local_std);
+        }
+    }
+    
+    if texture_values.is_empty() {
+        return 0.0;
+    }
+    
+    // Average local standard deviation as texture measure
+    let avg_texture = texture_values.iter().sum::<f64>() / texture_values.len() as f64;
+    (avg_texture / 50.0).min(1.0) // Normalize to 0-1 range
+}
+
+/// Calculate local standard deviation in a window
+fn calculate_local_std_dev(rgba_image: &RgbaImage, center_x: u32, center_y: u32, window_size: u32) -> f64 {
+    let half_window = (window_size / 2) as i32;
+    let mut values = Vec::new();
+    
+    for dy in -half_window..=half_window {
+        for dx in -half_window..=half_window {
+            let x = (center_x as i32 + dx) as u32;
+            let y = (center_y as i32 + dy) as u32;
+            
+            if let Some(pixel) = rgba_image.get_pixel_checked(x, y) {
+                let gray = (pixel[0] as f32 * 0.299 + pixel[1] as f32 * 0.587 + pixel[2] as f32 * 0.114) as f64;
+                values.push(gray);
+            }
+        }
+    }
+    
+    if values.len() < 2 {
+        return 0.0;
+    }
+    
+    let mean = values.iter().sum::<f64>() / values.len() as f64;
+    let variance = values.iter().map(|&v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
+    variance.sqrt()
+}
+
+/// Analyze photographic density based on color and edge characteristics
+fn analyze_photographic_density(_lab_colors: &[(f32, f32, f32)], edge_density: f64) -> ContentDensity {
+    // For photographic images, density is based on edge density and color variation
+    if edge_density > 0.25 {
+        ContentDensity::Dense
+    } else if edge_density > 0.12 {
+        ContentDensity::Medium
+    } else {
+        ContentDensity::Sparse
+    }
+}
+
+/// Analyze photographic noise using local variance
+fn analyze_photographic_noise(rgba_image: &RgbaImage, dimensions: (u32, u32)) -> NoiseLevel {
+    let (width, height) = dimensions;
+    let mut noise_samples = Vec::new();
+    
+    // Sample noise in smooth areas (avoiding edges)
+    let step = (width.min(height) / 16).max(8);
+    let window_size = 5;
+    
+    for y in (window_size..height - window_size).step_by(step as usize) {
+        for x in (window_size..width - window_size).step_by(step as usize) {
+            // Check if this is a smooth area (low local gradient)
+            if is_smooth_area(rgba_image, x, y, window_size) {
+                let local_noise = calculate_local_std_dev(rgba_image, x, y, window_size);
+                noise_samples.push(local_noise);
+            }
+        }
+    }
+    
+    if noise_samples.is_empty() {
+        return NoiseLevel::Low;
+    }
+    
+    let avg_noise = noise_samples.iter().sum::<f64>() / noise_samples.len() as f64;
+    
+    if avg_noise > 15.0 {
+        NoiseLevel::High
+    } else if avg_noise > 8.0 {
+        NoiseLevel::Medium
+    } else {
+        NoiseLevel::Low
+    }
+}
+
+/// Check if an area is smooth (low gradient)
+fn is_smooth_area(rgba_image: &RgbaImage, center_x: u32, center_y: u32, window_size: u32) -> bool {
+    let half_window = (window_size / 2) as i32;
+    let mut gradients = Vec::new();
+    
+    for dy in -half_window..half_window {
+        for dx in -half_window..half_window {
+            let x1 = (center_x as i32 + dx) as u32;
+            let y1 = (center_y as i32 + dy) as u32;
+            let x2 = (center_x as i32 + dx + 1) as u32;
+            let y2 = (center_y as i32 + dy + 1) as u32;
+            
+            if let (Some(p1), Some(p2)) = (rgba_image.get_pixel_checked(x1, y1), rgba_image.get_pixel_checked(x2, y2)) {
+                let g1 = p1[0] as f32 * 0.299 + p1[1] as f32 * 0.587 + p1[2] as f32 * 0.114;
+                let g2 = p2[0] as f32 * 0.299 + p2[1] as f32 * 0.587 + p2[2] as f32 * 0.114;
+                gradients.push((g1 - g2).abs());
+            }
+        }
+    }
+    
+    if gradients.is_empty() {
+        return false;
+    }
+    
+    let avg_gradient = gradients.iter().sum::<f32>() / gradients.len() as f32;
+    avg_gradient < 10.0 // Threshold for smooth area
+}
+
+/// Estimate natural regions in photographic content
+fn estimate_natural_regions(color_complexity: f64, edge_density: f64, dimensions: (u32, u32)) -> f64 {
+    let (width, height) = dimensions;
+    let image_area = (width * height) as f64;
+    
+    // Base estimate from image size (typical superpixel density)
+    let base_regions = (image_area / 2000.0).sqrt(); // ~2000 pixels per region base
+    
+    // Adjust based on complexity
+    let complexity_factor = 0.5 + color_complexity * 1.5; // Range: 0.5 to 2.0
+    let edge_factor = 0.7 + edge_density * 1.5; // Range: 0.7 to 2.2
+    
+    let estimated_regions = base_regions * complexity_factor * edge_factor;
+    
+    // Reasonable bounds for region count
+    estimated_regions.clamp(5.0, 200.0)
 }
 
 #[cfg(test)]

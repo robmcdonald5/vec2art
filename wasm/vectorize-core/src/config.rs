@@ -405,6 +405,22 @@ pub struct RegionsConfig {
 
     /// Target number of colors for palette regularization
     pub palette_regularization_k: u32,
+
+    // Adaptive parameter settings
+    /// Enable adaptive parameter tuning based on image content
+    pub enable_adaptive_parameters: bool,
+
+    /// Base SLIC step size for adaptive scaling
+    pub base_slic_step_px: u32,
+
+    /// Base number of colors for adaptive scaling
+    pub base_num_colors: u32,
+
+    /// Base merge threshold for adaptive scaling
+    pub base_merge_threshold: f64,
+
+    /// Base ΔE merge threshold for adaptive scaling
+    pub base_de_merge_threshold: f64,
 }
 
 impl RegionsConfig {
@@ -452,7 +468,102 @@ impl RegionsConfig {
             return Err("Must have at least 1 iteration".to_string());
         }
 
+        // Validate adaptive parameters
+        if self.enable_adaptive_parameters {
+            if self.base_slic_step_px < 12 || self.base_slic_step_px > 120 {
+                return Err("Base SLIC step size should be between 12 and 120 pixels".to_string());
+            }
+            if self.base_num_colors < 8 || self.base_num_colors > 64 {
+                return Err("Base number of colors should be between 8 and 64 for adaptive regions".to_string());
+            }
+            if self.base_merge_threshold <= 0.0 {
+                return Err("Base merge threshold must be positive".to_string());
+            }
+            if self.base_de_merge_threshold <= 0.0 {
+                return Err("Base ΔE merge threshold must be positive".to_string());
+            }
+        }
+
         Ok(())
+    }
+
+    /// Calculate adaptive parameters based on image analysis for regions mode
+    pub fn with_adaptive_parameters(&self, image_dims: (u32, u32), content_analysis: &ImageContentAnalysis) -> Self {
+        if !self.enable_adaptive_parameters {
+            return self.clone();
+        }
+
+        let mut adaptive_config = self.clone();
+        
+        // Calculate image metrics for adaptive scaling
+        let diagonal = ((image_dims.0 as f64).powi(2) + (image_dims.1 as f64).powi(2)).sqrt();
+        let _image_area = (image_dims.0 * image_dims.1) as f64;
+        
+        // Adaptive SLIC step_px calculation (Priority 1)
+        let complexity_factor = match content_analysis.complexity_level {
+            ComplexityLevel::Low => 1.2,      // Larger steps for simple content
+            ComplexityLevel::Medium => 1.0,   // Base step size
+            ComplexityLevel::High => 0.7,     // Smaller steps for complex content
+        };
+        
+        let density_factor = match content_analysis.content_density {
+            ContentDensity::Sparse => 1.3,   // Larger steps for sparse content
+            ContentDensity::Medium => 1.0,   // Base step size
+            ContentDensity::Dense => 0.8,    // Smaller steps for dense content
+        };
+        
+        // Resolution scaling factor (step_px should scale with image diagonal)
+        let resolution_factor = (diagonal / 1080.0).max(0.3).min(2.5); // Scale based on ~1080p baseline
+        
+        let adaptive_step = (self.base_slic_step_px as f64 * complexity_factor * density_factor * resolution_factor) as u32;
+        adaptive_config.slic_step_px = adaptive_step.clamp(12, 120);
+
+        // Adaptive SLIC compactness based on content characteristics
+        let base_compactness = 10.0;
+        let compactness_factor = match content_analysis.complexity_level {
+            ComplexityLevel::Low => 0.8,      // Less compact for simple shapes
+            ComplexityLevel::Medium => 1.0,   // Base compactness
+            ComplexityLevel::High => 1.3,     // More compact for complex content
+        };
+        adaptive_config.slic_compactness = (base_compactness * compactness_factor as f32).clamp(1.0, 50.0);
+
+        // Adaptive color count for Wu quantization (Priority 2)
+        let shape_complexity_factor = if content_analysis.shape_count_estimate > 15 {
+            1.2 // More colors for many shapes
+        } else if content_analysis.shape_count_estimate < 5 {
+            0.8 // Fewer colors for simple images
+        } else {
+            1.0 // Base color count
+        };
+        
+        let color_diversity_factor = match content_analysis.complexity_level {
+            ComplexityLevel::Low => 0.7,      // Fewer colors for simple content
+            ComplexityLevel::Medium => 1.0,   // Base color count
+            ComplexityLevel::High => 1.3,     // More colors for complex content
+        };
+        
+        let adaptive_colors = (self.base_num_colors as f64 * shape_complexity_factor * color_diversity_factor) as u32;
+        adaptive_config.num_colors = adaptive_colors.clamp(8, 64);
+
+        // Adaptive ΔE thresholds (Priority 3)
+        let noise_factor = match content_analysis.noise_level {
+            NoiseLevel::Low => 1.0,      // Base thresholds
+            NoiseLevel::Medium => 1.1,   // Slightly higher thresholds
+            NoiseLevel::High => 1.3,     // Higher thresholds for noisy images
+        };
+        
+        adaptive_config.de_merge_threshold = self.base_de_merge_threshold * noise_factor;
+        adaptive_config.merge_threshold = self.base_merge_threshold * noise_factor;
+
+        log::debug!(
+            "Adaptive regions parameters: step_px={} (was {}), colors={} (was {}), compactness={:.1}, merge_threshold={:.2}",
+            adaptive_config.slic_step_px, self.slic_step_px,
+            adaptive_config.num_colors, self.num_colors,
+            adaptive_config.slic_compactness,
+            adaptive_config.merge_threshold
+        );
+
+        adaptive_config
     }
 }
 
@@ -490,6 +601,12 @@ impl Default for RegionsConfig {
             de_split_threshold: 3.5,     // LAB ΔE threshold for splitting regions  
             palette_regularization: true, // Enable palette regularization by default
             palette_regularization_k: 12, // Target 10-16 colors after regularization
+            // Adaptive parameters
+            enable_adaptive_parameters: true, // Enable by default to improve quality
+            base_slic_step_px: 40,        // Base value for adaptive scaling
+            base_num_colors: 16,          // Base value for adaptive scaling
+            base_merge_threshold: 1.8,    // Base value for adaptive scaling
+            base_de_merge_threshold: 1.8, // Base value for adaptive scaling
         }
     }
 }

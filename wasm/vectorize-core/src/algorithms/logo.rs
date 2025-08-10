@@ -560,9 +560,11 @@ fn extract_contours_suzuki_abe(
         threshold_value
     );
     
-    // Convert imageproc contours to our format with validation
+    // Convert imageproc contours to our format with enhanced validation
     let mut contours = Vec::new();
     let mut invalid_count = 0;
+    let mut duplicate_count = 0;
+    let mut tiny_count = 0;
     
     for imageproc_contour in imageproc_contours {
         let mut contour = Vec::new();
@@ -572,9 +574,11 @@ fn extract_contours_suzuki_abe(
             let x = point.x as f32;
             let y = point.y as f32;
             
-            // Validate coordinates
-            if !x.is_finite() || !y.is_finite() || x < 0.0 || y < 0.0 {
-                log::debug!("Invalid point coordinates: ({}, {})", x, y);
+            // Enhanced validation: check bounds and validity
+            if !x.is_finite() || !y.is_finite() || x < 0.0 || y < 0.0 || 
+               x >= width as f32 || y >= height as f32 {
+                log::debug!("Invalid or out-of-bounds point: ({}, {}) for image {}x{}", 
+                           x, y, width, height);
                 valid_points = false;
                 break;
             }
@@ -582,20 +586,204 @@ fn extract_contours_suzuki_abe(
             contour.push(Point { x, y });
         }
         
-        // Only keep valid contours with sufficient points
-        if valid_points && contour.len() >= 3 {
-            contours.push(contour);
-        } else {
+        if !valid_points {
             invalid_count += 1;
+            continue;
+        }
+        
+        // Enhanced contour validation and post-processing
+        if let Some(processed_contour) = validate_and_process_contour(contour, dimensions) {
+            // Check for duplicates
+            if !is_duplicate_contour(&processed_contour, &contours) {
+                contours.push(processed_contour);
+            } else {
+                duplicate_count += 1;
+            }
+        } else {
+            tiny_count += 1;
         }
     }
     
     log::debug!(
-        "Suzuki-Abe processed {} valid contours (>= 3 points, {} invalid)", 
-        contours.len(), invalid_count
+        "Suzuki-Abe processed {} valid contours (filtered: {} invalid, {} duplicates, {} too small)", 
+        contours.len(), invalid_count, duplicate_count, tiny_count
     );
     
     Ok(contours)
+}
+
+/// Validate and process a contour to ensure it meets quality requirements
+fn validate_and_process_contour(mut contour: Contour, dimensions: (u32, u32)) -> Option<Contour> {
+    if contour.len() < 3 {
+        return None; // Need at least 3 points for a valid contour
+    }
+    
+    // Remove consecutive duplicate points
+    contour = remove_consecutive_duplicates(contour);
+    
+    if contour.len() < 3 {
+        return None; // Still need at least 3 points after duplicate removal
+    }
+    
+    // Check contour quality metrics
+    let area = calculate_contour_area(&contour);
+    let perimeter = calculate_contour_perimeter(&contour);
+    
+    // Filter out degenerate contours
+    if area < 1.0 || perimeter < 3.0 {
+        return None;
+    }
+    
+    // Check circularity ratio to filter out near-linear artifacts
+    let circularity = 4.0 * std::f32::consts::PI * area / (perimeter * perimeter);
+    if circularity > 1.2 {
+        // Impossible circularity indicates calculation error
+        log::debug!("Contour with impossible circularity {:.2}, filtering out", circularity);
+        return None;
+    }
+    
+    // Ensure contour doesn't exceed image bounds
+    let (width, height) = dimensions;
+    for point in &contour {
+        if point.x < 0.0 || point.x >= width as f32 || 
+           point.y < 0.0 || point.y >= height as f32 {
+            log::debug!("Contour exceeds image bounds, filtering out");
+            return None;
+        }
+    }
+    
+    // Apply smoothing to reduce noise
+    let smoothed_contour = smooth_contour_light(contour);
+    
+    Some(smoothed_contour)
+}
+
+/// Remove consecutive duplicate points from a contour
+fn remove_consecutive_duplicates(contour: Contour) -> Contour {
+    if contour.len() <= 1 {
+        return contour;
+    }
+    
+    let mut result = Vec::with_capacity(contour.len());
+    result.push(contour[0]);
+    
+    const MIN_DISTANCE: f32 = 0.5; // Minimum distance between consecutive points
+    
+    for i in 1..contour.len() {
+        let prev = result.last().unwrap();
+        let curr = &contour[i];
+        
+        let dx = curr.x - prev.x;
+        let dy = curr.y - prev.y;
+        let distance = (dx * dx + dy * dy).sqrt();
+        
+        if distance >= MIN_DISTANCE {
+            result.push(*curr);
+        }
+    }
+    
+    // Check if the first and last points are too close (for closed contours)
+    if result.len() > 2 {
+        let first = result[0];
+        let last = result[result.len() - 1];
+        let dx = last.x - first.x;
+        let dy = last.y - first.y;
+        let distance = (dx * dx + dy * dy).sqrt();
+        
+        if distance < MIN_DISTANCE {
+            result.pop(); // Remove the last point if it's too close to the first
+        }
+    }
+    
+    result
+}
+
+/// Apply light smoothing to reduce noise in contours
+fn smooth_contour_light(contour: Contour) -> Contour {
+    if contour.len() < 5 {
+        return contour; // Too small to smooth meaningfully
+    }
+    
+    let mut smoothed = Vec::with_capacity(contour.len());
+    
+    // Use simple 3-point moving average
+    smoothed.push(contour[0]); // Keep first point unchanged
+    
+    for i in 1..contour.len() - 1 {
+        let prev = contour[i - 1];
+        let curr = contour[i];
+        let next = contour[i + 1];
+        
+        // Weighted average: 25% previous, 50% current, 25% next
+        let smoothed_x = prev.x * 0.25 + curr.x * 0.5 + next.x * 0.25;
+        let smoothed_y = prev.y * 0.25 + curr.y * 0.5 + next.y * 0.25;
+        
+        smoothed.push(Point { x: smoothed_x, y: smoothed_y });
+    }
+    
+    smoothed.push(contour[contour.len() - 1]); // Keep last point unchanged
+    
+    smoothed
+}
+
+/// Calculate the perimeter of a contour
+fn calculate_contour_perimeter(contour: &Contour) -> f32 {
+    if contour.len() < 2 {
+        return 0.0;
+    }
+    
+    let mut perimeter = 0.0;
+    for i in 0..contour.len() {
+        let current = contour[i];
+        let next = contour[(i + 1) % contour.len()];
+        
+        let dx = next.x - current.x;
+        let dy = next.y - current.y;
+        perimeter += (dx * dx + dy * dy).sqrt();
+    }
+    
+    perimeter
+}
+
+/// Check if a contour is a duplicate of any existing contour
+fn is_duplicate_contour(contour: &Contour, existing_contours: &[Contour]) -> bool {
+    const DUPLICATE_THRESHOLD: f32 = 2.0; // Maximum average distance for considering duplicates
+    
+    for existing in existing_contours {
+        if is_similar_contour(contour, existing, DUPLICATE_THRESHOLD) {
+            return true;
+        }
+    }
+    
+    false
+}
+
+/// Check if two contours are similar based on average point distance
+fn is_similar_contour(contour1: &Contour, contour2: &Contour, threshold: f32) -> bool {
+    // Quick size check
+    let size_ratio = contour1.len() as f32 / contour2.len() as f32;
+    if size_ratio < 0.8 || size_ratio > 1.25 {
+        return false; // Too different in size
+    }
+    
+    // Sample-based comparison for performance
+    let sample_count = 8.min(contour1.len()).min(contour2.len());
+    let mut total_distance = 0.0;
+    
+    for i in 0..sample_count {
+        let idx1 = i * contour1.len() / sample_count;
+        let idx2 = i * contour2.len() / sample_count;
+        
+        let p1 = contour1[idx1];
+        let p2 = contour2[idx2];
+        
+        let dx = p1.x - p2.x;
+        let dy = p1.y - p2.y;
+        total_distance += (dx * dx + dy * dy).sqrt();
+    }
+    
+    let average_distance = total_distance / sample_count as f32;
+    average_distance <= threshold
 }
 
 
