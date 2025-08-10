@@ -1,7 +1,7 @@
 //! Command-line interface for vectorize-core
 //!
-//! This CLI tool provides a way to test and benchmark the vectorization algorithms
-//! with various input images and configuration parameters.
+//! This CLI tool provides line tracing functionality for converting images to SVG
+//! using the trace-low algorithm with various backends.
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -9,65 +9,14 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use vectorize_core::{vectorize_logo_rgba, vectorize_regions_rgba, vectorize_trace_low_rgba, LogoConfig, RegionsConfig, TraceLowConfig, TraceBackend, SegmentationMethod, QuantizationMethod, Epsilon};
-use vectorize_core::telemetry::{make_dump, write_json_dump, append_runs_csv, Resolved, Guards, Stats};
-use serde_json::json;
-use clap::ValueEnum;
-
-mod ssim;
-mod svg_analysis;
-mod comprehensive_benchmark;
-mod phase_a_benchmark;
-
-use comprehensive_benchmark::{BenchmarkSuite, BenchmarkConfig, BenchmarkReport};
-use phase_a_benchmark::{PhaseABenchmarkSuite, PhaseABenchmarkConfig};
-
-/// Preset action for presets command
-#[derive(Clone, Copy, Debug, ValueEnum)]
-enum PresetAction {
-    /// List all available presets
-    List,
-    /// Show detailed information about a specific preset
-    Info,
-}
-
-/// Preset configurations for common use cases
-#[derive(Clone, Copy, Debug, ValueEnum)]
-enum PresetType {
-    // Core presets
-    /// High-fidelity mode for photographs with gradients
-    Photo,
-    /// High-fidelity mode for photographs with Phase B refinement
-    PhotoRefined,
-    /// Fixed palette posterization (stylized)
-    Posterized,
-    /// Fixed palette posterization with Phase B refinement
-    PosterizedRefined,
-    /// Binary tracing for logos and line art
-    Logo,
-    /// Binary tracing for logos with Phase B refinement
-    LogoRefined,
-    
-    // Specialized presets
-    /// Optimized for portrait photography
-    Portrait,
-    /// Optimized for landscape photography  
-    Landscape,
-    /// Optimized for digital artwork and illustrations
-    Illustration,
-    /// Optimized for technical drawings and diagrams
-    Technical,
-    /// Optimized for artistic/creative effects
-    Artistic,
-    
-    // Future presets
-    /// Low-poly triangulation (future)
-    LowPoly,
-}
+use vectorize_core::algorithms::{apply_hand_drawn_aesthetics, HandDrawnPresets};
+use vectorize_core::config::SvgConfig;
+use vectorize_core::svg::generate_svg_document;
+use vectorize_core::{vectorize_trace_low, vectorize_trace_low_rgba, TraceBackend, TraceLowConfig};
 
 #[derive(Parser)]
-#[command(name = "vectorize")]
-#[command(about = "A CLI tool for image vectorization using vec2art algorithms")]
+#[command(name = "vectorize-cli")]
+#[command(about = "A CLI tool for line tracing image vectorization")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
@@ -84,206 +33,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Vectorize using preset configurations
-    Preset {
-        /// Input image file
-        input: PathBuf,
-
-        /// Output SVG file
-        output: PathBuf,
-
-        /// Preset name (photo, photo-refined, posterized, posterized-refined, logo, logo-refined, portrait, landscape, illustration, technical, artistic, lowpoly)
-        #[arg(value_enum)]
-        preset: PresetType,
-
-        /// Override max palette size for photo preset
-        #[arg(long)]
-        max_palette: Option<u32>,
-
-        /// Override target regions for photo preset
-        #[arg(long)]
-        regions_target: Option<usize>,
-
-        /// Override DP epsilon in pixels
-        #[arg(long)]
-        dp_epsilon: Option<f32>,
-        
-        /// Enable/disable adaptive parameters (default: enabled)
-        #[arg(long)]
-        disable_adaptive: bool,
-        
-        /// Adaptive parameter aggressiveness (0.5 = conservative, 2.0 = aggressive)
-        #[arg(long, default_value = "1.0")]
-        adaptive_aggressiveness: f32,
-        
-        /// Enable Phase B refinement for higher quality
-        #[arg(long)]
-        enable_refinement: bool,
-        
-        /// Phase B refinement time budget in milliseconds
-        #[arg(long, default_value = "600")]
-        refinement_budget: u32,
-        
-        /// Target ΔE quality threshold
-        #[arg(long, default_value = "6.0")]
-        target_delta_e: f64,
-        
-        /// Target SSIM quality threshold
-        #[arg(long, default_value = "0.93")]
-        target_ssim: f64,
-    },
-
-    /// Vectorize using logo/line-art algorithm
-    Logo {
-        /// Input image file
-        input: PathBuf,
-
-        /// Output SVG file
-        output: PathBuf,
-
-        /// Configuration JSON file (optional)
-        #[arg(short, long)]
-        config: Option<PathBuf>,
-
-        /// Binary threshold (0-255)
-        #[arg(long, default_value = "128")]
-        threshold: u8,
-
-        /// Use adaptive thresholding
-        #[arg(long)]
-        adaptive: bool,
-
-        /// Enable primitive shape detection (circles, ellipses, arcs)
-        #[arg(long, default_value = "true")]
-        detect_primitives: bool,
-
-        /// Threshold for accepting primitive fits (lower = more strict)
-        #[arg(long, default_value = "2.0")]
-        primitive_tolerance: f32,
-
-        /// Maximum eccentricity for circle detection
-        #[arg(long, default_value = "0.15")]
-        max_circle_eccentricity: f32,
-
-        /// Simplification epsilon in pixels (or use --simplify-diag-frac for fraction)
-        #[arg(long, default_value = "1.5")]
-        simplify_px: f64,
-        
-        /// Simplification epsilon as diagonal fraction (alternative to --simplify-px)
-        #[arg(long)]
-        simplify_diag_frac: Option<f64>,
-
-        /// Use stroke rendering instead of filled shapes
-        #[arg(long)]
-        use_stroke: bool,
-
-        /// Stroke width in pixels (when using stroke mode)
-        #[arg(long, default_value = "1.2")]
-        stroke_width: f32,
-        
-        /// Disable adaptive parameters
-        #[arg(long)]
-        disable_adaptive: bool,
-        
-        /// Adaptive parameter aggressiveness (0.5 = conservative, 2.0 = aggressive)
-        #[arg(long, default_value = "1.0")]
-        adaptive_aggressiveness: f32,
-    },
-
-    /// Vectorize using color regions algorithm  
-    Regions {
-        /// Input image file
-        input: PathBuf,
-
-        /// Output SVG file
-        output: PathBuf,
-
-        /// Configuration JSON file (optional)
-        #[arg(short, long)]
-        config: Option<PathBuf>,
-
-        /// Number of colors for quantization
-        #[arg(long, default_value = "16")]
-        colors: u32,
-
-        /// Color quantization method
-        #[arg(long, default_value = "wu", value_parser = parse_quantization_method)]
-        quantization_method: QuantizationMethod,
-
-        /// Segmentation method
-        #[arg(long, default_value = "kmeans", value_parser = parse_segmentation_method)]
-        segmentation_method: SegmentationMethod,
-
-        /// Use LAB color space
-        #[arg(long, default_value = "true")]
-        lab_color: bool,
-
-        /// Merge similar adjacent regions
-        #[arg(long, default_value = "true")]
-        merge_similar_regions: bool,
-
-        /// Color distance threshold for region merging
-        #[arg(long, default_value = "2.0")]
-        merge_threshold: f64,
-
-        /// SLIC step size in pixels (not area - actual step length)
-        #[arg(long, default_value = "40")]
-        slic_step_px: u32,
-
-        /// SLIC compactness parameter (0-100, higher = more square regions)
-        #[arg(long, default_value = "10.0")]
-        slic_compactness: f32,
-
-        /// Number of SLIC iterations
-        #[arg(long, default_value = "10")]
-        slic_iterations: u32,
-
-        /// Enable gradient detection for smooth color transitions
-        #[arg(long, default_value = "true")]
-        detect_gradients: bool,
-
-        /// R² threshold for accepting gradients (0.0-1.0, higher = more strict)
-        #[arg(long, default_value = "0.85")]
-        gradient_r2_threshold: f64,
-
-        /// Maximum number of gradient stops to generate
-        #[arg(long, default_value = "8")]
-        max_gradient_stops: usize,
-
-        /// LAB ΔE threshold for merging regions (lower = more strict)
-        #[arg(long, default_value = "1.8")]
-        de_merge_threshold: f64,
-
-        /// LAB ΔE threshold for splitting regions (higher = more strict)
-        #[arg(long, default_value = "3.5")]
-        de_split_threshold: f64,
-
-        /// Apply palette regularization to reduce final color count
-        #[arg(long)]
-        palette_regularization: bool,
-
-        /// Target number of colors for palette regularization
-        #[arg(long, default_value = "12")]
-        palette_regularization_k: u32,
-
-        /// Simplification epsilon in pixels (or use --simplify-diag-frac for fraction)
-        #[arg(long, default_value = "2.0")]
-        simplify_px: f64,
-        
-        /// Simplification epsilon as diagonal fraction (alternative to --simplify-px)
-        #[arg(long)]
-        simplify_diag_frac: Option<f64>,
-        
-        /// Disable adaptive parameters
-        #[arg(long)]
-        disable_adaptive: bool,
-        
-        /// Adaptive parameter aggressiveness (0.5 = conservative, 2.0 = aggressive)
-        #[arg(long, default_value = "1.0")]
-        adaptive_aggressiveness: f32,
-    },
-
-    /// Vectorize using low-detail tracing algorithm
+    /// Vectorize using low-detail line tracing algorithm
     TraceLow {
         /// Input image file
         input: PathBuf,
@@ -291,9 +41,9 @@ enum Commands {
         /// Output SVG file
         output: PathBuf,
 
-        /// Tracing backend to use
-        #[arg(long, default_value = "edge", value_parser = parse_trace_backend)]
-        backend: TraceBackend,
+        /// Tracing backend to use (edge, centerline, superpixel)
+        #[arg(long, default_value = "edge")]
+        backend: String,
 
         /// Detail level (0.0 = very sparse, 1.0 = more detail)
         #[arg(long, default_value = "0.3")]
@@ -310,490 +60,64 @@ enum Commands {
         /// Output statistics to CSV file
         #[arg(long)]
         stats: Option<PathBuf>,
+
+        /// Enable dual-pass processing for enhanced quality
+        #[arg(long)]
+        multipass: bool,
+
+        /// Conservative detail level for first pass (default: detail * 1.3)
+        #[arg(long)]
+        conservative_detail: Option<f32>,
+
+        /// Aggressive detail level for second pass (default: detail * 0.7)
+        #[arg(long)]
+        aggressive_detail: Option<f32>,
+
+        /// Enable content-aware noise filtering
+        #[arg(long)]
+        noise_filtering: bool,
+        /// Enable reverse direction processing (R→L, B→T)
+        #[arg(long)]
+        enable_reverse: bool,
+        /// Enable diagonal direction processing (NW→SE, NE→SW)
+        #[arg(long)]
+        enable_diagonal: bool,
+        /// Threshold for directional strength - skip pass if not beneficial (0.0-1.0)
+        #[arg(long, default_value = "0.3")]
+        directional_threshold: f32,
+        /// Maximum processing time budget in milliseconds
+        #[arg(long, default_value = "1500")]
+        max_time_ms: u64,
+
+        /// Hand-drawn aesthetic preset (none, subtle, medium, strong, sketchy)
+        #[arg(long, default_value = "none")]
+        hand_drawn: String,
+
+        /// Custom hand-drawn tremor strength (0.0-0.5, overrides preset)
+        #[arg(long)]
+        tremor: Option<f32>,
+
+        /// Custom hand-drawn variable weights (0.0-1.0, overrides preset)  
+        #[arg(long)]
+        variable_weights: Option<f32>,
     },
 
-    /// Benchmark vectorization performance
-    Benchmark {
-        /// Input image file or directory
-        #[arg(short, long)]
-        input: PathBuf,
-
-        /// Algorithm to benchmark (logo, regions, or both)
-        #[arg(long, default_value = "both")]
-        algorithm: String,
-
-        /// Number of iterations per benchmark
-        #[arg(long, default_value = "10")]
-        iterations: usize,
-
-        /// Output benchmark results to file
-        #[arg(short, long)]
-        output: Option<PathBuf>,
-    },
-
-    /// Run comprehensive benchmark suite with SSIM and SVG analysis
-    ComprehensiveBench {
-        /// Input images directory or specific image files
-        #[arg(short, long)]
-        input: Vec<PathBuf>,
-
-        /// Number of iterations for timing measurements
-        #[arg(long, default_value = "10")]
-        iterations: usize,
-
-        /// Output directory for results and debug images
-        #[arg(short, long, default_value = "benchmark_results")]
-        output: PathBuf,
-
-        /// Disable debug image generation
-        #[arg(long)]
-        no_debug_images: bool,
-
-        /// Baseline results file for comparison (JSON format)
-        #[arg(long)]
-        baseline: Option<PathBuf>,
-    },
-
-    /// Run Phase A benchmark validation (roadmap compliance testing)
-    PhaseABench {
-        /// Examples directory containing test images (defaults to auto-discovery)
-        #[arg(long)]
-        examples_dir: Option<PathBuf>,
-
-        /// Number of timing iterations for stable measurements
-        #[arg(long, default_value = "5")]
-        iterations: usize,
-
-        /// Output directory for results and debug artifacts
-        #[arg(short, long, default_value = "phase_a_benchmark_results")]
-        output: PathBuf,
-
-        /// Disable debug image generation
-        #[arg(long)]
-        no_debug_images: bool,
-
-        /// Baseline results for comparison (if any)
-        #[arg(long)]
-        baseline: Option<PathBuf>,
-
-        /// Override ΔE quality threshold (default: 6.0)
-        #[arg(long)]
-        delta_e_threshold: Option<f64>,
-
-        /// Override SSIM quality threshold (default: 0.93)
-        #[arg(long)]
-        ssim_threshold: Option<f64>,
-
-        /// Override timing threshold in seconds for 1024px images (default: 2.5)
-        #[arg(long)]
-        timing_threshold: Option<f64>,
-    },
-
-    /// Analyze image characteristics and suggest optimal parameters
-    Analyze {
+    /// Simple vectorization using default trace-low settings
+    Convert {
         /// Input image file
         input: PathBuf,
-        
-        /// Output analysis report to file (optional)
-        #[arg(short, long)]
-        output: Option<PathBuf>,
-        
-        /// Show detailed technical analysis
-        #[arg(long)]
-        detailed: bool,
-    },
-    
-    /// Compare quality between input image and output SVG
-    Compare {
-        /// Input image file
-        input: PathBuf,
-        
-        /// Output SVG file to compare
-        svg: PathBuf,
-        
-        /// Output comparison report (optional)
-        #[arg(short, long)]
-        output: Option<PathBuf>,
-        
-        /// Generate comparison visualization
-        #[arg(long)]
-        visual: bool,
-    },
-    
-    /// List available presets or show detailed information
-    Presets {
-        /// Subcommand: list or info
-        #[arg(value_enum)]
-        action: PresetAction,
-        
-        /// Preset name (required for 'info' action)
-        name: Option<String>,
-    },
-    
-    /// Batch process multiple images
-    Batch {
-        /// Input directory
-        #[arg(short, long)]
-        input: PathBuf,
 
-        /// Output directory
-        #[arg(short, long)]
+        /// Output SVG file  
         output: PathBuf,
 
-        /// Algorithm to use (logo or regions)
-        #[arg(long, default_value = "regions")]
-        algorithm: String,
+        /// Detail level (0.0 = very sparse, 1.0 = more detail)
+        #[arg(short, long, default_value = "0.3")]
+        detail: f32,
 
-        /// Configuration JSON file (optional)
-        #[arg(short, long)]
-        config: Option<PathBuf>,
-
-        /// File pattern to match (e.g., "*.png")
-        #[arg(long, default_value = "*")]
-        pattern: String,
-
-        // Logo algorithm options
-        /// Binary threshold (0-255) for logo algorithm
-        #[arg(long, default_value = "128")]
-        threshold: u8,
-
-        /// Use adaptive thresholding for logo algorithm
-        #[arg(long)]
-        adaptive: bool,
-
-        /// Enable primitive shape detection for logo algorithm
-        #[arg(long, default_value = "true")]
-        detect_primitives: bool,
-
-        /// Primitive fit tolerance for logo algorithm
-        #[arg(long, default_value = "2.0")]
-        primitive_tolerance: f32,
-
-        /// Maximum circle eccentricity for logo algorithm
-        #[arg(long, default_value = "0.15")]
-        max_circle_eccentricity: f32,
-
-        // Regions algorithm options
-        /// Number of colors for quantization
-        #[arg(long, default_value = "16")]
-        colors: u32,
-
-        /// Color quantization method
-        #[arg(long, default_value = "wu", value_parser = parse_quantization_method)]
-        quantization_method: QuantizationMethod,
-
-        /// Segmentation method
-        #[arg(long, default_value = "kmeans", value_parser = parse_segmentation_method)]
-        segmentation_method: SegmentationMethod,
-
-        /// Use LAB color space
-        #[arg(long, default_value = "true")]
-        lab_color: bool,
-
-        /// Merge similar adjacent regions
-        #[arg(long, default_value = "true")]
-        merge_similar_regions: bool,
-
-        /// Color distance threshold for region merging
-        #[arg(long, default_value = "2.0")]
-        merge_threshold: f64,
-
-        /// SLIC step size in pixels (not area - actual step length)
-        #[arg(long, default_value = "40")]
-        slic_step_px: u32,
-
-        /// SLIC compactness parameter
-        #[arg(long, default_value = "10.0")]
-        slic_compactness: f32,
-
-        /// Number of SLIC iterations
-        #[arg(long, default_value = "10")]
-        slic_iterations: u32,
-
-        /// Enable gradient detection
-        #[arg(long, default_value = "true")]
-        detect_gradients: bool,
-
-        /// R² threshold for accepting gradients
-        #[arg(long, default_value = "0.85")]
-        gradient_r2_threshold: f64,
-
-        /// Maximum number of gradient stops
-        #[arg(long, default_value = "8")]
-        max_gradient_stops: usize,
-
-        // Common options
-        /// Simplification epsilon in pixels (or use --simplify-diag-frac for fraction)
-        #[arg(long, default_value = "1.5")]
-        simplify_px: f64,
-        
-        /// Simplification epsilon as diagonal fraction (alternative to --simplify-px)
-        #[arg(long)]
-        simplify_diag_frac: Option<f64>,
+        /// Stroke width
+        #[arg(short, long, default_value = "1.2")]
+        stroke_width: f32,
     },
-}
-
-/// Enhanced validation for CLI arguments with detailed error messages and guidance
-fn validate_cli_arguments(command: &Commands) -> Result<()> {
-    match command {
-        Commands::Preset {
-            preset,
-            max_palette,
-            regions_target,
-            dp_epsilon,
-            adaptive_aggressiveness,
-            refinement_budget,
-            target_delta_e,
-            target_ssim,
-            ..
-        } => {
-            if let Some(palette) = max_palette {
-                if *palette < 2 || *palette > 256 {
-                    return Err(anyhow::anyhow!("Max palette must be between 2 and 256"));
-                }
-            }
-            if let Some(regions) = regions_target {
-                if *regions < 10 || *regions > 10000 {
-                    return Err(anyhow::anyhow!("Regions target must be between 10 and 10000"));
-                }
-            }
-            if let Some(epsilon) = dp_epsilon {
-                if *epsilon < 0.0 || *epsilon > 100.0 {
-                    return Err(anyhow::anyhow!(
-                        "DP epsilon must be between 0.0 and 100.0.\n{}",
-                        "Hint: Use smaller values (0.1-2.0) for fine detail, larger values (5.0-20.0) for simplified output."
-                    ));
-                }
-            }
-            
-            // Validate adaptive parameters
-            if *adaptive_aggressiveness < 0.1 || *adaptive_aggressiveness > 3.0 {
-                return Err(anyhow::anyhow!(
-                    "Adaptive aggressiveness must be between 0.1 and 3.0.\n{}",
-                    "Hint: 0.5 = conservative, 1.0 = balanced, 2.0 = aggressive parameter tuning."
-                ));
-            }
-            
-            // Validate refinement parameters
-            if *refinement_budget < 50 || *refinement_budget > 2000 {
-                return Err(anyhow::anyhow!(
-                    "Refinement budget must be between 50ms and 2000ms.\n{}",
-                    "Hint: 300ms = fast, 600ms = balanced, 1200ms = thorough refinement."
-                ));
-            }
-            
-            if *target_delta_e < 1.0 || *target_delta_e > 15.0 {
-                return Err(anyhow::anyhow!(
-                    "Target ΔE must be between 1.0 and 15.0.\n{}",
-                    "Hint: 2.0-4.0 = excellent quality, 6.0-8.0 = good quality, >10.0 = acceptable quality."
-                ));
-            }
-            
-            if *target_ssim < 0.5 || *target_ssim > 0.99 {
-                return Err(anyhow::anyhow!(
-                    "Target SSIM must be between 0.5 and 0.99.\n{}",
-                    "Hint: 0.95+ = excellent, 0.90-0.94 = good, 0.80-0.89 = acceptable quality."
-                ));
-            }
-            
-            // Preset-specific validation
-            match preset {
-                PresetType::Logo | PresetType::LogoRefined | PresetType::Technical => {
-                    if let Some(palette) = max_palette {
-                        if *palette > 16 {
-                            log::warn!(
-                                "Large palette ({} colors) specified for logo preset. Logo presets work best with binary (2-color) images.",
-                                *palette
-                            );
-                        }
-                    }
-                }
-                PresetType::Portrait => {
-                    if let Some(palette) = max_palette {
-                        if *palette < 20 {
-                            return Err(anyhow::anyhow!(
-                                "Portrait preset requires at least 20 colors for skin tone accuracy.\n{}",
-                                "Hint: 25-40 colors work best for portraits."
-                            ));
-                        }
-                    }
-                }
-                PresetType::Artistic | PresetType::Posterized | PresetType::PosterizedRefined => {
-                    if let Some(palette) = max_palette {
-                        if *palette > 24 {
-                            log::warn!(
-                                "Large palette ({} colors) may reduce artistic/posterized effect. Consider 8-16 colors for stronger stylization.",
-                                *palette
-                            );
-                        }
-                    }
-                }
-                _ => {} // No specific warnings for other presets
-            }
-        }
-        Commands::Logo { 
-            primitive_tolerance, 
-            max_circle_eccentricity, 
-            simplify_px,
-            simplify_diag_frac,
-            .. 
-        } => {
-            if *primitive_tolerance < 0.0 {
-                return Err(anyhow::anyhow!("Primitive tolerance must be non-negative"));
-            }
-            if *max_circle_eccentricity < 0.0 || *max_circle_eccentricity > 1.0 {
-                return Err(anyhow::anyhow!("Circle eccentricity must be between 0.0 and 1.0"));
-            }
-            if *simplify_px < 0.0 {
-                return Err(anyhow::anyhow!("Simplification epsilon (pixels) must be non-negative"));
-            }
-            if let Some(frac) = simplify_diag_frac {
-                if *frac < 0.0 {
-                    return Err(anyhow::anyhow!("Simplification epsilon (diagonal fraction) must be non-negative"));
-                }
-            }
-        }
-        Commands::Regions { 
-            colors, 
-            quantization_method,
-            segmentation_method,
-            merge_threshold,
-            slic_step_px,
-            slic_compactness,
-            slic_iterations,
-            gradient_r2_threshold,
-            max_gradient_stops,
-            simplify_px,
-            simplify_diag_frac,
-            .. 
-        } => {
-            // Validate color count
-            if *colors < 2 {
-                return Err(anyhow::anyhow!("Must have at least 2 colors for quantization"));
-            }
-            if *colors > 256 {
-                return Err(anyhow::anyhow!("Color count should not exceed 256 for reasonable performance"));
-            }
-
-            // Validate Wu quantization with high color counts
-            if *quantization_method == QuantizationMethod::Wu && *colors > 64 {
-                log::warn!("Wu quantization is most effective with 64 or fewer colors");
-            }
-
-            // Validate SLIC parameters when SLIC is selected
-            if *segmentation_method == SegmentationMethod::Slic {
-                if *slic_step_px < 12 || *slic_step_px > 120 {
-                    return Err(anyhow::anyhow!("SLIC step (px) should be ~12–120 for 720p–4K images"));
-                }
-                if *slic_compactness < 0.1 || *slic_compactness > 100.0 {
-                    return Err(anyhow::anyhow!("SLIC compactness should be between 0.1 and 100.0"));
-                }
-                if *slic_iterations < 1 {
-                    return Err(anyhow::anyhow!("SLIC iterations must be at least 1"));
-                }
-            }
-
-            // Validate gradient parameters
-            if *gradient_r2_threshold < 0.5 || *gradient_r2_threshold > 1.0 {
-                return Err(anyhow::anyhow!("Gradient R² threshold should be between 0.5 and 1.0"));
-            }
-            if *max_gradient_stops < 2 {
-                return Err(anyhow::anyhow!("Gradient must have at least 2 stops"));
-            }
-
-            // Validate merge threshold
-            if *merge_threshold < 0.0 {
-                return Err(anyhow::anyhow!("Merge threshold must be non-negative"));
-            }
-
-            if *simplify_px < 0.0 {
-                return Err(anyhow::anyhow!("Simplification epsilon (pixels) must be non-negative"));
-            }
-            if let Some(frac) = simplify_diag_frac {
-                if *frac < 0.0 {
-                    return Err(anyhow::anyhow!("Simplification epsilon (diagonal fraction) must be non-negative"));
-                }
-            }
-        }
-        Commands::TraceLow {
-            detail,
-            stroke_width,
-            ..
-        } => {
-            if *detail < 0.0 || *detail > 1.0 {
-                return Err(anyhow::anyhow!("Detail parameter must be between 0.0 and 1.0"));
-            }
-            if *stroke_width <= 0.0 {
-                return Err(anyhow::anyhow!("Stroke width must be positive"));
-            }
-            if *stroke_width > 50.0 {
-                return Err(anyhow::anyhow!("Stroke width should not exceed 50.0 for reasonable output"));
-            }
-        }
-        Commands::Batch { 
-            algorithm,
-            colors,
-            quantization_method,
-            segmentation_method,
-            primitive_tolerance,
-            max_circle_eccentricity,
-            merge_threshold,
-            slic_step_px,
-            slic_compactness,
-            slic_iterations: _,
-            gradient_r2_threshold,
-            max_gradient_stops,
-            simplify_px,
-            simplify_diag_frac,
-            .. 
-        } => {
-            // Validate algorithm
-            if algorithm != "logo" && algorithm != "regions" {
-                return Err(anyhow::anyhow!("Algorithm must be 'logo' or 'regions'"));
-            }
-
-            // Apply same validations as individual commands
-            if *primitive_tolerance < 0.0 {
-                return Err(anyhow::anyhow!("Primitive tolerance must be non-negative"));
-            }
-            if *max_circle_eccentricity < 0.0 || *max_circle_eccentricity > 1.0 {
-                return Err(anyhow::anyhow!("Circle eccentricity must be between 0.0 and 1.0"));
-            }
-            if *colors < 2 || *colors > 256 {
-                return Err(anyhow::anyhow!("Color count must be between 2 and 256"));
-            }
-            if *quantization_method == QuantizationMethod::Wu && *colors > 64 {
-                log::warn!("Wu quantization is most effective with 64 or fewer colors");
-            }
-            if *segmentation_method == SegmentationMethod::Slic {
-                if *slic_step_px < 12 || *slic_step_px > 120 {
-                    return Err(anyhow::anyhow!("SLIC step (px) should be ~12–120 for 720p–4K images"));
-                }
-                if *slic_compactness < 0.1 || *slic_compactness > 100.0 {
-                    return Err(anyhow::anyhow!("SLIC compactness should be between 0.1 and 100.0"));
-                }
-            }
-            if *gradient_r2_threshold < 0.5 || *gradient_r2_threshold > 1.0 {
-                return Err(anyhow::anyhow!("Gradient R² threshold should be between 0.5 and 1.0"));
-            }
-            if *max_gradient_stops < 2 {
-                return Err(anyhow::anyhow!("Gradient must have at least 2 stops"));
-            }
-            if *merge_threshold < 0.0 {
-                return Err(anyhow::anyhow!("Merge threshold must be non-negative"));
-            }
-            if *simplify_px < 0.0 {
-                return Err(anyhow::anyhow!("Simplification epsilon (pixels) must be non-negative"));
-            }
-            if let Some(frac) = simplify_diag_frac {
-                if *frac < 0.0 {
-                    return Err(anyhow::anyhow!("Simplification epsilon (diagonal fraction) must be non-negative"));
-                }
-            }
-        }
-        _ => {} // No validation needed for other commands
-    }
-    Ok(())
 }
 
 fn main() -> Result<()> {
@@ -803,126 +127,15 @@ fn main() -> Result<()> {
     let log_level = if cli.verbose { "debug" } else { "info" };
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
-    // Configure rayon thread pool if specified
+    // Set thread count if specified
     if let Some(threads) = cli.threads {
         rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
             .build_global()
-            .context("Failed to initialize thread pool")?;
-        log::info!("Using {} threads for parallel processing", threads);
+            .context("Failed to set thread count")?;
     }
 
-    // Validate CLI arguments
-    validate_cli_arguments(&cli.command)?;
-
     match cli.command {
-        Commands::Preset {
-            input,
-            output,
-            preset,
-            max_palette,
-            regions_target,
-            dp_epsilon,
-            disable_adaptive,
-            adaptive_aggressiveness,
-            enable_refinement,
-            refinement_budget,
-            target_delta_e,
-            target_ssim,
-        } => run_preset_command(
-            input,
-            output,
-            preset,
-            max_palette,
-            regions_target,
-            dp_epsilon,
-            !disable_adaptive,
-            adaptive_aggressiveness,
-            enable_refinement,
-            refinement_budget,
-            target_delta_e,
-            target_ssim,
-        ),
-        Commands::Logo {
-            input,
-            output,
-            config,
-            threshold,
-            adaptive,
-            detect_primitives,
-            primitive_tolerance,
-            max_circle_eccentricity,
-            simplify_px,
-            simplify_diag_frac,
-            use_stroke,
-            stroke_width,
-            disable_adaptive,
-            adaptive_aggressiveness,
-        } => vectorize_logo_command(
-            input,
-            output, 
-            config,
-            threshold,
-            adaptive,
-            detect_primitives,
-            primitive_tolerance,
-            max_circle_eccentricity,
-            simplify_px,
-            simplify_diag_frac,
-            use_stroke,
-            stroke_width,
-            !disable_adaptive,
-            adaptive_aggressiveness,
-        ),
-        Commands::Regions {
-            input,
-            output,
-            config,
-            colors,
-            quantization_method,
-            segmentation_method,
-            lab_color,
-            merge_similar_regions,
-            merge_threshold,
-            slic_step_px,
-            slic_compactness,
-            slic_iterations,
-            detect_gradients,
-            gradient_r2_threshold,
-            max_gradient_stops,
-            de_merge_threshold,
-            de_split_threshold,
-            palette_regularization,
-            palette_regularization_k,
-            simplify_px,
-            simplify_diag_frac,
-            disable_adaptive,
-            adaptive_aggressiveness,
-        } => vectorize_regions_command(
-            input,
-            output,
-            config,
-            colors,
-            quantization_method,
-            segmentation_method,
-            lab_color,
-            merge_similar_regions,
-            merge_threshold,
-            slic_step_px,
-            slic_compactness,
-            slic_iterations,
-            detect_gradients,
-            gradient_r2_threshold,
-            max_gradient_stops,
-            de_merge_threshold,
-            de_split_threshold,
-            palette_regularization,
-            palette_regularization_k,
-            simplify_px,
-            simplify_diag_frac,
-            !disable_adaptive,
-            adaptive_aggressiveness,
-        ),
         Commands::TraceLow {
             input,
             output,
@@ -931,2287 +144,303 @@ fn main() -> Result<()> {
             stroke_width,
             seed,
             stats,
-        } => vectorize_trace_low_command(
+            multipass,
+            conservative_detail,
+            aggressive_detail,
+            noise_filtering,
+            enable_reverse,
+            enable_diagonal,
+            directional_threshold,
+            max_time_ms,
+            hand_drawn,
+            tremor,
+            variable_weights,
+        } => {
+            // Validate detail parameter
+            if !(0.0..=1.0).contains(&detail) {
+                anyhow::bail!("Detail level must be between 0.0 and 1.0, got: {}", detail);
+            }
+
+            vectorize_trace_low_command(
+                input,
+                output,
+                backend,
+                detail,
+                stroke_width,
+                seed,
+                stats,
+                multipass,
+                conservative_detail,
+                aggressive_detail,
+                noise_filtering,
+                enable_reverse,
+                enable_diagonal,
+                directional_threshold,
+                max_time_ms,
+                hand_drawn,
+                tremor,
+                variable_weights,
+            )
+        }
+        Commands::Convert {
             input,
             output,
-            backend,
             detail,
             stroke_width,
-            seed,
-            stats,
-        ),
-        Commands::Benchmark {
-            input,
-            algorithm,
-            iterations,
-            output,
-        } => benchmark_command(input, algorithm, iterations, output),
-        Commands::ComprehensiveBench {
-            input,
-            iterations,
-            output,
-            no_debug_images,
-            baseline,
-        } => comprehensive_benchmark_command(input, iterations, output, !no_debug_images, baseline),
-        Commands::PhaseABench {
-            examples_dir,
-            iterations,
-            output,
-            no_debug_images,
-            baseline,
-            delta_e_threshold,
-            ssim_threshold,
-            timing_threshold,
-        } => phase_a_benchmark_command(
-            examples_dir,
-            iterations,
-            output,
-            !no_debug_images,
-            baseline,
-            delta_e_threshold,
-            ssim_threshold,
-            timing_threshold,
-        ),
-        Commands::Batch {
-            input,
-            output,
-            algorithm,
-            config,
-            pattern,
-            // Logo options
-            threshold,
-            adaptive,
-            detect_primitives,
-            primitive_tolerance,
-            max_circle_eccentricity,
-            // Regions options
-            colors,
-            quantization_method,
-            segmentation_method,
-            lab_color,
-            merge_similar_regions,
-            merge_threshold,
-            slic_step_px,
-            slic_compactness,
-            slic_iterations,
-            detect_gradients,
-            gradient_r2_threshold,
-            max_gradient_stops,
-            // Common options
-            simplify_px,
-            simplify_diag_frac,
-        } => batch_command(
-            input, output, algorithm, config, pattern,
-            // Logo options
-            threshold, adaptive, detect_primitives, primitive_tolerance, max_circle_eccentricity,
-            // Regions options
-            colors, quantization_method, segmentation_method, lab_color, merge_similar_regions,
-            merge_threshold, slic_step_px, slic_compactness, slic_iterations, detect_gradients,
-            gradient_r2_threshold, max_gradient_stops,
-            // Common options
-            simplify_px, simplify_diag_frac,
-        ),
-        Commands::Analyze {
-            input,
-            output,
-            detailed,
-        } => analyze_command(input, output, detailed),
-        Commands::Compare {
-            input,
-            svg,
-            output,
-            visual,
-        } => compare_command(input, svg, output, visual),
-        Commands::Presets {
-            action,
-            name,
-        } => presets_command(action, name),
+        } => {
+            // Validate detail parameter
+            if !(0.0..=1.0).contains(&detail) {
+                anyhow::bail!("Detail level must be between 0.0 and 1.0, got: {}", detail);
+            }
+
+            // Use default settings with edge backend
+            vectorize_trace_low_command(
+                input,
+                output,
+                "edge".to_string(),
+                detail,
+                stroke_width,
+                0,                  // default seed
+                None,               // no stats output
+                false,              // no multipass
+                None,               // no conservative detail
+                None,               // no aggressive detail
+                false,              // no noise filtering
+                false,              // no reverse pass
+                false,              // no diagonal pass
+                0.3,                // default directional threshold
+                1500,               // default max time ms
+                "none".to_string(), // no hand-drawn effects
+                None,               // no custom tremor
+                None,               // no custom variable weights
+            )
+        }
     }
 }
 
 fn vectorize_trace_low_command(
     input: PathBuf,
     output: PathBuf,
-    backend: TraceBackend,
+    backend: String,
     detail: f32,
     stroke_width: f32,
-    seed: u64,
+    _seed: u64,
     stats: Option<PathBuf>,
+    multipass: bool,
+    conservative_detail: Option<f32>,
+    aggressive_detail: Option<f32>,
+    noise_filtering: bool,
+    enable_reverse: bool,
+    enable_diagonal: bool,
+    directional_threshold: f32,
+    max_time_ms: u64,
+    hand_drawn: String,
+    tremor: Option<f32>,
+    variable_weights: Option<f32>,
 ) -> Result<()> {
-    log::info!("Loading image: {}", input.display());
-    let img = image::open(&input)
-        .with_context(|| format!("Failed to open image: {}", input.display()))?
-        .to_rgba8();
+    let start_time = Instant::now();
 
-    // Set seed for reproducible results
-    if seed != 0 {
-        log::info!("Using seed {} for reproducible results", seed);
-        // Note: Seed handling would be implemented when needed for randomized algorithms
+    // Read input image
+    let image_data = fs::read(&input)
+        .with_context(|| format!("Failed to read input file: {}", input.display()))?;
+
+    let image = image::load_from_memory(&image_data)
+        .with_context(|| format!("Failed to decode image: {}", input.display()))?;
+
+    let rgba_image = image.to_rgba8();
+
+    println!(
+        "Processing {}x{} image with trace-low algorithm...",
+        rgba_image.width(),
+        rgba_image.height()
+    );
+    println!(
+        "Backend: {backend}, Detail: {detail:.2}, Stroke Width: {stroke_width:.2}"
+    );
+    if multipass {
+        println!(
+            "Multipass: enabled, Conservative: {conservative_detail:?}, Aggressive: {aggressive_detail:?}, Noise filtering: {noise_filtering}"
+        );
+        if enable_reverse || enable_diagonal {
+            println!(
+                "Directional processing: Reverse: {enable_reverse}, Diagonal: {enable_diagonal}, Threshold: {directional_threshold:.2}, Budget: {max_time_ms}ms"
+            );
+        }
+    }
+    if hand_drawn != "none" {
+        println!("Hand-drawn aesthetics: {hand_drawn} preset");
+        if tremor.is_some() || variable_weights.is_some() {
+            println!(
+                "Custom overrides: Tremor: {tremor:?}, Variable weights: {variable_weights:?}"
+            );
+        }
     }
 
-    // Create configuration
+    // Parse backend string to TraceBackend enum
+    let trace_backend = match backend.as_str() {
+        "edge" => TraceBackend::Edge,
+        "centerline" => TraceBackend::Centerline,
+        "superpixel" => TraceBackend::Superpixel,
+        _ => anyhow::bail!(
+            "Invalid backend: {}. Must be one of: edge, centerline, superpixel",
+            backend
+        ),
+    };
+
+    // Create trace-low configuration
     let config = TraceLowConfig {
-        backend,
+        backend: trace_backend,
         detail,
         stroke_px_at_1080p: stroke_width,
+        enable_multipass: multipass,
+        conservative_detail,
+        aggressive_detail,
+        noise_filtering,
+        enable_reverse_pass: enable_reverse,
+        enable_diagonal_pass: enable_diagonal,
+        directional_strength_threshold: directional_threshold,
+        max_processing_time_ms: max_time_ms,
     };
 
-    log::info!("Starting trace-low vectorization with backend {:?}, detail {:.2}", 
-               config.backend, config.detail);
-    let start_time = Instant::now();
-
-    let svg_content = vectorize_trace_low_rgba(&img, &config)
-        .with_context(|| "Trace-low vectorization failed")?;
-
-    let elapsed = start_time.elapsed();
-    log::info!("Vectorization completed in {:.2}s", elapsed.as_secs_f64());
-
-    // Write SVG to output file
-    fs::write(&output, svg_content)
-        .with_context(|| format!("Failed to write SVG to: {}", output.display()))?;
-
-    log::info!("SVG saved to: {}", output.display());
-
-    // Write statistics if requested
-    if let Some(stats_path) = stats {
-        write_trace_low_stats(&img, &config, elapsed.as_secs_f64(), &stats_path)?;
-        log::info!("Statistics saved to: {}", stats_path.display());
-    }
-
-    Ok(())
-}
-
-fn write_trace_low_stats(
-    image: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-    config: &TraceLowConfig,
-    _processing_time: f64,
-    output_path: &PathBuf,
-) -> Result<()> {
-    use std::io::Write;
-
-    let (width, height) = image.dimensions();
-    let pixel_count = width as u64 * height as u64;
-
-    // Create CSV header if file doesn't exist
-    let write_header = !output_path.exists();
-    let mut file = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(output_path)
-        .with_context(|| format!("Failed to open stats file: {}", output_path.display()))?;
-
-    if write_header {
-        writeln!(
-            file,
-            "width,height,pixels,backend,detail,stroke_width,processing_time_s,throughput_mpx_per_s"
-        )?;
-    }
-
-    let throughput = (pixel_count as f64 / 1_000_000.0) / _processing_time;
-    let backend_str = match config.backend {
-        TraceBackend::Edge => "edge",
-        TraceBackend::Centerline => "centerline",
-        TraceBackend::Superpixel => "superpixel",
+    // Create hand-drawn configuration
+    let hand_drawn_config = match hand_drawn.as_str() {
+        "none" => None,
+        "subtle" => Some(HandDrawnPresets::subtle()),
+        "medium" => Some(HandDrawnPresets::medium()),
+        "strong" => Some(HandDrawnPresets::strong()),
+        "sketchy" => Some(HandDrawnPresets::sketchy()),
+        _ => anyhow::bail!(
+            "Invalid hand-drawn preset: {}. Must be one of: none, subtle, medium, strong, sketchy",
+            hand_drawn
+        ),
     };
 
-    writeln!(
-        file,
-        "{},{},{},{},{:.3},{:.1},{:.3},{:.2}",
-        width,
-        height,
-        pixel_count,
-        backend_str,
-        config.detail,
-        config.stroke_px_at_1080p,
-        _processing_time,
-        throughput
-    )?;
-
-    Ok(())
-}
-
-/// Run preset command with predefined configurations
-fn run_preset_command(
-    input: PathBuf,
-    output: PathBuf,
-    preset: PresetType,
-    max_palette: Option<u32>,
-    _regions_target: Option<usize>,
-    dp_epsilon: Option<f32>,
-    adaptive_enabled: bool,
-    adaptive_aggressiveness: f32,
-    enable_refinement: bool,
-    refinement_budget: u32,
-    target_delta_e: f64,
-    target_ssim: f64,
-) -> Result<()> {
-    match preset {
-        PresetType::Photo => {
-            // Photo preset: segmentation-first with gradients and high fidelity
-            let config = create_photo_preset_config(max_palette, dp_epsilon, false);
-            vectorize_regions_with_config(input, output, config)
+    // Apply custom overrides to hand-drawn config
+    let hand_drawn_config = if let Some(mut hd_config) = hand_drawn_config {
+        if let Some(tremor_val) = tremor {
+            if !(0.0..=0.5).contains(&tremor_val) {
+                anyhow::bail!(
+                    "Tremor strength must be between 0.0 and 0.5, got: {}",
+                    tremor_val
+                );
+            }
+            hd_config.tremor_strength = tremor_val;
         }
-        
-        PresetType::PhotoRefined => {
-            // Photo preset with Phase B refinement enabled
-            let config = create_photo_preset_config(max_palette, dp_epsilon, true);
-            vectorize_regions_with_config(input, output, config)
+        if let Some(weights_val) = variable_weights {
+            if !(0.0..=1.0).contains(&weights_val) {
+                anyhow::bail!(
+                    "Variable weights must be between 0.0 and 1.0, got: {}",
+                    weights_val
+                );
+            }
+            hd_config.variable_weights = weights_val;
         }
-        
-        PresetType::Posterized => {
-            // Posterized preset: fixed palette with stylized output
-            let config = create_posterized_preset_config(max_palette, dp_epsilon, false);
-            vectorize_regions_with_config(input, output, config)
-        }
-        
-        PresetType::PosterizedRefined => {
-            // Posterized preset with Phase B refinement enabled
-            let config = create_posterized_preset_config(max_palette, dp_epsilon, true);
-            vectorize_regions_with_config(input, output, config)
-        }
-        
-        PresetType::Logo => {
-            // Logo preset: high-quality binary tracing
-            let config = create_logo_preset_config(dp_epsilon, false);
-            vectorize_logo_with_config(input, output, config)
-        }
-        
-        PresetType::LogoRefined => {
-            // Logo preset with Phase B refinement enabled
-            let config = create_logo_preset_config(dp_epsilon, true);
-            vectorize_logo_with_config(input, output, config)
-        }
-        
-        // Specialized presets
-        PresetType::Portrait => {
-            // Portrait preset: optimized for face/skin tone accuracy
-            let config = create_portrait_preset_config(max_palette, dp_epsilon);
-            vectorize_regions_with_config(input, output, config)
-        }
-        
-        PresetType::Landscape => {
-            // Landscape preset: optimized for natural scenes
-            let config = create_landscape_preset_config(max_palette, dp_epsilon);
-            vectorize_regions_with_config(input, output, config)
-        }
-        
-        PresetType::Illustration => {
-            // Illustration preset: optimized for digital artwork
-            let config = create_illustration_preset_config(max_palette, dp_epsilon);
-            vectorize_regions_with_config(input, output, config)
-        }
-        
-        PresetType::Technical => {
-            // Technical preset: optimized for diagrams and technical drawings
-            let config = create_technical_preset_config(dp_epsilon);
-            vectorize_logo_with_config(input, output, config)
-        }
-        
-        PresetType::Artistic => {
-            // Artistic preset: optimized for creative/stylized effects
-            let config = create_artistic_preset_config(max_palette, dp_epsilon);
-            vectorize_regions_with_config(input, output, config)
-        }
-        
-        PresetType::LowPoly => {
-            // Low-poly preset: placeholder for future implementation
-            eprintln!("Low-poly preset not yet implemented. Using posterized preset instead.");
-            run_preset_command(input, output, PresetType::Posterized, max_palette, _regions_target, dp_epsilon, adaptive_enabled, adaptive_aggressiveness, enable_refinement, refinement_budget, target_delta_e, target_ssim)
-        }
-    }
-}
-
-/// Helper function to vectorize regions with config
-fn vectorize_regions_with_config(
-    input: PathBuf,
-    output: PathBuf,
-    config: RegionsConfig,
-) -> Result<()> {
-    let start = Instant::now();
-    
-    // Load image
-    let img = image::open(&input)
-        .with_context(|| format!("Failed to open input image: {}", input.display()))?
-        .to_rgba8();
-    
-    println!("Processing {} ({}x{}) with photo preset...", 
-             input.display(), img.width(), img.height());
-    
-    // Run vectorization
-    let svg = vectorize_regions_rgba(&img, &config)
-        .context("Failed to vectorize image")?;
-    
-    // Save output
-    fs::write(&output, svg)
-        .with_context(|| format!("Failed to write output file: {}", output.display()))?;
-    
-    let elapsed = start.elapsed();
-    println!("✓ Vectorization complete in {:.2}s", elapsed.as_secs_f32());
-    println!("  Output: {}", output.display());
-    
-    // Write telemetry
-    let (width, height) = img.dimensions();
-    let dump = make_dump(
-        input.to_str().unwrap_or("unknown"),
-        width,
-        height,
-        "regions",
-        Some("superpixel"), // Assuming SLIC segmentation for photo preset
-        serde_json::to_value(&config).unwrap_or_default(),
-        Resolved::default(),
-        Guards::default(),
-        Stats::default(),
-    );
-    
-    write_json_dump(&output, &dump)?;
-    append_runs_csv(&output, &dump)?;
-    
-    Ok(())
-}
-
-/// Helper function to vectorize logo with config
-fn vectorize_logo_with_config(
-    input: PathBuf,
-    output: PathBuf,
-    config: LogoConfig,
-) -> Result<()> {
-    let start = Instant::now();
-    
-    // Load image
-    let img = image::open(&input)
-        .with_context(|| format!("Failed to open input image: {}", input.display()))?
-        .to_rgba8();
-    
-    println!("Processing {} ({}x{}) with logo preset...", 
-             input.display(), img.width(), img.height());
-    
-    // Run vectorization
-    let svg = vectorize_logo_rgba(&img, &config)
-        .context("Failed to vectorize image")?;
-    
-    // Save output
-    fs::write(&output, svg)
-        .with_context(|| format!("Failed to write output file: {}", output.display()))?;
-    
-    let elapsed = start.elapsed();
-    println!("✓ Vectorization complete in {:.2}s", elapsed.as_secs_f32());
-    println!("  Output: {}", output.display());
-    
-    // Write telemetry
-    let (width, height) = img.dimensions();
-    let dump = make_dump(
-        input.to_str().unwrap_or("unknown"),
-        width,
-        height,
-        "logo",
-        None, // No backend for logo mode
-        serde_json::to_value(&config).unwrap_or_default(),
-        Resolved::default(),
-        Guards::default(),
-        Stats::default(),
-    );
-    
-    write_json_dump(&output, &dump)?;
-    append_runs_csv(&output, &dump)?;
-    
-    Ok(())
-}
-
-fn vectorize_logo_command(
-    input: PathBuf,
-    output: PathBuf,
-    config_path: Option<PathBuf>,
-    threshold: u8,
-    adaptive: bool,
-    detect_primitives: bool,
-    primitive_tolerance: f32,
-    max_circle_eccentricity: f32,
-    simplify_px: f64,
-    simplify_diag_frac: Option<f64>,
-    use_stroke: bool,
-    stroke_width: f32,
-    adaptive_enabled: bool,
-    adaptive_aggressiveness: f32,
-) -> Result<()> {
-    log::info!("Loading image: {}", input.display());
-    let img = image::open(&input)
-        .with_context(|| format!("Failed to open image: {}", input.display()))?
-        .to_rgba8();
-
-    // Load or create configuration
-    let mut config = if let Some(config_path) = config_path {
-        load_logo_config(&config_path)?
+        Some(hd_config)
+    } else if tremor.is_some() || variable_weights.is_some() {
+        anyhow::bail!(
+            "Hand-drawn preset must be specified when using custom tremor or variable weights"
+        );
     } else {
-        LogoConfig::default()
+        None
     };
 
-    // Override with CLI parameters
-    config.threshold = threshold;
-    config.adaptive_threshold = adaptive;
-    config.detect_primitives = detect_primitives;
-    config.primitive_fit_tolerance = primitive_tolerance;
-    config.max_circle_eccentricity = max_circle_eccentricity;
-    config.use_stroke = use_stroke;
-    config.stroke_width = stroke_width;
-    
-    // Apply adaptive parameter settings
-    config.enable_adaptive_parameters = adaptive_enabled;
-    if adaptive_enabled {
-        // Scale base parameters by aggressiveness factor
-        config.base_primitive_fit_tolerance *= adaptive_aggressiveness;
-        config.base_min_contour_area = ((config.base_min_contour_area as f32 / adaptive_aggressiveness) as u32).max(4);
-        config.base_morphology_kernel_size = ((config.base_morphology_kernel_size as f32 * adaptive_aggressiveness) as u32).max(1).min(5);
-    }
-    
-    // Set simplification epsilon
-    config.simplification_epsilon = if let Some(frac) = simplify_diag_frac {
-        Epsilon::DiagFrac(frac)
-    } else {
-        Epsilon::Pixels(simplify_px)
-    };
+    // Vectorize
+    let vectorize_start = Instant::now();
+    let svg_content = if hand_drawn_config.is_some() {
+        // Use path-based vectorization for hand-drawn effects
+        let paths = vectorize_trace_low(&rgba_image, &config).context("Vectorization failed")?;
 
-    log::info!("Starting logo vectorization with config: {:?}", config);
-    let start_time = Instant::now();
-
-    // Auto-retry loop for quality improvements
-    let mut retries = 0;
-    let svg_content = loop {
-        let svg_result = vectorize_logo_rgba(&img, &config)
-            .with_context(|| "Logo vectorization failed")?;
-            
-        // Calculate stats for retry logic
-        let stats = analyze_svg_output(&svg_result, img.width() * img.height())?;
-        
-        if maybe_retry_logo(&stats, &mut config, &mut retries) {
-            log::info!("Retrying logo vectorization with adjusted config (attempt {})", retries + 1);
-            continue;
-        }
-        
-        break svg_result;
-    };
-
-    let elapsed = start_time.elapsed();
-    log::info!("Vectorization completed in {:.2}s with {} retries", elapsed.as_secs_f64(), retries);
-
-    // Write SVG to output file
-    fs::write(&output, &svg_content)
-        .with_context(|| format!("Failed to write SVG to: {}", output.display()))?;
-
-    log::info!("SVG saved to: {}", output.display());
-    
-    // Collect telemetry data and write dump
-    write_logo_telemetry(
-        &input, &output, &img, &config, &svg_content, elapsed.as_secs_f64(), retries
-    )?;
-    
-    Ok(())
-}
-
-fn vectorize_regions_command(
-    input: PathBuf,
-    output: PathBuf,
-    config_path: Option<PathBuf>,
-    colors: u32,
-    quantization_method: QuantizationMethod,
-    segmentation_method: SegmentationMethod,
-    lab_color: bool,
-    merge_similar_regions: bool,
-    merge_threshold: f64,
-    slic_step_px: u32,
-    slic_compactness: f32,
-    slic_iterations: u32,
-    detect_gradients: bool,
-    gradient_r2_threshold: f64,
-    max_gradient_stops: usize,
-    de_merge_threshold: f64,
-    de_split_threshold: f64,
-    palette_regularization: bool,
-    palette_regularization_k: u32,
-    simplify_px: f64,
-    simplify_diag_frac: Option<f64>,
-    adaptive_enabled: bool,
-    adaptive_aggressiveness: f32,
-) -> Result<()> {
-    log::info!("Loading image: {}", input.display());
-    let img = image::open(&input)
-        .with_context(|| format!("Failed to open image: {}", input.display()))?
-        .to_rgba8();
-
-    // Load or create configuration
-    let mut config = if let Some(config_path) = config_path {
-        load_regions_config(&config_path)?
-    } else {
-        RegionsConfig::default()
-    };
-
-    // Override with CLI parameters
-    config.num_colors = colors;
-    config.quantization_method = quantization_method;
-    config.segmentation_method = segmentation_method;
-    config.use_lab_color = lab_color;
-    config.merge_similar_regions = merge_similar_regions;
-    config.merge_threshold = merge_threshold;
-    config.slic_step_px = slic_step_px;
-    config.slic_compactness = slic_compactness;
-    config.slic_iterations = slic_iterations;
-    config.detect_gradients = detect_gradients;
-    config.gradient_r_squared_threshold = gradient_r2_threshold;
-    config.max_gradient_stops = max_gradient_stops;
-    config.de_merge_threshold = de_merge_threshold;
-    config.de_split_threshold = de_split_threshold;
-    config.palette_regularization = palette_regularization;
-    config.palette_regularization_k = palette_regularization_k;
-    
-    // Apply adaptive parameter settings
-    config.enable_adaptive_parameters = adaptive_enabled;
-    if adaptive_enabled {
-        // Scale base parameters by aggressiveness factor
-        config.base_slic_step_px = ((config.base_slic_step_px as f32 / adaptive_aggressiveness) as u32).max(12).min(120);
-        config.base_num_colors = ((config.base_num_colors as f32 * adaptive_aggressiveness) as u32).max(8).min(64);
-        config.base_merge_threshold *= adaptive_aggressiveness as f64;
-        config.base_de_merge_threshold *= adaptive_aggressiveness as f64;
-    }
-    
-    // Set simplification epsilon
-    config.simplification_epsilon = if let Some(frac) = simplify_diag_frac {
-        Epsilon::DiagFrac(frac)
-    } else {
-        Epsilon::Pixels(simplify_px)
-    };
-
-    log::info!("Starting regions vectorization with config: {:?}", config);
-    let start_time = Instant::now();
-
-    // Auto-retry loop for quality improvements
-    let mut retries = 0;
-    let svg_content = loop {
-        let svg_result = vectorize_regions_rgba(&img, &config)
-            .with_context(|| "Regions vectorization failed")?;
-            
-        // Calculate stats for retry logic
-        let stats = analyze_svg_output(&svg_result, img.width() * img.height())?;
-        
-        if maybe_retry_regions(&stats, &mut config, &mut retries) {
-            log::info!("Retrying regions vectorization with adjusted config (attempt {})", retries + 1);
-            continue;
-        }
-        
-        break svg_result;
-    };
-
-    let elapsed = start_time.elapsed();
-    log::info!("Vectorization completed in {:.2}s with {} retries", elapsed.as_secs_f64(), retries);
-
-    // Write SVG to output file
-    fs::write(&output, &svg_content)
-        .with_context(|| format!("Failed to write SVG to: {}", output.display()))?;
-
-    log::info!("SVG saved to: {}", output.display());
-    
-    // Collect telemetry data and write dump
-    write_regions_telemetry(
-        &input, &output, &img, &config, &svg_content, elapsed.as_secs_f64(), retries
-    )?;
-    
-    Ok(())
-}
-
-fn benchmark_command(
-    input: PathBuf,
-    algorithm: String,
-    iterations: usize,
-    output: Option<PathBuf>,
-) -> Result<()> {
-    log::info!("Starting benchmark with {} iterations", iterations);
-
-    // Load test image
-    let img = image::open(&input)
-        .with_context(|| format!("Failed to open image: {}", input.display()))?
-        .to_rgba8();
-
-    let (width, height) = img.dimensions();
-    log::info!("Image dimensions: {}x{}", width, height);
-
-    let mut results = Vec::new();
-
-    if algorithm == "logo" || algorithm == "both" {
-        let config = LogoConfig::default();
-        let times = benchmark_logo(&img, &config, iterations)?;
-        results.push(BenchmarkResult {
-            algorithm: "logo".to_string(),
-            iterations,
-            times,
-            image_size: (width, height),
-        });
-    }
-
-    if algorithm == "regions" || algorithm == "both" {
-        let config = RegionsConfig::default();
-        let times = benchmark_regions(&img, &config, iterations)?;
-        results.push(BenchmarkResult {
-            algorithm: "regions".to_string(),
-            iterations,
-            times,
-            image_size: (width, height),
-        });
-    }
-
-    // Print results
-    for result in &results {
-        result.print_summary();
-    }
-
-    // Save results if requested
-    if let Some(output_path) = output {
-        let json = serde_json::to_string_pretty(&results)
-            .context("Failed to serialize benchmark results")?;
-        fs::write(&output_path, json)
-            .with_context(|| format!("Failed to write results to: {}", output_path.display()))?;
-        log::info!("Benchmark results saved to: {}", output_path.display());
-    }
-
-    Ok(())
-}
-
-fn batch_command(
-    input: PathBuf,
-    output: PathBuf,
-    algorithm: String,
-    config_path: Option<PathBuf>,
-    pattern: String,
-    // Logo options
-    threshold: u8,
-    adaptive: bool,
-    detect_primitives: bool,
-    primitive_tolerance: f32,
-    max_circle_eccentricity: f32,
-    // Regions options
-    colors: u32,
-    quantization_method: QuantizationMethod,
-    segmentation_method: SegmentationMethod,
-    lab_color: bool,
-    merge_similar_regions: bool,
-    merge_threshold: f64,
-    slic_step_px: u32,
-    slic_compactness: f32,
-    slic_iterations: u32,
-    detect_gradients: bool,
-    gradient_r2_threshold: f64,
-    max_gradient_stops: usize,
-    // Common options
-    simplify_px: f64,
-    simplify_diag_frac: Option<f64>,
-) -> Result<()> {
-    log::info!(
-        "Batch processing from {} to {} using {} algorithm",
-        input.display(),
-        output.display(),
-        algorithm
-    );
-
-    // Create output directory if it doesn't exist
-    fs::create_dir_all(&output)
-        .with_context(|| format!("Failed to create output directory: {}", output.display()))?;
-
-    // Find all matching image files in input directory
-    let image_files = find_image_files(&input, &pattern)?;
-    if image_files.is_empty() {
-        return Err(anyhow::anyhow!(
-            "No image files found in {} matching pattern '{}'", 
-            input.display(), 
-            pattern
-        ));
-    }
-
-    log::info!("Found {} image files to process", image_files.len());
-
-    let mut successful = 0;
-    let mut failed = 0;
-
-    for image_file in image_files {
-        let file_name = image_file
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .ok_or_else(|| anyhow::anyhow!("Invalid filename: {}", image_file.display()))?;
-
-        let output_file = output.join(format!("{}.svg", file_name));
-
-        log::info!("Processing: {} -> {}", image_file.display(), output_file.display());
-
-        let result = match algorithm.as_str() {
-            "logo" => vectorize_logo_command(
-                image_file.clone(),
-                output_file,
-                config_path.clone(),
-                threshold,
-                adaptive,
-                detect_primitives,
-                primitive_tolerance,
-                max_circle_eccentricity,
-                simplify_px,
-                simplify_diag_frac,
-                true,  // use_stroke default
-                1.2,   // stroke_width default
-                true,  // adaptive_enabled default
-                1.0,   // adaptive_aggressiveness default
-            ),
-            "regions" => vectorize_regions_command(
-                image_file.clone(),
-                output_file,
-                config_path.clone(),
-                colors,
-                quantization_method.clone(),
-                segmentation_method.clone(),
-                lab_color,
-                merge_similar_regions,
-                merge_threshold,
-                slic_step_px,
-                slic_compactness,
-                slic_iterations,
-                detect_gradients,
-                gradient_r2_threshold,
-                max_gradient_stops,
-                1.8,    // de_merge_threshold default
-                3.5,    // de_split_threshold default
-                true,   // palette_regularization default
-                12,     // palette_regularization_k default
-                simplify_px,
-                simplify_diag_frac,
-                true,   // adaptive_enabled default
-                1.0,    // adaptive_aggressiveness default
-            ),
-            _ => return Err(anyhow::anyhow!("Invalid algorithm '{}'. Use 'logo' or 'regions'", algorithm)),
+        let processed_paths = if let Some(hd_config) = hand_drawn_config {
+            apply_hand_drawn_aesthetics(paths, &hd_config)
+        } else {
+            paths
         };
 
-        match result {
-            Ok(_) => {
-                successful += 1;
-                log::info!("Successfully processed: {}", image_file.display());
-            }
-            Err(e) => {
-                failed += 1;
-                log::error!("Failed to process {}: {}", image_file.display(), e);
-            }
-        }
-    }
+        let svg_config = SvgConfig::default();
+        generate_svg_document(
+            &processed_paths,
+            rgba_image.width(),
+            rgba_image.height(),
+            &svg_config,
+        )
+    } else {
+        // Use optimized direct SVG generation for speed
+        vectorize_trace_low_rgba(&rgba_image, &config).context("Vectorization failed")?
+    };
+    let vectorize_time = vectorize_start.elapsed();
 
-    log::info!(
-        "Batch processing complete: {} successful, {} failed",
-        successful, failed
+    // Write output
+    fs::write(&output, &svg_content)
+        .with_context(|| format!("Failed to write output file: {}", output.display()))?;
+
+    let total_time = start_time.elapsed();
+
+    println!(
+        "✓ Vectorization completed in {:.2}s",
+        vectorize_time.as_secs_f64()
     );
+    println!("✓ Total time: {:.2}s", total_time.as_secs_f64());
+    println!("✓ SVG saved to: {}", output.display());
 
-    if failed > 0 {
-        Err(anyhow::anyhow!("{} files failed to process", failed))
-    } else {
-        Ok(())
-    }
-}
-
-/// Find image files in a directory matching the given pattern
-fn find_image_files(dir: &PathBuf, pattern: &str) -> Result<Vec<PathBuf>> {
-    let mut image_files = Vec::new();
-    
-    if !dir.is_dir() {
-        return Err(anyhow::anyhow!("Input path is not a directory: {}", dir.display()));
-    }
-
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        
-        if !path.is_file() {
-            continue;
-        }
-
-        // Check file extension for image types
-        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-            match ext.to_lowercase().as_str() {
-                "png" | "jpg" | "jpeg" | "webp" => {
-                    // Simple pattern matching - for now just check if pattern is "*" or matches the filename
-                    if pattern == "*" {
-                        image_files.push(path);
-                    } else if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-                        // Simple pattern matching - you could extend this with proper glob matching
-                        if file_name.contains(pattern.trim_matches('*')) {
-                            image_files.push(path);
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-
-    // Sort files for consistent processing order
-    image_files.sort();
-    Ok(image_files)
-}
-
-fn load_logo_config(path: &PathBuf) -> Result<LogoConfig> {
-    let content = fs::read_to_string(path)
-        .with_context(|| format!("Failed to read config file: {}", path.display()))?;
-    let config: LogoConfig = serde_json::from_str(&content)
-        .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
-    Ok(config)
-}
-
-fn load_regions_config(path: &PathBuf) -> Result<RegionsConfig> {
-    let content = fs::read_to_string(path)
-        .with_context(|| format!("Failed to read config file: {}", path.display()))?;
-    let config: RegionsConfig = serde_json::from_str(&content)
-        .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
-    Ok(config)
-}
-
-fn benchmark_logo(
-    img: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-    config: &LogoConfig,
-    iterations: usize,
-) -> Result<Vec<f64>> {
-    let mut times = Vec::with_capacity(iterations);
-
-    for i in 0..iterations {
-        log::debug!("Logo benchmark iteration {}/{}", i + 1, iterations);
-        let start = Instant::now();
-
-        vectorize_logo_rgba(img, config).context("Logo vectorization failed during benchmark")?;
-
-        times.push(start.elapsed().as_secs_f64());
-    }
-
-    Ok(times)
-}
-
-fn benchmark_regions(
-    img: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-    config: &RegionsConfig,
-    iterations: usize,
-) -> Result<Vec<f64>> {
-    let mut times = Vec::with_capacity(iterations);
-
-    for i in 0..iterations {
-        log::debug!("Regions benchmark iteration {}/{}", i + 1, iterations);
-        let start = Instant::now();
-
-        vectorize_regions_rgba(img, config)
-            .context("Regions vectorization failed during benchmark")?;
-
-        times.push(start.elapsed().as_secs_f64());
-    }
-
-    Ok(times)
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct BenchmarkResult {
-    algorithm: String,
-    iterations: usize,
-    times: Vec<f64>,
-    image_size: (u32, u32),
-}
-
-impl BenchmarkResult {
-    fn print_summary(&self) {
-        let mean = self.times.iter().sum::<f64>() / self.times.len() as f64;
-        let min = self.times.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        let max = self.times.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-
-        let variance =
-            self.times.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / self.times.len() as f64;
-        let std_dev = variance.sqrt();
-
-        println!(
-            "\n{} Algorithm Benchmark Results:",
-            self.algorithm.to_uppercase()
+    // Output statistics if requested
+    if let Some(stats_path) = stats {
+        let stats = create_trace_stats(
+            &svg_content,
+            rgba_image.width() * rgba_image.height(),
+            vectorize_time,
         );
-        println!("Image size: {}x{}", self.image_size.0, self.image_size.1);
-        println!("Iterations: {}", self.iterations);
-        println!("Mean time: {:.3}s", mean);
-        println!("Min time:  {:.3}s", min);
-        println!("Max time:  {:.3}s", max);
-        println!("Std dev:   {:.3}s", std_dev);
 
-        let pixels = self.image_size.0 as f64 * self.image_size.1 as f64;
-        let mpixels_per_sec = (pixels / 1_000_000.0) / mean;
-        println!("Throughput: {:.2} megapixels/second", mpixels_per_sec);
-    }
-}
+        // Write simple CSV stats
+        let csv_header = "input,backend,detail,stroke_width,paths,svg_bytes,processing_time_ms\n";
+        let csv_row = format!(
+            "{},{},{:.2},{:.2},{},{},{}\n",
+            input
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown"),
+            backend,
+            detail,
+            stroke_width,
+            stats.paths,
+            stats.svg_bytes,
+            stats.processing_time_ms
+        );
 
-/// Run comprehensive benchmark suite with SSIM and SVG analysis
-fn comprehensive_benchmark_command(
-    input_paths: Vec<PathBuf>,
-    iterations: usize,
-    output_dir: PathBuf,
-    save_debug_images: bool,
-    baseline_path: Option<PathBuf>,
-) -> Result<()> {
-    log::info!("Starting comprehensive benchmark suite");
-    
-    // Collect test images from input paths
-    let mut test_images = Vec::new();
-    for input_path in input_paths {
-        if input_path.is_file() {
-            // Single image file
-            test_images.push(input_path);
-        } else if input_path.is_dir() {
-            // Directory - find all image files
-            for entry in fs::read_dir(&input_path)? {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_file() {
-                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                        match ext.to_lowercase().as_str() {
-                            "png" | "jpg" | "jpeg" | "webp" => {
-                                test_images.push(path);
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
+        // Write or append to CSV
+        let csv_content = if stats_path.exists() {
+            csv_row
         } else {
-            log::warn!("Input path does not exist: {}", input_path.display());
-        }
-    }
+            format!("{csv_header}{csv_row}")
+        };
 
-    if test_images.is_empty() {
-        return Err(anyhow::anyhow!("No test images found in input paths"));
-    }
+        fs::write(&stats_path, csv_content)
+            .with_context(|| format!("Failed to write stats to: {}", stats_path.display()))?;
 
-    log::info!("Found {} test images", test_images.len());
-
-    // Create benchmark configuration
-    let config = BenchmarkConfig {
-        iterations,
-        test_images,
-        output_dir: output_dir.clone(),
-        save_debug_images,
-        baseline_config: None, // TODO: Load baseline if provided
-    };
-
-    // Run benchmark suite
-    let suite = BenchmarkSuite::new(config);
-    let report = suite.run_full_benchmark()
-        .context("Comprehensive benchmark failed")?;
-
-    // Print summary to console
-    print_comprehensive_summary(&report);
-
-    // Save detailed reports
-    suite.save_report(&report)
-        .context("Failed to save benchmark report")?;
-
-    // Load and compare with baseline if provided
-    if let Some(baseline_path) = baseline_path {
-        match load_baseline_report(&baseline_path) {
-            Ok(baseline_report) => {
-                print_baseline_comparison(&report, &baseline_report);
-            }
-            Err(e) => {
-                log::warn!("Failed to load baseline report: {}", e);
-            }
-        }
+        println!("✓ Statistics saved to: {}", stats_path.display());
     }
 
     Ok(())
 }
 
-/// Print comprehensive benchmark summary to console
-fn print_comprehensive_summary(report: &BenchmarkReport) {
-    println!("\n=== COMPREHENSIVE BENCHMARK RESULTS ===");
-    println!("Total Tests: {}", report.summary.total_tests);
-    println!("Tests Passed: {} ({:.1}% pass rate)", 
-             report.summary.tests_passed, report.summary.pass_rate);
-    println!("Average SSIM: {:.3} (target ≥ 0.92)", report.summary.avg_ssim);
-    
-    if let Some(node_growth) = report.summary.avg_node_growth {
-        println!("Average Node Growth: {:.1}% (target ≤ 40%)", node_growth);
-    }
-    
-    println!("Average Processing Time: {:.3}s", report.summary.avg_processing_time);
-    
-    // Research targets summary
-    let ssim_pass_rate = report.results.iter()
-        .filter(|r| r.ssim.meets_target())
-        .count() as f64 / report.results.len() as f64 * 100.0;
-    
-    println!("\n=== RESEARCH TARGETS ===");
-    println!("SSIM Target (≥ 0.92): {:.1}% pass rate", ssim_pass_rate);
-    
-    if report.results.iter().any(|r| r.comparison.is_some()) {
-        let node_pass_rate = report.results.iter()
-            .filter(|r| r.comparison.as_ref().map(|c| c.meets_node_target).unwrap_or(true))
-            .count() as f64 / report.results.len() as f64 * 100.0;
-        println!("Node Count Target (≤ 40% growth): {:.1}% pass rate", node_pass_rate);
-    }
-
-    println!("\n=== TOP PERFORMING CONFIGURATIONS ===");
-    let mut sorted_results = report.results.clone();
-    sorted_results.sort_by(|a, b| b.ssim.ssim.partial_cmp(&a.ssim.ssim).unwrap_or(std::cmp::Ordering::Equal));
-    
-    for (i, result) in sorted_results.iter().take(5).enumerate() {
-        println!("{}. {} | {} | {} | SSIM: {:.3} | Time: {:.2}s", 
-                 i + 1,
-                 result.image_name,
-                 result.algorithm,
-                 result.config_name,
-                 result.ssim.ssim,
-                 result.timing.mean_time);
-    }
-
-    println!("\nDetailed reports saved to: {}", report.config.output_dir.display());
+#[derive(Debug)]
+struct SimpleStats {
+    paths: usize,
+    svg_bytes: u64,
+    processing_time_ms: u64,
 }
 
-/// Load baseline benchmark report for comparison
-fn load_baseline_report(baseline_path: &std::path::Path) -> Result<BenchmarkReport> {
-    let content = fs::read_to_string(baseline_path)
-        .context("Failed to read baseline report file")?;
-    let report: BenchmarkReport = serde_json::from_str(&content)
-        .context("Failed to parse baseline report JSON")?;
-    Ok(report)
-}
-
-/// Print comparison with baseline results
-fn print_baseline_comparison(current: &BenchmarkReport, baseline: &BenchmarkReport) {
-    println!("\n=== BASELINE COMPARISON ===");
-    
-    let current_avg_ssim = current.summary.avg_ssim;
-    let baseline_avg_ssim = baseline.summary.avg_ssim;
-    let ssim_change = ((current_avg_ssim - baseline_avg_ssim) / baseline_avg_ssim) * 100.0;
-    
-    println!("SSIM Change: {:.3} -> {:.3} ({:+.1}%)", 
-             baseline_avg_ssim, current_avg_ssim, ssim_change);
-    
-    let current_time = current.summary.avg_processing_time;
-    let baseline_time = baseline.summary.avg_processing_time;
-    let time_change = ((current_time - baseline_time) / baseline_time) * 100.0;
-    
-    println!("Processing Time Change: {:.3}s -> {:.3}s ({:+.1}%)", 
-             baseline_time, current_time, time_change);
-    
-    let current_pass_rate = current.summary.pass_rate;
-    let baseline_pass_rate = baseline.summary.pass_rate;
-    
-    println!("Pass Rate Change: {:.1}% -> {:.1}% ({:+.1} points)", 
-             baseline_pass_rate, current_pass_rate, current_pass_rate - baseline_pass_rate);
-}
-
-/// Create photo preset configuration (adaptive parameters, high fidelity)
-fn create_photo_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>, _enable_refinement: bool) -> RegionsConfig {
-    RegionsConfig {
-        num_colors: max_palette.unwrap_or(40),
-        max_dimension: 1024,
-        segmentation_method: SegmentationMethod::Slic,
-        quantization_method: QuantizationMethod::Wu,
-        use_lab_color: true,
-        merge_similar_regions: true,
-        merge_threshold: 2.0, // Low ΔE threshold for photo quality
-        detect_gradients: true,
-        gradient_r_squared_threshold: 0.7,
-        max_gradient_stops: 3,
-        min_gradient_region_area: 50,
-        radial_symmetry_threshold: 0.8,
-        slic_step_px: 20,
-        slic_compactness: 15.0,
-        slic_iterations: 10,
-        de_merge_threshold: 2.5,
-        de_split_threshold: 8.0,
-        palette_regularization: true,
-        palette_regularization_k: 30, // Target ~30 colors for photo preset
-        simplification_epsilon: Epsilon::DiagFrac(
-            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0015)
-        ),
-        fit_curves: true,
-        curve_tolerance: 0.8,
-        min_region_area: 20,
-        max_iterations: 30,
-        convergence_threshold: 0.5,
-        detect_primitives: false,
-        primitive_fit_tolerance: 0.0,
-        max_circle_eccentricity: 0.0,
-        // Adaptive parameters for photo preset
-        enable_adaptive_parameters: true,
-        base_slic_step_px: 20,
-        base_num_colors: 40,
-        base_merge_threshold: 2.0,
-        base_de_merge_threshold: 2.5,
-    }
-}
-
-/// Create posterized preset configuration (stylized, fewer colors)
-fn create_posterized_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>, _enable_refinement: bool) -> RegionsConfig {
-    RegionsConfig {
-        num_colors: max_palette.unwrap_or(12),
-        max_dimension: 1024,
-        segmentation_method: SegmentationMethod::KMeans,
-        quantization_method: QuantizationMethod::Wu,
-        use_lab_color: true,
-        merge_similar_regions: true,
-        merge_threshold: 5.0, // Higher threshold for more merging
-        detect_gradients: false, // No gradients for posterized look
-        gradient_r_squared_threshold: 0.0,
-        max_gradient_stops: 0,
-        min_gradient_region_area: 0,
-        radial_symmetry_threshold: 0.0,
-        slic_step_px: 40,
-        slic_compactness: 10.0,
-        slic_iterations: 5,
-        de_merge_threshold: 5.0,
-        de_split_threshold: 15.0,
-        palette_regularization: true,
-        palette_regularization_k: 10, // Target ~10 colors for posterized preset
-        simplification_epsilon: Epsilon::DiagFrac(
-            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.002)
-        ),
-        fit_curves: true,
-        curve_tolerance: 1.0,
-        min_region_area: 50,
-        max_iterations: 20,
-        convergence_threshold: 1.0,
-        detect_primitives: false,
-        primitive_fit_tolerance: 0.0,
-        max_circle_eccentricity: 0.0,
-        // Adaptive parameters for posterized preset
-        enable_adaptive_parameters: true,
-        base_slic_step_px: 40,
-        base_num_colors: 12,
-        base_merge_threshold: 5.0,
-        base_de_merge_threshold: 5.0,
-    }
-}
-
-/// Create logo preset configuration (binary tracing, primitives)
-fn create_logo_preset_config(dp_epsilon: Option<f32>, _enable_refinement: bool) -> LogoConfig {
-    LogoConfig {
-        max_dimension: 1024,
-        threshold: 128,
-        adaptive_threshold: true,
-        morphology_kernel_size: 2,
-        min_contour_area: 25,
-        simplification_epsilon: Epsilon::DiagFrac(
-            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.001)
-        ),
-        fit_curves: true,
-        curve_tolerance: 0.5,
-        detect_primitives: true,
-        primitive_fit_tolerance: 2.0,
-        max_circle_eccentricity: 0.15,
-        use_stroke: false,
-        stroke_width: 1.0,
-        // Adaptive parameters
-        enable_adaptive_parameters: true, // Enable by default for CLI
-        base_primitive_fit_tolerance: 2.0,
-        base_min_contour_area: 25,
-        base_morphology_kernel_size: 2,
-        max_primitive_size_fraction: 0.25,
-        min_primitive_size_px: 4.0,
-    }
-}
-
-/// Create portrait preset configuration (optimized for faces and skin tones)
-fn create_portrait_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>) -> RegionsConfig {
-    RegionsConfig {
-        num_colors: max_palette.unwrap_or(35),
-        max_dimension: 1024,
-        segmentation_method: SegmentationMethod::Slic,
-        quantization_method: QuantizationMethod::Wu,
-        use_lab_color: true,
-        merge_similar_regions: true,
-        merge_threshold: 1.5, // Very low ΔE for skin tone accuracy
-        detect_gradients: true,
-        gradient_r_squared_threshold: 0.75, // Higher threshold for smoother skin
-        max_gradient_stops: 4,
-        min_gradient_region_area: 30,
-        radial_symmetry_threshold: 0.85,
-        slic_step_px: 18, // Finer segmentation for facial features
-        slic_compactness: 20.0, // Higher compactness for facial regions
-        slic_iterations: 12,
-        de_merge_threshold: 1.8, // Strict merging for skin tone preservation
-        de_split_threshold: 6.0, // More aggressive splitting for detail
-        palette_regularization: true,
-        palette_regularization_k: 28,
-        simplification_epsilon: Epsilon::DiagFrac(
-            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0012) // Finer detail
-        ),
-        fit_curves: true,
-        curve_tolerance: 0.6,
-        min_region_area: 15, // Smaller regions for facial details
-        max_iterations: 35,
-        convergence_threshold: 0.3,
-        detect_primitives: false,
-        primitive_fit_tolerance: 0.0,
-        max_circle_eccentricity: 0.0,
-        // Adaptive parameters optimized for portraits
-        enable_adaptive_parameters: true,
-        base_slic_step_px: 18,
-        base_num_colors: 35,
-        base_merge_threshold: 1.5,
-        base_de_merge_threshold: 1.8,
-    }
-}
-
-/// Create landscape preset configuration (optimized for natural scenes)
-fn create_landscape_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>) -> RegionsConfig {
-    RegionsConfig {
-        num_colors: max_palette.unwrap_or(50),
-        max_dimension: 1024,
-        segmentation_method: SegmentationMethod::Slic,
-        quantization_method: QuantizationMethod::Wu,
-        use_lab_color: true,
-        merge_similar_regions: true,
-        merge_threshold: 2.5, // Allow more merging for natural textures
-        detect_gradients: true,
-        gradient_r_squared_threshold: 0.6, // Lower threshold for natural gradients
-        max_gradient_stops: 5,
-        min_gradient_region_area: 80, // Larger gradient regions for skies/water
-        radial_symmetry_threshold: 0.7,
-        slic_step_px: 25, // Coarser segmentation for landscapes
-        slic_compactness: 12.0,
-        slic_iterations: 8,
-        de_merge_threshold: 3.0,
-        de_split_threshold: 10.0,
-        palette_regularization: true,
-        palette_regularization_k: 38,
-        simplification_epsilon: Epsilon::DiagFrac(
-            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0018) // Coarser for natural scenes
-        ),
-        fit_curves: true,
-        curve_tolerance: 0.9,
-        min_region_area: 40, // Larger regions for natural elements
-        max_iterations: 25,
-        convergence_threshold: 0.7,
-        detect_primitives: false,
-        primitive_fit_tolerance: 0.0,
-        max_circle_eccentricity: 0.0,
-        // Adaptive parameters optimized for landscapes
-        enable_adaptive_parameters: true,
-        base_slic_step_px: 25,
-        base_num_colors: 50,
-        base_merge_threshold: 2.5,
-        base_de_merge_threshold: 3.0,
-    }
-}
-
-/// Create illustration preset configuration (optimized for digital artwork)
-fn create_illustration_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>) -> RegionsConfig {
-    RegionsConfig {
-        num_colors: max_palette.unwrap_or(24),
-        max_dimension: 1024,
-        segmentation_method: SegmentationMethod::KMeans, // Better for flat art styles
-        quantization_method: QuantizationMethod::Wu,
-        use_lab_color: true,
-        merge_similar_regions: true,
-        merge_threshold: 3.0,
-        detect_gradients: true,
-        gradient_r_squared_threshold: 0.8, // High threshold for clean gradients
-        max_gradient_stops: 3,
-        min_gradient_region_area: 60,
-        radial_symmetry_threshold: 0.85,
-        slic_step_px: 30,
-        slic_compactness: 15.0,
-        slic_iterations: 6,
-        de_merge_threshold: 3.5,
-        de_split_threshold: 12.0,
-        palette_regularization: true,
-        palette_regularization_k: 20,
-        simplification_epsilon: Epsilon::DiagFrac(
-            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0016)
-        ),
-        fit_curves: true,
-        curve_tolerance: 0.7,
-        min_region_area: 30,
-        max_iterations: 25,
-        convergence_threshold: 0.6,
-        detect_primitives: false,
-        primitive_fit_tolerance: 0.0,
-        max_circle_eccentricity: 0.0,
-        // Adaptive parameters optimized for illustrations
-        enable_adaptive_parameters: true,
-        base_slic_step_px: 30,
-        base_num_colors: 24,
-        base_merge_threshold: 3.0,
-        base_de_merge_threshold: 3.5,
-    }
-}
-
-/// Create technical preset configuration (optimized for diagrams and technical drawings)
-fn create_technical_preset_config(dp_epsilon: Option<f32>) -> LogoConfig {
-    LogoConfig {
-        max_dimension: 1024,
-        threshold: 140, // Higher threshold for clean technical lines
-        adaptive_threshold: false, // Use fixed threshold for consistency
-        morphology_kernel_size: 1, // Minimal morphology for crisp lines
-        min_contour_area: 12, // Smaller areas for technical details
-        simplification_epsilon: Epsilon::DiagFrac(
-            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0008) // Very fine detail
-        ),
-        fit_curves: true,
-        curve_tolerance: 0.3, // Strict curve fitting
-        detect_primitives: true,
-        primitive_fit_tolerance: 1.5, // Strict primitive detection
-        max_circle_eccentricity: 0.10, // Very strict circles
-        use_stroke: true, // Technical drawings as strokes
-        stroke_width: 1.0,
-        // Adaptive parameters for technical precision
-        enable_adaptive_parameters: true,
-        base_primitive_fit_tolerance: 1.5,
-        base_min_contour_area: 12,
-        base_morphology_kernel_size: 1,
-        max_primitive_size_fraction: 0.3,
-        min_primitive_size_px: 3.0,
-    }
-}
-
-/// Create artistic preset configuration (optimized for creative/stylized effects)
-fn create_artistic_preset_config(max_palette: Option<u32>, dp_epsilon: Option<f32>) -> RegionsConfig {
-    RegionsConfig {
-        num_colors: max_palette.unwrap_or(16),
-        max_dimension: 1024,
-        segmentation_method: SegmentationMethod::KMeans,
-        quantization_method: QuantizationMethod::Wu,
-        use_lab_color: true,
-        merge_similar_regions: true,
-        merge_threshold: 4.0, // More aggressive merging for stylized look
-        detect_gradients: false, // No gradients for flat artistic style
-        gradient_r_squared_threshold: 0.0,
-        max_gradient_stops: 0,
-        min_gradient_region_area: 0,
-        radial_symmetry_threshold: 0.0,
-        slic_step_px: 45,
-        slic_compactness: 8.0,
-        slic_iterations: 4,
-        de_merge_threshold: 6.0,
-        de_split_threshold: 18.0,
-        palette_regularization: true,
-        palette_regularization_k: 12, // Reduced palette for artistic effect
-        simplification_epsilon: Epsilon::DiagFrac(
-            dp_epsilon.map(|e| e as f64 / 1000.0).unwrap_or(0.0025) // More aggressive simplification
-        ),
-        fit_curves: true,
-        curve_tolerance: 1.2,
-        min_region_area: 80, // Larger regions for bold artistic style
-        max_iterations: 20,
-        convergence_threshold: 1.0,
-        detect_primitives: false,
-        primitive_fit_tolerance: 0.0,
-        max_circle_eccentricity: 0.0,
-        // Adaptive parameters for artistic effect
-        enable_adaptive_parameters: true,
-        base_slic_step_px: 45,
-        base_num_colors: 16,
-        base_merge_threshold: 4.0,
-        base_de_merge_threshold: 6.0,
-    }
-}
-
-/// Analyze image command - provides detailed analysis and parameter recommendations
-fn analyze_command(input: PathBuf, output: Option<PathBuf>, detailed: bool) -> Result<()> {
-    log::info!("Analyzing image: {}", input.display());
-    
-    // Load image
-    let img = image::open(&input)
-        .with_context(|| format!("Failed to open image: {}", input.display()))?;
-    let rgba_img = img.to_rgba8();
-    let (width, height) = rgba_img.dimensions();
-    
-    println!("\n=== IMAGE ANALYSIS REPORT ===");
-    println!("File: {}", input.display());
-    println!("Dimensions: {}x{} ({:.1} MP)", width, height, (width * height) as f64 / 1_000_000.0);
-    println!("Format: {:?}", img.color());
-    
-    // Basic image statistics
-    let pixel_count = (width * height) as usize;
-    let mut unique_colors = std::collections::HashSet::new();
-    let mut brightness_sum = 0u64;
-    
-    for pixel in rgba_img.pixels() {
-        let [r, g, b, _a] = pixel.0;
-        unique_colors.insert((r, g, b));
-        brightness_sum += (r as u64 + g as u64 + b as u64) / 3;
-    }
-    
-    let avg_brightness = brightness_sum as f64 / pixel_count as f64;
-    let color_complexity = unique_colors.len() as f64 / pixel_count as f64;
-    
-    println!("\n=== CONTENT ANALYSIS ===");
-    println!("Unique colors: {} ({:.1}% of pixels)", unique_colors.len(), color_complexity * 100.0);
-    println!("Average brightness: {:.1}/255", avg_brightness);
-    
-    // Determine content type and complexity
-    let (content_type, recommended_preset) = if unique_colors.len() < 20 {
-        ("Logo/Line Art", "logo")
-    } else if color_complexity < 0.1 {
-        ("Illustration/Digital Art", "illustration")
-    } else if color_complexity < 0.3 {
-        ("Stylized/Posterized", "posterized")
-    } else {
-        ("Photograph/Realistic", "photo")
-    };
-    
-    println!("Content type: {}", content_type);
-    println!("Recommended preset: --preset {}", recommended_preset);
-    
-    // Parameter recommendations
-    println!("\n=== PARAMETER RECOMMENDATIONS ===");
-    match recommended_preset {
-        "logo" => {
-            println!("• Binary threshold: {} (auto-adaptive)", if avg_brightness > 128.0 { 140 } else { 120 });
-            println!("• Primitive detection: enabled");
-            println!("• Simplification: conservative (0.001 diagonal fraction)");
-        }
-        "photo" => {
-            let recommended_colors = (unique_colors.len() / 100).max(20).min(50);
-            println!("• Color palette: {} colors", recommended_colors);
-            println!("• Segmentation: SLIC superpixels");
-            println!("• Gradient detection: enabled");
-        }
-        _ => {
-            let recommended_colors = (unique_colors.len() / 200).max(12).min(24);
-            println!("• Color palette: {} colors", recommended_colors);
-            println!("• Segmentation: K-means clustering");
-        }
-    }
-    
-    if detailed {
-        println!("\n=== DETAILED TECHNICAL ANALYSIS ===");
-        
-        // Edge density analysis
-        let edge_pixels = estimate_edge_density(&rgba_img);
-        let edge_density = edge_pixels as f64 / pixel_count as f64;
-        println!("Edge density: {:.2}% ({} edge pixels)", edge_density * 100.0, edge_pixels);
-        
-        // Noise level estimation
-        let noise_level = estimate_noise_level(&rgba_img);
-        println!("Estimated noise level: {:.2} (0-100 scale)", noise_level);
-        
-        // Suggested processing parameters
-        println!("\n=== PROCESSING HINTS ===");
-        if edge_density > 0.15 {
-            println!("• High detail image - use smaller simplification epsilon");
-        }
-        if noise_level > 20.0 {
-            println!("• Noisy image - consider larger morphology kernel");
-        }
-        if unique_colors.len() > 10000 {
-            println!("• Complex color image - Wu quantization recommended over K-means");
-        }
-    }
-    
-    // Save report if requested
-    if let Some(output_path) = output {
-        let report = format!(
-            "Image Analysis Report\n===================\nFile: {}\nDimensions: {}x{}\nUnique colors: {}\nContent type: {}\nRecommended preset: {}\n",
-            input.display(), width, height, unique_colors.len(), content_type, recommended_preset
-        );
-        
-        std::fs::write(&output_path, report)
-            .with_context(|| format!("Failed to write report to: {}", output_path.display()))?;
-        println!("\nDetailed report saved to: {}", output_path.display());
-    }
-    
-    Ok(())
-}
-
-/// Estimate edge density in image for complexity analysis
-fn estimate_edge_density(img: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>) -> usize {
-    let (width, height) = img.dimensions();
-    let mut edge_count = 0;
-    
-    for y in 1..height-1 {
-        for x in 1..width-1 {
-            let current = img.get_pixel(x, y);
-            let right = img.get_pixel(x + 1, y);
-            let down = img.get_pixel(x, y + 1);
-            
-            // Simple gradient magnitude
-            let dx = (current.0[0] as i32 - right.0[0] as i32).abs() +
-                    (current.0[1] as i32 - right.0[1] as i32).abs() +
-                    (current.0[2] as i32 - right.0[2] as i32).abs();
-            let dy = (current.0[0] as i32 - down.0[0] as i32).abs() +
-                    (current.0[1] as i32 - down.0[1] as i32).abs() +
-                    (current.0[2] as i32 - down.0[2] as i32).abs();
-            
-            if dx + dy > 30 { // Threshold for edge detection
-                edge_count += 1;
-            }
-        }
-    }
-    
-    edge_count
-}
-
-/// Estimate noise level for preprocessing recommendations
-fn estimate_noise_level(img: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>) -> f64 {
-    let (width, height) = img.dimensions();
-    let mut variance_sum = 0.0;
-    let mut sample_count = 0;
-    
-    // Sample every 4th pixel in a 3x3 neighborhood
-    for y in (1..height-1).step_by(4) {
-        for x in (1..width-1).step_by(4) {
-            let mut local_values = Vec::new();
-            
-            // Get 3x3 neighborhood
-            for dy in -1..=1 {
-                for dx in -1..=1 {
-                    let px = img.get_pixel((x as i32 + dx) as u32, (y as i32 + dy) as u32);
-                    let gray = (px.0[0] as f64 + px.0[1] as f64 + px.0[2] as f64) / 3.0;
-                    local_values.push(gray);
-                }
-            }
-            
-            // Calculate local variance
-            let mean = local_values.iter().sum::<f64>() / local_values.len() as f64;
-            let variance = local_values.iter()
-                .map(|&x| (x - mean).powi(2))
-                .sum::<f64>() / local_values.len() as f64;
-            
-            variance_sum += variance;
-            sample_count += 1;
-        }
-    }
-    
-    if sample_count > 0 {
-        (variance_sum / sample_count as f64).sqrt().min(100.0)
-    } else {
-        0.0
-    }
-}
-
-/// Compare command - quality comparison between input and SVG output
-fn compare_command(input: PathBuf, svg: PathBuf, output: Option<PathBuf>, visual: bool) -> Result<()> {
-    log::info!("Comparing {} with {}", input.display(), svg.display());
-    
-    // Load original image
-    let img = image::open(&input)
-        .with_context(|| format!("Failed to open image: {}", input.display()))?;
-    let rgba_img = img.to_rgba8();
-    
-    // Load and analyze SVG
-    let svg_content = std::fs::read_to_string(&svg)
-        .with_context(|| format!("Failed to read SVG: {}", svg.display()))?;
-    
-    let svg_analysis = crate::svg_analysis::analyze_svg(&svg_content)
-        .context("Failed to analyze SVG")?;
-    
-    // Calculate quality metrics using existing SSIM implementation
-    // Note: Full SSIM implementation would require rendering SVG to compare
-    
-    println!("\n=== QUALITY COMPARISON REPORT ===");
-    println!("Input: {}", input.display());
-    println!("SVG: {}", svg.display());
-    
-    // For now, we'll provide a placeholder SSIM calculation
-    // In a real implementation, we'd render the SVG to compare
-    println!("\n=== SVG ANALYSIS ===");
-    println!("Path count: {}", svg_analysis.path_count);
-    println!("Color count: {}", svg_analysis.color_count);
-    println!("File size: {:.1} KB", svg_content.len() as f64 / 1024.0);
-    println!("Average path complexity: {:.1}", svg_analysis.avg_path_complexity);
-    
-    // Compression ratio
-    let original_size = rgba_img.len() as f64;
-    let svg_size = svg_content.len() as f64;
-    let compression_ratio = svg_size / original_size;
-    
-    println!("\n=== COMPRESSION ANALYSIS ===");
-    println!("Original size: {:.1} KB (estimated)", original_size / 1024.0);
-    println!("SVG size: {:.1} KB", svg_size / 1024.0);
-    println!("Compression ratio: {:.1}% of original", compression_ratio * 100.0);
-    
-    if compression_ratio < 0.1 {
-        println!("✓ Excellent compression achieved");
-    } else if compression_ratio < 0.3 {
-        println!("✓ Good compression");
-    } else {
-        println!("⚠ Moderate compression - consider reducing detail");
-    }
-    
-    // Quality assessment based on path count and complexity
-    println!("\n=== QUALITY ASSESSMENT ===");
-    if svg_analysis.path_count < 50 {
-        println!("✓ Clean, simple output");
-    } else if svg_analysis.path_count < 200 {
-        println!("✓ Moderate detail level");
-    } else {
-        println!("⚠ High detail - may appear complex");
-    }
-    
-    if visual {
-        println!("\n=== VISUAL COMPARISON ===");
-        println!("Visual comparison generation not yet implemented.");
-        println!("Future: Side-by-side rendered comparison would be shown here.");
-    }
-    
-    // Save report if requested
-    if let Some(output_path) = output {
-        let report = format!(
-            "Quality Comparison Report\n=======================\nInput: {}\nSVG: {}\nPath count: {}\nColors: {}\nCompression: {:.1}%\n",
-            input.display(), svg.display(), 
-            svg_analysis.path_count, svg_analysis.color_count,
-            compression_ratio * 100.0
-        );
-        
-        std::fs::write(&output_path, report)
-            .with_context(|| format!("Failed to write report to: {}", output_path.display()))?;
-        println!("Comparison report saved to: {}", output_path.display());
-    }
-    
-    Ok(())
-}
-
-/// Presets command - list presets or show detailed information
-fn presets_command(action: PresetAction, name: Option<String>) -> Result<()> {
-    match action {
-        PresetAction::List => {
-            println!("\n=== AVAILABLE PRESETS ===");
-            println!(
-                "\n{:<20} {}",
-                "PRESET", "DESCRIPTION"
-            );
-            println!("{}", "-".repeat(80));
-            
-            // Core presets
-            println!("{:<20} High-fidelity mode for photographs with gradients", "photo");
-            println!("{:<20} Photo preset with Phase B refinement enabled", "photo-refined");
-            println!("{:<20} Fixed palette posterization (stylized)", "posterized");
-            println!("{:<20} Posterized preset with Phase B refinement", "posterized-refined");
-            println!("{:<20} Binary tracing for logos and line art", "logo");
-            println!("{:<20} Logo preset with Phase B refinement", "logo-refined");
-            
-            println!();
-            
-            // Specialized presets
-            println!("{:<20} Optimized for portrait photography", "portrait");
-            println!("{:<20} Optimized for landscape photography", "landscape");
-            println!("{:<20} Optimized for digital artwork and illustrations", "illustration");
-            println!("{:<20} Optimized for technical drawings and diagrams", "technical");
-            println!("{:<20} Optimized for artistic/creative effects", "artistic");
-            
-            println!("\nUse 'vectorize presets info <preset-name>' for detailed configuration.");
-        }
-        PresetAction::Info => {
-            let preset_name = name.ok_or_else(|| {
-                anyhow::anyhow!("Preset name required for 'info' action. Use: vectorize presets info <preset-name>")
-            })?;
-            
-            println!("\n=== PRESET INFORMATION: {} ===", preset_name.to_uppercase());
-            
-            match preset_name.to_lowercase().as_str() {
-                "photo" => {
-                    println!("Type: Regions-based vectorization");
-                    println!("Target: High-fidelity photographs with smooth gradients");
-                    println!("\nKey Settings:");
-                    println!("• Colors: 40 (Wu quantization)");
-                    println!("• Segmentation: SLIC superpixels (20px step)");
-                    println!("• Gradients: Enabled (R² ≥ 0.7)");
-                    println!("• ΔE thresholds: 2.5 merge, 8.0 split");
-                    println!("• Adaptive parameters: Enabled");
-                    println!("\nBest for: Portrait photos, detailed images, color accuracy");
-                }
-                "photo-refined" => {
-                    println!("Type: Regions-based vectorization + Phase B refinement");
-                    println!("Target: Maximum quality photographs");
-                    println!("\nIncludes all 'photo' settings plus:");
-                    println!("• Phase B refinement: 600ms budget");
-                    println!("• Target ΔE: 4.0 (stricter)");
-                    println!("• Target SSIM: 0.95 (higher quality)");
-                    println!("\nBest for: Professional photography, print quality");
-                }
-                "logo" => {
-                    println!("Type: Binary tracing with primitive detection");
-                    println!("Target: Clean logos and line art");
-                    println!("\nKey Settings:");
-                    println!("• Threshold: Adaptive binary threshold");
-                    println!("• Primitives: Enabled (circles, ellipses, arcs)");
-                    println!("• Simplification: Conservative (0.001 diagonal)");
-                    println!("• Output: Filled shapes or strokes");
-                    println!("• Adaptive parameters: Enabled");
-                    println!("\nBest for: Logos, icons, line drawings, technical diagrams");
-                }
-                "posterized" => {
-                    println!("Type: Regions-based with aggressive merging");
-                    println!("Target: Stylized, flat-color artwork");
-                    println!("\nKey Settings:");
-                    println!("• Colors: 12 (limited palette)");
-                    println!("• Segmentation: K-means clustering");
-                    println!("• Gradients: Disabled");
-                    println!("• ΔE thresholds: 5.0 merge, 15.0 split");
-                    println!("\nBest for: Stylized art, poster effects, simplified images");
-                }
-                "portrait" => {
-                    println!("Type: Fine-tuned regions for faces");
-                    println!("Target: Portrait photography with accurate skin tones");
-                    println!("\nKey Settings:");
-                    println!("• Colors: 35 (skin tone optimized)");
-                    println!("• Segmentation: Fine SLIC (18px step, high compactness)");
-                    println!("• ΔE thresholds: 1.5 merge, 6.0 split (strict)");
-                    println!("• Regions: Smaller minimum areas for facial detail");
-                    println!("\nBest for: Portrait photos, faces, skin tone accuracy");
-                }
-                "landscape" => {
-                    println!("Type: Natural scene optimization");
-                    println!("Target: Landscape photography with natural textures");
-                    println!("\nKey Settings:");
-                    println!("• Colors: 50 (rich natural palette)");
-                    println!("• Segmentation: Coarser SLIC (25px step)");
-                    println!("• Gradients: Enabled for skies/water (R² ≥ 0.6)");
-                    println!("• Regions: Larger areas for natural elements");
-                    println!("\nBest for: Landscapes, natural scenes, outdoor photography");
-                }
-                "illustration" => {
-                    println!("Type: Digital artwork optimization");
-                    println!("Target: Clean illustrations and digital art");
-                    println!("\nKey Settings:");
-                    println!("• Colors: 24 (illustration-friendly)");
-                    println!("• Segmentation: K-means (better for flat styles)");
-                    println!("• Gradients: Enabled with high threshold (R² ≥ 0.8)");
-                    println!("• Palette regularization to 20 colors");
-                    println!("\nBest for: Digital art, illustrations, graphic design");
-                }
-                "technical" => {
-                    println!("Type: High-precision binary tracing");
-                    println!("Target: Technical drawings and diagrams");
-                    println!("\nKey Settings:");
-                    println!("• Threshold: Fixed high threshold (140)");
-                    println!("• Primitives: Strict detection (tolerance 1.5)");
-                    println!("• Output: Stroke mode for clean lines");
-                    println!("• Simplification: Very fine (0.0008 diagonal)");
-                    println!("\nBest for: Engineering drawings, schematics, technical diagrams");
-                }
-                "artistic" => {
-                    println!("Type: Creative stylization");
-                    println!("Target: Bold, stylized artistic effects");
-                    println!("\nKey Settings:");
-                    println!("• Colors: 16 (limited for bold effect)");
-                    println!("• Segmentation: K-means with aggressive merging");
-                    println!("• Gradients: Disabled for flat style");
-                    println!("• Regions: Large minimum areas for bold shapes");
-                    println!("\nBest for: Artistic effects, stylized images, creative projects");
-                }
-                _ => {
-                    return Err(anyhow::anyhow!(
-                        "Unknown preset '{}'. Use 'vectorize presets list' to see available presets.",
-                        preset_name
-                    ));
-                }
-            }
-        }
-    }
-    
-    Ok(())
-}
-
-/// Parse quantization method from string
-fn parse_quantization_method(s: &str) -> Result<QuantizationMethod, String> {
-    match s.to_lowercase().as_str() {
-        "kmeans" => Ok(QuantizationMethod::KMeans),
-        "wu" => Ok(QuantizationMethod::Wu),
-        _ => Err(format!(
-            "Invalid quantization method '{}'. Valid options: kmeans, wu",
-            s
-        )),
-    }
-}
-
-/// Parse segmentation method from string  
-fn parse_segmentation_method(s: &str) -> Result<SegmentationMethod, String> {
-    match s.to_lowercase().as_str() {
-        "kmeans" => Ok(SegmentationMethod::KMeans),
-        "slic" => Ok(SegmentationMethod::Slic),
-        _ => Err(format!(
-            "Invalid segmentation method '{}'. Valid options: kmeans, slic",
-            s
-        )),
-    }
-}
-
-/// Parse trace backend from string
-fn parse_trace_backend(s: &str) -> Result<TraceBackend, String> {
-    match s.to_lowercase().as_str() {
-        "edge" => Ok(TraceBackend::Edge),
-        "centerline" => Ok(TraceBackend::Centerline),
-        "superpixel" => Ok(TraceBackend::Superpixel),
-        _ => Err(format!(
-            "Invalid trace backend '{}'. Valid options: edge, centerline, superpixel",
-            s
-        )),
-    }
-}
-
-/// Write telemetry data for logo vectorization
-fn write_logo_telemetry(
-    input_path: &PathBuf,
-    output_path: &PathBuf,
-    image: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-    config: &LogoConfig,
+fn create_trace_stats(
     svg_content: &str,
-    _processing_time: f64,
-    retries: u32,
-) -> Result<()> {
-    let (width, height) = image.dimensions();
-    
-    // Calculate resolved parameters
-    let dp_eps_px = config.simplification_epsilon.resolve_pixels(width, height);
-    
-    // Analyze SVG output for statistics
-    let stats = analyze_svg_output(svg_content, width * height)?;
-    
-    let resolved = Resolved {
-        dp_eps_px,
-        min_stroke_px: if config.use_stroke { Some(config.stroke_width) } else { None },
-        slic_step_px: None,
-        slic_iters: None,
-        slic_compactness: None,
-        de_merge: None,
-        de_split: None,
-        palette_k: None,
-        sauvola_k: None, // Note: using adaptive threshold instead of Sauvola
-        sauvola_window: None,
-        morph_kernel_px: Some(config.morphology_kernel_size),
-        min_region_area_px: Some(config.min_contour_area),
-    };
-    
-    let guards = Guards {
-        retries,
-        edge_barrier_thresh: Some(config.threshold as u32),
-        area_floor_px: Some(config.min_contour_area),
-    };
-    
-    let cli_args = json!({
-        "threshold": config.threshold,
-        "adaptive": config.adaptive_threshold,
-        "detect_primitives": config.detect_primitives,
-        "primitive_tolerance": config.primitive_fit_tolerance,
-        "max_circle_eccentricity": config.max_circle_eccentricity,
-        "use_stroke": config.use_stroke,
-        "stroke_width": config.stroke_width
-    });
-    
-    let dump = make_dump(
-        input_path.to_str().unwrap_or("unknown"),
-        width,
-        height,
-        "logo",
-        None,
-        cli_args,
-        resolved,
-        guards,
-        stats,
-    );
-    
-    write_json_dump(output_path, &dump)
-        .with_context(|| "Failed to write telemetry JSON")?;
-    append_runs_csv(output_path, &dump)
-        .with_context(|| "Failed to append to runs CSV")?;
-        
-    log::info!("Telemetry saved: resolved epsilon = {:.3}px", dp_eps_px);
-    Ok(())
-}
+    _image_pixels: u32,
+    processing_time: std::time::Duration,
+) -> SimpleStats {
+    // Analyze SVG content for basic statistics
+    let paths_count = svg_content.matches("<path").count();
+    let svg_bytes = svg_content.len() as u64;
 
-/// Write telemetry data for regions vectorization
-fn write_regions_telemetry(
-    input_path: &PathBuf,
-    output_path: &PathBuf,
-    image: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-    config: &RegionsConfig,
-    svg_content: &str,
-    _processing_time: f64,
-    retries: u32,
-) -> Result<()> {
-    let (width, height) = image.dimensions();
-    
-    // Calculate resolved parameters
-    let dp_eps_px = config.simplification_epsilon.resolve_pixels(width, height);
-    
-    // Analyze SVG output for statistics
-    let stats = analyze_svg_output(svg_content, width * height)?;
-    
-    let resolved = Resolved {
-        dp_eps_px,
-        min_stroke_px: None,
-        slic_step_px: if config.segmentation_method == SegmentationMethod::Slic {
-            Some(config.slic_step_px)
-        } else {
-            None
-        },
-        slic_iters: if config.segmentation_method == SegmentationMethod::Slic {
-            Some(config.slic_iterations)
-        } else {
-            None
-        },
-        slic_compactness: if config.segmentation_method == SegmentationMethod::Slic {
-            Some(config.slic_compactness)
-        } else {
-            None
-        },
-        de_merge: Some(config.de_merge_threshold),  // Always capture ΔE merge threshold
-        de_split: Some(config.de_split_threshold), // Always capture ΔE split threshold
-        palette_k: if config.palette_regularization {
-            Some(config.palette_regularization_k)
-        } else {
-            Some(config.num_colors)
-        },
-        sauvola_k: None,
-        sauvola_window: None,
-        morph_kernel_px: None,
-        min_region_area_px: Some(config.min_region_area),
-    };
-    
-    let guards = Guards {
-        retries,
-        edge_barrier_thresh: None,
-        area_floor_px: Some(config.min_region_area),
-    };
-    
-    let cli_args = json!({
-        "colors": config.num_colors,
-        "quantization_method": config.quantization_method,
-        "segmentation_method": config.segmentation_method,
-        "use_lab_color": config.use_lab_color,
-        "merge_similar_regions": config.merge_similar_regions,
-        "merge_threshold": config.merge_threshold,
-        "slic_step_px": config.slic_step_px,
-        "slic_compactness": config.slic_compactness,
-        "slic_iterations": config.slic_iterations,
-        "detect_gradients": config.detect_gradients,
-        "de_merge_threshold": config.de_merge_threshold,
-        "de_split_threshold": config.de_split_threshold,
-        "palette_regularization": config.palette_regularization,
-        "palette_regularization_k": config.palette_regularization_k
-    });
-    
-    let backend_name = match config.segmentation_method {
-        SegmentationMethod::Slic => "superpixel",
-        SegmentationMethod::KMeans => "kmeans",
-    };
-    
-    let dump = make_dump(
-        input_path.to_str().unwrap_or("unknown"),
-        width,
-        height,
-        "regions",
-        Some(backend_name),
-        cli_args,
-        resolved,
-        guards,
-        stats,
-    );
-    
-    write_json_dump(output_path, &dump)
-        .with_context(|| "Failed to write telemetry JSON")?;
-    append_runs_csv(output_path, &dump)
-        .with_context(|| "Failed to append to runs CSV")?;
-        
-    log::info!("Telemetry saved: resolved epsilon = {:.3}px, slic_step = {}px", 
-               dp_eps_px, config.slic_step_px);
-    Ok(())
-}
-
-/// Analyze SVG output to extract statistics
-fn analyze_svg_output(svg_content: &str, _image_pixels: u32) -> Result<Stats> {
-    use crate::svg_analysis::analyze_svg;
-    
-    let analysis = analyze_svg(svg_content)
-        .context("Failed to analyze SVG output")?;
-    
-    // Estimate colors from SVG
-    let k_colors = analysis.color_count.max(1);
-    
-    // Calculate max region percentage (rough estimate based on paths)
-    let max_region_pct = if analysis.path_count > 0 {
-        1.0 / analysis.path_count as f32
-    } else {
-        1.0
-    };
-    
-    // Estimate quad percentage from path complexity
-    let pct_quads = if analysis.path_commands > 0 {
-        // Rough estimate: assume higher path complexity means more curves/quads
-        (analysis.avg_path_complexity / 10.0).min(1.0) as f32
-    } else {
-        0.0
-    };
-    
-    Ok(Stats {
-        paths: analysis.path_count,
-        median_vertices: analysis.avg_path_complexity as f32,
-        pct_quads,
-        k_colors,
-        max_region_pct,
-        svg_bytes: svg_content.len() as u64,
-    })
-}
-
-/// Auto-retry guard system - checks for bad outputs and adjusts parameters
-// Retry guard system - ready for activation when needed
-// To activate: refactor vectorize_logo_command to loop with retry logic
-fn maybe_retry_logo(
-    stats: &Stats, 
-    config: &mut LogoConfig, 
-    tries: &mut u32
-) -> bool {
-    if *tries >= 2 { return false; }
-    let mut retry = false;
-    
-    // If too many small paths, reduce simplification
-    if stats.paths > 500 && stats.median_vertices < 6.0 {
-        // Reduce epsilon by 30% to get more detail
-        match &mut config.simplification_epsilon {
-            Epsilon::Pixels(px) => *px *= 0.7,
-            Epsilon::DiagFrac(frac) => *frac *= 0.7,
-        }
-        retry = true;
-        log::info!("Retry: too many small paths, reducing simplification epsilon");
+    SimpleStats {
+        paths: paths_count,
+        svg_bytes,
+        processing_time_ms: processing_time.as_millis() as u64,
     }
-    
-    // If paths are too complex (too many quads), increase simplification
-    if stats.pct_quads > 0.6 {
-        match &mut config.simplification_epsilon {
-            Epsilon::Pixels(px) => *px *= 1.5,
-            Epsilon::DiagFrac(frac) => *frac *= 1.5,
-        }
-        retry = true;
-        log::info!("Retry: too complex paths, increasing simplification epsilon");
-    }
-    
-    if retry { *tries += 1; }
-    retry
-}
-
-/// Auto-retry guard system for regions
-// Retry guard system - ready for activation when needed  
-// To activate: refactor vectorize_regions_command to loop with retry logic
-fn maybe_retry_regions(
-    stats: &Stats, 
-    config: &mut RegionsConfig, 
-    tries: &mut u32
-) -> bool {
-    if *tries >= 2 { return false; }
-    let mut retry = false;
-    
-    if stats.k_colors < 6 {
-        // Increase palette & reduce merging
-        config.num_colors = config.num_colors.max(8);
-        if config.merge_similar_regions {
-            config.merge_threshold = (config.merge_threshold - 0.5).max(1.0);
-        }
-        retry = true;
-        log::info!("Retry: too few colors ({}), increasing palette to {} and reducing merge threshold to {:.1}", 
-                  stats.k_colors, config.num_colors, config.merge_threshold);
-    }
-    
-    if stats.pct_quads > 0.6 {
-        // Reduce simplification
-        match &mut config.simplification_epsilon {
-            Epsilon::Pixels(px) => *px *= 0.5,
-            Epsilon::DiagFrac(frac) => *frac *= 0.5,
-        }
-        retry = true;
-        log::info!("Retry: too many quads ({:.1}%), halving simplification epsilon", stats.pct_quads * 100.0);
-    }
-    
-    if stats.max_region_pct > 0.35 {
-        // Force finer segmentation
-        if config.segmentation_method == SegmentationMethod::Slic {
-            config.slic_step_px = (config.slic_step_px as f32 * 0.8) as u32;
-            config.slic_step_px = config.slic_step_px.max(12); // Don't go below minimum
-        }
-        retry = true;
-        log::info!("Retry: regions too large ({:.1}%), reducing SLIC step to {}px", 
-                  stats.max_region_pct * 100.0, config.slic_step_px);
-    }
-    
-    if retry { *tries += 1; }
-    retry
-}
-
-/// Run Phase A benchmark validation command
-fn phase_a_benchmark_command(
-    examples_dir: Option<PathBuf>,
-    iterations: usize,
-    output_dir: PathBuf,
-    save_debug_images: bool,
-    baseline_path: Option<PathBuf>,
-    delta_e_threshold: Option<f64>,
-    ssim_threshold: Option<f64>,
-    timing_threshold: Option<f64>,
-) -> Result<()> {
-    log::info!("Starting Phase A benchmark validation");
-
-    // Configure benchmark thresholds
-    let mut quality_thresholds = phase_a_benchmark::QualityThresholds::default();
-    if let Some(threshold) = delta_e_threshold {
-        quality_thresholds.max_delta_e = threshold;
-    }
-    if let Some(threshold) = ssim_threshold {
-        quality_thresholds.min_ssim = threshold;
-    }
-    if let Some(threshold) = timing_threshold {
-        quality_thresholds.max_processing_time = threshold;
-    }
-
-    // Create benchmark configuration
-    let config = PhaseABenchmarkConfig {
-        test_images: Vec::new(),
-        output_dir,
-        timing_iterations: iterations,
-        save_debug_images,
-        quality_thresholds,
-        baseline_results: baseline_path,
-    };
-
-    // Create benchmark suite
-    let mut suite = PhaseABenchmarkSuite::new(config);
-
-    // Auto-discover test images
-    let examples_path = examples_dir.unwrap_or_else(|| {
-        // Try to find examples directory relative to current location
-        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        
-        // Look for examples directory in common locations
-        let search_paths = vec![
-            current_dir.join("examples"),
-            current_dir.join("../examples"),
-            current_dir.join("../../examples"),
-            current_dir.join("wasm/examples"),
-            current_dir.parent().map(|p| p.join("examples")).unwrap_or_else(|| PathBuf::from("examples")),
-        ];
-
-        for path in search_paths {
-            if path.exists() && path.is_dir() {
-                return path;
-            }
-        }
-
-        // Default fallback
-        PathBuf::from("examples")
-    });
-
-    log::info!("Looking for test images in: {}", examples_path.display());
-
-    suite.auto_discover_test_images(&examples_path)
-        .with_context(|| format!("Failed to discover test images in {}", examples_path.display()))?;
-
-    if suite.config().test_images.is_empty() {
-        return Err(anyhow::anyhow!(
-            "No test images found in {}. Please ensure the examples/images_in directory exists and contains test images.",
-            examples_path.display()
-        ));
-    }
-
-    log::info!("Running Phase A benchmark with {} test images", suite.config().test_images.len());
-
-    // Run benchmark
-    let report = suite.run_phase_a_benchmark()
-        .context("Phase A benchmark execution failed")?;
-
-    // Print results summary
-    print_phase_a_summary(&report);
-
-    // Save detailed reports
-    suite.save_report(&report)
-        .context("Failed to save Phase A benchmark report")?;
-
-    // Validate overall success
-    if report.summary.pass_rate < 50.0 {
-        log::warn!("Low pass rate ({:.1}%) - Phase A targets may not be met", report.summary.pass_rate);
-    } else if report.summary.pass_rate >= 80.0 {
-        log::info!("Excellent pass rate ({:.1}%) - Phase A targets exceeded!", report.summary.pass_rate);
-    }
-
-    log::info!("Phase A benchmark validation completed successfully");
-    log::info!("Detailed results saved to: {}", suite.config().output_dir.display());
-
-    Ok(())
-}
-
-/// Print Phase A benchmark summary to console
-fn print_phase_a_summary(report: &phase_a_benchmark::PhaseABenchmarkReport) {
-    println!("\n=== PHASE A BENCHMARK VALIDATION RESULTS ===");
-    println!("Total Tests: {}", report.summary.total_tests);
-    println!("Overall Pass Rate: {:.1}% ({}/{})", 
-             report.summary.pass_rate, 
-             report.summary.tests_passed, 
-             report.summary.total_tests);
-    
-    // Roadmap targets validation
-    println!("\n=== ROADMAP TARGET COMPLIANCE ===");
-    println!("ΔE Target (≤ {:.1}): {:.1}% pass rate (avg: {:.2})", 
-             report.summary.thresholds.max_delta_e, 
-             report.summary.delta_e_pass_rate, 
-             report.summary.avg_delta_e);
-    
-    let delta_e_status = if report.summary.delta_e_pass_rate >= 80.0 { "✓ EXCELLENT" }
-                        else if report.summary.delta_e_pass_rate >= 60.0 { "✓ GOOD" }
-                        else { "✗ NEEDS IMPROVEMENT" };
-    println!("  Status: {}", delta_e_status);
-    
-    println!("SSIM Target (≥ {:.2}): {:.1}% pass rate (avg: {:.3})", 
-             report.summary.thresholds.min_ssim, 
-             report.summary.ssim_pass_rate, 
-             report.summary.avg_ssim);
-    
-    let ssim_status = if report.summary.ssim_pass_rate >= 80.0 { "✓ EXCELLENT" }
-                     else if report.summary.ssim_pass_rate >= 60.0 { "✓ GOOD" }
-                     else { "✗ NEEDS IMPROVEMENT" };
-    println!("  Status: {}", ssim_status);
-    
-    println!("Timing Target (≤ {:.1}s): {:.1}% pass rate (avg: {:.3}s)", 
-             report.summary.thresholds.max_processing_time, 
-             report.summary.timing_pass_rate, 
-             report.summary.avg_processing_time);
-    
-    let timing_status = if report.summary.timing_pass_rate >= 80.0 { "✓ EXCELLENT" }
-                       else if report.summary.timing_pass_rate >= 60.0 { "✓ GOOD" }
-                       else { "✗ NEEDS IMPROVEMENT" };
-    println!("  Status: {}", timing_status);
-    
-    // Algorithm breakdown
-    println!("\n=== ALGORITHM PERFORMANCE ===");
-    let mut algorithm_stats: std::collections::HashMap<String, Vec<&phase_a_benchmark::PhaseAResult>> = 
-        std::collections::HashMap::new();
-    
-    for result in &report.results {
-        algorithm_stats.entry(result.preset_name.clone())
-            .or_insert_with(Vec::new)
-            .push(result);
-    }
-    
-    for (preset_name, results) in algorithm_stats {
-        let pass_count = results.iter().filter(|r| r.overall_pass).count();
-        let pass_rate = pass_count as f64 / results.len() as f64 * 100.0;
-        let avg_delta_e = results.iter().map(|r| r.delta_e_metrics.median_delta_e).sum::<f64>() / results.len() as f64;
-        let avg_ssim = results.iter().map(|r| r.ssim_result.ssim).sum::<f64>() / results.len() as f64;
-        let avg_time = results.iter().map(|r| r.timing_metrics.median_time).sum::<f64>() / results.len() as f64;
-        
-        println!("{}: {:.1}% pass rate | ΔE: {:.2} | SSIM: {:.3} | Time: {:.3}s",
-                preset_name, pass_rate, avg_delta_e, avg_ssim, avg_time);
-    }
-    
-    // Top failures for improvement guidance
-    let mut failed_results: Vec<&phase_a_benchmark::PhaseAResult> = 
-        report.results.iter().filter(|r| !r.overall_pass).collect();
-    
-    if !failed_results.is_empty() {
-        failed_results.sort_by(|a, b| {
-            let a_score = a.delta_e_metrics.median_delta_e + (1.0 - a.ssim_result.ssim) * 10.0;
-            let b_score = b.delta_e_metrics.median_delta_e + (1.0 - b.ssim_result.ssim) * 10.0;
-            b_score.partial_cmp(&a_score).unwrap_or(std::cmp::Ordering::Equal)
-        });
-        
-        println!("\n=== TOP FAILURES (for improvement focus) ===");
-        for (i, result) in failed_results.iter().take(3).enumerate() {
-            println!("{}. {} | {} | ΔE: {:.2} | SSIM: {:.3} | Time: {:.3}s",
-                    i + 1,
-                    result.image_spec.name,
-                    result.preset_name,
-                    result.delta_e_metrics.median_delta_e,
-                    result.ssim_result.ssim,
-                    result.timing_metrics.median_time);
-        }
-    }
-    
-    println!("\nDetailed CSV report: {}/phase_a_benchmark_results.csv", 
-             report.config.output_dir.display());
 }

@@ -2,16 +2,16 @@
 name = "vectorize-core"
 version = "0.1.0"
 edition = "2021"
-description = "Core image vectorization algorithms for vec2art"
+description = "Core trace-low vectorization algorithms for vec2art"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/your-org/vec2art"
 
 [dependencies]
 # Core image processing
 image = { workspace = true }
-imageproc = { workspace = true }  # Suzuki-Abe contour tracing
+imageproc = { workspace = true }  # Canny edge detection for trace-low
 rayon = { workspace = true }
-nalgebra = { workspace = true }
+nalgebra = { workspace = true }  # Linear algebra for color space conversions
 
 # Error handling
 thiserror = { workspace = true }
@@ -24,15 +24,10 @@ chrono = { version = "0.4", features = ["clock"] }
 
 # Utilities
 log = { workspace = true }
-fastrand = "2.0"
 regex = { workspace = true }
 once_cell = { workspace = true }
-
-# Phase B refinement dependencies
-resvg = { workspace = true }
-tiny-skia = { workspace = true }
-palette = { workspace = true }
-dssim = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }

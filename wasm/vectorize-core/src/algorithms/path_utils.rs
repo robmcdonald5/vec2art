@@ -1,6 +1,6 @@
 //! Path manipulation utilities for vectorization algorithms
 
-use crate::algorithms::logo::Point;
+use crate::algorithms::Point;
 
 /// Calculate appropriate Douglas-Peucker epsilon based on image dimensions
 ///
@@ -14,7 +14,11 @@ use crate::algorithms::logo::Point;
 ///
 /// # Returns
 /// * `f64` - Appropriate epsilon value in pixels
-pub fn calculate_douglas_peucker_epsilon(image_width: u32, image_height: u32, simplification_factor: f64) -> f64 {
+pub fn calculate_douglas_peucker_epsilon(
+    image_width: u32,
+    image_height: u32,
+    simplification_factor: f64,
+) -> f64 {
     let diagonal = ((image_width as f64).powi(2) + (image_height as f64).powi(2)).sqrt();
     let factor = simplification_factor.clamp(0.003, 0.007);
     diagonal * factor
@@ -181,7 +185,7 @@ pub fn smooth_path(points: &[Point], window_size: usize) -> Vec<Point> {
     let mut smoothed = Vec::with_capacity(points.len());
 
     for i in 0..points.len() {
-        let start = if i >= half_window { i - half_window } else { 0 };
+        let start = i.saturating_sub(half_window);
         let end = if i + half_window < points.len() {
             i + half_window + 1
         } else {
@@ -192,9 +196,9 @@ pub fn smooth_path(points: &[Point], window_size: usize) -> Vec<Point> {
         let mut sum_y = 0.0;
         let mut count = 0;
 
-        for j in start..end {
-            sum_x += points[j].x;
-            sum_y += points[j].y;
+        for point in points.iter().take(end).skip(start) {
+            sum_x += point.x;
+            sum_y += point.y;
             count += 1;
         }
 
@@ -305,7 +309,12 @@ pub struct CubicBezier {
 impl CubicBezier {
     /// Create new cubic Bézier curve
     pub fn new(start: Point, control1: Point, control2: Point, end: Point) -> Self {
-        Self { start, control1, control2, end }
+        Self {
+            start,
+            control1,
+            control2,
+            end,
+        }
     }
 
     /// Evaluate cubic Bézier curve at parameter t (0 <= t <= 1)
@@ -332,9 +341,12 @@ impl CubicBezier {
     pub fn to_svg_command(&self) -> String {
         format!(
             "C {:.2} {:.2} {:.2} {:.2} {:.2} {:.2}",
-            self.control1.x, self.control1.y,
-            self.control2.x, self.control2.y,
-            self.end.x, self.end.y
+            self.control1.x,
+            self.control1.y,
+            self.control2.x,
+            self.control2.y,
+            self.end.x,
+            self.end.y
         )
     }
 }
@@ -373,23 +385,23 @@ pub fn schneider_fit_cubic_bezier(
     if points.len() < 2 {
         return Vec::new();
     }
-    
+
     if points.len() == 2 {
         return vec![FittingResult::Line(points[0], points[1])];
     }
 
     // Step 1: Detect corners in the point sequence
     let corners = detect_corners(points, corner_angle_threshold);
-    
+
     // Step 2: Fit curves between corner segments
     let mut results = Vec::new();
-    
+
     for i in 0..corners.len().saturating_sub(1) {
         let start_idx = corners[i];
         let end_idx = corners[i + 1];
-        
+
         let segment = &points[start_idx..=end_idx];
-        
+
         if segment.len() < 2 {
             // Skip degenerate segments
             continue;
@@ -402,7 +414,7 @@ pub fn schneider_fit_cubic_bezier(
             results.push(fitting_result);
         }
     }
-    
+
     results
 }
 
@@ -421,25 +433,25 @@ fn detect_corners(points: &[Point], angle_threshold: f32) -> Vec<usize> {
     if points.len() <= 2 {
         return vec![0, points.len() - 1];
     }
-    
+
     let mut corners = vec![0]; // Always start with first point
     let angle_threshold_rad = angle_threshold.to_radians();
-    
+
     for i in 1..points.len() - 1 {
         let turning_angle = calculate_turning_angle(points, i);
-        
+
         // A significant turning angle indicates a corner
         if turning_angle.abs() >= angle_threshold_rad {
             corners.push(i);
         }
     }
-    
+
     // Always end with last point
     let last_idx = points.len() - 1;
     if corners[corners.len() - 1] != last_idx {
         corners.push(last_idx);
     }
-    
+
     corners
 }
 
@@ -455,27 +467,27 @@ fn calculate_turning_angle(points: &[Point], index: usize) -> f32 {
     if index == 0 || index >= points.len() - 1 {
         return 0.0;
     }
-    
+
     let prev = points[index - 1];
     let curr = points[index];
     let next = points[index + 1];
-    
+
     // Incoming vector (from prev to curr)
     let v1 = Point {
         x: curr.x - prev.x,
         y: curr.y - prev.y,
     };
-    
+
     // Outgoing vector (from curr to next)
     let v2 = Point {
         x: next.x - curr.x,
         y: next.y - curr.y,
     };
-    
+
     // Calculate angle between vectors
     let dot = v1.x * v2.x + v1.y * v2.y;
     let cross = v1.x * v2.y - v1.y * v2.x;
-    
+
     // Use atan2 for proper quadrant handling
     cross.atan2(dot)
 }
@@ -498,64 +510,64 @@ fn fit_cubic_segment(points: &[Point], tolerance: f32) -> FittingResult {
     if points.len() < 4 {
         return FittingResult::Line(points[0], points[points.len() - 1]);
     }
-    
+
     // Check if points are nearly collinear
     if is_nearly_collinear(points, tolerance) {
         return FittingResult::Line(points[0], points[points.len() - 1]);
     }
-    
+
     let start = points[0];
     let end = points[points.len() - 1];
-    
+
     // Step 1: Estimate unit tangent vectors at endpoints
     let start_tangent = estimate_tangent_at_start(points);
     let end_tangent = estimate_tangent_at_end(points);
-    
+
     // Step 2: Initial parameter assignment (chord-length parameterization)
     let parameters = compute_chord_parameters(points);
-    
+
     // Step 3: Least squares fit to determine optimal control point distances
     let (alpha1, alpha2) = least_squares_fit(points, &parameters, &start_tangent, &end_tangent);
-    
+
     // Step 4: Create initial Bézier curve
     let control1 = Point {
         x: start.x + alpha1 * start_tangent.x,
         y: start.y + alpha1 * start_tangent.y,
     };
-    
+
     let control2 = Point {
         x: end.x + alpha2 * end_tangent.x,
         y: end.y + alpha2 * end_tangent.y,
     };
-    
+
     let mut bezier = CubicBezier::new(start, control1, control2, end);
-    
+
     // Step 5: Newton-Raphson parameter optimization (optional but improves accuracy)
     let mut parameters = parameters; // Make mutable for optimization
     newton_raphson_optimize(&mut bezier, points, &mut parameters);
-    
+
     // Step 6: Measure maximum error
     let (max_error, max_error_index) = measure_fitting_error(&bezier, points, &parameters);
-    
+
     // Step 7: Check if curve fits within tolerance
     if max_error <= tolerance {
         return FittingResult::Curve(bezier);
     }
-    
+
     // Step 8: Recursive subdivision if error is too large
     if points.len() <= 8 {
         // Prevent infinite recursion on very small segments
         return FittingResult::Line(start, end);
     }
-    
+
     // Split at point of maximum error
     let split_index = max_error_index;
     let left_segment = &points[0..=split_index];
     let right_segment = &points[split_index..];
-    
+
     let left_result = fit_cubic_segment(left_segment, tolerance);
     let right_result = fit_cubic_segment(right_segment, tolerance);
-    
+
     FittingResult::Segments(vec![left_result, right_result])
 }
 
@@ -566,19 +578,19 @@ fn is_nearly_collinear(points: &[Point], tolerance: f32) -> bool {
     if points.len() <= 2 {
         return true;
     }
-    
+
     let start = points[0];
     let end = points[points.len() - 1];
-    
+
     // Check if start and end are the same (degenerate case)
     let dx = end.x - start.x;
     let dy = end.y - start.y;
     let line_length_sq = dx * dx + dy * dy;
-    
+
     if line_length_sq < tolerance * tolerance {
         return true; // Degenerate line
     }
-    
+
     // Check perpendicular distance of each intermediate point
     for point in &points[1..points.len() - 1] {
         let distance = perpendicular_distance_to_line(*point, start, end);
@@ -586,7 +598,7 @@ fn is_nearly_collinear(points: &[Point], tolerance: f32) -> bool {
             return false;
         }
     }
-    
+
     true
 }
 
@@ -594,18 +606,18 @@ fn is_nearly_collinear(points: &[Point], tolerance: f32) -> bool {
 fn perpendicular_distance_to_line(point: Point, line_start: Point, line_end: Point) -> f32 {
     let dx = line_end.x - line_start.x;
     let dy = line_end.y - line_start.y;
-    
+
     if dx == 0.0 && dy == 0.0 {
         // Degenerate line, return distance to start point
         let pdx = point.x - line_start.x;
         let pdy = point.y - line_start.y;
         return (pdx * pdx + pdy * pdy).sqrt();
     }
-    
+
     // Calculate perpendicular distance using cross product formula
     let cross = (point.x - line_start.x) * dy - (point.y - line_start.y) * dx;
     let line_length = (dx * dx + dy * dy).sqrt();
-    
+
     cross.abs() / line_length
 }
 
@@ -614,13 +626,13 @@ fn estimate_tangent_at_start(points: &[Point]) -> Point {
     if points.len() < 2 {
         return Point { x: 1.0, y: 0.0 }; // Default horizontal tangent
     }
-    
+
     // Use vector from first to second point, or look ahead further if too short
     for i in 1..points.len().min(4) {
         let dx = points[i].x - points[0].x;
         let dy = points[i].y - points[0].y;
         let length = (dx * dx + dy * dy).sqrt();
-        
+
         if length > 1e-6 {
             return Point {
                 x: dx / length,
@@ -628,7 +640,7 @@ fn estimate_tangent_at_start(points: &[Point]) -> Point {
             };
         }
     }
-    
+
     Point { x: 1.0, y: 0.0 } // Fallback
 }
 
@@ -638,13 +650,13 @@ fn estimate_tangent_at_end(points: &[Point]) -> Point {
     if n < 2 {
         return Point { x: 1.0, y: 0.0 }; // Default horizontal tangent
     }
-    
+
     // Use vector from second-to-last to last point, or look back further if too short
     for i in 1..n.min(4) {
         let dx = points[n - 1].x - points[n - 1 - i].x;
         let dy = points[n - 1].y - points[n - 1 - i].y;
         let length = (dx * dx + dy * dy).sqrt();
-        
+
         if length > 1e-6 {
             return Point {
                 x: dx / length,
@@ -652,7 +664,7 @@ fn estimate_tangent_at_end(points: &[Point]) -> Point {
             };
         }
     }
-    
+
     Point { x: 1.0, y: 0.0 } // Fallback
 }
 
@@ -661,15 +673,15 @@ fn estimate_tangent_at_end(points: &[Point]) -> Point {
 /// Assigns parameter values t ∈ [0,1] to each point based on cumulative chord length.
 fn compute_chord_parameters(points: &[Point]) -> Vec<f32> {
     let mut parameters = vec![0.0; points.len()];
-    
+
     if points.len() <= 1 {
         return parameters;
     }
-    
+
     // Calculate cumulative chord lengths
     let mut total_length = 0.0;
     let mut lengths = vec![0.0; points.len()];
-    
+
     for i in 1..points.len() {
         let dx = points[i].x - points[i - 1].x;
         let dy = points[i].y - points[i - 1].y;
@@ -677,14 +689,14 @@ fn compute_chord_parameters(points: &[Point]) -> Vec<f32> {
         total_length += segment_length;
         lengths[i] = total_length;
     }
-    
+
     // Normalize to [0, 1] range
     if total_length > 0.0 {
         for i in 1..points.len() {
             parameters[i] = lengths[i] / total_length;
         }
     }
-    
+
     parameters
 }
 
@@ -699,7 +711,7 @@ fn least_squares_fit(
     end_tangent: &Point,
 ) -> (f32, f32) {
     let n = points.len();
-    
+
     // Set up the linear system: [C00 C01] [alpha1] = [X0]
     //                           [C10 C11] [alpha2]   [X1]
     let mut c00 = 0.0;
@@ -707,7 +719,7 @@ fn least_squares_fit(
     let mut c11 = 0.0;
     let mut x0 = 0.0;
     let mut x1 = 0.0;
-    
+
     for i in 0..n {
         let t = parameters[i];
         let t2 = t * t;
@@ -715,33 +727,33 @@ fn least_squares_fit(
         let mt = 1.0 - t;
         let mt2 = mt * mt;
         let mt3 = mt2 * mt;
-        
+
         // Bernstein basis functions for control points
         let b1 = 3.0 * mt2 * t;
         let b2 = 3.0 * mt * t2;
-        
+
         // Point on curve without control points (just start and end)
         let base_x = mt3 * points[0].x + t3 * points[n - 1].x;
         let base_y = mt3 * points[0].y + t3 * points[n - 1].y;
-        
+
         // Residual vector
         let rx = points[i].x - base_x;
         let ry = points[i].y - base_y;
-        
+
         // Accumulate matrix elements
         c00 += b1 * b1;
         c01 += b1 * b2;
         c11 += b2 * b2;
-        
+
         x0 += rx * b1 * start_tangent.x + ry * b1 * start_tangent.y;
         x1 += rx * b2 * end_tangent.x + ry * b2 * end_tangent.y;
     }
-    
+
     let c10 = c01; // Matrix is symmetric
-    
+
     // Solve 2x2 linear system
     let det = c00 * c11 - c01 * c10;
-    
+
     if det.abs() < 1e-12 {
         // Singular matrix, use heuristic fallback
         let chord_length = {
@@ -752,14 +764,14 @@ fn least_squares_fit(
         let default_distance = chord_length / 3.0;
         return (default_distance, default_distance);
     }
-    
+
     let alpha1 = (x0 * c11 - x1 * c01) / det;
     let alpha2 = (x1 * c00 - x0 * c10) / det;
-    
+
     // Ensure positive distances (control points in correct direction)
     let alpha1 = alpha1.max(1.0);
     let alpha2 = alpha2.max(1.0);
-    
+
     (alpha1, alpha2)
 }
 
@@ -767,44 +779,42 @@ fn least_squares_fit(
 ///
 /// Iteratively improves the parameter values for each point to minimize
 /// the distance to the Bézier curve.
-fn newton_raphson_optimize(
-    bezier: &mut CubicBezier,
-    points: &[Point],
-    parameters: &mut Vec<f32>,
-) {
+fn newton_raphson_optimize(bezier: &mut CubicBezier, points: &[Point], parameters: &mut [f32]) {
     const MAX_ITERATIONS: usize = 5;
     const CONVERGENCE_THRESHOLD: f32 = 1e-6;
-    
+
     for _iteration in 0..MAX_ITERATIONS {
         let mut max_delta: f32 = 0.0;
-        
+
         // Skip first and last points (they are exact)
         for i in 1..points.len() - 1 {
             let t = parameters[i];
             let point = points[i];
-            
+
             // Calculate position and derivatives at current parameter
             let curve_point = bezier.evaluate(t);
             let derivative = evaluate_bezier_derivative(bezier, t);
             let second_derivative = evaluate_bezier_second_derivative(bezier, t);
-            
+
             // Newton-Raphson step
             let error_x = curve_point.x - point.x;
             let error_y = curve_point.y - point.y;
-            
+
             let numerator = error_x * derivative.x + error_y * derivative.y;
-            let denominator = derivative.x * derivative.x + derivative.y * derivative.y
-                + error_x * second_derivative.x + error_y * second_derivative.y;
-            
+            let denominator = derivative.x * derivative.x
+                + derivative.y * derivative.y
+                + error_x * second_derivative.x
+                + error_y * second_derivative.y;
+
             if denominator.abs() > 1e-12 {
                 let delta_t = numerator / denominator;
                 let new_t = (t - delta_t).clamp(0.0, 1.0);
-                
+
                 max_delta = max_delta.max(delta_t.abs());
                 parameters[i] = new_t;
             }
         }
-        
+
         // Check for convergence
         if max_delta < CONVERGENCE_THRESHOLD {
             break;
@@ -817,7 +827,7 @@ fn evaluate_bezier_derivative(bezier: &CubicBezier, t: f32) -> Point {
     let mt = 1.0 - t;
     let mt2 = mt * mt;
     let t2 = t * t;
-    
+
     Point {
         x: 3.0 * mt2 * (bezier.control1.x - bezier.start.x)
             + 6.0 * mt * t * (bezier.control2.x - bezier.control1.x)
@@ -831,7 +841,7 @@ fn evaluate_bezier_derivative(bezier: &CubicBezier, t: f32) -> Point {
 /// Evaluate second derivative of cubic Bézier curve at parameter t
 fn evaluate_bezier_second_derivative(bezier: &CubicBezier, t: f32) -> Point {
     let mt = 1.0 - t;
-    
+
     Point {
         x: 6.0 * mt * (bezier.control2.x - 2.0 * bezier.control1.x + bezier.start.x)
             + 6.0 * t * (bezier.end.x - 2.0 * bezier.control2.x + bezier.control1.x),
@@ -850,28 +860,28 @@ fn measure_fitting_error(
 ) -> (f32, usize) {
     let mut max_error = 0.0;
     let mut max_error_index = 0;
-    
+
     for (i, &point) in points.iter().enumerate() {
         let t = parameters[i];
         let curve_point = bezier.evaluate(t);
-        
+
         let dx = point.x - curve_point.x;
         let dy = point.y - curve_point.y;
         let error = (dx * dx + dy * dy).sqrt();
-        
+
         if error > max_error {
             max_error = error;
             max_error_index = i;
         }
     }
-    
+
     (max_error, max_error_index)
 }
 
 /// Convert Schneider fitting results to SVG path commands
 pub fn fitting_results_to_svg_path(results: &[FittingResult], start_point: Point) -> String {
     let mut path_data = format!("M {:.2} {:.2}", start_point.x, start_point.y);
-    
+
     for result in results {
         match result {
             FittingResult::Curve(bezier) => {
@@ -893,14 +903,18 @@ pub fn fitting_results_to_svg_path(results: &[FittingResult], start_point: Point
                         FittingResult::Segments(_) => {
                             // Handle deeper nesting if needed (rare case)
                             // For now, convert to lines to prevent infinite recursion
-                            path_data.push_str(&format!(" L {:.2} {:.2}", segment.get_end_point().x, segment.get_end_point().y));
+                            path_data.push_str(&format!(
+                                " L {:.2} {:.2}",
+                                segment.get_end_point().x,
+                                segment.get_end_point().y
+                            ));
                         }
                     }
                 }
             }
         }
     }
-    
+
     path_data
 }
 
@@ -932,7 +946,7 @@ mod tests {
         let expected_diagonal = ((1024.0_f64).powi(2) + (768.0_f64).powi(2)).sqrt();
         let expected_epsilon = expected_diagonal * 0.005;
         assert!((epsilon - expected_epsilon).abs() < 1e-10);
-        
+
         // Test clamping of factor
         let epsilon_low = calculate_douglas_peucker_epsilon(1024, 768, 0.001); // Below 0.003
         let epsilon_high = calculate_douglas_peucker_epsilon(1024, 768, 0.01); // Above 0.007
@@ -1022,14 +1036,14 @@ mod tests {
         // Create a path with a sharp corner (90-degree turn)
         let points = vec![
             Point { x: 0.0, y: 0.0 },
-            Point { x: 10.0, y: 0.0 }, // Straight horizontal
-            Point { x: 20.0, y: 0.0 }, // Still horizontal
+            Point { x: 10.0, y: 0.0 },  // Straight horizontal
+            Point { x: 20.0, y: 0.0 },  // Still horizontal
             Point { x: 30.0, y: 10.0 }, // 90-degree turn upward
             Point { x: 30.0, y: 20.0 }, // Vertical continuation
         ];
 
         let corners = detect_corners(&points, 45.0); // 45-degree threshold
-        
+
         // Should detect corner at the turning point (index 2 or 3)
         assert!(corners.len() >= 3); // Start, corner, end at minimum
         assert_eq!(corners[0], 0); // Start
@@ -1086,14 +1100,14 @@ mod tests {
         ];
 
         let parameters = compute_chord_parameters(&points);
-        
+
         assert_eq!(parameters.len(), points.len());
         assert_eq!(parameters[0], 0.0); // First point at t=0
         assert_eq!(parameters[points.len() - 1], 1.0); // Last point at t=1
-        
+
         // For equally spaced points, parameters should be evenly distributed
-        assert!((parameters[1] - 1.0/3.0).abs() < 1e-6);
-        assert!((parameters[2] - 2.0/3.0).abs() < 1e-6);
+        assert!((parameters[1] - 1.0 / 3.0).abs() < 1e-6);
+        assert!((parameters[2] - 2.0 / 3.0).abs() < 1e-6);
     }
 
     #[test]
@@ -1127,7 +1141,7 @@ mod tests {
         ];
 
         let results = schneider_fit_cubic_bezier(&points, 1.0, 30.0);
-        
+
         // Should produce a single line segment for collinear points
         assert_eq!(results.len(), 1);
         match &results[0] {
@@ -1151,10 +1165,10 @@ mod tests {
         ];
 
         let results = schneider_fit_cubic_bezier(&points, 1.0, 30.0);
-        
+
         // Should produce at least one curve or subdivided segments
         assert!(!results.is_empty());
-        
+
         // Convert to SVG and ensure it's not empty
         let svg_path = fitting_results_to_svg_path(&results, points[0]);
         assert!(svg_path.starts_with("M 0.00 0.00"));
@@ -1200,10 +1214,10 @@ mod tests {
             Point { x: 1.5, y: 0.0 },
             Point { x: 3.0, y: 0.0 },
         ];
-        
+
         let parameters = vec![0.0, 0.5, 1.0];
         let (max_error, _) = measure_fitting_error(&bezier, &points, &parameters);
-        
+
         // Error should be very small for points on the curve
         assert!(max_error < 1e-6);
     }

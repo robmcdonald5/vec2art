@@ -2,7 +2,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use image::{ImageBuffer, Rgba};
-use vectorize_core::{vectorize_logo_rgba, vectorize_regions_rgba, LogoConfig, RegionsConfig};
+use vectorize_core::{vectorize_trace_low_rgba, TraceLowConfig};
 
 fn create_test_image(size: u32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     ImageBuffer::from_fn(size, size, |x, y| {
@@ -14,17 +14,17 @@ fn create_test_image(size: u32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     })
 }
 
-fn benchmark_logo_vectorization(c: &mut Criterion) {
+fn benchmark_trace_low_vectorization(c: &mut Criterion) {
     let sizes = vec![64, 128, 256, 512];
-    let config = LogoConfig::default();
+    let config = TraceLowConfig::default();
 
-    let mut group = c.benchmark_group("logo_vectorization");
+    let mut group = c.benchmark_group("trace_low_vectorization");
 
     for size in sizes {
         let img = create_test_image(size);
-        group.bench_with_input(BenchmarkId::new("logo", size), &size, |b, _| {
+        group.bench_with_input(BenchmarkId::new("trace_low", size), &size, |b, _| {
             b.iter(|| {
-                black_box(vectorize_logo_rgba(&img, &config).unwrap());
+                black_box(vectorize_trace_low_rgba(&img, &config).unwrap());
             })
         });
     }
@@ -32,17 +32,20 @@ fn benchmark_logo_vectorization(c: &mut Criterion) {
     group.finish();
 }
 
-fn benchmark_regions_vectorization(c: &mut Criterion) {
-    let sizes = vec![64, 128, 256]; // Smaller sizes for more complex algorithm
-    let config = RegionsConfig::default();
+fn benchmark_multipass_vectorization(c: &mut Criterion) {
+    let sizes = vec![64, 128, 256]; // Smaller sizes for multipass
+    let config = TraceLowConfig {
+        enable_multipass: true,
+        ..TraceLowConfig::default()
+    };
 
-    let mut group = c.benchmark_group("regions_vectorization");
+    let mut group = c.benchmark_group("multipass_vectorization");
 
     for size in sizes {
         let img = create_test_image(size);
-        group.bench_with_input(BenchmarkId::new("regions", size), &size, |b, _| {
+        group.bench_with_input(BenchmarkId::new("multipass", size), &size, |b, _| {
             b.iter(|| {
-                black_box(vectorize_regions_rgba(&img, &config).unwrap());
+                black_box(vectorize_trace_low_rgba(&img, &config).unwrap());
             })
         });
     }
@@ -55,59 +58,36 @@ fn benchmark_different_configs(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("config_variations");
 
-    // Test different logo configs
-    let logo_configs = vec![
-        ("default", LogoConfig::default()),
+    // Test different trace-low configs
+    let trace_configs = vec![
+        ("default", TraceLowConfig::default()),
         (
-            "high_quality",
-            LogoConfig {
-                simplification_tolerance: 0.5,
-                curve_tolerance: 1.0,
-                ..LogoConfig::default()
+            "high_detail",
+            TraceLowConfig {
+                detail: 0.8,
+                ..TraceLowConfig::default()
             },
         ),
         (
-            "fast",
-            LogoConfig {
-                simplification_tolerance: 2.0,
-                fit_curves: false,
-                ..LogoConfig::default()
-            },
-        ),
-    ];
-
-    for (name, config) in logo_configs {
-        group.bench_with_input(BenchmarkId::new("logo", name), &config, |b, config| {
-            b.iter(|| {
-                black_box(vectorize_logo_rgba(&img, config).unwrap());
-            })
-        });
-    }
-
-    // Test different regions configs
-    let regions_configs = vec![
-        ("default", RegionsConfig::default()),
-        (
-            "few_colors",
-            RegionsConfig {
-                num_colors: 8,
-                ..RegionsConfig::default()
+            "low_detail",
+            TraceLowConfig {
+                detail: 0.2,
+                ..TraceLowConfig::default()
             },
         ),
         (
-            "many_colors",
-            RegionsConfig {
-                num_colors: 32,
-                max_iterations: 50, // Reduce iterations for benchmark
-                ..RegionsConfig::default()
+            "multipass",
+            TraceLowConfig {
+                enable_multipass: true,
+                ..TraceLowConfig::default()
             },
         ),
     ];
 
-    for (name, config) in regions_configs {
-        group.bench_with_input(BenchmarkId::new("regions", name), &config, |b, config| {
+    for (name, config) in trace_configs {
+        group.bench_with_input(BenchmarkId::new("trace_low", name), &config, |b, config| {
             b.iter(|| {
-                black_box(vectorize_regions_rgba(&img, config).unwrap());
+                black_box(vectorize_trace_low_rgba(&img, config).unwrap());
             })
         });
     }
@@ -117,8 +97,8 @@ fn benchmark_different_configs(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    benchmark_logo_vectorization,
-    benchmark_regions_vectorization,
+    benchmark_trace_low_vectorization,
+    benchmark_multipass_vectorization,
     benchmark_different_configs
 );
 criterion_main!(benches);

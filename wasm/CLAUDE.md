@@ -1,241 +1,209 @@
 # wasm/CLAUDE.md
 
-This document provides Rust/WASM-specific implementation guidelines for the vec2art core processing module.
+This document provides Rust/WASM-specific implementation guidelines for the vec2art line tracing engine.
 
 ## Scope Overview
 
-This directory contains the core image-to-SVG vectorization engine written in Rust. The code is developed and tested natively first, then compiled to WebAssembly for browser deployment.
+This directory contains the high-performance line tracing engine written in Rust, specialized for converting raster images into expressive SVG line art. The code is developed and tested natively first, then compiled to WebAssembly for browser deployment with focus on <1.5s processing times and hand-drawn aesthetic quality.
 
 ## Project Structure
 
 ```Rust/WASM
 wasm/
 ├── Cargo.toml                      # Workspace manifest (members: vectorize-core, vectorize-cli, vectorize-wasm)
-├── rust-toolchain.toml             # Pin toolchain/components (e.g., stable + rustfmt + clippy)
+├── rust-toolchain.toml             # Pin toolchain/components (stable + rustfmt + clippy + wasm32)
 ├── .cargo/
-│   └── config.toml                 # Target cfgs (wasm32 flags: +simd128; optional atomics), build settings
-├── .gitignore                      # Ignore /target, /pkg, node_modules, artifacts
+│   └── config.toml                 # Target cfgs (wasm32 flags: +simd128), build optimizations
+├── .gitignore                      # Ignore /target, /pkg, artifacts, generated files
 ├── LICENSE
-├── CLAUDE.md                       # Repo-local agent guidance
+├── CLAUDE.md                       # Repo-local implementation guidelines
 ├── README.md                       # Project-specific readme
 │
-├── vectorize-core/                 # Core Rust library (platform-agnostic, no JS/WASM deps)
+├── vectorize-core/                 # Core line tracing library (platform-agnostic)
 │   ├── Cargo.toml
 │   ├── src/
 │   │   ├── lib.rs                  # Main library entry point (public API)
-│   │   ├── error.rs                # Custom error types
-│   │   ├── config.rs               # Configuration structs
+│   │   ├── error.rs                # Custom error types and handling
+│   │   ├── config.rs               # Configuration structs for line tracing
 │   │   │
-│   │   ├── algorithms/             # Vectorization algorithms
+│   │   ├── algorithms/             # Line tracing algorithms
+│   │   │   ├── mod.rs              # Algorithm exports and common types
+│   │   │   ├── trace_low.rs        # Main line tracing implementation with multi-pass
+│   │   │   ├── hand_drawn.rs       # Artistic enhancement (tremor, weight variation, tapering)
+│   │   │   └── path_utils.rs       # Path generation and curve fitting utilities
+│   │   │
+│   │   ├── preprocessing/          # Image preprocessing for line tracing
 │   │   │   ├── mod.rs
-│   │   │   ├── traits.rs           # Algorithm traits and interfaces
-│   │   │   ├── logo_mode.rs        # Binary tracing (Potrace-style)
-│   │   │   ├── color_regions.rs    # K-means/superpixel vectorization
-│   │   │   ├── edge_mode.rs        # Edge detection and centerlines
-│   │   │   ├── stylized/           # Creative algorithms
-│   │   │   │   ├── mod.rs
-│   │   │   │   ├── low_poly.rs     # Delaunay triangulation
-│   │   │   │   ├── stipple.rs      # Dot/stipple art
-│   │   │   │   └── halftone.rs     # Halftone patterns
-│   │   │   └── vtracer_wrapper.rs  # Optional VTracer integration
+│   │   │   ├── resize.rs           # Adaptive image resizing with quality preservation
+│   │   │   ├── filters.rs          # Gaussian, bilateral filtering for noise reduction
+│   │   │   ├── edge_detection.rs   # Optimized Canny edge detection with adaptive thresholds
+│   │   │   └── noise_filtering.rs  # Content-aware noise filtering
 │   │   │
-│   │   ├── preprocessing/          # Image preprocessing
+│   │   ├── curve_fitting/          # Path optimization and smoothing
 │   │   │   ├── mod.rs
-│   │   │   ├── resize.rs           # Image resizing utilities
-│   │   │   ├── colorspace.rs       # sRGB ↔ CIELAB conversions
-│   │   │   ├── filters.rs          # Bilateral, Gaussian filters
-│   │   │   ├── threshold.rs        # Otsu, adaptive thresholding
-│   │   │   ├── morphology.rs       # Erosion, dilation, open, close
-│   │   │   └── edge_detection.rs   # Canny, Sobel edge detectors
+│   │   │   ├── simplify.rs         # Douglas-Peucker path simplification
+│   │   │   ├── smooth.rs           # Path smoothing for natural curves
+│   │   │   └── bezier.rs           # Cubic Bézier curve fitting for organic lines
 │   │   │
-│   │   ├── curve_fitting/          # Path optimization
+│   │   ├── svg_builder/            # SVG generation with artistic styling
 │   │   │   ├── mod.rs
-│   │   │   ├── simplify.rs         # RDP, Visvalingam-Whyatt
-│   │   │   ├── bezier.rs           # Cubic Bézier curve fitting
-│   │   │   ├── contours.rs         # Contour tracing
-│   │   │   └── smooth.rs           # Path smoothing algorithms
+│   │   │   ├── builder.rs          # SVG document generation
+│   │   │   ├── path.rs             # SVG path element creation with hand-drawn styling
+│   │   │   └── optimizer.rs        # SVG optimization and cleanup
 │   │   │
-│   │   ├── svg_builder/            # SVG generation
-│   │   │   ├── mod.rs
-│   │   │   ├── builder.rs          # SVG document builder
-│   │   │   ├── path.rs             # SVG path element generation
-│   │   │   ├── optimizer.rs        # Path optimization and cleanup
-│   │   │   └── styles.rs           # Fill, stroke, and style handling
-│   │   │
-│   │   └── utils/                  # Common utilities
+│   │   └── utils/                  # Common utilities and helpers
 │   │       ├── mod.rs
 │   │       ├── geometry.rs         # Point, Vec2, geometric primitives
-│   │       ├── color.rs            # Color manipulation and conversion
-│   │       ├── image_utils.rs      # Image buffers & basic ops (I/O kept in CLI)
-│   │       ├── math.rs             # Math utilities and constants
-│   │       └── memory.rs           # Memory helpers / buffer pools
+│   │       ├── image_utils.rs      # Image buffer operations
+│   │       ├── math.rs             # Mathematical utilities and constants
+│   │       └── performance.rs      # Performance monitoring and optimization
 │   │
-│   ├── tests/                      # Unit tests
-│   │   ├── algorithm_tests.rs
-│   │   ├── preprocessing_tests.rs
-│   │   └── integration_tests.rs
-│   └── benches/                    # Criterion benches for hot loops
-│       ├── simplify_bench.rs
-│       ├── bezier_fit_bench.rs
-│       └── segmentation_bench.rs
+│   ├── tests/                      # Unit and integration tests
+│   │   ├── trace_tests.rs          # Line tracing algorithm tests
+│   │   ├── hand_drawn_tests.rs     # Artistic enhancement tests
+│   │   └── integration_tests.rs    # End-to-end processing tests
+│   └── benches/                    # Performance benchmarks
+│       ├── trace_bench.rs          # Line tracing performance tests
+│       ├── multipass_bench.rs      # Multi-pass processing benchmarks
+│       └── hand_drawn_bench.rs     # Artistic enhancement benchmarks
 │
-├── vectorize-cli/                  # Native CLI for dev/bench/snapshots
+├── vectorize-cli/                  # Native CLI with comprehensive line tracing options
 │   ├── Cargo.toml
 │   ├── src/
-│   │   ├── main.rs                 # CLI entry point
-│   │   ├── args.rs                 # Command line argument parsing
+│   │   ├── main.rs                 # CLI entry point with extensive parameter control
+│   │   ├── args.rs                 # Command line argument parsing (20+ options)
 │   │   ├── commands/               # CLI subcommands
 │   │   │   ├── mod.rs
-│   │   │   ├── convert.rs          # Single image conversion
-│   │   │   ├── batch.rs            # Batch processing
-│   │   │   └── benchmark.rs        # Performance benchmarking
-│   │   └── output.rs               # Output formatting and saving
+│   │   │   ├── trace_low.rs        # Line tracing with multi-pass and artistic options
+│   │   │   └── convert.rs          # Simple conversion with defaults
+│   │   └── output.rs               # SVG output and statistics reporting
 │   │
-│   └── examples/                   # Example images for testing
-│       ├── images_in/              # Test input images
-│       │   ├── logo_test.png
-│       │   ├── photo_test.jpg
-│       │   ├── line_art.png
-│       │   └── complex_image.png
-│       └── images_out/             # Expected output SVGs (goldens)
-│           ├── logo_test_binary.svg
-│           ├── photo_test_regions.svg
-│           └── line_art_edges.svg
+│   └── examples/                   # Test images and outputs
+│       ├── images_in/              # Test input images for line tracing
+│       │   ├── sketch.png          # Hand-drawn style reference
+│       │   ├── photo.jpg           # Photographic content
+│       │   ├── line_art.png        # Clean line art
+│       │   └── complex.png         # Complex geometric content
+│       └── outputs/                # Generated SVG outputs and statistics
+│           ├── trace_results/      # Line tracing output examples
+│           ├── performance/        # Performance test results
+│           └── report.md           # Current performance and quality metrics
 │
-├── vectorize-wasm/                 # WASM bindings (thin wrapper over core)
+├── vectorize-wasm/                 # WASM bindings (thin wrapper for line tracing)
 │   ├── Cargo.toml
 │   ├── src/
 │   │   ├── lib.rs                  # WASM entry point (wasm-bindgen exports)
-│   │   ├── bindings.rs             # JS/TS-friendly wrappers & types
-│   │   ├── memory.rs               # Zero-copy view into WASM memory
-│   │   ├── threading.rs            # wasm-bindgen-rayon init & helpers
-│   │   ├── workers/                # (Optional) Worker-coordination utils
-│   │   │   ├── mod.rs
-│   │   │   ├── processor.rs        # Work splitting / message protocol
-│   │   │   └── coordinator.rs      # Multi-worker orchestration
-│   │   └── utils.rs                # WASM-specific utilities
+│   │   ├── bindings.rs             # JS/TS-friendly line tracing API
+│   │   ├── memory.rs               # Zero-copy image buffer handling
+│   │   ├── threading.rs            # Multi-threaded processing support
+│   │   └── utils.rs                # WASM-specific utilities and helpers
 │   │
 │   ├── pkg/                        # wasm-pack output (gitignored)
-│   └── www/                        # Minimal dev/demo site
-│       ├── index.html              # Test harness
-│       ├── main.ts                 # ESM loader; init_thread_pool() call
-│       ├── server.mjs              # Dev server w/ COOP/COEP headers
-│       ├── vite.config.ts          # Optional: Vite bundling config
+│   └── www/                        # Minimal demo for line tracing
+│       ├── index.html              # Line tracing test interface
+│       ├── main.ts                 # WASM loader with threading support
 │       ├── package.json            # For local demo only
-│       ├── public/
-│       │   └── _headers            # Netlify-style COOP/COEP (threads-ready)
-│       └── tsconfig.json
+│       └── public/                 # Static assets
+│           └── sample_images/      # Test images for browser demos
 │
-├── tests/                          # Cross-crate integration tests
-│   ├── golden/                     # Golden SVG references (snapshots)
-│   │   ├── logo_mode/
-│   │   ├── color_regions/
-│   │   └── edge_mode/
-│   ├── snapshots.rs                # insta-style snapshot tests
-│   ├── performance.rs              # Perf regressions (smoke-level)
-│   └── wasm_integration.rs         # Browser/wasm smoke tests (headless)
+├── tests/                          # Integration and performance tests
+│   ├── golden/                     # Golden SVG references for line tracing
+│   │   ├── standard/               # Standard single-pass results
+│   │   ├── multipass/              # Multi-pass enhanced results
+│   │   └── hand_drawn/             # Hand-drawn aesthetic results
+│   ├── snapshots.rs                # Snapshot tests for line tracing output
+│   ├── performance.rs              # Performance regression tests (<1.5s target)
+│   └── wasm_integration.rs         # Browser/WASM smoke tests
 │
-├── benches/                        # End-to-end benches (CLI invokes core)
-│   ├── algorithm_bench.rs
-│   ├── preprocessing_bench.rs
-│   └── end_to_end_bench.rs
-│
-├── external/                       # Optional C/C++ wrappers (off by default)
-│   ├── potrace/
-│   │   ├── potrace_wrapper.c
-│   │   ├── potrace_wrapper.h
-│   │   └── build.rs
-│   └── autotrace/
-│       ├── autotrace_wrapper.c
-│       ├── autotrace_wrapper.h
-│       └── build.rs
+├── benches/                        # End-to-end performance benchmarks
+│   ├── line_tracing_bench.rs       # Core line tracing performance
+│   ├── multipass_bench.rs          # Multi-pass processing benchmarks
+│   └── hand_drawn_bench.rs         # Artistic enhancement benchmarks
 │
 ├── scripts/                        # Build & utility scripts
 │   ├── build_wasm.sh               # wasm-pack build (release/dev)
 │   ├── build_wasm.ps1              # Windows-friendly build script
-│   ├── test_all.sh                 # Run unit/integration/snapshots
-│   ├── benchmark.sh                # Run benches with criterion
-│   └── generate_bindings.sh        # Generate/update TypeScript d.ts
+│   ├── test_all.sh                 # Run unit/integration/performance tests
+│   ├── benchmark.sh                # Run comprehensive benchmarks
+│   └── generate_bindings.sh        # Generate/update TypeScript definitions
 │
-└── docs/                           # Additional documentation
-    ├── algorithms.md               # Algorithm implementation details
-    ├── performance.md              # Perf optimization guide
-    ├── wasm_integration.md         # Threads/SIMD, COOP/COEP notes
-    └── api.md                      # Public API documentation
+└── docs/                           # Technical documentation
+    ├── line_tracing.md             # Line tracing algorithm details
+    ├── performance.md              # Performance optimization guide
+    ├── hand_drawn.md               # Artistic enhancement documentation
+    └── api.md                      # Public API reference
 ```
 
 ## Module Organization
 
-The project is organized as a Cargo workspace with three main crates:
+The project is organized as a Cargo workspace with three specialized crates focused on line tracing:
 
 ### Implementation Status
 
-**Current**: Phase A.5+ complete with Phase B infrastructure - production-ready adaptive algorithms with comprehensive refinement capabilities
+**Current**: Phases 1-2 Complete - Production-ready line tracing with artistic enhancements
 
-- Cargo workspace structure with three main crates
-- `rust-toolchain.toml` and `.cargo/config.toml` configured for native and WASM builds
-- Advanced algorithms: Wu quantization, SLIC segmentation, Suzuki-Abe contours, primitive detection
-- Telemetry system with per-run config dumps and CSV logging for diagnostics and quality analysis
-- Auto-retry guard system implemented and ready for activation
-- Configuration fixes: SLIC step_px parameter corrected, pixel-based Douglas-Peucker epsilon
-- WASM bindings ready for browser integration
-- Multi-threading support configured
-- Comprehensive test coverage
+- **Core Line Tracing Engine**: High-performance Canny edge detection with multi-pass processing
+- **Multi-Directional Processing**: Standard, reverse, and diagonal passes for comprehensive line capture
+- **Hand-Drawn Aesthetics**: Complete artistic enhancement pipeline with tremor, weight variation, and tapering
+- **Performance Achievement**: <1.5s processing times with optimized algorithms and SIMD acceleration
+- **CLI Interface**: Comprehensive parameter control with 20+ options for professional line art creation
+- **WASM Ready**: Browser integration prepared with multi-threading and memory optimization
+- **Test Coverage**: Comprehensive testing with performance benchmarks and golden reference validation
 
-**Next**: Phase 2 WASM Integration - ready for browser deployment with production-grade algorithms
+**Next**: Phase 3 Frontend Integration - SvelteKit interface with real-time preview and export
 
 ## Development Guidelines
 
-### Algorithm Implementation
+### Line Tracing Implementation
 
-- Develop algorithms as pure Rust functions without platform assumptions
-- Use trait-based design for swappable implementations
-- Maintain deterministic behavior (fixed seeds for randomization)
-- Document algorithm parameters and their effects
-- Target ≤ 2.5s processing time for production images (1024px max dimension)
-- Achieve median ΔE ≤ 6.0 and SSIM ≥ 0.93 on comprehensive test suite
-- Validate robustness on complex real-world images with adaptive parameter systems
+- Focus on pure Rust implementations optimized for line art extraction
+- Emphasize performance with <1.5s processing time targets for typical images
+- Implement multi-pass processing (standard, reverse, diagonal) for comprehensive coverage
+- Maintain deterministic behavior with reproducible random seeds for artistic effects
+- Document parameter effects on line quality and artistic style
+- Validate output quality through visual inspection and performance benchmarks
+- Support content-aware processing with adaptive noise filtering and detail levels
 
 ### Performance Optimization
 
-- **Parallelism:** Use `rayon` for data parallelism (scanlines, regions, contours)
-- **SIMD:** Write SIMD-friendly loops; use explicit SIMD where beneficial
-- **Memory:** Pre-allocate buffers; use arena allocators for temporary data
-- **Adaptive Resolution**: Dynamic processing up to 2048px with performance scaling
-- **Quality Targets**: Achieve roadmap-compliant quality metrics (ΔE, SSIM, runtime)
-- **Profiling:** Regular benchmarking with `criterion`; profile with `perf`/`flamegraph`
+- **Ultra-Fast Target**: Achieve <1.5s processing times through algorithmic and implementation optimization
+- **Parallelism:** Use `rayon` for multi-threaded edge detection, path generation, and artistic enhancement
+- **SIMD:** Leverage SIMD instructions for image processing and mathematical operations
+- **Memory Efficiency:** Pre-allocate buffers, minimize allocations, and optimize cache usage
+- **Adaptive Processing**: Dynamic resolution handling and content-aware parameter tuning
+- **Profiling:** Regular benchmarking with `criterion`; profile hot paths with `flamegraph`
 
 ### WASM-Specific Considerations
 
-- **Threading:** Implement both single-threaded and multi-threaded paths
-- **Memory Limits:** Implement progressive processing for large images
-- **SIMD:** Compile with `+simd128` target feature when available
-- **Size Optimization:** Use `wasm-opt` for production builds
+- **Threading:** Support both single-threaded and multi-threaded line tracing execution paths
+- **Memory Optimization:** Efficient image buffer handling with zero-copy operations where possible
+- **SIMD:** Compile with `+simd128` target feature for accelerated edge detection and path processing
+- **Bundle Size:** Use `wasm-opt` for production builds focused on line tracing functionality
 
 ### Error Handling
 
-- Use `Result<T, E>` with custom error types
-- Graceful degradation (fallback algorithms if optimal path fails)
-- Clear error messages for debugging
-- Detect and prevent infinite loops in contour tracing
+- Use `Result<T, E>` with custom error types for line tracing operations
+- Graceful degradation with fallback processing when edge detection encounters issues
+- Clear error messages for debugging image processing and path generation failures
+- Robust handling of edge cases in multi-pass processing and artistic enhancement
 
 ### Testing Strategy
 
-- **Unit Tests:** Test individual algorithms and utilities
-- **Integration Tests:** End-to-end image → SVG conversion with real-world images
-- **Snapshot Tests:** Compare output SVGs against golden references
-- **Property Tests:** Use `proptest` for algorithmic correctness
-- **Benchmark Tests:** Track performance regressions and improvements
+- **Unit Tests:** Test line tracing algorithms, hand-drawn enhancements, and utilities
+- **Integration Tests:** End-to-end image → line art SVG conversion with diverse test images
+- **Snapshot Tests:** Compare output SVGs against golden references for visual regression detection
+- **Performance Tests:** Validate <1.5s processing time targets and track performance improvements
+- **Visual Quality Tests:** Manual validation of artistic quality and line expressiveness
 
 ## Key Dependencies
 
 ### Core Processing
 
-- `image` — Image loading and basic operations
-- `imageproc` — Advanced image processing operations (Canny edge detection, etc.)
-- `nalgebra` or `cgmath` — Linear algebra for geometric operations
-- `rayon` — Data parallelism for multi-threading
-- `lab` — LAB color space conversions for improved color quantization
+- `image` — Image loading and basic operations optimized for line tracing
+- `imageproc` — Advanced image processing (Canny edge detection, Gaussian filtering)
+- `nalgebra` — Linear algebra for geometric operations and path mathematics
+- `rayon` — Data parallelism for multi-threaded edge detection and path generation
+- `serde` — Serialization for configuration and output data structures
 
 ### WASM
 
@@ -245,22 +213,22 @@ The project is organized as a Cargo workspace with three main crates:
 
 ### Development
 
-- `criterion` — Benchmarking framework
-- `proptest` — Property-based testing
-- `insta` — Snapshot testing
-- `ssim` — Structural similarity validation for quality testing
-- `clap` — Command-line argument parsing with comprehensive parameter support
+- `criterion` — Performance benchmarking for line tracing optimization
+- `insta` — Snapshot testing for SVG output validation
+- `clap` — Command-line argument parsing for extensive line tracing parameter control
+- `rand` — Random number generation for artistic effects (tremor, variation)
+- `approx` — Floating-point comparisons for geometric testing
 
 ### CI Pipeline Rust
 
 - **Formatting** cargo fmt --all -- --check
-- **Type-Check** cargo check --workspace --all-targets --all-features --locked
-- **Linting** cargo clippy --workspace --all-targets --all-features -- -D warnings
-- **Tests** cargo test --workspace --all-features --locked --no-fail-fast
-- **Telemetry Integration Tests** cargo run --bin vectorize-cli (all commands generate telemetry automatically)
-- **Performance Benchmarks** cargo bench --workspace
-- **DOCS** RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
-- **Build** (Optional) cargo build --workspace --all-targets --all-features --locked --release
+- **Type-Check** cargo check --workspace --all-targets --locked
+- **Linting** cargo clippy --workspace --all-targets -- -D warnings
+- **Unit Tests** cargo test --workspace --locked --no-fail-fast
+- **Performance Tests** cargo run --bin vectorize-cli -- trace-low examples/images_in/test.png output.svg --stats perf.csv
+- **Performance Benchmarks** cargo bench --workspace (line tracing performance validation)
+- **Documentation** RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+- **Release Build** cargo build --workspace --all-targets --locked --release
 - **Supply-Chain** (Optional)
     1. cargo install cargo-audit && cargo audit
     2. cargo install cargo-deny  && cargo deny check
@@ -268,63 +236,54 @@ The project is organized as a Cargo workspace with three main crates:
 ### CI Pipeline WASM
 
 - **Formatting** cargo fmt --all -- --check
-- **Type-Check** cargo check --workspace --all-targets --all-features --locked --target wasm32-wasi
-- **Linting** cargo clippy --workspace --all-targets --all-features --locked --target wasm32-wasi -- -D warnings
-- **Tests** CARGO_TARGET_WASM32_WASI_RUNNER=wasmtime cargo test --workspace --all-features --locked --no-fail-fast --target wasm32-wasi
-- **WASM Build** wasm-pack build --target web --out-dir pkg vectorize-wasm
-- **DOCS** RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
-- **Build** (Optional) cargo build --workspace --all-targets --all-features --locked --release --target wasm32-wasi
+- **Type-Check** cargo check --workspace --all-targets --locked --target wasm32-wasi
+- **Linting** cargo clippy --workspace --all-targets --locked --target wasm32-wasi -- -D warnings
+- **WASM Tests** CARGO_TARGET_WASM32_WASI_RUNNER=wasmtime cargo test --workspace --locked --no-fail-fast --target wasm32-wasi
+- **WASM Build** wasm-pack build --target web --out-dir pkg vectorize-wasm --release
+- **Bundle Optimization** wasm-opt pkg/vectorize_wasm_bg.wasm -O3 -o pkg/vectorize_wasm_bg.wasm
+- **Documentation** RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+- **Size Analysis** ls -lh pkg/*.wasm (validate bundle size for browser deployment)
 - **Supply-Chain** (Optional)
     1. cargo install cargo-audit && cargo audit
     2. cargo install cargo-deny && cargo deny check
 
 ## Development Status
 
-### Phase A.5+ Complete (Production-Ready Adaptive Algorithms)
+### Phases 1-2 Complete (Production-Ready Line Tracing System)
 
-- **Adaptive Parameter Systems**:
-  - **Logo Mode**: Content-aware primitive fit tolerance, resolution scaling, shape validation
-  - **Regions Mode**: Adaptive SLIC step_px (12-120), Wu color count (8-64), dynamic ΔE thresholds
-  - **Image Analysis**: Complexity, density, and noise level assessment for parameter tuning
-  - **Quality Assurance**: Automatic parameter adjustment based on image characteristics
+- **Core Line Tracing Engine**:
+  - **Optimized Canny Edge Detection**: High-performance edge detection with adaptive thresholds
+  - **Multi-Pass Processing**: Standard, reverse, and diagonal directional passes for comprehensive line capture
+  - **Content-Aware Filtering**: Intelligent noise filtering and detail level adaptation
+  - **Performance Achievement**: Consistent <1.5s processing times across diverse test images
 
-- **Algorithm Enhancements**:
-  - **Wu Quantization**: Edge case handling with k-means fallback, LAB color space processing
-  - **SLIC Integration**: Region-aware color assignment with corrected parameters
-  - **Gradient Detection**: Perceptual weighting with stability validation
-  - **Contour Processing**: Robust validation and denoising with Suzuki-Abe implementation
+- **Hand-Drawn Aesthetic Enhancement**:
+  - **Variable Stroke Weights**: Dynamic width variation based on path curvature and content
+  - **Tremor Effects**: Subtle hand-drawn irregularities for organic, natural line feel
+  - **Tapering System**: Smooth line endings with natural width transitions
+  - **Artistic Presets**: Multiple hand-drawn styles from subtle to pronounced effects
+
+- **CLI Interface (Production-Ready)**:
+  - **Comprehensive Parameters**: 20+ options for fine-tuning line tracing and artistic effects
+  - **Multi-Pass Controls**: Enable/disable reverse and diagonal passes for quality vs. speed trade-offs
+  - **Backend Selection**: Edge backend production-ready, centerline and superpixel planned
+  - **Statistics Export**: Performance and quality metrics output to CSV for analysis
 
 - **Performance Optimization**:
-  - **Adaptive Resolution**: Dynamic processing for large images (>2048px) with quality scaling
-  - **Memory Pool Optimization**: Buffer reuse and efficient allocation strategies
-  - **Enhanced Parallelization**: SLIC, Wu quantization, and gradient analysis optimization
-  - **Consistent Performance**: ≤ 2.5s processing time achieved across test suite
+  - **Multi-Threading**: Parallel edge detection and path generation with `rayon`
+  - **SIMD Acceleration**: Optimized image processing operations
+  - **Memory Efficiency**: Buffer reuse and allocation optimization for minimal overhead
+  - **Ultra-Fast Target**: <1.5s processing achieved through algorithmic and implementation optimization
 
-### Phase B Infrastructure Complete (Error-Driven Refinement)
+- **Quality Validation**:
+  - **Visual Quality Focus**: Emphasis on expressive, artistic line art output
+  - **Performance Benchmarking**: Consistent timing validation across test suite
+  - **Regression Testing**: Golden reference comparisons for output quality assurance
+  - **Real-World Testing**: Validation on diverse image types (photos, sketches, line art, complex images)
 
-- **Complete Refinement Pipeline**: Rasterization, error analysis, and actions framework
-- **Quality Measurement System**: ΔE and SSIM computation with statistical analysis
-- **Multi-Criteria Convergence**: Automated convergence detection with quality thresholds
-- **Configuration Integration**: Seamless Phase A parameter integration with Phase B refinement
-- **Performance Budgeting**: Time and iteration limits with graceful degradation
+### Ready for Phase 3 (Frontend Integration)
 
-### CLI Enhancements (Production-Ready Interface)
-
-- **Specialized Presets**: photo, portrait, landscape, illustration, technical, artistic modes
-- **Refinement Integration**: All presets available with -refined suffix for Phase B processing
-- **Advanced Parameters**: Quality targets, refinement budgets, and fine-tuning controls
-- **New Commands**: analyze, compare, presets (list/info) for comprehensive workflow support
-
-### Quality Validation (Roadmap Compliance)
-
-- **Phase A Benchmark Harness**: Comprehensive roadmap compliance validation
-- **Target Achievement**: Median ΔE ≤ 6.0, SSIM ≥ 0.93, runtime ≤ 2.5s
-- **27 Integration Tests**: 100% success rate across 9 images × 3 algorithms
-- **Statistical Validation**: Multiple iterations with robust timing and quality metrics
-
-### Ready for Phase 2 (WASM Integration)
-
-- **Production-Grade Algorithms**: All algorithms meet or exceed roadmap targets
-- **WASM-Optimized Architecture**: Memory management and threading ready for browser deployment
-- **Complete Infrastructure**: Telemetry, configuration, and quality systems production-ready
-- **Performance Verified**: Consistent high-quality output with predictable timing characteristics
+- **WASM-Optimized Core**: Line tracing engine ready for browser deployment
+- **Threading Support**: Multi-threaded processing configured for web workers
+- **Memory Management**: Efficient image buffer handling for browser constraints
+- **API Design**: Clean, focused interface for line tracing with artistic enhancement options

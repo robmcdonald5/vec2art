@@ -30,11 +30,11 @@ pub struct Resolved {
     pub min_stroke_px: Option<f32>,
 
     // Segmentation & color (regions pipeline)
-    pub slic_step_px: Option<u32>,      // actual step/side length, not "area"
+    pub slic_step_px: Option<u32>, // actual step/side length, not "area"
     pub slic_iters: Option<u32>,
     pub slic_compactness: Option<f32>,
-    pub de_merge: Option<f64>,          // LAB ΔE
-    pub de_split: Option<f64>,          // LAB ΔE
+    pub de_merge: Option<f64>, // LAB ΔE
+    pub de_split: Option<f64>, // LAB ΔE
     pub palette_k: Option<u32>,
 
     // Logo / binarization
@@ -74,9 +74,9 @@ pub struct Build {
 #[derive(Debug, Serialize)]
 pub struct Dump {
     pub image: RunInput,
-    pub mode: String,              // "logo" | "regions" | "poster" | "trace-low"
-    pub backend: Option<String>,   // e.g., "superpixel" | "edge" | "centerline"
-    pub cli: serde_json::Value,    // raw CLI args you passed in (optional)
+    pub mode: String,            // "logo" | "regions" | "poster" | "trace-low"
+    pub backend: Option<String>, // e.g., "superpixel" | "edge" | "centerline"
+    pub cli: serde_json::Value,  // raw CLI args you passed in (optional)
     pub resolved: Resolved,
     pub guards: Guards,
     pub stats: Stats,
@@ -86,7 +86,7 @@ pub struct Dump {
 fn git_info() -> (String, String) {
     let sha = option_env!("VERGEN_GIT_SHA")
         .or_else(|| option_env!("GIT_COMMIT"))
-        .or_else(|| option_env!("GITHUB_SHA"))
+        .or(option_env!("GITHUB_SHA"))
         .unwrap_or("unknown")
         .to_string();
     let branch = option_env!("VERGEN_GIT_BRANCH")
@@ -135,7 +135,7 @@ pub fn append_runs_csv(svg_path: &Path, dump: &Dump) -> io::Result<PathBuf> {
     let slic = dump.resolved.slic_step_px.unwrap_or(0);
     let de_m = dump.resolved.de_merge.unwrap_or(-1.0);
     let de_s = dump.resolved.de_split.unwrap_or(-1.0);
-    let pal  = dump.resolved.palette_k.unwrap_or(0);
+    let pal = dump.resolved.palette_k.unwrap_or(0);
 
     writeln!(
         f,

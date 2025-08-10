@@ -1,15 +1,15 @@
-//! Benchmarks for vectorize-core algorithms
+//! Benchmarks for vectorize-core line tracing algorithms
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use image::{ImageBuffer, Rgba};
-use vectorize_core::algorithms::logo::Point;
+use vectorize_core::algorithms::{Point, apply_hand_drawn_aesthetics, HandDrawnPresets};
 use vectorize_core::algorithms::path_utils::{
     calculate_path_length, douglas_peucker_simplify, visvalingam_whyatt_simplify,
 };
 use vectorize_core::preprocessing::{
     apply_threshold, calculate_otsu_threshold, resize_image, rgb_to_lab, rgba_to_grayscale,
 };
-use vectorize_core::{vectorize_logo_rgba, vectorize_regions_rgba, LogoConfig, RegionsConfig};
+use vectorize_core::{vectorize_trace_low_rgba, TraceLowConfig, TraceBackend};
 
 fn create_checkerboard_image(size: u32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     ImageBuffer::from_fn(size, size, |x, y| {
@@ -46,10 +46,10 @@ fn create_test_path(num_points: usize) -> Vec<Point> {
         .collect()
 }
 
-fn benchmark_full_vectorization(c: &mut Criterion) {
+fn benchmark_line_tracing(c: &mut Criterion) {
     let sizes = vec![64, 128, 256, 512];
 
-    let mut group = c.benchmark_group("full_vectorization");
+    let mut group = c.benchmark_group("line_tracing");
 
     for size in sizes {
         let pixels = (size * size) as u64;
@@ -58,28 +58,37 @@ fn benchmark_full_vectorization(c: &mut Criterion) {
         let checkerboard = create_checkerboard_image(size);
         let gradient = create_gradient_image(size);
 
-        // Benchmark logo algorithm on checkerboard
+        // Benchmark single-pass trace-low on checkerboard
         group.bench_with_input(
-            BenchmarkId::new("logo_checkerboard", size),
+            BenchmarkId::new("trace_low_single_checkerboard", size),
             &size,
             |b, _| {
-                let config = LogoConfig::default();
+                let config = TraceLowConfig {
+                    backend: TraceBackend::Edge,
+                    detail: 0.3,
+                    enable_multipass: false,
+                    ..TraceLowConfig::default()
+                };
                 b.iter(|| {
-                    black_box(vectorize_logo_rgba(&checkerboard, &config).unwrap());
+                    black_box(vectorize_trace_low_rgba(&checkerboard, &config).unwrap());
                 });
             },
         );
 
-        // Benchmark regions algorithm on gradient
+        // Benchmark multi-pass trace-low on gradient
         if size <= 256 {
-            // Limit size for complex algorithm
-            group.bench_with_input(BenchmarkId::new("regions_gradient", size), &size, |b, _| {
-                let config = RegionsConfig {
-                    max_iterations: 20, // Reduce for benchmarking
-                    ..RegionsConfig::default()
+            // Limit size for complex multi-pass processing
+            group.bench_with_input(BenchmarkId::new("trace_low_multipass_gradient", size), &size, |b, _| {
+                let config = TraceLowConfig {
+                    backend: TraceBackend::Edge,
+                    detail: 0.3,
+                    enable_multipass: true,
+                    enable_reverse_pass: true,
+                    enable_diagonal_pass: true,
+                    ..TraceLowConfig::default()
                 };
                 b.iter(|| {
-                    black_box(vectorize_regions_rgba(&gradient, &config).unwrap());
+                    black_box(vectorize_trace_low_rgba(&gradient, &config).unwrap());
                 });
             });
         }
@@ -205,12 +214,63 @@ fn benchmark_memory_usage(c: &mut Criterion) {
     group.finish();
 }
 
+fn benchmark_hand_drawn_aesthetics(c: &mut Criterion) {
+    let mut group = c.benchmark_group("hand_drawn_aesthetics");
+
+    // Create test paths for hand-drawn processing
+    let path_sizes = vec![100, 500, 1000];
+    
+    for size in path_sizes {
+        group.throughput(Throughput::Elements(size as u64));
+        
+        // Create sample SVG paths
+        let test_paths: Vec<_> = (0..size).map(|i| {
+            let angle = 2.0 * std::f32::consts::PI * i as f32 / size as f32;
+            let radius = 100.0 + 20.0 * (5.0 * angle).sin();
+            let x = 150.0 + radius * angle.cos();
+            let y = 150.0 + radius * angle.sin();
+            
+            vectorize_core::algorithms::SvgPath::new_stroke(
+                format!("M {:.2} {:.2} L {:.2} {:.2}", x, y, x + 10.0, y + 10.0),
+                "#000000",
+                1.2
+            )
+        }).collect();
+
+        // Benchmark hand-drawn aesthetics application
+        group.bench_with_input(
+            BenchmarkId::new("apply_medium_preset", size),
+            &test_paths,
+            |b, paths| {
+                let config = HandDrawnPresets::medium();
+                b.iter(|| {
+                    black_box(apply_hand_drawn_aesthetics(paths.clone(), &config));
+                });
+            },
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("apply_sketchy_preset", size),
+            &test_paths,
+            |b, paths| {
+                let config = HandDrawnPresets::sketchy();
+                b.iter(|| {
+                    black_box(apply_hand_drawn_aesthetics(paths.clone(), &config));
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
-    benchmark_full_vectorization,
+    benchmark_line_tracing,
     benchmark_preprocessing,
     benchmark_color_conversion,
     benchmark_path_simplification,
+    benchmark_hand_drawn_aesthetics,
     benchmark_memory_usage
 );
 criterion_main!(benches);

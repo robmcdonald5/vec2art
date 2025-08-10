@@ -49,17 +49,17 @@
 
 ## Project Overview
 
-`vec2art` is a browser‑based tool that converts raster images (JPG, PNG, WebP) into stylized SVG art via a Rust‑powered WebAssembly (WASM) module, prioritizing client‑side performance. **Current Status**: Phase 1.5+ complete with telemetry system - production-ready core algorithms with comprehensive diagnostics and quality improvements. Ready for Phase 2 (WASM Integration) and Phase 3 (Frontend). Target: high performance CPU-based conversions with optional GPU acceleration.
+`vec2art` is a specialized browser‑based tool that transforms raster images (JPG, PNG, WebP) into expressive line art SVGs via a high-performance Rust‑powered WebAssembly (WASM) module. **Current Status**: Phases 1-2 Complete - Production-ready line tracing algorithms with multi-pass directional processing and hand-drawn aesthetics. Ready for Phase 3 (Frontend Integration). Focus: Ultra-fast line tracing with artistic enhancements achieving <1.5s processing times.
 
 ---
 
 ## Technology Stack
 
 ### Core Processing (Rust/WASM)
-- **Language:** Rust (other languages such as C can be used if proper wrappers exist to integrate into Rust)
-- **Compilation Target:** WebAssembly (this is an endgoal, all testing should be done natively and run locally on PC)
+- **Language:** Rust with SIMD optimization and multi-threading via `rayon`
+- **Compilation Target:** WebAssembly with native development/testing
 - **Build Tools:** `wasm-pack`, `cargo`, `wasm-opt`  
-- **Key Purpose:** Image processing algorithms & SVG generation
+- **Key Purpose:** High-performance line tracing with artistic aesthetics
 
 ### Frontend (SvelteKit)
 - **Framework:** SvelteKit 5 + Tailwind CSS 4  
@@ -72,78 +72,72 @@
 ## High-Level Architecture
 
 ### Module Structure
-- **`vectorize-core/`** — Pure Rust library containing all vectorization algorithms, platform-agnostic
-- **`vectorize-cli/`** — Native CLI for development, benchmarking, and golden SVG snapshot testing
+- **`vectorize-core/`** — Pure Rust library containing line tracing algorithms and artistic enhancements
+- **`vectorize-cli/`** — Native CLI for development and testing with comprehensive parameter control
 - **`vectorize-wasm/`** — Thin WebAssembly wrapper using `wasm-bindgen` for browser integration
 
-### Vectorization Modes
-The system supports multiple algorithmic approaches for different artistic styles and use cases:
+### Line Tracing System
+The system focuses exclusively on advanced line tracing with multiple enhancement layers:
 
-1. **Logo/Line-Art Mode** — Binary tracing with Suzuki-Abe contours and primitive shape detection (✅ production-ready with adaptive parameters)
-2. **Color Regions Mode** — Wu color quantization and SLIC superpixel-based posterization with gradient detection (✅ production-ready with adaptive parameters)
-3. **Trace-Low Mode** — Fast, low-detail tracing with 3 backends:
-   - **Edge Backend** — Canny edge detection for sparse outlines (✅ fully functional)
-   - **Centerline Backend** — Skeleton-based tracing for line art (🚧 stubbed for future)
-   - **Superpixel Backend** — Large region fills for cell-shaded effects (🚧 stubbed for future)
-4. **Phase B Refinement** — Error-driven quality improvement with rasterization, analysis, and targeted corrections (✅ complete)
-5. **Specialized Presets** — Photo, portrait, landscape, illustration, technical, artistic modes (✅ complete)
-6. **Stylized Modes** — Creative effects including low-poly, stipple, and halftone patterns (📋 planned)
+1. **Multi-Pass Processing** — Directional enhancement system:
+   - **Standard Pass** — Left-to-right, top-to-bottom edge detection
+   - **Reverse Pass** — Right-to-left, bottom-to-top for missed details (optional)
+   - **Diagonal Pass** — Diagonal scanning for complex geometries (optional)
+   
+2. **Hand-Drawn Aesthetics** — Artistic enhancement system:
+   - **Variable Stroke Weights** — Dynamic width variation based on curvature
+   - **Tremor Effects** — Subtle hand-drawn irregularities and organic feel
+   - **Tapering** — Natural line endings with smooth width transitions
+   
+3. **Backend Options** — Multiple tracing approaches:
+   - **Edge Backend** — Canny edge detection optimized for line art (✅ production-ready)
+   - **Centerline Backend** — Skeleton-based tracing (🚧 future enhancement)
+   - **Superpixel Backend** — Region-based approach (🚧 future enhancement)
 
 ### Processing Pipeline
-1. **Input Processing** — Accept raster images (PNG, JPG, WebP) with adaptive resolution handling
-2. **Image Analysis** — Assess complexity, density, and noise for parameter adaptation
-3. **Preprocessing** — Adaptive resize, denoise, colorspace conversion to LAB
-4. **Vectorization** — Apply algorithm with content-aware parameter tuning
-5. **Curve Fitting** — Simplify and smooth paths using adaptive RDP/VW algorithms with Bézier fitting
-6. **Phase B Refinement** — Optional error-driven quality improvement with rasterization and analysis
-7. **SVG Generation** — Output optimized, lightweight SVG with quality validation
+1. **Input Processing** — Accept raster images (PNG, JPG, WebP) with resolution optimization
+2. **Edge Detection** — Canny edge detection with adaptive thresholds and noise filtering
+3. **Multi-Pass Tracing** — Directional passes (standard, reverse, diagonal) for comprehensive coverage
+4. **Path Generation** — Convert edge pixels to smooth SVG paths with curve fitting
+5. **Artistic Enhancement** — Apply hand-drawn aesthetics (variable weights, tremor, tapering)
+6. **SVG Output** — Generate optimized, expressive SVG with artistic line qualities
 
 ### Performance Strategy
-- **CPU Optimization** — Primary focus on multi-threaded CPU processing using `rayon`
-- **SIMD Support** — Leverage SIMD instructions where available (native and WASM)
-- **Memory Management** — Zero-copy I/O, buffer reuse, and careful allocation strategies
-- **Progressive Enhancement** — Optional GPU acceleration as future enhancement
+- **Ultra-Fast Processing** — <1.5s processing times for typical images through optimized algorithms
+- **CPU Optimization** — Multi-threaded edge detection and path generation using `rayon`
+- **SIMD Support** — Leverage SIMD instructions for image processing operations
+- **Memory Efficiency** — Optimized buffer management and reuse for minimal allocations
 
 ### Development Phases
-- **Phase 1: Native Core** — ✅ Complete - Build and test algorithms as native Rust library
-- **Phase A: Adaptive Algorithms** — ✅ Complete - Content-aware parameter systems, enhanced algorithm quality
-- **Phase B: Refinement Infrastructure** — ✅ Complete - Error-driven quality improvement pipeline
-- **Phase 2: WASM Integration** — Ready for browser deployment with production-grade algorithms
-- **Phase 3: Frontend** — SvelteKit interface with real-time preview and export
+- **Phase 1: Native Core** — ✅ Complete - Line tracing algorithms with multi-pass processing
+- **Phase 2: Artistic Enhancement** — ✅ Complete - Hand-drawn aesthetics and performance optimization
+- **Phase 3: Frontend Integration** — 📋 Next - SvelteKit interface with real-time preview
 
 ---
 
 ## Current Status
 
-### Implementation Complete (Phase A.5+ with Phase B Infrastructure)
-- **Adaptive Algorithm Suite**: Production-ready logo, regions, and trace-low vectorization with content-aware parameter tuning
-- **Phase A Enhancements**: 
-  - Adaptive parameter systems for all algorithms based on image analysis
-  - Wu color quantization with k-means fallback and LAB color space processing
-  - SLIC integration with region-aware color assignment and adaptive step sizing
-  - Enhanced gradient detection with perceptual weighting and stability validation
-  - Robust contour processing with validation and denoising
-- **Phase B Refinement Pipeline**: Complete error-driven quality improvement infrastructure
-- **Specialized Presets**: 10+ presets including photo, portrait, landscape, illustration, technical, artistic modes
-- **Performance Achievement**: Consistent ≤ 2.5s processing meeting roadmap targets
-- **Quality Validation**: Phase A benchmark harness achieving median ΔE ≤ 6.0 and SSIM ≥ 0.93 targets
+### Production-Ready Line Tracing System (Phases 1-2 Complete)
+- **Core Line Tracing**: High-performance edge detection with Canny algorithm optimization
+- **Multi-Pass Processing**: Directional enhancement system with standard, reverse, and diagonal passes
+- **Hand-Drawn Aesthetics**: Complete artistic enhancement pipeline with variable weights, tremor, and tapering
+- **Performance Achievement**: Ultra-fast processing achieving <1.5s for typical images
+- **CLI Interface**: Comprehensive parameter control with 20+ options for fine-tuning
 
 ### Architecture
 
-#### Workspace Structure
-- **`vectorize-core/`** — Pure Rust library with all vectorization algorithms
-- **`vectorize-cli/`** — Native CLI for development and testing
-- **`vectorize-wasm/`** — WebAssembly bindings for browser integration
+#### Workspace Structure  
+- **`vectorize-core/`** — Pure Rust library focused on line tracing algorithms
+- **`vectorize-cli/`** — Native CLI with extensive parameter control and testing capabilities
+- **`vectorize-wasm/`** — WebAssembly bindings ready for browser integration
 
 #### Key Features
-- **Adaptive Logo Mode**: Binary tracing with content-aware primitive fit tolerance, resolution scaling, and shape validation
-- **Adaptive Regions Mode**: Wu quantization with dynamic color counts (8-64), adaptive SLIC step sizing (12-120), and enhanced gradient detection
-- **Enhanced Trace-Low Mode**: Fast edge detection with optimized performance and quality
-- **Phase B Refinement**: Complete rasterization, error analysis, and targeted correction pipeline
-- **Specialized Preset System**: Photo, portrait, landscape, illustration, technical, and artistic modes with refinement variants
-- **Advanced CLI**: 30+ parameters with preset integration, quality targets, and refinement controls
-- **Production Infrastructure**: Complete telemetry, configuration management, and benchmark validation systems
-- **Performance Optimization**: Adaptive resolution processing, memory pool optimization, and enhanced parallelization
-- **Quality Assurance**: Phase A benchmark harness with roadmap compliance validation and statistical analysis
+- **Advanced Edge Detection**: Optimized Canny edge detection with adaptive thresholds
+- **Multi-Directional Processing**: Standard, reverse, and diagonal passes for comprehensive line capture
+- **Artistic Enhancement Pipeline**: Hand-drawn aesthetics with tremor, variable weights, and tapering
+- **Performance Optimization**: Multi-threaded processing with SIMD acceleration
+- **Flexible Backend System**: Edge backend production-ready, centerline and superpixel backends planned
+- **Content-Aware Processing**: Noise filtering and detail level adaptation
+- **Comprehensive CLI**: Full parameter control for professional line art creation
 
 ## IMPORTANT REMEMBER TO UPDATE TODO LIST WHEN TASKS ARE UPDATED/COMPLETED/REMOVED/ADDED
