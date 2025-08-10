@@ -10,7 +10,7 @@ echo Testing Phase A adaptive algorithms with new preset system and Phase B inte
 echo.
 
 :: Configuration
-set "OUTPUT_DIR=examples\outputs"
+set "OUTPUT_DIR=examples\images_out"
 set "IMAGE_DIR=examples\images_in"
 set "ITERATIONS=3"
 

@@ -11,7 +11,7 @@ echo Updated to use new preset system for logo/regions algorithms
 echo.
 
 :: Configuration
-set "OUTPUT_DIR=examples\outputs"
+set "OUTPUT_DIR=examples\images_out"
 set "IMAGE_DIR=examples\images_in"
 set "ITERATIONS=3"
 

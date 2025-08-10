@@ -67,7 +67,7 @@ Place test images in `examples/images_in/`:
 
 ## Output Structure
 
-Both scripts generate outputs in `examples/outputs/`:
+Both scripts generate outputs in `examples/images_out/`:
 - `{image}-{preset}.svg` - SVG output files
 - `{image}-{preset}.log` - Detailed processing logs
 - `{image}-analysis.log` - Image analysis results (enhanced script)
