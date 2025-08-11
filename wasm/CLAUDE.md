@@ -121,8 +121,8 @@ wasm/
 │   └── hand_drawn_bench.rs         # Artistic enhancement benchmarks
 │
 ├── scripts/                        # Build & testing scripts
-│   ├── test-dot-mapping.bat        # Comprehensive dot mapping test suite
-│   ├── test-line-tracing.bat       # Line tracing validation scripts
+│   ├── test-dot-mapping-auto.bat       # Comprehensive automated test suite (5 modes)
+│   ├── test-dot-mapping-interactive.bat # Interactive algorithm selection per image
 │   ├── build_wasm.sh               # wasm-pack build (release/dev)
 │   ├── build_wasm.ps1              # Windows-friendly build script
 │   └── generate_bindings.sh        # Generate/update TypeScript definitions

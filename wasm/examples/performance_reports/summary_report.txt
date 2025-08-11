@@ -1,5 +1,5 @@
 # DOT MAPPING PERFORMANCE REPORT 
-Generated at Sun 08/10/2025 21:49:51.91 
+Generated at Sun 08/10/2025 22:58:25.19 
  
 ## Test Results Summary 
 Quality Comparison Tests: COMPLETED 
@@ -10,37 +10,37 @@ CLI Integration: COMPLETED
 Cross-Platform Validation: COMPLETED 
 ## Generated File Analysis 
 Analyzing SVG output sizes... 
-all_defaults.svg: 1388700 bytes 
-boundary_max_density.svg: 938006257 bytes 
-boundary_min_density.svg: 890907127 bytes 
-complex_dots_adaptive.svg: 112723 bytes 
-complex_traditional.svg: 8326 bytes 
-edge_geometric.svg: 15918 bytes 
-edge_gradient.svg: 210 bytes 
-edge_high_contrast.svg: 59966 bytes 
-ext_png.svg: 978349 bytes 
-ext_webp.svg: 55017 bytes 
-landscape_pointillism.svg: 31467 bytes 
-landscape_traditional.svg: 9585 bytes 
-logo_dots_bold.svg: 210 bytes 
-logo_traditional.svg: 210 bytes 
-param_combo_1.svg: 2962196 bytes 
-param_combo_2.svg: 1582850 bytes 
-perf_complex.svg: 162452 bytes 
-perf_large.svg: 39534 bytes 
-perf_medium.svg: 1674388 bytes 
-perf_small.svg: 1789845 bytes 
-portrait_dots_basic.svg: 2382211 bytes 
-portrait_dots_fine.svg: 9900331 bytes 
-portrait_traditional.svg: 24454 bytes 
-technical_stippling.svg: 47834 bytes 
-technical_traditional.svg: 1927 bytes 
-test1_bold_pointillism.svg: 249318 bytes 
-test1_fine_stippling.svg: 14230152 bytes 
-test1_medium_artistic.svg: 841473 bytes 
-test1_monochrome_technical.svg: 2165599 bytes 
-test1_sparse_artistic.svg: 232474 bytes 
-windows_paths.svg: 1388700 bytes 
+little-red-devil-1-edge-multipass.svg: 9585 bytes 
+little-red-devil-2-dots-pointillism.svg: 31467 bytes 
+little-red-devil-ext-webp.svg: 55017 bytes 
+little-red-devil-perf-dots.svg: 39534 bytes 
+peileppe-rogue-1-edge-multipass.svg: 8326 bytes 
+peileppe-rogue-2-dots-adaptive.svg: 112723 bytes 
+peileppe-rogue-perf-dots.svg: 162452 bytes 
+pirate-flag-1-edge.svg: 210 bytes 
+pirate-flag-2-dots-bold.svg: 210 bytes 
+test-checkerboard-1-dots-contrast.svg: 59966 bytes 
+test-gradient-1-dots-gradient.svg: 210 bytes 
+test-shapes-1-dots-geometric.svg: 15918 bytes 
+test-shapes-1-edge.svg: 1927 bytes 
+test-shapes-2-dots-technical.svg: 47834 bytes 
+test1-1-dots-stippling.svg: 14230152 bytes 
+test1-2-dots-pointillism.svg: 249318 bytes 
+test1-3-dots-artistic.svg: 841473 bytes 
+test1-4-dots-monochrome.svg: 2165599 bytes 
+test1-5-dots-sparse.svg: 232474 bytes 
+test1-defaults.svg: 1388700 bytes 
+test1-ext-png.svg: 978349 bytes 
+test1-perf-dots.svg: 1789845 bytes 
+test1-windows-paths.svg: 1388700 bytes 
+test2-1-edge.svg: 24454 bytes 
+test2-2-dots-basic.svg: 2382211 bytes 
+test2-3-dots-fine.svg: 9900331 bytes 
+test2-combo-adaptive.svg: 1582850 bytes 
+test2-combo-colors.svg: 2962196 bytes 
+test2-perf-dots.svg: 1674388 bytes 
+test3-1-dots-min-density.svg: 890907127 bytes 
+test3-2-dots-max-density.svg: 938006257 bytes 
 ## Visual Quality Assessment  
 - Dot distribution quality: Analyzed by spatial clustering 
 - Color preservation: Verified in preserve-colors tests 
