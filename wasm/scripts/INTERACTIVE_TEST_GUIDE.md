@@ -27,8 +27,8 @@ For quick, comprehensive testing without manual intervention.
 - **Includes**: 
   - Colorful Adaptive (3 tests)
   - Monochrome Adaptive (3 tests)  
-  - Colorful Fixed (3 tests)
-  - Monochrome Fixed (3 tests)
+  - Colorful Fixed (3 tests) - Nearly-fixed dot sizes for consistent appearance
+  - Monochrome Fixed (3 tests) - Nearly-fixed dot sizes for consistent appearance
   - Background Variations (2 tests)
   - Extreme Variations (4 tests)
 - **Best for**: Complete dot mapping analysis

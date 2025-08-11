@@ -139,14 +139,14 @@ for %%f in (examples\images_in\*.png examples\images_in\*.webp examples\images_i
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-06-dots-medium-mono-adaptive.svg" --backend dots --dot-density 0.15 --dot-size-range "1.0,3.0" --adaptive-sizing
     
     :: Colorful Fixed (3 tests)
-    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-07-dots-ultra-fine-color-fixed.svg" --backend dots --dot-density 0.05 --dot-size-range "0.5,0.5" --preserve-colors
-    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-08-dots-fine-color-fixed.svg" --backend dots --dot-density 0.08 --dot-size-range "1.0,1.0" --preserve-colors
-    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-09-dots-medium-color-fixed.svg" --backend dots --dot-density 0.15 --dot-size-range "2.0,2.0" --preserve-colors
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-07-dots-ultra-fine-color-fixed.svg" --backend dots --dot-density 0.05 --dot-size-range "0.5,0.6" --preserve-colors
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-08-dots-fine-color-fixed.svg" --backend dots --dot-density 0.08 --dot-size-range "1.0,1.1" --preserve-colors
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-09-dots-medium-color-fixed.svg" --backend dots --dot-density 0.15 --dot-size-range "2.0,2.1" --preserve-colors
     
     :: Monochrome Fixed (3 tests)
-    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-10-dots-ultra-fine-mono-fixed.svg" --backend dots --dot-density 0.05 --dot-size-range "0.5,0.5"
-    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-11-dots-fine-mono-fixed.svg" --backend dots --dot-density 0.08 --dot-size-range "1.0,1.0"
-    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-12-dots-medium-mono-fixed.svg" --backend dots --dot-density 0.15 --dot-size-range "2.0,2.0"
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-10-dots-ultra-fine-mono-fixed.svg" --backend dots --dot-density 0.05 --dot-size-range "0.5,0.6"
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-11-dots-fine-mono-fixed.svg" --backend dots --dot-density 0.08 --dot-size-range "1.0,1.1"
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-12-dots-medium-mono-fixed.svg" --backend dots --dot-density 0.15 --dot-size-range "2.0,2.1"
     
     :: Background Variations (2 tests)
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-13-dots-medium-strict-bg.svg" --backend dots --dot-density 0.15 --dot-size-range "1.0,3.0" --preserve-colors --adaptive-sizing --background-tolerance 0.05
