@@ -352,7 +352,7 @@ The project is organized as a Cargo workspace with three specialized crates and 
 - **CLI Interface (Production-Ready)**:
   - **Comprehensive Parameters**: 20+ options for fine-tuning line tracing and artistic effects
   - **Multi-Pass Controls**: Enable/disable reverse and diagonal passes for quality vs. speed trade-offs
-  - **Backend Selection**: Edge backend production-ready, centerline and superpixel planned
+  - **Backend Selection**: All four backends production-ready (edge, dots, centerline, superpixel)
   - **Statistics Export**: Performance and quality metrics output to CSV for analysis
 
 - **Performance Optimization**:

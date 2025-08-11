@@ -91,8 +91,41 @@ The system focuses exclusively on advanced line tracing with multiple enhancemen
    
 3. **Backend Options** — Multiple tracing approaches:
    - **Edge Backend** — Canny edge detection optimized for line art (✅ production-ready)
-   - **Centerline Backend** — Skeleton-based tracing (🚧 future enhancement)
-   - **Superpixel Backend** — Region-based approach (🚧 future enhancement)
+   - **Centerline Backend** — Zhang-Suen skeleton-based tracing for precise line extraction (✅ production-ready)
+   - **Superpixel Backend** — SLIC region-based approach for stylized line art (✅ production-ready)
+   - **Dots Backend** — Stippling and pointillism effects (✅ production-ready)
+
+#### Backend Detailed Descriptions
+
+**Edge Backend** (Default)
+- **Algorithm**: Canny edge detection with adaptive thresholds
+- **Best For**: Detailed line art, drawings, sketches, complex imagery
+- **Performance**: Ultra-fast, <1.5s for typical images
+- **Output**: Traditional line art with clean, continuous strokes
+- **Features**: Multi-pass processing, directional enhancement, hand-drawn aesthetics
+
+**Centerline Backend**
+- **Algorithm**: Zhang-Suen thinning algorithm for skeleton extraction
+- **Best For**: Bold shapes, logos, text, high-contrast imagery
+- **Performance**: Moderate speed, good for simpler shapes
+- **Output**: Single-pixel width centerlines, precise geometric representation
+- **Features**: Morphological processing, contour-based tracing
+- **Use Cases**: Technical drawings, logos, simplified line art
+
+**Superpixel Backend**
+- **Algorithm**: SLIC (Simple Linear Iterative Clustering) segmentation
+- **Best For**: Stylized art, abstract representations, color-rich images
+- **Performance**: Fast, region-based processing
+- **Output**: Polygonal line art based on color/texture regions
+- **Features**: Adaptive region count based on detail level
+- **Use Cases**: Modern art styles, simplified illustrations, poster-like effects
+
+**Dots Backend**
+- **Algorithm**: Adaptive stippling with content-aware dot placement
+- **Best For**: Artistic effects, texture emphasis, vintage styles
+- **Performance**: Very fast, density-based processing
+- **Output**: Stippling patterns with variable dot sizes and colors
+- **Features**: Color preservation, adaptive sizing, background detection
 
 ### Processing Pipeline
 1. **Input Processing** — Accept raster images (PNG, JPG, WebP) with resolution optimization
@@ -119,6 +152,7 @@ The system focuses exclusively on advanced line tracing with multiple enhancemen
 
 ### Production-Ready Line Tracing System (Phases 1-2 Complete)
 - **Core Line Tracing**: High-performance edge detection with Canny algorithm optimization
+- **Multi-Backend System**: Four production-ready backends (edge, centerline, superpixel, dots)
 - **Multi-Pass Processing**: Directional enhancement system with standard, reverse, and diagonal passes
 - **Hand-Drawn Aesthetics**: Complete artistic enhancement pipeline with variable weights, tremor, and tapering
 - **Performance Achievement**: Ultra-fast processing achieving <1.5s for typical images
@@ -136,7 +170,7 @@ The system focuses exclusively on advanced line tracing with multiple enhancemen
 - **Multi-Directional Processing**: Standard, reverse, and diagonal passes for comprehensive line capture
 - **Artistic Enhancement Pipeline**: Hand-drawn aesthetics with tremor, variable weights, and tapering
 - **Performance Optimization**: Multi-threaded processing with SIMD acceleration
-- **Flexible Backend System**: Edge backend production-ready, centerline and superpixel backends planned
+- **Flexible Backend System**: Four production-ready backends (edge, centerline, superpixel, dots)
 - **Content-Aware Processing**: Noise filtering and detail level adaptation
 - **Comprehensive CLI**: Full parameter control for professional line art creation
 
