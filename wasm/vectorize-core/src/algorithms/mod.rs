@@ -36,7 +36,7 @@ pub use dots::{
     generate_dots, generate_dots_auto_background, generate_dots_from_image, Dot, DotConfig,
 };
 pub use dots_optimized::{
-    generate_dots_optimized_pipeline, analyze_gradients_optimized, detect_background_optimized,
+    analyze_gradients_optimized, detect_background_optimized, generate_dots_optimized_pipeline,
     OptimizedDotConfig, OptimizedDotGenerator,
 };
 pub use edges::{

@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
     let input_path = "examples/images_in/test1.png";
-    let output_dir = "examples/images_out";
+    let output_dir = "examples/outputs/test_outputs";
 
     println!("=== DEBUGGING FLOW-TRACING 0 PATHS ISSUE ===");
 

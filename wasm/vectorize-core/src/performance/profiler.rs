@@ -5,8 +5,8 @@
 //! memory usage, and operation counts.
 
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 /// Performance profiler for tracking operation timings and statistics
 #[derive(Debug)]
@@ -38,7 +38,8 @@ impl PerformanceProfiler {
     /// Start timing an operation
     pub fn start_timing(&mut self, operation: &str) {
         if self.enabled {
-            self.active_measurements.insert(operation.to_string(), Instant::now());
+            self.active_measurements
+                .insert(operation.to_string(), Instant::now());
         }
     }
 
@@ -161,10 +162,7 @@ impl PerformanceProfiler {
         }
 
         // Calculate totals
-        let total_time: Duration = operation_reports
-            .iter()
-            .map(|r| r.timing_stats.total)
-            .sum();
+        let total_time: Duration = operation_reports.iter().map(|r| r.timing_stats.total).sum();
 
         let total_operations: u64 = operation_reports
             .iter()
@@ -213,7 +211,7 @@ impl PerformanceProfiler {
     /// Export profiling data as JSON
     pub fn export_json(&self) -> serde_json::Value {
         let report = self.generate_report();
-        
+
         serde_json::json!({
             "total_time_ms": report.total_time.as_millis(),
             "total_operations": report.total_operations,
@@ -321,7 +319,8 @@ impl PerformanceReport {
     /// Calculate memory efficiency (operations per MB)
     pub fn memory_efficiency(&self) -> f64 {
         if self.total_memory > 0 {
-            self.total_operations as f64 / (self.total_memory as f64 / 1_048_576.0) // MB
+            self.total_operations as f64 / (self.total_memory as f64 / 1_048_576.0)
+        // MB
         } else {
             0.0
         }
@@ -457,18 +456,18 @@ mod tests {
     #[test]
     fn test_profiler_basic_operations() {
         let mut profiler = PerformanceProfiler::new(true);
-        
+
         profiler.start_timing("test_op");
         thread::sleep(Duration::from_millis(10));
         profiler.end_timing("test_op");
-        
+
         profiler.increment_counter("test_counter", 1);
         profiler.record_memory_usage("test_op", 1024);
-        
+
         let stats = profiler.get_timing_stats("test_op").unwrap();
         assert_eq!(stats.count, 1);
         assert!(stats.total >= Duration::from_millis(10));
-        
+
         assert_eq!(profiler.get_counter("test_counter"), 1);
         assert_eq!(profiler.get_memory_usage("test_op"), Some(1024));
     }
@@ -476,11 +475,11 @@ mod tests {
     #[test]
     fn test_profiler_disabled() {
         let mut profiler = PerformanceProfiler::new(false);
-        
+
         profiler.start_timing("test_op");
         thread::sleep(Duration::from_millis(10));
         profiler.end_timing("test_op");
-        
+
         // Should have no recorded timings
         assert!(profiler.get_timing_stats("test_op").is_none());
     }
@@ -488,12 +487,12 @@ mod tests {
     #[test]
     fn test_time_operation() {
         let mut profiler = PerformanceProfiler::new(true);
-        
+
         let result = profiler.time_operation("test_op", || {
             thread::sleep(Duration::from_millis(5));
             42
         });
-        
+
         assert_eq!(result, 42);
         let stats = profiler.get_timing_stats("test_op").unwrap();
         assert_eq!(stats.count, 1);
@@ -503,14 +502,14 @@ mod tests {
     #[test]
     fn test_timing_statistics() {
         let mut profiler = PerformanceProfiler::new(true);
-        
+
         // Record multiple measurements
         for i in 0..10 {
             profiler.time_operation("test_op", || {
                 thread::sleep(Duration::from_millis(i + 1));
             });
         }
-        
+
         let stats = profiler.get_timing_stats("test_op").unwrap();
         assert_eq!(stats.count, 10);
         assert!(stats.min <= stats.median);
@@ -522,14 +521,14 @@ mod tests {
     #[test]
     fn test_performance_report() {
         let mut profiler = PerformanceProfiler::new(true);
-        
+
         profiler.time_operation("op1", || thread::sleep(Duration::from_millis(10)));
         profiler.time_operation("op2", || thread::sleep(Duration::from_millis(5)));
         profiler.increment_counter("op1", 1);
         profiler.record_memory_usage("op1", 2048);
-        
+
         let report = profiler.generate_report();
-        
+
         assert_eq!(report.operation_reports.len(), 2);
         assert!(report.total_time >= Duration::from_millis(15));
         assert_eq!(report.total_operations, 2);
@@ -541,19 +540,19 @@ mod tests {
     fn test_thread_safe_profiler() {
         let profiler = ThreadSafeProfiler::new(true);
         let profiler_clone = profiler.clone();
-        
+
         let handle = thread::spawn(move || {
             profiler_clone.time_operation("thread_op", || {
                 thread::sleep(Duration::from_millis(10));
             });
         });
-        
+
         profiler.time_operation("main_op", || {
             thread::sleep(Duration::from_millis(5));
         });
-        
+
         handle.join().unwrap();
-        
+
         let report = profiler.generate_report().unwrap();
         assert_eq!(report.operation_reports.len(), 2);
     }
@@ -561,12 +560,12 @@ mod tests {
     #[test]
     fn test_scoped_timer() {
         let mut profiler = PerformanceProfiler::new(true);
-        
+
         {
             let _timer = ScopedTimer::new(&mut profiler, "scoped_op");
             thread::sleep(Duration::from_millis(10));
         } // Timer drops here
-        
+
         let stats = profiler.get_timing_stats("scoped_op").unwrap();
         assert_eq!(stats.count, 1);
         assert!(stats.total >= Duration::from_millis(10));
@@ -575,13 +574,13 @@ mod tests {
     #[test]
     fn test_export_json() {
         let mut profiler = PerformanceProfiler::new(true);
-        
+
         profiler.time_operation("test_op", || thread::sleep(Duration::from_millis(10)));
         profiler.increment_counter("test_op", 5);
         profiler.record_memory_usage("test_op", 1024);
-        
+
         let json = profiler.export_json();
-        
+
         assert!(json["total_time_ms"].as_u64().unwrap() >= 10);
         assert_eq!(json["total_operations"], 1);
         assert_eq!(json["total_memory_bytes"], 1024);
@@ -591,12 +590,12 @@ mod tests {
     #[test]
     fn test_performance_targets() {
         let mut profiler = PerformanceProfiler::new(true);
-        
+
         // Fast operation
         profiler.time_operation("fast_op", || {
             // No delay - should be very fast
         });
-        
+
         let stats = profiler.get_timing_stats("fast_op").unwrap();
         assert!(stats.meets_performance_target(1000.0)); // 1000 ops/sec
         assert!(stats.efficiency_score() > 0.0);
@@ -605,23 +604,23 @@ mod tests {
     #[test]
     fn test_report_analysis() {
         let mut profiler = PerformanceProfiler::new(true);
-        
+
         profiler.time_operation("slow_op", || thread::sleep(Duration::from_millis(50)));
         profiler.time_operation("fast_op", || thread::sleep(Duration::from_millis(5)));
         profiler.record_memory_usage("slow_op", 2048);
         profiler.record_memory_usage("fast_op", 512);
-        
+
         let report = profiler.generate_report();
-        
+
         let slowest = report.slowest_operation().unwrap();
         assert_eq!(slowest.timing_stats.operation, "slow_op");
-        
+
         let slow_ops = report.operations_exceeding_threshold(Duration::from_millis(20));
         assert_eq!(slow_ops.len(), 1);
         assert_eq!(slow_ops[0].timing_stats.operation, "slow_op");
-        
+
         assert!(report.memory_efficiency() > 0.0);
-        
+
         let summary = report.summary();
         assert!(summary.contains("Performance Summary"));
         assert!(summary.contains("Total Operations: 2"));
@@ -630,13 +629,13 @@ mod tests {
     #[test]
     fn test_profiler_clear_and_disable() {
         let mut profiler = PerformanceProfiler::new(true);
-        
+
         profiler.time_operation("test_op", || thread::sleep(Duration::from_millis(5)));
         assert!(profiler.get_timing_stats("test_op").is_some());
-        
+
         profiler.clear();
         assert!(profiler.get_timing_stats("test_op").is_none());
-        
+
         profiler.set_enabled(false);
         profiler.time_operation("disabled_op", || thread::sleep(Duration::from_millis(5)));
         assert!(profiler.get_timing_stats("disabled_op").is_none());

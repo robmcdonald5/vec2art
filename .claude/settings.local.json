@@ -26,7 +26,8 @@
       "Bash(cargo doc:*)",
       "Bash(RUST_BACKTRACE=1 cargo test test_regions_algorithm_edge_cases --release -- --nocapture)",
       "Bash(grep:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

@@ -76,20 +76,25 @@ impl ParallelContext {
 
     /// Calculate optimal chunk size based on data size and strategy
     pub fn calculate_chunk_size(&self, data_size: usize) -> usize {
-        let num_threads = self.config.num_threads.unwrap_or_else(rayon::current_num_threads);
+        let num_threads = self
+            .config
+            .num_threads
+            .unwrap_or_else(rayon::current_num_threads);
 
         match self.config.chunk_strategy {
             ChunkStrategy::Fixed(size) => size,
             ChunkStrategy::Dynamic => {
                 // Target 4 chunks per thread for good load balancing
                 let target_chunks = num_threads * 4;
-                (data_size / target_chunks).max(1).min(data_size / num_threads)
-            },
+                (data_size / target_chunks)
+                    .max(1)
+                    .min(data_size / num_threads)
+            }
             ChunkStrategy::Adaptive => {
                 // Start with dynamic, can be adjusted based on runtime performance
                 let base_chunk = data_size / (num_threads * 4);
                 base_chunk.clamp(100, data_size / 2)
-            },
+            }
         }
     }
 
@@ -165,10 +170,7 @@ impl PixelProcessor {
         let results: Vec<R> = pixel_coords
             .par_chunks(chunk_size)
             .flat_map(|chunk| {
-                let chunk_results: Vec<R> = chunk
-                    .iter()
-                    .map(|&(x, y)| processor(x, y))
-                    .collect();
+                let chunk_results: Vec<R> = chunk.iter().map(|&(x, y)| processor(x, y)).collect();
                 context.record_work_completed(chunk.len());
                 chunk_results
             })
@@ -178,11 +180,12 @@ impl PixelProcessor {
     }
 
     /// Process pixels with conditional parallel execution
-    pub fn process_pixels_conditional<F, R>(&self, 
-        width: u32, 
-        height: u32, 
+    pub fn process_pixels_conditional<F, R>(
+        &self,
+        width: u32,
+        height: u32,
         processor: F,
-        parallel_threshold: Option<usize>
+        parallel_threshold: Option<usize>,
     ) -> Vec<R>
     where
         F: Fn(u32, u32) -> R + Send + Sync + Clone,
@@ -235,7 +238,9 @@ impl AdaptiveWorkDistributor {
         }
 
         // Analyze performance trend
-        let recent_performance = self.performance_history.iter()
+        let recent_performance = self
+            .performance_history
+            .iter()
             .rev()
             .take(3)
             .copied()
@@ -265,14 +270,14 @@ impl AdaptiveWorkDistributor {
 
         let base_chunk_size = data_size / (num_threads * 4);
         let adaptive_chunk = (self.initial_chunk_size as f64 * adjustment) as usize;
-        
+
         adaptive_chunk.clamp(base_chunk_size / 4, base_chunk_size * 4)
     }
 
     /// Record performance measurement
     pub fn record_performance(&mut self, ops_per_second: f64) {
         self.performance_history.push(ops_per_second);
-        
+
         // Keep only recent history
         if self.performance_history.len() > 10 {
             self.performance_history.remove(0);
@@ -297,7 +302,7 @@ where
     F: Fn(&[u8], usize, usize, usize, usize) -> f32 + Send + Sync + Clone,
 {
     let total_pixels = width * height;
-    
+
     if total_pixels < config.min_parallel_size {
         // Sequential processing
         let mut results = Vec::with_capacity(total_pixels);
@@ -311,7 +316,7 @@ where
 
     // Parallel processing with row-wise distribution for better cache locality
     let chunk_size = ParallelContext::new(config.clone()).calculate_chunk_size(height);
-    
+
     (0..height)
         .into_par_iter()
         .chunks(chunk_size)
@@ -338,7 +343,7 @@ where
     F: Fn(&(u8, u8, u8), &(u8, u8, u8)) -> f32 + Send + Sync,
 {
     let data_len = colors1.len().min(colors2.len());
-    
+
     if data_len < config.min_parallel_size {
         return colors1
             .iter()
@@ -348,7 +353,7 @@ where
     }
 
     let chunk_size = ParallelContext::new(config.clone()).calculate_chunk_size(data_len);
-    
+
     colors1
         .par_chunks(chunk_size)
         .zip(colors2.par_chunks(chunk_size))
@@ -373,16 +378,13 @@ where
     F: Fn(&T, &[T]) -> bool + Send + Sync,
 {
     let data_len = items.len();
-    
+
     if data_len < config.min_parallel_size {
-        return items
-            .iter()
-            .map(|item| query_fn(item, items))
-            .collect();
+        return items.iter().map(|item| query_fn(item, items)).collect();
     }
 
     let chunk_size = ParallelContext::new(config.clone()).calculate_chunk_size(data_len);
-    
+
     (0..data_len)
         .into_par_iter()
         .chunks(chunk_size)
@@ -471,7 +473,7 @@ mod tests {
     fn test_parallel_context_chunk_calculation() {
         let config = ParallelConfig::default();
         let context = ParallelContext::new(config);
-        
+
         let chunk_size = context.calculate_chunk_size(10000);
         assert!(chunk_size > 0);
         assert!(chunk_size <= 10000);
@@ -481,13 +483,13 @@ mod tests {
     fn test_parallel_context_progress_tracking() {
         let config = ParallelConfig::default();
         let context = ParallelContext::new(config);
-        
+
         context.set_total_work(100);
         assert_eq!(context.get_progress(), 0.0);
-        
+
         context.record_work_completed(50);
         assert_eq!(context.get_progress(), 0.5);
-        
+
         context.record_work_completed(50);
         assert_eq!(context.get_progress(), 1.0);
     }
@@ -499,12 +501,12 @@ mod tests {
             ..Default::default()
         };
         let processor = PixelProcessor::new(config);
-        
+
         let width = 10u32;
         let height = 10u32;
-        
+
         let results = processor.process_pixels(width, height, |x, y| (x + y) as usize);
-        
+
         assert_eq!(results.len(), 100);
         assert_eq!(results[0], 0); // (0,0)
         assert_eq!(results[11], 2); // (1,1)
@@ -518,7 +520,7 @@ mod tests {
             ..Default::default()
         };
         let processor = PixelProcessor::new(config);
-        
+
         let results = processor.process_pixels(5u32, 5u32, |x, y| x + y);
         assert_eq!(results.len(), 25);
     }
@@ -526,15 +528,15 @@ mod tests {
     #[test]
     fn test_adaptive_work_distributor() {
         let mut distributor = AdaptiveWorkDistributor::new(100);
-        
+
         // Initial chunk size should be based on initial value
         let chunk_size = distributor.calculate_adaptive_chunk_size(10000, 4);
         assert!(chunk_size > 0);
-        
+
         // Record performance and check adaptation
         distributor.record_performance(1000.0);
         distributor.record_performance(900.0); // Declining performance
-        
+
         let new_chunk_size = distributor.calculate_adaptive_chunk_size(10000, 4);
         // Should adapt based on performance trend
         assert!(new_chunk_size != chunk_size);
@@ -546,7 +548,7 @@ mod tests {
         let width = 3;
         let height = 3;
         let config = ParallelConfig::default();
-        
+
         let results = parallel_gradient_calculation(
             &data,
             width,
@@ -562,7 +564,7 @@ mod tests {
             },
             &config,
         );
-        
+
         assert_eq!(results.len(), 9);
     }
 
@@ -574,7 +576,7 @@ mod tests {
             min_parallel_size: 0, // Force parallel
             ..Default::default()
         };
-        
+
         let distances = parallel_color_distances(
             &colors1,
             &colors2,
@@ -586,7 +588,7 @@ mod tests {
             },
             &config,
         );
-        
+
         assert_eq!(distances.len(), 3);
         assert_eq!(distances[0], 0.0); // Same color
         assert!(distances[1] > 0.0); // Different colors
@@ -600,19 +602,19 @@ mod tests {
             min_parallel_size: 0, // Force parallel
             ..Default::default()
         };
-        
+
         let results = parallel_spatial_queries(
             &items,
             |item, all_items| *item > all_items.len() / 2, // Item value > half of array length
             &config,
         );
-        
+
         assert_eq!(results.len(), 5);
         assert!(!results[0]); // 1 <= 2.5
         assert!(!results[1]); // 2 <= 2.5
-        assert!(results[2]);  // 3 > 2.5
-        assert!(results[3]);  // 4 > 2.5
-        assert!(results[4]);  // 5 > 2.5
+        assert!(results[2]); // 3 > 2.5
+        assert!(results[3]); // 4 > 2.5
+        assert!(results[4]); // 5 > 2.5
     }
 
     #[test]
@@ -622,13 +624,11 @@ mod tests {
             ..Default::default()
         };
         let manager = ThreadPoolManager::new(config);
-        
-        let result = manager.execute(|| {
-            (0..1000).into_par_iter().sum::<usize>()
-        });
-        
+
+        let result = manager.execute(|| (0..1000).into_par_iter().sum::<usize>());
+
         assert_eq!(result, 499500);
-        
+
         let stats = manager.stats();
         assert!(stats.has_dedicated_pool);
         assert!(stats.work_stealing_enabled);
@@ -642,7 +642,7 @@ mod tests {
         };
         let context_fixed = ParallelContext::new(config_fixed);
         assert_eq!(context_fixed.calculate_chunk_size(10000), 100);
-        
+
         let config_dynamic = ParallelConfig {
             chunk_strategy: ChunkStrategy::Dynamic,
             ..Default::default()
@@ -650,7 +650,7 @@ mod tests {
         let context_dynamic = ParallelContext::new(config_dynamic);
         let dynamic_chunk = context_dynamic.calculate_chunk_size(10000);
         assert!(dynamic_chunk > 0 && dynamic_chunk <= 10000);
-        
+
         let config_adaptive = ParallelConfig {
             chunk_strategy: ChunkStrategy::Adaptive,
             ..Default::default()
@@ -664,14 +664,14 @@ mod tests {
     fn test_performance_measurement() {
         let config = ParallelConfig::default();
         let processor = PixelProcessor::new(config);
-        
+
         let start = Instant::now();
         let _results = processor.process_pixels(100u32, 100u32, |x, y| {
             // Simulate some work
             (x * y) % 1000
         });
         let duration = start.elapsed();
-        
+
         // Should complete reasonably quickly
         assert!(duration < Duration::from_secs(1));
     }
@@ -683,17 +683,15 @@ mod tests {
             ..Default::default()
         };
         let processor = PixelProcessor::new(config);
-        
+
         // Small image - should use sequential
-        let small_results = processor.process_pixels_conditional(
-            5u32, 5u32, |x, y| x + y, Some(30)
-        );
+        let small_results =
+            processor.process_pixels_conditional(5u32, 5u32, |x, y| x + y, Some(30));
         assert_eq!(small_results.len(), 25);
-        
+
         // Large image - should use parallel
-        let large_results = processor.process_pixels_conditional(
-            20u32, 20u32, |x, y| x + y, Some(30)
-        );
+        let large_results =
+            processor.process_pixels_conditional(20u32, 20u32, |x, y| x + y, Some(30));
         assert_eq!(large_results.len(), 400);
     }
 }

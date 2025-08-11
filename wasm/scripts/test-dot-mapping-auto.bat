@@ -12,8 +12,8 @@ if /i "%MODE%"=="--help" (
     echo OPTIONS:
     echo   --all-dots           Run basic dot mapping methods on ALL images (6 tests per image^)
     echo   --all-dots-full      Run COMPREHENSIVE dot mapping on ALL images (18+ tests per image^)
-    echo   --all-line           Run basic line tracing methods on ALL images (4 tests per image^)
-    echo   --all-line-full      Run COMPREHENSIVE line tracing on ALL images (15+ tests per image^)
+    echo   --all-line           Run basic line tracing methods on ALL images (6 tests per image^)
+    echo   --all-line-full      Run COMPREHENSIVE line tracing on ALL images (15 tests per image^)
     echo   --all-line-artistic  Run artistic line tracing variations (8 tests per image^)
     echo   --help               Show this help message
     echo.
@@ -152,7 +152,7 @@ for %%f in (examples\images_in\*.png examples\images_in\*.webp examples\images_i
     
     :: Extreme Variations (4 tests)
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-15-dots-bold-color-adaptive.svg" --backend dots --dot-density 0.20 --dot-size-range "1.5,4.0" --preserve-colors --adaptive-sizing
-    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-16-dots-large-mono-fixed.svg" --backend dots --dot-density 0.25 --dot-size-range "3.0,3.0"
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-16-dots-large-mono-fixed.svg" --backend dots --dot-density 0.25 --dot-size-range "3.0,3.1"
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-17-dots-sparse-permissive.svg" --backend dots --dot-density 0.40 --dot-size-range "3.0,6.0" --preserve-colors --adaptive-sizing --background-tolerance 0.3
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\dot_mapping\!imageName!-18-dots-extra-dense-mono-strict.svg" --backend dots --dot-density 0.03 --dot-size-range "0.2,0.6" --background-tolerance 0.05
     
@@ -179,14 +179,20 @@ for %%f in (examples\images_in\*.png examples\images_in\*.webp examples\images_i
     :: Test 4: Directional
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\line_tracing\!imageName!-4-edge-directional.svg" --backend edge --detail 0.3 --multipass --enable-reverse --enable-diagonal
     
-    echo Completed: !imageName! - 4 basic line tests
+    :: Test 5: Centerline Backend
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\line_tracing\!imageName!-5-centerline-basic.svg" --backend centerline --detail 0.3
+    
+    :: Test 6: Superpixel Backend
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\line_tracing\!imageName!-6-superpixel-basic.svg" --backend superpixel --detail 0.3
+    
+    echo Completed: !imageName! - 6 basic line tests
 )
 exit /b 0
 
 :: Function: Full Line Tracing
 :runFullLine
 echo Running comprehensive line tracing on all images...
-echo WARNING: This generates 15+ tests per image!
+echo WARNING: This generates 15 tests per image!
 for %%f in (examples\\images_in\\*.png examples\\images_in\\*.webp examples\\images_in\\*.jpg) do (
     set "imageName=%%~nf"
     echo Processing: !imageName! - Comprehensive Line Tracing
@@ -212,7 +218,7 @@ for %%f in (examples\\images_in\\*.png examples\\images_in\\*.webp examples\\ima
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\\outputs\\line_tracing\\!imageName!-12-edge-directional-sketchy.svg" --backend edge --detail 0.3 --multipass --enable-reverse --enable-diagonal --hand-drawn sketchy
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\\outputs\\line_tracing\\!imageName!-13-edge-filtered-medium.svg" --backend edge --detail 0.4 --noise-filtering --hand-drawn medium
     
-    :: === Alternative Backends (2 tests - experimental) ===
+    :: === New Backend Tests (2 tests) ===
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\\outputs\\line_tracing\\!imageName!-14-centerline-basic.svg" --backend centerline --detail 0.3
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\\outputs\\line_tracing\\!imageName!-15-superpixel-basic.svg" --backend superpixel --detail 0.3
     

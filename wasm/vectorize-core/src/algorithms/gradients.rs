@@ -237,7 +237,10 @@ pub fn analyze_image_gradients_with_config(
     // Pre-allocate result vectors with bounds checking
     if total_pixels > 100_000_000 {
         // Prevent excessive memory allocation (>400MB for gradients alone)
-        log::warn!("Image too large for gradient analysis: {} pixels", total_pixels);
+        log::warn!(
+            "Image too large for gradient analysis: {} pixels",
+            total_pixels
+        );
         return GradientAnalysis {
             magnitude: vec![],
             variance: vec![],

@@ -345,7 +345,7 @@ fn parse_hex_color(hex: &str) -> Option<(u8, u8, u8)> {
     }
 
     let hex = &hex[1..]; // Remove '#'
-    
+
     // Validate hex characters before parsing
     if !hex.chars().all(|c| c.is_ascii_hexdigit()) {
         return None;

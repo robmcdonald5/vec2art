@@ -383,7 +383,7 @@ pub fn generate_dots_auto_background(
 }
 
 /// Generate dots with smart background filtering fallback
-/// 
+///
 /// This function applies intelligent background filtering that automatically disables
 /// background filtering when the detection algorithm is too aggressive (>95% background).
 /// This handles edge cases like checkerboards where all colors might be incorrectly
@@ -445,36 +445,54 @@ pub fn generate_dots_from_image(
     let background_pixels = background_mask.iter().filter(|&&x| x).count();
     let total_pixels = background_mask.len();
     let background_percentage = (background_pixels as f64 / total_pixels as f64) * 100.0;
-    log::debug!("Background detection: {}/{} pixels marked as background ({:.1}%)", 
-        background_pixels, total_pixels, background_percentage);
+    log::debug!(
+        "Background detection: {}/{} pixels marked as background ({:.1}%)",
+        background_pixels,
+        total_pixels,
+        background_percentage
+    );
 
     // Smart fallback: If >95% of pixels are marked as background, disable background filtering
     // This handles cases where the background detection is too aggressive
     let use_background_filtering = background_percentage < 95.0;
     if !use_background_filtering {
-        log::debug!("Background detection marked {:.1}% as background - disabling background filtering", background_percentage);
+        log::debug!(
+            "Background detection marked {:.1}% as background - disabling background filtering",
+            background_percentage
+        );
     }
 
     // Generate dots with smart background filtering
-    let dots = generate_dots_with_smart_filtering(rgba, &gradient_analysis, &background_mask, dot_config, use_background_filtering);
-    
+    let dots = generate_dots_with_smart_filtering(
+        rgba,
+        &gradient_analysis,
+        &background_mask,
+        dot_config,
+        use_background_filtering,
+    );
+
     // Debug: Sample gradient strength values
     let mut sample_strengths = Vec::new();
     let width = rgba.width();
     let height = rgba.height();
     for y in (0..height).step_by(height as usize / 10.max(1)) {
         for x in (0..width).step_by(width as usize / 10.max(1)) {
-            let strength = calculate_gradient_strength(&gradient_analysis, x, y, dot_config.adaptive_sizing);
+            let strength =
+                calculate_gradient_strength(&gradient_analysis, x, y, dot_config.adaptive_sizing);
             sample_strengths.push(strength);
         }
     }
     if !sample_strengths.is_empty() {
         let max_strength = sample_strengths.iter().fold(0.0f32, |a, &b| a.max(b));
         let avg_strength = sample_strengths.iter().sum::<f32>() / sample_strengths.len() as f32;
-        log::debug!("Gradient strength sample: max={:.3}, avg={:.3}, threshold={:.3}", 
-            max_strength, avg_strength, dot_config.density_threshold);
+        log::debug!(
+            "Gradient strength sample: max={:.3}, avg={:.3}, threshold={:.3}",
+            max_strength,
+            avg_strength,
+            dot_config.density_threshold
+        );
     }
-    
+
     dots
 }
 

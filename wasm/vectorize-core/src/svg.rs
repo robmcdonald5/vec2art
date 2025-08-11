@@ -365,7 +365,7 @@ mod tests {
             assert!((r - 25.0).abs() < 0.01);
         } else {
             // Use assert! for test code to maintain test semantics
-            assert!(false, "Expected Circle element type");
+            panic!("Expected Circle element type");
         }
 
         assert_eq!(circle.fill, "yellow".to_string());

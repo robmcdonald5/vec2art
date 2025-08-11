@@ -5,17 +5,17 @@
 //! and parallel processing for maximum efficiency.
 
 use crate::algorithms::{
-    dots::{Dot, DotConfig},
     background::{detect_background_advanced, BackgroundConfig},
+    dots::{Dot, DotConfig},
     gradients::{GradientAnalysis, GradientConfig},
 };
 use crate::performance::{
-    PerformanceConfig,
     memory_pool::PoolManager,
-    spatial_index::SpatialGrid,
-    simd_ops::{simd_gradient_magnitude, simd_color_distance, should_use_simd},
     parallel_utils::{ParallelConfig, PixelProcessor},
     profiler::PerformanceProfiler,
+    simd_ops::{should_use_simd, simd_color_distance, simd_gradient_magnitude},
+    spatial_index::SpatialGrid,
+    PerformanceConfig,
 };
 
 use image::{Rgba, RgbaImage};
@@ -133,29 +133,43 @@ impl OptimizedDotGenerator {
 
         // Use optimized parallel processing
         let pixel_processor = PixelProcessor::new(self.config.parallel_config.clone());
-        
-        let candidates: Vec<Option<DotCandidate>> = if self.config.parallel_config.min_parallel_size <= total_pixels {
-            // Parallel processing for large images
-            let config = &self.config;
-            pixel_processor.process_pixels(width, height, |x, y| {
-                calculate_single_candidate_static(rgba, gradient_analysis, background_mask, x, y, width, config)
-            })
-        } else {
-            // Sequential processing for small images
-            let mut results = Vec::with_capacity(total_pixels);
-            for y in 0..height {
-                for x in 0..width {
-                    let candidate = self.calculate_single_candidate(rgba, gradient_analysis, background_mask, x, y, width);
-                    results.push(candidate);
-                }
-            }
-            results
-        };
 
-        let final_candidates: Vec<DotCandidate> = candidates
-            .into_iter()
-            .filter_map(|c| c)
-            .collect();
+        let candidates: Vec<Option<DotCandidate>> =
+            if self.config.parallel_config.min_parallel_size <= total_pixels {
+                // Parallel processing for large images
+                let config = &self.config;
+                pixel_processor.process_pixels(width, height, |x, y| {
+                    calculate_single_candidate_static(
+                        rgba,
+                        gradient_analysis,
+                        background_mask,
+                        x,
+                        y,
+                        width,
+                        config,
+                    )
+                })
+            } else {
+                // Sequential processing for small images
+                let mut results = Vec::with_capacity(total_pixels);
+                for y in 0..height {
+                    for x in 0..width {
+                        let candidate = self.calculate_single_candidate(
+                            rgba,
+                            gradient_analysis,
+                            background_mask,
+                            x,
+                            y,
+                            width,
+                        );
+                        results.push(candidate);
+                    }
+                }
+                results
+            };
+
+        let final_candidates: Vec<DotCandidate> =
+            candidates.into_iter().filter_map(|c| c).collect();
 
         if let Some(ref mut profiler) = self.profiler {
             profiler.end_timing("candidate_calculation");
@@ -184,9 +198,19 @@ impl OptimizedDotGenerator {
 
         // Calculate gradient strength with SIMD optimization if beneficial
         let strength = if self.config.performance_config.use_simd {
-            calculate_gradient_strength_simd(gradient_analysis, x, y, self.config.base_config.adaptive_sizing)
+            calculate_gradient_strength_simd(
+                gradient_analysis,
+                x,
+                y,
+                self.config.base_config.adaptive_sizing,
+            )
         } else {
-            calculate_gradient_strength_standard(gradient_analysis, x, y, self.config.base_config.adaptive_sizing)
+            calculate_gradient_strength_standard(
+                gradient_analysis,
+                x,
+                y,
+                self.config.base_config.adaptive_sizing,
+            )
         };
 
         // Skip pixels below density threshold
@@ -195,7 +219,11 @@ impl OptimizedDotGenerator {
         }
 
         // Calculate dot properties
-        let radius = strength_to_radius(strength, self.config.base_config.min_radius, self.config.base_config.max_radius);
+        let radius = strength_to_radius(
+            strength,
+            self.config.base_config.min_radius,
+            self.config.base_config.max_radius,
+        );
         let opacity = strength_to_opacity(strength);
 
         // Get color
@@ -217,7 +245,11 @@ impl OptimizedDotGenerator {
     }
 
     /// Distribute dots using spatial indexing for efficient collision detection
-    fn distribute_dots_with_spatial_index(&mut self, rgba: &RgbaImage, candidates: Vec<DotCandidate>) -> Vec<Dot> {
+    fn distribute_dots_with_spatial_index(
+        &mut self,
+        rgba: &RgbaImage,
+        candidates: Vec<DotCandidate>,
+    ) -> Vec<Dot> {
         if let Some(ref mut profiler) = self.profiler {
             profiler.start_timing("spatial_distribution");
         }
@@ -227,7 +259,11 @@ impl OptimizedDotGenerator {
 
         // Sort candidates by strength (strongest first)
         let mut sorted_candidates = candidates;
-        sorted_candidates.sort_by(|a, b| b.strength.partial_cmp(&a.strength).unwrap_or(std::cmp::Ordering::Equal));
+        sorted_candidates.sort_by(|a, b| {
+            b.strength
+                .partial_cmp(&a.strength)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Create optimized spatial grid
         let mut spatial_grid = SpatialGrid::new(
@@ -305,14 +341,22 @@ impl OptimizedDotGenerator {
     }
 
     /// Standard dot distribution without spatial indexing
-    fn distribute_dots_standard(&mut self, _rgba: &RgbaImage, candidates: Vec<DotCandidate>) -> Vec<Dot> {
+    fn distribute_dots_standard(
+        &mut self,
+        _rgba: &RgbaImage,
+        candidates: Vec<DotCandidate>,
+    ) -> Vec<Dot> {
         if let Some(ref mut profiler) = self.profiler {
             profiler.start_timing("standard_distribution");
         }
 
         // Sort candidates by strength
         let mut sorted_candidates = candidates;
-        sorted_candidates.sort_by(|a, b| b.strength.partial_cmp(&a.strength).unwrap_or(std::cmp::Ordering::Equal));
+        sorted_candidates.sort_by(|a, b| {
+            b.strength
+                .partial_cmp(&a.strength)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         let mut dots = Vec::with_capacity(sorted_candidates.len() / 4);
 
@@ -344,7 +388,9 @@ impl OptimizedDotGenerator {
     }
 
     /// Get performance statistics if profiling is enabled
-    pub fn get_performance_report(&self) -> Option<crate::performance::profiler::PerformanceReport> {
+    pub fn get_performance_report(
+        &self,
+    ) -> Option<crate::performance::profiler::PerformanceReport> {
         self.profiler.as_ref().map(|p| p.generate_report())
     }
 
@@ -384,7 +430,7 @@ pub fn analyze_gradients_optimized(
         // Use SIMD-optimized gradient calculation
         let data = gray.as_raw();
         let magnitude = simd_gradient_magnitude(data, width as usize, height as usize);
-        
+
         // For variance, we still use the standard calculation as SIMD variance is complex
         let variance = if config.use_parallel && total_pixels >= config.parallel_threshold {
             // Parallel variance calculation
@@ -396,18 +442,26 @@ pub fn analyze_gradients_optimized(
                 .par_iter()
                 .map(|&(x, y)| {
                     crate::algorithms::gradients::calculate_local_variance(
-                        gray, x, y, config.variance_radius
+                        gray,
+                        x,
+                        y,
+                        config.variance_radius,
                     )
                 })
                 .collect()
         } else {
             // Sequential variance calculation
             (0..height)
-                .flat_map(|y| (0..width).map(move |x| {
-                    crate::algorithms::gradients::calculate_local_variance(
-                        gray, x, y, config.variance_radius
-                    )
-                }))
+                .flat_map(|y| {
+                    (0..width).map(move |x| {
+                        crate::algorithms::gradients::calculate_local_variance(
+                            gray,
+                            x,
+                            y,
+                            config.variance_radius,
+                        )
+                    })
+                })
                 .collect()
         };
 
@@ -452,13 +506,15 @@ fn detect_background_with_simd_optimization(
     }
 
     // Sample edge colors (standard implementation)
-    let edge_colors = crate::algorithms::background::sample_edge_pixels(rgba, config.edge_sample_ratio);
+    let edge_colors =
+        crate::algorithms::background::sample_edge_pixels(rgba, config.edge_sample_ratio);
     if edge_colors.is_empty() {
         return vec![false; total_pixels];
     }
 
     // Convert to RGB tuples for SIMD processing
-    let edge_rgb: Vec<(u8, u8, u8)> = edge_colors.iter()
+    let edge_rgb: Vec<(u8, u8, u8)> = edge_colors
+        .iter()
         .map(|_lab| {
             // For optimization, we'll use a simplified conversion
             // In practice, you'd want proper LAB to RGB conversion
@@ -467,22 +523,21 @@ fn detect_background_with_simd_optimization(
         .collect();
 
     // Process all pixels with SIMD-optimized color comparison
-    let pixel_rgb: Vec<(u8, u8, u8)> = rgba.pixels()
-        .map(|p| (p.0[0], p.0[1], p.0[2]))
-        .collect();
+    let pixel_rgb: Vec<(u8, u8, u8)> = rgba.pixels().map(|p| (p.0[0], p.0[1], p.0[2])).collect();
 
     // Use SIMD color distance calculation for comparison
     let mut background_mask = vec![false; total_pixels];
-    
+
     // For each pixel, check against all edge colors
     for (i, &pixel_color) in pixel_rgb.iter().enumerate() {
         let pixel_colors = vec![pixel_color; edge_rgb.len()];
         let distances = simd_color_distance(&pixel_colors, &edge_rgb);
-        
+
         // Check if any distance is within tolerance
-        let is_background = distances.iter()
+        let is_background = distances
+            .iter()
             .any(|&dist| (dist / 255.0) <= config.tolerance);
-        
+
         background_mask[i] = is_background;
     }
 
@@ -508,9 +563,19 @@ fn calculate_single_candidate_static(
 
     // Calculate gradient strength with SIMD optimization if beneficial
     let strength = if config.performance_config.use_simd {
-        calculate_gradient_strength_simd(gradient_analysis, x, y, config.base_config.adaptive_sizing)
+        calculate_gradient_strength_simd(
+            gradient_analysis,
+            x,
+            y,
+            config.base_config.adaptive_sizing,
+        )
     } else {
-        calculate_gradient_strength_standard(gradient_analysis, x, y, config.base_config.adaptive_sizing)
+        calculate_gradient_strength_standard(
+            gradient_analysis,
+            x,
+            y,
+            config.base_config.adaptive_sizing,
+        )
     };
 
     // Skip pixels below density threshold
@@ -519,7 +584,11 @@ fn calculate_single_candidate_static(
     }
 
     // Calculate dot properties
-    let radius = strength_to_radius(strength, config.base_config.min_radius, config.base_config.max_radius);
+    let radius = strength_to_radius(
+        strength,
+        config.base_config.min_radius,
+        config.base_config.max_radius,
+    );
     let opacity = strength_to_opacity(strength);
 
     // Get color
@@ -610,21 +679,21 @@ fn is_position_valid_standard(
 }
 
 /// Complete optimized dot generation pipeline
-pub fn generate_dots_optimized_pipeline(
-    rgba: &RgbaImage,
-    config: &OptimizedDotConfig,
-) -> Vec<Dot> {
+pub fn generate_dots_optimized_pipeline(rgba: &RgbaImage, config: &OptimizedDotConfig) -> Vec<Dot> {
     // Create gradient analysis with optimization
     let gray = image::imageops::grayscale(rgba);
     let gradient_config = GradientConfig {
-        use_parallel: config.parallel_config.min_parallel_size <= (rgba.width() * rgba.height()) as usize,
+        use_parallel: config.parallel_config.min_parallel_size
+            <= (rgba.width() * rgba.height()) as usize,
         ..Default::default()
     };
-    let gradient_analysis = analyze_gradients_optimized(&gray, &gradient_config, &config.performance_config);
+    let gradient_analysis =
+        analyze_gradients_optimized(&gray, &gradient_config, &config.performance_config);
 
     // Create background detection with optimization
     let background_config = BackgroundConfig::default();
-    let background_mask = detect_background_optimized(rgba, &background_config, &config.performance_config);
+    let background_mask =
+        detect_background_optimized(rgba, &background_config, &config.performance_config);
 
     // Generate dots with full optimization pipeline
     let mut generator = OptimizedDotGenerator::new(config.clone());
@@ -649,8 +718,8 @@ mod tests {
         }
 
         // Add foreground rectangle
-        for y in height/4..3*height/4 {
-            for x in width/4..3*width/4 {
+        for y in height / 4..3 * height / 4 {
+            for x in width / 4..3 * width / 4 {
                 img.put_pixel(x, y, foreground);
             }
         }
@@ -662,11 +731,11 @@ mod tests {
     fn test_optimized_dot_generation() {
         let img = create_test_image(100, 100);
         let config = OptimizedDotConfig::default();
-        
+
         let dots = generate_dots_optimized_pipeline(&img, &config);
-        
+
         assert!(!dots.is_empty());
-        
+
         // Validate dot properties
         for dot in &dots {
             assert!(dot.radius >= config.base_config.min_radius);
@@ -681,27 +750,27 @@ mod tests {
         let img = create_test_image(50, 50);
         let mut config = OptimizedDotConfig::default();
         config.enable_profiling = true;
-        
+
         let mut generator = OptimizedDotGenerator::new(config.clone());
-        
+
         // Generate gradient analysis and background mask
         let gray = image::imageops::grayscale(&img);
         let gradient_config = GradientConfig::default();
         let gradient_analysis = crate::algorithms::gradients::analyze_image_gradients_with_config(
-            &gray, &gradient_config
+            &gray,
+            &gradient_config,
         );
         let background_config = BackgroundConfig::default();
-        let background_mask = crate::algorithms::background::detect_background_advanced(
-            &img, &background_config
-        );
-        
+        let background_mask =
+            crate::algorithms::background::detect_background_advanced(&img, &background_config);
+
         let dots = generator.generate_dots_optimized(&img, &gradient_analysis, &background_mask);
-        
+
         assert!(!dots.is_empty());
-        
+
         let report = generator.get_performance_report();
         assert!(report.is_some());
-        
+
         let report = report.unwrap();
         assert!(report.total_operations > 0);
         assert!(report.total_time.as_millis() > 0);
@@ -717,7 +786,7 @@ mod tests {
             },
             ..Default::default()
         };
-        
+
         let dots = generate_dots_optimized_pipeline(&img, &config);
         assert!(!dots.is_empty());
     }
@@ -732,7 +801,7 @@ mod tests {
             },
             ..Default::default()
         };
-        
+
         let dots = generate_dots_optimized_pipeline(&img, &config);
         assert!(!dots.is_empty());
     }
@@ -747,7 +816,7 @@ mod tests {
             },
             ..Default::default()
         };
-        
+
         let dots = generate_dots_optimized_pipeline(&img, &config);
         assert!(!dots.is_empty());
     }
@@ -755,7 +824,7 @@ mod tests {
     #[test]
     fn test_performance_comparison() {
         let img = create_test_image(100, 100);
-        
+
         // Standard configuration
         let standard_config = OptimizedDotConfig {
             performance_config: PerformanceConfig {
@@ -767,7 +836,7 @@ mod tests {
             enable_profiling: true,
             ..Default::default()
         };
-        
+
         // Optimized configuration
         let optimized_config = OptimizedDotConfig {
             performance_config: PerformanceConfig {
@@ -779,22 +848,25 @@ mod tests {
             enable_profiling: true,
             ..Default::default()
         };
-        
+
         let start = std::time::Instant::now();
         let standard_dots = generate_dots_optimized_pipeline(&img, &standard_config);
         let standard_time = start.elapsed();
-        
+
         let start = std::time::Instant::now();
         let optimized_dots = generate_dots_optimized_pipeline(&img, &optimized_config);
         let optimized_time = start.elapsed();
-        
+
         // Both should generate similar number of dots
         let dot_count_diff = (standard_dots.len() as i32 - optimized_dots.len() as i32).abs();
         assert!(dot_count_diff <= 5, "Dot counts should be similar");
-        
+
         // Optimized version should be faster or at least not significantly slower
-        println!("Standard time: {:?}, Optimized time: {:?}", standard_time, optimized_time);
-        
+        println!(
+            "Standard time: {:?}, Optimized time: {:?}",
+            standard_time, optimized_time
+        );
+
         // Both should complete within reasonable time
         assert!(standard_time.as_millis() < 1000);
         assert!(optimized_time.as_millis() < 1000);

@@ -24,12 +24,12 @@ impl DotPool {
     /// Create a new dot pool with specified initial capacity
     pub fn new(initial_capacity: usize, max_size: usize) -> Self {
         let mut pool = VecDeque::with_capacity(initial_capacity);
-        
+
         // Pre-populate pool with default dots to avoid initial allocation cost
         for _ in 0..initial_capacity.min(max_size) {
             pool.push_back(Dot::new(0.0, 0.0, 1.0, 1.0, "#000000".to_string()));
         }
-        
+
         Self {
             pool,
             max_size,
@@ -67,7 +67,7 @@ impl DotPool {
     /// Acquire multiple dots at once for batch operations
     pub fn acquire_batch(&mut self, count: usize) -> Vec<Dot> {
         let mut dots = Vec::with_capacity(count);
-        
+
         for _ in 0..count {
             if let Some(dot) = self.pool.pop_front() {
                 dots.push(dot);
@@ -77,7 +77,7 @@ impl DotPool {
                 self.allocations += 1;
             }
         }
-        
+
         dots
     }
 
@@ -183,12 +183,12 @@ impl<T: Default + Clone> GenericPool<T> {
     /// Create a new generic pool
     pub fn new(initial_capacity: usize, max_size: usize) -> Self {
         let mut pool = VecDeque::with_capacity(initial_capacity);
-        
+
         // Pre-populate with default values
         for _ in 0..initial_capacity.min(max_size) {
             pool.push_back(T::default());
         }
-        
+
         Self {
             pool,
             max_size,
@@ -253,10 +253,14 @@ impl PoolManager {
     }
 
     /// Get or create a vector pool for a specific purpose
-    pub fn get_or_create_vec_pool(&mut self, name: &str, initial_capacity: usize) -> &mut GenericPool<Vec<f32>> {
-        self.vec_pools.entry(name.to_string()).or_insert_with(|| {
-            GenericPool::new(initial_capacity, 1000)
-        })
+    pub fn get_or_create_vec_pool(
+        &mut self,
+        name: &str,
+        initial_capacity: usize,
+    ) -> &mut GenericPool<Vec<f32>> {
+        self.vec_pools
+            .entry(name.to_string())
+            .or_insert_with(|| GenericPool::new(initial_capacity, 1000))
     }
 
     /// Get combined statistics for all pools
@@ -264,7 +268,7 @@ impl PoolManager {
         let dot_stats = self.dot_pool.stats();
         let mut total_allocations = dot_stats.allocations;
         let mut total_reuses = dot_stats.reuses;
-        
+
         for pool in self.vec_pools.values() {
             let stats = pool.stats();
             total_allocations += stats.allocations;
@@ -326,7 +330,7 @@ mod tests {
     #[test]
     fn test_dot_pool_basic_operations() {
         let mut pool = DotPool::new(10, 100);
-        
+
         // Acquire dot
         let dot = pool.acquire(1.0, 2.0, 3.0, 0.5, "#ff0000".to_string());
         assert_eq!(dot.x, 1.0);
@@ -337,7 +341,7 @@ mod tests {
 
         // Release dot
         pool.release(dot);
-        
+
         // Pool should have one item now
         let stats = pool.stats();
         assert_eq!(stats.pool_size, 10); // Initial capacity + released dot, but capped at initial
@@ -346,14 +350,14 @@ mod tests {
     #[test]
     fn test_dot_pool_reuse() {
         let mut pool = DotPool::new(0, 100); // Start with empty pool
-        
+
         // First acquisition should allocate
         let dot1 = pool.acquire(1.0, 1.0, 1.0, 1.0, "#000000".to_string());
         pool.release(dot1);
-        
+
         // Second acquisition should reuse
         let _dot2 = pool.acquire(2.0, 2.0, 2.0, 0.5, "#ffffff".to_string());
-        
+
         let stats = pool.stats();
         assert_eq!(stats.allocations, 1);
         assert_eq!(stats.reuses, 1);
@@ -363,14 +367,14 @@ mod tests {
     #[test]
     fn test_dot_pool_batch_operations() {
         let mut pool = DotPool::new(0, 100);
-        
+
         // Acquire batch
         let dots = pool.acquire_batch(5);
         assert_eq!(dots.len(), 5);
-        
+
         // Release batch
         pool.release_batch(dots);
-        
+
         let stats = pool.stats();
         assert_eq!(stats.allocations, 5);
         assert_eq!(stats.pool_size, 5);
@@ -379,13 +383,13 @@ mod tests {
     #[test]
     fn test_dot_pool_max_size_enforcement() {
         let mut pool = DotPool::new(0, 2); // Small max size
-        
+
         // Release more dots than max size
         for i in 0..5 {
             let dot = Dot::new(i as f32, 0.0, 1.0, 1.0, "#000000".to_string());
             pool.release(dot);
         }
-        
+
         let stats = pool.stats();
         assert_eq!(stats.pool_size, 2); // Should be capped at max_size
     }
@@ -393,34 +397,34 @@ mod tests {
     #[test]
     fn test_thread_safe_dot_pool() {
         let pool = ThreadSafeDotPool::new(10, 100);
-        
+
         // Test basic operations
         let dot = pool.acquire(1.0, 2.0, 3.0, 0.5, "#ff0000".to_string());
         assert_eq!(dot.x, 1.0);
-        
+
         pool.release(dot);
-        
+
         let stats = pool.stats();
-        assert!(stats.reuses >= 0); // Should work without panicking
+        // reuses is u64, so this is always true - removing useless comparison
     }
 
     #[test]
     fn test_generic_pool() {
         let mut pool: GenericPool<Vec<f32>> = GenericPool::new(5, 50);
-        
+
         // Acquire vector
         let mut vec = pool.acquire();
         vec.push(1.0);
         vec.push(2.0);
-        
+
         // Release vector
         pool.release(vec);
-        
+
         // Acquire again - should reuse
         let vec2 = pool.acquire();
         // Note: GenericPool doesn't clear the vector, so it might contain old data
         // In practice, you'd want to clear it after acquisition
-        
+
         let stats = pool.stats();
         assert!(stats.hit_ratio > 0.0);
     }
@@ -428,21 +432,21 @@ mod tests {
     #[test]
     fn test_pool_manager() {
         let mut manager = PoolManager::new();
-        
+
         // Test dot pool
         {
             let dot_pool = manager.dot_pool_mut();
             let dot = dot_pool.acquire(1.0, 1.0, 1.0, 1.0, "#000000".to_string());
             dot_pool.release(dot);
         }
-        
+
         // Test vector pool
         {
             let vec_pool = manager.get_or_create_vec_pool("gradients", 100);
             let vec = vec_pool.acquire();
             vec_pool.release(vec);
         }
-        
+
         let stats = manager.combined_stats();
         assert!(stats.total_allocations > 0);
         assert_eq!(stats.vec_pool_count, 1);
@@ -451,16 +455,16 @@ mod tests {
     #[test]
     fn test_pool_optimization() {
         let mut pool = DotPool::new(100, 1000); // Large initial capacity
-        
+
         // Use pool minimally
         let dot = pool.acquire(1.0, 1.0, 1.0, 1.0, "#000000".to_string());
         pool.release(dot);
-        
+
         let initial_size = pool.stats().pool_size;
-        
+
         // Optimize - should shrink pool
         pool.shrink_to_fit();
-        
+
         let optimized_size = pool.stats().pool_size;
         assert!(optimized_size <= initial_size);
     }
@@ -468,20 +472,20 @@ mod tests {
     #[test]
     fn test_pool_stats_accuracy() {
         let mut pool = DotPool::new(0, 100);
-        
+
         // Perform known operations
         let dot1 = pool.acquire(1.0, 1.0, 1.0, 1.0, "#000000".to_string());
         let dot2 = pool.acquire(2.0, 2.0, 2.0, 0.5, "#ffffff".to_string());
-        
+
         pool.release(dot1);
-        
+
         let dot3 = pool.acquire(3.0, 3.0, 3.0, 0.8, "#ff0000".to_string());
-        
+
         pool.release(dot2);
         pool.release(dot3);
-        
+
         let stats = pool.stats();
-        
+
         // Should have 2 allocations (dot1, dot2) and 1 reuse (dot3 reused dot1)
         assert_eq!(stats.allocations, 2);
         assert_eq!(stats.reuses, 1);

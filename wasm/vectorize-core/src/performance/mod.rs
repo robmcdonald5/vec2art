@@ -8,10 +8,10 @@
 //! - Optimized parallel processing strategies
 
 pub mod memory_pool;
-pub mod spatial_index;
-pub mod simd_ops;
-pub mod profiler;
 pub mod parallel_utils;
+pub mod profiler;
+pub mod simd_ops;
+pub mod spatial_index;
 
 use std::time::Duration;
 
@@ -169,30 +169,30 @@ impl PerformanceUtils {
         config: &PerformanceConfig,
     ) -> usize {
         let total_pixels = (width * height) as usize;
-        
+
         // Base memory usage
         let mut memory = 0;
-        
+
         // Gradient analysis
         memory += total_pixels * 8; // magnitude and variance (f32 each)
-        
+
         // Background mask
         memory += total_pixels; // bool array
-        
+
         // Dots storage
         memory += estimated_dots * 64; // Estimated Dot struct size
-        
+
         // Spatial indexing overhead
         if config.use_spatial_indexing {
             let grid_cells = (width / 10) * (height / 10); // Rough estimate
             memory += grid_cells as usize * 16; // Vec<usize> per cell
         }
-        
+
         // Memory pool overhead
         if config.use_memory_pooling {
             memory += estimated_dots * 64; // Pool pre-allocation
         }
-        
+
         memory
     }
 
@@ -207,7 +207,7 @@ impl PerformanceUtils {
     pub fn calculate_optimal_parallel_threshold() -> usize {
         let num_cpus = rayon::current_num_threads();
         let base_threshold = 1000;
-        
+
         // Scale threshold based on CPU count
         // More CPUs can handle smaller work units efficiently
         match num_cpus {
@@ -237,10 +237,10 @@ mod tests {
     #[test]
     fn test_optimization_levels() {
         let levels = OptimizationLevel::default();
-        
+
         // Conservative should have higher thresholds
         assert!(levels.conservative.parallel_threshold > levels.aggressive.parallel_threshold);
-        
+
         // Aggressive should enable all optimizations
         assert!(levels.aggressive.use_simd);
         assert!(levels.aggressive.use_spatial_indexing);
@@ -275,7 +275,7 @@ mod tests {
     fn test_memory_estimation() {
         let config = PerformanceConfig::default();
         let memory = PerformanceUtils::estimate_memory_usage(500, 500, 1000, &config);
-        
+
         // Should account for all major components
         assert!(memory > 250000 * 8); // At least gradient analysis memory
         assert!(memory < 10_000_000); // Reasonable upper bound
@@ -285,7 +285,7 @@ mod tests {
     fn test_simd_availability_check() {
         // Small data shouldn't use SIMD
         assert!(!PerformanceUtils::should_use_simd(100));
-        
+
         // Large data should use SIMD if available
         let should_use = PerformanceUtils::should_use_simd(10000);
         // Result depends on target architecture
@@ -299,7 +299,7 @@ mod tests {
     fn test_parallel_threshold_calculation() {
         let threshold = PerformanceUtils::calculate_optimal_parallel_threshold();
         assert!(threshold >= 1000);
-        
+
         // Should be finite (not disabled)
         assert!(threshold < usize::MAX);
     }

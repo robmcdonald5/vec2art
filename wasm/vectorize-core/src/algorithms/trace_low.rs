@@ -9,7 +9,7 @@
 //! All algorithms are controlled by a single detail parameter (0..1) that maps
 //! to appropriate thresholds for each backend.
 
-use crate::algorithms::background::BackgroundConfig;
+use crate::algorithms::background::{rgba_to_lab, BackgroundConfig, LabColor};
 use crate::algorithms::dots::{generate_dots_from_image, DotConfig};
 use crate::algorithms::edges::{
     apply_nms, compute_fdog, hysteresis_threshold, FdogConfig, NmsConfig,
@@ -17,6 +17,7 @@ use crate::algorithms::edges::{
 use crate::algorithms::etf::{compute_etf, EtfConfig};
 use crate::algorithms::fit::{fit_beziers, FitConfig};
 use crate::algorithms::gradients::GradientConfig;
+use crate::algorithms::path_utils::calculate_douglas_peucker_epsilon;
 use crate::algorithms::svg_dots::dots_to_svg_paths;
 use crate::algorithms::trace::{trace_polylines, TraceConfig};
 use crate::algorithms::{Point, SvgElementType, SvgPath};
@@ -862,43 +863,571 @@ fn trace_edge(
     Ok(svg_paths)
 }
 
-/// Centerline backend: Skeleton + centerline tracing
+/// Centerline backend: Skeleton + centerline tracing using Zhang-Suen thinning
 fn trace_centerline(
-    _image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    _thresholds: &ThresholdMapping,
-    _config: &TraceLowConfig,
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    thresholds: &ThresholdMapping,
+    config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
-    // TODO: Implement centerline tracing
-    // 1. Adaptive threshold (Sauvola)
-    // 2. Morphological operations
-    // 3. Skeletonization (Zhang-Suen algorithm)
-    // 4. Centerline tracing
-    // 5. Branch pruning and simplification
+    log::info!("Starting centerline tracing with Zhang-Suen thinning");
+    let start_time = Instant::now();
 
-    log::warn!("Centerline backend not yet implemented");
-    Err(VectorizeError::algorithm_error(
-        "Centerline backend not yet implemented",
-    ))
+    // Phase 1: Convert to grayscale
+    let phase_start = Instant::now();
+    let gray = rgba_to_gray(image);
+    let grayscale_time = phase_start.elapsed();
+
+    // Phase 2: Binary thresholding using canny_high_threshold
+    let phase_start = Instant::now();
+    let binary = binary_threshold(&gray, thresholds.canny_high_threshold);
+    let threshold_time = phase_start.elapsed();
+
+    // Phase 3: Optional morphological preprocessing for noise filtering
+    let phase_start = Instant::now();
+    let processed_binary = if config.noise_filtering {
+        morphological_preprocessing(&binary)
+    } else {
+        binary
+    };
+    let morphology_time = phase_start.elapsed();
+
+    // Phase 4: Zhang-Suen skeletonization
+    let phase_start = Instant::now();
+    let skeleton = zhang_suen_thinning(&processed_binary);
+    let thinning_time = phase_start.elapsed();
+
+    // Phase 5: Extract polylines from skeleton using 8-connectivity tracing
+    let phase_start = Instant::now();
+    let polylines = extract_skeleton_polylines(&skeleton);
+    let extraction_time = phase_start.elapsed();
+
+    // Phase 6: Prune short branches
+    let phase_start = Instant::now();
+    let pruned_polylines = prune_short_branches(polylines, thresholds.min_centerline_branch_px);
+    let pruning_time = phase_start.elapsed();
+
+    // Phase 7: Simplify using Douglas-Peucker
+    let phase_start = Instant::now();
+    let simplified_polylines: Vec<Vec<Point>> = pruned_polylines
+        .into_iter()
+        .map(|polyline| douglas_peucker_simplify(&polyline, thresholds.dp_epsilon_px))
+        .filter(|polyline| !polyline.is_empty())
+        .collect();
+    let simplification_time = phase_start.elapsed();
+
+    // Phase 8: Generate SVG paths
+    let phase_start = Instant::now();
+    let svg_paths: Vec<SvgPath> = simplified_polylines
+        .into_iter()
+        .map(|polyline| {
+            let stroke_width = calculate_stroke_width(image, config.stroke_px_at_1080p);
+            let clamped_width = clamp_stroke_width(stroke_width, config);
+            polyline_to_svg_path(polyline, clamped_width)
+        })
+        .collect();
+    let svg_generation_time = phase_start.elapsed();
+
+    let total_time = start_time.elapsed();
+
+    log::info!(
+        "Centerline tracing completed in {:.1}ms: gray={:.1}ms, threshold={:.1}ms, morph={:.1}ms, thin={:.1}ms, extract={:.1}ms, prune={:.1}ms, simplify={:.1}ms, svg={:.1}ms",
+        total_time.as_secs_f64() * 1000.0,
+        grayscale_time.as_secs_f64() * 1000.0,
+        threshold_time.as_secs_f64() * 1000.0,
+        morphology_time.as_secs_f64() * 1000.0,
+        thinning_time.as_secs_f64() * 1000.0,
+        extraction_time.as_secs_f64() * 1000.0,
+        pruning_time.as_secs_f64() * 1000.0,
+        simplification_time.as_secs_f64() * 1000.0,
+        svg_generation_time.as_secs_f64() * 1000.0
+    );
+    log::info!(
+        "Centerline backend generated {} stroke paths",
+        svg_paths.len()
+    );
+
+    Ok(svg_paths)
 }
 
 /// Superpixel backend: Large regions with cell-shaded look
 fn trace_superpixel(
-    _image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     _thresholds: &ThresholdMapping,
-    _config: &TraceLowConfig,
+    config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
-    // TODO: Implement superpixel tracing
-    // 1. Bilateral filter for edge-preserving denoise
-    // 2. Convert to CIELAB color space
-    // 3. SLIC superpixels with adaptive cell size
-    // 4. Graph merge in LAB space
-    // 5. Extract region contours with DP simplification
-    // 6. Optional border strokes
+    let start_time = Instant::now();
+    let (width, height) = (image.width() as usize, image.height() as usize);
 
-    log::warn!("Superpixel backend not yet implemented");
-    Err(VectorizeError::algorithm_error(
-        "Superpixel backend not yet implemented",
-    ))
+    // Calculate superpixel parameters based on detail level
+    let superpixel_count = (50.0 + 150.0 * config.detail) as usize;
+    let superpixel_compactness = 10.0;
+
+    log::info!(
+        "Starting SLIC superpixel segmentation: {}×{} → {} superpixels (detail: {:.2})",
+        width,
+        height,
+        superpixel_count,
+        config.detail
+    );
+
+    // 1. Convert image to LAB color space
+    let phase_start = Instant::now();
+    let lab_image: Vec<LabColor> = image.pixels().map(|pixel| rgba_to_lab(pixel)).collect();
+    log::debug!("LAB conversion: {:?}", phase_start.elapsed());
+
+    // 2. Initialize SLIC superpixel segmentation
+    let phase_start = Instant::now();
+    let superpixel_labels = slic_segmentation(
+        &lab_image,
+        width,
+        height,
+        superpixel_count,
+        superpixel_compactness,
+        10, // max iterations
+    );
+    log::debug!("SLIC segmentation: {:?}", phase_start.elapsed());
+
+    // 3. Extract superpixel regions and calculate average colors
+    let phase_start = Instant::now();
+    let regions = extract_superpixel_regions(&superpixel_labels, &lab_image, image, width, height);
+    log::debug!("Region extraction: {:?}", phase_start.elapsed());
+
+    // 4. Generate SVG paths based on artistic mode
+    let phase_start = Instant::now();
+    let dp_epsilon = calculate_douglas_peucker_epsilon(width as u32, height as u32, 0.005) as f32;
+
+    let svg_paths = generate_superpixel_svg_paths(
+        &regions,
+        &superpixel_labels,
+        width,
+        height,
+        config.stroke_px_at_1080p,
+        dp_epsilon,
+        config.detail,
+    )?;
+    log::debug!("SVG generation: {:?}", phase_start.elapsed());
+
+    log::info!(
+        "Superpixel backend generated {} paths in {:?} ({} regions)",
+        svg_paths.len(),
+        start_time.elapsed(),
+        regions.len()
+    );
+
+    Ok(svg_paths)
+}
+
+/// SLIC cluster for k-means initialization
+#[derive(Debug, Clone)]
+struct SlicCluster {
+    /// Cluster center in LAB color space
+    lab: LabColor,
+    /// Spatial coordinates (x, y)
+    x: f32,
+    y: f32,
+    /// Number of pixels assigned to this cluster
+    pixel_count: usize,
+}
+
+impl SlicCluster {
+    fn new(lab: LabColor, x: f32, y: f32) -> Self {
+        Self {
+            lab,
+            x,
+            y,
+            pixel_count: 0,
+        }
+    }
+
+    fn distance(&self, other_lab: &LabColor, other_x: f32, other_y: f32, compactness: f32) -> f32 {
+        // Color distance in LAB space
+        let color_dist = self.lab.distance_to(other_lab);
+
+        // Spatial distance
+        let spatial_dist = ((self.x - other_x).powi(2) + (self.y - other_y).powi(2)).sqrt();
+
+        // Combined distance with compactness weighting
+        color_dist + compactness * spatial_dist
+    }
+}
+
+/// Superpixel region with boundary and average color
+#[derive(Debug, Clone)]
+struct SuperpixelRegion {
+    /// Region label/ID
+    #[allow(dead_code)]
+    label: usize,
+    /// Average LAB color of the region
+    #[allow(dead_code)]
+    avg_lab: LabColor,
+    /// Average RGB color as hex string
+    avg_rgb_hex: String,
+    /// Boundary points of the region
+    boundary_points: Vec<Point>,
+    /// Bounding box (x, y, width, height)
+    #[allow(dead_code)]
+    bbox: (u32, u32, u32, u32),
+    /// Area in pixels
+    #[allow(dead_code)]
+    area: usize,
+}
+
+/// SLIC superpixel segmentation algorithm
+///
+/// Implements Simple Linear Iterative Clustering (SLIC) for superpixel segmentation.
+/// This pure Rust implementation avoids external dependencies while maintaining performance.
+fn slic_segmentation(
+    lab_image: &[LabColor],
+    width: usize,
+    height: usize,
+    num_superpixels: usize,
+    compactness: f32,
+    max_iterations: usize,
+) -> Vec<usize> {
+    // Calculate initial grid spacing
+    let total_pixels = width * height;
+    let s = ((total_pixels as f32 / num_superpixels as f32).sqrt()) as usize;
+    let s = s.max(1); // Ensure minimum spacing of 1
+
+    // Initialize cluster centers on a regular grid
+    let mut clusters = Vec::new();
+    let mut cluster_id = 0;
+
+    for y in (s / 2..height).step_by(s) {
+        for x in (s / 2..width).step_by(s) {
+            if cluster_id >= num_superpixels {
+                break;
+            }
+
+            let idx = y * width + x;
+            if idx < lab_image.len() {
+                clusters.push(SlicCluster::new(lab_image[idx], x as f32, y as f32));
+                cluster_id += 1;
+            }
+        }
+        if cluster_id >= num_superpixels {
+            break;
+        }
+    }
+
+    // Initialize labels and distances
+    let mut labels = vec![0; total_pixels];
+    let mut distances = vec![f32::INFINITY; total_pixels];
+
+    // K-means iteration
+    for iteration in 0..max_iterations {
+        let mut cluster_changed = false;
+
+        // Assign pixels to nearest cluster
+        for (cluster_idx, cluster) in clusters.iter().enumerate() {
+            // Search in 2S×2S region around cluster center
+            let search_size = 2 * s;
+            let min_x = (cluster.x as isize - search_size as isize / 2).max(0) as usize;
+            let max_x = (cluster.x as usize + search_size / 2).min(width - 1);
+            let min_y = (cluster.y as isize - search_size as isize / 2).max(0) as usize;
+            let max_y = (cluster.y as usize + search_size / 2).min(height - 1);
+
+            for y in min_y..=max_y {
+                for x in min_x..=max_x {
+                    let idx = y * width + x;
+                    if idx < lab_image.len() {
+                        let dist =
+                            cluster.distance(&lab_image[idx], x as f32, y as f32, compactness);
+
+                        if dist < distances[idx] {
+                            distances[idx] = dist;
+                            if labels[idx] != cluster_idx {
+                                labels[idx] = cluster_idx;
+                                cluster_changed = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Update cluster centers
+        let mut cluster_sums: Vec<(LabColor, f32, f32, usize)> =
+            vec![(LabColor::new(0.0, 0.0, 0.0), 0.0, 0.0, 0); clusters.len()];
+
+        for (idx, &label) in labels.iter().enumerate() {
+            if label < cluster_sums.len() {
+                let x = (idx % width) as f32;
+                let y = (idx / width) as f32;
+                let lab = lab_image[idx];
+
+                cluster_sums[label].0.l += lab.l;
+                cluster_sums[label].0.a += lab.a;
+                cluster_sums[label].0.b += lab.b;
+                cluster_sums[label].1 += x;
+                cluster_sums[label].2 += y;
+                cluster_sums[label].3 += 1;
+            }
+        }
+
+        for (cluster_idx, cluster) in clusters.iter_mut().enumerate() {
+            if cluster_sums[cluster_idx].3 > 0 {
+                let count = cluster_sums[cluster_idx].3 as f32;
+                cluster.lab.l = cluster_sums[cluster_idx].0.l / count;
+                cluster.lab.a = cluster_sums[cluster_idx].0.a / count;
+                cluster.lab.b = cluster_sums[cluster_idx].0.b / count;
+                cluster.x = cluster_sums[cluster_idx].1 / count;
+                cluster.y = cluster_sums[cluster_idx].2 / count;
+                cluster.pixel_count = cluster_sums[cluster_idx].3;
+            }
+        }
+
+        // Early termination if no significant changes
+        if !cluster_changed && iteration > 2 {
+            log::debug!("SLIC converged after {} iterations", iteration + 1);
+            break;
+        }
+    }
+
+    labels
+}
+
+/// Extract superpixel regions with boundaries and average colors
+fn extract_superpixel_regions(
+    labels: &[usize],
+    lab_image: &[LabColor],
+    rgba_image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    width: usize,
+    height: usize,
+) -> Vec<SuperpixelRegion> {
+    use std::collections::HashMap;
+
+    // Group pixels by label and calculate statistics
+    let mut region_pixels: HashMap<usize, Vec<(usize, usize)>> = HashMap::new();
+    let mut region_lab_sums: HashMap<usize, (f64, f64, f64, usize)> = HashMap::new();
+    let mut region_rgb_sums: HashMap<usize, (u64, u64, u64, usize)> = HashMap::new();
+
+    for (idx, &label) in labels.iter().enumerate() {
+        let x = idx % width;
+        let y = idx / width;
+
+        // Store pixel coordinates
+        region_pixels.entry(label).or_default().push((x, y));
+
+        // Accumulate LAB values
+        let lab = lab_image[idx];
+        let lab_entry = region_lab_sums.entry(label).or_default();
+        lab_entry.0 += lab.l as f64;
+        lab_entry.1 += lab.a as f64;
+        lab_entry.2 += lab.b as f64;
+        lab_entry.3 += 1;
+
+        // Accumulate RGB values
+        let rgba = rgba_image.get_pixel(x as u32, y as u32);
+        let rgb_entry = region_rgb_sums.entry(label).or_default();
+        rgb_entry.0 += rgba.0[0] as u64;
+        rgb_entry.1 += rgba.0[1] as u64;
+        rgb_entry.2 += rgba.0[2] as u64;
+        rgb_entry.3 += 1;
+    }
+
+    let mut regions = Vec::new();
+
+    for (label, pixels) in region_pixels.iter() {
+        if pixels.len() < 4 {
+            continue; // Skip very small regions
+        }
+
+        // Calculate average LAB color
+        let lab_sum = region_lab_sums[label];
+        let avg_lab = LabColor::new(
+            (lab_sum.0 / lab_sum.3 as f64) as f32,
+            (lab_sum.1 / lab_sum.3 as f64) as f32,
+            (lab_sum.2 / lab_sum.3 as f64) as f32,
+        );
+
+        // Calculate average RGB color
+        let rgb_sum = region_rgb_sums[label];
+        let avg_r = (rgb_sum.0 / rgb_sum.3 as u64) as u8;
+        let avg_g = (rgb_sum.1 / rgb_sum.3 as u64) as u8;
+        let avg_b = (rgb_sum.2 / rgb_sum.3 as u64) as u8;
+        let avg_rgb_hex = format!("#{:02x}{:02x}{:02x}", avg_r, avg_g, avg_b);
+
+        // Calculate bounding box
+        let min_x = pixels.iter().map(|(x, _)| *x).min().unwrap_or(0) as u32;
+        let max_x = pixels.iter().map(|(x, _)| *x).max().unwrap_or(0) as u32;
+        let min_y = pixels.iter().map(|(_, y)| *y).min().unwrap_or(0) as u32;
+        let max_y = pixels.iter().map(|(_, y)| *y).max().unwrap_or(0) as u32;
+
+        // Extract boundary using 4-connectivity
+        let boundary_points = extract_region_boundary(pixels, labels, *label, width, height);
+
+        regions.push(SuperpixelRegion {
+            label: *label,
+            avg_lab,
+            avg_rgb_hex,
+            boundary_points,
+            bbox: (min_x, min_y, max_x - min_x + 1, max_y - min_y + 1),
+            area: pixels.len(),
+        });
+    }
+
+    regions
+}
+
+/// Extract boundary points of a superpixel region
+fn extract_region_boundary(
+    region_pixels: &[(usize, usize)],
+    labels: &[usize],
+    region_label: usize,
+    width: usize,
+    height: usize,
+) -> Vec<Point> {
+    use std::collections::HashSet;
+
+    // Convert to set for fast lookup (currently unused but available for optimization)
+    let _pixel_set: HashSet<(usize, usize)> = region_pixels.iter().cloned().collect();
+    let mut boundary_pixels = Vec::new();
+
+    // Find boundary pixels (pixels that have at least one neighbor not in the region)
+    for &(x, y) in region_pixels {
+        let mut is_boundary = false;
+
+        // Check 4-connected neighbors
+        for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+            let nx = x as i32 + dx;
+            let ny = y as i32 + dy;
+
+            if nx < 0 || ny < 0 || nx >= width as i32 || ny >= height as i32 {
+                is_boundary = true; // Border of image
+                break;
+            }
+
+            let nx = nx as usize;
+            let ny = ny as usize;
+            let neighbor_idx = ny * width + nx;
+
+            if neighbor_idx < labels.len() && labels[neighbor_idx] != region_label {
+                is_boundary = true;
+                break;
+            }
+        }
+
+        if is_boundary {
+            boundary_pixels.push((x, y));
+        }
+    }
+
+    // Convert to Point objects and try to order them in a reasonable way
+    if boundary_pixels.is_empty() {
+        return Vec::new();
+    }
+
+    // Simple ordering by angle from centroid (for better path generation)
+    let centroid_x =
+        boundary_pixels.iter().map(|(x, _)| *x as f32).sum::<f32>() / boundary_pixels.len() as f32;
+    let centroid_y =
+        boundary_pixels.iter().map(|(_, y)| *y as f32).sum::<f32>() / boundary_pixels.len() as f32;
+
+    let mut boundary_points: Vec<Point> = boundary_pixels
+        .into_iter()
+        .map(|(x, y)| Point::new(x as f32, y as f32))
+        .collect();
+
+    // Sort by angle from centroid for better path ordering
+    boundary_points.sort_by(|a, b| {
+        let angle_a = (a.y - centroid_y).atan2(a.x - centroid_x);
+        let angle_b = (b.y - centroid_y).atan2(b.x - centroid_x);
+        angle_a
+            .partial_cmp(&angle_b)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    boundary_points
+}
+
+/// Generate SVG paths for superpixel regions with different artistic modes
+fn generate_superpixel_svg_paths(
+    regions: &[SuperpixelRegion],
+    _labels: &[usize],
+    _width: usize,
+    _height: usize,
+    stroke_width: f32,
+    dp_epsilon: f32,
+    detail: f32,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    let mut svg_paths = Vec::new();
+
+    // Determine artistic mode based on detail level
+    // 0.0-0.3: Filled regions only (stained glass effect)
+    // 0.3-0.7: Filled regions with black borders (comic book style)
+    // 0.7-1.0: Strokes only (cell animation style)
+
+    let mode = if detail < 0.33 {
+        "filled_only"
+    } else if detail < 0.67 {
+        "filled_with_borders"
+    } else {
+        "strokes_only"
+    };
+
+    log::debug!(
+        "Using superpixel artistic mode: {} (detail: {:.2})",
+        mode,
+        detail
+    );
+
+    for region in regions {
+        if region.boundary_points.len() < 3 {
+            continue; // Skip invalid regions
+        }
+
+        // Simplify boundary path using Douglas-Peucker
+        let simplified_points = douglas_peucker_simplify(&region.boundary_points, dp_epsilon);
+
+        if simplified_points.len() < 3 {
+            continue; // Skip if simplification resulted in too few points
+        }
+
+        // Generate SVG path data for the boundary
+        let mut path_data = String::new();
+        path_data.push_str(&format!(
+            "M {:.1},{:.1}",
+            simplified_points[0].x, simplified_points[0].y
+        ));
+
+        for point in simplified_points.iter().skip(1) {
+            path_data.push_str(&format!(" L {:.1},{:.1}", point.x, point.y));
+        }
+        path_data.push_str(" Z"); // Close the path
+
+        match mode {
+            "filled_only" => {
+                // Stained glass effect - filled regions only
+                let svg_path = SvgPath::new_fill(path_data, &region.avg_rgb_hex);
+                svg_paths.push(svg_path);
+            }
+            "filled_with_borders" => {
+                // Comic book style - filled regions with black borders
+                let filled_path = SvgPath::new_fill(path_data.clone(), &region.avg_rgb_hex);
+                svg_paths.push(filled_path);
+
+                // Add border stroke
+                let stroke_path = SvgPath::new_stroke(path_data, "#000000", stroke_width);
+                svg_paths.push(stroke_path);
+            }
+            "strokes_only" => {
+                // Cell animation style - strokes only with region color
+                let stroke_path =
+                    SvgPath::new_stroke(path_data, &region.avg_rgb_hex, stroke_width * 1.5);
+                svg_paths.push(stroke_path);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    log::debug!(
+        "Generated {} SVG paths for {} regions in mode {}",
+        svg_paths.len(),
+        regions.len(),
+        mode
+    );
+    Ok(svg_paths)
 }
 
 /// Dots backend: Dot-based pixel mapping with gradient analysis (stippling/pointillism effects)
@@ -3175,4 +3704,322 @@ mod tests {
             "Main vectorize_trace_low should work with dots backend"
         );
     }
+}
+
+// ============================================================================
+// Centerline Backend Helper Functions
+// ============================================================================
+
+/// Binary threshold using normalized threshold value
+fn binary_threshold(gray: &GrayImage, threshold: f32) -> GrayImage {
+    let (width, height) = gray.dimensions();
+    let mut binary = GrayImage::new(width, height);
+
+    // Convert normalized threshold (0.0-1.0) to byte value (0-255)
+    let threshold_byte = (threshold * 255.0) as u8;
+
+    // Use parallel processing for better performance
+    binary
+        .par_enumerate_pixels_mut()
+        .for_each(|(x, y, binary_pixel)| {
+            let gray_value = gray.get_pixel(x, y).0[0];
+            binary_pixel.0[0] = if gray_value > threshold_byte { 255 } else { 0 };
+        });
+
+    binary
+}
+
+/// Morphological preprocessing for noise filtering (opening + closing)
+fn morphological_preprocessing(binary: &GrayImage) -> GrayImage {
+    let (width, height) = binary.dimensions();
+    let mut result = GrayImage::new(width, height);
+
+    // Simple 3x3 structuring element for opening (erosion + dilation)
+    // This removes small noise while preserving main structures
+    let mut eroded = GrayImage::new(width, height);
+
+    // Erosion pass
+    for y in 1..(height - 1) {
+        for x in 1..(width - 1) {
+            let mut min_val = 255u8;
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    let px = binary
+                        .get_pixel((x as i32 + dx) as u32, (y as i32 + dy) as u32)
+                        .0[0];
+                    min_val = min_val.min(px);
+                }
+            }
+            eroded.get_pixel_mut(x, y).0[0] = min_val;
+        }
+    }
+
+    // Dilation pass (opening = erosion + dilation)
+    for y in 1..(height - 1) {
+        for x in 1..(width - 1) {
+            let mut max_val = 0u8;
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    let px = eroded
+                        .get_pixel((x as i32 + dx) as u32, (y as i32 + dy) as u32)
+                        .0[0];
+                    max_val = max_val.max(px);
+                }
+            }
+            result.get_pixel_mut(x, y).0[0] = max_val;
+        }
+    }
+
+    result
+}
+
+/// Zhang-Suen thinning algorithm for skeletonization
+/// Returns a binary image where white pixels (255) represent the skeleton
+fn zhang_suen_thinning(binary: &GrayImage) -> GrayImage {
+    let (width, height) = binary.dimensions();
+    let mut image = GrayImage::new(width, height);
+
+    // Copy binary image (white = 255 for foreground, black = 0 for background)
+    for y in 0..height {
+        for x in 0..width {
+            image.get_pixel_mut(x, y).0[0] = binary.get_pixel(x, y).0[0];
+        }
+    }
+
+    let mut changed = true;
+    let mut iteration = 0;
+
+    while changed && iteration < 100 {
+        // Safety limit
+        changed = false;
+        iteration += 1;
+
+        // Step 1: Mark pixels for deletion
+        let mut to_delete_1 = Vec::new();
+        for y in 1..(height - 1) {
+            for x in 1..(width - 1) {
+                if should_delete_zhang_suen_step1(&image, x, y) {
+                    to_delete_1.push((x, y));
+                }
+            }
+        }
+
+        // Delete marked pixels
+        for &(x, y) in &to_delete_1 {
+            image.get_pixel_mut(x, y).0[0] = 0;
+            changed = true;
+        }
+
+        // Step 2: Mark different pixels for deletion
+        let mut to_delete_2 = Vec::new();
+        for y in 1..(height - 1) {
+            for x in 1..(width - 1) {
+                if should_delete_zhang_suen_step2(&image, x, y) {
+                    to_delete_2.push((x, y));
+                }
+            }
+        }
+
+        // Delete marked pixels
+        for &(x, y) in &to_delete_2 {
+            image.get_pixel_mut(x, y).0[0] = 0;
+            changed = true;
+        }
+    }
+
+    image
+}
+
+/// Zhang-Suen Step 1: Check if pixel should be deleted
+fn should_delete_zhang_suen_step1(image: &GrayImage, x: u32, y: u32) -> bool {
+    let p1 = is_foreground(image, x, y);
+    if !p1 {
+        return false;
+    }
+
+    // Get 8-neighborhood (clockwise from top)
+    let p2 = is_foreground(image, x, y - 1); // N
+    let p3 = is_foreground(image, x + 1, y - 1); // NE
+    let p4 = is_foreground(image, x + 1, y); // E
+    let p5 = is_foreground(image, x + 1, y + 1); // SE
+    let p6 = is_foreground(image, x, y + 1); // S
+    let p7 = is_foreground(image, x - 1, y + 1); // SW
+    let p8 = is_foreground(image, x - 1, y); // W
+    let p9 = is_foreground(image, x - 1, y - 1); // NW
+
+    // Count black-to-white transitions
+    let transitions = count_transitions(&[p2, p3, p4, p5, p6, p7, p8, p9]);
+
+    // Count white neighbors
+    let white_neighbors = [p2, p3, p4, p5, p6, p7, p8, p9]
+        .iter()
+        .filter(|&&p| p)
+        .count();
+
+    // Zhang-Suen conditions for step 1
+    transitions == 1
+        && white_neighbors >= 2
+        && white_neighbors <= 6
+        && (!p2 || !p4 || !p6)
+        && (!p4 || !p6 || !p8)
+}
+
+/// Zhang-Suen Step 2: Check if pixel should be deleted
+fn should_delete_zhang_suen_step2(image: &GrayImage, x: u32, y: u32) -> bool {
+    let p1 = is_foreground(image, x, y);
+    if !p1 {
+        return false;
+    }
+
+    // Get 8-neighborhood (clockwise from top)
+    let p2 = is_foreground(image, x, y - 1); // N
+    let p3 = is_foreground(image, x + 1, y - 1); // NE
+    let p4 = is_foreground(image, x + 1, y); // E
+    let p5 = is_foreground(image, x + 1, y + 1); // SE
+    let p6 = is_foreground(image, x, y + 1); // S
+    let p7 = is_foreground(image, x - 1, y + 1); // SW
+    let p8 = is_foreground(image, x - 1, y); // W
+    let p9 = is_foreground(image, x - 1, y - 1); // NW
+
+    // Count black-to-white transitions
+    let transitions = count_transitions(&[p2, p3, p4, p5, p6, p7, p8, p9]);
+
+    // Count white neighbors
+    let white_neighbors = [p2, p3, p4, p5, p6, p7, p8, p9]
+        .iter()
+        .filter(|&&p| p)
+        .count();
+
+    // Zhang-Suen conditions for step 2
+    transitions == 1
+        && white_neighbors >= 2
+        && white_neighbors <= 6
+        && (!p2 || !p4 || !p8)
+        && (!p2 || !p6 || !p8)
+}
+
+/// Check if pixel is foreground (white in binary image)
+fn is_foreground(image: &GrayImage, x: u32, y: u32) -> bool {
+    let (width, height) = image.dimensions();
+    if x >= width || y >= height {
+        false
+    } else {
+        image.get_pixel(x, y).0[0] > 128
+    }
+}
+
+/// Count black-to-white transitions in 8-neighborhood
+fn count_transitions(neighbors: &[bool; 8]) -> usize {
+    let mut count = 0;
+    for i in 0..8 {
+        let current = neighbors[i];
+        let next = neighbors[(i + 1) % 8];
+        if !current && next {
+            count += 1;
+        }
+    }
+    count
+}
+
+/// Extract polylines from skeleton using 8-connectivity tracing
+fn extract_skeleton_polylines(skeleton: &GrayImage) -> Vec<Vec<Point>> {
+    let (width, height) = skeleton.dimensions();
+    let mut visited = vec![vec![false; width as usize]; height as usize];
+    let mut polylines = Vec::new();
+
+    // Find all skeleton pixels and trace them
+    for y in 0..height {
+        for x in 0..width {
+            if is_foreground(skeleton, x, y) && !visited[y as usize][x as usize] {
+                let polyline = trace_skeleton_path(skeleton, &mut visited, x, y);
+                if polyline.len() >= 2 {
+                    polylines.push(polyline);
+                }
+            }
+        }
+    }
+
+    polylines
+}
+
+/// Trace a single skeleton path starting from given point
+fn trace_skeleton_path(
+    skeleton: &GrayImage,
+    visited: &mut Vec<Vec<bool>>,
+    start_x: u32,
+    start_y: u32,
+) -> Vec<Point> {
+    let mut path = Vec::new();
+    let mut current = (start_x, start_y);
+
+    // Use a simple path following algorithm
+    loop {
+        let (x, y) = current;
+        visited[y as usize][x as usize] = true;
+        path.push(Point {
+            x: x as f32,
+            y: y as f32,
+        });
+
+        // Find next unvisited neighbor
+        let mut next = None;
+
+        // Check 8-neighborhood
+        for dy in -1i32..=1 {
+            for dx in -1i32..=1 {
+                if dx == 0 && dy == 0 {
+                    continue;
+                }
+
+                let nx = x as i32 + dx;
+                let ny = y as i32 + dy;
+
+                if nx >= 0 && ny >= 0 {
+                    let nx = nx as u32;
+                    let ny = ny as u32;
+
+                    if is_foreground(skeleton, nx, ny) && !visited[ny as usize][nx as usize] {
+                        next = Some((nx, ny));
+                        break;
+                    }
+                }
+            }
+            if next.is_some() {
+                break;
+            }
+        }
+
+        match next {
+            Some(next_pos) => current = next_pos,
+            None => break, // End of path
+        }
+    }
+
+    path
+}
+
+/// Prune short branches from polylines
+fn prune_short_branches(polylines: Vec<Vec<Point>>, min_length: f32) -> Vec<Vec<Point>> {
+    polylines
+        .into_iter()
+        .filter(|polyline| {
+            let length = calculate_polyline_length(polyline);
+            length >= min_length
+        })
+        .collect()
+}
+
+/// Convert polyline to SVG path
+fn polyline_to_svg_path(polyline: Vec<Point>, stroke_width: f32) -> SvgPath {
+    let mut path_data = String::new();
+
+    if !polyline.is_empty() {
+        path_data.push_str(&format!("M{} {}", polyline[0].x, polyline[0].y));
+
+        for point in polyline.iter().skip(1) {
+            path_data.push_str(&format!(" L{} {}", point.x, point.y));
+        }
+    }
+
+    SvgPath::new_stroke(path_data, "#000000", stroke_width)
 }

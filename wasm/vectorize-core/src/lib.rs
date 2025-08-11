@@ -7,10 +7,10 @@
 pub mod algorithms;
 pub mod config;
 pub mod error;
+pub mod performance;
 pub mod preprocessing;
 pub mod svg;
 pub mod telemetry;
-pub mod performance;
 
 // Re-export main types for convenience
 pub use algorithms::{vectorize_trace_low, TraceBackend, TraceLowConfig};
@@ -55,7 +55,12 @@ pub fn vectorize_trace_low_rgba(
 
     // Check for edge cases that would make processing impossible
     let single_color_result = is_empty_or_single_color_image(image);
-    log::debug!("Single color check result: {} for {}x{} image", single_color_result, image.width(), image.height());
+    log::debug!(
+        "Single color check result: {} for {}x{} image",
+        single_color_result,
+        image.width(),
+        image.height()
+    );
     if single_color_result {
         log::warn!("Image appears to be empty or single color, generating minimal SVG");
         return Ok(generate_minimal_svg(
@@ -179,7 +184,7 @@ mod input_validation {
             if pixel.0[3] >= 10 {
                 // Only check opaque-ish pixels
                 opaque_pixel_count += 1;
-                
+
                 if let Some(ref_pixel) = reference_pixel {
                     // Compare with reference pixel
                     if pixel.0[0] != ref_pixel.0[0]

@@ -79,7 +79,7 @@ impl SpatialGrid {
     pub fn remove_dot(&mut self, dot_index: usize, x: f32, y: f32) -> bool {
         let (gx, gy) = self.world_to_grid(x, y);
         let cell = &mut self.grid[gy][gx];
-        
+
         if let Some(pos) = cell.iter().position(|&idx| idx == dot_index) {
             cell.swap_remove(pos);
             true
@@ -98,7 +98,7 @@ impl SpatialGrid {
         spacing_factor: f32,
     ) -> bool {
         self.queries += 1;
-        
+
         let min_distance = radius * spacing_factor;
         let (center_gx, center_gy) = self.world_to_grid(x, y);
 
@@ -128,15 +128,9 @@ impl SpatialGrid {
     }
 
     /// Find all dots within a certain radius of a point
-    pub fn find_dots_in_radius(
-        &mut self,
-        x: f32,
-        y: f32,
-        radius: f32,
-        dots: &[Dot],
-    ) -> Vec<usize> {
+    pub fn find_dots_in_radius(&mut self, x: f32, y: f32, radius: f32, dots: &[Dot]) -> Vec<usize> {
         self.queries += 1;
-        
+
         let mut result = Vec::new();
         let (center_gx, center_gy) = self.world_to_grid(x, y);
 
@@ -257,7 +251,7 @@ impl SpatialGrid {
                 // Rebuild grid with new cell size
                 let old_dots: Vec<(usize, f32, f32)> = self.get_all_dot_positions(dots);
                 self.rebuild_with_cell_size(new_cell_size);
-                
+
                 // Re-add all dots
                 for (index, x, y) in old_dots {
                     self.add_dot(index, x, y);
@@ -360,9 +354,21 @@ impl BoundingBox {
 
 impl QuadTree {
     /// Create a new quadtree
-    pub fn new(x: f32, y: f32, width: f32, height: f32, max_objects: usize, max_depth: usize) -> Self {
+    pub fn new(
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        max_objects: usize,
+        max_depth: usize,
+    ) -> Self {
         Self {
-            bounds: BoundingBox { x, y, width, height },
+            bounds: BoundingBox {
+                x,
+                y,
+                width,
+                height,
+            },
             max_objects,
             max_depth,
             depth: 0,
@@ -393,7 +399,7 @@ impl QuadTree {
         // Check if we need to subdivide
         if self.objects.len() > self.max_objects && self.depth < self.max_depth {
             self.subdivide();
-            
+
             // Move objects to children
             let mut remaining_objects = Vec::new();
             for (idx, obj_x, obj_y) in self.objects.drain(..) {
@@ -527,13 +533,15 @@ mod tests {
 
     fn create_test_dots(count: usize) -> Vec<Dot> {
         (0..count)
-            .map(|i| Dot::new(
-                (i % 10) as f32 * 10.0,
-                (i / 10) as f32 * 10.0,
-                2.0,
-                1.0,
-                "#000000".to_string(),
-            ))
+            .map(|i| {
+                Dot::new(
+                    (i % 10) as f32 * 10.0,
+                    (i / 10) as f32 * 10.0,
+                    2.0,
+                    1.0,
+                    "#000000".to_string(),
+                )
+            })
             .collect()
     }
 
@@ -541,7 +549,7 @@ mod tests {
     fn test_spatial_grid_creation() {
         let grid = SpatialGrid::new(100, 100, 3.0, 2.0);
         let stats = grid.stats();
-        
+
         assert!(stats.total_cells > 0);
         assert_eq!(stats.occupied_cells, 0); // Initially empty
         assert_eq!(stats.total_dots, 0);
@@ -551,9 +559,9 @@ mod tests {
     fn test_spatial_grid_add_dot() {
         let mut grid = SpatialGrid::new(100, 100, 3.0, 2.0);
         let dots = create_test_dots(1);
-        
+
         grid.add_dot(0, dots[0].x, dots[0].y);
-        
+
         let stats = grid.stats();
         assert_eq!(stats.total_dots, 1);
         assert_eq!(stats.occupied_cells, 1);
@@ -563,28 +571,16 @@ mod tests {
     fn test_spatial_grid_collision_detection() {
         let mut grid = SpatialGrid::new(100, 100, 3.0, 2.0);
         let dots = create_test_dots(5);
-        
+
         // Add first dot
         grid.add_dot(0, dots[0].x, dots[0].y);
-        
+
         // Test collision - should return false for nearby position
-        let is_valid = grid.is_position_valid(
-            dots[0].x + 1.0,
-            dots[0].y + 1.0,
-            2.0,
-            &dots,
-            2.0,
-        );
+        let is_valid = grid.is_position_valid(dots[0].x + 1.0, dots[0].y + 1.0, 2.0, &dots, 2.0);
         assert!(!is_valid);
-        
+
         // Test no collision - should return true for distant position
-        let is_valid = grid.is_position_valid(
-            dots[0].x + 50.0,
-            dots[0].y + 50.0,
-            2.0,
-            &dots,
-            2.0,
-        );
+        let is_valid = grid.is_position_valid(dots[0].x + 50.0, dots[0].y + 50.0, 2.0, &dots, 2.0);
         assert!(is_valid);
     }
 
@@ -592,15 +588,15 @@ mod tests {
     fn test_spatial_grid_radius_query() {
         let mut grid = SpatialGrid::new(100, 100, 3.0, 2.0);
         let dots = create_test_dots(10);
-        
+
         // Add several dots
         for (i, dot) in dots.iter().enumerate() {
             grid.add_dot(i, dot.x, dot.y);
         }
-        
+
         // Query for dots near the first dot
         let nearby = grid.find_dots_in_radius(dots[0].x, dots[0].y, 15.0, &dots);
-        
+
         assert!(!nearby.is_empty());
         assert!(nearby.contains(&0)); // Should include the dot itself
     }
@@ -609,10 +605,10 @@ mod tests {
     fn test_spatial_grid_remove_dot() {
         let mut grid = SpatialGrid::new(100, 100, 3.0, 2.0);
         let dots = create_test_dots(1);
-        
+
         grid.add_dot(0, dots[0].x, dots[0].y);
         assert_eq!(grid.stats().total_dots, 1);
-        
+
         let removed = grid.remove_dot(0, dots[0].x, dots[0].y);
         assert!(removed);
         assert_eq!(grid.stats().total_dots, 0);
@@ -622,12 +618,12 @@ mod tests {
     fn test_spatial_grid_world_to_grid_coordinates() {
         let grid = SpatialGrid::new(100, 100, 3.0, 2.0);
         let cell_size = grid.cell_size;
-        
+
         // Test coordinate conversion
         let (gx, gy) = grid.world_to_grid(50.0, 50.0);
         let expected_gx = (50.0 / cell_size) as usize;
         let expected_gy = (50.0 / cell_size) as usize;
-        
+
         assert_eq!(gx, expected_gx.min(grid.grid_width - 1));
         assert_eq!(gy, expected_gy.min(grid.grid_height - 1));
     }
@@ -636,14 +632,14 @@ mod tests {
     fn test_spatial_grid_optimization() {
         let mut grid = SpatialGrid::new(100, 100, 3.0, 2.0);
         let dots = create_test_dots(5);
-        
+
         // Add dots and optimize
         for (i, dot) in dots.iter().enumerate() {
             grid.add_dot(i, dot.x, dot.y);
         }
-        
+
         grid.optimize_for_distribution(&dots);
-        
+
         // Should still contain all dots
         assert_eq!(grid.stats().total_dots, 5);
     }
@@ -657,26 +653,26 @@ mod tests {
     #[test]
     fn test_quadtree_insertion() {
         let mut tree = QuadTree::new(0.0, 0.0, 100.0, 100.0, 10, 5);
-        
+
         assert!(tree.insert(0, 50.0, 50.0));
         assert!(tree.insert(1, 25.0, 25.0));
         assert!(!tree.insert(2, 150.0, 150.0)); // Outside bounds
-        
+
         assert_eq!(tree.count(), 2);
     }
 
     #[test]
     fn test_quadtree_query_radius() {
         let mut tree = QuadTree::new(0.0, 0.0, 100.0, 100.0, 10, 5);
-        
+
         // Insert test points
         tree.insert(0, 50.0, 50.0);
         tree.insert(1, 55.0, 55.0);
         tree.insert(2, 25.0, 25.0);
-        
+
         let mut result = Vec::new();
         tree.query_radius(50.0, 50.0, 10.0, &mut result);
-        
+
         assert!(result.contains(&0)); // Center point
         assert!(result.contains(&1)); // Nearby point
         assert!(!result.contains(&2)); // Distant point
@@ -685,12 +681,12 @@ mod tests {
     #[test]
     fn test_quadtree_subdivision() {
         let mut tree = QuadTree::new(0.0, 0.0, 100.0, 100.0, 2, 5); // Low max_objects
-        
+
         // Insert enough points to trigger subdivision
         for i in 0..5 {
             tree.insert(i, (i as f32) * 10.0, (i as f32) * 10.0);
         }
-        
+
         assert_eq!(tree.count(), 5);
         // After subdivision, should have children
         assert!(tree.children.is_some());
@@ -700,17 +696,17 @@ mod tests {
     fn test_spatial_grid_performance_stats() {
         let mut grid = SpatialGrid::new(100, 100, 3.0, 2.0);
         let dots = create_test_dots(20);
-        
+
         // Add dots
         for (i, dot) in dots.iter().enumerate() {
             grid.add_dot(i, dot.x, dot.y);
         }
-        
+
         // Perform some queries
         for _ in 0..10 {
             let _ = grid.is_position_valid(50.0, 50.0, 2.0, &dots, 2.0);
         }
-        
+
         let stats = grid.stats();
         assert_eq!(stats.queries, 10);
         assert!(stats.occupancy_ratio > 0.0);
@@ -721,13 +717,13 @@ mod tests {
     fn test_spatial_grid_clear() {
         let mut grid = SpatialGrid::new(100, 100, 3.0, 2.0);
         let dots = create_test_dots(5);
-        
+
         for (i, dot) in dots.iter().enumerate() {
             grid.add_dot(i, dot.x, dot.y);
         }
-        
+
         assert_eq!(grid.stats().total_dots, 5);
-        
+
         grid.clear();
         let stats = grid.stats();
         assert_eq!(stats.total_dots, 0);

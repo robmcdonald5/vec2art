@@ -17,7 +17,6 @@ fn create_checkerboard_image(size: u32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     })
 }
 
-
 fn benchmark_line_tracing(c: &mut Criterion) {
     let sizes = vec![64, 128, 256];
 
@@ -30,38 +29,30 @@ fn benchmark_line_tracing(c: &mut Criterion) {
         let checkerboard = create_checkerboard_image(size);
 
         // Benchmark single-pass trace-low on checkerboard
-        group.bench_with_input(
-            BenchmarkId::new("trace_low_edge", size),
-            &size,
-            |b, _| {
-                let config = TraceLowConfig {
-                    backend: TraceBackend::Edge,
-                    detail: 0.3,
-                    enable_multipass: false,
-                    ..TraceLowConfig::default()
-                };
-                b.iter(|| {
-                    black_box(vectorize_trace_low_rgba(&checkerboard, &config).unwrap());
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("trace_low_edge", size), &size, |b, _| {
+            let config = TraceLowConfig {
+                backend: TraceBackend::Edge,
+                detail: 0.3,
+                enable_multipass: false,
+                ..TraceLowConfig::default()
+            };
+            b.iter(|| {
+                black_box(vectorize_trace_low_rgba(&checkerboard, &config).unwrap());
+            });
+        });
 
         // Benchmark dots backend
-        group.bench_with_input(
-            BenchmarkId::new("trace_low_dots", size),
-            &size,
-            |b, _| {
-                let config = TraceLowConfig {
-                    backend: TraceBackend::Dots,
-                    detail: 0.3,
-                    dot_density_threshold: 0.1,
-                    ..TraceLowConfig::default()
-                };
-                b.iter(|| {
-                    black_box(vectorize_trace_low_rgba(&checkerboard, &config).unwrap());
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("trace_low_dots", size), &size, |b, _| {
+            let config = TraceLowConfig {
+                backend: TraceBackend::Dots,
+                detail: 0.3,
+                dot_density_threshold: 0.1,
+                ..TraceLowConfig::default()
+            };
+            b.iter(|| {
+                black_box(vectorize_trace_low_rgba(&checkerboard, &config).unwrap());
+            });
+        });
     }
 
     group.finish();

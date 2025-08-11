@@ -410,11 +410,23 @@ pub fn detect_background_advanced(rgba: &RgbaImage, config: &BackgroundConfig) -
     };
 
     // Debug: Log background colors detected
-    log::debug!("Background detection found {} reference colors", background_colors.len());
+    log::debug!(
+        "Background detection found {} reference colors",
+        background_colors.len()
+    );
     for (i, color) in background_colors.iter().enumerate() {
-        log::debug!("Background color {}: L={:.1} a={:.1} b={:.1}", i, color.l, color.a, color.b);
+        log::debug!(
+            "Background color {}: L={:.1} a={:.1} b={:.1}",
+            i,
+            color.l,
+            color.a,
+            color.b
+        );
     }
-    log::debug!("Using tolerance: {:.3} (LAB distance threshold)", config.tolerance);
+    log::debug!(
+        "Using tolerance: {:.3} (LAB distance threshold)",
+        config.tolerance
+    );
 
     // Generate background mask using parallel processing
     let pixel_coords: Vec<(u32, u32)> = (0..height)
