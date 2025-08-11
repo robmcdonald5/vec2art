@@ -409,6 +409,13 @@ pub fn detect_background_advanced(rgba: &RgbaImage, config: &BackgroundConfig) -
         ]
     };
 
+    // Debug: Log background colors detected
+    log::debug!("Background detection found {} reference colors", background_colors.len());
+    for (i, color) in background_colors.iter().enumerate() {
+        log::debug!("Background color {}: L={:.1} a={:.1} b={:.1}", i, color.l, color.a, color.b);
+    }
+    log::debug!("Using tolerance: {:.3} (LAB distance threshold)", config.tolerance);
+
     // Generate background mask using parallel processing
     let pixel_coords: Vec<(u32, u32)> = (0..height)
         .flat_map(|y| (0..width).map(move |x| (x, y)))
@@ -425,7 +432,7 @@ pub fn detect_background_advanced(rgba: &RgbaImage, config: &BackgroundConfig) -
                 // Check if pixel is similar to any background color
                 background_colors
                     .iter()
-                    .any(|bg_color| pixel_lab.distance_to(bg_color) / 100.0 <= config.tolerance)
+                    .any(|bg_color| pixel_lab.distance_to(bg_color) <= config.tolerance)
             })
             .collect()
     } else {
@@ -439,7 +446,7 @@ pub fn detect_background_advanced(rgba: &RgbaImage, config: &BackgroundConfig) -
                 // Check if pixel is similar to any background color
                 background_colors
                     .iter()
-                    .any(|bg_color| pixel_lab.distance_to(bg_color) / 100.0 <= config.tolerance)
+                    .any(|bg_color| pixel_lab.distance_to(bg_color) <= config.tolerance)
             })
             .collect()
     };

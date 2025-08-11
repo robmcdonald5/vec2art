@@ -54,7 +54,9 @@ pub fn vectorize_trace_low_rgba(
     validate_trace_low_config(config)?;
 
     // Check for edge cases that would make processing impossible
-    if is_empty_or_single_color_image(image) {
+    let single_color_result = is_empty_or_single_color_image(image);
+    log::debug!("Single color check result: {} for {}x{} image", single_color_result, image.width(), image.height());
+    if single_color_result {
         log::warn!("Image appears to be empty or single color, generating minimal SVG");
         return Ok(generate_minimal_svg(
             image.width(),
