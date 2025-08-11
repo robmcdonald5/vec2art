@@ -128,10 +128,11 @@ wasm/
 │   └── generate_bindings.sh        # Generate/update TypeScript definitions
 │
 ├── debug/                          # Debug and development utilities
-│   ├── debug_etf_fdog.rs          # ETF/FDoG debugging tools
-│   ├── debug_flow_tracing.rs      # Flow tracing debugging
-│   ├── debug_flow_detailed.rs     # Detailed flow analysis
-│   └── debug_milestone2_quality.rs # Quality analysis tools
+│   ├── debug_edge_backend.rs      # Edge backend debugging tools
+│   ├── debug_centerline_backend.rs # Centerline backend debugging
+│   ├── debug_superpixel_backend.rs # Superpixel backend debugging
+│   ├── debug_dots_backend.rs      # Dots backend debugging
+│   └── debug_performance_analysis.rs # Performance analysis tools
 │
 ├── tests/                          # Organized testing infrastructure
 │   ├── rust/                       # Rust test files
@@ -141,8 +142,10 @@ wasm/
 │   │   └── test_milestone2_runner.rs # Milestone testing
 │   ├── test_image.py              # Python test utilities and validation
 │   ├── golden/                     # Golden SVG references
-│   │   ├── line_tracing/           # Line tracing reference outputs
-│   │   ├── dot_mapping/            # Dot mapping reference outputs
+│   │   ├── line_tracing/           # Edge backend reference outputs
+│   │   ├── dot_mapping/            # Dots backend reference outputs
+│   │   ├── centerline_tracing/     # Centerline backend reference outputs
+│   │   ├── superpixel_regions/     # Superpixel backend reference outputs
 │   │   └── benchmarks/             # Performance reference data
 │   └── integration/                # Integration test results
 │
@@ -158,17 +161,21 @@ wasm/
 │   │   ├── test_checkerboard.png  # High contrast test
 │   │   └── test_gradient.png      # Gradient test
 │   ├── outputs/                   # Algorithm-specific output organization
-│   │   ├── line_tracing/          # Traditional line tracing results
+│   │   ├── line_tracing/          # Edge backend - traditional line tracing results
 │   │   │   ├── basic/             # Single-pass edge detection
 │   │   │   ├── multipass/         # Multi-pass enhanced results  
 │   │   │   └── artistic/          # Hand-drawn enhanced results
-│   │   ├── dot_mapping/           # Dot-based pixel mapping results
+│   │   ├── dot_mapping/           # Dots backend - stippling and pointillism results
 │   │   │   ├── stippling/         # Fine stippling style outputs
 │   │   │   ├── pointillism/       # Bold pointillism style outputs
 │   │   │   └── technical/         # Technical precision outputs
-│   │   ├── etf_fdog/             # ETF/FDoG algorithm results (legacy)
-│   │   ├── flow_tracing/         # Flow-guided tracing results (legacy)
-│   │   ├── full_pipeline/        # Complete pipeline results (legacy)
+│   │   ├── centerline_tracing/    # Centerline backend - skeleton extraction results
+│   │   │   ├── basic/             # Standard centerline outputs
+│   │   │   └── enhanced/          # Morphologically processed outputs
+│   │   ├── superpixel_regions/    # Superpixel backend - region-based segmentation results
+│   │   │   ├── filled/            # Filled region outputs
+│   │   │   ├── stroked/           # Stroked outline outputs
+│   │   │   └── mixed/             # Combined filled and stroked outputs
 │   │   └── benchmarks/           # Performance benchmark outputs
 │   └── performance_reports/       # Performance analysis and metrics
 │       ├── summary_report.txt     # Generated performance summary
@@ -202,9 +209,10 @@ The project is organized as a Cargo workspace with three specialized crates and 
 - **docs/**: Technical documentation organized by feature/algorithm
 
 **Output Organization:**
-- **Line Tracing**: `examples/outputs/line_tracing/` with subfolders for basic, multipass, artistic
-- **Dot Mapping**: `examples/outputs/dot_mapping/` with subfolders for stippling, pointillism, technical  
-- **Legacy Algorithms**: `examples/outputs/etf_fdog/`, `examples/outputs/flow_tracing/`, etc.
+- **Edge Backend**: `examples/outputs/line_tracing/` with subfolders for basic, multipass, artistic
+- **Dots Backend**: `examples/outputs/dot_mapping/` with subfolders for stippling, pointillism, technical  
+- **Centerline Backend**: `examples/outputs/centerline_tracing/` with subfolders for basic, enhanced
+- **Superpixel Backend**: `examples/outputs/superpixel_regions/` with subfolders for filled, stroked, mixed
 - **Benchmarks**: `examples/outputs/benchmarks/` for performance testing outputs
 - **Performance Reports**: `examples/performance_reports/` for all metrics and analysis
 

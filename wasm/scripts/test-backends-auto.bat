@@ -7,7 +7,7 @@ set "MODE=%1"
 :: Show help
 if /i "%MODE%"=="--help" (
     echo.
-    echo Usage: test-dot-mapping-auto.bat [OPTIONS]
+    echo Usage: test-backends-auto.bat [OPTIONS]
     echo.
     echo OPTIONS:
     echo   --all-dots           Run basic dot mapping methods on ALL images (6 tests per image^)
@@ -18,9 +18,9 @@ if /i "%MODE%"=="--help" (
     echo   --help               Show this help message
     echo.
     echo Examples:
-    echo   scripts\test-dot-mapping-auto.bat --all-dots
-    echo   scripts\test-dot-mapping-auto.bat --all-dots-full
-    echo   scripts\test-dot-mapping-auto.bat --all-line
+    echo   scripts\test-backends-auto.bat --all-dots
+    echo   scripts\test-backends-auto.bat --all-dots-full
+    echo   scripts\test-backends-auto.bat --all-line
     echo.
     pause
     exit /b 0
@@ -46,7 +46,7 @@ if /i "%MODE%"=="--all-dots" (
     echo  VEC2ART INTERACTIVE TEST MODE
     echo.
     echo This is a simplified automated script.
-    echo For interactive mode, use test-dot-mapping-interactive.bat
+    echo For interactive mode, use test-backends-interactive.bat
     echo.
     pause
     exit /b 0
@@ -67,6 +67,8 @@ if errorlevel 1 (
 :: Create output directories
 if not exist "examples\outputs\dot_mapping" mkdir "examples\outputs\dot_mapping"
 if not exist "examples\outputs\line_tracing" mkdir "examples\outputs\line_tracing"
+if not exist "examples\outputs\centerline_tracing" mkdir "examples\outputs\centerline_tracing"
+if not exist "examples\outputs\superpixel_regions" mkdir "examples\outputs\superpixel_regions"
 
 :: Execute based on mode
 if /i "%MODE%"=="--all-dots" (
@@ -180,10 +182,10 @@ for %%f in (examples\images_in\*.png examples\images_in\*.webp examples\images_i
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\line_tracing\!imageName!-4-edge-directional.svg" --backend edge --detail 0.3 --multipass --enable-reverse --enable-diagonal
     
     :: Test 5: Centerline Backend
-    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\line_tracing\!imageName!-5-centerline-basic.svg" --backend centerline --detail 0.3
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\centerline_tracing\!imageName!-5-centerline-basic.svg" --backend centerline --detail 0.3
     
     :: Test 6: Superpixel Backend
-    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\line_tracing\!imageName!-6-superpixel-basic.svg" --backend superpixel --detail 0.3
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\outputs\superpixel_regions\!imageName!-6-superpixel-basic.svg" --backend superpixel --detail 0.3
     
     echo Completed: !imageName! - 6 basic line tests
 )
@@ -219,8 +221,8 @@ for %%f in (examples\\images_in\\*.png examples\\images_in\\*.webp examples\\ima
     cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\\outputs\\line_tracing\\!imageName!-13-edge-filtered-medium.svg" --backend edge --detail 0.4 --noise-filtering --hand-drawn medium
     
     :: === New Backend Tests (2 tests) ===
-    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\\outputs\\line_tracing\\!imageName!-14-centerline-basic.svg" --backend centerline --detail 0.3
-    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\\outputs\\line_tracing\\!imageName!-15-superpixel-basic.svg" --backend superpixel --detail 0.3
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\\outputs\\centerline_tracing\\!imageName!-14-centerline-basic.svg" --backend centerline --detail 0.3
+    cargo run --release --bin vectorize-cli -- trace-low "%%f" "examples\\outputs\\superpixel_regions\\!imageName!-15-superpixel-basic.svg" --backend superpixel --detail 0.3
     
     echo Completed: !imageName! - 15 comprehensive line tests
 )
