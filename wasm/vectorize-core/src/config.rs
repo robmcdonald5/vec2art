@@ -2,6 +2,74 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Default configuration parameters for flow-guided tracing and Bézier fitting
+///
+/// These parameters correspond to Milestone 2 from Next-Steps.md:
+/// - Flow-guided polyline tracing using ETF field
+/// - Bézier curve fitting with curvature regularization
+/// - Stroke width clamping to prevent thickening
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Milestone2Config {
+    /// Tracing configuration
+    pub trace: TraceDefaultConfig,
+    /// Bézier fitting configuration
+    pub fit: FitDefaultConfig,
+}
+
+/// Default tracing parameters from Next-Steps.md
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TraceDefaultConfig {
+    /// Minimum gradient magnitude threshold (default: 0.08)
+    pub min_grad: f32,
+    /// Minimum coherency threshold (default: 0.15)
+    pub min_coherency: f32,
+    /// Maximum gap size in pixels (default: 4)
+    pub max_gap: u32,
+    /// Maximum polyline length (default: 10_000)
+    pub max_len: usize,
+}
+
+/// Default Bézier fitting parameters from Next-Steps.md
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FitDefaultConfig {
+    /// Curvature penalty coefficient (default: 0.02)
+    pub lambda_curv: f32,
+    /// Maximum fitting error tolerance (default: 0.8)
+    pub max_err: f32,
+    /// Corner splitting angle threshold in degrees (default: 32.0)
+    pub split_angle: f32,
+}
+
+impl Default for Milestone2Config {
+    fn default() -> Self {
+        Self {
+            trace: TraceDefaultConfig::default(),
+            fit: FitDefaultConfig::default(),
+        }
+    }
+}
+
+impl Default for TraceDefaultConfig {
+    fn default() -> Self {
+        Self {
+            min_grad: 0.08,
+            min_coherency: 0.15,
+            max_gap: 4,
+            max_len: 10_000,
+        }
+    }
+}
+
+impl Default for FitDefaultConfig {
+    fn default() -> Self {
+        Self {
+            lambda_curv: 0.02,
+            max_err: 0.8,
+            split_angle: 32.0,
+        }
+    }
+}
+
 /// SVG output configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SvgConfig {

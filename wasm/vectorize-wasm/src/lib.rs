@@ -43,6 +43,13 @@ pub struct WasmTraceLowConfig {
     directional_strength_threshold: f32,
     max_processing_time_ms: u64,
     backend: String,
+    // Dot-specific fields
+    dot_density_threshold: f32,
+    dot_min_radius: f32,
+    dot_max_radius: f32,
+    dot_preserve_colors: bool,
+    dot_adaptive_sizing: bool,
+    dot_background_tolerance: f32,
 }
 
 #[wasm_bindgen]
@@ -65,7 +72,15 @@ impl WasmTraceLowConfig {
                 TraceBackend::Edge => "edge".to_string(),
                 TraceBackend::Centerline => "centerline".to_string(),
                 TraceBackend::Superpixel => "superpixel".to_string(),
+                TraceBackend::Dots => "dots".to_string(),
             },
+            // Dot-specific defaults
+            dot_density_threshold: default_config.dot_density_threshold,
+            dot_min_radius: default_config.dot_min_radius,
+            dot_max_radius: default_config.dot_max_radius,
+            dot_preserve_colors: default_config.dot_preserve_colors,
+            dot_adaptive_sizing: default_config.dot_adaptive_sizing,
+            dot_background_tolerance: default_config.dot_background_tolerance,
         }
     }
 
@@ -135,6 +150,7 @@ impl WasmTraceLowConfig {
     /// Create a configuration suitable for line art
     #[wasm_bindgen]
     pub fn for_line_art() -> Self {
+        let default_config = TraceLowConfig::default();
         Self {
             detail: 0.7,
             stroke_px_at_1080p: 1.5,
@@ -147,12 +163,20 @@ impl WasmTraceLowConfig {
             directional_strength_threshold: 0.3,
             max_processing_time_ms: 2000,
             backend: "edge".to_string(),
+            // Dot-specific defaults
+            dot_density_threshold: default_config.dot_density_threshold,
+            dot_min_radius: default_config.dot_min_radius,
+            dot_max_radius: default_config.dot_max_radius,
+            dot_preserve_colors: default_config.dot_preserve_colors,
+            dot_adaptive_sizing: default_config.dot_adaptive_sizing,
+            dot_background_tolerance: default_config.dot_background_tolerance,
         }
     }
 
     /// Create a configuration suitable for sketches
     #[wasm_bindgen]
     pub fn for_sketch() -> Self {
+        let default_config = TraceLowConfig::default();
         Self {
             detail: 0.5,
             stroke_px_at_1080p: 2.0,
@@ -165,12 +189,20 @@ impl WasmTraceLowConfig {
             directional_strength_threshold: 0.3,
             max_processing_time_ms: 1500,
             backend: "edge".to_string(),
+            // Dot-specific defaults
+            dot_density_threshold: default_config.dot_density_threshold,
+            dot_min_radius: default_config.dot_min_radius,
+            dot_max_radius: default_config.dot_max_radius,
+            dot_preserve_colors: default_config.dot_preserve_colors,
+            dot_adaptive_sizing: default_config.dot_adaptive_sizing,
+            dot_background_tolerance: default_config.dot_background_tolerance,
         }
     }
 
     /// Create a configuration suitable for technical drawings
     #[wasm_bindgen]
     pub fn for_technical() -> Self {
+        let default_config = TraceLowConfig::default();
         Self {
             detail: 0.9,
             stroke_px_at_1080p: 1.0,
@@ -183,6 +215,13 @@ impl WasmTraceLowConfig {
             directional_strength_threshold: 0.2,
             max_processing_time_ms: 3000,
             backend: "edge".to_string(),
+            // Dot-specific defaults
+            dot_density_threshold: default_config.dot_density_threshold,
+            dot_min_radius: default_config.dot_min_radius,
+            dot_max_radius: default_config.dot_max_radius,
+            dot_preserve_colors: default_config.dot_preserve_colors,
+            dot_adaptive_sizing: default_config.dot_adaptive_sizing,
+            dot_background_tolerance: default_config.dot_background_tolerance,
         }
     }
 }
@@ -203,8 +242,18 @@ impl From<WasmTraceLowConfig> for TraceLowConfig {
             backend: match wasm_config.backend.as_str() {
                 "centerline" => TraceBackend::Centerline,
                 "superpixel" => TraceBackend::Superpixel,
+                "dots" => TraceBackend::Dots,
                 _ => TraceBackend::Edge, // Default to edge
             },
+            // Dot-specific fields
+            dot_density_threshold: wasm_config.dot_density_threshold,
+            dot_min_radius: wasm_config.dot_min_radius,
+            dot_max_radius: wasm_config.dot_max_radius,
+            dot_preserve_colors: wasm_config.dot_preserve_colors,
+            dot_adaptive_sizing: wasm_config.dot_adaptive_sizing,
+            dot_background_tolerance: wasm_config.dot_background_tolerance,
+            // Use defaults for new ETF/FDoG and tracing features
+            ..Default::default()
         }
     }
 }

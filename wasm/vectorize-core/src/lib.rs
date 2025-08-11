@@ -10,6 +10,7 @@ pub mod error;
 pub mod preprocessing;
 pub mod svg;
 pub mod telemetry;
+pub mod performance;
 
 // Re-export main types for convenience
 pub use algorithms::{vectorize_trace_low, TraceBackend, TraceLowConfig};
@@ -168,22 +169,33 @@ mod input_validation {
             return true;
         }
 
-        let first_pixel = *image.get_pixel(0, 0);
+        // Find the first opaque pixel to use as reference
+        let mut reference_pixel: Option<Rgba<u8>> = None;
+        let mut opaque_pixel_count = 0;
 
-        // Check if all pixels are the same (ignoring alpha < 10 for transparency)
         for pixel in image.pixels() {
             if pixel.0[3] >= 10 {
                 // Only check opaque-ish pixels
-                if pixel.0[0] != first_pixel.0[0]
-                    || pixel.0[1] != first_pixel.0[1]
-                    || pixel.0[2] != first_pixel.0[2]
-                {
-                    return false;
+                opaque_pixel_count += 1;
+                
+                if let Some(ref_pixel) = reference_pixel {
+                    // Compare with reference pixel
+                    if pixel.0[0] != ref_pixel.0[0]
+                        || pixel.0[1] != ref_pixel.0[1]
+                        || pixel.0[2] != ref_pixel.0[2]
+                    {
+                        return false; // Found different colors
+                    }
+                } else {
+                    // This is our reference pixel
+                    reference_pixel = Some(*pixel);
                 }
             }
         }
 
-        true
+        // If we have no opaque pixels, consider it empty
+        // If we have very few opaque pixels, consider it effectively empty
+        opaque_pixel_count == 0 || opaque_pixel_count < 10
     }
 
     /// Generate minimal SVG for edge cases

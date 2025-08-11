@@ -10,6 +10,54 @@ repository = "https://github.com/your-org/vec2art"
 name = "vectorize-cli"
 path = "src/main.rs"
 
+[[bin]]
+name = "test-milestone2"
+path = "../tests/rust/test_milestone2_runner.rs"
+
+[[bin]]
+name = "debug-etf-fdog"
+path = "../debug/debug_etf_fdog.rs"
+
+[[bin]]
+name = "debug-flow-tracing"
+path = "../debug/debug_flow_tracing.rs"
+
+[[bin]]
+name = "debug-flow-detailed"
+path = "../debug/debug_flow_detailed.rs"
+
+[[bin]]
+name = "debug-milestone2-quality"
+path = "../debug/debug_milestone2_quality.rs"
+
+[[bin]]
+name = "test_cli"
+path = "../tests/rust/test_cli.rs"
+
+[[bin]]
+name = "debug-dot-failures"
+path = "../debug_dot_failures.rs"
+
+[[bin]]
+name = "debug-pirate-flag"
+path = "../debug_pirate_flag.rs"
+
+[[bin]]
+name = "debug-checkerboard"
+path = "../debug_checkerboard.rs"
+
+[[bin]]
+name = "debug-checkerboard-bg"
+path = "../debug_checkerboard_background.rs"
+
+[[bin]]
+name = "debug-checkerboard-detailed"
+path = "../debug_checkerboard_detailed.rs"
+
+[[bin]]
+name = "debug-tolerance-1"
+path = "../debug_tolerance_1.rs"
+
 [dependencies]
 # Core vectorization library
 vectorize-core = { path = "../vectorize-core" }

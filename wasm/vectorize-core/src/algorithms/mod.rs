@@ -2,12 +2,59 @@
 //!
 //! This module contains the trace-low vectorization algorithm and related utilities.
 
+pub mod adaptive_dots;
+pub mod background;
+pub mod dot_styles;
+pub mod dots;
+pub mod dots_optimized;
+pub mod edges;
+pub mod etf;
+pub mod fit;
+pub mod gradients;
 pub mod hand_drawn;
 pub mod path_utils;
+pub mod svg_dots;
+pub mod trace;
 pub mod trace_low;
 
 // Re-export commonly used types
+pub use adaptive_dots::{
+    analyze_image_regions, apply_adaptive_density, calculate_adaptive_density,
+    generate_adaptive_dots, poisson_disk_sampling, smooth_density_transitions, AdaptiveConfig,
+    Region,
+};
+pub use background::{
+    calculate_color_similarity, detect_background_advanced, detect_background_mask, rgba_to_lab,
+    BackgroundConfig, LabColor,
+};
+pub use dot_styles::{
+    add_artistic_jitter, add_opacity_variation, add_size_variation, apply_artistic_effects,
+    apply_grid_alignment, apply_style_preset, get_style_parameters, DotStyle, JitterConfig,
+    OpacityVariationConfig, SizeVariationConfig,
+};
+pub use dots::{
+    generate_dots, generate_dots_auto_background, generate_dots_from_image, Dot, DotConfig,
+};
+pub use dots_optimized::{
+    generate_dots_optimized_pipeline, analyze_gradients_optimized, detect_background_optimized,
+    OptimizedDotConfig, OptimizedDotGenerator,
+};
+pub use edges::{
+    apply_nms, compute_fdog, compute_multi_direction_edges, compute_xdog, hysteresis_threshold,
+    EdgeResponse, FdogConfig, MultiDirectionEdges, NmsConfig, XdogConfig,
+};
+pub use etf::{compute_etf, EtfConfig, EtfField};
+pub use fit::{fit_beziers, CubicBezier, FitConfig};
+pub use gradients::{
+    analyze_image_gradients, analyze_image_gradients_with_config, calculate_gradient_magnitude,
+    calculate_local_variance, GradientAnalysis, GradientConfig,
+};
 pub use hand_drawn::{apply_hand_drawn_aesthetics, HandDrawnConfig, HandDrawnPresets};
+pub use svg_dots::{
+    dots_to_svg_elements, dots_to_svg_paths, dots_to_svg_with_config, generate_dot_svg_document,
+    optimize_dot_svg, SvgDotConfig, SvgElement,
+};
+pub use trace::{trace_polylines, Point2F, Polyline, TraceConfig};
 pub use trace_low::{vectorize_trace_low, TraceBackend, TraceLowConfig};
 
 /// 2D point representation

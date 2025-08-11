@@ -1,6 +1,6 @@
 use image::{ImageBuffer, Rgba};
-use vectorize_core::{vectorize_trace_low_rgba, TraceLowConfig, TraceBackend};
 use vectorize_core::algorithms::{apply_hand_drawn_aesthetics, HandDrawnPresets};
+use vectorize_core::{vectorize_trace_low_rgba, TraceBackend, TraceLowConfig};
 
 #[test]
 fn test_end_to_end_pipeline() {
@@ -37,14 +37,14 @@ fn test_end_to_end_pipeline() {
     };
     let result = vectorize_trace_low_rgba(&img, &config_edge);
     assert!(result.is_ok(), "Edge backend should work");
-    
+
     // Note: Centerline and Superpixel backends are placeholders for future implementation
 }
 
 #[test]
 fn test_hand_drawn_pipeline() {
     use vectorize_core::vectorize_trace_low;
-    
+
     // Create a simple test image
     let img = ImageBuffer::from_fn(32, 32, |x, y| {
         if x == y || x + y == 31 {
@@ -64,13 +64,16 @@ fn test_hand_drawn_pipeline() {
     // Apply hand-drawn effects
     let hd_config = HandDrawnPresets::medium();
     let enhanced_paths = apply_hand_drawn_aesthetics(paths, &hd_config);
-    assert!(!enhanced_paths.is_empty(), "Enhanced paths should not be empty");
+    assert!(
+        !enhanced_paths.is_empty(),
+        "Enhanced paths should not be empty"
+    );
 }
 
 #[test]
 fn test_high_performance_requirement() {
     use std::time::Instant;
-    
+
     // Create a typical-sized test image (512x512)
     let img = ImageBuffer::from_fn(512, 512, |x, y| {
         // Create a more complex pattern for realistic testing
@@ -79,20 +82,23 @@ fn test_high_performance_requirement() {
     });
 
     let config = TraceLowConfig::default();
-    
+
     // Measure processing time
     let start = Instant::now();
     let result = vectorize_trace_low_rgba(&img, &config);
     let elapsed = start.elapsed();
-    
-    assert!(result.is_ok(), "Performance test vectorization should succeed");
-    
+
+    assert!(
+        result.is_ok(),
+        "Performance test vectorization should succeed"
+    );
+
     // Check that processing is reasonably fast (should be < 1.5s as per requirements)
     assert!(
         elapsed.as_millis() < 3000, // Allow some margin for slower test machines
         "Processing took {}ms, should be under 3000ms for 512x512 image",
         elapsed.as_millis()
     );
-    
+
     println!("512x512 image processed in {}ms", elapsed.as_millis());
 }

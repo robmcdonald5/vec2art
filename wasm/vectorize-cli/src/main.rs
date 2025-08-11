@@ -14,6 +14,44 @@ use vectorize_core::config::SvgConfig;
 use vectorize_core::svg::generate_svg_document;
 use vectorize_core::{vectorize_trace_low, vectorize_trace_low_rgba, TraceBackend, TraceLowConfig};
 
+/// Parse dot size range from "min,max" format
+fn parse_dot_size_range(s: &str) -> Result<(f32, f32), String> {
+    let parts: Vec<&str> = s.split(',').collect();
+    if parts.len() != 2 {
+        return Err(format!(
+            "Invalid dot size range format '{}'. Expected 'min,max' (e.g., '0.5,3.0')",
+            s
+        ));
+    }
+
+    let min = parts[0].trim().parse::<f32>().map_err(|_| {
+        format!(
+            "Invalid minimum radius '{}'. Must be a positive number.",
+            parts[0]
+        )
+    })?;
+
+    let max = parts[1].trim().parse::<f32>().map_err(|_| {
+        format!(
+            "Invalid maximum radius '{}'. Must be a positive number.",
+            parts[1]
+        )
+    })?;
+
+    if min <= 0.0 || max <= 0.0 {
+        return Err("Dot radii must be positive numbers.".to_string());
+    }
+
+    if min >= max {
+        return Err(format!(
+            "Minimum radius ({}) must be less than maximum radius ({})",
+            min, max
+        ));
+    }
+
+    Ok((min, max))
+}
+
 #[derive(Parser)]
 #[command(name = "vectorize-cli")]
 #[command(about = "A CLI tool for line tracing image vectorization")]
@@ -33,7 +71,20 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Vectorize using low-detail line tracing algorithm
+    /// Vectorize using low-detail line tracing algorithm.
+    ///
+    /// Examples:
+    ///   # Basic line tracing
+    ///   vectorize-cli trace-low input.png output.svg
+    ///   
+    ///   # Dense stippling effect
+    ///   vectorize-cli trace-low --backend dots --dot-density 0.05 --dot-size-range 0.3,1.0 input.png output.svg
+    ///   
+    ///   # Colorful pointillism
+    ///   vectorize-cli trace-low --backend dots --preserve-colors --dot-size-range 1.0,4.0 input.png output.svg
+    ///   
+    ///   # Sparse artistic dots  
+    ///   vectorize-cli trace-low --backend dots --dot-density 0.3 --dot-size-range 2.0,6.0 input.png output.svg
     TraceLow {
         /// Input image file
         input: PathBuf,
@@ -41,7 +92,7 @@ enum Commands {
         /// Output SVG file
         output: PathBuf,
 
-        /// Tracing backend to use (edge, centerline, superpixel)
+        /// Tracing backend to use (edge, centerline, superpixel, dots)
         #[arg(long, default_value = "edge")]
         backend: String,
 
@@ -100,6 +151,52 @@ enum Commands {
         /// Custom hand-drawn variable weights (0.0-1.0, overrides preset)  
         #[arg(long)]
         variable_weights: Option<f32>,
+
+        // Dot-specific parameters
+        /// Dot density threshold - minimum gradient strength required to place a dot (0.0-1.0).
+        /// Lower values = more dots, higher values = fewer dots. Use 0.05-0.2 for dense stippling,
+        /// 0.3-0.7 for sparse artistic effects.
+        #[arg(
+            long,
+            default_value = "0.1",
+            help = "Dot density threshold (0.0-1.0). Lower=more dots"
+        )]
+        dot_density: f32,
+
+        /// Dot size range as "min,max" in pixels (e.g., "0.5,3.0").
+        /// Controls minimum and maximum dot radii. Small ranges create uniform dots,
+        /// large ranges create varied stippling effects. Try "0.3,1.5" for fine detail,
+        /// "1.0,5.0" for bold artistic style.
+        #[arg(long, default_value = "0.5,3.0", value_parser = parse_dot_size_range, 
+              help = "Dot size range 'min,max' pixels (e.g. '0.5,3.0')")]
+        dot_size_range: (f32, f32),
+
+        /// Background tolerance for automatic background detection (0.0-1.0).
+        /// Controls how similar colors must be to be considered background.
+        /// Lower values = stricter detection, higher values = more permissive.
+        /// Use 0.05-0.15 for clean backgrounds, 0.2-0.4 for textured backgrounds.
+        #[arg(
+            long,
+            default_value = "0.1",
+            help = "Background tolerance (0.0-1.0). Lower=stricter"
+        )]
+        background_tolerance: f32,
+
+        /// Preserve original pixel colors in dot output instead of using black dots.
+        /// Creates colorful stippling/pointillism effects. Combine with --adaptive-sizing
+        /// for best artistic results.
+        #[arg(
+            long,
+            help = "Preserve original pixel colors (creates colorful stippling)"
+        )]
+        preserve_colors: bool,
+
+        /// Use adaptive dot sizing based on local image variance and gradient strength.
+        /// When enabled, dots in high-detail areas become smaller and dots in smooth
+        /// areas become larger, creating more natural artistic effects.
+        #[arg(long, default_value = "true", value_parser = clap::value_parser!(bool),
+              help = "Use adaptive sizing based on image variance")]
+        adaptive_sizing: bool,
     },
 
     /// Simple vectorization using default trace-low settings
@@ -155,10 +252,30 @@ fn main() -> Result<()> {
             hand_drawn,
             tremor,
             variable_weights,
+            dot_density,
+            dot_size_range,
+            background_tolerance,
+            preserve_colors,
+            adaptive_sizing,
         } => {
             // Validate detail parameter
             if !(0.0..=1.0).contains(&detail) {
                 anyhow::bail!("Detail level must be between 0.0 and 1.0, got: {}", detail);
+            }
+
+            // Validate dot parameters
+            if !(0.0..=1.0).contains(&dot_density) {
+                anyhow::bail!(
+                    "Dot density must be between 0.0 and 1.0, got: {}",
+                    dot_density
+                );
+            }
+
+            if !(0.0..=1.0).contains(&background_tolerance) {
+                anyhow::bail!(
+                    "Background tolerance must be between 0.0 and 1.0, got: {}",
+                    background_tolerance
+                );
             }
 
             vectorize_trace_low_command(
@@ -180,6 +297,11 @@ fn main() -> Result<()> {
                 hand_drawn,
                 tremor,
                 variable_weights,
+                dot_density,
+                dot_size_range,
+                background_tolerance,
+                preserve_colors,
+                adaptive_sizing,
             )
         }
         Commands::Convert {
@@ -213,6 +335,11 @@ fn main() -> Result<()> {
                 "none".to_string(), // no hand-drawn effects
                 None,               // no custom tremor
                 None,               // no custom variable weights
+                0.1,                // default dot density
+                (0.5, 3.0),         // default dot size range
+                0.1,                // default background tolerance
+                true,               // default preserve colors
+                true,               // default adaptive sizing
             )
         }
     }
@@ -237,6 +364,11 @@ fn vectorize_trace_low_command(
     hand_drawn: String,
     tremor: Option<f32>,
     variable_weights: Option<f32>,
+    dot_density: f32,
+    dot_size_range: (f32, f32),
+    background_tolerance: f32,
+    preserve_colors: bool,
+    adaptive_sizing: bool,
 ) -> Result<()> {
     let start_time = Instant::now();
 
@@ -254,9 +386,19 @@ fn vectorize_trace_low_command(
         rgba_image.width(),
         rgba_image.height()
     );
-    println!(
-        "Backend: {backend}, Detail: {detail:.2}, Stroke Width: {stroke_width:.2}"
-    );
+    println!("Backend: {backend}, Detail: {detail:.2}, Stroke Width: {stroke_width:.2}");
+
+    // Show dot-specific parameters when using dots backend
+    if backend == "dots" {
+        println!(
+            "Dot settings: Density: {:.2}, Size: {:.1}-{:.1}px, Background tolerance: {:.2}",
+            dot_density, dot_size_range.0, dot_size_range.1, background_tolerance
+        );
+        println!(
+            "Dot options: Preserve colors: {}, Adaptive sizing: {}",
+            preserve_colors, adaptive_sizing
+        );
+    }
     if multipass {
         println!(
             "Multipass: enabled, Conservative: {conservative_detail:?}, Aggressive: {aggressive_detail:?}, Noise filtering: {noise_filtering}"
@@ -281,8 +423,9 @@ fn vectorize_trace_low_command(
         "edge" => TraceBackend::Edge,
         "centerline" => TraceBackend::Centerline,
         "superpixel" => TraceBackend::Superpixel,
+        "dots" => TraceBackend::Dots,
         _ => anyhow::bail!(
-            "Invalid backend: {}. Must be one of: edge, centerline, superpixel",
+            "Invalid backend: {}. Must be one of: edge, centerline, superpixel, dots",
             backend
         ),
     };
@@ -300,6 +443,15 @@ fn vectorize_trace_low_command(
         enable_diagonal_pass: enable_diagonal,
         directional_strength_threshold: directional_threshold,
         max_processing_time_ms: max_time_ms,
+        // Dot-specific parameters
+        dot_density_threshold: dot_density,
+        dot_min_radius: dot_size_range.0,
+        dot_max_radius: dot_size_range.1,
+        dot_background_tolerance: background_tolerance,
+        dot_preserve_colors: preserve_colors,
+        dot_adaptive_sizing: adaptive_sizing,
+        // Use defaults for ETF/FDoG and new tracing features
+        ..Default::default()
     };
 
     // Create hand-drawn configuration

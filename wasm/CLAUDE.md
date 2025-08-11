@@ -120,23 +120,109 @@ wasm/
 │   ├── multipass_bench.rs          # Multi-pass processing benchmarks
 │   └── hand_drawn_bench.rs         # Artistic enhancement benchmarks
 │
-├── scripts/                        # Build & utility scripts
+├── scripts/                        # Build & testing scripts
+│   ├── test-dot-mapping.bat        # Comprehensive dot mapping test suite
+│   ├── test-line-tracing.bat       # Line tracing validation scripts
 │   ├── build_wasm.sh               # wasm-pack build (release/dev)
 │   ├── build_wasm.ps1              # Windows-friendly build script
-│   ├── test_all.sh                 # Run unit/integration/performance tests
-│   ├── benchmark.sh                # Run comprehensive benchmarks
 │   └── generate_bindings.sh        # Generate/update TypeScript definitions
 │
-└── docs/                           # Technical documentation
-    ├── line_tracing.md             # Line tracing algorithm details
-    ├── performance.md              # Performance optimization guide
-    ├── hand_drawn.md               # Artistic enhancement documentation
-    └── api.md                      # Public API reference
+├── debug/                          # Debug and development utilities
+│   ├── debug_etf_fdog.rs          # ETF/FDoG debugging tools
+│   ├── debug_flow_tracing.rs      # Flow tracing debugging
+│   ├── debug_flow_detailed.rs     # Detailed flow analysis
+│   └── debug_milestone2_quality.rs # Quality analysis tools
+│
+├── tests/                          # Organized testing infrastructure
+│   ├── rust/                       # Rust test files
+│   │   ├── test_cli.rs             # CLI validation tests
+│   │   ├── test_dot_pipeline.rs    # Dot mapping pipeline tests
+│   │   ├── create_test_image.rs    # Test image generation
+│   │   └── test_milestone2_runner.rs # Milestone testing
+│   ├── test_image.py              # Python test utilities and validation
+│   ├── golden/                     # Golden SVG references
+│   │   ├── line_tracing/           # Line tracing reference outputs
+│   │   ├── dot_mapping/            # Dot mapping reference outputs
+│   │   └── benchmarks/             # Performance reference data
+│   └── integration/                # Integration test results
+│
+├── examples/                       # Test images and organized outputs
+│   ├── images_in/                  # Test input images for all algorithms
+│   │   ├── test1.png              # Standard test image
+│   │   ├── test2.png              # Portrait test image
+│   │   ├── test3.png              # Landscape test image
+│   │   ├── Little-Red-Devil.webp  # Complex WebP test
+│   │   ├── Peileppe_Rogue_character.webp # Character test
+│   │   ├── Pirate-Flag.png        # Logo test image
+│   │   ├── test_shapes.png        # Geometric shapes test
+│   │   ├── test_checkerboard.png  # High contrast test
+│   │   └── test_gradient.png      # Gradient test
+│   ├── outputs/                   # Algorithm-specific output organization
+│   │   ├── line_tracing/          # Traditional line tracing results
+│   │   │   ├── basic/             # Single-pass edge detection
+│   │   │   ├── multipass/         # Multi-pass enhanced results  
+│   │   │   └── artistic/          # Hand-drawn enhanced results
+│   │   ├── dot_mapping/           # Dot-based pixel mapping results
+│   │   │   ├── stippling/         # Fine stippling style outputs
+│   │   │   ├── pointillism/       # Bold pointillism style outputs
+│   │   │   └── technical/         # Technical precision outputs
+│   │   ├── etf_fdog/             # ETF/FDoG algorithm results (legacy)
+│   │   ├── flow_tracing/         # Flow-guided tracing results (legacy)
+│   │   ├── full_pipeline/        # Complete pipeline results (legacy)
+│   │   └── benchmarks/           # Performance benchmark outputs
+│   └── performance_reports/       # Performance analysis and metrics
+│       ├── summary_report.txt     # Generated performance summary
+│       ├── *_stats.csv           # Detailed timing statistics
+│       └── COMPREHENSIVE_TEST_SUMMARY.md # Complete test results
+│
+└── docs/                          # Technical documentation
+    ├── line_tracing.md            # Line tracing algorithm details
+    ├── dot_mapping_api.md         # Dot mapping API documentation
+    ├── dot_mapping_examples.md    # Usage examples and tutorials
+    ├── dot_mapping_performance.md # Performance optimization guide
+    ├── dot_mapping_styles.md      # Artistic style documentation
+    ├── dot_mapping_migration.md   # Migration from line tracing
+    ├── performance.md             # Performance optimization guide
+    ├── hand_drawn.md              # Artistic enhancement documentation
+    └── api.md                     # Public API reference
 ```
 
 ## Module Organization
 
-The project is organized as a Cargo workspace with three specialized crates focused on line tracing:
+The project is organized as a Cargo workspace with three specialized crates and a clean organizational structure for all testing, debugging, and output files.
+
+### Organizational Standards
+
+**File Organization Principles:**
+- **scripts/**: All batch and shell scripts for testing and building
+- **debug/**: Debug utilities and development tools (no production code)  
+- **tests/**: All test files organized by language/type (rust/, python, etc.)
+- **examples/outputs/**: Algorithm-specific output folders with clear naming
+- **examples/performance_reports/**: Performance analysis and metrics
+- **docs/**: Technical documentation organized by feature/algorithm
+
+**Output Organization:**
+- **Line Tracing**: `examples/outputs/line_tracing/` with subfolders for basic, multipass, artistic
+- **Dot Mapping**: `examples/outputs/dot_mapping/` with subfolders for stippling, pointillism, technical  
+- **Legacy Algorithms**: `examples/outputs/etf_fdog/`, `examples/outputs/flow_tracing/`, etc.
+- **Benchmarks**: `examples/outputs/benchmarks/` for performance testing outputs
+- **Performance Reports**: `examples/performance_reports/` for all metrics and analysis
+
+**Script Organization:**
+- Test scripts use organized output paths (`examples/outputs/algorithm_name/`)
+- Debug files are isolated in `debug/` folder to avoid confusion with production code
+- Test utilities are properly categorized (rust/, python integration tests)
+- All paths in scripts reference the organized structure consistently
+
+**Development Guidelines:**
+- **NEVER** place debug/test files in the root wasm folder
+- **NEVER** create duplicate examples folders (scripts should reference wasm/examples/)
+- **ALWAYS** use algorithm-specific output folders for generated files
+- **UPDATE** scripts when adding new algorithms to maintain organization
+- **DOCUMENT** new organizational changes in this CLAUDE.md file
+- **VERIFY** folder structure periodically to prevent redundant directories
+
+### Workspace Structure
 
 ### Implementation Status
 

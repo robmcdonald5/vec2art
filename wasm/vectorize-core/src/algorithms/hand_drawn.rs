@@ -134,7 +134,7 @@ fn estimate_path_confidence(path_data: &str) -> f32 {
         .filter(|s| s.parse::<f32>().is_ok())
         .count();
 
-     // Normalize to 0-1
+    // Normalize to 0-1
 
     // Paths with more coordinates (longer/more complex) get higher confidence
     (coordinate_count as f32 / 20.0).clamp(0.0, 1.0)

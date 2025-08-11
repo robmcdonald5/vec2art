@@ -28,6 +28,7 @@ regex = { workspace = true }
 once_cell = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
+rand_distr = "0.4"
 
 [dev-dependencies]
 criterion = { workspace = true }

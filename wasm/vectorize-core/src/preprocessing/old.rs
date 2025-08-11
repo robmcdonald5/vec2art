@@ -72,9 +72,7 @@ pub fn standardize_image_size(image: &RgbaImage, max_dimension: u32) -> Vectoriz
         return Ok(image.clone());
     }
 
-    log::debug!(
-        "Standardizing image size from {width}x{height} to max dimension {max_dimension}"
-    );
+    log::debug!("Standardizing image size from {width}x{height} to max dimension {max_dimension}");
 
     resize_image(image, max_dimension)
 }

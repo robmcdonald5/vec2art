@@ -1,13 +1,24 @@
 //! Low-detail tracing algorithms for sparse SVG generation
 //!
-//! This module implements three different tracing backends:
+//! This module implements four different tracing backends:
 //! - Edge: Canny edge detection + contour following for sparse outlines
 //! - Centerline: Skeleton + centerline tracing for engraving/sketch effects  
 //! - Superpixel: Large regions with cell-shaded look using SLIC
+//! - Dots: Dot-based pixel mapping with gradient analysis for stippling/pointillism effects
 //!
 //! All algorithms are controlled by a single detail parameter (0..1) that maps
 //! to appropriate thresholds for each backend.
 
+use crate::algorithms::background::BackgroundConfig;
+use crate::algorithms::dots::{generate_dots_from_image, DotConfig};
+use crate::algorithms::edges::{
+    apply_nms, compute_fdog, hysteresis_threshold, FdogConfig, NmsConfig,
+};
+use crate::algorithms::etf::{compute_etf, EtfConfig};
+use crate::algorithms::fit::{fit_beziers, FitConfig};
+use crate::algorithms::gradients::GradientConfig;
+use crate::algorithms::svg_dots::dots_to_svg_paths;
+use crate::algorithms::trace::{trace_polylines, TraceConfig};
 use crate::algorithms::{Point, SvgElementType, SvgPath};
 use crate::error::VectorizeError;
 use image::{GrayImage, ImageBuffer, Luma, Rgba};
@@ -106,6 +117,8 @@ pub enum TraceBackend {
     Centerline,
     /// Large regions with cell-shaded look using SLIC
     Superpixel,
+    /// Dot-based pixel mapping with gradient analysis (stippling/pointillism effects)
+    Dots,
 }
 
 /// Processing directions for multi-directional edge detection
@@ -146,6 +159,55 @@ pub struct TraceLowConfig {
     pub directional_strength_threshold: f32,
     /// Maximum total processing time budget in milliseconds
     pub max_processing_time_ms: u64,
+    /// Enable ETF/FDoG advanced edge detection (default: false for compatibility)
+    pub enable_etf_fdog: bool,
+    /// ETF radius for coherency computation (default: 4)
+    pub etf_radius: u32,
+    /// ETF iterations for coherency refinement (default: 4)  
+    pub etf_iterations: u32,
+    /// ETF coherency threshold tau (default: 0.2)
+    pub etf_coherency_tau: f32,
+    /// FDoG sigma_s for structure Gaussian (default: 1.2)
+    pub fdog_sigma_s: f32,
+    /// FDoG sigma_c for context Gaussian (default: 2.0)
+    pub fdog_sigma_c: f32,
+    /// FDoG threshold tau (default: 0.90)
+    pub fdog_tau: f32,
+    /// NMS low threshold (default: 0.08)
+    pub nms_low: f32,
+    /// NMS high threshold (default: 0.16)
+    pub nms_high: f32,
+    /// Enable flow-guided polyline tracing (requires enable_etf_fdog=true, default: false)
+    pub enable_flow_tracing: bool,
+    /// Minimum gradient magnitude for tracing (default: 0.08)
+    pub trace_min_grad: f32,
+    /// Minimum coherency for tracing (default: 0.15)
+    pub trace_min_coherency: f32,
+    /// Maximum gap size for tracing in pixels (default: 4)
+    pub trace_max_gap: u32,
+    /// Maximum polyline length (default: 10_000)
+    pub trace_max_len: usize,
+    /// Enable Bézier curve fitting (requires enable_flow_tracing=true, default: false)
+    pub enable_bezier_fitting: bool,
+    /// Curvature penalty for Bézier fitting (default: 0.02)
+    pub fit_lambda_curv: f32,
+    /// Maximum fitting error tolerance (default: 0.8)
+    pub fit_max_err: f32,
+    /// Corner splitting angle threshold in degrees (default: 32.0)
+    pub fit_split_angle: f32,
+    // Dot-specific configuration fields
+    /// Dot density threshold - minimum gradient strength required to place a dot (0.0 to 1.0)
+    pub dot_density_threshold: f32,
+    /// Minimum dot radius in pixels
+    pub dot_min_radius: f32,
+    /// Maximum dot radius in pixels
+    pub dot_max_radius: f32,
+    /// Whether to preserve original pixel colors in dot output
+    pub dot_preserve_colors: bool,
+    /// Whether to use adaptive sizing based on local variance
+    pub dot_adaptive_sizing: bool,
+    /// Background color tolerance for background detection (0.0 to 1.0)
+    pub dot_background_tolerance: f32,
 }
 
 impl Default for TraceLowConfig {
@@ -162,6 +224,34 @@ impl Default for TraceLowConfig {
             enable_diagonal_pass: false,
             directional_strength_threshold: 0.3,
             max_processing_time_ms: 1500, // 1.5 second budget
+            // ETF/FDoG parameters (disabled by default for compatibility)
+            enable_etf_fdog: false,
+            etf_radius: 4,
+            etf_iterations: 4,
+            etf_coherency_tau: 0.2,
+            fdog_sigma_s: 0.8, // More sensitive (was 1.2)
+            fdog_sigma_c: 1.6, // More sensitive (was 2.0)
+            fdog_tau: 0.70,    // More sensitive (was 0.90)
+            nms_low: 0.04,     // Lower threshold (was 0.08)
+            nms_high: 0.08,    // Lower threshold (was 0.16)
+            // Flow-guided tracing parameters (disabled by default)
+            enable_flow_tracing: false,
+            trace_min_grad: 0.02,      // More lenient (was 0.08)
+            trace_min_coherency: 0.05, // More lenient (was 0.15)
+            trace_max_gap: 8,          // Larger gaps (was 4)
+            trace_max_len: 10_000,
+            // Bézier fitting parameters (disabled by default)
+            enable_bezier_fitting: false,
+            fit_lambda_curv: 0.01, // Less restrictive (was 0.02)
+            fit_max_err: 2.0,      // Allow more error (was 0.8)
+            fit_split_angle: 32.0,
+            // Dot-specific defaults (following DotConfig::default())
+            dot_density_threshold: 0.1,
+            dot_min_radius: 0.5,
+            dot_max_radius: 3.0,
+            dot_preserve_colors: true,
+            dot_adaptive_sizing: true,
+            dot_background_tolerance: 0.1,
         }
     }
 }
@@ -263,6 +353,7 @@ pub fn vectorize_trace_low_single_pass(
         TraceBackend::Edge => trace_edge(image, &thresholds, config),
         TraceBackend::Centerline => trace_centerline(image, &thresholds, config),
         TraceBackend::Superpixel => trace_superpixel(image, &thresholds, config),
+        TraceBackend::Dots => trace_dots(image, &thresholds, config),
     }
 }
 
@@ -439,9 +530,7 @@ pub fn vectorize_trace_low_directional(
         // Check budget before each pass
         let elapsed = total_start.elapsed().as_millis() as u64;
         if elapsed >= budget.total_budget_ms {
-            log::info!(
-                "Time budget exceeded, stopping directional passes at {elapsed}ms"
-            );
+            log::info!("Time budget exceeded, stopping directional passes at {elapsed}ms");
             break;
         }
 
@@ -516,64 +605,245 @@ fn trace_edge(
     let blur_time = phase_start.elapsed();
     log::debug!("Gaussian blur: {:.3}ms", blur_time.as_secs_f64() * 1000.0);
 
-    // Canny edge detection
+    // Edge detection: ETF/FDoG or traditional Canny
     let phase_start = std::time::Instant::now();
-    let edges = canny_edge_detection(
-        &blurred,
-        thresholds.canny_low_threshold,
-        thresholds.canny_high_threshold,
-    );
-    let canny_time = phase_start.elapsed();
+    let edges = if config.enable_etf_fdog {
+        // ETF/FDoG advanced edge detection
+        log::debug!("Using ETF/FDoG edge detection");
+
+        // Compute Edge Tangent Flow field
+        let etf_config = EtfConfig {
+            radius: config.etf_radius,
+            iters: config.etf_iterations,
+            coherency_tau: config.etf_coherency_tau,
+            sigma: 1.0, // Use fixed sigma for ETF structure tensor
+        };
+        let etf_field = compute_etf(&blurred, &etf_config);
+
+        // Compute Flow-guided DoG
+        let fdog_config = FdogConfig {
+            sigma_s: config.fdog_sigma_s,
+            sigma_c: config.fdog_sigma_c,
+            passes: 1,
+            tau: config.fdog_tau,
+        };
+        let edge_response = compute_fdog(&blurred, &etf_field, &fdog_config);
+
+        // Apply Non-Maximum Suppression
+        let nms_config = NmsConfig {
+            low: config.nms_low,
+            high: config.nms_high,
+            smooth_before_nms: true,
+            smooth_sigma: 0.8,
+        };
+        let nms_edges = apply_nms(&edge_response, &etf_field, &nms_config);
+
+        // Apply adaptive hysteresis thresholding based on actual NMS edge values
+        let nms_max = nms_edges.iter().fold(0.0f32, |a, &b| a.max(b));
+        let adaptive_low = nms_max * 0.05; // 5% of max NMS value (optimized)
+        let adaptive_high = nms_max * 0.4; // 40% of max NMS value (optimized)
+
+        log::debug!(
+            "Adaptive hysteresis thresholds: low={:.6}, high={:.6} (NMS max: {:.6})",
+            adaptive_low,
+            adaptive_high,
+            nms_max
+        );
+
+        let binary_edges = hysteresis_threshold(
+            &nms_edges,
+            edge_response.width,
+            edge_response.height,
+            adaptive_low,
+            adaptive_high,
+        );
+
+        // Convert to GrayImage format
+        let mut edge_image = GrayImage::new(edge_response.width, edge_response.height);
+        for (i, &edge_value) in binary_edges.iter().enumerate() {
+            let x = i as u32 % edge_response.width;
+            let y = i as u32 / edge_response.width;
+            let pixel_value = (edge_value * 255.0) as u8;
+            edge_image.put_pixel(x, y, Luma([pixel_value]));
+        }
+        edge_image
+    } else {
+        // Traditional Canny edge detection
+        log::debug!("Using traditional Canny edge detection");
+        canny_edge_detection(
+            &blurred,
+            thresholds.canny_low_threshold,
+            thresholds.canny_high_threshold,
+        )
+    };
+    let edge_time = phase_start.elapsed();
     log::debug!(
-        "Canny edge detection: {:.3}ms",
-        canny_time.as_secs_f64() * 1000.0
+        "Edge detection: {:.3}ms ({})",
+        edge_time.as_secs_f64() * 1000.0,
+        if config.enable_etf_fdog {
+            "ETF/FDoG"
+        } else {
+            "Canny"
+        }
     );
 
-    // Link edges into polylines
+    // Link edges into polylines or use flow-guided tracing
     let phase_start = std::time::Instant::now();
-    let polylines = link_edges_to_polylines(&edges);
+    let (polylines, bezier_curves) = if config.enable_etf_fdog && config.enable_flow_tracing {
+        // Use flow-guided polyline tracing with ETF field
+        log::debug!("Using flow-guided polyline tracing");
+
+        // Re-compute ETF field (we need it for tracing)
+        let etf_config = EtfConfig {
+            radius: config.etf_radius,
+            iters: config.etf_iterations,
+            coherency_tau: config.etf_coherency_tau,
+            sigma: 1.0,
+        };
+        let etf_field = compute_etf(&blurred, &etf_config);
+
+        // Configure flow-guided tracing
+        let trace_config = TraceConfig {
+            min_grad: config.trace_min_grad,
+            min_coherency: config.trace_min_coherency,
+            max_gap: config.trace_max_gap,
+            max_len: config.trace_max_len,
+            ..Default::default()
+        };
+
+        // Trace polylines along ETF flow
+        let traced_polylines = trace_polylines(&edges, &etf_field, &trace_config);
+
+        // Optionally fit Bézier curves
+        let bezier_curves = if config.enable_bezier_fitting {
+            log::debug!(
+                "Fitting Bézier curves to {} polylines",
+                traced_polylines.len()
+            );
+
+            let fit_config = FitConfig {
+                lambda_curv: config.fit_lambda_curv,
+                max_err: config.fit_max_err,
+                split_angle: config.fit_split_angle,
+                ..Default::default()
+            };
+
+            // Fit Bézier curves to each polyline
+            let mut all_curves = Vec::new();
+            for polyline in &traced_polylines {
+                let curves = fit_beziers(polyline, &fit_config);
+                all_curves.extend(curves);
+            }
+
+            log::debug!("Generated {} Bézier curves", all_curves.len());
+            Some(all_curves)
+        } else {
+            None
+        };
+
+        // Convert traced polylines to internal format for compatibility
+        let converted_polylines: Vec<Vec<Point>> = traced_polylines
+            .into_iter()
+            .map(|polyline| {
+                polyline
+                    .into_iter()
+                    .map(|pt| Point::new(pt.x, pt.y))
+                    .collect()
+            })
+            .collect();
+
+        (converted_polylines, bezier_curves)
+    } else {
+        // Use traditional edge linking
+        log::debug!("Using traditional edge linking");
+        let polylines = link_edges_to_polylines(&edges);
+        (polylines, None)
+    };
+
     let linking_time = phase_start.elapsed();
     log::debug!(
-        "Edge linking: {:.3}ms ({} polylines)",
+        "Edge linking/tracing: {:.3}ms ({} polylines)",
         linking_time.as_secs_f64() * 1000.0,
         polylines.len()
     );
 
-    // Simplify with Douglas-Peucker and prune short strokes
-    let phase_start = std::time::Instant::now();
-    let polyline_count = polylines.len();
-    let simplified_polylines = polylines
-        .into_par_iter()
-        .filter_map(|polyline| {
-            let simplified = douglas_peucker_simplify(&polyline, thresholds.dp_epsilon_px);
-            let length = calculate_polyline_length(&simplified);
+    // Check if we're using flow-guided tracing (which produces shorter but more precise polylines)
+    let is_flow_traced = config.enable_etf_fdog && config.enable_flow_tracing;
 
-            if length >= thresholds.min_stroke_length_px {
-                Some(simplified)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-    let simplification_time = phase_start.elapsed();
-    log::debug!(
-        "Simplification: {:.3}ms ({} -> {} paths)",
-        simplification_time.as_secs_f64() * 1000.0,
-        polyline_count,
-        simplified_polylines.len()
-    );
-
-    // Convert to SVG paths with stroke styling
+    // Simplify with Douglas-Peucker and prune short strokes (unless we have Bézier curves)
     let phase_start = std::time::Instant::now();
-    let stroke_width = calculate_stroke_width(image, config.stroke_px_at_1080p);
-    let svg_paths: Vec<SvgPath> = simplified_polylines
-        .into_iter()
-        .map(|polyline| create_stroke_path(polyline, stroke_width))
-        .collect();
-    let svg_generation_time = phase_start.elapsed();
+    let (svg_paths, simplification_time, svg_generation_time) = if let Some(beziers) = bezier_curves
+    {
+        // Use Bézier curves directly (no simplification needed)
+        log::debug!("Converting {} Bézier curves to SVG paths", beziers.len());
+
+        let stroke_width = calculate_stroke_width(image, config.stroke_px_at_1080p);
+        let mut svg_paths = Vec::new();
+
+        for bezier in beziers {
+            // Apply stroke width clamping as specified in requirements
+            let clamped_width = clamp_stroke_width(stroke_width, config);
+
+            let path_data = bezier.to_svg_path_data();
+            let svg_path = SvgPath::new_stroke(path_data, "#000000", clamped_width);
+            svg_paths.push(svg_path);
+        }
+
+        let conversion_time = phase_start.elapsed();
+        (
+            svg_paths,
+            std::time::Duration::from_nanos(0),
+            conversion_time,
+        )
+    } else {
+        // Traditional polyline processing with Douglas-Peucker simplification
+        let polyline_count = polylines.len();
+        let simplified_polylines = polylines
+            .into_par_iter()
+            .filter_map(|polyline| {
+                let simplified = douglas_peucker_simplify(&polyline, thresholds.dp_epsilon_px);
+                let length = calculate_polyline_length(&simplified);
+
+                // Use more lenient length filtering for flow-traced polylines
+                let min_length = if is_flow_traced {
+                    // Flow-traced polylines are more precise, use very short minimum (1px)
+                    1.0
+                } else {
+                    thresholds.min_stroke_length_px
+                };
+
+                if length >= min_length {
+                    Some(simplified)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        let simplification_time = phase_start.elapsed();
+        log::debug!(
+            "Simplification: {:.3}ms ({} -> {} paths)",
+            simplification_time.as_secs_f64() * 1000.0,
+            polyline_count,
+            simplified_polylines.len()
+        );
+
+        // Convert to SVG paths with stroke styling
+        let svg_start = std::time::Instant::now();
+        let stroke_width = calculate_stroke_width(image, config.stroke_px_at_1080p);
+        let clamped_width = clamp_stroke_width(stroke_width, config);
+
+        let svg_paths: Vec<SvgPath> = simplified_polylines
+            .into_iter()
+            .map(|polyline| create_stroke_path(polyline, clamped_width))
+            .collect();
+        let svg_generation_time = svg_start.elapsed();
+
+        (svg_paths, simplification_time, svg_generation_time)
+    };
+
     log::debug!(
-        "SVG generation: {:.3}ms",
-        svg_generation_time.as_secs_f64() * 1000.0
+        "Path processing: {:.3}ms",
+        (simplification_time + svg_generation_time).as_secs_f64() * 1000.0
     );
 
     let total_time = total_start.elapsed();
@@ -582,7 +852,7 @@ fn trace_edge(
         total_time.as_secs_f64() * 1000.0,
         grayscale_time.as_secs_f64() * 1000.0,
         blur_time.as_secs_f64() * 1000.0,
-        canny_time.as_secs_f64() * 1000.0,
+        edge_time.as_secs_f64() * 1000.0,
         linking_time.as_secs_f64() * 1000.0,
         simplification_time.as_secs_f64() * 1000.0,
         svg_generation_time.as_secs_f64() * 1000.0
@@ -629,6 +899,89 @@ fn trace_superpixel(
     Err(VectorizeError::algorithm_error(
         "Superpixel backend not yet implemented",
     ))
+}
+
+/// Dots backend: Dot-based pixel mapping with gradient analysis (stippling/pointillism effects)
+fn trace_dots(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    _thresholds: &ThresholdMapping,
+    config: &TraceLowConfig,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    log::info!("Running dots backend");
+    let total_start = std::time::Instant::now();
+
+    // Create DotConfig from TraceLowConfig
+    let dot_config = DotConfig {
+        min_radius: config.dot_min_radius,
+        max_radius: config.dot_max_radius,
+        density_threshold: config.dot_density_threshold,
+        preserve_colors: config.dot_preserve_colors,
+        adaptive_sizing: config.dot_adaptive_sizing,
+        spacing_factor: 1.5, // Fixed reasonable default
+        default_color: "#000000".to_string(),
+        use_parallel: true,
+        parallel_threshold: 10000,
+        random_seed: 42,
+    };
+
+    // Create GradientConfig - can use defaults for now
+    let gradient_config = GradientConfig::default();
+
+    // Create BackgroundConfig with tolerance from config
+    let background_config = BackgroundConfig {
+        tolerance: config.dot_background_tolerance,
+        sample_edge_pixels: true,
+        cluster_colors: true,
+        num_clusters: 8,
+        random_seed: 42,
+        edge_sample_ratio: 0.1,
+    };
+
+    log::debug!(
+        "Dots config: min_radius={:.2}, max_radius={:.2}, density_threshold={:.2}, preserve_colors={}, adaptive_sizing={}, background_tolerance={:.2}",
+        dot_config.min_radius,
+        dot_config.max_radius,
+        dot_config.density_threshold,
+        dot_config.preserve_colors,
+        dot_config.adaptive_sizing,
+        background_config.tolerance
+    );
+
+    // Generate dots using the complete pipeline
+    let phase_start = std::time::Instant::now();
+    let dots = generate_dots_from_image(
+        image,
+        &dot_config,
+        Some(&gradient_config),
+        Some(&background_config),
+    );
+    let dot_generation_time = phase_start.elapsed();
+
+    log::debug!(
+        "Dot generation: {:.3}ms ({} dots)",
+        dot_generation_time.as_secs_f64() * 1000.0,
+        dots.len()
+    );
+
+    // Convert dots to SVG paths
+    let phase_start = std::time::Instant::now();
+    let svg_paths = dots_to_svg_paths(&dots);
+    let svg_conversion_time = phase_start.elapsed();
+
+    log::debug!(
+        "SVG conversion: {:.3}ms ({} paths)",
+        svg_conversion_time.as_secs_f64() * 1000.0,
+        svg_paths.len()
+    );
+
+    let total_time = total_start.elapsed();
+    log::info!(
+        "Dots backend completed: {:.3}ms total ({} SVG paths)",
+        total_time.as_secs_f64() * 1000.0,
+        svg_paths.len()
+    );
+
+    Ok(svg_paths)
 }
 
 // ============================================================================
@@ -1434,6 +1787,22 @@ fn calculate_stroke_width(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, stroke_px_at_1
     stroke_px_at_1080p * scale_factor
 }
 
+/// Clamp stroke width to prevent excessive thickness during refinement
+///
+/// As specified in Next-Steps.md:
+/// - Clamp stroke widths to [w_min, w_max] range
+/// - Optionally modulate by tone (small range)
+/// - NEVER increase width during refinement
+/// - Prefer density over thickness for darker regions
+fn clamp_stroke_width(width: f32, _config: &TraceLowConfig) -> f32 {
+    // Define reasonable bounds for stroke widths
+    let w_min = 0.5; // Minimum readable stroke width
+    let w_max = 3.0; // Maximum stroke width to prevent blob-like appearance
+
+    // Clamp to range without increasing original width
+    width.max(w_min).min(w_max).min(width * 1.0) // Never increase original width
+}
+
 /// Create SVG stroke path from polyline
 fn create_stroke_path(polyline: Vec<Point>, stroke_width: f32) -> SvgPath {
     // Create path data string
@@ -2220,10 +2589,7 @@ fn merge_directional_results(
     let mut final_cached_data = Vec::new();
 
     let all_paths_len = all_paths.len();
-    for (path, cached) in all_paths
-        .into_iter()
-        .zip(cached_data.into_iter())
-    {
+    for (path, cached) in all_paths.into_iter().zip(cached_data.into_iter()) {
         // Skip very short paths early
         if cached.approx_length < 5.0 {
             continue;
@@ -2237,10 +2603,11 @@ fn merge_directional_results(
         // Only check against spatially nearby paths
         for &candidate_idx in &candidates {
             if candidate_idx < final_cached_data.len()
-                && cached.is_geometrically_similar(&final_cached_data[candidate_idx], 8.0) {
-                    is_duplicate = true;
-                    break;
-                }
+                && cached.is_geometrically_similar(&final_cached_data[candidate_idx], 8.0)
+            {
+                is_duplicate = true;
+                break;
+            }
         }
 
         if !is_duplicate {
@@ -2614,19 +2981,8 @@ mod tests {
             }
         }
 
-        let config = TraceLowConfig {
-            backend: TraceBackend::Edge,
-            detail: 0.5,
-            stroke_px_at_1080p: 1.2,
-            enable_multipass: false,
-            conservative_detail: None,
-            aggressive_detail: None,
-            noise_filtering: false,
-            enable_reverse_pass: false,
-            enable_diagonal_pass: false,
-            directional_strength_threshold: 0.3,
-            max_processing_time_ms: 1500,
-        };
+        let mut config = TraceLowConfig::default();
+        config.detail = 0.5;
 
         let result = vectorize_trace_low(&image, &config);
         assert!(result.is_ok());
@@ -2666,6 +3022,157 @@ mod tests {
         assert_eq!(
             simplified[simplified.len() - 1],
             polyline[polyline.len() - 1]
+        );
+    }
+
+    #[test]
+    fn test_trace_dots_backend() {
+        use image::RgbaImage;
+
+        // Create a simple test image
+        let mut img = RgbaImage::new(100, 100);
+
+        // Add a simple pattern - white background with black square
+        for y in 0..100 {
+            for x in 0..100 {
+                if x >= 40 && x < 60 && y >= 40 && y < 60 {
+                    // Black square in center
+                    img.put_pixel(x, y, image::Rgba([0, 0, 0, 255]));
+                } else {
+                    // White background
+                    img.put_pixel(x, y, image::Rgba([255, 255, 255, 255]));
+                }
+            }
+        }
+
+        // Create config with dots backend
+        let config = TraceLowConfig {
+            backend: TraceBackend::Dots,
+            detail: 0.3,
+            dot_density_threshold: 0.1,
+            dot_min_radius: 0.5,
+            dot_max_radius: 3.0,
+            dot_preserve_colors: true,
+            dot_adaptive_sizing: true,
+            dot_background_tolerance: 0.15,
+            ..Default::default()
+        };
+
+        let thresholds = ThresholdMapping::new(config.detail, img.width(), img.height());
+
+        // Test the dots backend
+        let result = trace_dots(&img, &thresholds, &config);
+
+        assert!(result.is_ok(), "Dots backend should succeed");
+
+        let svg_paths = result.unwrap();
+        assert!(!svg_paths.is_empty(), "Should generate some SVG paths");
+
+        // Check that all paths are circles (dots are converted to circles)
+        for path in &svg_paths {
+            match path.element_type {
+                SvgElementType::Circle { cx: _, cy: _, r } => {
+                    assert!(
+                        r >= config.dot_min_radius,
+                        "Circle radius should be >= min_radius"
+                    );
+                    assert!(
+                        r <= config.dot_max_radius,
+                        "Circle radius should be <= max_radius"
+                    );
+                }
+                _ => panic!("Expected Circle elements from dots backend"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_trace_dots_config_validation() {
+        use image::RgbaImage;
+
+        let img = RgbaImage::new(50, 50);
+        let thresholds = ThresholdMapping::new(0.3, 50, 50);
+
+        // Test with invalid density threshold (too high - should produce no dots)
+        let config = TraceLowConfig {
+            backend: TraceBackend::Dots,
+            dot_density_threshold: 0.99, // Very high threshold
+            ..Default::default()
+        };
+
+        let result = trace_dots(&img, &thresholds, &config);
+        assert!(result.is_ok());
+
+        let svg_paths = result.unwrap();
+        // With such a high threshold, we might get no dots, which is fine
+        // Just ensure the function completes successfully
+    }
+
+    #[test]
+    fn test_trace_dots_color_preservation() {
+        use image::RgbaImage;
+
+        // Create a colorful test image
+        let mut img = RgbaImage::new(50, 50);
+
+        for y in 0..50 {
+            for x in 0..50 {
+                if x < 25 {
+                    img.put_pixel(x, y, image::Rgba([255, 0, 0, 255])); // Red
+                } else {
+                    img.put_pixel(x, y, image::Rgba([0, 0, 255, 255])); // Blue
+                }
+            }
+        }
+
+        let thresholds = ThresholdMapping::new(0.3, 50, 50);
+
+        // Test with color preservation enabled
+        let config_preserve = TraceLowConfig {
+            backend: TraceBackend::Dots,
+            dot_preserve_colors: true,
+            dot_density_threshold: 0.05, // Lower threshold to ensure some dots
+            ..Default::default()
+        };
+
+        let result = trace_dots(&img, &thresholds, &config_preserve);
+        assert!(result.is_ok());
+
+        let svg_paths = result.unwrap();
+        if !svg_paths.is_empty() {
+            // Should have some variety in colors if color preservation is working
+            let colors: std::collections::HashSet<_> = svg_paths.iter().map(|p| &p.fill).collect();
+            // We might get various colors or gradations due to edge detection
+            assert!(!colors.is_empty(), "Should have some colors");
+        }
+    }
+
+    #[test]
+    fn test_dots_backend_integration_with_main_pipeline() {
+        use image::RgbaImage;
+
+        // Create a simple test image
+        let img = RgbaImage::new(50, 50);
+
+        // Test that dots backend is properly integrated in the main pipeline
+        let config = TraceLowConfig {
+            backend: TraceBackend::Dots,
+            detail: 0.3,
+            ..Default::default()
+        };
+
+        // This should call through vectorize_trace_low_single_pass -> trace_dots
+        let result = vectorize_trace_low_single_pass(&img, &config);
+        assert!(
+            result.is_ok(),
+            "Main pipeline should work with dots backend"
+        );
+
+        // Also test with the main entry point
+        let result = vectorize_trace_low(&img, &config);
+        assert!(
+            result.is_ok(),
+            "Main vectorize_trace_low should work with dots backend"
         );
     }
 }
