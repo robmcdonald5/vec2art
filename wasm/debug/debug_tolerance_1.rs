@@ -21,8 +21,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let foreground_pixels = total_pixels - background_pixels;
 
     println!("With tolerance 1.0:");
-    println!("  Background pixels: {}", background_pixels);
-    println!("  Foreground pixels: {}", foreground_pixels);
+    println!("  Background pixels: {background_pixels}");
+    println!("  Foreground pixels: {foreground_pixels}");
     println!("  Should be all foreground if working correctly");
 
     Ok(())

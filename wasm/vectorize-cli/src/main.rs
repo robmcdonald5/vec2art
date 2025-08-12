@@ -9,48 +9,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use vectorize_core::algorithms::{apply_hand_drawn_aesthetics, HandDrawnPresets};
+use vectorize_core::algorithms::apply_hand_drawn_aesthetics;
 use vectorize_core::config::SvgConfig;
 use vectorize_core::svg::generate_svg_document;
-use vectorize_core::{vectorize_trace_low, vectorize_trace_low_rgba, TraceBackend, TraceLowConfig};
-
-/// Parse dot size range from "min,max" format
-fn parse_dot_size_range(s: &str) -> Result<(f32, f32), String> {
-    let parts: Vec<&str> = s.split(',').collect();
-    if parts.len() != 2 {
-        return Err(format!(
-            "Invalid dot size range format '{}'. Expected 'min,max' (e.g., '0.5,3.0')",
-            s
-        ));
-    }
-
-    let min = parts[0].trim().parse::<f32>().map_err(|_| {
-        format!(
-            "Invalid minimum radius '{}'. Must be a positive number.",
-            parts[0]
-        )
-    })?;
-
-    let max = parts[1].trim().parse::<f32>().map_err(|_| {
-        format!(
-            "Invalid maximum radius '{}'. Must be a positive number.",
-            parts[1]
-        )
-    })?;
-
-    if min <= 0.0 || max <= 0.0 {
-        return Err("Dot radii must be positive numbers.".to_string());
-    }
-
-    if min >= max {
-        return Err(format!(
-            "Minimum radius ({}) must be less than maximum radius ({})",
-            min, max
-        ));
-    }
-
-    Ok((min, max))
-}
+use vectorize_core::{vectorize_trace_low, vectorize_trace_low_rgba, ConfigBuilder};
 
 #[derive(Parser)]
 #[command(name = "vectorize-cli")]
@@ -167,9 +129,12 @@ enum Commands {
         /// Controls minimum and maximum dot radii. Small ranges create uniform dots,
         /// large ranges create varied stippling effects. Try "0.3,1.5" for fine detail,
         /// "1.0,5.0" for bold artistic style.
-        #[arg(long, default_value = "0.5,3.0", value_parser = parse_dot_size_range, 
-              help = "Dot size range 'min,max' pixels (e.g. '0.5,3.0')")]
-        dot_size_range: (f32, f32),
+        #[arg(
+            long,
+            default_value = "0.5,3.0",
+            help = "Dot size range 'min,max' pixels (e.g. '0.5,3.0')"
+        )]
+        dot_size_range: String,
 
         /// Background tolerance for automatic background detection (0.0-1.0).
         /// Controls how similar colors must be to be considered background.
@@ -258,25 +223,7 @@ fn main() -> Result<()> {
             preserve_colors,
             adaptive_sizing,
         } => {
-            // Validate detail parameter
-            if !(0.0..=1.0).contains(&detail) {
-                anyhow::bail!("Detail level must be between 0.0 and 1.0, got: {}", detail);
-            }
-
-            // Validate dot parameters
-            if !(0.0..=1.0).contains(&dot_density) {
-                anyhow::bail!(
-                    "Dot density must be between 0.0 and 1.0, got: {}",
-                    dot_density
-                );
-            }
-
-            if !(0.0..=1.0).contains(&background_tolerance) {
-                anyhow::bail!(
-                    "Background tolerance must be between 0.0 and 1.0, got: {}",
-                    background_tolerance
-                );
-            }
+            // No manual validation needed - ConfigBuilder handles all validation
 
             vectorize_trace_low_command(
                 input,
@@ -298,7 +245,7 @@ fn main() -> Result<()> {
                 tremor,
                 variable_weights,
                 dot_density,
-                dot_size_range,
+                &dot_size_range,
                 background_tolerance,
                 preserve_colors,
                 adaptive_sizing,
@@ -310,10 +257,7 @@ fn main() -> Result<()> {
             detail,
             stroke_width,
         } => {
-            // Validate detail parameter
-            if !(0.0..=1.0).contains(&detail) {
-                anyhow::bail!("Detail level must be between 0.0 and 1.0, got: {}", detail);
-            }
+            // No manual validation needed - ConfigBuilder handles all validation
 
             // Use default settings with edge backend
             vectorize_trace_low_command(
@@ -336,7 +280,7 @@ fn main() -> Result<()> {
                 None,               // no custom tremor
                 None,               // no custom variable weights
                 0.1,                // default dot density
-                (0.5, 3.0),         // default dot size range
+                "0.5,3.0",          // default dot size range
                 0.1,                // default background tolerance
                 true,               // default preserve colors
                 true,               // default adaptive sizing
@@ -345,6 +289,7 @@ fn main() -> Result<()> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn vectorize_trace_low_command(
     input: PathBuf,
     output: PathBuf,
@@ -365,7 +310,7 @@ fn vectorize_trace_low_command(
     tremor: Option<f32>,
     variable_weights: Option<f32>,
     dot_density: f32,
-    dot_size_range: (f32, f32),
+    dot_size_range: &str,
     background_tolerance: f32,
     preserve_colors: bool,
     adaptive_sizing: bool,
@@ -388,15 +333,70 @@ fn vectorize_trace_low_command(
     );
     println!("Backend: {backend}, Detail: {detail:.2}, Stroke Width: {stroke_width:.2}");
 
+    // Build configuration using ConfigBuilder with validation
+    let mut config_builder = ConfigBuilder::new()
+        .backend_by_name(&backend)
+        .context("Invalid backend specified")?
+        .detail(detail)
+        .context("Invalid detail parameter")?
+        .stroke_width(stroke_width)
+        .context("Invalid stroke width")?
+        .multipass(multipass)
+        .conservative_detail(conservative_detail)
+        .context("Invalid conservative detail")?
+        .aggressive_detail(aggressive_detail)
+        .context("Invalid aggressive detail")?
+        .noise_filtering(noise_filtering)
+        .reverse_pass(enable_reverse)
+        .diagonal_pass(enable_diagonal)
+        .directional_threshold(directional_threshold)
+        .context("Invalid directional threshold")?
+        .max_processing_time_ms(max_time_ms)
+        .dot_density(dot_density)
+        .context("Invalid dot density")?
+        .dot_size_range_from_string(dot_size_range)
+        .context("Invalid dot size range")?
+        .background_tolerance(background_tolerance)
+        .context("Invalid background tolerance")?
+        .preserve_colors(preserve_colors)
+        .adaptive_sizing(adaptive_sizing);
+
+    // Add hand-drawn preset if specified
+    if hand_drawn != "none" {
+        config_builder = config_builder
+            .hand_drawn_preset(&hand_drawn)
+            .context("Invalid hand-drawn preset")?;
+    }
+
+    // Add custom hand-drawn overrides if specified
+    if let Some(tremor_val) = tremor {
+        config_builder = config_builder
+            .custom_tremor(tremor_val)
+            .context("Invalid tremor strength")?;
+    }
+    if let Some(weights_val) = variable_weights {
+        config_builder = config_builder
+            .custom_variable_weights(weights_val)
+            .context("Invalid variable weights")?;
+    }
+
+    // Build final configuration with validation
+    let (config, hand_drawn_config) = config_builder
+        .build_with_hand_drawn()
+        .context("Configuration validation failed")?;
+
     // Show dot-specific parameters when using dots backend
     if backend == "dots" {
         println!(
             "Dot settings: Density: {:.2}, Size: {:.1}-{:.1}px, Background tolerance: {:.2}",
-            dot_density, dot_size_range.0, dot_size_range.1, background_tolerance
+            config.dot_density_threshold,
+            config.dot_min_radius,
+            config.dot_max_radius,
+            config.dot_background_tolerance
         );
         println!(
             "Dot options: Preserve colors: {}, Adaptive sizing: {}",
-            preserve_colors, adaptive_sizing
+            config.dot_preserve_colors, config.dot_adaptive_sizing
         );
     }
     if multipass {
@@ -417,84 +417,6 @@ fn vectorize_trace_low_command(
             );
         }
     }
-
-    // Parse backend string to TraceBackend enum
-    let trace_backend = match backend.as_str() {
-        "edge" => TraceBackend::Edge,
-        "centerline" => TraceBackend::Centerline,
-        "superpixel" => TraceBackend::Superpixel,
-        "dots" => TraceBackend::Dots,
-        _ => anyhow::bail!(
-            "Invalid backend: {}. Must be one of: edge, centerline, superpixel, dots",
-            backend
-        ),
-    };
-
-    // Create trace-low configuration
-    let config = TraceLowConfig {
-        backend: trace_backend,
-        detail,
-        stroke_px_at_1080p: stroke_width,
-        enable_multipass: multipass,
-        conservative_detail,
-        aggressive_detail,
-        noise_filtering,
-        enable_reverse_pass: enable_reverse,
-        enable_diagonal_pass: enable_diagonal,
-        directional_strength_threshold: directional_threshold,
-        max_processing_time_ms: max_time_ms,
-        // Dot-specific parameters
-        dot_density_threshold: dot_density,
-        dot_min_radius: dot_size_range.0,
-        dot_max_radius: dot_size_range.1,
-        dot_background_tolerance: background_tolerance,
-        dot_preserve_colors: preserve_colors,
-        dot_adaptive_sizing: adaptive_sizing,
-        // Use defaults for ETF/FDoG and new tracing features
-        ..Default::default()
-    };
-
-    // Create hand-drawn configuration
-    let hand_drawn_config = match hand_drawn.as_str() {
-        "none" => None,
-        "subtle" => Some(HandDrawnPresets::subtle()),
-        "medium" => Some(HandDrawnPresets::medium()),
-        "strong" => Some(HandDrawnPresets::strong()),
-        "sketchy" => Some(HandDrawnPresets::sketchy()),
-        _ => anyhow::bail!(
-            "Invalid hand-drawn preset: {}. Must be one of: none, subtle, medium, strong, sketchy",
-            hand_drawn
-        ),
-    };
-
-    // Apply custom overrides to hand-drawn config
-    let hand_drawn_config = if let Some(mut hd_config) = hand_drawn_config {
-        if let Some(tremor_val) = tremor {
-            if !(0.0..=0.5).contains(&tremor_val) {
-                anyhow::bail!(
-                    "Tremor strength must be between 0.0 and 0.5, got: {}",
-                    tremor_val
-                );
-            }
-            hd_config.tremor_strength = tremor_val;
-        }
-        if let Some(weights_val) = variable_weights {
-            if !(0.0..=1.0).contains(&weights_val) {
-                anyhow::bail!(
-                    "Variable weights must be between 0.0 and 1.0, got: {}",
-                    weights_val
-                );
-            }
-            hd_config.variable_weights = weights_val;
-        }
-        Some(hd_config)
-    } else if tremor.is_some() || variable_weights.is_some() {
-        anyhow::bail!(
-            "Hand-drawn preset must be specified when using custom tremor or variable weights"
-        );
-    } else {
-        None
-    };
 
     // Vectorize
     let vectorize_start = Instant::now();

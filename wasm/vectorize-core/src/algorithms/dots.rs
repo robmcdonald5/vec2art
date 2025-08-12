@@ -7,8 +7,8 @@
 
 use crate::algorithms::background::{detect_background_advanced, BackgroundConfig};
 use crate::algorithms::gradients::{GradientAnalysis, GradientConfig};
+use crate::execution::execute_parallel_filter_map;
 use image::{Rgba, RgbaImage};
-use rayon::prelude::*;
 
 /// Represents a single dot in the output
 #[derive(Debug, Clone, PartialEq)]
@@ -259,13 +259,10 @@ pub fn generate_dots(
         .flat_map(|y| (0..width).map(move |x| (x, y)))
         .collect();
 
-    let candidates: Vec<(u32, u32, f32, f32, String)> = if config.use_parallel
-        && total_pixels >= config.parallel_threshold
-    {
-        // Parallel processing for large images
-        pixel_coords
-            .par_iter()
-            .filter_map(|&(x, y)| {
+    let candidates: Vec<(u32, u32, f32, f32, String)> =
+        if config.use_parallel && total_pixels >= config.parallel_threshold {
+            // Parallel processing for large images using execution abstraction
+            execute_parallel_filter_map(pixel_coords, |(x, y)| {
                 let index = (y * width + x) as usize;
 
                 // Skip background pixels
@@ -296,45 +293,44 @@ pub fn generate_dots(
 
                 Some((x, y, radius, opacity, color))
             })
-            .collect()
-    } else {
-        // Sequential processing for smaller images
-        let mut candidates = Vec::new();
+        } else {
+            // Sequential processing for smaller images
+            let mut candidates = Vec::new();
 
-        for &(x, y) in &pixel_coords {
-            let index = (y * width + x) as usize;
+            for &(x, y) in &pixel_coords {
+                let index = (y * width + x) as usize;
 
-            // Skip background pixels
-            if background_mask[index] {
-                continue;
+                // Skip background pixels
+                if background_mask[index] {
+                    continue;
+                }
+
+                // Calculate gradient strength
+                let strength =
+                    calculate_gradient_strength(gradient_analysis, x, y, config.adaptive_sizing);
+
+                // Skip pixels below density threshold
+                if strength < config.density_threshold {
+                    continue;
+                }
+
+                // Calculate dot properties
+                let radius = strength_to_radius(strength, config.min_radius, config.max_radius);
+                let opacity = strength_to_opacity(strength);
+
+                // Get color
+                let color = if config.preserve_colors {
+                    let pixel = rgba.get_pixel(x, y);
+                    rgba_to_hex(pixel)
+                } else {
+                    config.default_color.clone()
+                };
+
+                candidates.push((x, y, radius, opacity, color));
             }
 
-            // Calculate gradient strength
-            let strength =
-                calculate_gradient_strength(gradient_analysis, x, y, config.adaptive_sizing);
-
-            // Skip pixels below density threshold
-            if strength < config.density_threshold {
-                continue;
-            }
-
-            // Calculate dot properties
-            let radius = strength_to_radius(strength, config.min_radius, config.max_radius);
-            let opacity = strength_to_opacity(strength);
-
-            // Get color
-            let color = if config.preserve_colors {
-                let pixel = rgba.get_pixel(x, y);
-                rgba_to_hex(pixel)
-            } else {
-                config.default_color.clone()
-            };
-
-            candidates.push((x, y, radius, opacity, color));
-        }
-
-        candidates
-    };
+            candidates
+        };
 
     // Sort candidates by gradient strength (strongest first) for better spatial distribution
     let mut sorted_candidates = candidates;
@@ -446,10 +442,7 @@ pub fn generate_dots_from_image(
     let total_pixels = background_mask.len();
     let background_percentage = (background_pixels as f64 / total_pixels as f64) * 100.0;
     log::debug!(
-        "Background detection: {}/{} pixels marked as background ({:.1}%)",
-        background_pixels,
-        total_pixels,
-        background_percentage
+        "Background detection: {background_pixels}/{total_pixels} pixels marked as background ({background_percentage:.1}%)"
     );
 
     // Smart fallback: If >95% of pixels are marked as background, disable background filtering
@@ -457,8 +450,7 @@ pub fn generate_dots_from_image(
     let use_background_filtering = background_percentage < 95.0;
     if !use_background_filtering {
         log::debug!(
-            "Background detection marked {:.1}% as background - disabling background filtering",
-            background_percentage
+            "Background detection marked {background_percentage:.1}% as background - disabling background filtering"
         );
     }
 
@@ -475,8 +467,8 @@ pub fn generate_dots_from_image(
     let mut sample_strengths = Vec::new();
     let width = rgba.width();
     let height = rgba.height();
-    for y in (0..height).step_by(height as usize / 10.max(1)) {
-        for x in (0..width).step_by(width as usize / 10.max(1)) {
+    for y in (0..height).step_by(height as usize / 10) {
+        for x in (0..width).step_by(width as usize / 10) {
             let strength =
                 calculate_gradient_strength(&gradient_analysis, x, y, dot_config.adaptive_sizing);
             sample_strengths.push(strength);
@@ -608,8 +600,8 @@ mod tests {
         let strength_adaptive = calculate_gradient_strength(&gradient_analysis, 50, 50, true);
         let strength_simple = calculate_gradient_strength(&gradient_analysis, 50, 50, false);
 
-        assert!(strength_adaptive >= 0.0 && strength_adaptive <= 1.0);
-        assert!(strength_simple >= 0.0 && strength_simple <= 1.0);
+        assert!((0.0..=1.0).contains(&strength_adaptive));
+        assert!((0.0..=1.0).contains(&strength_simple));
 
         // For a gradient image, adaptive should generally be different from simple
         assert_ne!(strength_adaptive, strength_simple);
@@ -929,11 +921,11 @@ mod tests {
         assert_eq!(config.min_radius, 0.5);
         assert_eq!(config.max_radius, 3.0);
         assert_eq!(config.density_threshold, 0.1);
-        assert_eq!(config.preserve_colors, true);
-        assert_eq!(config.adaptive_sizing, true);
+        assert!(config.preserve_colors);
+        assert!(config.adaptive_sizing);
         assert_eq!(config.spacing_factor, 1.5);
         assert_eq!(config.default_color, "#000000");
-        assert_eq!(config.use_parallel, true);
+        assert!(config.use_parallel);
         assert_eq!(config.parallel_threshold, 10000);
         assert_eq!(config.random_seed, 42);
     }

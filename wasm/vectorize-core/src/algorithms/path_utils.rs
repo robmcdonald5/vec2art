@@ -1149,7 +1149,7 @@ mod tests {
                 assert_eq!(*start, points[0]);
                 assert_eq!(*end, points[points.len() - 1]);
             }
-            _ => assert!(false, "Expected line result for collinear points"),
+            _ => panic!("Expected line result for collinear points"),
         }
     }
 

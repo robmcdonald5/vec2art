@@ -150,10 +150,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             high_thresh,
         );
         let final_edges = binary_edges.iter().filter(|&&x| x > 0.0).count();
-        println!(
-            "{}: low={:.4}, high={:.4} -> {} final edges",
-            name, low_thresh, high_thresh, final_edges
-        );
+        println!("{name}: low={low_thresh:.4}, high={high_thresh:.4} -> {final_edges} final edges");
     }
 
     // Test 3: Full ETF/FDoG with most lenient settings

@@ -13,7 +13,8 @@ wasm/
 ├── Cargo.toml                      # Workspace manifest (members: vectorize-core, vectorize-cli, vectorize-wasm)
 ├── rust-toolchain.toml             # Pin toolchain/components (stable + rustfmt + clippy + wasm32)
 ├── .cargo/
-│   └── config.toml                 # Target cfgs (wasm32 flags: +simd128), build optimizations
+│   ├── config.toml                 # Default build configuration (single-threaded)
+│   └── config-mt.toml              # Multithreaded build configuration (atomics enabled)
 ├── .gitignore                      # Ignore /target, /pkg, artifacts, generated files
 ├── LICENSE
 ├── CLAUDE.md                       # Repo-local implementation guidelines
@@ -91,6 +92,7 @@ wasm/
 │
 ├── vectorize-wasm/                 # WASM bindings (thin wrapper for line tracing)
 │   ├── Cargo.toml
+│   ├── README.md                   # Comprehensive WASM API documentation and examples
 │   ├── src/
 │   │   ├── lib.rs                  # WASM entry point (wasm-bindgen exports)
 │   │   ├── bindings.rs             # JS/TS-friendly line tracing API
@@ -99,12 +101,16 @@ wasm/
 │   │   └── utils.rs                # WASM-specific utilities and helpers
 │   │
 │   ├── pkg/                        # wasm-pack output (gitignored)
-│   └── www/                        # Minimal demo for line tracing
-│       ├── index.html              # Line tracing test interface
-│       ├── main.ts                 # WASM loader with threading support
-│       ├── package.json            # For local demo only
-│       └── public/                 # Static assets
-│           └── sample_images/      # Test images for browser demos
+│   ├── tests/                      # WASM integration tests and performance benchmarks
+│   │   ├── package.json            # Node dependencies for test server
+│   │   ├── test-server.js          # Development server with CORS headers for threading
+│   │   ├── threading-test.html     # Threading capability and performance tests
+│   │   ├── direct-wasm-test.html   # Direct WASM integration test
+│   │   ├── wasm-loader.js          # Core WASM loading utilities
+│   │   └── performance-test.html   # Performance benchmarking interface
+│   ├── examples/                   # WASM usage examples and demos
+│   │   ├── browser-demo.html       # Complete browser demo with full UI
+│   │   └── node-example.js         # Node.js usage examples and batch processing
 │
 ├── tests/                          # Integration and performance tests
 │   ├── golden/                     # Golden SVG references for line tracing
@@ -123,8 +129,11 @@ wasm/
 ├── scripts/                        # Build & testing scripts
 │   ├── test-dot-mapping-auto.bat       # Comprehensive automated test suite (5 modes)
 │   ├── test-dot-mapping-interactive.bat # Interactive algorithm selection per image
-│   ├── build_wasm.sh               # wasm-pack build (release/dev)
-│   ├── build_wasm.ps1              # Windows-friendly build script
+│   ├── build-wasm.sh               # Comprehensive WASM build script (Unix/Linux/macOS)
+│   ├── build-wasm.ps1              # Comprehensive WASM build script (Windows PowerShell)
+│   ├── test-wasm.sh                # Comprehensive WASM testing suite
+│   ├── build_wasm.sh               # wasm-pack build (release/dev) [DEPRECATED]
+│   ├── build_wasm.ps1              # Windows-friendly build script [DEPRECATED]
 │   └── generate_bindings.sh        # Generate/update TypeScript definitions
 │
 ├── debug/                          # Debug and development utilities
@@ -340,6 +349,208 @@ The project is organized as a Cargo workspace with three specialized crates and 
 - **Supply-Chain** (Optional)
     1. cargo install cargo-audit && cargo audit
     2. cargo install cargo-deny && cargo deny check
+
+## WASM Build Instructions
+
+### Prerequisites
+
+```bash
+# Install Rust and required targets
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup target add wasm32-unknown-unknown wasm32-wasi
+
+# Install wasm-pack
+curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+# Install wasm-opt for optimization (optional but recommended)
+npm install -g binaryen
+```
+
+### Build Scripts
+
+#### Quick Build (Unix/Linux/macOS)
+```bash
+# Development build
+./scripts/build-wasm.sh debug false false
+
+# Production build with SIMD and optimization
+./scripts/build-wasm.sh release true true
+```
+
+#### Quick Build (Windows PowerShell)
+```powershell
+# Development build
+.\scripts\build-wasm.ps1 -BuildMode debug -EnableSIMD $false -RunWasmOpt $false
+
+# Production build with SIMD and optimization
+.\scripts\build-wasm.ps1 -BuildMode release -EnableSIMD $true -RunWasmOpt $true
+```
+
+#### Manual Build Commands
+
+```bash
+# Web target (default)
+wasm-pack build --target web --out-dir pkg vectorize-wasm --release
+
+# Node.js target
+wasm-pack build --target nodejs --out-dir pkg-nodejs vectorize-wasm --release
+
+# Bundler target
+wasm-pack build --target bundler --out-dir pkg-bundler vectorize-wasm --release
+
+# With SIMD features
+RUSTFLAGS="-C target-feature=+simd128" wasm-pack build --target web --release -- --features simd
+
+# Development build
+wasm-pack build --target web --dev
+```
+
+### Feature Flags
+
+#### Available Features
+- `simd`: Enable SIMD instructions for ~2x performance improvement
+- `telemetry`: Enable detailed performance monitoring and statistics
+- `debug`: Additional debugging information in WASM output
+
+#### Feature Combinations
+```bash
+# SIMD only
+wasm-pack build --target web --release -- --features simd
+
+# All features
+wasm-pack build --target web --release -- --features simd,telemetry,debug
+
+# No features (minimal build)
+wasm-pack build --target web --release
+```
+
+### Testing WASM Builds
+
+#### Comprehensive Test Suite
+```bash
+# Run all WASM tests
+./scripts/test-wasm.sh
+
+# Run specific test categories
+./scripts/test-wasm.sh true true true false  # unit, browser, node, skip features
+```
+
+#### Individual Test Commands
+```bash
+# Unit tests with wasmtime
+CARGO_TARGET_WASM32_WASI_RUNNER=wasmtime cargo test --target wasm32-wasi --manifest-path vectorize-wasm/Cargo.toml
+
+# Check compilation for wasm32-unknown-unknown
+cargo check --target wasm32-unknown-unknown --manifest-path vectorize-wasm/Cargo.toml
+
+# Feature flag validation
+cargo check --target wasm32-unknown-unknown --features simd,telemetry --manifest-path vectorize-wasm/Cargo.toml
+```
+
+## WASM Feature Documentation
+
+### Performance Optimization
+
+#### SIMD Acceleration
+- **Browser Support**: Chrome 91+, Firefox 89+, Safari 16.4+
+- **Performance Gain**: ~2x improvement in edge detection and path processing
+- **Feature Flag**: `simd`
+- **Runtime Detection**: Automatic fallback for unsupported browsers
+
+```rust
+#[cfg(target_feature = "simd128")]
+use std::simd::*;
+```
+
+#### Memory Management
+- **Zero-Copy Operations**: Direct ImageData buffer processing
+- **Buffer Reuse**: Pre-allocated processing buffers to minimize GC pressure  
+- **Efficient Transfers**: Minimal data copying between JS and WASM
+
+#### Threading Support
+- **Web Workers**: Full support for multi-threaded processing
+- **Fallback**: Graceful degradation to single-threaded on unsupported browsers
+- **Configuration**: Thread count auto-detection based on navigator.hardwareConcurrency
+
+### Performance Monitoring
+
+#### Telemetry Feature
+When enabled with `--features telemetry`, provides detailed metrics:
+
+```javascript
+// JavaScript API
+const stats = wasm.get_last_processing_stats();
+console.log({
+    processing_time_ms: stats.processing_time_ms,
+    input_resolution: stats.input_resolution,
+    output_paths: stats.output_paths,
+    memory_usage_mb: stats.memory_usage_mb,
+    simd_enabled: stats.simd_enabled
+});
+```
+
+#### Platform Compatibility
+- **Native Timing**: Uses `std::time::Instant` on native targets
+- **Web Timing**: Uses `Performance.now()` API in browser environments
+- **Automatic Fallback**: Graceful degradation when timing APIs unavailable
+
+### Known Limitations
+
+#### Browser Environment
+- **File System Access**: Limited to File API and blob downloads
+- **Memory Limits**: Typically 2-4GB depending on browser and system
+- **Threading**: Limited by Web Worker support and SharedArrayBuffer availability
+
+#### Node.js Environment  
+- **SIMD Support**: Not available in current Node.js WASM runtime
+- **Performance**: ~20% slower than native due to WASM overhead
+- **Memory**: Full system memory available but with WASM heap limits
+
+### Troubleshooting
+
+#### Common Build Issues
+
+**"Module not found" Errors:**
+```bash
+# Ensure correct target installation
+rustup target add wasm32-unknown-unknown
+rustup target add wasm32-wasi
+```
+
+**SIMD Compilation Errors:**
+```bash
+# Check Rust version (requires 1.54+)
+rustc --version
+
+# Explicit SIMD target features
+export RUSTFLAGS="-C target-feature=+simd128,+bulk-memory,+mutable-globals"
+```
+
+**wasm-opt Failures:**
+```bash
+# Install/update binaryen
+npm update -g binaryen
+
+# Skip optimization if problematic
+./scripts/build-wasm.sh release true false
+```
+
+#### Runtime Issues
+
+**"WebAssembly.instantiate failed":**
+- Check browser WebAssembly support
+- Verify WASM file integrity
+- Disable SIMD if unsupported: `.simd_enabled(false)`
+
+**Performance Issues:**
+- Enable SIMD if supported
+- Use Web Workers for non-blocking processing
+- Reduce image resolution: `.max_resolution(1920 * 1080)`
+
+**Memory Errors:**
+- Process smaller images
+- Clear unused ImageData references
+- Monitor browser memory limits
 
 ## Development Status
 

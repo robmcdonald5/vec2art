@@ -13,6 +13,7 @@ pub mod profiler;
 pub mod simd_ops;
 pub mod spatial_index;
 
+use crate::execution::current_num_threads;
 use std::time::Duration;
 
 /// Performance configuration for dot mapping operations
@@ -39,7 +40,7 @@ impl Default for PerformanceConfig {
             use_simd: true,
             use_spatial_indexing: true,
             parallel_threshold: 10000,
-            num_threads: None, // Use rayon default
+            num_threads: None, // Use execution abstraction default
             enable_profiling: false,
         }
     }
@@ -89,7 +90,7 @@ impl Default for OptimizationLevel {
                 use_simd: true,
                 use_spatial_indexing: true,
                 parallel_threshold: 5000,
-                num_threads: None, // Use all available cores
+                num_threads: None, // Use all available cores from execution abstraction
                 enable_profiling: false,
             },
         }
@@ -205,17 +206,24 @@ impl PerformanceUtils {
 
     /// Calculate optimal parallel threshold based on system capabilities
     pub fn calculate_optimal_parallel_threshold() -> usize {
-        let num_cpus = rayon::current_num_threads();
+        let num_cpus = current_num_threads();
         let base_threshold = 1000;
 
         // Scale threshold based on CPU count
         // More CPUs can handle smaller work units efficiently
-        match num_cpus {
-            1 => usize::MAX, // Disable parallelization on single core
-            2..=4 => base_threshold * 10,
-            5..=8 => base_threshold * 5,
-            9..=16 => base_threshold * 2,
-            _ => base_threshold,
+        #[cfg(feature = "parallel")]
+        {
+            match num_cpus {
+                1 => usize::MAX, // Disable parallelization on single core
+                2..=4 => base_threshold * 10,
+                5..=8 => base_threshold * 5,
+                9..=16 => base_threshold * 2,
+                _ => base_threshold,
+            }
+        }
+        #[cfg(not(feature = "parallel"))]
+        {
+            usize::MAX // Disable parallelization in single-threaded mode
         }
     }
 }
@@ -249,11 +257,13 @@ mod tests {
 
     #[test]
     fn test_performance_stats() {
-        let mut stats = PerformanceStats::default();
-        stats.total_operations = 1000;
-        stats.total_time = Duration::from_secs(2);
-        stats.cache_hits = 80;
-        stats.cache_misses = 20;
+        let stats = PerformanceStats {
+            total_operations: 1000,
+            total_time: Duration::from_secs(2),
+            cache_hits: 80,
+            cache_misses: 20,
+            ..Default::default()
+        };
 
         assert_eq!(stats.ops_per_second(), 500.0);
         assert_eq!(stats.cache_hit_ratio(), 0.8);

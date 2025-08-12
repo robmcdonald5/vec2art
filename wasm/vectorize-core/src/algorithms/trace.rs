@@ -12,8 +12,8 @@
 //! - CPU-optimized implementation with SIMD-friendly operations
 
 use crate::algorithms::etf::EtfField;
+use crate::execution::execute_parallel;
 use image::GrayImage;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -71,8 +71,7 @@ struct TracingState {
 impl TracingState {
     /// Create new tracing state at given position
     fn new(x: f32, y: f32, direction: (f32, f32)) -> Self {
-        let mut polyline = Polyline::new();
-        polyline.push(Point2F::new(x, y));
+        let polyline = vec![Point2F::new(x, y)];
 
         let mut visited = HashSet::new();
         visited.insert((x as i32, y as i32));
@@ -119,12 +118,7 @@ pub fn trace_polylines(binary: &GrayImage, etf: &EtfField, cfg: &TraceConfig) ->
     let width = binary.width();
     let height = binary.height();
 
-    log::debug!(
-        "Starting polyline tracing for {}x{} image with config: {:?}",
-        width,
-        height,
-        cfg
-    );
+    log::debug!("Starting polyline tracing for {width}x{height} image with config: {cfg:?}");
     let start_time = std::time::Instant::now();
 
     // Find seed points (edge pixels with sufficient gradient/coherency)
@@ -156,13 +150,7 @@ pub fn trace_polylines(binary: &GrayImage, etf: &EtfField, cfg: &TraceConfig) ->
         }
 
         // Trace bidirectionally from seed point
-        log::debug!(
-            "Tracing from seed ({}, {}) with direction ({:.3}, {:.3})",
-            seed_x,
-            seed_y,
-            tx,
-            ty
-        );
+        log::debug!("Tracing from seed ({seed_x}, {seed_y}) with direction ({tx:.3}, {ty:.3})");
 
         let forward_polyline = trace_direction(
             binary,
@@ -219,37 +207,37 @@ fn find_seed_points(binary: &GrayImage, etf: &EtfField, cfg: &TraceConfig) -> Ve
     let gradient_mag = compute_gradient_magnitude(binary);
 
     // Parallel search for seed points
-    let seed_points: Vec<(u32, u32)> = (0..height)
-        .into_par_iter()
-        .flat_map(|y| {
-            let mut local_seeds = Vec::new();
+    let seed_points: Vec<(u32, u32)> = execute_parallel(0..height, |y| {
+        let mut local_seeds = Vec::new();
 
-            for x in 0..width {
-                let pixel_value = binary.get_pixel(x, y)[0] as f32 / 255.0;
+        for x in 0..width {
+            let pixel_value = binary.get_pixel(x, y)[0] as f32 / 255.0;
 
-                // Must be edge pixel
-                if pixel_value < 0.5 {
-                    continue;
-                }
-
-                // Check gradient magnitude threshold
-                let idx = (y * width + x) as usize;
-                if idx >= gradient_mag.len() || gradient_mag[idx] < cfg.min_grad {
-                    continue;
-                }
-
-                // Check coherency threshold
-                let coherency = etf.get_coherency(x, y);
-                if coherency < cfg.min_coherency {
-                    continue;
-                }
-
-                local_seeds.push((x, y));
+            // Must be edge pixel
+            if pixel_value < 0.5 {
+                continue;
             }
 
-            local_seeds
-        })
-        .collect();
+            // Check gradient magnitude threshold
+            let idx = (y * width + x) as usize;
+            if idx >= gradient_mag.len() || gradient_mag[idx] < cfg.min_grad {
+                continue;
+            }
+
+            // Check coherency threshold
+            let coherency = etf.get_coherency(x, y);
+            if coherency < cfg.min_coherency {
+                continue;
+            }
+
+            local_seeds.push((x, y));
+        }
+
+        local_seeds
+    })
+    .into_iter()
+    .flatten()
+    .collect();
 
     seed_points
 }
@@ -326,11 +314,7 @@ fn trace_direction(
 
         // Check bounds
         if next_x < 0.0 || next_x >= width as f32 || next_y < 0.0 || next_y >= height as f32 {
-            log::trace!(
-                "Terminating trace: out of bounds at ({:.2}, {:.2})",
-                next_x,
-                next_y
-            );
+            log::trace!("Terminating trace: out of bounds at ({next_x:.2}, {next_y:.2})");
             break;
         }
 
@@ -339,11 +323,7 @@ fn trace_direction(
 
         // Check for loops
         if state.is_visited(next_x, next_y) {
-            log::trace!(
-                "Terminating trace: loop detected at ({:.2}, {:.2})",
-                next_x,
-                next_y
-            );
+            log::trace!("Terminating trace: loop detected at ({next_x:.2}, {next_y:.2})");
             break;
         }
 
@@ -368,10 +348,7 @@ fn trace_direction(
         // Check coherency threshold
         if coherency < cfg.min_coherency {
             log::trace!(
-                "Terminating trace: low coherency {:.3} at ({}, {})",
-                coherency,
-                next_x_i,
-                next_y_i
+                "Terminating trace: low coherency {coherency:.3} at ({next_x_i}, {next_y_i})"
             );
             break;
         }
@@ -455,17 +432,16 @@ fn smooth_polyline(polyline: Polyline, max_duplicate_distance: f32) -> Polyline 
     let mut smoothed = Polyline::new();
     smoothed.push(polyline[0]); // Always keep first point
 
-    for i in 1..polyline.len() {
-        let current = polyline[i];
+    for current in polyline.iter().skip(1) {
         let previous = smoothed.last().unwrap();
 
         // Skip if too close to previous point
-        let distance = previous.distance_to(&current);
+        let distance = previous.distance_to(current);
         if distance < max_duplicate_distance {
             continue;
         }
 
-        smoothed.push(current);
+        smoothed.push(*current);
     }
 
     // Always keep last point if different from current last
@@ -529,11 +505,12 @@ mod tests {
 
     #[test]
     fn test_polyline_smoothing() {
-        let mut polyline = Polyline::new();
-        polyline.push(Point::new(0.0, 0.0));
-        polyline.push(Point::new(0.1, 0.0)); // Very close point
-        polyline.push(Point::new(1.0, 0.0));
-        polyline.push(Point::new(2.0, 0.0));
+        let polyline = vec![
+            Point::new(0.0, 0.0),
+            Point::new(0.1, 0.0), // Very close point
+            Point::new(1.0, 0.0),
+            Point::new(2.0, 0.0),
+        ];
 
         let smoothed = smooth_polyline(polyline, 0.5);
 
@@ -546,14 +523,16 @@ mod tests {
 
     #[test]
     fn test_bidirectional_trace_combination() {
-        let mut backward = Polyline::new();
-        backward.push(Point::new(0.0, 0.0));
-        backward.push(Point::new(1.0, 0.0)); // This will be the seed point
+        let backward = vec![
+            Point::new(0.0, 0.0),
+            Point::new(1.0, 0.0), // This will be the seed point
+        ];
 
-        let mut forward = Polyline::new();
-        forward.push(Point::new(1.0, 0.0)); // Seed point
-        forward.push(Point::new(2.0, 0.0));
-        forward.push(Point::new(3.0, 0.0));
+        let forward = vec![
+            Point::new(1.0, 0.0), // Seed point
+            Point::new(2.0, 0.0),
+            Point::new(3.0, 0.0),
+        ];
 
         let combined = combine_bidirectional_traces(&backward, &forward);
 
@@ -588,8 +567,10 @@ mod tests {
         let etf_field = compute_etf(&img, &etf_config);
 
         // Configure tracing with appropriate step size for discrete pixels
-        let mut trace_config = TraceConfig::default();
-        trace_config.step_size = 0.8; // Step size optimized for discrete pixel tracing
+        let trace_config = TraceConfig {
+            step_size: 0.8, // Step size optimized for discrete pixel tracing
+            ..Default::default()
+        };
 
         // Trace polylines
         let polylines = trace_polylines(&img, &etf_field, &trace_config);

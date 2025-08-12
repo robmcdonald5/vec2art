@@ -44,8 +44,9 @@ mod image_generators {
     pub fn create_landscape_image(width: u32, height: u32) -> RgbaImage {
         ImageBuffer::from_fn(width, height, |x, y| {
             let horizon = height as f32 * 0.6;
-            let mountain_height = (((x as f32 / width as f32) * 6.28).sin() * 20.0
-                + ((x as f32 / width as f32) * 12.56).sin() * 10.0)
+            let mountain_height = (((x as f32 / width as f32) * std::f32::consts::TAU).sin()
+                * 20.0
+                + ((x as f32 / width as f32) * (2.0 * std::f32::consts::TAU)).sin() * 10.0)
                 + horizon
                 - 40.0;
 
@@ -228,22 +229,19 @@ mod portrait_tests {
 
         for style in &styles {
             let mut config = DotConfig::default();
-            apply_style_preset(&mut config, style.clone());
+            apply_style_preset(&mut config, *style);
 
             let dots = generate_dots_from_image(&img, &config, None, None);
             assert!(
                 !dots.is_empty(),
-                "Portrait should generate dots with {:?} style",
-                style
+                "Portrait should generate dots with {style:?} style"
             );
 
             // Portraits should have reasonable dot density
             let dot_density = dots.len() as f32 / (128.0 * 128.0);
             assert!(
                 dot_density > 0.001 && dot_density < 0.3,
-                "Portrait dot density should be reasonable: {} for style {:?}",
-                dot_density,
-                style
+                "Portrait dot density should be reasonable: {dot_density} for style {style:?}"
             );
         }
     }
@@ -273,9 +271,7 @@ mod portrait_tests {
 
         assert!(
             face_density >= 0.0 && corner_density >= 0.0,
-            "Both areas should have non-negative density: face={}, corner={}",
-            face_density,
-            corner_density
+            "Both areas should have non-negative density: face={face_density}, corner={corner_density}"
         );
     }
 
@@ -332,13 +328,12 @@ mod landscape_tests {
 
         for style in &styles {
             let mut config = DotConfig::default();
-            apply_style_preset(&mut config, style.clone());
+            apply_style_preset(&mut config, *style);
 
             let dots = generate_dots_from_image(&img, &config, None, None);
             assert!(
                 !dots.is_empty(),
-                "Landscape should generate dots with {:?} style",
-                style
+                "Landscape should generate dots with {style:?} style"
             );
 
             // Landscapes typically have varied density
@@ -346,8 +341,7 @@ mod landscape_tests {
             let dot_density = dots.len() as f32 / total_area;
             assert!(
                 dot_density > 0.001,
-                "Landscape should have reasonable dot density: {}",
-                dot_density
+                "Landscape should have reasonable dot density: {dot_density}"
             );
         }
     }
@@ -378,9 +372,7 @@ mod landscape_tests {
 
         assert!(
             sky_density >= 0.0 && ground_density >= 0.0,
-            "Both sky and ground should have valid density: sky={}, ground={}",
-            sky_density,
-            ground_density
+            "Both sky and ground should have valid density: sky={sky_density}, ground={ground_density}"
         );
     }
 
@@ -476,13 +468,12 @@ mod logo_graphics_tests {
 
         for style in &styles {
             let mut config = DotConfig::default();
-            apply_style_preset(&mut config, style.clone());
+            apply_style_preset(&mut config, *style);
 
             let dots = generate_dots_from_image(&img, &config, None, None);
             assert!(
                 !dots.is_empty(),
-                "Technical drawing should generate dots with {:?} style",
-                style
+                "Technical drawing should generate dots with {style:?} style"
             );
 
             // Technical drawings should capture line details
@@ -560,9 +551,7 @@ mod edge_case_tests {
             let dot_density = dots.len() as f32 / (32.0 * 32.0);
             assert!(
                 dot_density <= 0.1,
-                "Solid color should have low dot density: {} for {:?}",
-                dot_density,
-                color
+                "Solid color should have low dot density: {dot_density} for {color:?}"
             );
         }
     }
@@ -600,8 +589,7 @@ mod edge_case_tests {
         let dot_density = dots.len() as f32 / (64.0 * 64.0);
         assert!(
             dot_density >= 0.001,
-            "Low contrast should still generate some dots: {}",
-            dot_density
+            "Low contrast should still generate some dots: {dot_density}"
         );
     }
 
@@ -654,8 +642,7 @@ mod edge_case_tests {
         let processing_rate = pixel_count as f32 / elapsed.as_millis() as f32;
         assert!(
             processing_rate > 100.0,
-            "Processing rate should be reasonable: {} pixels/ms",
-            processing_rate
+            "Processing rate should be reasonable: {processing_rate} pixels/ms"
         );
     }
 
@@ -673,24 +660,18 @@ mod edge_case_tests {
 
             assert!(
                 !dots.is_empty(),
-                "{}x{} image should generate dots",
-                width,
-                height
+                "{width}x{height} image should generate dots"
             );
 
             // Dots should be within image bounds
             for dot in &dots {
                 assert!(
                     dot.x >= 0.0 && dot.x < *width as f32,
-                    "Dot x should be in bounds for {}x{}",
-                    width,
-                    height
+                    "Dot x should be in bounds for {width}x{height}"
                 );
                 assert!(
                     dot.y >= 0.0 && dot.y < *height as f32,
-                    "Dot y should be in bounds for {}x{}",
-                    width,
-                    height
+                    "Dot y should be in bounds for {width}x{height}"
                 );
             }
         }
@@ -761,11 +742,11 @@ mod integration_pipeline_tests {
         for (name, img) in &test_images {
             // Test complete pipeline: image -> dots -> SVG
             let dots = generate_dots_from_image(img, &DotConfig::default(), None, None);
-            assert!(!dots.is_empty(), "{} image should generate dots", name);
+            assert!(!dots.is_empty(), "{name} image should generate dots");
 
             let svg = dots_to_svg_with_config(&dots, &SvgDotConfig::default());
-            assert!(svg.contains("<svg"), "{} SVG should be valid", name);
-            assert!(svg.contains("</svg>"), "{} SVG should be complete", name);
+            assert!(svg.contains("<svg"), "{name} SVG should be valid");
+            assert!(svg.contains("</svg>"), "{name} SVG should be complete");
 
             // Test performance
             let start = Instant::now();
@@ -795,14 +776,10 @@ mod integration_pipeline_tests {
 
         for style in &styles {
             let mut config = DotConfig::default();
-            apply_style_preset(&mut config, style.clone());
+            apply_style_preset(&mut config, *style);
 
             let dots = generate_dots_from_image(&img, &config, None, None);
-            assert!(
-                !dots.is_empty(),
-                "Style {:?} should work consistently",
-                style
-            );
+            assert!(!dots.is_empty(), "Style {style:?} should work consistently");
 
             // Verify style characteristics are applied
             let avg_radius = dots.iter().map(|d| d.radius).sum::<f32>() / dots.len() as f32;
@@ -810,15 +787,11 @@ mod integration_pipeline_tests {
 
             assert!(
                 avg_radius > 0.0 && avg_radius < 10.0,
-                "Style {:?} should have reasonable average radius: {}",
-                style,
-                avg_radius
+                "Style {style:?} should have reasonable average radius: {avg_radius}"
             );
             assert!(
-                avg_opacity >= 0.0 && avg_opacity <= 1.0,
-                "Style {:?} should have valid average opacity: {}",
-                style,
-                avg_opacity
+                (0.0..=1.0).contains(&avg_opacity),
+                "Style {style:?} should have valid average opacity: {avg_opacity}"
             );
         }
     }
@@ -872,20 +845,18 @@ mod integration_pipeline_tests {
             let result =
                 std::panic::catch_unwind(|| generate_dots_from_image(&img, config, None, None));
 
-            assert!(result.is_ok(), "Boundary config {} should not panic", i);
+            assert!(result.is_ok(), "Boundary config {i} should not panic");
 
             if let Ok(dots) = result {
                 // Verify dots are still valid even with extreme parameters
                 for dot in &dots {
                     assert!(
                         dot.radius >= config.min_radius && dot.radius <= config.max_radius,
-                        "Boundary config {} should respect radius limits",
-                        i
+                        "Boundary config {i} should respect radius limits"
                     );
                     assert!(
                         dot.opacity >= 0.0 && dot.opacity <= 1.0,
-                        "Boundary config {} should maintain valid opacity",
-                        i
+                        "Boundary config {i} should maintain valid opacity"
                     );
                 }
             }
@@ -918,11 +889,7 @@ mod integration_pipeline_tests {
                 generate_dots_from_image(img, &DotConfig::default(), None, None)
             });
 
-            assert!(
-                result.is_ok(),
-                "Edge case image {} should not cause panic",
-                i
-            );
+            assert!(result.is_ok(), "Edge case image {i} should not cause panic");
 
             if let Ok(dots) = result {
                 // Should produce valid dots even if few/none

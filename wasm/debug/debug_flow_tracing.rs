@@ -181,7 +181,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             rgba_img.height(),
             &svg_config,
         );
-        fs::write(format!("{}/debug_flow_strict.svg", output_dir), svg_content)?;
+        fs::write(format!("{output_dir}/debug_flow_strict.svg"), svg_content)?;
     }
 
     if !loose_flow_paths.is_empty() {
@@ -191,7 +191,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             rgba_img.height(),
             &svg_config,
         );
-        fs::write(format!("{}/debug_flow_loose.svg", output_dir), svg_content)?;
+        fs::write(format!("{output_dir}/debug_flow_loose.svg"), svg_content)?;
     }
 
     Ok(())

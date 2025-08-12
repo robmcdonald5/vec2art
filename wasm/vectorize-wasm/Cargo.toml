@@ -10,8 +10,12 @@ repository = "https://github.com/your-org/vec2art"
 crate-type = ["cdylib"]
 
 [dependencies]
-# Core vectorization library
-vectorize-core = { path = "../vectorize-core" }
+# Core vectorization library with conditional parallel features
+vectorize-core = { path = "../vectorize-core", default-features = false, features = ["wasm-bindgen", "web-sys"] }
+
+# Multi-threading support for WASM
+# Using RReverser fork since GoogleChromeLabs archived their version in July 2024
+wasm-bindgen-rayon = { git = "https://github.com/RReverser/wasm-bindgen-rayon", optional = true }
 
 # Image processing (needed for ImageBuffer)
 image = { workspace = true }
@@ -22,10 +26,16 @@ js-sys = { workspace = true }
 web-sys = { workspace = true, features = [
   "console",
   "ImageData",
+  "Navigator",
   "Performance",
   "PerformanceEntry",
   "PerformanceMark",
   "PerformanceMeasure",
+  "Window",
+  "Worker",
+  "WorkerGlobalScope",
+  "WorkerOptions",
+  "WorkerType",
 ] }
 
 # Error handling and panic hooks
@@ -35,15 +45,27 @@ wee_alloc = { workspace = true }
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
 
 # Logging
 log = { workspace = true }
 console_log = "0.2"
 
+[dev-dependencies]
+wasm-bindgen-test = { workspace = true }
+
+# Benchmarking dependencies
+criterion = { version = "0.5", features = ["html_reports"] }
+rand = { version = "0.8", features = ["std_rng"] }
+
 [features]
 default = ["console_error_panic_hook", "wee_alloc"]
 console_error_panic_hook = []
 wee_alloc = []
+# Multi-threading support with atomics and shared memory
+wasm-parallel = ["wasm-bindgen-rayon", "vectorize-core/wasm-parallel"]
+# Single-threaded mode for compatibility
+single-threaded = ["vectorize-core/single-threaded"]
 
 # Enable optimizations for wasm builds
 [package.metadata.wasm-pack.profile.release]

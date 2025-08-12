@@ -31,8 +31,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    println!("  Non-zero gradients: {}", non_zero_gradients);
-    println!("  Max gradient: {:.6}", max_gradient);
+    println!("  Non-zero gradients: {non_zero_gradients}");
+    println!("  Max gradient: {max_gradient:.6}");
     println!(
         "  Average gradient: {:.6}",
         gradient_sum / gradient_analysis.magnitude.len() as f32
@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if index < gradient_analysis.magnitude.len() {
                 let grad = gradient_analysis.magnitude[index];
                 let pixel = rgba_img.get_pixel(x, y);
-                println!("  ({}, {}): pixel={:?}, gradient={:.6}", x, y, pixel, grad);
+                println!("  ({x}, {y}): pixel={pixel:?}, gradient={grad:.6}");
             }
         }
     }

@@ -21,7 +21,7 @@ pub fn run_basic_validation() -> Result<()> {
     let start_time = Instant::now();
 
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--release",
             "--bin",
@@ -58,7 +58,7 @@ pub fn run_basic_validation() -> Result<()> {
     let start_time = Instant::now();
 
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--release",
             "--bin",
@@ -95,7 +95,7 @@ pub fn run_basic_validation() -> Result<()> {
     println!("[3/4] Testing parameter validation...");
 
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--release",
             "--bin",
@@ -124,7 +124,7 @@ pub fn run_basic_validation() -> Result<()> {
     let start_time = Instant::now();
 
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--release",
             "--bin",
@@ -150,15 +150,9 @@ pub fn run_basic_validation() -> Result<()> {
     if output.status.success() {
         let time_ms = perf_time.as_millis();
         if time_ms <= 1500 {
-            println!(
-                "  ✅ Performance benchmark PASSED in {:.0}ms (target: <1500ms)",
-                time_ms
-            );
+            println!("  ✅ Performance benchmark PASSED in {time_ms:.0}ms (target: <1500ms)");
         } else {
-            println!(
-                "  ⚠️ Performance benchmark SLOW in {:.0}ms (target: <1500ms)",
-                time_ms
-            );
+            println!("  ⚠️ Performance benchmark SLOW in {time_ms:.0}ms (target: <1500ms)");
         }
     } else {
         println!("  ❌ Performance benchmark FAILED");
@@ -177,7 +171,7 @@ pub fn run_basic_validation() -> Result<()> {
             let metadata = fs::metadata(file_path)?;
             println!("  📁 Generated: {} ({} bytes)", file_path, metadata.len());
         } else {
-            println!("  ❌ Missing output file: {}", file_path);
+            println!("  ❌ Missing output file: {file_path}");
         }
     }
 
@@ -202,7 +196,7 @@ fn main() -> Result<()> {
             println!("📁 Test outputs saved to examples/outputs/dot_mapping/");
         }
         Err(e) => {
-            println!("\n❌ CLI validation failed: {}", e);
+            println!("\n❌ CLI validation failed: {e}");
             println!("🔧 Please review the test results and fix any issues");
             std::process::exit(1);
         }

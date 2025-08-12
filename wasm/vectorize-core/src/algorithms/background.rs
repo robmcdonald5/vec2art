@@ -4,10 +4,10 @@
 //! perceptual color similarity, edge-pixel sampling, and k-means clustering to
 //! handle complex backgrounds with multiple colors and gradients.
 
+use crate::execution::*;
 use image::{Rgba, RgbaImage};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
-use rayon::prelude::*;
 
 /// Configuration for background detection
 #[derive(Debug, Clone)]
@@ -129,7 +129,7 @@ pub fn rgba_to_lab(rgba: &Rgba<u8>) -> LabColor {
     // Convert linear RGB to XYZ using sRGB matrix
     let x = 0.4124564 * linear_rgb[0] + 0.3575761 * linear_rgb[1] + 0.1804375 * linear_rgb[2];
     let y = 0.2126729 * linear_rgb[0] + 0.7151522 * linear_rgb[1] + 0.0721750 * linear_rgb[2];
-    let z = 0.0193339 * linear_rgb[0] + 0.1191920 * linear_rgb[1] + 0.9503041 * linear_rgb[2];
+    let z = 0.0193339 * linear_rgb[0] + 0.119_192 * linear_rgb[1] + 0.9503041 * linear_rgb[2];
 
     // Normalize by D65 white point
     let xn = x / 0.95047;
@@ -433,20 +433,22 @@ pub fn detect_background_advanced(rgba: &RgbaImage, config: &BackgroundConfig) -
         .flat_map(|y| (0..width).map(move |x| (x, y)))
         .collect();
 
-    let background_results: Vec<bool> = if total_pixels > 10000 {
-        // Use parallel processing for large images
-        pixel_coords
-            .par_iter()
-            .map(|&(x, y)| {
-                let pixel = rgba.get_pixel(x, y);
-                let pixel_lab = rgba_to_lab(pixel);
+    #[cfg(feature = "parallel")]
+    let use_parallel = total_pixels > 10000;
+    #[cfg(not(feature = "parallel"))]
+    let use_parallel = false;
 
-                // Check if pixel is similar to any background color
-                background_colors
-                    .iter()
-                    .any(|bg_color| pixel_lab.distance_to(bg_color) <= config.tolerance)
-            })
-            .collect()
+    let background_results: Vec<bool> = if use_parallel {
+        // Use parallel processing for large images using execution abstraction
+        execute_parallel(pixel_coords, |(x, y)| {
+            let pixel = rgba.get_pixel(x, y);
+            let pixel_lab = rgba_to_lab(pixel);
+
+            // Check if pixel is similar to any background color
+            background_colors
+                .iter()
+                .any(|bg_color| pixel_lab.distance_to(bg_color) <= config.tolerance)
+        })
     } else {
         // Sequential processing for smaller images
         pixel_coords
@@ -808,8 +810,7 @@ mod tests {
         let foreground_ratio = foreground_in_red_area as f32 / total_in_red_area as f32;
         assert!(
             foreground_ratio > 0.5,
-            "Most of red area should be detected as foreground, got ratio: {}",
-            foreground_ratio
+            "Most of red area should be detected as foreground, got ratio: {foreground_ratio}"
         );
     }
 }

@@ -85,8 +85,7 @@ fn generate_test_dots_with_style(style: DotStyle) -> Vec<Dot> {
 
     apply_style_preset(&mut config, style);
 
-    let dots = generate_dots_from_image(&img, &config, None, None);
-    dots
+    generate_dots_from_image(&img, &config, None, None)
 }
 
 #[test]
@@ -101,16 +100,14 @@ fn test_fine_stippling_characteristics() {
         let avg_radius: f32 = dots.iter().map(|d| d.radius).sum::<f32>() / dots.len() as f32;
         assert!(
             avg_radius <= 1.0,
-            "Fine stippling average radius too large: {}",
-            avg_radius
+            "Fine stippling average radius too large: {avg_radius}"
         );
 
         // Should have high opacity
         let avg_opacity: f32 = dots.iter().map(|d| d.opacity).sum::<f32>() / dots.len() as f32;
         assert!(
             avg_opacity >= 0.7,
-            "Fine stippling opacity too low: {}",
-            avg_opacity
+            "Fine stippling opacity too low: {avg_opacity}"
         );
 
         // Should have minimal radius variation
@@ -122,9 +119,7 @@ fn test_fine_stippling_characteristics() {
         // Fine stippling should have small radius variation (more lenient for different test images)
         assert!(
             radius_range <= avg_radius * 1.0,
-            "Fine stippling radius variation too high: {} vs avg {}",
-            radius_range,
-            avg_radius
+            "Fine stippling radius variation too high: {radius_range} vs avg {avg_radius}"
         );
     }
 }
@@ -141,8 +136,7 @@ fn test_bold_pointillism_characteristics() {
         let avg_radius: f32 = dots.iter().map(|d| d.radius).sum::<f32>() / dots.len() as f32;
         assert!(
             avg_radius >= 1.5,
-            "Bold pointillism average radius too small: {}",
-            avg_radius
+            "Bold pointillism average radius too small: {avg_radius}"
         );
 
         // Should have more radius variation than fine stippling
@@ -193,8 +187,7 @@ fn test_sketch_style_characteristics() {
         let change_ratio = position_changes as f32 / dots.len() as f32;
         assert!(
             change_ratio >= 0.5,
-            "Sketch style should have significant position jitter: {}",
-            change_ratio
+            "Sketch style should have significant position jitter: {change_ratio}"
         );
 
         // Should have varied opacity and size
@@ -273,16 +266,14 @@ fn test_watercolor_effect_characteristics() {
         let avg_radius: f32 = dots.iter().map(|d| d.radius).sum::<f32>() / dots.len() as f32;
         assert!(
             avg_radius >= 2.0,
-            "Watercolor effect average radius too small: {}",
-            avg_radius
+            "Watercolor effect average radius too small: {avg_radius}"
         );
 
         // Should have low opacity for layering
         let avg_opacity: f32 = dots.iter().map(|d| d.opacity).sum::<f32>() / dots.len() as f32;
         assert!(
             avg_opacity <= 0.8,
-            "Watercolor effect opacity too high: {}",
-            avg_opacity
+            "Watercolor effect opacity too high: {avg_opacity}"
         );
 
         // Should have significant position variation
@@ -299,8 +290,7 @@ fn test_watercolor_effect_characteristics() {
         // More lenient check for watercolor opacity variation
         assert!(
             opacity_range >= 0.1,
-            "Watercolor should have some opacity variation: {} range",
-            opacity_range
+            "Watercolor should have some opacity variation: {opacity_range} range"
         );
         assert!(radius_range >= 1.0, "Watercolor should have size variation");
     }
@@ -344,8 +334,7 @@ fn test_style_differences() {
 
                 assert!(
                     has_significant_difference,
-                    "Styles {:?} and {:?} should produce different results. Radius diff: {}, Opacity diff: {}",
-                    style_a, style_b, radius_diff, opacity_diff
+                    "Styles {style_a:?} and {style_b:?} should produce different results. Radius diff: {radius_diff}, Opacity diff: {opacity_diff}"
                 );
             }
         }
@@ -382,8 +371,8 @@ fn test_color_preservation_with_styles() {
 
             // All colors should be valid hex format
             for color in &unique_colors {
-                assert!(color.starts_with('#'), "Invalid color format: {}", color);
-                assert_eq!(color.len(), 7, "Invalid color format: {}", color);
+                assert!(color.starts_with('#'), "Invalid color format: {color}");
+                assert_eq!(color.len(), 7, "Invalid color format: {color}");
             }
         }
     }
@@ -492,8 +481,7 @@ fn test_style_consistency() {
             assert_eq!(
                 dots1.len(),
                 dots2.len(),
-                "Dot count should be consistent for style {:?}",
-                style
+                "Dot count should be consistent for style {style:?}"
             );
 
             // Properties should be very similar (allowing for floating point precision)
@@ -525,8 +513,7 @@ fn test_edge_cases() {
 
         assert!(
             dots.is_empty(),
-            "Empty image should produce no dots for style {:?}",
-            style
+            "Empty image should produce no dots for style {style:?}"
         );
     }
 

@@ -9,7 +9,7 @@ fn test_dots_backend_end_to_end_integration() {
     // Create a white background with a black square in the center
     for y in 0..50 {
         for x in 0..50 {
-            if x >= 20 && x < 30 && y >= 20 && y < 30 {
+            if (20..30).contains(&x) && (20..30).contains(&y) {
                 // Black square in center
                 img.put_pixel(x, y, Rgba([0, 0, 0, 255]));
             } else {

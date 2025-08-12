@@ -23,9 +23,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let foreground_pixels = total_pixels - background_pixels;
 
     println!("Background detection:");
-    println!("  Total pixels: {}", total_pixels);
-    println!("  Background pixels: {}", background_pixels);
-    println!("  Foreground pixels: {}", foreground_pixels);
+    println!("  Total pixels: {total_pixels}");
+    println!("  Background pixels: {background_pixels}");
+    println!("  Foreground pixels: {foreground_pixels}");
     println!(
         "  Foreground ratio: {:.2}%",
         (foreground_pixels as f32 / total_pixels as f32) * 100.0
@@ -38,10 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let index = (y * rgba_img.width() + x) as usize;
             let is_bg = background_mask[index];
             let pixel = rgba_img.get_pixel(x, y);
-            println!(
-                "  ({}, {}): pixel={:?}, is_background={}",
-                x, y, pixel, is_bg
-            );
+            println!("  ({x}, {y}): pixel={pixel:?}, is_background={is_bg}");
         }
     }
 

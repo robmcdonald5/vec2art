@@ -84,9 +84,7 @@ impl TestAssets {
 
         ImageBuffer::from_fn(width, height, |x, y| {
             let distance = ((x as f32 - center_x).powi(2) + (y as f32 - center_y).powi(2)).sqrt();
-            let intensity = ((1.0 - distance / max_distance) * 255.0)
-                .max(0.0)
-                .min(255.0) as u8;
+            let intensity = ((1.0 - distance / max_distance) * 255.0).clamp(0.0, 255.0) as u8;
             Rgba([intensity, intensity, intensity, 255])
         })
     }
@@ -105,7 +103,7 @@ impl TestAssets {
                 // Face area - skin tone with features
                 let feature_intensity = (angle * 3.0).sin() * 10.0 + (distance / 20.0).sin() * 15.0;
                 let base_intensity = 220.0 + feature_intensity;
-                let intensity = base_intensity.max(180.0).min(255.0) as u8;
+                let intensity = base_intensity.clamp(180.0, 255.0) as u8;
                 Rgba([intensity, intensity - 30, intensity - 40, 255])
             } else if distance < face_radius {
                 // Hair area
@@ -126,8 +124,9 @@ impl TestAssets {
         let horizon = height as f32 * 0.6;
 
         ImageBuffer::from_fn(width, height, |x, y| {
-            let mountain_height = (((x as f32 / width as f32) * 6.28).sin() * 25.0
-                + ((x as f32 / width as f32) * 12.56).sin() * 12.0)
+            let mountain_height = (((x as f32 / width as f32) * std::f32::consts::TAU).sin()
+                * 25.0
+                + ((x as f32 / width as f32) * (2.0 * std::f32::consts::TAU)).sin() * 12.0)
                 + horizon
                 - 50.0;
 
@@ -145,7 +144,7 @@ impl TestAssets {
             } else if (y as f32) < horizon {
                 // Mountains with shading
                 let mountain_shade = 120 + ((mountain_height - y as f32) * 1.5) as i32;
-                let shade = mountain_shade.max(60).min(180) as u8;
+                let shade = mountain_shade.clamp(60, 180) as u8;
                 Rgba([shade, shade + 15, shade - 10, 255])
             } else {
                 // Ground with texture
@@ -341,7 +340,7 @@ impl TestAssets {
             let noise = ((x * 7 + y * 11) % 137) as f32 / 137.0 * 0.2;
 
             let combined = pattern1 + pattern2 + pattern3 + noise + 0.5;
-            let intensity = (combined * 255.0).max(0.0).min(255.0) as u8;
+            let intensity = (combined * 255.0).clamp(0.0, 255.0) as u8;
 
             // Create color variations
             let r = intensity;
@@ -542,8 +541,7 @@ mod tests {
         for (name, image) in all_images {
             assert!(
                 image.width() > 0 && image.height() > 0,
-                "Image '{}' should have positive dimensions",
-                name
+                "Image '{name}' should have positive dimensions"
             );
 
             // Verify image is not completely uniform (except solid colors)
@@ -552,8 +550,7 @@ mod tests {
                 let different_pixel_exists = image.pixels().any(|pixel| pixel != first_pixel);
                 assert!(
                     different_pixel_exists,
-                    "Image '{}' should have pixel variation",
-                    name
+                    "Image '{name}' should have pixel variation"
                 );
             }
         }

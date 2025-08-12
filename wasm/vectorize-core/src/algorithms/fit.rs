@@ -8,7 +8,7 @@
 //! - CPU-optimized iterative fitting with numerical stability
 
 use crate::algorithms::trace::{Point2F, Polyline};
-use rayon::prelude::*;
+use crate::execution::*;
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
@@ -162,12 +162,30 @@ pub fn fit_beziers(poly: &Polyline, cfg: &FitConfig) -> Vec<CubicBezier> {
         corner_indices.len()
     );
 
-    // Step 2: Fit Bézier curves to each segment
-    let bezier_curves: Vec<CubicBezier> = segments
-        .par_iter()
+    // Step 2: Fit Bézier curves to each segment using execution abstraction
+    #[cfg(feature = "parallel")]
+    let use_parallel = segments.len() > 1; // Use parallel processing if we have multiple segments
+    #[cfg(not(feature = "parallel"))]
+    let use_parallel = false;
+
+    let valid_segments: Vec<&Polyline> = segments
+        .iter()
         .filter(|segment| segment.len() >= cfg.min_segment_length)
-        .flat_map(|segment| fit_segment_recursive(segment, cfg, 0))
         .collect();
+
+    let bezier_curves: Vec<CubicBezier> = if use_parallel {
+        execute_parallel(valid_segments, |segment| {
+            fit_segment_recursive(segment, cfg, 0)
+        })
+        .into_iter()
+        .flatten()
+        .collect()
+    } else {
+        valid_segments
+            .iter()
+            .flat_map(|segment| fit_segment_recursive(segment, cfg, 0))
+            .collect()
+    };
 
     let duration = start_time.elapsed();
     log::debug!(
@@ -559,12 +577,13 @@ mod tests {
 
     #[test]
     fn test_turning_angle_computation() {
-        let mut poly = Polyline::new();
-        poly.push(Point2F::new(0.0, 0.0));
-        poly.push(Point2F::new(1.0, 0.0));
-        poly.push(Point2F::new(2.0, 0.0));
-        poly.push(Point2F::new(3.0, 1.0)); // Turn upward
-        poly.push(Point2F::new(4.0, 2.0));
+        let poly = vec![
+            Point2F::new(0.0, 0.0),
+            Point2F::new(1.0, 0.0),
+            Point2F::new(2.0, 0.0),
+            Point2F::new(3.0, 1.0), // Turn upward
+            Point2F::new(4.0, 2.0),
+        ];
 
         let angle = compute_turning_angle(&poly, 2, 1);
 
@@ -574,12 +593,13 @@ mod tests {
 
     #[test]
     fn test_corner_detection() {
-        let mut poly = Polyline::new();
-        poly.push(Point2F::new(0.0, 0.0));
-        poly.push(Point2F::new(1.0, 0.0));
-        poly.push(Point2F::new(2.0, 0.0));
-        poly.push(Point2F::new(2.0, 1.0)); // 90-degree corner
-        poly.push(Point2F::new(2.0, 2.0));
+        let poly = vec![
+            Point2F::new(0.0, 0.0),
+            Point2F::new(1.0, 0.0),
+            Point2F::new(2.0, 0.0),
+            Point2F::new(2.0, 1.0), // 90-degree corner
+            Point2F::new(2.0, 2.0),
+        ];
 
         let config = FitConfig::default();
         let corners = detect_corners(&poly, &config);
@@ -590,10 +610,11 @@ mod tests {
 
     #[test]
     fn test_tangent_estimation() {
-        let mut poly = Polyline::new();
-        poly.push(Point2F::new(0.0, 0.0));
-        poly.push(Point2F::new(1.0, 0.0));
-        poly.push(Point2F::new(2.0, 0.0));
+        let poly = vec![
+            Point2F::new(0.0, 0.0),
+            Point2F::new(1.0, 0.0),
+            Point2F::new(2.0, 0.0),
+        ];
 
         let start_tangent = estimate_tangent(&poly, 0);
         let end_tangent = estimate_tangent(&poly, 2);
@@ -607,11 +628,12 @@ mod tests {
 
     #[test]
     fn test_fit_beziers_simple_line() {
-        let mut poly = Polyline::new();
-        poly.push(Point2F::new(0.0, 0.0));
-        poly.push(Point2F::new(1.0, 0.0));
-        poly.push(Point2F::new(2.0, 0.0));
-        poly.push(Point2F::new(3.0, 0.0));
+        let poly = vec![
+            Point2F::new(0.0, 0.0),
+            Point2F::new(1.0, 0.0),
+            Point2F::new(2.0, 0.0),
+            Point2F::new(3.0, 0.0),
+        ];
 
         let config = FitConfig::default();
         let beziers = fit_beziers(&poly, &config);

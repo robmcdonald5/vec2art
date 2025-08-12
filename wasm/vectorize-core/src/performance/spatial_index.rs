@@ -263,8 +263,8 @@ impl SpatialGrid {
     /// Get positions of all dots currently in the grid
     fn get_all_dot_positions(&self, dots: &[Dot]) -> Vec<(usize, f32, f32)> {
         let mut positions = Vec::new();
-        for (_gy, row) in self.grid.iter().enumerate() {
-            for (_gx, cell) in row.iter().enumerate() {
+        for row in self.grid.iter() {
+            for cell in row.iter() {
                 for &dot_index in cell {
                     if dot_index < dots.len() {
                         let dot = &dots[dot_index];

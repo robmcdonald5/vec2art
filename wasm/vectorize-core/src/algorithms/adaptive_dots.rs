@@ -7,8 +7,8 @@
 use crate::algorithms::background::{detect_background_advanced, BackgroundConfig};
 use crate::algorithms::dots::{Dot, DotConfig};
 use crate::algorithms::gradients::GradientAnalysis;
+use crate::execution::execute_parallel;
 use image::RgbaImage;
-use rayon::prelude::*;
 use std::collections::HashMap;
 
 /// Configuration for adaptive density processing
@@ -216,29 +216,20 @@ pub fn analyze_image_regions(gradient: &GradientAnalysis, region_size: u32) -> V
     let width = gradient.width;
     let height = gradient.height;
 
-    let regions_x = (width + region_size - 1) / region_size;
-    let regions_y = (height + region_size - 1) / region_size;
-    let total_regions = (regions_x * regions_y) as usize;
+    let regions_x = width.div_ceil(region_size);
+    let regions_y = height.div_ceil(region_size);
+    let _total_regions = (regions_x * regions_y) as usize;
 
     // Generate region coordinates
     let region_coords: Vec<_> = (0..regions_y)
         .flat_map(|ry| (0..regions_x).map(move |rx| (rx * region_size, ry * region_size)))
         .collect();
 
-    // Use parallel processing for large numbers of regions
-    let use_parallel = total_regions > 64; // Threshold for parallel processing
-
-    if use_parallel {
-        region_coords
-            .par_iter()
-            .map(|&(x, y)| analyze_single_region(gradient, x, y, region_size, width, height))
-            .collect()
-    } else {
-        region_coords
-            .iter()
-            .map(|&(x, y)| analyze_single_region(gradient, x, y, region_size, width, height))
-            .collect()
-    }
+    // Use execution abstraction for parallel processing
+    let region_data: Vec<_> = region_coords.into_iter().collect();
+    execute_parallel(region_data, |(x, y)| {
+        analyze_single_region(gradient, x, y, region_size, width, height)
+    })
 }
 
 /// Analyze a single region for complexity (optimized helper function)
@@ -502,53 +493,34 @@ pub fn smooth_density_transitions(
         *weight /= kernel_sum;
     }
 
-    // First pass: horizontal blur
+    // First pass: horizontal blur using execution abstraction
     let mut temp = vec![0.0; width * height];
-    let use_parallel = width * height > 10000; // Performance threshold
+    let row_indices: Vec<usize> = (0..height).collect();
+    let processed_rows = execute_parallel(row_indices, |y| {
+        let mut row = vec![0.0; width];
+        apply_horizontal_blur(density_map, &mut row, y, width, &kernel_1d, radius);
+        (y, row)
+    });
 
-    if use_parallel {
-        temp.par_chunks_mut(width).enumerate().for_each(|(y, row)| {
-            apply_horizontal_blur(density_map, row, y, width, &kernel_1d, radius);
-        });
-    } else {
-        for y in 0..height {
-            let row_start = y * width;
-            let row_end = row_start + width;
-            apply_horizontal_blur(
-                density_map,
-                &mut temp[row_start..row_end],
-                y,
-                width,
-                &kernel_1d,
-                radius,
-            );
-        }
+    // Copy results back to temp buffer
+    for (y, row) in processed_rows {
+        let row_start = y * width;
+        temp[row_start..row_start + width].copy_from_slice(&row);
     }
 
-    // Second pass: vertical blur
+    // Second pass: vertical blur using execution abstraction
     let mut smoothed = vec![0.0; width * height];
+    let row_indices: Vec<usize> = (0..height).collect();
+    let processed_rows = execute_parallel(row_indices, |y| {
+        let mut row = vec![0.0; width];
+        apply_vertical_blur(&temp, &mut row, y, width, height, &kernel_1d, radius);
+        (y, row)
+    });
 
-    if use_parallel {
-        smoothed
-            .par_chunks_mut(width)
-            .enumerate()
-            .for_each(|(y, row)| {
-                apply_vertical_blur(&temp, row, y, width, height, &kernel_1d, radius);
-            });
-    } else {
-        for y in 0..height {
-            let row_start = y * width;
-            let row_end = row_start + width;
-            apply_vertical_blur(
-                &temp,
-                &mut smoothed[row_start..row_end],
-                y,
-                width,
-                height,
-                &kernel_1d,
-                radius,
-            );
-        }
+    // Copy results back to smoothed buffer
+    for (y, row) in processed_rows {
+        let row_start = y * width;
+        smoothed[row_start..row_start + width].copy_from_slice(&row);
     }
 
     smoothed
@@ -565,7 +537,7 @@ fn apply_horizontal_blur(
 ) {
     let row_start = y * width;
 
-    for x in 0..width {
+    for (x, output) in output_row.iter_mut().enumerate().take(width) {
         let mut sum = 0.0;
 
         for (i, &weight) in kernel.iter().enumerate() {
@@ -574,7 +546,7 @@ fn apply_horizontal_blur(
             sum += input[row_start + px] * weight;
         }
 
-        output_row[x] = sum;
+        *output = sum;
     }
 }
 
@@ -693,7 +665,7 @@ mod tests {
 
         // All values should be between 0.0 and 1.0
         for &density in &density_map {
-            assert!(density >= 0.0 && density <= 1.0);
+            assert!((0.0..=1.0).contains(&density));
         }
     }
 

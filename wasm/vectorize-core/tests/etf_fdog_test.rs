@@ -23,19 +23,23 @@ fn test_etf_fdog_integration() {
     }
 
     // Test traditional Canny edge detection
-    let mut config_canny = TraceLowConfig::default();
-    config_canny.detail = 0.5;
-    config_canny.enable_etf_fdog = false;
+    let config_canny = TraceLowConfig {
+        detail: 0.5,
+        enable_etf_fdog: false,
+        ..Default::default()
+    };
 
     let result_canny = vectorize_trace_low_rgba(&img, &config_canny);
     assert!(result_canny.is_ok(), "Canny edge detection should work");
     let paths_canny = result_canny.unwrap();
 
     // Test ETF/FDoG edge detection
-    let mut config_etf = TraceLowConfig::default();
-    config_etf.detail = 0.5;
-    config_etf.enable_etf_fdog = true;
-    config_etf.backend = TraceBackend::Edge;
+    let config_etf = TraceLowConfig {
+        detail: 0.5,
+        enable_etf_fdog: true,
+        backend: TraceBackend::Edge,
+        ..Default::default()
+    };
 
     let result_etf = vectorize_trace_low_rgba(&img, &config_etf);
     assert!(result_etf.is_ok(), "ETF/FDoG edge detection should work");
@@ -75,10 +79,12 @@ fn test_etf_fdog_performance() {
     }
 
     // Test ETF/FDoG performance
-    let mut config = TraceLowConfig::default();
-    config.detail = 0.4;
-    config.enable_etf_fdog = true;
-    config.backend = TraceBackend::Edge;
+    let config = TraceLowConfig {
+        detail: 0.4,
+        enable_etf_fdog: true,
+        backend: TraceBackend::Edge,
+        ..Default::default()
+    };
 
     let start = Instant::now();
     let result = vectorize_trace_low_rgba(&img, &config);
@@ -118,7 +124,7 @@ fn test_etf_parameter_variations() {
     }
 
     // Test different ETF parameter configurations
-    let test_configs = vec![
+    let test_configs = [
         (4, 4, 0.2, 1.2, 2.0, 0.90, 0.08, 0.16), // Default
         (2, 2, 0.1, 0.8, 1.5, 0.85, 0.05, 0.12), // Lower settings
         (6, 6, 0.3, 1.5, 2.5, 0.95, 0.10, 0.20), // Higher settings
@@ -127,18 +133,20 @@ fn test_etf_parameter_variations() {
     for (i, (etf_radius, etf_iters, etf_tau, fdog_s, fdog_c, fdog_tau, nms_low, nms_high)) in
         test_configs.iter().enumerate()
     {
-        let mut config = TraceLowConfig::default();
-        config.detail = 0.4;
-        config.enable_etf_fdog = true;
-        config.backend = TraceBackend::Edge;
-        config.etf_radius = *etf_radius;
-        config.etf_iterations = *etf_iters;
-        config.etf_coherency_tau = *etf_tau;
-        config.fdog_sigma_s = *fdog_s;
-        config.fdog_sigma_c = *fdog_c;
-        config.fdog_tau = *fdog_tau;
-        config.nms_low = *nms_low;
-        config.nms_high = *nms_high;
+        let config = TraceLowConfig {
+            detail: 0.4,
+            enable_etf_fdog: true,
+            backend: TraceBackend::Edge,
+            etf_radius: *etf_radius,
+            etf_iterations: *etf_iters,
+            etf_coherency_tau: *etf_tau,
+            fdog_sigma_s: *fdog_s,
+            fdog_sigma_c: *fdog_c,
+            fdog_tau: *fdog_tau,
+            nms_low: *nms_low,
+            nms_high: *nms_high,
+            ..Default::default()
+        };
 
         let result = vectorize_trace_low_rgba(&img, &config);
         assert!(

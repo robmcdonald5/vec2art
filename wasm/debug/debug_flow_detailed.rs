@@ -76,10 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n=== Step 4: Applying Hysteresis ===");
     let adaptive_low = nms_max * 0.1;
     let adaptive_high = nms_max * 0.7;
-    println!(
-        "Using adaptive thresholds: low={:.6}, high={:.6}",
-        adaptive_low, adaptive_high
-    );
+    println!("Using adaptive thresholds: low={adaptive_low:.6}, high={adaptive_high:.6}");
 
     let binary_edges = hysteresis_threshold(
         &nms_edges,
@@ -108,7 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         image::Luma([value])
     });
     let edge_pixels = binary_image.pixels().filter(|p| p[0] > 0).count();
-    println!("✓ Binary edge image created: {} edge pixels", edge_pixels);
+    println!("✓ Binary edge image created: {edge_pixels} edge pixels");
 
     // Step 6: Flow-guided tracing
     println!("\n=== Step 6: Flow-Guided Tracing ===");
@@ -208,10 +205,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let detail = 0.3;
         let min_stroke_length_px = 10.0 + 40.0 * detail;
         println!();
-        println!(
-            "Minimum stroke length threshold: {:.1} px",
-            min_stroke_length_px
-        );
+        println!("Minimum stroke length threshold: {min_stroke_length_px:.1} px");
 
         let short_polylines = traced_polylines
             .iter()

@@ -175,7 +175,7 @@ fn test_dot_generation_complex_image() {
     let dots = generate_dots_from_image(&img, &config, None, None);
     let duration = start.elapsed();
 
-    println!("Complex image (200x200) processing time: {:?}", duration);
+    println!("Complex image (200x200) processing time: {duration:?}");
     println!("Generated {} dots", dots.len());
 
     // Should generate a reasonable number of dots
@@ -348,11 +348,11 @@ fn test_background_detection_effectiveness() {
 
     // Both should produce reasonable results
     assert!(
-        strict_dots.len() > 0,
+        !strict_dots.is_empty(),
         "Strict detection should still produce dots"
     );
     assert!(
-        loose_dots.len() > 0,
+        !loose_dots.is_empty(),
         "Loose detection should still produce dots"
     );
 }
@@ -379,10 +379,13 @@ fn test_adaptive_sizing_effectiveness() {
 
     // Both should generate dots
     assert!(
-        adaptive_dots.len() > 0,
+        !adaptive_dots.is_empty(),
         "Adaptive sizing should generate dots"
     );
-    assert!(simple_dots.len() > 0, "Simple sizing should generate dots");
+    assert!(
+        !simple_dots.is_empty(),
+        "Simple sizing should generate dots"
+    );
 
     // Calculate radius statistics
     if adaptive_dots.len() > 10 && simple_dots.len() > 10 {
@@ -392,8 +395,8 @@ fn test_adaptive_sizing_effectiveness() {
         let adaptive_variance = calculate_variance(&adaptive_radii);
         let simple_variance = calculate_variance(&simple_radii);
 
-        println!("Adaptive radius variance: {:.4}", adaptive_variance);
-        println!("Simple radius variance: {:.4}", simple_variance);
+        println!("Adaptive radius variance: {adaptive_variance:.4}");
+        println!("Simple radius variance: {simple_variance:.4}");
 
         // Adaptive sizing should generally show more radius variation
         // (though this depends on the specific image content)
@@ -447,7 +450,7 @@ fn test_density_threshold_effects() {
 
     // High threshold should still produce some dots in a complex image
     assert!(
-        high_dots.len() > 0,
+        !high_dots.is_empty(),
         "Even high threshold should produce some dots"
     );
 }
@@ -483,8 +486,8 @@ fn test_spatial_distribution_quality() {
         let min_distance = find_minimum_distance(&tight_dots);
         let expected_min = tight_spacing_config.min_radius * tight_spacing_config.spacing_factor;
 
-        println!("Minimum distance in tight spacing: {:.2}", min_distance);
-        println!("Expected minimum: {:.2}", expected_min);
+        println!("Minimum distance in tight spacing: {min_distance:.2}");
+        println!("Expected minimum: {expected_min:.2}");
 
         // Should respect spacing (with small tolerance for floating point)
         assert!(

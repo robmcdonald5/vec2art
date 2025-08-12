@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (name, path) in &test_images {
-        println!("=== Testing: {} ===", name);
+        println!("=== Testing: {name} ===");
 
         match ImageReader::open(path) {
             Ok(reader) => {
@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         }
 
-                        println!("  First pixel: {:?}", first_pixel);
+                        println!("  First pixel: {first_pixel:?}");
                         println!("  Unique colors found: {}", unique_colors.len());
 
                         if unique_colors.len() <= 1 {
@@ -65,25 +65,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             match vectorize_trace_low_rgba(&rgba_img, &config) {
                                 Ok(svg) => {
                                     let path_count = svg.matches("<circle").count();
-                                    println!(
-                                        "  Density {:.2}: {} dots generated",
-                                        density, path_count
-                                    );
+                                    println!("  Density {density:.2}: {path_count} dots generated");
 
                                     if path_count > 0 {
                                         break; // Found working threshold
                                     }
                                 }
                                 Err(e) => {
-                                    println!("  Density {:.2}: ERROR - {}", density, e);
+                                    println!("  Density {density:.2}: ERROR - {e}");
                                 }
                             }
                         }
                     }
-                    Err(e) => println!("  ❌ Failed to decode image: {}", e),
+                    Err(e) => println!("  ❌ Failed to decode image: {e}"),
                 }
             }
-            Err(e) => println!("  ❌ Failed to load image: {}", e),
+            Err(e) => println!("  ❌ Failed to load image: {e}"),
         }
 
         println!();

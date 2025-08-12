@@ -11,8 +11,8 @@
 //! traditional edge detection methods.
 
 use crate::algorithms::etf::{compute_etf, EtfConfig, EtfField};
+use crate::execution::execute_parallel;
 use image::GrayImage;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 // use std::f32::consts::PI;
 
@@ -160,12 +160,7 @@ pub fn compute_fdog(gray: &GrayImage, etf: &EtfField, config: &FdogConfig) -> Ed
     let width = gray.width();
     let height = gray.height();
 
-    log::debug!(
-        "Computing FDoG for {}x{} image with config: {:?}",
-        width,
-        height,
-        config
-    );
+    log::debug!("Computing FDoG for {width}x{height} image with config: {config:?}");
     let start_time = std::time::Instant::now();
 
     let mut edge_response = EdgeResponse::new(width, height);
@@ -178,26 +173,22 @@ pub fn compute_fdog(gray: &GrayImage, etf: &EtfField, config: &FdogConfig) -> Ed
         let g_sigma_s = compute_directional_gaussian(gray, etf, config.sigma_s);
         let g_sigma_c = compute_directional_gaussian(gray, etf, config.sigma_c);
 
-        // Compute DoG response using indexed iteration
-        let new_magnitudes: Vec<f32> = (0..(width * height) as usize)
-            .into_par_iter()
-            .map(|i| {
-                let dog_response = g_sigma_s[i] - config.tau * g_sigma_c[i];
-                (edge_response.magnitude[i] + dog_response.max(0.0)) / (pass + 1) as f32
-            })
-            .collect();
+        // Compute DoG response using execution abstraction
+        let indices: Vec<usize> = (0..(width * height) as usize).collect();
+        let new_magnitudes = execute_parallel(indices, |i| {
+            let dog_response = g_sigma_s[i] - config.tau * g_sigma_c[i];
+            (edge_response.magnitude[i] + dog_response.max(0.0)) / (pass + 1) as f32
+        });
         edge_response.magnitude = new_magnitudes;
     }
 
-    // Set orientations from ETF field using indexed iteration
-    let orientations: Vec<f32> = (0..(width * height) as usize)
-        .into_par_iter()
-        .map(|i| {
-            let tx = etf.tx[i];
-            let ty = etf.ty[i];
-            ty.atan2(tx)
-        })
-        .collect();
+    // Set orientations from ETF field using execution abstraction
+    let indices: Vec<usize> = (0..(width * height) as usize).collect();
+    let orientations = execute_parallel(indices, |i| {
+        let tx = etf.tx[i];
+        let ty = etf.ty[i];
+        ty.atan2(tx)
+    });
     edge_response.orientation = orientations;
 
     let duration = start_time.elapsed();
@@ -224,12 +215,7 @@ pub fn compute_xdog(gray: &GrayImage, etf: &EtfField, config: &XdogConfig) -> Ed
     let width = gray.width();
     let height = gray.height();
 
-    log::debug!(
-        "Computing XDoG for {}x{} image with config: {:?}",
-        width,
-        height,
-        config
-    );
+    log::debug!("Computing XDoG for {width}x{height} image with config: {config:?}");
     let start_time = std::time::Instant::now();
 
     // Compute two directional Gaussians with different scales
@@ -238,30 +224,29 @@ pub fn compute_xdog(gray: &GrayImage, etf: &EtfField, config: &XdogConfig) -> Ed
 
     let mut edge_response = EdgeResponse::new(width, height);
 
-    // Compute XDoG response with soft thresholding using indexed iteration
-    let (magnitudes, orientations): (Vec<f32>, Vec<f32>) = (0..(width * height) as usize)
-        .into_par_iter()
-        .map(|i| {
-            let dog = g1[i] - g2[i];
+    // Compute XDoG response with soft thresholding using execution abstraction
+    let indices: Vec<usize> = (0..(width * height) as usize).collect();
+    let results = execute_parallel(indices, |i| {
+        let dog = g1[i] - g2[i];
 
-            // Apply soft thresholding function
-            let xdog = if dog < config.epsilon {
-                1.0
-            } else {
-                1.0 + (config.phi * dog).tanh()
-            };
+        // Apply soft thresholding function
+        let xdog = if dog < config.epsilon {
+            1.0
+        } else {
+            1.0 + (config.phi * dog).tanh()
+        };
 
-            // Apply gamma correction
-            let final_response = xdog.powf(config.gamma).max(0.0);
+        // Apply gamma correction
+        let final_response = xdog.powf(config.gamma).max(0.0);
 
-            // Set orientation from ETF
-            let tx = etf.tx[i];
-            let ty = etf.ty[i];
-            let orientation = ty.atan2(tx);
+        // Set orientation from ETF
+        let tx = etf.tx[i];
+        let ty = etf.ty[i];
+        let orientation = ty.atan2(tx);
 
-            (final_response, orientation)
-        })
-        .unzip();
+        (final_response, orientation)
+    });
+    let (magnitudes, orientations): (Vec<f32>, Vec<f32>) = results.into_iter().unzip();
 
     edge_response.magnitude = magnitudes;
     edge_response.orientation = orientations;
@@ -287,10 +272,10 @@ fn compute_directional_gaussian(gray: &GrayImage, etf: &EtfField, sigma: f32) ->
     // Generate 1D Gaussian kernel
     let mut kernel = vec![0.0; kernel_size];
     let mut sum = 0.0;
-    for i in 0..kernel_size {
+    for (i, k) in kernel.iter_mut().enumerate() {
         let x = (i as i32 - kernel_radius) as f32;
-        kernel[i] = (-0.5 * x * x / (sigma * sigma)).exp();
-        sum += kernel[i];
+        *k = (-0.5 * x * x / (sigma * sigma)).exp();
+        sum += *k;
     }
 
     // Normalize kernel
@@ -298,46 +283,43 @@ fn compute_directional_gaussian(gray: &GrayImage, etf: &EtfField, sigma: f32) ->
         *k /= sum;
     }
 
-    // Apply directional blur guided by ETF using simple parallel iteration
+    // Apply directional blur guided by ETF using execution abstraction
     let size = (width * height) as usize;
-    let pixel_results: Vec<f32> = (0..size)
-        .into_par_iter()
-        .map(|i| {
-            let y = i as u32 / width;
-            let x = i as u32 % width;
+    let indices: Vec<usize> = (0..size).collect();
+    let pixel_results = execute_parallel(indices, |i| {
+        let y = i as u32 / width;
+        let x = i as u32 % width;
 
-            let (tx, ty) = etf.get_tangent(x, y);
-            let coherency = etf.get_coherency(x, y);
+        let (tx, ty) = etf.get_tangent(x, y);
+        let coherency = etf.get_coherency(x, y);
 
-            // For low coherency areas, use isotropic blur
-            if coherency < 0.1 {
-                return gray.get_pixel(x, y)[0] as f32 / 255.0;
-            }
+        // For low coherency areas, use isotropic blur
+        if coherency < 0.1 {
+            return gray.get_pixel(x, y)[0] as f32 / 255.0;
+        }
 
-            let mut value_sum = 0.0;
-            let mut weight_sum = 0.0;
+        let mut value_sum = 0.0;
+        let mut weight_sum = 0.0;
 
-            // Sample along the tangent direction
-            for j in 0..kernel_size {
-                let t = (j as i32 - kernel_radius) as f32;
-                let sample_x = x as f32 + t * tx;
-                let sample_y = y as f32 + t * ty;
+        // Sample along the tangent direction
+        for (j, &weight) in kernel.iter().enumerate() {
+            let t = (j as i32 - kernel_radius) as f32;
+            let sample_x = x as f32 + t * tx;
+            let sample_y = y as f32 + t * ty;
 
-                // Bilinear interpolation for sub-pixel sampling
-                let pixel_value = sample_bilinear(gray, sample_x, sample_y);
-                let weight = kernel[j];
+            // Bilinear interpolation for sub-pixel sampling
+            let pixel_value = sample_bilinear(gray, sample_x, sample_y);
 
-                value_sum += pixel_value * weight;
-                weight_sum += weight;
-            }
+            value_sum += pixel_value * weight;
+            weight_sum += weight;
+        }
 
-            if weight_sum > 0.0 {
-                value_sum / weight_sum
-            } else {
-                gray.get_pixel(x, y)[0] as f32 / 255.0
-            }
-        })
-        .collect();
+        if weight_sum > 0.0 {
+            value_sum / weight_sum
+        } else {
+            gray.get_pixel(x, y)[0] as f32 / 255.0
+        }
+    });
 
     pixel_results
 }
@@ -386,7 +368,7 @@ pub fn apply_nms(edge_response: &EdgeResponse, etf: &EtfField, config: &NmsConfi
     let width = edge_response.width;
     let height = edge_response.height;
 
-    log::debug!("Applying NMS to {}x{} edge map", width, height);
+    log::debug!("Applying NMS to {width}x{height} edge map");
     let start_time = std::time::Instant::now();
 
     // Optional smoothing before NMS
@@ -399,58 +381,46 @@ pub fn apply_nms(edge_response: &EdgeResponse, etf: &EtfField, config: &NmsConfi
     // Create NMS result vector
 
     let size = (width * height) as usize;
-    let nms_values: Vec<f32> = (0..size)
-        .into_par_iter()
-        .map(|i| {
-            let y = i as u32 / width;
-            let x = i as u32 % width;
-            let magnitude = smoothed_magnitude[i];
+    let indices: Vec<usize> = (0..size).collect();
+    let nms_values = execute_parallel(indices, |i| {
+        let y = i as u32 / width;
+        let x = i as u32 % width;
+        let magnitude = smoothed_magnitude[i];
 
-            if magnitude < config.low {
-                return 0.0;
-            }
+        if magnitude < config.low {
+            return 0.0;
+        }
 
-            let (tx, ty) = etf.get_tangent(x, y);
-            let coherency = etf.get_coherency(x, y);
+        let (tx, ty) = etf.get_tangent(x, y);
+        let coherency = etf.get_coherency(x, y);
 
-            // For low coherency areas, skip NMS
-            if coherency < 0.1 {
-                return magnitude;
-            }
+        // For low coherency areas, skip NMS
+        if coherency < 0.1 {
+            return magnitude;
+        }
 
-            // Gradient direction is perpendicular to tangent
-            let gx = -ty; // Rotate tangent by 90 degrees
-            let gy = tx;
+        // Gradient direction is perpendicular to tangent
+        let gx = -ty; // Rotate tangent by 90 degrees
+        let gy = tx;
 
-            // Sample neighbors along gradient direction
-            let neighbor1_x = x as f32 + gx;
-            let neighbor1_y = y as f32 + gy;
-            let neighbor2_x = x as f32 - gx;
-            let neighbor2_y = y as f32 - gy;
+        // Sample neighbors along gradient direction
+        let neighbor1_x = x as f32 + gx;
+        let neighbor1_y = y as f32 + gy;
+        let neighbor2_x = x as f32 - gx;
+        let neighbor2_y = y as f32 - gy;
 
-            let neighbor1_mag = sample_magnitude_bilinear(
-                &smoothed_magnitude,
-                width,
-                height,
-                neighbor1_x,
-                neighbor1_y,
-            );
-            let neighbor2_mag = sample_magnitude_bilinear(
-                &smoothed_magnitude,
-                width,
-                height,
-                neighbor2_x,
-                neighbor2_y,
-            );
+        let neighbor1_mag =
+            sample_magnitude_bilinear(&smoothed_magnitude, width, height, neighbor1_x, neighbor1_y);
+        let neighbor2_mag =
+            sample_magnitude_bilinear(&smoothed_magnitude, width, height, neighbor2_x, neighbor2_y);
 
-            // Non-maximum suppression check
-            if magnitude >= neighbor1_mag && magnitude >= neighbor2_mag {
-                magnitude
-            } else {
-                0.0
-            }
-        })
-        .collect();
+        // Non-maximum suppression check
+        if magnitude >= neighbor1_mag && magnitude >= neighbor2_mag {
+            magnitude
+        } else {
+            0.0
+        }
+    });
 
     let duration = start_time.elapsed();
     log::debug!("NMS completed in {:.2}ms", duration.as_secs_f64() * 1000.0);
@@ -479,11 +449,7 @@ pub fn hysteresis_threshold(
     low: f32,
     high: f32,
 ) -> Vec<f32> {
-    log::debug!(
-        "Applying hysteresis thresholding with low={}, high={}",
-        low,
-        high
-    );
+    log::debug!("Applying hysteresis thresholding with low={low}, high={high}");
     let start_time = std::time::Instant::now();
 
     let mut result = vec![0.0; nms_edges.len()];
@@ -586,48 +552,46 @@ pub fn compute_multi_direction_edges(
     let etf = compute_etf(gray, &etf_config);
 
     // Compute edge responses for each orientation
-    let responses: Vec<EdgeResponse> = orientations
-        .par_iter()
-        .map(|&orientation| {
-            // Create rotated ETF field for this orientation
-            let mut rotated_etf = etf.clone();
+    let orientation_data: Vec<f32> = orientations.to_vec();
+    let responses = execute_parallel(orientation_data, |orientation| {
+        // Create rotated ETF field for this orientation
+        let mut rotated_etf = etf.clone();
 
-            // Rotate tangent vectors by the specified angle
-            for i in 0..size {
-                let tx = etf.tx[i];
-                let ty = etf.ty[i];
+        // Rotate tangent vectors by the specified angle
+        for i in 0..size {
+            let tx = etf.tx[i];
+            let ty = etf.ty[i];
 
-                let cos_theta = orientation.cos();
-                let sin_theta = orientation.sin();
+            let cos_theta = orientation.cos();
+            let sin_theta = orientation.sin();
 
-                rotated_etf.tx[i] = tx * cos_theta - ty * sin_theta;
-                rotated_etf.ty[i] = tx * sin_theta + ty * cos_theta;
+            rotated_etf.tx[i] = tx * cos_theta - ty * sin_theta;
+            rotated_etf.ty[i] = tx * sin_theta + ty * cos_theta;
+        }
+
+        // Compute FDoG with rotated ETF
+        compute_fdog(gray, &rotated_etf, fdog_config)
+    });
+
+    // Select dominant response at each pixel (not sum) using execution abstraction
+    let indices: Vec<usize> = (0..size).collect();
+    let results = execute_parallel(indices, |i| {
+        let mut max_response = 0.0;
+        let mut best_orientation = 0.0;
+
+        // Find orientation with maximum response
+        for (orientation_idx, response) in responses.iter().enumerate() {
+            let magnitude = response.magnitude[i];
+            if magnitude > max_response {
+                max_response = magnitude;
+                best_orientation = orientations[orientation_idx];
             }
+        }
 
-            // Compute FDoG with rotated ETF
-            compute_fdog(gray, &rotated_etf, fdog_config)
-        })
-        .collect();
-
-    // Select dominant response at each pixel (not sum) using parallel iteration
-    let (combined_magnitude, dominant_orientation): (Vec<f32>, Vec<f32>) = (0..size)
-        .into_par_iter()
-        .map(|i| {
-            let mut max_response = 0.0;
-            let mut best_orientation = 0.0;
-
-            // Find orientation with maximum response
-            for (orientation_idx, response) in responses.iter().enumerate() {
-                let magnitude = response.magnitude[i];
-                if magnitude > max_response {
-                    max_response = magnitude;
-                    best_orientation = orientations[orientation_idx];
-                }
-            }
-
-            (max_response, best_orientation)
-        })
-        .unzip();
+        (max_response, best_orientation)
+    });
+    let (combined_magnitude, dominant_orientation): (Vec<f32>, Vec<f32>) =
+        results.into_iter().unzip();
 
     let duration = start_time.elapsed();
     log::debug!(
@@ -677,10 +641,10 @@ fn gaussian_smooth(field: &[f32], width: u32, height: u32, sigma: f32) -> Vec<f3
     // Generate Gaussian kernel
     let mut kernel = vec![0.0; kernel_size];
     let mut sum = 0.0;
-    for i in 0..kernel_size {
+    for (i, k) in kernel.iter_mut().enumerate() {
         let x = (i as i32 - kernel_radius) as f32;
-        kernel[i] = (-0.5 * x * x / (sigma * sigma)).exp();
-        sum += kernel[i];
+        *k = (-0.5 * x * x / (sigma * sigma)).exp();
+        sum += *k;
     }
 
     // Normalize kernel
@@ -690,46 +654,41 @@ fn gaussian_smooth(field: &[f32], width: u32, height: u32, sigma: f32) -> Vec<f3
 
     // Horizontal pass
     let size = (width * height) as usize;
-    let temp_field: Vec<f32> = (0..size)
-        .into_par_iter()
-        .map(|i| {
-            let y = i as u32 / width;
-            let x = i as u32 % width;
-            let mut value_sum = 0.0;
+    let indices: Vec<usize> = (0..size).collect();
+    let temp_field = execute_parallel(indices, |i| {
+        let y = i as u32 / width;
+        let x = i as u32 % width;
+        let mut value_sum = 0.0;
 
-            for j in 0..kernel_size {
-                let px = (x as i32 + j as i32 - kernel_radius)
-                    .max(0)
-                    .min((width - 1) as i32) as u32;
-                let idx = (y * width + px) as usize;
-                value_sum += field[idx] * kernel[j];
-            }
+        for (j, &kernel_val) in kernel.iter().enumerate() {
+            let px = (x as i32 + j as i32 - kernel_radius)
+                .max(0)
+                .min((width - 1) as i32) as u32;
+            let idx = (y * width + px) as usize;
+            value_sum += field[idx] * kernel_val;
+        }
 
-            value_sum
-        })
-        .collect();
+        value_sum
+    });
 
     // Vertical pass
-    let result: Vec<f32> = (0..size)
-        .into_par_iter()
-        .map(|i| {
-            let y = i as u32 / width;
-            let x = i as u32 % width;
-            let mut value_sum = 0.0;
+    let indices: Vec<usize> = (0..size).collect();
 
-            for j in 0..kernel_size {
-                let py = (y as i32 + j as i32 - kernel_radius)
-                    .max(0)
-                    .min((height - 1) as i32) as u32;
-                let idx = (py * width + x) as usize;
-                value_sum += temp_field[idx] * kernel[j];
-            }
+    execute_parallel(indices, |i| {
+        let y = i as u32 / width;
+        let x = i as u32 % width;
+        let mut value_sum = 0.0;
 
-            value_sum
-        })
-        .collect();
+        for (j, &kernel_val) in kernel.iter().enumerate() {
+            let py = (y as i32 + j as i32 - kernel_radius)
+                .max(0)
+                .min((height - 1) as i32) as u32;
+            let idx = (py * width + x) as usize;
+            value_sum += temp_field[idx] * kernel_val;
+        }
 
-    result
+        value_sum
+    })
 }
 
 #[cfg(test)]
@@ -762,7 +721,7 @@ mod tests {
         let config = NmsConfig::default();
         assert_eq!(config.low, 0.08);
         assert_eq!(config.high, 0.16);
-        assert_eq!(config.smooth_before_nms, true);
+        assert!(config.smooth_before_nms);
         assert_eq!(config.smooth_sigma, 0.8);
     }
 

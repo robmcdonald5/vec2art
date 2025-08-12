@@ -1,4 +1,6 @@
 [toolchain]
-channel = "stable"
-components = ["rustfmt", "clippy"]
+# Using nightly for multithreaded WASM with wasm-bindgen-rayon
+channel = "nightly"
+components = ["rustfmt", "clippy", "rust-src"]
 targets = ["wasm32-unknown-unknown"]
+profile = "minimal"

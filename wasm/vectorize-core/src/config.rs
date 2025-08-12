@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// - Flow-guided polyline tracing using ETF field
 /// - Bézier curve fitting with curvature regularization
 /// - Stroke width clamping to prevent thickening
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Milestone2Config {
     /// Tracing configuration
     pub trace: TraceDefaultConfig,
@@ -38,15 +38,6 @@ pub struct FitDefaultConfig {
     pub max_err: f32,
     /// Corner splitting angle threshold in degrees (default: 32.0)
     pub split_angle: f32,
-}
-
-impl Default for Milestone2Config {
-    fn default() -> Self {
-        Self {
-            trace: TraceDefaultConfig::default(),
-            fit: FitDefaultConfig::default(),
-        }
-    }
 }
 
 impl Default for TraceDefaultConfig {

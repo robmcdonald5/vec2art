@@ -22,10 +22,10 @@ use crate::algorithms::svg_dots::dots_to_svg_paths;
 use crate::algorithms::trace::{trace_polylines, TraceConfig};
 use crate::algorithms::{Point, SvgElementType, SvgPath};
 use crate::error::VectorizeError;
+use crate::execution::{execute_parallel, execute_parallel_filter_map, par_iter_mut, reduce};
 use image::{GrayImage, ImageBuffer, Luma, Rgba};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
-use rayon::prelude::*;
 use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 
@@ -645,10 +645,7 @@ fn trace_edge(
         let adaptive_high = nms_max * 0.4; // 40% of max NMS value (optimized)
 
         log::debug!(
-            "Adaptive hysteresis thresholds: low={:.6}, high={:.6} (NMS max: {:.6})",
-            adaptive_low,
-            adaptive_high,
-            nms_max
+            "Adaptive hysteresis thresholds: low={adaptive_low:.6}, high={adaptive_high:.6} (NMS max: {nms_max:.6})"
         );
 
         let binary_edges = hysteresis_threshold(
@@ -799,27 +796,24 @@ fn trace_edge(
     } else {
         // Traditional polyline processing with Douglas-Peucker simplification
         let polyline_count = polylines.len();
-        let simplified_polylines = polylines
-            .into_par_iter()
-            .filter_map(|polyline| {
-                let simplified = douglas_peucker_simplify(&polyline, thresholds.dp_epsilon_px);
-                let length = calculate_polyline_length(&simplified);
+        let simplified_polylines = execute_parallel_filter_map(polylines, |polyline| {
+            let simplified = douglas_peucker_simplify(&polyline, thresholds.dp_epsilon_px);
+            let length = calculate_polyline_length(&simplified);
 
-                // Use more lenient length filtering for flow-traced polylines
-                let min_length = if is_flow_traced {
-                    // Flow-traced polylines are more precise, use very short minimum (1px)
-                    1.0
-                } else {
-                    thresholds.min_stroke_length_px
-                };
+            // Use more lenient length filtering for flow-traced polylines
+            let min_length = if is_flow_traced {
+                // Flow-traced polylines are more precise, use very short minimum (1px)
+                1.0
+            } else {
+                thresholds.min_stroke_length_px
+            };
 
-                if length >= min_length {
-                    Some(simplified)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
+            if length >= min_length {
+                Some(simplified)
+            } else {
+                None
+            }
+        });
         let simplification_time = phase_start.elapsed();
         log::debug!(
             "Simplification: {:.3}ms ({} -> {} paths)",
@@ -972,7 +966,7 @@ fn trace_superpixel(
 
     // 1. Convert image to LAB color space
     let phase_start = Instant::now();
-    let lab_image: Vec<LabColor> = image.pixels().map(|pixel| rgba_to_lab(pixel)).collect();
+    let lab_image: Vec<LabColor> = image.pixels().map(rgba_to_lab).collect();
     log::debug!("LAB conversion: {:?}", phase_start.elapsed());
 
     // 2. Initialize SLIC superpixel segmentation
@@ -1246,7 +1240,7 @@ fn extract_superpixel_regions(
         let avg_r = (rgb_sum.0 / rgb_sum.3 as u64) as u8;
         let avg_g = (rgb_sum.1 / rgb_sum.3 as u64) as u8;
         let avg_b = (rgb_sum.2 / rgb_sum.3 as u64) as u8;
-        let avg_rgb_hex = format!("#{:02x}{:02x}{:02x}", avg_r, avg_g, avg_b);
+        let avg_rgb_hex = format!("#{avg_r:02x}{avg_g:02x}{avg_b:02x}");
 
         // Calculate bounding box
         let min_x = pixels.iter().map(|(x, _)| *x).min().unwrap_or(0) as u32;
@@ -1366,11 +1360,7 @@ fn generate_superpixel_svg_paths(
         "strokes_only"
     };
 
-    log::debug!(
-        "Using superpixel artistic mode: {} (detail: {:.2})",
-        mode,
-        detail
-    );
+    log::debug!("Using superpixel artistic mode: {mode} (detail: {detail:.2})");
 
     for region in regions {
         if region.boundary_points.len() < 3 {
@@ -1738,15 +1728,23 @@ fn rgba_to_gray(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> GrayImage {
 
     // Use parallel processing for larger images
     if width * height > 100_000 {
-        // Process rows in parallel for better cache locality
-        gray.par_enumerate_pixels_mut()
-            .for_each(|(x, y, gray_pixel)| {
-                let rgba_pixel = image.get_pixel(x, y);
-                let [r, g, b, _a] = rgba_pixel.0;
-                // Optimized integer luminance calculation (avoids floating point)
-                let gray_value = ((77 * r as u32 + 150 * g as u32 + 29 * b as u32) >> 8) as u8;
-                gray_pixel.0[0] = gray_value;
-            });
+        // Generate coordinate pairs for parallel processing
+        let pixel_coords: Vec<(u32, u32)> = (0..height)
+            .flat_map(|y| (0..width).map(move |x| (x, y)))
+            .collect();
+
+        // Process pixels in parallel
+        execute_parallel(pixel_coords, |(x, y)| {
+            let rgba_pixel = image.get_pixel(x, y);
+            let [r, g, b, _a] = rgba_pixel.0;
+            // Optimized integer luminance calculation (avoids floating point)
+            let gray_value = ((77 * r as u32 + 150 * g as u32 + 29 * b as u32) >> 8) as u8;
+            (x, y, gray_value)
+        })
+        .into_iter()
+        .for_each(|(x, y, gray_value)| {
+            gray.put_pixel(x, y, Luma([gray_value]));
+        });
     } else {
         // Use sequential processing for small images to avoid thread overhead
         for (x, y, pixel) in image.enumerate_pixels() {
@@ -1776,10 +1774,10 @@ fn gaussian_blur(image: &GrayImage, sigma: f32) -> GrayImage {
         let mut int_kernel = vec![0i32; kernel_size];
         let mut sum = 0i32;
 
-        for i in 0..kernel_size {
+        for (i, k) in int_kernel.iter_mut().enumerate() {
             let x = i as f32 - kernel_radius as f32;
             let val = ((-x * x / (2.0 * sigma * sigma)).exp() * 256.0) as i32;
-            int_kernel[i] = val;
+            *k = val;
             sum += val;
         }
 
@@ -1788,27 +1786,35 @@ fn gaussian_blur(image: &GrayImage, sigma: f32) -> GrayImage {
 
         // Horizontal pass - process rows in parallel
         if width * height > 50_000 {
-            temp.par_enumerate_pixels_mut()
-                .for_each(|(x, y, temp_pixel)| {
-                    let mut value = 0i32;
-                    for i in 0..kernel_size {
-                        let src_x = (x as i32 + i as i32 - kernel_radius as i32)
-                            .max(0)
-                            .min(width as i32 - 1) as u32;
-                        value += image.get_pixel(src_x, y).0[0] as i32 * int_kernel[i];
-                    }
-                    temp_pixel.0[0] = (value / sum).clamp(0, 255) as u8;
-                });
+            let pixel_coords: Vec<(u32, u32)> = (0..height)
+                .flat_map(|y| (0..width).map(move |x| (x, y)))
+                .collect();
+
+            execute_parallel(pixel_coords, |(x, y)| {
+                let mut value = 0i32;
+                for (i, &kernel_val) in int_kernel.iter().enumerate() {
+                    let src_x = (x as i32 + i as i32 - kernel_radius as i32)
+                        .max(0)
+                        .min(width as i32 - 1) as u32;
+                    value += image.get_pixel(src_x, y).0[0] as i32 * kernel_val;
+                }
+                let temp_value = (value / sum).clamp(0, 255) as u8;
+                (x, y, temp_value)
+            })
+            .into_iter()
+            .for_each(|(x, y, temp_value)| {
+                temp.put_pixel(x, y, Luma([temp_value]));
+            });
         } else {
             // Sequential for small images
             for y in 0..height {
                 for x in 0..width {
                     let mut value = 0i32;
-                    for i in 0..kernel_size {
+                    for (i, &kernel_val) in int_kernel.iter().enumerate() {
                         let src_x = (x as i32 + i as i32 - kernel_radius as i32)
                             .max(0)
                             .min(width as i32 - 1) as u32;
-                        value += image.get_pixel(src_x, y).0[0] as i32 * int_kernel[i];
+                        value += image.get_pixel(src_x, y).0[0] as i32 * kernel_val;
                     }
                     temp.put_pixel(x, y, Luma([(value / sum).clamp(0, 255) as u8]));
                 }
@@ -1817,28 +1823,35 @@ fn gaussian_blur(image: &GrayImage, sigma: f32) -> GrayImage {
 
         // Vertical pass - process pixels in parallel
         if width * height > 50_000 {
-            blurred
-                .par_enumerate_pixels_mut()
-                .for_each(|(x, y, blur_pixel)| {
-                    let mut value = 0i32;
-                    for i in 0..kernel_size {
-                        let src_y = (y as i32 + i as i32 - kernel_radius as i32)
-                            .max(0)
-                            .min(height as i32 - 1) as u32;
-                        value += temp.get_pixel(x, src_y).0[0] as i32 * int_kernel[i];
-                    }
-                    blur_pixel.0[0] = (value / sum).clamp(0, 255) as u8;
-                });
+            let pixel_coords: Vec<(u32, u32)> = (0..height)
+                .flat_map(|y| (0..width).map(move |x| (x, y)))
+                .collect();
+
+            execute_parallel(pixel_coords, |(x, y)| {
+                let mut value = 0i32;
+                for (i, &kernel_val) in int_kernel.iter().enumerate() {
+                    let src_y = (y as i32 + i as i32 - kernel_radius as i32)
+                        .max(0)
+                        .min(height as i32 - 1) as u32;
+                    value += temp.get_pixel(x, src_y).0[0] as i32 * kernel_val;
+                }
+                let blur_value = (value / sum).clamp(0, 255) as u8;
+                (x, y, blur_value)
+            })
+            .into_iter()
+            .for_each(|(x, y, blur_value)| {
+                blurred.put_pixel(x, y, Luma([blur_value]));
+            });
         } else {
             // Sequential for small images
             for y in 0..height {
                 for x in 0..width {
                     let mut value = 0i32;
-                    for i in 0..kernel_size {
+                    for (i, &kernel_val) in int_kernel.iter().enumerate() {
                         let src_y = (y as i32 + i as i32 - kernel_radius as i32)
                             .max(0)
                             .min(height as i32 - 1) as u32;
-                        value += temp.get_pixel(x, src_y).0[0] as i32 * int_kernel[i];
+                        value += temp.get_pixel(x, src_y).0[0] as i32 * kernel_val;
                     }
                     blurred.put_pixel(x, y, Luma([(value / sum).clamp(0, 255) as u8]));
                 }
@@ -1848,10 +1861,10 @@ fn gaussian_blur(image: &GrayImage, sigma: f32) -> GrayImage {
         // Fallback to floating point for large kernels
         let mut kernel = vec![0.0f32; kernel_size];
         let mut sum = 0.0;
-        for i in 0..kernel_size {
+        for (i, k) in kernel.iter_mut().enumerate() {
             let x = i as f32 - kernel_radius as f32;
-            kernel[i] = (-x * x / (2.0 * sigma * sigma)).exp();
-            sum += kernel[i];
+            *k = (-x * x / (2.0 * sigma * sigma)).exp();
+            sum += *k;
         }
         // Normalize kernel
         for k in &mut kernel {
@@ -1863,26 +1876,36 @@ fn gaussian_blur(image: &GrayImage, sigma: f32) -> GrayImage {
 
         // Horizontal pass
         if width * height > 50_000 {
-            temp.par_enumerate_pixels_mut()
-                .for_each(|(x, y, temp_pixel)| {
-                    let mut value = 0.0;
-                    for i in 0..kernel_size {
-                        let src_x = (x as i32 + i as i32 - kernel_radius as i32)
-                            .max(0)
-                            .min(width as i32 - 1) as u32;
-                        value += image.get_pixel(src_x, y).0[0] as f32 * kernel[i];
-                    }
-                    temp_pixel.0[0] = value.round().clamp(0.0, 255.0) as u8;
-                });
+            // Create index vector for parallel processing
+            let indices: Vec<(u32, u32)> = (0..height)
+                .flat_map(|y| (0..width).map(move |x| (x, y)))
+                .collect();
+
+            // Process pixels in parallel with execution abstraction
+            let results = execute_parallel(indices, |(x, y)| {
+                let mut value = 0.0;
+                for (i, &kernel_val) in kernel.iter().enumerate() {
+                    let src_x = (x as i32 + i as i32 - kernel_radius as i32)
+                        .max(0)
+                        .min(width as i32 - 1) as u32;
+                    value += image.get_pixel(src_x, y).0[0] as f32 * kernel_val;
+                }
+                (x, y, value.round().clamp(0.0, 255.0) as u8)
+            });
+
+            // Apply results to temp image
+            for (x, y, pixel_value) in results {
+                temp.put_pixel(x, y, Luma([pixel_value]));
+            }
         } else {
             for y in 0..height {
                 for x in 0..width {
                     let mut value = 0.0;
-                    for i in 0..kernel_size {
+                    for (i, &kernel_val) in kernel.iter().enumerate() {
                         let src_x = (x as i32 + i as i32 - kernel_radius as i32)
                             .max(0)
                             .min(width as i32 - 1) as u32;
-                        value += image.get_pixel(src_x, y).0[0] as f32 * kernel[i];
+                        value += image.get_pixel(src_x, y).0[0] as f32 * kernel_val;
                     }
                     temp.put_pixel(x, y, Luma([value.round() as u8]));
                 }
@@ -1891,27 +1914,36 @@ fn gaussian_blur(image: &GrayImage, sigma: f32) -> GrayImage {
 
         // Vertical pass
         if width * height > 50_000 {
-            blurred
-                .par_enumerate_pixels_mut()
-                .for_each(|(x, y, blur_pixel)| {
-                    let mut value = 0.0;
-                    for i in 0..kernel_size {
-                        let src_y = (y as i32 + i as i32 - kernel_radius as i32)
-                            .max(0)
-                            .min(height as i32 - 1) as u32;
-                        value += temp.get_pixel(x, src_y).0[0] as f32 * kernel[i];
-                    }
-                    blur_pixel.0[0] = value.round().clamp(0.0, 255.0) as u8;
-                });
+            // Create index vector for parallel processing
+            let indices: Vec<(u32, u32)> = (0..height)
+                .flat_map(|y| (0..width).map(move |x| (x, y)))
+                .collect();
+
+            // Process pixels in parallel with execution abstraction
+            let results = execute_parallel(indices, |(x, y)| {
+                let mut value = 0.0;
+                for (i, &kernel_val) in kernel.iter().enumerate() {
+                    let src_y = (y as i32 + i as i32 - kernel_radius as i32)
+                        .max(0)
+                        .min(height as i32 - 1) as u32;
+                    value += temp.get_pixel(x, src_y).0[0] as f32 * kernel_val;
+                }
+                (x, y, value.round().clamp(0.0, 255.0) as u8)
+            });
+
+            // Apply results to blurred image
+            for (x, y, pixel_value) in results {
+                blurred.put_pixel(x, y, Luma([pixel_value]));
+            }
         } else {
             for y in 0..height {
                 for x in 0..width {
                     let mut value = 0.0;
-                    for i in 0..kernel_size {
+                    for (i, &kernel_val) in kernel.iter().enumerate() {
                         let src_y = (y as i32 + i as i32 - kernel_radius as i32)
                             .max(0)
                             .min(height as i32 - 1) as u32;
-                        value += temp.get_pixel(x, src_y).0[0] as f32 * kernel[i];
+                        value += temp.get_pixel(x, src_y).0[0] as f32 * kernel_val;
                     }
                     blurred.put_pixel(x, y, Luma([value.round() as u8]));
                 }
@@ -1936,41 +1968,46 @@ fn canny_edge_detection(image: &GrayImage, low_threshold: f32, high_threshold: f
     let use_parallel = width * height > 50_000;
 
     if use_parallel {
-        gradient_x
-            .par_iter_mut()
-            .zip(gradient_y.par_iter_mut())
-            .zip(gradient_magnitude.par_iter_mut())
-            .enumerate()
-            .for_each(|(idx, ((gx, gy), mag))| {
-                let y = (idx / width as usize) as u32;
-                let x = (idx % width as usize) as u32;
+        // Create index vector for parallel processing
+        let indices: Vec<usize> = (0..total_pixels).collect();
 
-                // Skip border pixels
-                if x == 0 || x >= width - 1 || y == 0 || y >= height - 1 {
-                    *gx = 0.0;
-                    *gy = 0.0;
-                    *mag = 0.0;
-                    return;
-                }
+        // Process gradients in parallel with execution abstraction
+        let results = execute_parallel(indices, |idx| {
+            let y = (idx / width as usize) as u32;
+            let x = (idx % width as usize) as u32;
 
-                // Optimized Sobel operators - unrolled for better performance
-                let p00 = image.get_pixel(x - 1, y - 1).0[0] as f32;
-                let p01 = image.get_pixel(x, y - 1).0[0] as f32;
-                let p02 = image.get_pixel(x + 1, y - 1).0[0] as f32;
-                let p10 = image.get_pixel(x - 1, y).0[0] as f32;
-                let p12 = image.get_pixel(x + 1, y).0[0] as f32;
-                let p20 = image.get_pixel(x - 1, y + 1).0[0] as f32;
-                let p21 = image.get_pixel(x, y + 1).0[0] as f32;
-                let p22 = image.get_pixel(x + 1, y + 1).0[0] as f32;
+            // Skip border pixels
+            if x == 0 || x >= width - 1 || y == 0 || y >= height - 1 {
+                return (idx, 0.0, 0.0, 0.0);
+            }
 
-                // Sobel X: [-1 0 1; -2 0 2; -1 0 1]
-                *gx = -p00 + p02 - 2.0 * p10 + 2.0 * p12 - p20 + p22;
-                // Sobel Y: [-1 -2 -1; 0 0 0; 1 2 1]
-                *gy = -p00 - 2.0 * p01 - p02 + p20 + 2.0 * p21 + p22;
+            // Optimized Sobel operators - unrolled for better performance
+            let p00 = image.get_pixel(x - 1, y - 1).0[0] as f32;
+            let p01 = image.get_pixel(x, y - 1).0[0] as f32;
+            let p02 = image.get_pixel(x + 1, y - 1).0[0] as f32;
+            let p10 = image.get_pixel(x - 1, y).0[0] as f32;
+            let p12 = image.get_pixel(x + 1, y).0[0] as f32;
+            let p20 = image.get_pixel(x - 1, y + 1).0[0] as f32;
+            let p21 = image.get_pixel(x, y + 1).0[0] as f32;
+            let p22 = image.get_pixel(x + 1, y + 1).0[0] as f32;
 
-                // Use fast magnitude approximation (L1 norm) for better performance
-                *mag = gx.abs() + gy.abs();
-            });
+            // Sobel X: [-1 0 1; -2 0 2; -1 0 1]
+            let gx = -p00 + p02 - 2.0 * p10 + 2.0 * p12 - p20 + p22;
+            // Sobel Y: [-1 -2 -1; 0 0 0; 1 2 1]
+            let gy = -p00 - 2.0 * p01 - p02 + p20 + 2.0 * p21 + p22;
+
+            // Use fast magnitude approximation (L1 norm) for better performance
+            let mag = gx.abs() + gy.abs();
+
+            (idx, gx, gy, mag)
+        });
+
+        // Apply results to gradient arrays
+        for (idx, gx, gy, mag) in results {
+            gradient_x[idx] = gx;
+            gradient_y[idx] = gy;
+            gradient_magnitude[idx] = mag;
+        }
     } else {
         // Sequential processing for small images
         for y in 1..height - 1 {
@@ -1994,20 +2031,17 @@ fn canny_edge_detection(image: &GrayImage, low_threshold: f32, high_threshold: f
         }
     }
 
-    // Find max magnitude for normalization using parallel reduction
+    // Find max magnitude for normalization using execution abstraction
     let max_magnitude = if use_parallel {
-        gradient_magnitude
-            .par_iter()
-            .copied()
-            .reduce(|| 0.0f32, f32::max)
+        reduce(&gradient_magnitude, 0.0f32, f32::max)
     } else {
         gradient_magnitude.iter().fold(0.0f32, |a, &b| a.max(b))
     };
 
-    // Normalize gradient magnitude to [0, 1] in parallel
+    // Normalize gradient magnitude to [0, 1] using execution abstraction
     if max_magnitude > 0.0 {
         if use_parallel {
-            gradient_magnitude.par_iter_mut().for_each(|mag| {
+            par_iter_mut(&mut gradient_magnitude, |mag| {
                 *mag /= max_magnitude;
             });
         } else {
@@ -2021,51 +2055,61 @@ fn canny_edge_detection(image: &GrayImage, low_threshold: f32, high_threshold: f
     let mut suppressed = vec![0.0f32; total_pixels];
 
     if use_parallel {
-        suppressed
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(idx, suppressed_val)| {
-                let y = (idx / width as usize) as u32;
-                let x = (idx % width as usize) as u32;
+        // Create index vector for parallel processing
+        let indices: Vec<usize> = (0..total_pixels).collect();
 
-                // Skip border pixels
-                if x == 0 || x >= width - 1 || y == 0 || y >= height - 1 {
-                    return;
-                }
+        // Process suppression in parallel with execution abstraction
+        let results = execute_parallel(indices, |idx| {
+            let y = (idx / width as usize) as u32;
+            let x = (idx % width as usize) as u32;
 
-                let magnitude = gradient_magnitude[idx];
-                if magnitude == 0.0 {
-                    return;
-                }
+            // Skip border pixels
+            if x == 0 || x >= width - 1 || y == 0 || y >= height - 1 {
+                return (idx, 0.0);
+            }
 
-                let gx = gradient_x[idx];
-                let gy = gradient_y[idx];
+            let magnitude = gradient_magnitude[idx];
+            if magnitude == 0.0 {
+                return (idx, 0.0);
+            }
 
-                // Fast angle approximation - avoid expensive atan2
-                let (dx1, dy1, dx2, dy2) = if gx.abs() > gy.abs() {
-                    if gx * gy > 0.0 {
-                        (1, 1, -1, -1) // 45 degrees
-                    } else {
-                        (1, -1, -1, 1) // 135 degrees
-                    }
-                } else if gy > 0.0 {
-                    (0, 1, 0, -1) // 90 degrees
+            let gx = gradient_x[idx];
+            let gy = gradient_y[idx];
+
+            // Fast angle approximation - avoid expensive atan2
+            let (dx1, dy1, dx2, dy2) = if gx.abs() > gy.abs() {
+                if gx * gy > 0.0 {
+                    (1, 1, -1, -1) // 45 degrees
                 } else {
-                    (1, 0, -1, 0) // 0 degrees
-                };
-
-                let x1 = (x as i32 + dx1).max(0).min(width as i32 - 1) as usize;
-                let y1 = (y as i32 + dy1).max(0).min(height as i32 - 1) as usize;
-                let x2 = (x as i32 + dx2).max(0).min(width as i32 - 1) as usize;
-                let y2 = (y as i32 + dy2).max(0).min(height as i32 - 1) as usize;
-
-                let mag1 = gradient_magnitude[y1 * width as usize + x1];
-                let mag2 = gradient_magnitude[y2 * width as usize + x2];
-
-                if magnitude >= mag1 && magnitude >= mag2 {
-                    *suppressed_val = magnitude;
+                    (1, -1, -1, 1) // 135 degrees
                 }
-            });
+            } else if gy > 0.0 {
+                (0, 1, 0, -1) // 90 degrees
+            } else {
+                (1, 0, -1, 0) // 0 degrees
+            };
+
+            let x1 = (x as i32 + dx1).max(0).min(width as i32 - 1) as usize;
+            let y1 = (y as i32 + dy1).max(0).min(height as i32 - 1) as usize;
+            let x2 = (x as i32 + dx2).max(0).min(width as i32 - 1) as usize;
+            let y2 = (y as i32 + dy2).max(0).min(height as i32 - 1) as usize;
+
+            let mag1 = gradient_magnitude[y1 * width as usize + x1];
+            let mag2 = gradient_magnitude[y2 * width as usize + x2];
+
+            let suppressed_value = if magnitude >= mag1 && magnitude >= mag2 {
+                magnitude
+            } else {
+                0.0
+            };
+
+            (idx, suppressed_value)
+        });
+
+        // Apply results to suppressed array
+        for (idx, value) in results {
+            suppressed[idx] = value;
+        }
     } else {
         for y in 1..height - 1 {
             for x in 1..width - 1 {
@@ -2385,8 +2429,8 @@ fn analyze_edge_density(
     let gray = rgba_to_gray(image);
 
     // Calculate edge density in each grid cell using simplified gradient
-    for grid_y in 0..grid_height {
-        for grid_x in 0..grid_width {
+    for (grid_y, row) in region_grid.iter_mut().enumerate() {
+        for (grid_x, cell) in row.iter_mut().enumerate() {
             let start_x = grid_x as u32 * cell_width;
             let start_y = grid_y as u32 * cell_height;
             let end_x = (start_x + cell_width).min(width - 1);
@@ -2419,7 +2463,7 @@ fn analyze_edge_density(
                 }
             }
 
-            region_grid[grid_y][grid_x] = if total_pixels > 0 {
+            *cell = if total_pixels > 0 {
                 edge_count as f32 / total_pixels as f32
             } else {
                 0.0
@@ -2431,9 +2475,8 @@ fn analyze_edge_density(
     let mut high_detail_regions = Vec::new();
     let mut texture_regions = Vec::new();
 
-    for grid_y in 0..grid_height {
-        for grid_x in 0..grid_width {
-            let density = region_grid[grid_y][grid_x];
+    for (grid_y, row) in region_grid.iter().enumerate() {
+        for (grid_x, &density) in row.iter().enumerate() {
             let rect = Rect {
                 x: grid_x as u32 * cell_width,
                 y: grid_y as u32 * cell_height,
@@ -2980,22 +3023,19 @@ fn trace_edge_directional(
     // Link edges with direction-aware processing
     let polylines = link_edges_to_polylines_directional(&edges, direction);
 
-    // Simplify and filter
+    // Simplify and filter using execution abstraction
     let stroke_width = calculate_stroke_width(image, config.stroke_px_at_1080p);
-    let svg_paths: Vec<SvgPath> = polylines
-        .into_par_iter()
-        .filter_map(|polyline| {
-            let simplified = douglas_peucker_simplify(&polyline, thresholds.dp_epsilon_px);
-            let length = calculate_polyline_length(&simplified);
+    let svg_paths: Vec<SvgPath> = execute_parallel_filter_map(polylines, |polyline| {
+        let simplified = douglas_peucker_simplify(&polyline, thresholds.dp_epsilon_px);
+        let length = calculate_polyline_length(&simplified);
 
-            if length >= thresholds.min_stroke_length_px * 1.2 {
-                // Slightly higher threshold for directional
-                Some(create_stroke_path(simplified, stroke_width))
-            } else {
-                None
-            }
-        })
-        .collect();
+        if length >= thresholds.min_stroke_length_px * 1.2 {
+            // Slightly higher threshold for directional
+            Some(create_stroke_path(simplified, stroke_width))
+        } else {
+            None
+        }
+    });
 
     log::debug!(
         "Directional {:?} generated {} paths",
@@ -3102,10 +3142,10 @@ fn merge_directional_results(
     }
 
     // Cache path data to avoid repeated parsing - O(n) operation
-    let cached_data: Vec<CachedPathData> = all_paths
-        .par_iter()
-        .map(CachedPathData::from_svg_path)
-        .collect();
+    let cached_data: Vec<CachedPathData> = execute_parallel(
+        all_paths.iter().collect::<Vec<_>>(),
+        CachedPathData::from_svg_path,
+    );
 
     // Determine image bounds from all paths
     let bounds = calculate_image_bounds(&cached_data);
@@ -3190,21 +3230,28 @@ fn apply_artistic_enhancements(
         })
         .collect();
 
-    // Apply enhancements in parallel for performance
-    paths
-        .par_iter_mut()
-        .zip(edge_strengths.par_iter())
-        .zip(cached_data.par_iter())
-        .for_each(|((path, &edge_strength), cached)| {
-            // 1. Variable line weights based on edge strength
-            apply_variable_line_weight(path, edge_strength);
+    // Apply enhancements in parallel for performance using execution abstraction
+    let enhancement_indices: Vec<usize> = (0..paths.len()).collect();
 
-            // 2. Subtle tremor for organic feel (deterministic based on path data)
-            apply_organic_tremor(path, cached, 0.3);
+    let enhancement_data = execute_parallel(enhancement_indices, |i| {
+        let edge_strength = edge_strengths[i];
+        let cached = &cached_data[i];
 
-            // 3. Natural path tapering
-            apply_natural_tapering(path, cached);
-        });
+        // Collect enhancement parameters for later application
+        (i, edge_strength, cached.clone())
+    });
+
+    // Apply the enhancements sequentially to avoid mutable borrowing issues
+    for (i, edge_strength, cached) in enhancement_data {
+        // 1. Variable line weights based on edge strength
+        apply_variable_line_weight(&mut paths[i], edge_strength);
+
+        // 2. Subtle tremor for organic feel (deterministic based on path data)
+        apply_organic_tremor(&mut paths[i], &cached, 0.3);
+
+        // 3. Natural path tapering
+        apply_natural_tapering(&mut paths[i], &cached);
+    }
 
     let enhancement_time = enhancement_start.elapsed();
     log::debug!(
@@ -3476,236 +3523,6 @@ fn paths_are_spatially_close(path1: &SvgPath, path2: &SvgPath, threshold: f32) -
     start_dist <= threshold && end_dist <= threshold
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_threshold_mapping() {
-        let mapping = ThresholdMapping::new(0.5, 1920, 1080);
-
-        // Check that thresholds are reasonable
-        assert!(mapping.dp_epsilon_px > 0.0);
-        assert!(mapping.min_stroke_length_px >= 10.0);
-        assert!(mapping.canny_high_threshold > mapping.canny_low_threshold);
-        assert!(mapping.slic_cell_size_px >= 600.0);
-        assert!(mapping.slic_cell_size_px <= 3000.0);
-        assert!(mapping.lab_merge_threshold >= 1.0);
-        assert!(mapping.lab_split_threshold > mapping.lab_merge_threshold);
-    }
-
-    #[test]
-    fn test_edge_backend_basic() {
-        // Create simple test image with edges
-        let mut image = ImageBuffer::new(100, 100);
-
-        // Draw a simple square
-        for x in 20..80 {
-            for y in 20..80 {
-                if x == 20 || x == 79 || y == 20 || y == 79 {
-                    image.put_pixel(x, y, Rgba([0, 0, 0, 255])); // Black edge
-                } else {
-                    image.put_pixel(x, y, Rgba([255, 255, 255, 255])); // White fill
-                }
-            }
-        }
-
-        let mut config = TraceLowConfig::default();
-        config.detail = 0.5;
-
-        let result = vectorize_trace_low(&image, &config);
-        assert!(result.is_ok());
-
-        let paths = result.unwrap();
-        assert!(!paths.is_empty());
-
-        // Check that paths are stroke-only
-        for path in &paths {
-            assert_eq!(path.fill, "none");
-            assert_ne!(path.stroke, "none");
-            assert!(path.stroke_width > 0.0);
-        }
-    }
-
-    #[test]
-    fn test_douglas_peucker_simplification() {
-        // Create a simple polyline that should be simplified
-        let polyline = vec![
-            Point { x: 0.0, y: 0.0 },
-            Point { x: 1.0, y: 0.1 },
-            Point { x: 2.0, y: 0.0 },
-            Point { x: 3.0, y: 0.1 },
-            Point { x: 4.0, y: 0.0 },
-            Point { x: 5.0, y: 5.0 }, // Significant deviation
-            Point { x: 6.0, y: 0.0 },
-        ];
-
-        let simplified = douglas_peucker_simplify(&polyline, 0.5);
-
-        // Should remove some intermediate points but keep the significant deviation
-        assert!(simplified.len() < polyline.len());
-        assert!(simplified.len() >= 2);
-
-        // First and last points should be preserved
-        assert_eq!(simplified[0], polyline[0]);
-        assert_eq!(
-            simplified[simplified.len() - 1],
-            polyline[polyline.len() - 1]
-        );
-    }
-
-    #[test]
-    fn test_trace_dots_backend() {
-        use image::RgbaImage;
-
-        // Create a simple test image
-        let mut img = RgbaImage::new(100, 100);
-
-        // Add a simple pattern - white background with black square
-        for y in 0..100 {
-            for x in 0..100 {
-                if x >= 40 && x < 60 && y >= 40 && y < 60 {
-                    // Black square in center
-                    img.put_pixel(x, y, image::Rgba([0, 0, 0, 255]));
-                } else {
-                    // White background
-                    img.put_pixel(x, y, image::Rgba([255, 255, 255, 255]));
-                }
-            }
-        }
-
-        // Create config with dots backend
-        let config = TraceLowConfig {
-            backend: TraceBackend::Dots,
-            detail: 0.3,
-            dot_density_threshold: 0.1,
-            dot_min_radius: 0.5,
-            dot_max_radius: 3.0,
-            dot_preserve_colors: true,
-            dot_adaptive_sizing: true,
-            dot_background_tolerance: 0.15,
-            ..Default::default()
-        };
-
-        let thresholds = ThresholdMapping::new(config.detail, img.width(), img.height());
-
-        // Test the dots backend
-        let result = trace_dots(&img, &thresholds, &config);
-
-        assert!(result.is_ok(), "Dots backend should succeed");
-
-        let svg_paths = result.unwrap();
-        assert!(!svg_paths.is_empty(), "Should generate some SVG paths");
-
-        // Check that all paths are circles (dots are converted to circles)
-        for path in &svg_paths {
-            match path.element_type {
-                SvgElementType::Circle { cx: _, cy: _, r } => {
-                    assert!(
-                        r >= config.dot_min_radius,
-                        "Circle radius should be >= min_radius"
-                    );
-                    assert!(
-                        r <= config.dot_max_radius,
-                        "Circle radius should be <= max_radius"
-                    );
-                }
-                _ => panic!("Expected Circle elements from dots backend"),
-            }
-        }
-    }
-
-    #[test]
-    fn test_trace_dots_config_validation() {
-        use image::RgbaImage;
-
-        let img = RgbaImage::new(50, 50);
-        let thresholds = ThresholdMapping::new(0.3, 50, 50);
-
-        // Test with invalid density threshold (too high - should produce no dots)
-        let config = TraceLowConfig {
-            backend: TraceBackend::Dots,
-            dot_density_threshold: 0.99, // Very high threshold
-            ..Default::default()
-        };
-
-        let result = trace_dots(&img, &thresholds, &config);
-        assert!(result.is_ok());
-
-        let svg_paths = result.unwrap();
-        // With such a high threshold, we might get no dots, which is fine
-        // Just ensure the function completes successfully
-    }
-
-    #[test]
-    fn test_trace_dots_color_preservation() {
-        use image::RgbaImage;
-
-        // Create a colorful test image
-        let mut img = RgbaImage::new(50, 50);
-
-        for y in 0..50 {
-            for x in 0..50 {
-                if x < 25 {
-                    img.put_pixel(x, y, image::Rgba([255, 0, 0, 255])); // Red
-                } else {
-                    img.put_pixel(x, y, image::Rgba([0, 0, 255, 255])); // Blue
-                }
-            }
-        }
-
-        let thresholds = ThresholdMapping::new(0.3, 50, 50);
-
-        // Test with color preservation enabled
-        let config_preserve = TraceLowConfig {
-            backend: TraceBackend::Dots,
-            dot_preserve_colors: true,
-            dot_density_threshold: 0.05, // Lower threshold to ensure some dots
-            ..Default::default()
-        };
-
-        let result = trace_dots(&img, &thresholds, &config_preserve);
-        assert!(result.is_ok());
-
-        let svg_paths = result.unwrap();
-        if !svg_paths.is_empty() {
-            // Should have some variety in colors if color preservation is working
-            let colors: std::collections::HashSet<_> = svg_paths.iter().map(|p| &p.fill).collect();
-            // We might get various colors or gradations due to edge detection
-            assert!(!colors.is_empty(), "Should have some colors");
-        }
-    }
-
-    #[test]
-    fn test_dots_backend_integration_with_main_pipeline() {
-        use image::RgbaImage;
-
-        // Create a simple test image
-        let img = RgbaImage::new(50, 50);
-
-        // Test that dots backend is properly integrated in the main pipeline
-        let config = TraceLowConfig {
-            backend: TraceBackend::Dots,
-            detail: 0.3,
-            ..Default::default()
-        };
-
-        // This should call through vectorize_trace_low_single_pass -> trace_dots
-        let result = vectorize_trace_low_single_pass(&img, &config);
-        assert!(
-            result.is_ok(),
-            "Main pipeline should work with dots backend"
-        );
-
-        // Also test with the main entry point
-        let result = vectorize_trace_low(&img, &config);
-        assert!(
-            result.is_ok(),
-            "Main vectorize_trace_low should work with dots backend"
-        );
-    }
-}
-
 // ============================================================================
 // Centerline Backend Helper Functions
 // ============================================================================
@@ -3718,13 +3535,21 @@ fn binary_threshold(gray: &GrayImage, threshold: f32) -> GrayImage {
     // Convert normalized threshold (0.0-1.0) to byte value (0-255)
     let threshold_byte = (threshold * 255.0) as u8;
 
-    // Use parallel processing for better performance
-    binary
-        .par_enumerate_pixels_mut()
-        .for_each(|(x, y, binary_pixel)| {
-            let gray_value = gray.get_pixel(x, y).0[0];
-            binary_pixel.0[0] = if gray_value > threshold_byte { 255 } else { 0 };
-        });
+    // Use parallel processing for better performance with execution abstraction
+    let indices: Vec<(u32, u32)> = (0..height)
+        .flat_map(|y| (0..width).map(move |x| (x, y)))
+        .collect();
+
+    let results = execute_parallel(indices, |(x, y)| {
+        let gray_value = gray.get_pixel(x, y).0[0];
+        let binary_value = if gray_value > threshold_byte { 255 } else { 0 };
+        (x, y, binary_value)
+    });
+
+    // Apply results to binary image
+    for (x, y, binary_value) in results {
+        binary.put_pixel(x, y, Luma([binary_value]));
+    }
 
     binary
 }
@@ -3858,8 +3683,7 @@ fn should_delete_zhang_suen_step1(image: &GrayImage, x: u32, y: u32) -> bool {
 
     // Zhang-Suen conditions for step 1
     transitions == 1
-        && white_neighbors >= 2
-        && white_neighbors <= 6
+        && (2..=6).contains(&white_neighbors)
         && (!p2 || !p4 || !p6)
         && (!p4 || !p6 || !p8)
 }
@@ -3892,8 +3716,7 @@ fn should_delete_zhang_suen_step2(image: &GrayImage, x: u32, y: u32) -> bool {
 
     // Zhang-Suen conditions for step 2
     transitions == 1
-        && white_neighbors >= 2
-        && white_neighbors <= 6
+        && (2..=6).contains(&white_neighbors)
         && (!p2 || !p4 || !p8)
         && (!p2 || !p6 || !p8)
 }
@@ -3945,7 +3768,7 @@ fn extract_skeleton_polylines(skeleton: &GrayImage) -> Vec<Vec<Point>> {
 /// Trace a single skeleton path starting from given point
 fn trace_skeleton_path(
     skeleton: &GrayImage,
-    visited: &mut Vec<Vec<bool>>,
+    visited: &mut [Vec<bool>],
     start_x: u32,
     start_y: u32,
 ) -> Vec<Point> {
@@ -4022,4 +3845,236 @@ fn polyline_to_svg_path(polyline: Vec<Point>, stroke_width: f32) -> SvgPath {
     }
 
     SvgPath::new_stroke(path_data, "#000000", stroke_width)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_threshold_mapping() {
+        let mapping = ThresholdMapping::new(0.5, 1920, 1080);
+
+        // Check that thresholds are reasonable
+        assert!(mapping.dp_epsilon_px > 0.0);
+        assert!(mapping.min_stroke_length_px >= 10.0);
+        assert!(mapping.canny_high_threshold > mapping.canny_low_threshold);
+        assert!(mapping.slic_cell_size_px >= 600.0);
+        assert!(mapping.slic_cell_size_px <= 3000.0);
+        assert!(mapping.lab_merge_threshold >= 1.0);
+        assert!(mapping.lab_split_threshold > mapping.lab_merge_threshold);
+    }
+
+    #[test]
+    fn test_edge_backend_basic() {
+        // Create simple test image with edges
+        let mut image = ImageBuffer::new(100, 100);
+
+        // Draw a simple square
+        for x in 20..80 {
+            for y in 20..80 {
+                if x == 20 || x == 79 || y == 20 || y == 79 {
+                    image.put_pixel(x, y, Rgba([0, 0, 0, 255])); // Black edge
+                } else {
+                    image.put_pixel(x, y, Rgba([255, 255, 255, 255])); // White fill
+                }
+            }
+        }
+
+        let config = TraceLowConfig {
+            detail: 0.5,
+            ..Default::default()
+        };
+
+        let result = vectorize_trace_low(&image, &config);
+        assert!(result.is_ok());
+
+        let paths = result.unwrap();
+        assert!(!paths.is_empty());
+
+        // Check that paths are stroke-only
+        for path in &paths {
+            assert_eq!(path.fill, "none");
+            assert_ne!(path.stroke, "none");
+            assert!(path.stroke_width > 0.0);
+        }
+    }
+
+    #[test]
+    fn test_douglas_peucker_simplification() {
+        // Create a simple polyline that should be simplified
+        let polyline = vec![
+            Point { x: 0.0, y: 0.0 },
+            Point { x: 1.0, y: 0.1 },
+            Point { x: 2.0, y: 0.0 },
+            Point { x: 3.0, y: 0.1 },
+            Point { x: 4.0, y: 0.0 },
+            Point { x: 5.0, y: 5.0 }, // Significant deviation
+            Point { x: 6.0, y: 0.0 },
+        ];
+
+        let simplified = douglas_peucker_simplify(&polyline, 0.5);
+
+        // Should remove some intermediate points but keep the significant deviation
+        assert!(simplified.len() < polyline.len());
+        assert!(simplified.len() >= 2);
+
+        // First and last points should be preserved
+        assert_eq!(simplified[0], polyline[0]);
+        assert_eq!(
+            simplified[simplified.len() - 1],
+            polyline[polyline.len() - 1]
+        );
+    }
+
+    #[test]
+    fn test_trace_dots_backend() {
+        use image::RgbaImage;
+
+        // Create a simple test image
+        let mut img = RgbaImage::new(100, 100);
+
+        // Add a simple pattern - white background with black square
+        for y in 0..100 {
+            for x in 0..100 {
+                if (40..60).contains(&x) && (40..60).contains(&y) {
+                    // Black square in center
+                    img.put_pixel(x, y, image::Rgba([0, 0, 0, 255]));
+                } else {
+                    // White background
+                    img.put_pixel(x, y, image::Rgba([255, 255, 255, 255]));
+                }
+            }
+        }
+
+        // Create config with dots backend
+        let config = TraceLowConfig {
+            backend: TraceBackend::Dots,
+            detail: 0.3,
+            dot_density_threshold: 0.1,
+            dot_min_radius: 0.5,
+            dot_max_radius: 3.0,
+            dot_preserve_colors: true,
+            dot_adaptive_sizing: true,
+            dot_background_tolerance: 0.15,
+            ..Default::default()
+        };
+
+        let thresholds = ThresholdMapping::new(config.detail, img.width(), img.height());
+
+        // Test the dots backend
+        let result = trace_dots(&img, &thresholds, &config);
+
+        assert!(result.is_ok(), "Dots backend should succeed");
+
+        let svg_paths = result.unwrap();
+        assert!(!svg_paths.is_empty(), "Should generate some SVG paths");
+
+        // Check that all paths are circles (dots are converted to circles)
+        for path in &svg_paths {
+            match path.element_type {
+                SvgElementType::Circle { cx: _, cy: _, r } => {
+                    assert!(
+                        r >= config.dot_min_radius,
+                        "Circle radius should be >= min_radius"
+                    );
+                    assert!(
+                        r <= config.dot_max_radius,
+                        "Circle radius should be <= max_radius"
+                    );
+                }
+                _ => panic!("Expected Circle elements from dots backend"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_trace_dots_config_validation() {
+        use image::RgbaImage;
+
+        let img = RgbaImage::new(50, 50);
+        let thresholds = ThresholdMapping::new(0.3, 50, 50);
+
+        // Test with invalid density threshold (too high - should produce no dots)
+        let config = TraceLowConfig {
+            backend: TraceBackend::Dots,
+            dot_density_threshold: 0.99, // Very high threshold
+            ..Default::default()
+        };
+
+        let result = trace_dots(&img, &thresholds, &config);
+        assert!(result.is_ok());
+
+        let _svg_paths = result.unwrap();
+        // With such a high threshold, we might get no dots, which is fine
+        // Just ensure the function completes successfully
+    }
+
+    #[test]
+    fn test_trace_dots_color_preservation() {
+        use image::RgbaImage;
+
+        // Create a colorful test image
+        let mut img = RgbaImage::new(50, 50);
+
+        for y in 0..50 {
+            for x in 0..50 {
+                if x < 25 {
+                    img.put_pixel(x, y, image::Rgba([255, 0, 0, 255])); // Red
+                } else {
+                    img.put_pixel(x, y, image::Rgba([0, 0, 255, 255])); // Blue
+                }
+            }
+        }
+
+        let thresholds = ThresholdMapping::new(0.3, 50, 50);
+
+        // Test with color preservation enabled
+        let config_preserve = TraceLowConfig {
+            backend: TraceBackend::Dots,
+            dot_preserve_colors: true,
+            dot_density_threshold: 0.05, // Lower threshold to ensure some dots
+            ..Default::default()
+        };
+
+        let result = trace_dots(&img, &thresholds, &config_preserve);
+        assert!(result.is_ok());
+
+        let svg_paths = result.unwrap();
+        if !svg_paths.is_empty() {
+            // Should have some variety in colors if color preservation is working
+            let colors: std::collections::HashSet<_> = svg_paths.iter().map(|p| &p.fill).collect();
+            // We might get various colors or gradations due to edge detection
+            assert!(!colors.is_empty(), "Should have some colors");
+        }
+    }
+
+    #[test]
+    fn test_dots_backend_integration_with_main_pipeline() {
+        use image::RgbaImage;
+
+        // Create a simple test image
+        let img = RgbaImage::new(50, 50);
+
+        // Test that dots backend is properly integrated in the main pipeline
+        let config = TraceLowConfig {
+            backend: TraceBackend::Dots,
+            detail: 0.3,
+            ..Default::default()
+        };
+
+        // This should call through vectorize_trace_low_single_pass -> trace_dots
+        let result = vectorize_trace_low_single_pass(&img, &config);
+        assert!(
+            result.is_ok(),
+            "Main pipeline should work with dots backend"
+        );
+
+        // Also test with the main entry point
+        let result = vectorize_trace_low(&img, &config);
+        assert!(
+            result.is_ok(),
+            "Main vectorize_trace_low should work with dots backend"
+        );
+    }
 }

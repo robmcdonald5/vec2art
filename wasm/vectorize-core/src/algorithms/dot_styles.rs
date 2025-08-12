@@ -234,7 +234,7 @@ pub fn apply_style_preset(config: &mut DotConfig, style: DotStyle) {
 /// add_artistic_jitter(&mut dots, 2.0);
 /// // Dots now have slight random position offsets
 /// ```
-pub fn add_artistic_jitter(dots: &mut Vec<Dot>, amount: f32) {
+pub fn add_artistic_jitter(dots: &mut [Dot], amount: f32) {
     if amount <= 0.0 || dots.is_empty() {
         return;
     }
@@ -248,7 +248,7 @@ pub fn add_artistic_jitter(dots: &mut Vec<Dot>, amount: f32) {
 }
 
 /// Add artistic jitter with detailed configuration
-pub fn add_artistic_jitter_with_config(dots: &mut Vec<Dot>, config: &JitterConfig) {
+pub fn add_artistic_jitter_with_config(dots: &mut [Dot], config: &JitterConfig) {
     if config.max_offset <= 0.0 || dots.is_empty() {
         return;
     }
@@ -343,7 +343,7 @@ pub fn add_artistic_jitter_with_config(dots: &mut Vec<Dot>, config: &JitterConfi
 /// add_size_variation(&mut dots, 0.3);
 /// // Dots now have varied radii around their original sizes
 /// ```
-pub fn add_size_variation(dots: &mut Vec<Dot>, variation_factor: f32) {
+pub fn add_size_variation(dots: &mut [Dot], variation_factor: f32) {
     let config = SizeVariationConfig {
         variation_factor,
         ..Default::default()
@@ -353,7 +353,7 @@ pub fn add_size_variation(dots: &mut Vec<Dot>, variation_factor: f32) {
 }
 
 /// Add size variation with detailed configuration
-pub fn add_size_variation_with_config(dots: &mut Vec<Dot>, config: &SizeVariationConfig) {
+pub fn add_size_variation_with_config(dots: &mut [Dot], config: &SizeVariationConfig) {
     if config.variation_factor <= 0.0 || dots.is_empty() {
         return;
     }
@@ -368,7 +368,7 @@ pub fn add_size_variation_with_config(dots: &mut Vec<Dot>, config: &SizeVariatio
         let variation: f32 = rng.sample(rand_distr::Normal::new(1.0, std_dev).unwrap());
 
         // Clamp to configured bounds
-        let variation_clamped = variation.max(config.min_factor).min(config.max_factor);
+        let variation_clamped = variation.clamp(config.min_factor, config.max_factor);
 
         dot.radius = original_radius * variation_clamped;
     }
@@ -396,7 +396,7 @@ pub fn add_size_variation_with_config(dots: &mut Vec<Dot>, config: &SizeVariatio
 /// add_opacity_variation(&mut dots, 0.2);
 /// // Dots now have varied opacity for depth effect
 /// ```
-pub fn add_opacity_variation(dots: &mut Vec<Dot>, variation_factor: f32) {
+pub fn add_opacity_variation(dots: &mut [Dot], variation_factor: f32) {
     let config = OpacityVariationConfig {
         variation_factor,
         ..Default::default()
@@ -406,7 +406,7 @@ pub fn add_opacity_variation(dots: &mut Vec<Dot>, variation_factor: f32) {
 }
 
 /// Add opacity variation with detailed configuration
-pub fn add_opacity_variation_with_config(dots: &mut Vec<Dot>, config: &OpacityVariationConfig) {
+pub fn add_opacity_variation_with_config(dots: &mut [Dot], config: &OpacityVariationConfig) {
     if config.variation_factor <= 0.0 || dots.is_empty() {
         return;
     }
@@ -423,7 +423,7 @@ pub fn add_opacity_variation_with_config(dots: &mut Vec<Dot>, config: &OpacityVa
         let new_opacity = base_opacity + (opacity_range * variation);
 
         // Ensure opacity stays within valid bounds
-        dot.opacity = new_opacity.max(0.0).min(1.0);
+        dot.opacity = new_opacity.clamp(0.0, 1.0);
     }
 }
 
@@ -450,7 +450,7 @@ pub fn add_opacity_variation_with_config(dots: &mut Vec<Dot>, config: &OpacityVa
 /// apply_artistic_effects(&mut dots, DotStyle::SketchStyle);
 /// // Dots now have sketch-style artistic effects applied
 /// ```
-pub fn apply_artistic_effects(dots: &mut Vec<Dot>, style: DotStyle) {
+pub fn apply_artistic_effects(dots: &mut [Dot], style: DotStyle) {
     match style {
         DotStyle::FineStippling => {
             // Minimal effects for precision
@@ -580,7 +580,7 @@ pub fn apply_artistic_effects(dots: &mut Vec<Dot>, style: DotStyle) {
 /// # Arguments
 /// * `dots` - Mutable reference to vector of dots to modify
 /// * `grid_size` - Grid cell size in pixels
-pub fn apply_grid_alignment(dots: &mut Vec<Dot>, grid_size: f32) {
+pub fn apply_grid_alignment(dots: &mut [Dot], grid_size: f32) {
     if grid_size <= 0.0 {
         return;
     }
@@ -986,11 +986,10 @@ mod tests {
 
             // All dots should remain valid after effects
             for dot in &dots {
-                assert!(dot.radius > 0.0, "Invalid radius for style {:?}", style);
+                assert!(dot.radius > 0.0, "Invalid radius for style {style:?}");
                 assert!(
                     dot.opacity >= 0.0 && dot.opacity <= 1.0,
-                    "Invalid opacity for style {:?}",
-                    style
+                    "Invalid opacity for style {style:?}"
                 );
                 // Positions can be anywhere (jitter may move them)
             }

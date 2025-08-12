@@ -24,12 +24,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    println!("Transparent pixels: {}", transparent_count);
-    println!("Opaque pixels: {}", opaque_count);
+    println!("Transparent pixels: {transparent_count}");
+    println!("Opaque pixels: {opaque_count}");
     println!("Unique colors: {}", color_counts.len());
 
     for (color, count) in color_counts.iter().take(10) {
-        println!("  Color {:?}: {} pixels", color, count);
+        println!("  Color {color:?}: {count} pixels");
     }
 
     // Sample some pixels to see distribution
@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for y in (0..rgba_img.height()).step_by(rgba_img.height() as usize / 10) {
         for x in (0..rgba_img.width()).step_by(rgba_img.width() as usize / 10) {
             let pixel = rgba_img.get_pixel(x, y);
-            println!("  ({}, {}): {:?}", x, y, pixel);
+            println!("  ({x}, {y}): {pixel:?}");
         }
     }
 

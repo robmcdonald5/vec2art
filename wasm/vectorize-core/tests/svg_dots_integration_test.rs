@@ -187,8 +187,8 @@ fn test_precision_control() {
     assert!(svg_high.contains("cy=\"20.9877\""));
     assert!(svg_high.contains("r=\"2.3457\""));
 
-    println!("Low precision: {}", svg_low);
-    println!("High precision: {}", svg_high);
+    println!("Low precision: {svg_low}");
+    println!("High precision: {svg_high}");
 }
 
 #[test]
@@ -214,7 +214,7 @@ fn test_empty_and_edge_cases() {
     assert!(svg_filtered.contains("#00ff00"));
     assert!(!svg_filtered.contains("#ff0000")); // Should be filtered out
 
-    println!("Single dot SVG: {}", svg_single);
+    println!("Single dot SVG: {svg_single}");
 }
 
 #[test]
@@ -258,7 +258,7 @@ fn test_bounding_box_calculation() {
 
     let svg = optimize_dot_svg(&dots);
 
-    println!("Bounding box SVG: {}", svg);
+    println!("Bounding box SVG: {svg}");
 
     // Should have proper viewBox including dot radii
     // The exact format may vary, but should include negative bounds and proper sizing
@@ -289,7 +289,7 @@ fn test_special_coordinates() {
     // Should handle tiny radius
     assert!(svg.contains("r=\"0.01\""));
 
-    println!("Special coordinates SVG: {}", svg);
+    println!("Special coordinates SVG: {svg}");
 }
 
 #[test]

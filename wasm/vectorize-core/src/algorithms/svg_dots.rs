@@ -77,7 +77,7 @@ impl SvgElement {
 pub fn dots_to_svg_elements(dots: &[Dot]) -> Vec<SvgElement> {
     dots.iter()
         .filter(|dot| dot.opacity > 0.0 && dot.radius > 0.0)
-        .map(|dot| SvgElement::from_dot(dot))
+        .map(SvgElement::from_dot)
         .collect()
 }
 
@@ -203,9 +203,9 @@ fn generate_grouped_svg_content(dots: &[&Dot], config: &SvgDotConfig, svg: &mut 
 
         // Start group
         if config.compact_output {
-            write!(svg, r#"<g fill="{}">"#, base_color).unwrap();
+            write!(svg, r#"<g fill="{base_color}">"#).unwrap();
         } else {
-            writeln!(svg, r#"  <g fill="{}">"#, base_color).unwrap();
+            writeln!(svg, r#"  <g fill="{base_color}">"#).unwrap();
         }
 
         // Add all dots in this color group
@@ -603,7 +603,7 @@ mod tests {
 
     #[test]
     fn test_dots_to_svg_with_config_filtering() {
-        let mut dots = vec![
+        let dots = vec![
             Dot::new(10.0, 10.0, 2.0, 1.0, "#ff0000".to_string()),
             Dot::new(20.0, 20.0, 1.5, 0.05, "#00ff00".to_string()), // Below threshold
         ];
@@ -642,7 +642,7 @@ mod tests {
 
         // Compact should not contain newlines (except in viewBox values)
         let compact_content = svg_compact.replace(
-            &svg_compact
+            svg_compact
                 .split("viewBox=")
                 .nth(1)
                 .unwrap()
@@ -780,9 +780,9 @@ mod tests {
     fn test_svg_dot_config_defaults() {
         let config = SvgDotConfig::default();
 
-        assert_eq!(config.group_similar_colors, true);
-        assert_eq!(config.use_opacity, true);
-        assert_eq!(config.compact_output, false);
+        assert!(config.group_similar_colors);
+        assert!(config.use_opacity);
+        assert!(!config.compact_output);
         assert_eq!(config.precision, 2);
         assert_eq!(config.color_similarity_threshold, 0.95);
         assert_eq!(config.min_opacity_threshold, 0.1);

@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output_dir = "examples/outputs/test_outputs";
 
     println!("=== MILESTONE 2: ADVANCED LINE TRACING ALGORITHMS TEST ===");
-    println!("Input: {}", input_path);
+    println!("Input: {input_path}");
 
     // Ensure output directory exists
     fs::create_dir_all(output_dir)?;
@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let baseline_paths = vectorize_trace_low(&rgba_img, &baseline_config)?;
-    let baseline_output = format!("{}/test1-5-milestone2-baseline.svg", output_dir);
+    let baseline_output = format!("{output_dir}/test1-5-milestone2-baseline.svg");
     let svg_config = SvgConfig::default();
     let svg_content = generate_svg_document(
         &baseline_paths,
@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let etf_fdog_paths = vectorize_trace_low(&rgba_img, &etf_fdog_config)?;
-    let etf_fdog_output = format!("{}/test1-6-milestone2-etf-fdog.svg", output_dir);
+    let etf_fdog_output = format!("{output_dir}/test1-6-milestone2-etf-fdog.svg");
     let svg_content = generate_svg_document(
         &etf_fdog_paths,
         rgba_img.width(),
@@ -103,7 +103,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let flow_tracing_paths = vectorize_trace_low(&rgba_img, &flow_tracing_config)?;
-    let flow_tracing_output = format!("{}/test1-7-milestone2-flow-tracing.svg", output_dir);
+    let flow_tracing_output = format!("{output_dir}/test1-7-milestone2-flow-tracing.svg");
     let svg_content = generate_svg_document(
         &flow_tracing_paths,
         rgba_img.width(),
@@ -137,7 +137,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let full_pipeline_paths = vectorize_trace_low(&rgba_img, &full_pipeline_config)?;
-    let full_pipeline_output = format!("{}/test1-8-milestone2-full-pipeline.svg", output_dir);
+    let full_pipeline_output = format!("{output_dir}/test1-8-milestone2-full-pipeline.svg");
     let svg_content = generate_svg_document(
         &full_pipeline_paths,
         rgba_img.width(),
@@ -166,7 +166,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         full_pipeline_paths.len()
     );
     println!("\n✓ All Milestone 2 algorithms tested successfully!");
-    println!("Check the '{}' directory for output SVG files.", output_dir);
+    println!("Check the '{output_dir}' directory for output SVG files.");
     println!("Files: test1-5-milestone2-baseline.svg through test1-8-milestone2-full-pipeline.svg");
 
     Ok(())

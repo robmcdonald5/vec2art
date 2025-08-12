@@ -3,10 +3,16 @@
 //! This module provides advanced parallel processing strategies, work distribution
 //! algorithms, and load balancing for optimal performance across different
 //! hardware configurations.
+//!
+//! Uses the execution abstraction layer for cross-platform compatibility.
 
-use rayon::prelude::*;
+use crate::execution::{
+    current_num_threads, execute_parallel_chunks, with_thread_pool, ThreadPoolConfig,
+};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+
+// Removed unused rayon import - using execution abstraction instead
 
 /// Configuration for parallel processing strategies
 #[derive(Debug, Clone)]
@@ -76,10 +82,7 @@ impl ParallelContext {
 
     /// Calculate optimal chunk size based on data size and strategy
     pub fn calculate_chunk_size(&self, data_size: usize) -> usize {
-        let num_threads = self
-            .config
-            .num_threads
-            .unwrap_or_else(rayon::current_num_threads);
+        let num_threads = self.config.num_threads.unwrap_or_else(current_num_threads);
 
         match self.config.chunk_strategy {
             ChunkStrategy::Fixed(size) => size,
@@ -88,19 +91,20 @@ impl ParallelContext {
                 let target_chunks = num_threads * 4;
                 (data_size / target_chunks)
                     .max(1)
-                    .min(data_size / num_threads)
+                    .min(data_size.max(1) / num_threads.max(1))
+                    .max(1) // Ensure we never return 0
             }
             ChunkStrategy::Adaptive => {
                 // Start with dynamic, can be adjusted based on runtime performance
                 let base_chunk = data_size / (num_threads * 4);
-                base_chunk.clamp(100, data_size / 2)
+                base_chunk.clamp(1, data_size.max(1) / 2).max(1) // Ensure never 0, min 1, max half data size
             }
         }
     }
 
     /// Check if parallel processing should be used
     pub fn should_use_parallel(&self, data_size: usize) -> bool {
-        data_size >= self.config.min_parallel_size && rayon::current_num_threads() > 1
+        data_size >= self.config.min_parallel_size && current_num_threads() > 1
     }
 
     /// Record work completion for progress tracking
@@ -167,14 +171,14 @@ impl PixelProcessor {
             .collect();
 
         let context = Arc::clone(&self.context);
-        let results: Vec<R> = pixel_coords
-            .par_chunks(chunk_size)
-            .flat_map(|chunk| {
-                let chunk_results: Vec<R> = chunk.iter().map(|&(x, y)| processor(x, y)).collect();
-                context.record_work_completed(chunk.len());
-                chunk_results
-            })
-            .collect();
+        let results: Vec<R> = execute_parallel_chunks(pixel_coords, chunk_size, |chunk| {
+            let chunk_results: Vec<R> = chunk.iter().map(|&(x, y)| processor(x, y)).collect();
+            context.record_work_completed(chunk.len());
+            chunk_results
+        })
+        .into_iter()
+        .flatten()
+        .collect();
 
         results
     }
@@ -316,20 +320,20 @@ where
 
     // Parallel processing with row-wise distribution for better cache locality
     let chunk_size = ParallelContext::new(config.clone()).calculate_chunk_size(height);
+    let rows: Vec<usize> = (0..height).collect();
 
-    (0..height)
-        .into_par_iter()
-        .chunks(chunk_size)
-        .flat_map(|row_chunk| {
-            let mut results = Vec::with_capacity(row_chunk.len() * width);
-            for y in row_chunk {
-                for x in 0..width {
-                    results.push(gradient_fn(data, width, height, x, y));
-                }
+    execute_parallel_chunks(rows, chunk_size, |row_chunk| {
+        let mut results = Vec::with_capacity(row_chunk.len() * width);
+        for &y in row_chunk {
+            for x in 0..width {
+                results.push(gradient_fn(data, width, height, x, y));
             }
-            results
-        })
-        .collect()
+        }
+        results
+    })
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 /// Parallel color distance calculation with SIMD-friendly data layout
@@ -353,18 +357,22 @@ where
     }
 
     let chunk_size = ParallelContext::new(config.clone()).calculate_chunk_size(data_len);
+    type ColorPair = ((u8, u8, u8), (u8, u8, u8));
+    let paired_data: Vec<ColorPair> = colors1
+        .iter()
+        .zip(colors2.iter())
+        .map(|(c1, c2)| (*c1, *c2))
+        .collect();
 
-    colors1
-        .par_chunks(chunk_size)
-        .zip(colors2.par_chunks(chunk_size))
-        .flat_map(|(chunk1, chunk2)| {
-            chunk1
-                .iter()
-                .zip(chunk2.iter())
-                .map(|(c1, c2)| distance_fn(c1, c2))
-                .collect::<Vec<f32>>()
-        })
-        .collect()
+    execute_parallel_chunks(paired_data, chunk_size, |chunk| {
+        chunk
+            .iter()
+            .map(|(c1, c2)| distance_fn(c1, c2))
+            .collect::<Vec<f32>>()
+    })
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 /// Parallel dot collision detection with spatial partitioning
@@ -384,38 +392,38 @@ where
     }
 
     let chunk_size = ParallelContext::new(config.clone()).calculate_chunk_size(data_len);
+    let indices: Vec<usize> = (0..data_len).collect();
 
-    (0..data_len)
-        .into_par_iter()
-        .chunks(chunk_size)
-        .flat_map(|indices| {
-            indices
-                .into_iter()
-                .map(|i| query_fn(&items[i], items))
-                .collect::<Vec<bool>>()
-        })
-        .collect()
+    execute_parallel_chunks(indices, chunk_size, |chunk_indices| {
+        chunk_indices
+            .iter()
+            .map(|&i| query_fn(&items[i], items))
+            .collect::<Vec<bool>>()
+    })
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 /// Thread pool manager for fine-grained control over parallel execution
 pub struct ThreadPoolManager {
     config: ParallelConfig,
-    pool: Option<rayon::ThreadPool>,
+    thread_config: ThreadPoolConfig,
 }
 
 impl ThreadPoolManager {
     /// Create a new thread pool manager
     pub fn new(config: ParallelConfig) -> Self {
-        let pool = if let Some(num_threads) = config.num_threads {
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(num_threads)
-                .build()
-                .ok()
-        } else {
-            None // Use global thread pool
+        let thread_config = ThreadPoolConfig {
+            num_threads: config.num_threads,
+            stack_size: None,
+            thread_name: Some("dot-mapping-worker".to_string()),
         };
 
-        Self { config, pool }
+        Self {
+            config,
+            thread_config,
+        }
     }
 
     /// Execute work on the managed thread pool
@@ -424,24 +432,16 @@ impl ThreadPoolManager {
         F: FnOnce() -> R + Send,
         R: Send,
     {
-        if let Some(ref pool) = self.pool {
-            pool.install(work)
-        } else {
-            work()
-        }
+        with_thread_pool(&self.thread_config, work)
     }
 
     /// Get thread pool statistics
     pub fn stats(&self) -> ThreadPoolStats {
-        let num_threads = if let Some(ref pool) = self.pool {
-            pool.current_num_threads()
-        } else {
-            rayon::current_num_threads()
-        };
+        let num_threads = current_num_threads();
 
         ThreadPoolStats {
             num_threads,
-            has_dedicated_pool: self.pool.is_some(),
+            has_dedicated_pool: self.config.num_threads.is_some(),
             work_stealing_enabled: self.config.work_stealing,
         }
     }
@@ -625,7 +625,17 @@ mod tests {
         };
         let manager = ThreadPoolManager::new(config);
 
-        let result = manager.execute(|| (0..1000).into_par_iter().sum::<usize>());
+        let result = manager.execute(|| {
+            #[cfg(feature = "parallel")]
+            {
+                use rayon::prelude::*;
+                (0..1000).into_par_iter().sum::<usize>()
+            }
+            #[cfg(not(feature = "parallel"))]
+            {
+                (0..1000).sum::<usize>()
+            }
+        });
 
         assert_eq!(result, 499500);
 
@@ -657,7 +667,7 @@ mod tests {
         };
         let context_adaptive = ParallelContext::new(config_adaptive);
         let adaptive_chunk = context_adaptive.calculate_chunk_size(10000);
-        assert!(adaptive_chunk >= 100 && adaptive_chunk <= 5000);
+        assert!((100..=5000).contains(&adaptive_chunk));
     }
 
     #[test]

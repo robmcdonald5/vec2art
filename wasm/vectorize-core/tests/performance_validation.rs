@@ -359,10 +359,7 @@ fn test_gradient_calculation_performance() {
             let ratio = simd_time.as_millis() as f64 / standard_time.as_millis() as f64;
             assert!(
                 ratio <= 1.5, // Allow up to 50% slower for SIMD overhead on small images
-                "SIMD gradient calculation is {} times slower than standard for {}x{}",
-                ratio,
-                width,
-                height
+                "SIMD gradient calculation is {ratio} times slower than standard for {width}x{height}"
             );
         }
     }
@@ -561,10 +558,7 @@ fn test_parallel_processing_scaling() {
 
         assert!(
             time_per_pixel < 1000.0, // Less than 1 microsecond per pixel
-            "Parallel processing is too slow: {:.1} ns/pixel for {}x{}",
-            time_per_pixel,
-            width,
-            height
+            "Parallel processing is too slow: {time_per_pixel:.1} ns/pixel for {width}x{height}"
         );
     }
 }
@@ -629,14 +623,10 @@ fn test_optimization_effectiveness() {
         / standard_result.duration.as_millis().max(1) as f64;
     assert!(
         performance_ratio <= 1.2, // Allow up to 20% slower (optimization overhead)
-        "Optimizations made performance worse: {:.2}x slower",
-        performance_ratio
+        "Optimizations made performance worse: {performance_ratio:.2}x slower"
     );
 
-    println!(
-        "Performance ratio (optimized/standard): {:.2}x",
-        performance_ratio
-    );
+    println!("Performance ratio (optimized/standard): {performance_ratio:.2}x");
 }
 
 #[test]
@@ -687,7 +677,7 @@ fn test_regression_protection() {
         let result = measure_optimized_dot_generation_performance(
             &img,
             &config,
-            &format!("measurement_{}", i),
+            &format!("measurement_{i}"),
         );
         measurements.push(result);
     }
@@ -728,7 +718,6 @@ fn test_regression_protection() {
 
     assert!(
         dot_variance <= 5, // Allow small variance
-        "Dot count variance too high: {} dots variance",
-        dot_variance
+        "Dot count variance too high: {dot_variance} dots variance"
     );
 }

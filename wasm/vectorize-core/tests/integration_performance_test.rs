@@ -12,7 +12,7 @@ use vectorize_core::algorithms::dots_optimized::{
 use vectorize_core::algorithms::{
     background::{detect_background_advanced, BackgroundConfig},
     dots::{generate_dots_from_image, DotConfig},
-    gradients::{analyze_image_gradients, GradientConfig},
+    gradients::analyze_image_gradients,
 };
 use vectorize_core::performance::PerformanceConfig;
 
@@ -133,9 +133,7 @@ fn test_performance_optimization_integration() {
     let target_time = Duration::from_millis(1500);
     assert!(
         optimized_time <= target_time,
-        "Optimized implementation took {:?}, expected <= {:?}",
-        optimized_time,
-        target_time
+        "Optimized implementation took {optimized_time:?}, expected <= {target_time:?}"
     );
 
     // Validate that optimizations don't significantly change output quality
@@ -153,7 +151,7 @@ fn test_performance_optimization_integration() {
     // Calculate performance improvement
     let improvement_ratio =
         standard_time.as_millis() as f64 / optimized_time.as_millis().max(1) as f64;
-    println!("Performance improvement: {:.2}x", improvement_ratio);
+    println!("Performance improvement: {improvement_ratio:.2}x");
 
     // Test with profiling enabled
     let mut generator = OptimizedDotGenerator::new(OptimizedDotConfig {
@@ -196,8 +194,7 @@ fn test_performance_optimization_integration() {
 
         assert!(
             memory_per_dot <= 256, // 256 bytes per dot max
-            "Memory usage per dot too high: {} bytes",
-            memory_per_dot
+            "Memory usage per dot too high: {memory_per_dot} bytes"
         );
     }
 
@@ -344,7 +341,7 @@ fn test_optimization_components() {
         );
 
         // Should generate reasonable number of dots
-        assert!(dots.len() > 0, "{} generated no dots", name);
+        assert!(!dots.is_empty(), "{name} generated no dots");
     }
 
     println!("✓ Component optimization test passed!");
@@ -406,15 +403,13 @@ fn test_performance_consistency() {
     let duration_variance_pct = (duration_variance as f64 / avg_duration as f64) * 100.0;
     assert!(
         duration_variance_pct < 20.0,
-        "Performance too inconsistent: {:.1}% variance in duration",
-        duration_variance_pct
+        "Performance too inconsistent: {duration_variance_pct:.1}% variance in duration"
     );
 
     // Dot count should be very consistent (deterministic algorithm)
     assert!(
         dot_variance <= 2,
-        "Dot count too inconsistent: {} variance",
-        dot_variance
+        "Dot count too inconsistent: {dot_variance} variance"
     );
 
     println!("✓ Performance consistency test passed!");

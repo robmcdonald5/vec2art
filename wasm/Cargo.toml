@@ -45,6 +45,8 @@ wee_alloc = "0.4"
 
 # Development dependencies
 criterion = { version = "0.5", features = ["html_reports"] }
+wasm-bindgen-test = "0.3"
+serde-wasm-bindgen = "0.6"
 
 [profile.release]
 # Optimize for performance (LTO disabled for WASM compatibility)

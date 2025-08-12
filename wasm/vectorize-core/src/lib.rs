@@ -6,7 +6,9 @@
 
 pub mod algorithms;
 pub mod config;
+pub mod config_builder;
 pub mod error;
+pub mod execution;
 pub mod performance;
 pub mod preprocessing;
 pub mod svg;
@@ -15,9 +17,18 @@ pub mod telemetry;
 // Re-export main types for convenience
 pub use algorithms::{vectorize_trace_low, TraceBackend, TraceLowConfig};
 pub use config::SvgConfig;
+pub use config_builder::{ConfigBuilder, ConfigBuilderError, ConfigBuilderResult};
 pub use error::*;
+pub use execution::{
+    current_num_threads, execute_parallel, execute_parallel_chunks, execute_parallel_filter_map,
+    join, join3, par_bridge, par_enumerate, par_extend, par_iter, par_iter_mut, par_sort,
+    par_sort_by, par_windows, par_zip, process_chunks_mut, reduce, scope, should_use_parallel,
+    with_thread_pool, ThreadPoolConfig,
+};
 
 use image::{ImageBuffer, Rgba};
+
+// Note: TraceLowConfig and TraceBackend are now imported from algorithms module
 
 /// Main entry point for trace-low vectorization
 ///
@@ -295,8 +306,10 @@ mod tests {
     #[test]
     fn test_edge_case_invalid_config() {
         let img = ImageBuffer::new(10, 10);
-        let mut config = TraceLowConfig::default();
-        config.detail = -0.1; // Invalid: negative detail
+        let config = TraceLowConfig {
+            detail: -0.1, // Invalid: negative detail
+            ..Default::default()
+        };
 
         let result = vectorize_trace_low_rgba(&img, &config);
         assert!(result.is_err());

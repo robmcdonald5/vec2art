@@ -118,17 +118,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             nms_non_zero,
             nms_edges.len()
         );
-        println!(
-            "   NMS value range: {:.6} to {:.6}",
-            nms_min_nonzero, nms_max
-        );
+        println!("   NMS value range: {nms_min_nonzero:.6} to {nms_max:.6}");
 
         // Hysteresis with corrected thresholds
         let low_thresh = nms_max * 0.1; // 10% of max
         let high_thresh = nms_max * 0.7; // 70% of max
         println!(
-            "   Using corrected hysteresis thresholds: low={:.6}, high={:.6}",
-            low_thresh, high_thresh
+            "   Using corrected hysteresis thresholds: low={low_thresh:.6}, high={high_thresh:.6}"
         );
 
         let binary_edges = hysteresis_threshold(

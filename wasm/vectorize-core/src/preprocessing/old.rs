@@ -182,8 +182,8 @@ pub fn calculate_otsu_threshold(grayscale: &[u8]) -> u8 {
     let total_pixels = grayscale.len() as f64;
     let mut sum = 0.0;
 
-    for i in 0..256 {
-        sum += i as f64 * histogram[i] as f64;
+    for (i, &count) in histogram.iter().enumerate() {
+        sum += i as f64 * count as f64;
     }
 
     let mut sum_b = 0.0;
@@ -191,8 +191,8 @@ pub fn calculate_otsu_threshold(grayscale: &[u8]) -> u8 {
     let mut max_variance = 0.0;
     let mut threshold = 0u8;
 
-    for i in 0..256 {
-        weight_b += histogram[i] as f64;
+    for (i, &count) in histogram.iter().enumerate() {
+        weight_b += count as f64;
         if weight_b == 0.0 {
             continue;
         }
@@ -202,7 +202,7 @@ pub fn calculate_otsu_threshold(grayscale: &[u8]) -> u8 {
             break;
         }
 
-        sum_b += i as f64 * histogram[i] as f64;
+        sum_b += i as f64 * count as f64;
 
         let mean_b = sum_b / weight_b;
         let mean_f = (sum - sum_b) / weight_f;
@@ -327,7 +327,7 @@ pub fn lab_to_rgb(l: f32, a: f32, b: f32) -> (u8, u8, u8) {
         };
 
         // Clamp to valid range
-        *component = component.max(0.0).min(1.0);
+        *component = component.clamp(0.0, 1.0);
     }
 
     // Convert to 0-255 range
@@ -441,10 +441,10 @@ pub fn gaussian_blur(grayscale: &[u8], dimensions: (u32, u32), sigma: f32) -> Ve
     let coeff = -0.5 / (sigma * sigma);
     let mut kernel_sum = 0.0;
 
-    for i in 0..kernel.len() {
+    for (i, k) in kernel.iter_mut().enumerate() {
         let x = i as f32 - kernel_size as f32;
-        kernel[i] = (coeff * x * x).exp();
-        kernel_sum += kernel[i];
+        *k = (coeff * x * x).exp();
+        kernel_sum += *k;
     }
 
     // Normalize kernel
@@ -461,12 +461,12 @@ pub fn gaussian_blur(grayscale: &[u8], dimensions: (u32, u32), sigma: f32) -> Ve
             let mut sum = 0.0;
             let mut weight_sum = 0.0;
 
-            for i in 0..kernel.len() {
+            for (i, &kernel_val) in kernel.iter().enumerate() {
                 let kx = x as i32 + i as i32 - kernel_size as i32;
                 if kx >= 0 && kx < width as i32 {
                     let idx = (y * width + kx as u32) as usize;
-                    sum += grayscale[idx] as f32 * kernel[i];
-                    weight_sum += kernel[i];
+                    sum += grayscale[idx] as f32 * kernel_val;
+                    weight_sum += kernel_val;
                 }
             }
 
@@ -485,12 +485,12 @@ pub fn gaussian_blur(grayscale: &[u8], dimensions: (u32, u32), sigma: f32) -> Ve
             let mut sum = 0.0;
             let mut weight_sum = 0.0;
 
-            for i in 0..kernel.len() {
+            for (i, &kernel_val) in kernel.iter().enumerate() {
                 let ky = y as i32 + i as i32 - kernel_size as i32;
                 if ky >= 0 && ky < height as i32 {
                     let idx = (ky as u32 * width + x) as usize;
-                    sum += temp[idx] * kernel[i];
-                    weight_sum += kernel[i];
+                    sum += temp[idx] * kernel_val;
+                    weight_sum += kernel_val;
                 }
             }
 
