@@ -3,28 +3,7 @@
 	import { ArrowRight, Image, Zap, Download } from 'lucide-svelte';
 </script>
 
-<div class="flex min-h-dvh flex-col">
-	<header
-		class="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 border-b backdrop-blur"
-	>
-		<div
-			class="mx-auto flex h-14 w-full max-w-screen-xl items-center justify-between px-4 sm:px-6 lg:px-8"
-		>
-			<a href="/" class="flex items-center gap-2 font-semibold">
-				<div class="bg-primary flex h-8 w-8 items-center justify-center rounded">
-					<span class="text-primary-foreground text-sm">V2A</span>
-				</div>
-				<span>vec2art</span>
-			</a>
-			<nav class="flex items-center gap-4">
-				<a href="/app" class="text-muted-foreground hover:text-foreground text-sm">App</a>
-				<a href="/examples" class="text-muted-foreground hover:text-foreground text-sm">Examples</a>
-				<Button href="/app" variant="default" size="sm">Get Started</Button>
-			</nav>
-		</div>
-	</header>
-
-	<main class="flex-1">
+<div>
 		<!-- Hero Section -->
 		<section class="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
 			<div class="mx-auto max-w-screen-xl">
@@ -38,11 +17,11 @@
 						hand-drawn style vector graphics using advanced line tracing algorithms.
 					</p>
 					<div class="mt-10 flex flex-col gap-4 sm:flex-row sm:justify-center">
-						<Button href="/app" size="lg" class="gap-2">
+						<Button href="/converter" size="lg" class="gap-2">
 							Start Converting
 							<ArrowRight class="h-4 w-4" />
 						</Button>
-						<Button href="/examples" variant="outline" size="lg">View Examples</Button>
+						<Button href="/gallery" variant="outline" size="lg">View Gallery</Button>
 					</div>
 				</div>
 			</div>
@@ -125,11 +104,9 @@
 				</div>
 			</div>
 		</section>
-	</main>
-
-	<footer class="border-t px-4 py-8 sm:px-6 lg:px-8">
-		<div class="text-muted-foreground mx-auto max-w-screen-xl text-center text-sm">
-			<p>© 2024 vec2art. Open source and powered by Rust + WebAssembly.</p>
-		</div>
-	</footer>
+<footer class="border-t px-4 py-8 sm:px-6 lg:px-8">
+	<div class="text-muted-foreground mx-auto max-w-screen-xl text-center text-sm">
+		<p>© 2024 vec2art. Open source and powered by Rust + WebAssembly.</p>
+	</div>
+</footer>
 </div>
