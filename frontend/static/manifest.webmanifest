@@ -1,0 +1,18 @@
+{
+	"name": "vec2art",
+	"short_name": "vec2art",
+	"description": "Transform raster images into expressive line art SVGs",
+	"theme_color": "#020817",
+	"background_color": "#ffffff",
+	"display": "standalone",
+	"orientation": "portrait",
+	"scope": "/",
+	"start_url": "/",
+	"icons": [
+		{
+			"src": "/favicon.svg",
+			"sizes": "any",
+			"type": "image/svg+xml"
+		}
+	]
+}

@@ -4,13 +4,13 @@
 
 # GENERAL RULES
 
-## Agentic Workflow Principles
+## Agentic Workflow Principles **IMPORTANT**
 
 1. **Outline**
   When prompted break up the task at hand into a `todo list`.
 
 2. **Delegate**
-  Task sub-agents with completing these `todo` tasks using `@'relevant-agent-name'` call(s).
+  Delegate sub-agents with completing these `todo` tasks using `@'relevant-agent-name'` call(s).
 
 3. **Analyze**
   When a sub-agent is done outputting, analyze what it did and decide if the output is good or if the agent needs re-tasked with new instructions.
@@ -173,5 +173,3 @@ The system focuses exclusively on advanced line tracing with multiple enhancemen
 - **Flexible Backend System**: Four production-ready backends (edge, centerline, superpixel, dots)
 - **Content-Aware Processing**: Noise filtering and detail level adaptation
 - **Comprehensive CLI**: Full parameter control for professional line art creation
-
-## IMPORTANT REMEMBER TO UPDATE TODO LIST WHEN TASKS ARE UPDATED/COMPLETED/REMOVED/ADDED

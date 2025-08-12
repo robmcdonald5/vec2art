@@ -9,6 +9,7 @@ This directory contains the SvelteKit 5 frontend application that provides a use
 ## Application Architecture
 
 ### Core Features
+
 - **Image Upload** — Drag-and-drop or file selection for raster images
 - **Real-time Preview** — Live SVG preview with pan/zoom controls
 - **Algorithm Selection** — UI for choosing vectorization modes and parameters
@@ -230,42 +231,49 @@ frontend/
 ## Development Guidelines
 
 ### Component Development
+
 - Use Svelte 5 runes (`$state`, `$derived`, `$effect`) for reactivity
 - Implement proper TypeScript typing for all props and events
 - Follow single-responsibility principle for components
 - Use composition over inheritance
 
 ### State Management
+
 - Use Svelte stores with runes for global state
 - Implement proper TypeScript interfaces for store data
 - Keep stores focused and modular
 - Use Zod for runtime validation of external data
 
 ### WASM Integration
+
 - Lazy-load WASM module on first use
 - Implement loading states and error handling
 - Use Web Workers for processing to avoid blocking UI
 - Handle COOP/COEP headers for SharedArrayBuffer support
 
 ### Styling Guidelines
+
 - Use Tailwind CSS 4 utility classes
 - Implement dark mode support with CSS variables
 - Maintain consistent spacing and typography scales
 - Use component-scoped styles when needed
 
 ### Performance Optimization
+
 - Implement virtual scrolling for image galleries
 - Use progressive image loading
 - Optimize bundle size with code splitting
 - Implement proper caching strategies
 
 ### Accessibility
+
 - Maintain proper ARIA labels and roles
 - Ensure keyboard navigation support
 - Provide appropriate loading and error states
 - Test with screen readers
 
 ### Error Handling
+
 - Implement comprehensive error boundaries
 - Provide user-friendly error messages
 - Log errors appropriately for debugging
@@ -274,18 +282,21 @@ frontend/
 ## UI/UX Guidelines
 
 ### User Flow
+
 1. **Upload** — Clear upload area with format support indicators
 2. **Configure** — Intuitive parameter controls with live preview
 3. **Process** — Real-time progress feedback
 4. **Export** — Multiple export options with size estimates
 
 ### Responsive Design
+
 - Mobile-first approach
 - Adaptive layouts for different screen sizes
 - Touch-friendly controls
 - Progressive enhancement
 
 ### Performance Indicators
+
 - Show processing time estimates
 - Display output file size predictions
 - Provide quality vs. size trade-off visualizations
@@ -293,16 +304,19 @@ frontend/
 ## Testing Strategy
 
 ### Unit Tests
+
 - Test utility functions and helpers
 - Test store logic and state management
 - Use `vitest` for fast unit testing
 
 ### Component Tests
+
 - Test component props and events
 - Test user interactions
 - Verify accessibility requirements
 
 ### E2E Tests
+
 - Test complete user workflows
 - Test WASM module integration
 - Use Playwright for cross-browser testing
@@ -310,21 +324,25 @@ frontend/
 ## Key Dependencies
 
 ### Core Framework
+
 - `@sveltejs/kit` — Application framework
 - `svelte` — Component framework
 - `typescript` — Type safety
 
 ### Styling
+
 - `tailwindcss` — Utility-first CSS
 - `@tailwindcss/forms` — Form styling
 - `@tailwindcss/typography` — Typography utilities
 
 ### Utilities
+
 - `zod` — Runtime validation
 - `comlink` — Web Worker communication
 - `panzoom` — Pan and zoom for SVG preview
 
 ### Development
+
 - `vite` — Build tool
 - `vitest` — Unit testing
 - `playwright` — E2E testing
@@ -332,6 +350,7 @@ frontend/
 - `eslint` — Linting
 
 ### CI Pipeline SvelteKit5
+
 - **Formatting** npx prettier --check .
 - **Type-Check Sync** npx svelte-kit sync
 - **Type-Check** npx sv check --tsconfig ./tsconfig.json --fail-on-warnings
