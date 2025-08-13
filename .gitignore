@@ -1,4 +1,11 @@
 # ===========================
+# CLAUDE CODE SETTINGS
+# ===========================
+
+# Claude Code local settings (user-specific)
+.claude/settings.local.json
+
+# ===========================
 # RUST/WASM BUILD ARTIFACTS
 # ===========================
 
@@ -21,19 +28,18 @@
 # TEST & OUTPUT FILES
 # ===========================
 
-# Generated SVG test outputs
-**/*.svg
-!**/examples/**/*.svg  # Allow example SVGs in source control if they're reference examples
+# Generated test outputs (be more specific than excluding ALL SVGs)
+**/examples/outputs/**/*.svg
+**/test_*output*.svg
+**/test_edge_output.svg
+**/test_path_output.svg
+**/test_geometric_output.svg
 
 # Test image outputs  
 /examples/                    # Ignore any accidentally created root examples folder
 /examplesimages_in/          # Ignore incorrectly named directories
 /examplesimages_out/         # Ignore incorrectly named directories  
 /wasm/examples/images_out/   # Correct output directory (should be ignored)
-**/test_*output*.svg
-**/test_edge_output.svg
-**/test_path_output.svg
-**/test_geometric_output.svg
 
 # Test artifacts
 /wasm/test_*.svg
@@ -65,6 +71,16 @@ runs.csv
 /frontend/build/
 /frontend/dist/
 **/.svelte-kit/
+
+# Vite build artifacts
+**/dist/
+**/.vite/
+**/vite.config.js.timestamp-*
+**/vite.config.ts.timestamp-*
+
+# Test coverage
+**/coverage/
+**/.nyc_output/
 
 # Package lock files (keep npm, ignore yarn/pnpm alternatives)
 **/yarn.lock

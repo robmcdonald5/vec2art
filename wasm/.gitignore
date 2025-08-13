@@ -1,0 +1,29 @@
+# WASM-specific build artifacts and outputs
+
+# Rust build artifacts
+/target/
+Cargo.lock
+
+# WASM package outputs (except in vectorize-wasm where pkg is needed)
+/vectorize-core/pkg/
+/vectorize-cli/pkg/
+
+# Generated test images and outputs
+/examples/outputs/
+/examples/performance_reports/
+/test_*.svg
+/debug_*.rs.swp
+/debug_*.rs.swo
+
+# Performance and benchmark files
+/**/*_stats.csv
+/performance_reports/
+/benchmark_*.csv
+
+# Flamegraph outputs
+/flamegraph.svg
+/perf.data*
+
+# Temporary debug files
+/debug/*.tmp
+/debug/*.temp

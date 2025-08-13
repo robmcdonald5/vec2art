@@ -1,23 +1,16 @@
-node_modules
+# Frontend-specific overrides and deployment artifacts
 
-# Output
+# Deployment platforms (not covered by root gitignore)
 .output
 .vercel
 .netlify
 .wrangler
-/.svelte-kit
-/build
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Env
+# Environment files (frontend-specific)
 .env
 .env.*
 !.env.example
 !.env.test
 
-# Vite
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
+# Frontend-specific temporary files
+.turbo
