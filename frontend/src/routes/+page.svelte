@@ -233,19 +233,18 @@
             <ul class="space-y-3">
               <li><a href="/converter" class="text-gray-300 hover:text-white text-sm transition-colors duration-200">Converter</a></li>
               <li><a href="/gallery" class="text-gray-300 hover:text-white text-sm transition-colors duration-200">Gallery</a></li>
-              <li><span class="text-gray-500 text-sm cursor-not-allowed">API (Coming Soon)</span></li>
-              <li><span class="text-gray-500 text-sm cursor-not-allowed">Pricing (Coming Soon)</span></li>
+              <li><span class="text-gray-500 text-sm cursor-not-allowed">In Browser Editor (Coming Soon)</span></li>
+              <li><span class="text-gray-500 text-sm cursor-not-allowed">More Conversion Algorithms! (Coming Soon)</span></li>
             </ul>
           </div>
           
           <!-- Company Links -->
           <div>
-            <h4 class="text-sm font-semibold text-white uppercase tracking-wider mb-4">Company</h4>
+            <h4 class="text-sm font-semibold text-white uppercase tracking-wider mb-4">vec2art</h4>
             <ul class="space-y-3">
               <li><a href="/about" class="text-gray-300 hover:text-white text-sm transition-colors duration-200">About</a></li>
-              <li><span class="text-gray-500 text-sm cursor-not-allowed">Blog (Coming Soon)</span></li>
-              <li><span class="text-gray-500 text-sm cursor-not-allowed">Careers (Coming Soon)</span></li>
-              <li><span class="text-gray-500 text-sm cursor-not-allowed">Contact (Coming Soon)</span></li>
+              <li><span class="text-gray-500 text-sm cursor-not-allowed">Tutorial (Coming Soon)</span></li>
+              <li><span class="text-gray-500 text-sm cursor-not-allowed">Best Practices (Coming Soon)</span></li>
             </ul>
           </div>
           
@@ -253,10 +252,9 @@
           <div>
             <h4 class="text-sm font-semibold text-white uppercase tracking-wider mb-4">Support</h4>
             <ul class="space-y-3">
-              <li><span class="text-gray-500 text-sm cursor-not-allowed">Help Center (Coming Soon)</span></li>
-              <li><span class="text-gray-500 text-sm cursor-not-allowed">Documentation (Coming Soon)</span></li>
+              <li><span class="text-gray-500 text-sm cursor-not-allowed">Contact (Coming Soon)</span></li>
+              <li><span class="text-gray-500 text-sm cursor-not-allowed">Issues Page (Coming Soon)</span></li>
               <li><span class="text-gray-500 text-sm cursor-not-allowed">Community (Coming Soon)</span></li>
-              <li><span class="text-gray-500 text-sm cursor-not-allowed">Status (Coming Soon)</span></li>
             </ul>
           </div>
         </div>

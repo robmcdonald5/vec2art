@@ -6,9 +6,9 @@
 <div class="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 lg:px-8">
 	<!-- Header -->
 	<div class="mb-8">
-		<h1 class="text-3xl font-bold">Image to SVG Converter</h1>
+		<h1 class="text-3xl font-bold bg-gradient-to-r from-orange-800 to-red-700 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">Image to SVG Converter</h1>
 		<p class="text-muted-foreground mt-2">
-			Transform your raster images into expressive line art SVGs with our advanced algorithms
+			Transform any raster image into expressive line art SVGs
 		</p>
 	</div>
 

@@ -6,9 +6,9 @@
 <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
 	<!-- Header -->
 	<div class="mb-12 text-center">
-		<h1 class="text-4xl font-bold">About vec2art</h1>
+		<h1 class="text-4xl font-bold bg-gradient-to-r from-orange-800 to-red-700 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">About vec2art</h1>
 		<p class="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg">
-			A high-performance, browser-based tool that transforms raster images into expressive line art SVGs using advanced algorithms powered by Rust and WebAssembly.
+			A high-performance, browser-based tool that transforms raster images into expressive line art SVGs using advanced algorithms powered by Rust and WASM.
 		</p>
 	</div>
 
@@ -71,7 +71,7 @@
 
 	<!-- Performance -->
 	<section class="mb-16">
-		<h2 class="text-2xl font-bold mb-6">Performance Metrics</h2>
+		<h2 class="text-2xl font-bold mb-6 bg-gradient-to-r from-orange-800 to-red-700 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">Performance Metrics</h2>
 		<div class="grid gap-6 sm:grid-cols-3">
 			<div class="text-center">
 				<div class="text-3xl font-bold text-primary">&lt; 1.5s</div>
@@ -90,10 +90,10 @@
 
 	<!-- Contact -->
 	<section>
-		<h2 class="text-2xl font-bold mb-6">Get in Touch</h2>
+		<h2 class="text-2xl font-bold mb-6 bg-gradient-to-r from-orange-800 to-red-700 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">Get in Touch</h2>
 		<div class="rounded-lg border p-6">
 			<p class="text-muted-foreground mb-4">
-				Have questions, suggestions, or problems with the site? We'd love to hear from you!
+				Have a question, suggestion, or problem with the site?
 			</p>
 			<div class="flex flex-col sm:flex-row gap-4">
 				<Button variant="outline" class="gap-2">
