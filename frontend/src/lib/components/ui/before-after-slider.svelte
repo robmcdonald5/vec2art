@@ -89,7 +89,7 @@
 	
 	<!-- Slider Handle -->
 	<div 
-		class="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg cursor-ew-resize"
+		class="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize border-l border-r border-gray-400"
 		style="left: {sliderPosition}%"
 		onmousedown={handleStart}
 		ontouchstart={handleStart}
@@ -100,18 +100,23 @@
 		aria-label="Comparison slider position"
 		tabindex="0"
 	>
-		<!-- Handle Button -->
-		<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center border-2 border-gray-300">
-			<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l-3 3m0 0l3 3m-3-3h12m-7-3l3-3m0 0l-3-3" />
+		<!-- Handle Rectangle and Arrows -->
+		<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-12 bg-white rounded shadow-lg border border-gray-200 flex items-center justify-center">
+			<!-- Left Arrow -->
+			<svg class="absolute -left-3 w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+				<path d="M8 2L4 6l4 4V2z" stroke="#374151" stroke-width="0.5"/>
+			</svg>
+			<!-- Right Arrow -->
+			<svg class="absolute -right-3 w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+				<path d="M4 2l4 4-4 4V2z" stroke="#374151" stroke-width="0.5"/>
 			</svg>
 		</div>
 		
 		<!-- Labels -->
-		<div class="absolute top-4 -left-12 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+		<div class="absolute top-4 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
 			Before
 		</div>
-		<div class="absolute top-4 left-4 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+		<div class="absolute top-4 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
 			After
 		</div>
 	</div>

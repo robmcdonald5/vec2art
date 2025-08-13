@@ -160,9 +160,9 @@
 	<!-- Gallery Grid -->
 	<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 		{#each galleryItems as item}
-			<div class="group relative rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 hover:shadow-xl transition-all duration-300">
+			<div class="group relative rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden bg-white dark:bg-gray-900 hover:shadow-xl transition-all duration-300">
 				<!-- Before/After Slider -->
-				<div class="aspect-square relative">
+				<div class="aspect-square relative bg-white">
 					<BeforeAfterSlider
 						beforeImage={item.beforeImage}
 						afterImage={item.afterImage}
@@ -178,13 +178,13 @@
 					<div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
 						<button
 							onclick={() => openModal(item)}
-							class="px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg flex items-center gap-2 text-sm font-medium hover:bg-white transition-colors"
+							class="px-3 py-1.5 bg-gray-900/90 text-white backdrop-blur-sm rounded-lg flex items-center gap-2 text-sm font-medium hover:bg-gray-900 transition-colors"
 						>
 							<Maximize2 class="h-4 w-4" />
 							Expand
 						</button>
 						<button
-							class="px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg flex items-center gap-2 text-sm font-medium hover:bg-white transition-colors"
+							class="px-3 py-1.5 bg-gray-900/90 text-white backdrop-blur-sm rounded-lg flex items-center gap-2 text-sm font-medium hover:bg-gray-900 transition-colors"
 						>
 							<Download class="h-4 w-4" />
 							Download
@@ -195,16 +195,18 @@
 				<!-- Details -->
 				<div class="p-4">
 					<h3 class="font-semibold text-sm">{item.title}</h3>
-					<div class="flex items-center justify-between mt-2">
+					<div class="mt-2">
 						<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
 							{item.algorithm}
+						</span>
+					</div>
+					<div class="flex items-center justify-between mt-2">
+						<span class="text-muted-foreground text-xs">
+							{item.dimensions}
 						</span>
 						<span class="text-muted-foreground text-xs">
 							{item.fileSize}
 						</span>
-					</div>
-					<div class="text-muted-foreground text-xs mt-2">
-						{item.dimensions}
 					</div>
 				</div>
 			</div>
@@ -258,7 +260,7 @@
 				</div>
 			</div>
 			
-			<div class="aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+			<div class="aspect-video bg-white rounded-lg overflow-hidden shadow-inner">
 				<BeforeAfterSlider
 					beforeImage={selectedItem.beforeImage}
 					afterImage={selectedItem.afterImage}
