@@ -1028,7 +1028,6 @@ pub fn check_threading_requirements() -> capabilities::WasmCapabilityReport {
 /// # Returns
 /// * `true` if Cross-Origin Isolation is properly configured
 #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
-#[wasm_bindgen]
 pub fn is_cross_origin_isolated() -> bool {
     capabilities::is_cross_origin_isolated()
 }
@@ -1040,7 +1039,6 @@ pub fn is_cross_origin_isolated() -> bool {
 /// # Returns
 /// * `true` if SharedArrayBuffer is available and can be instantiated
 #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
-#[wasm_bindgen]
 pub fn is_shared_array_buffer_supported() -> bool {
     capabilities::is_shared_array_buffer_supported()
 }
@@ -1050,7 +1048,6 @@ pub fn is_shared_array_buffer_supported() -> bool {
 /// # Returns
 /// * `true` if running in Node.js
 #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
-#[wasm_bindgen]
 pub fn is_nodejs_environment() -> bool {
     capabilities::is_nodejs_environment()
 }
@@ -1071,7 +1068,6 @@ pub fn get_environment_type() -> String {
 /// # Returns
 /// * Detailed summary string with requirements and recommendations
 #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
-#[wasm_bindgen]
 pub fn get_threading_requirements_summary() -> String {
     capabilities::get_threading_requirements_summary()
 }
@@ -1083,7 +1079,6 @@ pub fn get_threading_requirements_summary() -> String {
 /// This can be useful if the environment changes during runtime
 /// (e.g., headers are modified via service worker)
 #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
-#[wasm_bindgen]
 pub fn refresh_capability_cache() {
     capabilities::refresh_capability_cache();
 }

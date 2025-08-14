@@ -134,13 +134,13 @@ frontend/
 │       │   ├── history.svelte.ts # Processing history
 │       │   └── theme.svelte.ts   # Dark mode and theming
 │       │
-│       ├── wasm/                 # WASM module integration
-│       │   ├── loader.ts         # WASM module loading
-│       │   ├── worker.ts         # Web Worker wrapper
-│       │   ├── processor.ts      # Processing coordination
-│       │   ├── memory.ts         # Memory management utilities
-│       │   ├── threading.ts      # Multi-threading support
-│       │   └── types.ts          # WASM-related TypeScript types
+│       ├── wasm/                 # WASM module integration (PRODUCTION FILES)
+│       │   ├── init.ts           # WASM module initialization wrapper
+│       │   ├── vectorize_wasm.js # Generated WASM JavaScript bindings
+│       │   ├── vectorize_wasm.d.ts # TypeScript definitions
+│       │   ├── vectorize_wasm_bg.wasm # Compiled WASM binary with threading support
+│       │   ├── vectorize_wasm_bg.wasm.d.ts # WASM binary TypeScript definitions
+│       │   └── __wbindgen_placeholder__.js # wasm-bindgen polyfill
 │       │
 │       ├── utils/                # Utility functions
 │       │   ├── files.ts          # File handling utilities
@@ -175,6 +175,13 @@ frontend/
 │   ├── favicon.ico
 │   ├── app-icon-192.png
 │   ├── app-icon-512.png
+│   ├── wasm/                     # WASM files for static test pages
+│   │   ├── vectorize_wasm.js     # Generated WASM JavaScript bindings (copy)
+│   │   ├── vectorize_wasm.d.ts   # TypeScript definitions (copy)
+│   │   ├── vectorize_wasm_bg.wasm # Compiled WASM binary with threading (copy)
+│   │   ├── vectorize_wasm_bg.wasm.d.ts # WASM binary TypeScript definitions (copy)
+│   │   └── __wbindgen_placeholder__.js # wasm-bindgen polyfill (copy)
+│   ├── wasm-comprehensive-test.html # Unified WASM testing suite
 │   ├── images/                   # Static images
 │   │   ├── examples/             # Example images
 │   │   │   ├── logo-example.png
@@ -246,10 +253,31 @@ frontend/
 
 ### WASM Integration
 
+#### Dual-Location Strategy
+The WASM files are maintained in **two locations** for different use cases:
+
+1. **Production Integration** (`src/lib/wasm/`):
+   - Used by SvelteKit application code via local imports: `import('./vectorize_wasm.js')`
+   - Bundled and optimized by Vite for production deployment
+   - Source of truth for WASM files (built from `../wasm/vectorize-wasm/pkg/`)
+
+2. **Static Testing** (`static/wasm/`):
+   - Used by static test pages via URL imports: `import('/wasm/vectorize_wasm.js')`
+   - Accessed directly by browsers for testing and debugging
+   - Copy of production files for development/testing purposes
+
+#### Implementation Guidelines
 - Lazy-load WASM module on first use
-- Implement loading states and error handling
+- Implement loading states and error handling  
 - Use Web Workers for processing to avoid blocking UI
 - Handle COOP/COEP headers for SharedArrayBuffer support
+- **IMPORTANT**: When updating WASM, copy from `src/lib/wasm/` to `static/wasm/`
+
+#### File Synchronization
+```bash
+# After WASM rebuild, sync files:
+cp src/lib/wasm/*.{js,wasm,d.ts} static/wasm/
+# (Don't copy .ts files to static/)
 
 ### Styling Guidelines
 

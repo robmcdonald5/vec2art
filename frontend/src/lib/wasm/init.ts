@@ -28,10 +28,9 @@ export async function initWasm() {
 
 async function loadWasmModule() {
     try {
-        // Import the WASM module from linked package
-        // This will be properly handled by vite-plugin-wasm
+        // Import the WASM module from local files
         // @ts-ignore - Dynamic import of WASM module
-        const wasmModule = await import('vectorize-wasm');
+        const wasmModule = await import('./vectorize_wasm.js');
         
         // Initialize the WASM module
         // vite-plugin-wasm handles the WASM file loading automatically
