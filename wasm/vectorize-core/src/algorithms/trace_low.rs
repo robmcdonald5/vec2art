@@ -209,6 +209,16 @@ pub struct TraceLowConfig {
     pub dot_adaptive_sizing: bool,
     /// Background color tolerance for background detection (0.0 to 1.0)
     pub dot_background_tolerance: f32,
+    /// Enable adaptive thresholding for centerline backend (default: true)
+    pub enable_adaptive_threshold: bool,
+    /// Window size for adaptive thresholding (default: computed from detail level, 25-35 pixels)
+    pub adaptive_threshold_window_size: u32,
+    /// Sensitivity parameter k for Sauvola thresholding (default: computed from detail level, 0.3-0.5)
+    pub adaptive_threshold_k: f32,
+    /// Use optimized integral image implementation for adaptive thresholding (default: true)
+    pub adaptive_threshold_use_optimized: bool,
+    /// Enable EDT-based width modulation for centerline SVG strokes (default: false)
+    pub enable_width_modulation: bool,
 }
 
 impl Default for TraceLowConfig {
@@ -253,6 +263,12 @@ impl Default for TraceLowConfig {
             dot_preserve_colors: true,
             dot_adaptive_sizing: true,
             dot_background_tolerance: 0.1,
+            // Adaptive thresholding defaults
+            enable_adaptive_threshold: true,
+            adaptive_threshold_window_size: 31, // Will be adjusted based on detail level
+            adaptive_threshold_k: 0.4,          // Will be adjusted based on detail level
+            adaptive_threshold_use_optimized: true,
+            enable_width_modulation: false,
         }
     }
 }
@@ -857,6 +873,305 @@ fn trace_edge(
     Ok(svg_paths)
 }
 
+/// Calculate tangent direction at endpoint of a polyline
+fn endpoint_tangent(polyline: &[Point], is_tail: bool) -> (f32, f32) {
+    let n = polyline.len();
+    if n < 2 {
+        return (0.0, 0.0);
+    }
+    
+    if is_tail {
+        let a = &polyline[n - 2];
+        let b = &polyline[n - 1];
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let len = dx.hypot(dy);
+        if len < 1e-6 {
+            (0.0, 0.0)
+        } else {
+            (dx / len, dy / len)
+        }
+    } else {
+        let a = &polyline[0];
+        let b = &polyline[1];
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let len = dx.hypot(dy);
+        if len < 1e-6 {
+            (0.0, 0.0)
+        } else {
+            (dx / len, dy / len)
+        }
+    }
+}
+
+/// Calculate angle between two normalized direction vectors in degrees
+fn angle_between(dir1: (f32, f32), dir2: (f32, f32)) -> f32 {
+    let dot = dir1.0 * dir2.0 + dir1.1 * dir2.1;
+    dot.clamp(-1.0, 1.0).acos().to_degrees()
+}
+
+/// Check if EDT (distance transform) allows bridging between two points
+/// Prevents bridges through background regions or thin barriers
+fn edt_allows_bridge(p1: &Point, p2: &Point, edt: &[Vec<f32>]) -> bool {
+    if edt.is_empty() || edt[0].is_empty() {
+        return true; // No EDT available, allow bridge
+    }
+    
+    let height = edt.len();
+    let width = edt[0].len();
+    
+    // Sample points along the bridge path
+    let dx = p2.x - p1.x;
+    let dy = p2.y - p1.y;
+    let dist = dx.hypot(dy);
+    
+    if dist < 1e-6 {
+        return true;
+    }
+    
+    let samples = (dist.ceil() as usize).max(3);
+    for i in 0..samples {
+        let t = i as f32 / (samples - 1) as f32;
+        let x = (p1.x + t * dx).round() as usize;
+        let y = (p1.y + t * dy).round() as usize;
+        
+        if x >= width || y >= height {
+            continue;
+        }
+        
+        // Require minimum EDT radius of 0.8 pixels for bridge path
+        if edt[y][x] < 0.8 {
+            return false;
+        }
+    }
+    
+    true
+}
+
+/// Smart endpoint reconnection with tangent alignment and EDT barriers
+fn connect_nearby_endpoints_oriented(
+    mut lines: Vec<Vec<Point>>,
+    max_gap: f32,
+    max_angle_deg: f32,
+    edt: &[Vec<f32>],
+) -> (Vec<Vec<Point>>, usize, usize) {
+    let mut bridges_accepted = 0;
+    let mut bridges_rejected = 0;
+    
+    let mut used = vec![false; lines.len()];
+    let mut out: Vec<Vec<Point>> = Vec::new();
+
+    for i in 0..lines.len() {
+        if used[i] {
+            continue;
+        }
+        let mut cur = std::mem::take(&mut lines[i]);
+        used[i] = true;
+
+        let mut merged = true;
+        while merged {
+            merged = false;
+            let mut best: Option<(usize, bool, bool, f32)> = None; // (j, cur_tail?, other_head?, dist)
+            let cur_head = cur.first().unwrap().clone();
+            let cur_tail = cur.last().unwrap().clone();
+
+            for j in 0..lines.len() {
+                if used[j] || lines[j].is_empty() {
+                    continue;
+                }
+                let other_head = lines[j].first().unwrap().clone();
+                let other_tail = lines[j].last().unwrap().clone();
+
+                // tail->head connection
+                let d1 = (cur_tail.x - other_head.x).hypot(cur_tail.y - other_head.y);
+                if d1 <= max_gap {
+                    let cur_tangent = endpoint_tangent(&cur, true);
+                    let other_tangent = endpoint_tangent(&lines[j], false);
+                    let angle = angle_between(cur_tangent, other_tangent);
+                    
+                    if angle <= max_angle_deg && edt_allows_bridge(&cur_tail, &other_head, edt) {
+                        best = Some((j, true, true, d1));
+                    } else {
+                        bridges_rejected += 1;
+                    }
+                }
+
+                // tail->tail (reverse other)
+                let d2 = (cur_tail.x - other_tail.x).hypot(cur_tail.y - other_tail.y);
+                if d2 <= max_gap {
+                    let cur_tangent = endpoint_tangent(&cur, true);
+                    let other_tangent = endpoint_tangent(&lines[j], true);
+                    let reversed_other = (-other_tangent.0, -other_tangent.1);
+                    let angle = angle_between(cur_tangent, reversed_other);
+                    
+                    if angle <= max_angle_deg && edt_allows_bridge(&cur_tail, &other_tail, edt) {
+                        best = best.map_or(Some((j, true, false, d2)), |b| {
+                            if d2 < b.3 {
+                                Some((j, true, false, d2))
+                            } else {
+                                Some(b)
+                            }
+                        });
+                    } else {
+                        bridges_rejected += 1;
+                    }
+                }
+
+                // head->head (reverse cur)
+                let d3 = (cur_head.x - other_head.x).hypot(cur_head.y - other_head.y);
+                if d3 <= max_gap {
+                    let cur_tangent = endpoint_tangent(&cur, false);
+                    let reversed_cur = (-cur_tangent.0, -cur_tangent.1);
+                    let other_tangent = endpoint_tangent(&lines[j], false);
+                    let angle = angle_between(reversed_cur, other_tangent);
+                    
+                    if angle <= max_angle_deg && edt_allows_bridge(&cur_head, &other_head, edt) {
+                        best = best.map_or(Some((j, false, true, d3)), |b| {
+                            if d3 < b.3 {
+                                Some((j, false, true, d3))
+                            } else {
+                                Some(b)
+                            }
+                        });
+                    } else {
+                        bridges_rejected += 1;
+                    }
+                }
+
+                // head->tail connection
+                let d4 = (cur_head.x - other_tail.x).hypot(cur_head.y - other_tail.y);
+                if d4 <= max_gap {
+                    let cur_tangent = endpoint_tangent(&cur, false);
+                    let reversed_cur = (-cur_tangent.0, -cur_tangent.1);
+                    let other_tangent = endpoint_tangent(&lines[j], true);
+                    let reversed_other = (-other_tangent.0, -other_tangent.1);
+                    let angle = angle_between(reversed_cur, reversed_other);
+                    
+                    if angle <= max_angle_deg && edt_allows_bridge(&cur_head, &other_tail, edt) {
+                        best = best.map_or(Some((j, false, false, d4)), |b| {
+                            if d4 < b.3 {
+                                Some((j, false, false, d4))
+                            } else {
+                                Some(b)
+                            }
+                        });
+                    } else {
+                        bridges_rejected += 1;
+                    }
+                }
+            }
+
+            if let Some((j, use_tail, other_head, _)) = best {
+                let mut other = std::mem::take(&mut lines[j]);
+                if !other_head {
+                    other.reverse();
+                }
+                if use_tail {
+                    cur.extend(other);
+                } else {
+                    other.extend(cur);
+                    cur = other;
+                }
+                used[j] = true;
+                merged = true;
+                bridges_accepted += 1;
+            }
+        }
+
+        out.push(cur);
+    }
+
+    (out, bridges_accepted, bridges_rejected)
+}
+
+/// Count foreground (white) pixels in a binary image
+fn count_foreground_pixels(binary: &GrayImage) -> usize {
+    let (width, height) = binary.dimensions();
+    let mut count = 0;
+    for y in 0..height {
+        for x in 0..width {
+            if binary.get_pixel(x, y)[0] > 127 {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+
+/// Count skeleton pixels (non-zero pixels in binary skeleton)
+fn count_skeleton_pixels(skeleton: &GrayImage) -> usize {
+    count_foreground_pixels(skeleton)
+}
+
+/// Detect endpoints and junctions in skeleton
+fn analyze_skeleton_topology(skeleton: &GrayImage) -> (usize, usize) {
+    let (width, height) = skeleton.dimensions();
+    let mut endpoints = 0;
+    let mut junctions = 0;
+    
+    for y in 1..(height - 1) {
+        for x in 1..(width - 1) {
+            if skeleton.get_pixel(x, y)[0] > 127 {
+                // Count neighbors
+                let mut neighbors = 0;
+                for dy in -1i32..=1 {
+                    for dx in -1i32..=1 {
+                        if dx == 0 && dy == 0 {
+                            continue;
+                        }
+                        let nx = (x as i32 + dx) as u32;
+                        let ny = (y as i32 + dy) as u32;
+                        if skeleton.get_pixel(nx, ny)[0] > 127 {
+                            neighbors += 1;
+                        }
+                    }
+                }
+                
+                match neighbors {
+                    1 => endpoints += 1,
+                    n if n >= 3 => junctions += 1,
+                    _ => {}
+                }
+            }
+        }
+    }
+    
+    (endpoints, junctions)
+}
+
+/// Calculate statistics for polyline collection
+fn calculate_polyline_statistics(polylines: &[Vec<Point>]) -> (usize, f32, f32) {
+    if polylines.is_empty() {
+        return (0, 0.0, 0.0);
+    }
+    
+    let count = polylines.len();
+    let total_length: f32 = polylines.iter().map(|p| calculate_polyline_length(p)).sum();
+    
+    // Calculate median length
+    let mut lengths: Vec<f32> = polylines.iter().map(|p| calculate_polyline_length(p)).collect();
+    lengths.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let median_length = if lengths.len() % 2 == 0 {
+        (lengths[lengths.len() / 2 - 1] + lengths[lengths.len() / 2]) / 2.0
+    } else {
+        lengths[lengths.len() / 2]
+    };
+    
+    (count, total_length, median_length)
+}
+
+/// Calculate average points per polyline
+fn calculate_average_points_per_polyline(polylines: &[Vec<Point>]) -> f32 {
+    if polylines.is_empty() {
+        return 0.0;
+    }
+    
+    let total_points: usize = polylines.iter().map(|p| p.len()).sum();
+    total_points as f32 / polylines.len() as f32
+}
+
+
 /// Centerline backend: Skeleton + centerline tracing using Zhang-Suen thinning
 fn trace_centerline(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
@@ -871,68 +1186,183 @@ fn trace_centerline(
     let gray = rgba_to_gray(image);
     let grayscale_time = phase_start.elapsed();
 
-    // Phase 2: Binary thresholding using canny_high_threshold
+    // Phase 2: Gaussian blur for noise reduction
     let phase_start = Instant::now();
-    let binary = binary_threshold(&gray, thresholds.canny_high_threshold);
-    let threshold_time = phase_start.elapsed();
+    let blur_sigma = (0.8 + 0.4 * config.detail.clamp(0.0, 1.0)).clamp(0.8, 1.2);
+    let blurred = gaussian_blur(&gray, blur_sigma);
+    let blur_time = phase_start.elapsed();
 
-    // Phase 3: Optional morphological preprocessing for noise filtering
+    // Phase 3: Binary thresholding - adaptive or Otsu based on configuration
+    let phase_start = Instant::now();
+    let binary = if config.enable_adaptive_threshold {
+        // Calculate parameters based on detail level with bounds checking (playbook optimized)
+        let window_size = (27.0 + 6.0 * config.detail.clamp(0.0, 1.0)).round() as u32;
+        let window_size = window_size.clamp(27, 33);
+        let k = 0.34 + 0.08 * config.detail.clamp(0.0, 1.0);
+        let k = k.clamp(0.34, 0.42);
+
+        log::debug!(
+            "Using adaptive thresholding: window_size={}, k={:.3}",
+            window_size,
+            k
+        );
+
+        // Ensure window size is reasonable for the image
+        let (img_width, img_height) = blurred.dimensions();
+        let max_window = img_width.min(img_height) / 3; // Window shouldn't be more than 1/3 of image size
+        let final_window_size = window_size.min(max_window).max(3);
+
+        if final_window_size != window_size {
+            log::debug!(
+                "Adjusted window size from {} to {} for image {}x{}",
+                window_size,
+                final_window_size,
+                img_width,
+                img_height
+            );
+        }
+
+        if config.adaptive_threshold_use_optimized {
+            box_sauvola_threshold_optimized(&blurred, final_window_size, k)
+        } else {
+            box_sauvola_threshold(&blurred, final_window_size, k)
+        }
+    } else {
+        log::debug!("Using Otsu thresholding (fallback)");
+        otsu_threshold(&blurred)
+    };
+    let threshold_time = phase_start.elapsed();
+    
+    // Health metrics: foreground pixels after binarization
+    let fg_pixels_after_binarization = count_foreground_pixels(&binary);
+
+    // Phase 4: Optional morphological preprocessing for noise filtering
     let phase_start = Instant::now();
     let processed_binary = if config.noise_filtering {
-        morphological_preprocessing(&binary)
+        morphological_open_close(&binary)
     } else {
         binary
     };
     let morphology_time = phase_start.elapsed();
+    
+    // Health metrics: foreground pixels after morphology
+    let fg_pixels_after_morphology = count_foreground_pixels(&processed_binary);
 
-    // Phase 4: Zhang-Suen skeletonization
+    // Phase 5: Guo-Hall skeletonization (improved over Zhang-Suen)
     let phase_start = Instant::now();
-    let skeleton = zhang_suen_thinning(&processed_binary);
+    let skeleton = guo_hall_thinning(&processed_binary);
     let thinning_time = phase_start.elapsed();
+    
+    // Health metrics: skeleton analysis
+    let skeleton_pixels = count_skeleton_pixels(&skeleton);
+    let (endpoints, junctions) = analyze_skeleton_topology(&skeleton);
 
-    // Phase 5: Extract polylines from skeleton using 8-connectivity tracing
+    // Phase 5.5: Compute Euclidean Distance Transform (EDT) for enhanced pruning
     let phase_start = Instant::now();
-    let polylines = extract_skeleton_polylines(&skeleton);
+    let edt = compute_euclidean_distance_transform(&processed_binary);
+    let edt_time = phase_start.elapsed();
+
+    // Phase 6: Extract polylines from skeleton using improved junction-aware tracing
+    let phase_start = Instant::now();
+    let polylines = extract_skeleton_polylines_improved(&skeleton);
     let extraction_time = phase_start.elapsed();
 
-    // Phase 6: Prune short branches
+    // Phase 6: EDT-based intelligent branch pruning (playbook optimized)
     let phase_start = Instant::now();
-    let pruned_polylines = prune_short_branches(polylines, thresholds.min_centerline_branch_px);
+    let min_branch = (4.0_f32).max(8.0 + 16.0 * config.detail); // Improved formula from playbook
+    let pruned_polylines = prune_branches_with_edt(polylines, &edt, min_branch);
     let pruning_time = phase_start.elapsed();
+    
+    // Health metrics: after pruning
+    let (polylines_after_pruning, total_length_after_pruning, median_length_after_pruning) = 
+        calculate_polyline_statistics(&pruned_polylines);
 
-    // Phase 7: Simplify using Douglas-Peucker
+    // Phase 6.5: Remove micro-loops (tiny cycles that look like "hairballs")
     let phase_start = Instant::now();
-    let simplified_polylines: Vec<Vec<Point>> = pruned_polylines
+    let min_perimeter_px = 12.0; // Remove loops smaller than ~12px perimeter
+    let cleaned_polylines = remove_micro_loops(pruned_polylines, min_perimeter_px);
+    let _microloop_time = phase_start.elapsed();
+
+    // Phase 7: Simplify using Douglas-Peucker with tighter epsilon for centerlines
+    let phase_start = Instant::now();
+    let mut dp_eps = (0.0008 + 0.0022 * config.detail) * thresholds.image_diagonal_px;
+    dp_eps = dp_eps.clamp(0.75, 3.0); // ~sub-pixel to a few px at 1080p
+    let simplified_polylines: Vec<Vec<Point>> = cleaned_polylines
         .into_iter()
-        .map(|polyline| douglas_peucker_simplify(&polyline, thresholds.dp_epsilon_px))
+        .map(|polyline| simplify_adaptive(&polyline, dp_eps))
         .filter(|polyline| !polyline.is_empty())
         .collect();
     let simplification_time = phase_start.elapsed();
+    
+    // Health metrics: after simplification
+    let avg_points_after_simplification = calculate_average_points_per_polyline(&simplified_polylines);
+    let simplified_polylines_count = simplified_polylines.len();
 
-    // Phase 8: Generate SVG paths
+    // Phase 7.5: Bridge nearby endpoints to reconnect breaks with smart reconnection
     let phase_start = Instant::now();
-    let svg_paths: Vec<SvgPath> = simplified_polylines
+    let (reconnected_polylines, bridges_accepted, bridges_rejected) = 
+        connect_nearby_endpoints_oriented(simplified_polylines, 7.0, 30.0, &edt);
+    let bridging_time = phase_start.elapsed();
+    
+    // Health metrics: after reconnection
+    let (polylines_after_reconnection, _total_length_after_reconnection, _median_length_after_reconnection) = 
+        calculate_polyline_statistics(&reconnected_polylines);
+
+    // Phase 8: Generate SVG paths with optional EDT-based width modulation
+    let phase_start = Instant::now();
+    let svg_paths: Vec<SvgPath> = reconnected_polylines
         .into_iter()
         .map(|polyline| {
             let stroke_width = calculate_stroke_width(image, config.stroke_px_at_1080p);
             let clamped_width = clamp_stroke_width(stroke_width, config);
-            polyline_to_svg_path(polyline, clamped_width)
+
+            // Optional: Apply EDT-based width modulation for more natural appearance
+            if config.enable_width_modulation {
+                polyline_to_svg_path_with_edt_width(polyline, clamped_width, &edt)
+            } else {
+                polyline_to_svg_path(polyline, clamped_width)
+            }
         })
         .collect();
     let svg_generation_time = phase_start.elapsed();
 
     let total_time = start_time.elapsed();
 
+    // Log comprehensive health metrics
     log::info!(
-        "Centerline tracing completed in {:.1}ms: gray={:.1}ms, threshold={:.1}ms, morph={:.1}ms, thin={:.1}ms, extract={:.1}ms, prune={:.1}ms, simplify={:.1}ms, svg={:.1}ms",
+        "Centerline health metrics - FG pixels: {} -> {} (morph), Skeleton: {} pixels, {} endpoints, {} junctions",
+        fg_pixels_after_binarization,
+        fg_pixels_after_morphology,
+        skeleton_pixels,
+        endpoints,
+        junctions
+    );
+    
+    log::info!(
+        "Centerline processing metrics - Pruning: {} polylines ({:.1}px total, {:.1}px median), Simplify: {:.1} pts/line, Reconnect: {} -> {} polylines ({} bridges accepted, {} rejected)",
+        polylines_after_pruning,
+        total_length_after_pruning,
+        median_length_after_pruning,
+        avg_points_after_simplification,
+        simplified_polylines_count,
+        polylines_after_reconnection,
+        bridges_accepted,
+        bridges_rejected
+    );
+
+    log::info!(
+        "Centerline tracing completed in {:.1}ms: gray={:.1}ms, blur={:.1}ms, threshold={:.1}ms, morph={:.1}ms, thin={:.1}ms, edt={:.1}ms, extract={:.1}ms, prune={:.1}ms, simplify={:.1}ms, bridge={:.1}ms, svg={:.1}ms",
         total_time.as_secs_f64() * 1000.0,
         grayscale_time.as_secs_f64() * 1000.0,
+        blur_time.as_secs_f64() * 1000.0,
         threshold_time.as_secs_f64() * 1000.0,
         morphology_time.as_secs_f64() * 1000.0,
         thinning_time.as_secs_f64() * 1000.0,
+        edt_time.as_secs_f64() * 1000.0,
         extraction_time.as_secs_f64() * 1000.0,
         pruning_time.as_secs_f64() * 1000.0,
         simplification_time.as_secs_f64() * 1000.0,
+        bridging_time.as_secs_f64() * 1000.0,
         svg_generation_time.as_secs_f64() * 1000.0
     );
     log::info!(
@@ -2281,6 +2711,137 @@ fn link_edges_to_polylines(edges: &GrayImage) -> Vec<Vec<Point>> {
     polylines
 }
 
+/// Calculate local curvature at a point in a polyline
+/// Returns curvature magnitude (0.0 = straight, higher = more curved)
+fn local_curvature(polyline: &[Point], index: usize) -> f32 {
+    let n = polyline.len();
+    if n < 3 || index == 0 || index >= n - 1 {
+        return 0.0;
+    }
+    
+    let p_prev = &polyline[index - 1];
+    let p_curr = &polyline[index];
+    let p_next = &polyline[index + 1];
+    
+    // Calculate vectors
+    let v1 = (p_curr.x - p_prev.x, p_curr.y - p_prev.y);
+    let v2 = (p_next.x - p_curr.x, p_next.y - p_curr.y);
+    
+    // Calculate angle between vectors using cross product
+    let cross = v1.0 * v2.1 - v1.1 * v2.0;
+    let dot = v1.0 * v2.0 + v1.1 * v2.1;
+    
+    let angle = cross.atan2(dot).abs();
+    
+    // Normalize by segment lengths to get curvature
+    let len1 = v1.0.hypot(v1.1);
+    let len2 = v2.0.hypot(v2.1);
+    let avg_len = (len1 + len2) * 0.5;
+    
+    if avg_len < 1e-6 {
+        0.0
+    } else {
+        angle / avg_len
+    }
+}
+
+/// Adaptive polyline simplification that preserves curved regions
+/// Uses higher tolerance in straight sections, lower tolerance in curves
+fn simplify_adaptive(polyline: &[Point], base_epsilon: f32) -> Vec<Point> {
+    if polyline.len() <= 2 {
+        return polyline.to_vec();
+    }
+    
+    // Calculate curvature for each point
+    let mut curvatures = Vec::with_capacity(polyline.len());
+    for i in 0..polyline.len() {
+        curvatures.push(local_curvature(polyline, i));
+    }
+    
+    // Find maximum curvature for normalization
+    let max_curvature = curvatures.iter().fold(0.0f32, |acc, &c| acc.max(c));
+    
+    // Recursive simplification with adaptive epsilon
+    fn simplify_recursive(
+        points: &[Point], 
+        curvatures: &[f32], 
+        max_curvature: f32,
+        base_epsilon: f32, 
+        start: usize, 
+        end: usize,
+        result: &mut Vec<Point>
+    ) {
+        if end <= start + 1 {
+            return;
+        }
+        
+        let first = &points[start];
+        let last = &points[end];
+        
+        let mut max_distance = 0.0;
+        let mut max_index = start;
+        
+        // Find point with maximum deviation
+        for i in (start + 1)..end {
+            let distance = perpendicular_distance(&points[i], first, last);
+            if distance > max_distance {
+                max_distance = distance;
+                max_index = i;
+            }
+        }
+        
+        // Calculate adaptive epsilon for the worst point
+        let normalized_curvature = if max_curvature > 1e-6 {
+            curvatures[max_index] / max_curvature
+        } else {
+            0.0
+        };
+        
+        // More aggressive simplification in straight areas (low curvature)
+        // Less aggressive in curved areas (high curvature)
+        let curvature_factor = 0.2 + 0.8 * normalized_curvature; // Range: 0.2 to 1.0
+        let adaptive_epsilon = base_epsilon * curvature_factor;
+        
+        if max_distance > adaptive_epsilon {
+            // Point is significant, recurse on both sides
+            simplify_recursive(points, curvatures, max_curvature, base_epsilon, start, max_index, result);
+            result.push(points[max_index].clone());
+            simplify_recursive(points, curvatures, max_curvature, base_epsilon, max_index, end, result);
+        }
+    }
+    
+    // Helper function for perpendicular distance calculation
+    fn perpendicular_distance(point: &Point, line_start: &Point, line_end: &Point) -> f32 {
+        let dx = line_end.x - line_start.x;
+        let dy = line_end.y - line_start.y;
+
+        if dx == 0.0 && dy == 0.0 {
+            return ((point.x - line_start.x).powi(2) + (point.y - line_start.y).powi(2)).sqrt();
+        }
+
+        let numerator = (dy * point.x - dx * point.y + line_end.x * line_start.y
+            - line_end.y * line_start.x)
+            .abs();
+        let denominator = (dx * dx + dy * dy).sqrt();
+
+        numerator / denominator
+    }
+    
+    let mut result = vec![polyline[0].clone()];
+    simplify_recursive(
+        polyline, 
+        &curvatures, 
+        max_curvature, 
+        base_epsilon, 
+        0, 
+        polyline.len() - 1, 
+        &mut result
+    );
+    result.push(polyline[polyline.len() - 1].clone());
+    
+    result
+}
+
 /// Douglas-Peucker polyline simplification
 fn douglas_peucker_simplify(polyline: &[Point], epsilon: f32) -> Vec<Point> {
     if polyline.len() <= 2 {
@@ -3527,199 +4088,6 @@ fn paths_are_spatially_close(path1: &SvgPath, path2: &SvgPath, threshold: f32) -
 // Centerline Backend Helper Functions
 // ============================================================================
 
-/// Binary threshold using normalized threshold value
-fn binary_threshold(gray: &GrayImage, threshold: f32) -> GrayImage {
-    let (width, height) = gray.dimensions();
-    let mut binary = GrayImage::new(width, height);
-
-    // Convert normalized threshold (0.0-1.0) to byte value (0-255)
-    let threshold_byte = (threshold * 255.0) as u8;
-
-    // Use parallel processing for better performance with execution abstraction
-    let indices: Vec<(u32, u32)> = (0..height)
-        .flat_map(|y| (0..width).map(move |x| (x, y)))
-        .collect();
-
-    let results = execute_parallel(indices, |(x, y)| {
-        let gray_value = gray.get_pixel(x, y).0[0];
-        let binary_value = if gray_value > threshold_byte { 255 } else { 0 };
-        (x, y, binary_value)
-    });
-
-    // Apply results to binary image
-    for (x, y, binary_value) in results {
-        binary.put_pixel(x, y, Luma([binary_value]));
-    }
-
-    binary
-}
-
-/// Morphological preprocessing for noise filtering (opening + closing)
-fn morphological_preprocessing(binary: &GrayImage) -> GrayImage {
-    let (width, height) = binary.dimensions();
-    let mut result = GrayImage::new(width, height);
-
-    // Simple 3x3 structuring element for opening (erosion + dilation)
-    // This removes small noise while preserving main structures
-    let mut eroded = GrayImage::new(width, height);
-
-    // Erosion pass
-    for y in 1..(height - 1) {
-        for x in 1..(width - 1) {
-            let mut min_val = 255u8;
-            for dy in -1..=1 {
-                for dx in -1..=1 {
-                    let px = binary
-                        .get_pixel((x as i32 + dx) as u32, (y as i32 + dy) as u32)
-                        .0[0];
-                    min_val = min_val.min(px);
-                }
-            }
-            eroded.get_pixel_mut(x, y).0[0] = min_val;
-        }
-    }
-
-    // Dilation pass (opening = erosion + dilation)
-    for y in 1..(height - 1) {
-        for x in 1..(width - 1) {
-            let mut max_val = 0u8;
-            for dy in -1..=1 {
-                for dx in -1..=1 {
-                    let px = eroded
-                        .get_pixel((x as i32 + dx) as u32, (y as i32 + dy) as u32)
-                        .0[0];
-                    max_val = max_val.max(px);
-                }
-            }
-            result.get_pixel_mut(x, y).0[0] = max_val;
-        }
-    }
-
-    result
-}
-
-/// Zhang-Suen thinning algorithm for skeletonization
-/// Returns a binary image where white pixels (255) represent the skeleton
-fn zhang_suen_thinning(binary: &GrayImage) -> GrayImage {
-    let (width, height) = binary.dimensions();
-    let mut image = GrayImage::new(width, height);
-
-    // Copy binary image (white = 255 for foreground, black = 0 for background)
-    for y in 0..height {
-        for x in 0..width {
-            image.get_pixel_mut(x, y).0[0] = binary.get_pixel(x, y).0[0];
-        }
-    }
-
-    let mut changed = true;
-    let mut iteration = 0;
-
-    while changed && iteration < 100 {
-        // Safety limit
-        changed = false;
-        iteration += 1;
-
-        // Step 1: Mark pixels for deletion
-        let mut to_delete_1 = Vec::new();
-        for y in 1..(height - 1) {
-            for x in 1..(width - 1) {
-                if should_delete_zhang_suen_step1(&image, x, y) {
-                    to_delete_1.push((x, y));
-                }
-            }
-        }
-
-        // Delete marked pixels
-        for &(x, y) in &to_delete_1 {
-            image.get_pixel_mut(x, y).0[0] = 0;
-            changed = true;
-        }
-
-        // Step 2: Mark different pixels for deletion
-        let mut to_delete_2 = Vec::new();
-        for y in 1..(height - 1) {
-            for x in 1..(width - 1) {
-                if should_delete_zhang_suen_step2(&image, x, y) {
-                    to_delete_2.push((x, y));
-                }
-            }
-        }
-
-        // Delete marked pixels
-        for &(x, y) in &to_delete_2 {
-            image.get_pixel_mut(x, y).0[0] = 0;
-            changed = true;
-        }
-    }
-
-    image
-}
-
-/// Zhang-Suen Step 1: Check if pixel should be deleted
-fn should_delete_zhang_suen_step1(image: &GrayImage, x: u32, y: u32) -> bool {
-    let p1 = is_foreground(image, x, y);
-    if !p1 {
-        return false;
-    }
-
-    // Get 8-neighborhood (clockwise from top)
-    let p2 = is_foreground(image, x, y - 1); // N
-    let p3 = is_foreground(image, x + 1, y - 1); // NE
-    let p4 = is_foreground(image, x + 1, y); // E
-    let p5 = is_foreground(image, x + 1, y + 1); // SE
-    let p6 = is_foreground(image, x, y + 1); // S
-    let p7 = is_foreground(image, x - 1, y + 1); // SW
-    let p8 = is_foreground(image, x - 1, y); // W
-    let p9 = is_foreground(image, x - 1, y - 1); // NW
-
-    // Count black-to-white transitions
-    let transitions = count_transitions(&[p2, p3, p4, p5, p6, p7, p8, p9]);
-
-    // Count white neighbors
-    let white_neighbors = [p2, p3, p4, p5, p6, p7, p8, p9]
-        .iter()
-        .filter(|&&p| p)
-        .count();
-
-    // Zhang-Suen conditions for step 1
-    transitions == 1
-        && (2..=6).contains(&white_neighbors)
-        && (!p2 || !p4 || !p6)
-        && (!p4 || !p6 || !p8)
-}
-
-/// Zhang-Suen Step 2: Check if pixel should be deleted
-fn should_delete_zhang_suen_step2(image: &GrayImage, x: u32, y: u32) -> bool {
-    let p1 = is_foreground(image, x, y);
-    if !p1 {
-        return false;
-    }
-
-    // Get 8-neighborhood (clockwise from top)
-    let p2 = is_foreground(image, x, y - 1); // N
-    let p3 = is_foreground(image, x + 1, y - 1); // NE
-    let p4 = is_foreground(image, x + 1, y); // E
-    let p5 = is_foreground(image, x + 1, y + 1); // SE
-    let p6 = is_foreground(image, x, y + 1); // S
-    let p7 = is_foreground(image, x - 1, y + 1); // SW
-    let p8 = is_foreground(image, x - 1, y); // W
-    let p9 = is_foreground(image, x - 1, y - 1); // NW
-
-    // Count black-to-white transitions
-    let transitions = count_transitions(&[p2, p3, p4, p5, p6, p7, p8, p9]);
-
-    // Count white neighbors
-    let white_neighbors = [p2, p3, p4, p5, p6, p7, p8, p9]
-        .iter()
-        .filter(|&&p| p)
-        .count();
-
-    // Zhang-Suen conditions for step 2
-    transitions == 1
-        && (2..=6).contains(&white_neighbors)
-        && (!p2 || !p4 || !p8)
-        && (!p2 || !p6 || !p8)
-}
 
 /// Check if pixel is foreground (white in binary image)
 fn is_foreground(image: &GrayImage, x: u32, y: u32) -> bool {
@@ -3744,29 +4112,706 @@ fn count_transitions(neighbors: &[bool; 8]) -> usize {
     count
 }
 
-/// Extract polylines from skeleton using 8-connectivity tracing
-fn extract_skeleton_polylines(skeleton: &GrayImage) -> Vec<Vec<Point>> {
-    let (width, height) = skeleton.dimensions();
-    let mut visited = vec![vec![false; width as usize]; height as usize];
-    let mut polylines = Vec::new();
+/// Guo-Hall thinning algorithm - improved skeletonization with fewer artifacts
+/// Produces fewer stair-steps and spurs than Zhang-Suen on natural/photographic inputs
+fn guo_hall_thinning(binary: &GrayImage) -> GrayImage {
+    let (width, height) = binary.dimensions();
+    let mut image = GrayImage::new(width, height);
 
-    // Find all skeleton pixels and trace them
+    // Copy binary image (white = 255 for foreground, black = 0 for background)
     for y in 0..height {
         for x in 0..width {
-            if is_foreground(skeleton, x, y) && !visited[y as usize][x as usize] {
-                let polyline = trace_skeleton_path(skeleton, &mut visited, x, y);
-                if polyline.len() >= 2 {
-                    polylines.push(polyline);
+            image.get_pixel_mut(x, y).0[0] = binary.get_pixel(x, y).0[0];
+        }
+    }
+
+    let mut changed = true;
+    let mut iteration = 0;
+
+    while changed && iteration < 100 {
+        // Safety limit
+        changed = false;
+        iteration += 1;
+
+        // Step 1: Mark pixels for deletion based on Guo-Hall conditions
+        let mut to_delete_1 = Vec::new();
+        for y in 1..(height - 1) {
+            for x in 1..(width - 1) {
+                if should_delete_guo_hall_step1(&image, x, y) {
+                    to_delete_1.push((x, y));
+                }
+            }
+        }
+
+        // Delete marked pixels
+        for &(x, y) in &to_delete_1 {
+            image.get_pixel_mut(x, y).0[0] = 0;
+            changed = true;
+        }
+
+        // Step 2: Mark different pixels for deletion
+        let mut to_delete_2 = Vec::new();
+        for y in 1..(height - 1) {
+            for x in 1..(width - 1) {
+                if should_delete_guo_hall_step2(&image, x, y) {
+                    to_delete_2.push((x, y));
+                }
+            }
+        }
+
+        // Delete marked pixels
+        for &(x, y) in &to_delete_2 {
+            image.get_pixel_mut(x, y).0[0] = 0;
+            changed = true;
+        }
+    }
+
+    image
+}
+
+/// Guo-Hall Step 1: Check if pixel should be deleted
+fn should_delete_guo_hall_step1(image: &GrayImage, x: u32, y: u32) -> bool {
+    if !is_foreground(image, x, y) {
+        return false;
+    }
+
+    // Get 8-neighborhood (clockwise from top)
+    let p2 = is_foreground(image, x, y.wrapping_sub(1)); // N
+    let p3 = is_foreground(image, x + 1, y.wrapping_sub(1)); // NE
+    let p4 = is_foreground(image, x + 1, y); // E
+    let p5 = is_foreground(image, x + 1, y + 1); // SE
+    let p6 = is_foreground(image, x, y + 1); // S
+    let p7 = is_foreground(image, x.wrapping_sub(1), y + 1); // SW
+    let p8 = is_foreground(image, x.wrapping_sub(1), y); // W
+    let p9 = is_foreground(image, x.wrapping_sub(1), y.wrapping_sub(1)); // NW
+
+    // Count neighbors (connectivity number)
+    let n = [p2, p3, p4, p5, p6, p7, p8, p9].iter().filter(|&&x| x).count();
+    
+    // Count transitions
+    let transitions = count_transitions(&[p2, p3, p4, p5, p6, p7, p8, p9]);
+
+    // Guo-Hall conditions for step 1
+    if !(2 <= n && n <= 6) {
+        return false;
+    }
+    if transitions != 1 {
+        return false;
+    }
+    
+    // Additional Guo-Hall specific conditions
+    if (p2 && p4 && p6) || (p4 && p6 && p8) {
+        return false;
+    }
+
+    true
+}
+
+/// Guo-Hall Step 2: Check if pixel should be deleted
+fn should_delete_guo_hall_step2(image: &GrayImage, x: u32, y: u32) -> bool {
+    if !is_foreground(image, x, y) {
+        return false;
+    }
+
+    // Get 8-neighborhood (clockwise from top)
+    let p2 = is_foreground(image, x, y.wrapping_sub(1)); // N
+    let p3 = is_foreground(image, x + 1, y.wrapping_sub(1)); // NE
+    let p4 = is_foreground(image, x + 1, y); // E
+    let p5 = is_foreground(image, x + 1, y + 1); // SE
+    let p6 = is_foreground(image, x, y + 1); // S
+    let p7 = is_foreground(image, x.wrapping_sub(1), y + 1); // SW
+    let p8 = is_foreground(image, x.wrapping_sub(1), y); // W
+    let p9 = is_foreground(image, x.wrapping_sub(1), y.wrapping_sub(1)); // NW
+
+    // Count neighbors (connectivity number)
+    let n = [p2, p3, p4, p5, p6, p7, p8, p9].iter().filter(|&&x| x).count();
+    
+    // Count transitions
+    let transitions = count_transitions(&[p2, p3, p4, p5, p6, p7, p8, p9]);
+
+    // Guo-Hall conditions for step 2
+    if !(2 <= n && n <= 6) {
+        return false;
+    }
+    if transitions != 1 {
+        return false;
+    }
+    
+    // Additional Guo-Hall specific conditions (different from step 1)
+    if (p2 && p4 && p8) || (p2 && p6 && p8) {
+        return false;
+    }
+
+    true
+}
+
+// Gaussian blur function already exists above, using that one
+
+/// Otsu's method for adaptive thresholding
+fn otsu_threshold(gray: &GrayImage) -> GrayImage {
+    let (width, height) = gray.dimensions();
+
+    // Calculate histogram
+    let mut histogram = [0u32; 256];
+    for pixel in gray.pixels() {
+        histogram[pixel.0[0] as usize] += 1;
+    }
+
+    let total_pixels = (width * height) as f32;
+
+    // Find optimal threshold using Otsu's method
+    let mut max_variance = 0.0;
+    let mut optimal_threshold = 128u8;
+
+    for threshold in 0..256 {
+        let (w0, w1, mu0, mu1) = calculate_class_statistics(&histogram, threshold, total_pixels);
+
+        if w0 > 0.0 && w1 > 0.0 {
+            let between_class_variance = w0 * w1 * (mu0 - mu1) * (mu0 - mu1);
+            if between_class_variance > max_variance {
+                max_variance = between_class_variance;
+                optimal_threshold = threshold as u8;
+            }
+        }
+    }
+
+    // Apply threshold
+    let mut binary = GrayImage::new(width, height);
+    for y in 0..height {
+        for x in 0..width {
+            let gray_value = gray.get_pixel(x, y).0[0];
+            let binary_value = if gray_value > optimal_threshold {
+                255
+            } else {
+                0
+            };
+            binary.put_pixel(x, y, Luma([binary_value]));
+        }
+    }
+
+    log::debug!("Otsu threshold determined: {}", optimal_threshold);
+    binary
+}
+
+/// Calculate class statistics for Otsu's method
+fn calculate_class_statistics(
+    histogram: &[u32; 256],
+    threshold: usize,
+    total_pixels: f32,
+) -> (f32, f32, f32, f32) {
+    let mut sum0 = 0.0;
+    let mut sum1 = 0.0;
+    let mut w0 = 0.0;
+    let mut w1 = 0.0;
+
+    for i in 0..=threshold {
+        w0 += histogram[i] as f32;
+        sum0 += (i as f32) * (histogram[i] as f32);
+    }
+
+    for i in (threshold + 1)..256 {
+        w1 += histogram[i] as f32;
+        sum1 += (i as f32) * (histogram[i] as f32);
+    }
+
+    w0 /= total_pixels;
+    w1 /= total_pixels;
+
+    let mu0 = if w0 > 0.0 {
+        sum0 / (w0 * total_pixels)
+    } else {
+        0.0
+    };
+    let mu1 = if w1 > 0.0 {
+        sum1 / (w1 * total_pixels)
+    } else {
+        0.0
+    };
+
+    (w0, w1, mu0, mu1)
+}
+
+/// Box-Sauvola adaptive thresholding for improved handling of varying lighting conditions
+///
+/// This method computes local mean and variance in a sliding window and applies the Sauvola formula:
+/// threshold = mean * (1 + k * ((std_dev / 128) - 1))
+///
+/// Parameters:
+/// - window_size: Size of the sliding window (recommended 25-35 pixels)
+/// - k: Sensitivity parameter (recommended 0.3-0.5)
+///
+/// Returns a binary image or falls back to Otsu if parameters are invalid
+fn box_sauvola_threshold(gray: &GrayImage, window_size: u32, k: f32) -> GrayImage {
+    let (width, height) = gray.dimensions();
+
+    // Validate input parameters
+    if width == 0 || height == 0 {
+        log::warn!(
+            "Invalid image dimensions: {}x{}, falling back to empty image",
+            width,
+            height
+        );
+        return GrayImage::new(width, height);
+    }
+
+    if window_size < 3 || window_size > width.min(height) {
+        log::warn!("Invalid window size: {}, falling back to Otsu", window_size);
+        return otsu_threshold(gray);
+    }
+
+    if !(0.0..=1.0).contains(&k) {
+        log::warn!("Invalid k parameter: {}, falling back to Otsu", k);
+        return otsu_threshold(gray);
+    }
+
+    let mut binary = GrayImage::new(width, height);
+
+    // Ensure window size is odd for symmetry
+    let window_size = if window_size.is_multiple_of(2) {
+        window_size + 1
+    } else {
+        window_size
+    };
+    let half_window = (window_size / 2) as i32;
+
+    log::debug!(
+        "Box-Sauvola thresholding with window_size={}, k={}",
+        window_size,
+        k
+    );
+
+    // For each pixel, compute local statistics in the window
+    for y in 0..height {
+        for x in 0..width {
+            let mut sum = 0.0f64;
+            let mut sum_sq = 0.0f64;
+            let mut count = 0u32;
+
+            // Define window bounds with clamping
+            let min_x = (x as i32 - half_window).max(0) as u32;
+            let max_x = (x as i32 + half_window).min(width as i32 - 1) as u32;
+            let min_y = (y as i32 - half_window).max(0) as u32;
+            let max_y = (y as i32 + half_window).min(height as i32 - 1) as u32;
+
+            // Compute local mean and variance in the window
+            for wy in min_y..=max_y {
+                for wx in min_x..=max_x {
+                    let pixel_value = gray.get_pixel(wx, wy).0[0] as f64;
+                    sum += pixel_value;
+                    sum_sq += pixel_value * pixel_value;
+                    count += 1;
+                }
+            }
+
+            // Calculate local statistics
+            let mean = sum / count as f64;
+            let variance = (sum_sq / count as f64) - (mean * mean);
+            let std_dev = variance.sqrt();
+
+            // Apply Sauvola formula: threshold = mean * (1 + k * ((std_dev / 128) - 1))
+            let threshold = mean * (1.0 + k as f64 * ((std_dev / 128.0) - 1.0));
+
+            // Apply threshold to current pixel
+            let pixel_value = gray.get_pixel(x, y).0[0] as f64;
+            let binary_value = if pixel_value > threshold { 255 } else { 0 };
+            binary.put_pixel(x, y, Luma([binary_value]));
+        }
+    }
+
+    binary
+}
+
+/// Optimized Box-Sauvola adaptive thresholding using integral images for better performance
+///
+/// This is a faster implementation that pre-computes integral images for sum and sum-of-squares
+/// to achieve O(1) window sum computation instead of O(window_size²) per pixel.
+///
+/// Returns a binary image or falls back to Otsu if parameters are invalid
+fn box_sauvola_threshold_optimized(gray: &GrayImage, window_size: u32, k: f32) -> GrayImage {
+    let (width, height) = gray.dimensions();
+
+    // Validate input parameters
+    if width == 0 || height == 0 {
+        log::warn!(
+            "Invalid image dimensions: {}x{}, falling back to empty image",
+            width,
+            height
+        );
+        return GrayImage::new(width, height);
+    }
+
+    if window_size < 3 || window_size > width.min(height) {
+        log::warn!(
+            "Invalid window size: {}, falling back to non-optimized version",
+            window_size
+        );
+        return box_sauvola_threshold(gray, window_size, k);
+    }
+
+    if !(0.0..=1.0).contains(&k) {
+        log::warn!("Invalid k parameter: {}, falling back to Otsu", k);
+        return otsu_threshold(gray);
+    }
+
+    let mut binary = GrayImage::new(width, height);
+
+    // Ensure window size is odd for symmetry
+    let window_size = if window_size.is_multiple_of(2) {
+        window_size + 1
+    } else {
+        window_size
+    };
+    let half_window = (window_size / 2) as i32;
+
+    log::debug!(
+        "Optimized Box-Sauvola thresholding with window_size={}, k={}",
+        window_size,
+        k
+    );
+
+    // Build integral images for sum and sum-of-squares
+    let mut integral_sum = vec![vec![0.0f64; (width + 1) as usize]; (height + 1) as usize];
+    let mut integral_sum_sq = vec![vec![0.0f64; (width + 1) as usize]; (height + 1) as usize];
+
+    // Compute integral images
+    for y in 0..height {
+        for x in 0..width {
+            let pixel_value = gray.get_pixel(x, y).0[0] as f64;
+
+            integral_sum[y as usize + 1][x as usize + 1] = pixel_value
+                + integral_sum[y as usize][x as usize + 1]
+                + integral_sum[y as usize + 1][x as usize]
+                - integral_sum[y as usize][x as usize];
+
+            integral_sum_sq[y as usize + 1][x as usize + 1] = pixel_value * pixel_value
+                + integral_sum_sq[y as usize][x as usize + 1]
+                + integral_sum_sq[y as usize + 1][x as usize]
+                - integral_sum_sq[y as usize][x as usize];
+        }
+    }
+
+    // For each pixel, compute local statistics using integral images
+    for y in 0..height {
+        for x in 0..width {
+            // Define window bounds with clamping
+            let min_x = (x as i32 - half_window).max(0) as usize;
+            let max_x = (x as i32 + half_window).min(width as i32 - 1) as usize;
+            let min_y = (y as i32 - half_window).max(0) as usize;
+            let max_y = (y as i32 + half_window).min(height as i32 - 1) as usize;
+
+            // Compute window area
+            let area = ((max_x - min_x + 1) * (max_y - min_y + 1)) as f64;
+
+            // Use integral images to compute sum and sum-of-squares in O(1) time
+            let sum = integral_sum[max_y + 1][max_x + 1]
+                - integral_sum[min_y][max_x + 1]
+                - integral_sum[max_y + 1][min_x]
+                + integral_sum[min_y][min_x];
+
+            let sum_sq = integral_sum_sq[max_y + 1][max_x + 1]
+                - integral_sum_sq[min_y][max_x + 1]
+                - integral_sum_sq[max_y + 1][min_x]
+                + integral_sum_sq[min_y][min_x];
+
+            // Calculate local statistics
+            let mean = sum / area;
+            let variance = (sum_sq / area) - (mean * mean);
+            let std_dev = variance.max(0.0).sqrt(); // Ensure non-negative variance
+
+            // Apply Sauvola formula: threshold = mean * (1 + k * ((std_dev / 128) - 1))
+            let threshold = mean * (1.0 + k as f64 * ((std_dev / 128.0) - 1.0));
+
+            // Apply threshold to current pixel
+            let pixel_value = gray.get_pixel(x, y).0[0] as f64;
+            let binary_value = if pixel_value > threshold { 255 } else { 0 };
+            binary.put_pixel(x, y, Luma([binary_value]));
+        }
+    }
+
+    binary
+}
+
+
+/// Morphological opening (erosion + dilation) for pepper noise removal
+fn morphological_opening_3x3(binary: &GrayImage) -> GrayImage {
+    let (w, h) = binary.dimensions();
+    let mut eroded = GrayImage::new(w, h);
+    
+    // Erode first (removes pepper noise - small white specks)
+    for y in 0..h {
+        for x in 0..w {
+            let mut v = 255u8;
+            for dy in -1i32..=1 {
+                for dx in -1i32..=1 {
+                    let nx = x as i32 + dx;
+                    let ny = y as i32 + dy;
+                    if nx >= 0 && ny >= 0 && (nx as u32) < w && (ny as u32) < h {
+                        v = v.min(binary.get_pixel(nx as u32, ny as u32).0[0]);
+                    }
+                }
+            }
+            eroded.put_pixel(x, y, image::Luma([v]));
+        }
+    }
+    
+    // Then dilate (restores object size without pepper noise)
+    let mut out = GrayImage::new(w, h);
+    for y in 0..h {
+        for x in 0..w {
+            let mut v = 0u8;
+            for dy in -1i32..=1 {
+                for dx in -1i32..=1 {
+                    let nx = x as i32 + dx;
+                    let ny = y as i32 + dy;
+                    if nx >= 0 && ny >= 0 && (nx as u32) < w && (ny as u32) < h {
+                        v = v.max(eroded.get_pixel(nx as u32, ny as u32).0[0]);
+                    }
+                }
+            }
+            out.put_pixel(x, y, image::Luma([v]));
+        }
+    }
+    out
+}
+
+/// Combined morphological opening then closing for optimal noise removal and gap bridging
+/// Opening kills pepper noise without fattening strokes, then closing bridges hairline gaps
+fn morphological_open_close(binary: &GrayImage) -> GrayImage {
+    let opened = morphological_opening_3x3(binary);
+    morphological_closing_3x3(&opened)
+}
+
+/// Morphological closing (dilation + erosion) for gap bridging before thinning
+fn morphological_closing_3x3(binary: &GrayImage) -> GrayImage {
+    let (w, h) = binary.dimensions();
+    let mut dil = GrayImage::new(w, h);
+    // Dilate
+    for y in 0..h {
+        for x in 0..w {
+            let mut v = 0u8;
+            for dy in -1i32..=1 {
+                for dx in -1i32..=1 {
+                    let nx = x as i32 + dx;
+                    let ny = y as i32 + dy;
+                    if nx >= 0 && ny >= 0 && (nx as u32) < w && (ny as u32) < h {
+                        v = v.max(binary.get_pixel(nx as u32, ny as u32).0[0]);
+                    }
+                }
+            }
+            dil.put_pixel(x, y, image::Luma([v]));
+        }
+    }
+    // Erode
+    let mut out = GrayImage::new(w, h);
+    for y in 0..h {
+        for x in 0..w {
+            let mut v = 255u8;
+            for dy in -1i32..=1 {
+                for dx in -1i32..=1 {
+                    let nx = x as i32 + dx;
+                    let ny = y as i32 + dy;
+                    if nx >= 0 && ny >= 0 && (nx as u32) < w && (ny as u32) < h {
+                        v = v.min(dil.get_pixel(nx as u32, ny as u32).0[0]);
+                    }
+                }
+            }
+            out.put_pixel(x, y, image::Luma([v]));
+        }
+    }
+    out
+}
+
+/// Classification of skeleton pixels based on their connectivity
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PixelType {
+    Endpoint, // 1 neighbor
+    Normal,   // 2 neighbors
+    Junction, // 3+ neighbors
+}
+
+/// Classify all skeleton pixels by their topological properties
+fn classify_skeleton_pixels(skeleton: &GrayImage) -> Vec<Vec<PixelType>> {
+    let (width, height) = skeleton.dimensions();
+    let mut pixel_types = vec![vec![PixelType::Normal; width as usize]; height as usize];
+
+    for y in 0..height {
+        for x in 0..width {
+            if is_foreground(skeleton, x, y) {
+                let neighbor_count = count_skeleton_neighbors(skeleton, x, y);
+                pixel_types[y as usize][x as usize] = match neighbor_count {
+                    1 => PixelType::Endpoint,
+                    2 => PixelType::Normal,
+                    _ => PixelType::Junction,
+                };
+            }
+        }
+    }
+
+    pixel_types
+}
+
+/// Count skeleton neighbors in 8-connectivity
+fn count_skeleton_neighbors(skeleton: &GrayImage, x: u32, y: u32) -> usize {
+    let mut count = 0;
+
+    for dy in -1i32..=1 {
+        for dx in -1i32..=1 {
+            if dx == 0 && dy == 0 {
+                continue;
+            }
+
+            let nx = x as i32 + dx;
+            let ny = y as i32 + dy;
+
+            if nx >= 0 && ny >= 0 {
+                let nx = nx as u32;
+                let ny = ny as u32;
+
+                if is_foreground(skeleton, nx, ny) {
+                    count += 1;
                 }
             }
         }
     }
 
-    polylines
+    count
 }
 
-/// Trace a single skeleton path starting from given point
-fn trace_skeleton_path(
+/// Trace path from an endpoint until reaching a junction or another endpoint
+fn trace_from_endpoint(
+    skeleton: &GrayImage,
+    visited: &mut [Vec<bool>],
+    pixel_types: &[Vec<PixelType>],
+    start_x: u32,
+    start_y: u32,
+) -> Vec<Point> {
+    let mut path = Vec::new();
+    let mut cur = (start_x as i32, start_y as i32);
+    let mut prev_dir: Option<(i32, i32)> = None;
+
+    let in_img = |x: i32, y: i32| {
+        x >= 0 && y >= 0 && (x as u32) < skeleton.width() && (y as u32) < skeleton.height()
+    };
+
+    let is_fg = |x: i32, y: i32| -> bool {
+        if !in_img(x, y) {
+            return false;
+        }
+        skeleton.get_pixel(x as u32, y as u32).0[0] > 0
+    };
+
+    // Forbid diagonal "corner hops" where both orthogonal supports are absent.
+    let diagonal_ok = |x: i32, y: i32, dx: i32, dy: i32| -> bool {
+        if dx == 0 || dy == 0 {
+            return true;
+        }
+        is_fg(x + dx, y) || is_fg(x, y + dy)
+    };
+
+    loop {
+        let (x, y) = cur;
+        if visited[y as usize][x as usize] {
+            break;
+        }
+        visited[y as usize][x as usize] = true;
+        path.push(Point {
+            x: x as f32,
+            y: y as f32,
+        });
+
+        // Collect unvisited neighbors (8-conn), filtering bad diagonals.
+        let mut cand: Vec<(i32, i32, i32, i32)> = Vec::new();
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                if dx == 0 && dy == 0 {
+                    continue;
+                }
+                let nx = x + dx;
+                let ny = y + dy;
+                if !in_img(nx, ny) {
+                    continue;
+                }
+                if !is_fg(nx, ny) {
+                    continue;
+                }
+                if !diagonal_ok(x, y, dx, dy) {
+                    continue;
+                }
+                if !visited[ny as usize][nx as usize] {
+                    cand.push((nx, ny, dx, dy));
+                }
+            }
+        }
+
+        if cand.is_empty() {
+            break;
+        }
+
+        let next = if let Some((pdx, pdy)) = prev_dir {
+            // Prefer smallest turn (max dot with previous dir).
+            cand.into_iter()
+                .max_by(|a, b| {
+                    let da = a.2 * pdx + a.3 * pdy;
+                    let db = b.2 * pdx + b.3 * pdy;
+                    da.cmp(&db)
+                        // tie-breaker: prefer leaving a junction *later* (stay on trunk)
+                        .then_with(|| {
+                            let ta = pixel_types[a.1 as usize][a.0 as usize] != PixelType::Junction;
+                            let tb = pixel_types[b.1 as usize][b.0 as usize] != PixelType::Junction;
+                            ta.cmp(&tb)
+                        })
+                })
+                .unwrap()
+        } else {
+            // First step: prefer neighbor with the most skeleton neighbors (main trunk).
+            cand.into_iter()
+                .max_by_key(|(nx, ny, _, _)| {
+                    count_skeleton_neighbors(skeleton, *nx as u32, *ny as u32)
+                })
+                .unwrap()
+        };
+
+        prev_dir = Some((next.2, next.3));
+        cur = (next.0, next.1);
+    }
+
+    path
+}
+
+/// Get all unvisited skeleton neighbors
+fn get_unvisited_skeleton_neighbors(
+    skeleton: &GrayImage,
+    visited: &[Vec<bool>],
+    x: u32,
+    y: u32,
+) -> Vec<(u32, u32)> {
+    let mut neighbors = Vec::new();
+
+    for dy in -1i32..=1 {
+        for dx in -1i32..=1 {
+            if dx == 0 && dy == 0 {
+                continue;
+            }
+
+            let nx = x as i32 + dx;
+            let ny = y as i32 + dy;
+
+            if nx >= 0 && ny >= 0 {
+                let nx = nx as u32;
+                let ny = ny as u32;
+
+                if is_foreground(skeleton, nx, ny) && !visited[ny as usize][nx as usize] {
+                    neighbors.push((nx, ny));
+                }
+            }
+        }
+    }
+
+    neighbors
+}
+
+/// Trace remaining unvisited pixels (handles cycles and other edge cases)
+fn trace_remaining_path(
     skeleton: &GrayImage,
     visited: &mut [Vec<bool>],
     start_x: u32,
@@ -3775,7 +4820,6 @@ fn trace_skeleton_path(
     let mut path = Vec::new();
     let mut current = (start_x, start_y);
 
-    // Use a simple path following algorithm
     loop {
         let (x, y) = current;
         visited[y as usize][x as usize] = true;
@@ -3785,51 +4829,149 @@ fn trace_skeleton_path(
         });
 
         // Find next unvisited neighbor
-        let mut next = None;
+        let neighbors = get_unvisited_skeleton_neighbors(skeleton, visited, x, y);
 
-        // Check 8-neighborhood
-        for dy in -1i32..=1 {
-            for dx in -1i32..=1 {
-                if dx == 0 && dy == 0 {
-                    continue;
-                }
-
-                let nx = x as i32 + dx;
-                let ny = y as i32 + dy;
-
-                if nx >= 0 && ny >= 0 {
-                    let nx = nx as u32;
-                    let ny = ny as u32;
-
-                    if is_foreground(skeleton, nx, ny) && !visited[ny as usize][nx as usize] {
-                        next = Some((nx, ny));
-                        break;
-                    }
-                }
-            }
-            if next.is_some() {
-                break;
-            }
+        if neighbors.is_empty() {
+            break; // End of path
         }
 
-        match next {
-            Some(next_pos) => current = next_pos,
-            None => break, // End of path
-        }
+        current = neighbors[0]; // Take first available neighbor
     }
 
     path
 }
 
-/// Prune short branches from polylines
-fn prune_short_branches(polylines: Vec<Vec<Point>>, min_length: f32) -> Vec<Vec<Point>> {
+/// Improved skeleton polyline extraction with junction detection and proper path tracing
+fn extract_skeleton_polylines_improved(skeleton: &GrayImage) -> Vec<Vec<Point>> {
+    let (width, height) = skeleton.dimensions();
+    let mut visited = vec![vec![false; width as usize]; height as usize];
+    let mut polylines = Vec::new();
+
+    // Step 1: Classify all skeleton pixels by their topology
+    let pixel_types = classify_skeleton_pixels(skeleton);
+
+    // Step 2: Find all endpoints (pixels with exactly 1 neighbor)
+    let mut endpoints = Vec::new();
+    for y in 0..height {
+        for x in 0..width {
+            if is_foreground(skeleton, x, y)
+                && pixel_types[y as usize][x as usize] == PixelType::Endpoint
+            {
+                endpoints.push((x, y));
+            }
+        }
+    }
+
+    log::debug!("Found {} endpoints for centerline tracing", endpoints.len());
+
+    // Step 3: Trace from each unvisited endpoint
+    for (start_x, start_y) in endpoints {
+        if !visited[start_y as usize][start_x as usize] {
+            let path = trace_from_endpoint(skeleton, &mut visited, &pixel_types, start_x, start_y);
+            if path.len() >= 2 {
+                polylines.push(path);
+            }
+        }
+    }
+
+    // Step 4: Handle remaining unvisited skeleton pixels (isolated cycles, etc.)
+    for y in 0..height {
+        for x in 0..width {
+            if is_foreground(skeleton, x, y) && !visited[y as usize][x as usize] {
+                let path = trace_remaining_path(skeleton, &mut visited, x, y);
+                if path.len() >= 2 {
+                    polylines.push(path);
+                }
+            }
+        }
+    }
+
+    log::debug!("Extracted {} polylines from skeleton", polylines.len());
     polylines
-        .into_iter()
-        .filter(|polyline| {
-            let length = calculate_polyline_length(polyline);
-            length >= min_length
-        })
-        .collect()
+}
+
+/// Calculate squared distance between two points (faster than sqrt)
+fn distance_squared(p1: &Point, p2: &Point) -> f32 {
+    let dx = p1.x - p2.x;
+    let dy = p1.y - p2.y;
+    dx * dx + dy * dy
+}
+
+
+/// Calculate branch importance based on length, straightness, and connectivity
+fn calculate_branch_importance(polyline: &[Point], all_polylines: &[Vec<Point>]) -> f32 {
+    if polyline.len() < 2 {
+        return 0.0;
+    }
+
+    let length = calculate_polyline_length(polyline);
+    let straightness = calculate_branch_straightness(polyline);
+    let connectivity = calculate_branch_connectivity(polyline, all_polylines);
+
+    // Weighted combination of factors
+    let length_score = (length / 50.0).min(1.0); // Normalize to ~50 pixels
+    let straightness_score = straightness;
+    let connectivity_score = connectivity;
+
+    // Weight: length is most important, then connectivity, then straightness
+    0.5 * length_score + 0.3 * connectivity_score + 0.2 * straightness_score
+}
+
+/// Calculate how straight a branch is (1.0 = perfectly straight, 0.0 = very curved)
+fn calculate_branch_straightness(polyline: &[Point]) -> f32 {
+    if polyline.len() < 3 {
+        return 1.0; // Short segments are considered straight
+    }
+
+    let start = &polyline[0];
+    let end = &polyline[polyline.len() - 1];
+    let direct_distance = ((end.x - start.x).powi(2) + (end.y - start.y).powi(2)).sqrt();
+
+    if direct_distance < 1.0 {
+        return 0.0; // Too short to measure
+    }
+
+    let path_length = calculate_polyline_length(polyline);
+
+    // Straightness ratio: direct distance / path length
+    (direct_distance / path_length).min(1.0)
+}
+
+/// Calculate how well connected a branch is to other branches
+fn calculate_branch_connectivity(polyline: &[Point], all_polylines: &[Vec<Point>]) -> f32 {
+    if polyline.is_empty() {
+        return 0.0;
+    }
+
+    let start = &polyline[0];
+    let end = &polyline[polyline.len() - 1];
+    let connection_threshold = 5.0; // pixels
+    let mut connections = 0;
+
+    for other in all_polylines {
+        if other.as_ptr() == polyline.as_ptr() {
+            continue; // Skip self
+        }
+
+        if other.is_empty() {
+            continue;
+        }
+
+        let other_start = &other[0];
+        let other_end = &other[other.len() - 1];
+
+        // Check if endpoints are close to other polyline endpoints
+        if distance_squared(start, other_start) <= connection_threshold * connection_threshold
+            || distance_squared(start, other_end) <= connection_threshold * connection_threshold
+            || distance_squared(end, other_start) <= connection_threshold * connection_threshold
+            || distance_squared(end, other_end) <= connection_threshold * connection_threshold
+        {
+            connections += 1;
+        }
+    }
+
+    // Normalize: 0 connections = 0.0, 2+ connections = 1.0
+    (connections as f32 / 2.0).min(1.0)
 }
 
 /// Convert polyline to SVG path
@@ -4076,5 +5218,307 @@ mod tests {
             result.is_ok(),
             "Main vectorize_trace_low should work with dots backend"
         );
+    }
+}
+
+// =============================================================================
+// EDT (Euclidean Distance Transform) Implementation
+// =============================================================================
+
+/// Compute Euclidean Distance Transform (EDT) for a binary image
+/// Returns distance from each foreground pixel to nearest background pixel
+fn compute_euclidean_distance_transform(binary: &GrayImage) -> Vec<Vec<f32>> {
+    let (width, height) = binary.dimensions();
+    let mut distances = vec![vec![0.0; width as usize]; height as usize];
+
+    // Two-pass algorithm for EDT computation
+    // Pass 1: Forward pass (left-to-right, top-to-bottom)
+    for y in 0..height {
+        for x in 0..width {
+            let pixel = binary.get_pixel(x, y);
+
+            if pixel.0[0] > 128 {
+                // Foreground pixel
+                if x == 0 && y == 0 {
+                    distances[y as usize][x as usize] = f32::INFINITY;
+                } else {
+                    let mut min_dist = f32::INFINITY;
+
+                    // Check left neighbor
+                    if x > 0 {
+                        let left_dist = distances[y as usize][(x - 1) as usize] + 1.0;
+                        min_dist = min_dist.min(left_dist);
+                    }
+
+                    // Check top neighbor
+                    if y > 0 {
+                        let top_dist = distances[(y - 1) as usize][x as usize] + 1.0;
+                        min_dist = min_dist.min(top_dist);
+                    }
+
+                    // Check top-left diagonal
+                    if x > 0 && y > 0 {
+                        let diag_dist = distances[(y - 1) as usize][(x - 1) as usize] + std::f32::consts::SQRT_2;
+                        min_dist = min_dist.min(diag_dist);
+                    }
+
+                    // Check top-right diagonal
+                    if x < width - 1 && y > 0 {
+                        let diag_dist = distances[(y - 1) as usize][(x + 1) as usize] + std::f32::consts::SQRT_2;
+                        min_dist = min_dist.min(diag_dist);
+                    }
+
+                    distances[y as usize][x as usize] = min_dist;
+                }
+            } else {
+                // Background pixel has distance 0
+                distances[y as usize][x as usize] = 0.0;
+            }
+        }
+    }
+
+    // Pass 2: Backward pass (right-to-left, bottom-to-top)
+    for y in (0..height).rev() {
+        for x in (0..width).rev() {
+            let pixel = binary.get_pixel(x, y);
+
+            if pixel.0[0] > 128 {
+                // Foreground pixel
+                let mut min_dist = distances[y as usize][x as usize];
+
+                // Check right neighbor
+                if x < width - 1 {
+                    let right_dist = distances[y as usize][(x + 1) as usize] + 1.0;
+                    min_dist = min_dist.min(right_dist);
+                }
+
+                // Check bottom neighbor
+                if y < height - 1 {
+                    let bottom_dist = distances[(y + 1) as usize][x as usize] + 1.0;
+                    min_dist = min_dist.min(bottom_dist);
+                }
+
+                // Check bottom-left diagonal
+                if x > 0 && y < height - 1 {
+                    let diag_dist = distances[(y + 1) as usize][(x - 1) as usize] + std::f32::consts::SQRT_2;
+                    min_dist = min_dist.min(diag_dist);
+                }
+
+                // Check bottom-right diagonal
+                if x < width - 1 && y < height - 1 {
+                    let diag_dist = distances[(y + 1) as usize][(x + 1) as usize] + std::f32::consts::SQRT_2;
+                    min_dist = min_dist.min(diag_dist);
+                }
+
+                distances[y as usize][x as usize] = min_dist;
+            }
+        }
+    }
+
+    distances
+}
+
+/// EDT-based intelligent branch pruning using radius ratio comparison
+fn prune_branches_with_edt(
+    polylines: Vec<Vec<Point>>,
+    edt: &[Vec<f32>],
+    min_length: f32,
+) -> Vec<Vec<Point>> {
+    if polylines.is_empty() {
+        return polylines;
+    }
+
+    // Step 1: Calculate branch scores with EDT information
+    let mut branch_info = Vec::new();
+    for (i, polyline) in polylines.iter().enumerate() {
+        let length = calculate_polyline_length(polyline);
+        let median_radius = calculate_median_edt_radius(polyline, edt);
+        let importance = calculate_branch_importance(polyline, &polylines);
+
+        branch_info.push((i, length, median_radius, importance));
+    }
+
+    // Step 2: Find the trunk (longest or highest importance branch)
+    let trunk_info = branch_info.iter().max_by(|a, b| {
+        // Prioritize by importance first, then by length
+        a.3.partial_cmp(&b.3)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+    });
+
+    let trunk_radius = trunk_info.map(|(_, _, radius, _)| *radius).unwrap_or(1.0);
+    let radius_threshold = trunk_radius * 0.7; // Keep branches with >= 70% of trunk radius
+
+    // Step 3: Filter branches based on EDT radius ratio and importance
+    let mut kept_polylines = Vec::new();
+    for &(idx, length, median_radius, importance) in &branch_info {
+        let polyline = &polylines[idx];
+
+        // Keep branch if any of these conditions are met:
+        // 1. High importance score (>= 0.7)
+        // 2. EDT radius >= 70% of trunk radius
+        // 3. Long enough and has decent radius
+        // 4. Apply playbook minimum radius filter (drop branches with median_radius < 0.6 px)
+        let should_keep = median_radius >= 0.6 // Playbook minimum radius filter
+            && (importance >= 0.7
+                || median_radius >= radius_threshold
+                || (length >= min_length && median_radius >= trunk_radius * 0.5));
+
+        if should_keep {
+            kept_polylines.push(polyline.clone());
+            log::debug!(
+                "Keeping branch: length={:.1}px, radius={:.1}px, importance={:.2}",
+                length,
+                median_radius,
+                importance
+            );
+        } else {
+            log::debug!(
+                "Pruning branch: length={:.1}px, radius={:.1}px, importance={:.2} (trunk_radius={:.1}px)",
+                length, median_radius, importance, trunk_radius
+            );
+        }
+    }
+
+    log::debug!(
+        "EDT pruning: kept {}/{} branches (trunk_radius={:.1}px)",
+        kept_polylines.len(),
+        polylines.len(),
+        trunk_radius
+    );
+
+    kept_polylines
+}
+
+/// Remove micro-loops (tiny 4-8px cycles that look like "hairballs")
+/// These are artifacts from skeletonization that create noise in the final output
+fn remove_micro_loops(polylines: Vec<Vec<Point>>, min_perimeter_px: f32) -> Vec<Vec<Point>> {
+    polylines
+        .into_iter()
+        .filter(|polyline| {
+            // Check if this might be a micro-loop by looking at the perimeter
+            let perimeter = calculate_polyline_length(polyline);
+            
+            // Keep if larger than minimum perimeter or if not a closed loop
+            if perimeter >= min_perimeter_px {
+                return true;
+            }
+            
+            // Check if it's actually a closed loop (first and last points close)
+            if polyline.len() >= 4 {
+                if let (Some(first), Some(last)) = (polyline.first(), polyline.last()) {
+                    let distance = ((first.x - last.x).powi(2) + (first.y - last.y).powi(2)).sqrt();
+                    // If it's a small closed loop, remove it
+                    if distance < 3.0 {
+                        log::debug!("Removing micro-loop: perimeter={:.1}px", perimeter);
+                        return false;
+                    }
+                }
+            }
+            
+            true
+        })
+        .collect()
+}
+
+/// Calculate median EDT radius along a polyline
+fn calculate_median_edt_radius(polyline: &[Point], edt: &[Vec<f32>]) -> f32 {
+    if polyline.is_empty() || edt.is_empty() {
+        return 1.0;
+    }
+
+    let height = edt.len();
+    let width = if height > 0 { edt[0].len() } else { 0 };
+
+    let mut radii = Vec::new();
+    for point in polyline {
+        let x = (point.x.round() as usize).min(width.saturating_sub(1));
+        let y = (point.y.round() as usize).min(height.saturating_sub(1));
+
+        if y < height && x < width {
+            radii.push(edt[y][x]);
+        }
+    }
+
+    if radii.is_empty() {
+        return 1.0;
+    }
+
+    radii.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let mid = radii.len() / 2;
+
+    if radii.len() % 2 == 0 && mid > 0 {
+        (radii[mid - 1] + radii[mid]) / 2.0
+    } else {
+        radii[mid]
+    }
+}
+
+/// Generate SVG path with EDT-based width modulation
+fn polyline_to_svg_path_with_edt_width(
+    polyline: Vec<Point>,
+    base_width: f32,
+    edt: &[Vec<f32>],
+) -> SvgPath {
+    if polyline.is_empty() {
+        return SvgPath {
+            data: String::new(),
+            fill: "none".to_string(),
+            stroke: "#000000".to_string(),
+            stroke_width: base_width,
+            element_type: SvgElementType::Path,
+        };
+    }
+
+    // For simple implementation, we'll use average width modulation
+    // A more sophisticated approach would use variable-width paths or multiple path segments
+    let avg_radius = calculate_average_edt_radius(&polyline, edt);
+
+    // Light modulation: clamp to 0.6-1.8x base width based on EDT radius
+    let radius_factor = (avg_radius / 3.0).clamp(0.6, 1.8);
+    let modulated_width = base_width * radius_factor;
+
+    // Generate the path data
+    let mut path_data = format!("M {:.2},{:.2}", polyline[0].x, polyline[0].y);
+
+    for point in polyline.iter().skip(1) {
+        path_data.push_str(&format!(" L {:.2},{:.2}", point.x, point.y));
+    }
+
+    SvgPath {
+        data: path_data,
+        fill: "none".to_string(),
+        stroke: "#000000".to_string(),
+        stroke_width: modulated_width,
+        element_type: SvgElementType::Path,
+    }
+}
+
+/// Calculate average EDT radius along a polyline
+fn calculate_average_edt_radius(polyline: &[Point], edt: &[Vec<f32>]) -> f32 {
+    if polyline.is_empty() || edt.is_empty() {
+        return 1.0;
+    }
+
+    let height = edt.len();
+    let width = if height > 0 { edt[0].len() } else { 0 };
+
+    let mut sum = 0.0;
+    let mut count = 0;
+
+    for point in polyline {
+        let x = (point.x.round() as usize).min(width.saturating_sub(1));
+        let y = (point.y.round() as usize).min(height.saturating_sub(1));
+
+        if y < height && x < width {
+            sum += edt[y][x];
+            count += 1;
+        }
+    }
+
+    if count > 0 {
+        sum / count as f32
+    } else {
+        1.0
     }
 }

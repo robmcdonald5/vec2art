@@ -58,17 +58,17 @@ pub fn init_thread_pool(num_threads: Option<usize>) -> JsValue {
 
     // Initialize wasm-bindgen-rayon thread pool and return the promise
     let promise = wasm_bindgen_rayon::init_thread_pool(thread_count);
-    
+
     // Mark as initialized (will be confirmed when promise resolves)
     unsafe {
         THREAD_POOL_STATE = ThreadPoolState::Initialized;
     }
-    
+
     log::info!(
         "WASM thread pool initialization started with {} threads",
         thread_count
     );
-    
+
     promise.into()
 }
 
@@ -83,7 +83,7 @@ pub fn init_thread_pool(_num_threads: Option<usize>) -> JsValue {
     // Return resolved promise for compatibility
     #[cfg(target_arch = "wasm32")]
     return js_sys::Promise::resolve(&JsValue::from_str("single-threaded")).into();
-    
+
     #[cfg(not(target_arch = "wasm32"))]
     return JsValue::from_str("single-threaded");
 }

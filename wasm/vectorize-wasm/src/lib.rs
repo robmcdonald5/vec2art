@@ -188,7 +188,7 @@ fn init_thread_pool_with_retry(num_threads: Option<usize>, max_retries: u32) -> 
         // For the retry logic, we'll just try to initialize once
         // The actual async handling happens in JavaScript
         let _promise = threading::init_thread_pool(num_threads);
-        
+
         // Since we can't await the promise here, assume success
         // The JavaScript side will handle the actual async initialization
         if retry > 0 {
@@ -611,9 +611,10 @@ impl WasmVectorizer {
             // init_thread_pool now returns a Promise, not a Result
             // Just initiate the thread pool initialization
             let _promise = threading::init_thread_pool(thread_count_usize);
-            
+
             // Log that we've initiated threading
-            if false {  // This condition will never be true, keeping for structure
+            if false {
+                // This condition will never be true, keeping for structure
                 let e = "placeholder";
                 return Err(JsValue::from_str(&format!(
                     "Thread pool initialization failed: {}",
@@ -944,7 +945,7 @@ pub fn get_preset_description(preset: &str) -> Result<String, JsValue> {
 #[wasm_bindgen]
 pub fn init_threading(num_threads: Option<u32>) -> JsValue {
     let thread_count = num_threads.map(|c| c as usize);
-    
+
     // init_thread_pool now returns a JsValue (Promise)
     threading::init_thread_pool(thread_count)
 }
