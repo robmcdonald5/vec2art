@@ -5,7 +5,27 @@ import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
 
 export default defineConfig({
-	plugins: [wasm(), topLevelAwait(), tailwindcss(), sveltekit()],
+	plugins: [
+		wasm(),
+		topLevelAwait(),
+		tailwindcss(),
+		{
+			name: 'configure-response-headers',
+			configureServer: (server) => {
+				server.middlewares.use((_req, res, next) => {
+					res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+					res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+					next();
+				});
+			}
+		},
+		sveltekit()
+	],
+	resolve: {
+		alias: {
+			'__wbindgen_placeholder__': '/src/lib/wasm/pkg/__wbindgen_placeholder__.js'
+		}
+	},
 	optimizeDeps: {
 		include: ['class-variance-authority', 'tailwind-merge', 'clsx'],
 		exclude: ['vectorize-wasm'] // Let vite-plugin-wasm handle this
@@ -29,7 +49,13 @@ export default defineConfig({
 		}
 	},
 	worker: {
-		format: 'es'
+		format: 'es',
+		rollupOptions: {
+			output: {
+				// Ensure workers maintain proper module URLs
+				entryFileNames: '[name].js'
+			}
+		}
 	},
 	build: {
 		target: 'esnext',

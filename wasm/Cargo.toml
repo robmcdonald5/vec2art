@@ -37,7 +37,7 @@ palette = "0.7"             # Lab colorspace and ΔE calculations
 dssim = "3.3"              # SSIM computation
 
 # WebAssembly support
-wasm-bindgen = "0.2"
+wasm-bindgen = "=0.2.100"
 js-sys = "0.3"
 web-sys = "0.3"
 console_error_panic_hook = "0.1"

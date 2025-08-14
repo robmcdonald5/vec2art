@@ -19,8 +19,9 @@ import type {
 } from '../types/vectorizer';
 
 // Dynamic import type for WASM module - will be imported at runtime
-type WasmModule = typeof import('vectorize-wasm');
-type WasmVectorizer = import('vectorize-wasm').WasmVectorizer;
+// @ts-ignore - WASM module types
+type WasmModule = any;
+type WasmVectorizer = any;
 
 class VectorizerWorker {
   private wasmModule: WasmModule | null = null;
@@ -67,26 +68,17 @@ class VectorizerWorker {
 
   private async handleInit(message: WorkerInitMessage): Promise<void> {
     try {
-      // Dynamic import of WASM module
-      this.wasmModule = await import('vectorize-wasm');
+      // Dynamic import of worker-safe WASM module
+      const { initializeWasm } = await import('../wasm/worker-load.js');
       
-      // Initialize the WASM module
-      await this.wasmModule.default();
+      // Initialize and get the WASM module
+      this.wasmModule = await initializeWasm();
       
       // Create vectorizer instance
       this.vectorizer = new this.wasmModule.WasmVectorizer();
       
       // Check capabilities
       const capabilities = this.checkCapabilities();
-      
-      // Initialize threading if supported
-      if (capabilities.threading_supported && typeof this.wasmModule.init_threading === 'function') {
-        try {
-          await this.wasmModule.init_threading();
-        } catch (error) {
-          console.warn('Threading initialization failed, continuing in single-threaded mode:', error);
-        }
-      }
 
       this.isInitialized = true;
 

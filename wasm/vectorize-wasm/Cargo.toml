@@ -62,10 +62,10 @@ rand = { version = "0.8", features = ["std_rng"] }
 default = ["console_error_panic_hook", "wee_alloc"]
 console_error_panic_hook = []
 wee_alloc = []
+# Single-threaded mode for compatibility (default)
+single-threaded = ["vectorize-core/single-threaded"]
 # Multi-threading support with atomics and shared memory
 wasm-parallel = ["wasm-bindgen-rayon", "vectorize-core/wasm-parallel"]
-# Single-threaded mode for compatibility
-single-threaded = ["vectorize-core/single-threaded"]
 
 # Enable optimizations for wasm builds
 [package.metadata.wasm-pack.profile.release]

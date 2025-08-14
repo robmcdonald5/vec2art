@@ -234,15 +234,32 @@
                 wasmModule = await import('/wasm/vectorize_wasm.js');
                 log('wasm-loading-results', '✓ WASM module imported successfully', 'pass');
                 
-                // Initialize WASM
+                // Initialize WASM with proper URL for web target
+                const wasmUrl = new URL('/wasm/vectorize_wasm_bg.wasm', import.meta.url);
+                
                 if (typeof wasmModule.default === 'function') {
-                    await wasmModule.default('/wasm/vectorize_wasm_bg.wasm');
+                    await wasmModule.default(wasmUrl);
                     log('wasm-loading-results', '✓ WASM initialized with default()', 'pass');
                 } else if (typeof wasmModule.init === 'function') {
-                    await wasmModule.init('/wasm/vectorize_wasm_bg.wasm');
+                    await wasmModule.init(wasmUrl);
                     log('wasm-loading-results', '✓ WASM initialized with init()', 'pass');
                 } else {
                     log('wasm-loading-results', '⚠️ No initialization function found', 'warn');
+                }
+                
+                // Initialize thread pool if cross-origin isolated
+                if (self.crossOriginIsolated && wasmModule.initThreadPool) {
+                    try {
+                        const threadCount = navigator.hardwareConcurrency || 4;
+                        await wasmModule.initThreadPool(threadCount);
+                        log('wasm-loading-results', `✓ Thread pool initialized with ${threadCount} threads`, 'pass');
+                    } catch (error) {
+                        log('wasm-loading-results', `⚠️ Thread pool init failed: ${error.message}`, 'warn');
+                    }
+                } else if (!self.crossOriginIsolated) {
+                    log('wasm-loading-results', 'ℹ️ Not cross-origin isolated, running single-threaded', 'info');
+                } else {
+                    log('wasm-loading-results', '⚠️ initThreadPool function not available', 'warn');
                 }
                 
                 // Check available exports

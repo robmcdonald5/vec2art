@@ -4,6 +4,10 @@ rustflags = [
     "-C", "target-cpu=native",  # Optimize for the current CPU when building natively
 ]
 
+# Required for wasm-bindgen-rayon threading support
+[unstable]
+build-std = ["panic_abort", "std"]
+
 # Multi-threaded WASM configuration with atomics support
 [target.wasm32-unknown-unknown]
 rustflags = [

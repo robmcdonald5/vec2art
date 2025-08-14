@@ -13,7 +13,7 @@ import type {
 } from '$lib/types/vectorizer';
 
 // Import WASM initialization utilities
-import { initWasm, createVectorizer, getWasmBackends, getWasmPresets, checkCapabilities } from '$lib/wasm/init';
+import { initializeWasm, ensureInitialized, WasmVectorizer } from '$lib/wasm/proper-init';
 
 // Dynamic import type for WASM module
 type WasmModule = any; // We'll type this properly after loading
@@ -58,8 +58,17 @@ export class VectorizerService {
 
   private async _doInitialize(): Promise<void> {
     try {
-      // Initialize WASM module using our utility
-      this.wasmModule = await initWasm();
+      // Initialize WASM module with proper threading support
+      await initializeWasm();
+      
+      // Get the WASM module through proper-init
+      const { getWasmModule } = await import('$lib/wasm/proper-init');
+      this.wasmModule = await getWasmModule();
+      
+      // Create a vectorizer instance using the properly exported WasmVectorizer
+      if (this.wasmModule.WasmVectorizer) {
+        this.vectorizer = new this.wasmModule.WasmVectorizer();
+      }
       
       this.isInitialized = true;
       console.log('✅ VectorizerService initialized successfully');
@@ -101,30 +110,22 @@ export class VectorizerService {
       throw new Error('WASM module not initialized');
     }
 
-    try {
-      const report = this.wasmModule.check_threading_requirements();
-      const missing = this.wasmModule.get_missing_requirements();
-      const recommendations = this.wasmModule.get_threading_recommendations();
-
-      return {
-        threading_supported: this.wasmModule.is_threading_supported(),
-        shared_array_buffer_available: this.wasmModule.is_shared_array_buffer_supported(),
-        cross_origin_isolated: this.wasmModule.is_cross_origin_isolated(),
-        hardware_concurrency: this.wasmModule.get_hardware_concurrency(),
-        missing_requirements: missing,
-        recommendations: recommendations
-      };
-    } catch (error) {
-      // Fallback capability report if WASM functions fail
-      return {
-        threading_supported: false,
-        shared_array_buffer_available: typeof SharedArrayBuffer !== 'undefined',
-        cross_origin_isolated: typeof crossOriginIsolated !== 'undefined' ? crossOriginIsolated : false,
-        hardware_concurrency: navigator.hardwareConcurrency || 1,
-        missing_requirements: ['WASM capability check failed'],
-        recommendations: ['Check browser support and CORS headers']
-      };
-    }
+    // Simple capability check that actually works
+    const isThreadingSupported = typeof this.wasmModule.is_threading_supported === 'function' 
+      ? this.wasmModule.is_threading_supported() 
+      : false;
+    
+    const crossOriginIsolated = typeof window !== 'undefined' ? window.crossOriginIsolated : false;
+    const sharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
+    
+    return {
+      threading_supported: isThreadingSupported,
+      shared_array_buffer_available: sharedArrayBuffer,
+      cross_origin_isolated: crossOriginIsolated,
+      hardware_concurrency: navigator.hardwareConcurrency || 1,
+      missing_requirements: !crossOriginIsolated ? ['Cross-origin isolation required'] : [],
+      recommendations: !crossOriginIsolated ? ['Enable COOP/COEP headers'] : []
+    };
   }
 
   /**

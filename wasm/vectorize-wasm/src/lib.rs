@@ -5,7 +5,7 @@
 
 mod capabilities;
 mod error;
-mod threading;
+// mod threading;  // Temporarily disabled to fix LinkError
 mod utils;
 
 use crate::error::ErrorRecoveryManager;
@@ -18,6 +18,38 @@ use vectorize_core::{
 };
 use wasm_bindgen::prelude::*;
 use web_sys::ImageData;
+
+// Re-export wasm-bindgen-rayon init function for JavaScript
+// #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
+// pub use wasm_bindgen_rayon::init_thread_pool as initThreadPool;
+
+// Stub threading module to replace disabled threading::* calls
+mod threading_stubs {
+    /// Always return 1 for single-threaded execution
+    pub fn get_thread_count() -> usize {
+        1
+    }
+    
+    /// Always false for single-threaded build
+    pub fn is_threading_active() -> bool {
+        false
+    }
+    
+    /// Return 1 (single threaded)
+    pub fn get_available_parallelism() -> usize {
+        1
+    }
+    
+    /// Return single-threaded info
+    pub fn get_threading_info() -> String {
+        "WASM Threading Info:\n- Status: SingleThreaded\n- Active Threads: 1\n- SharedArrayBuffer: false\n- Hardware Concurrency: 1\n- Feature 'wasm-parallel': false".to_string()
+    }
+    
+    /// No-op for single-threaded build
+    pub fn force_single_threaded() {
+        // No-op in single-threaded build
+    }
+}
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator for smaller wasm binary size
@@ -95,10 +127,15 @@ pub fn init() {
         *manager = Some(ErrorRecoveryManager::new(3, 1000)); // 3 retries, 1000ms base delay
     }
 
-    // Perform capability detection and threading initialization with fallback
+    // Log threading status
     #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
     {
-        init_threading_with_fallback();
+        log::info!("WASM parallel feature enabled - use initThreadPool() from JavaScript");
+        update_threading_state(
+            PerformanceMode::MultiThreaded,
+            None,
+            None,
+        );
     }
 
     #[cfg(not(all(target_arch = "wasm32", feature = "wasm-parallel")))]
@@ -114,108 +151,8 @@ pub fn init() {
     log::info!("vectorize-wasm initialized with fallback support");
 }
 
-/// Initialize threading with comprehensive fallback logic
-#[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
-fn init_threading_with_fallback() {
-    let start_time = js_sys::Date::now();
-    let capability_report = capabilities::check_threading_requirements();
 
-    if capability_report.threading_supported() {
-        log::info!("Threading capabilities detected: All requirements met");
 
-        // Attempt thread pool initialization with retry logic
-        match init_thread_pool_with_retry(None, 3) {
-            Ok(()) => {
-                log::info!("Thread pool initialized successfully");
-                let init_time = js_sys::Date::now() - start_time;
-                update_threading_state(PerformanceMode::MultiThreaded, None, Some(init_time));
-                increment_successful_initializations();
-            }
-            Err(e) => {
-                log::error!("Thread pool initialization failed after retries: {e}");
-                fallback_to_single_threaded(format!("Initialization failed: {e}"));
-                increment_failed_initializations();
-            }
-        }
-    } else {
-        log::info!(
-            "Threading not supported in this environment, falling back to single-threaded mode"
-        );
-        log::info!("Environment: {}", capability_report.environment_type());
-
-        let missing = capability_report.missing_requirements();
-        if !missing.is_empty() {
-            let missing_strings: Vec<String> = missing
-                .iter()
-                .map(|js_val| js_val.as_string().unwrap_or_default())
-                .collect();
-            log::info!("Missing requirements: {}", missing_strings.join(", "));
-        }
-
-        // Log diagnostic messages for troubleshooting
-        let diagnostics = capability_report.diagnostics();
-        for (i, diagnostic) in diagnostics.iter().take(3).enumerate() {
-            if let Some(diagnostic_str) = diagnostic.as_string() {
-                log::info!("Diagnostic {}: {}", i + 1, diagnostic_str);
-            }
-        }
-
-        fallback_to_single_threaded("Browser capabilities not met".to_string());
-    }
-}
-
-/// Initialize thread pool with retry logic and exponential backoff
-#[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
-fn init_thread_pool_with_retry(num_threads: Option<usize>, max_retries: u32) -> Result<(), String> {
-    let last_error = String::new();
-
-    for retry in 0..=max_retries {
-        if retry > 0 {
-            // Exponential backoff delay
-            let delay_ms = 1000 * (1 << (retry - 1));
-            log::info!(
-                "Retrying thread pool initialization in {}ms (attempt {}/{})",
-                delay_ms,
-                retry + 1,
-                max_retries + 1
-            );
-
-            // In a real implementation, we'd use a proper async delay here
-            // For now, we'll just log and continue
-        }
-
-        // init_thread_pool now returns a JsValue (Promise), not a Result
-        // For the retry logic, we'll just try to initialize once
-        // The actual async handling happens in JavaScript
-        let _promise = threading::init_thread_pool(num_threads);
-
-        // Since we can't await the promise here, assume success
-        // The JavaScript side will handle the actual async initialization
-        if retry > 0 {
-            log::info!("Thread pool initialization started on retry {}", retry);
-        }
-        increment_retry_attempts(retry);
-        return Ok(());
-    }
-
-    // This won't be reached but is needed for type checking
-    Err(format!(
-        "Failed after {} retries. Last error: {}",
-        max_retries + 1,
-        last_error
-    ))
-}
-
-/// Fall back to single-threaded mode with logging and metrics
-#[allow(dead_code)]
-fn fallback_to_single_threaded(reason: String) {
-    log::warn!("Falling back to single-threaded mode: {}", reason);
-    update_threading_state(PerformanceMode::Fallback, Some(reason), None);
-    increment_fallback_count();
-
-    // Force threading module to single-threaded mode
-    threading::force_single_threaded();
-}
 
 /// Update global threading state
 fn update_threading_state(mode: PerformanceMode, reason: Option<String>, init_time: Option<f64>) {
@@ -597,7 +534,7 @@ impl WasmVectorizer {
     // Threading configuration
 
     /// Set the thread count for this vectorizer instance
-    /// This will initialize a new thread pool if needed
+    /// Note: Thread pool must be initialized from JavaScript using initThreadPool()
     #[wasm_bindgen]
     pub fn set_thread_count(&mut self, thread_count: Option<u32>) -> Result<(), JsValue> {
         let thread_count_usize = thread_count.map(|c| c as usize);
@@ -605,23 +542,10 @@ impl WasmVectorizer {
         // Store the thread count preference
         self.thread_count = thread_count_usize;
 
-        // Try to initialize thread pool with the new count if parallel feature is enabled
-        #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
-        {
-            // init_thread_pool now returns a Promise, not a Result
-            // Just initiate the thread pool initialization
-            let _promise = threading::init_thread_pool(thread_count_usize);
-
-            // Log that we've initiated threading
-            if false {
-                // This condition will never be true, keeping for structure
-                let e = "placeholder";
-                return Err(JsValue::from_str(&format!(
-                    "Thread pool initialization failed: {}",
-                    e
-                )));
-            }
-        }
+        log::info!(
+            "Thread count preference set to: {:?}. Use initThreadPool() from JavaScript to initialize.",
+            thread_count_usize
+        );
 
         Ok(())
     }
@@ -630,7 +554,7 @@ impl WasmVectorizer {
     #[wasm_bindgen]
     pub fn get_thread_count(&self) -> u32 {
         self.thread_count
-            .unwrap_or_else(|| threading::get_thread_count()) as u32
+            .unwrap_or_else(|| threading_stubs::get_thread_count()) as u32
     }
 
     // Validation
@@ -935,19 +859,18 @@ pub fn get_preset_description(preset: &str) -> Result<String, JsValue> {
 // Global Threading Control Functions
 // ==============================================================================
 
-/// Initialize WASM threading with a specific number of threads
-///
-/// # Arguments
-/// * `num_threads` - Number of threads to use. If None/undefined, uses browser's hardware concurrency
-///
-/// # Returns
-/// * A Promise that resolves when threading is initialized
+/// Legacy function - use initThreadPool() directly from JavaScript instead
+/// This is kept for compatibility but just logs a warning
 #[wasm_bindgen]
 pub fn init_threading(num_threads: Option<u32>) -> JsValue {
-    let thread_count = num_threads.map(|c| c as usize);
-
-    // init_thread_pool now returns a JsValue (Promise)
-    threading::init_thread_pool(thread_count)
+    log::warn!("init_threading() is deprecated. Use initThreadPool() directly from the WASM exports.");
+    
+    // Return a resolved promise for compatibility
+    #[cfg(target_arch = "wasm32")]
+    return js_sys::Promise::resolve(&JsValue::from_str("use initThreadPool instead")).into();
+    
+    #[cfg(not(target_arch = "wasm32"))]
+    JsValue::from_str("use initThreadPool instead")
 }
 
 impl Default for WasmVectorizer {
@@ -962,7 +885,7 @@ impl Default for WasmVectorizer {
 /// * `true` if multi-threading is available and working, `false` otherwise
 #[wasm_bindgen]
 pub fn is_threading_supported() -> bool {
-    threading::is_threading_active()
+    threading_stubs::is_threading_active()
 }
 
 /// Get the current number of threads available for parallel processing
@@ -971,7 +894,7 @@ pub fn is_threading_supported() -> bool {
 /// * Number of threads available (1 if single-threaded)
 #[wasm_bindgen]
 pub fn get_thread_count() -> u32 {
-    threading::get_thread_count() as u32
+    threading_stubs::get_thread_count() as u32
 }
 
 /// Get the browser's hardware concurrency (logical processor count)
@@ -980,7 +903,7 @@ pub fn get_thread_count() -> u32 {
 /// * Number of logical processors available to the browser
 #[wasm_bindgen]
 pub fn get_hardware_concurrency() -> u32 {
-    threading::get_available_parallelism() as u32
+    threading_stubs::get_available_parallelism() as u32
 }
 
 /// Get detailed information about the threading environment
@@ -989,7 +912,7 @@ pub fn get_hardware_concurrency() -> u32 {
 /// * Diagnostic string with threading details
 #[wasm_bindgen]
 pub fn get_threading_info() -> String {
-    threading::get_threading_info()
+    threading_stubs::get_threading_info()
 }
 
 /// Force single-threaded execution (for debugging or fallback)
@@ -998,7 +921,7 @@ pub fn get_threading_info() -> String {
 /// for debugging or ensuring consistent behavior across environments
 #[wasm_bindgen]
 pub fn force_single_threaded() {
-    threading::force_single_threaded();
+    threading_stubs::force_single_threaded();
     log::info!("Forced single-threaded mode");
 }
 

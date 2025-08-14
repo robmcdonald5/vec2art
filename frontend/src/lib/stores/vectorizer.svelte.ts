@@ -4,7 +4,7 @@
  */
 
 import { browser } from '$app/environment';
-import { workerManager } from '$lib/services/worker-manager';
+import { vectorizerService } from '$lib/services/vectorizer-service';
 import type {
   VectorizerState,
   VectorizerConfig,
@@ -91,9 +91,12 @@ class VectorizerStore {
     try {
       this.clearError();
       
-      const capabilities = await workerManager.initialize();
+      // Initialize the service
+      await vectorizerService.initialize();
       
-      this._state.capabilities = capabilities;
+      // Get capabilities using the simple check
+      const caps = await vectorizerService.checkCapabilities();
+      this._state.capabilities = caps;
       this._state.is_initialized = true;
 
     } catch (error) {
@@ -247,7 +250,7 @@ class VectorizerStore {
       this._state.current_progress = undefined;
       this.clearError();
 
-      const result = await workerManager.processImage(
+      const result = await vectorizerService.processImage(
         this._state.input_image,
         this._state.config,
         (progress) => {

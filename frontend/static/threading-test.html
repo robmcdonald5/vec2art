@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WASM Threading Test</title>
+    <style>
+        body { 
+            font-family: monospace; 
+            padding: 20px; 
+            background: #1a1a1a; 
+            color: #e0e0e0; 
+        }
+        .pass { color: #4caf50; }
+        .fail { color: #f44336; }
+        .warn { color: #ff9800; }
+        .info { color: #2196f3; }
+        pre { 
+            background: #333; 
+            padding: 10px; 
+            border-radius: 4px; 
+        }
+    </style>
+</head>
+<body>
+    <h1>🧵 WASM Threading Test</h1>
+    
+    <div id="results"></div>
+
+    <script type="module">
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = message;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function runTest() {
+            log('🔍 Testing cross-origin isolation...', 'info');
+            log(`crossOriginIsolated: ${crossOriginIsolated}`, crossOriginIsolated ? 'pass' : 'fail');
+            log(`SharedArrayBuffer: ${typeof SharedArrayBuffer !== 'undefined'}`, typeof SharedArrayBuffer !== 'undefined' ? 'pass' : 'fail');
+
+            log('📦 Loading WASM module...', 'info');
+            try {
+                const { default: init, initThreadPool } = await import('/wasm/vectorize_wasm.js');
+                log('✓ WASM module imported successfully', 'pass');
+                
+                log('🚀 Initializing WASM...', 'info');
+                await init(new URL('/wasm/vectorize_wasm_bg.wasm', import.meta.url));
+                log('✓ WASM initialized', 'pass');
+                
+                if (crossOriginIsolated && typeof SharedArrayBuffer !== 'undefined') {
+                    log('🧵 Initializing thread pool...', 'info');
+                    try {
+                        await initThreadPool(navigator.hardwareConcurrency || 4);
+                        log('✅ Thread pool initialized successfully!', 'pass');
+                    } catch (e) {
+                        log(`❌ Thread pool initialization failed: ${e.message}`, 'fail');
+                    }
+                } else {
+                    log('⚠️ Threading not available (not cross-origin isolated)', 'warn');
+                }
+                
+                log('🎯 Testing basic functionality...', 'info');
+                // Add a simple function test here if available
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'fail');
+                console.error('Full error:', error);
+            }
+        }
+
+        runTest().catch(console.error);
+    </script>
+</body>
+</html>
