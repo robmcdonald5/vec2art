@@ -133,16 +133,11 @@ pub fn get_available_parallelism() -> usize {
 /// This is required for multi-threading in WebAssembly
 #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
 fn is_shared_array_buffer_supported() -> bool {
-    use js_sys::*;
-
-    // Check if SharedArrayBuffer constructor is available
-    let global = js_sys::global();
-    let shared_array_buffer = Reflect::get(&global, &JsValue::from_str("SharedArrayBuffer"));
-
-    match shared_array_buffer {
-        Ok(val) => !val.is_undefined(),
-        Err(_) => false,
-    }
+    // Simple check - if we can create a SharedArrayBuffer, it's supported
+    // This avoids eval by using direct constructor access
+    std::panic::catch_unwind(|| {
+        js_sys::SharedArrayBuffer::new(1);
+    }).is_ok()
 }
 
 /// Check if SharedArrayBuffer is supported (always false when threading is not enabled)

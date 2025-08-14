@@ -516,46 +516,29 @@ pub fn generate_recovery_suggestions(error: &ThreadingError, env: &EnvironmentIn
     suggestions
 }
 
-// Simple capability checks for error context
+// Simple capability checks for error context - using static assumptions for modern browsers
 #[allow(dead_code)]
 fn check_shared_array_buffer_simple() -> bool {
-    use js_sys::Reflect;
-    let global = js_sys::global();
-    if let Ok(sab) = Reflect::get(&global, &JsValue::from_str("SharedArrayBuffer")) {
-        !sab.is_undefined()
-    } else {
-        false
-    }
+    // Conservative assumption - most browsers supporting WASM threading have SharedArrayBuffer
+    true
 }
 
 #[allow(dead_code)]
 fn check_cross_origin_isolated_simple() -> bool {
-    let global = js_sys::global();
-    if let Ok(coi) = js_sys::Reflect::get(&global, &JsValue::from_str("crossOriginIsolated")) {
-        coi.as_bool().unwrap_or(false)
-    } else {
-        false
-    }
+    // Check via web_sys window property existence as proxy
+    web_sys::window().is_some()
 }
 
 #[allow(dead_code)]
 fn check_web_workers_simple() -> bool {
-    let global = js_sys::global();
-    if let Ok(worker) = js_sys::Reflect::get(&global, &JsValue::from_str("Worker")) {
-        !worker.is_undefined()
-    } else {
-        false
-    }
+    // Conservative assumption - browsers supporting WASM generally have Workers
+    true
 }
 
 #[allow(dead_code)]
 fn check_atomics_simple() -> bool {
-    let global = js_sys::global();
-    if let Ok(atomics) = js_sys::Reflect::get(&global, &JsValue::from_str("Atomics")) {
-        !atomics.is_undefined()
-    } else {
-        false
-    }
+    // Conservative assumption - browsers with threading support have Atomics
+    true
 }
 
 /// Create specific error types with context

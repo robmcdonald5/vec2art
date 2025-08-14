@@ -233,10 +233,11 @@
 			<div class="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
 				<div class="space-y-4">
 					<div>
-						<label class="block text-sm font-medium mb-2">
+						<label for="custom-thread-count" class="block text-sm font-medium mb-2">
 							Custom thread count: {customThreadCount}
 						</label>
 						<input
+							id="custom-thread-count"
 							type="range"
 							min="1"
 							max={capabilities.maxSafeThreads}
