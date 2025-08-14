@@ -53,18 +53,28 @@ export async function loadVectorizer() {
       });
       
       // Initialize thread pool if supported and cross-origin isolated
-      if (isIsolated && hasSharedArrayBuffer && wasmJs.start) {
+      if (isIsolated && hasSharedArrayBuffer && wasmJs.initThreadPool) {
         try {
-          console.log('[WASM Loader] Initializing thread pool...');
-          await wasmJs.start(); // This calls the new async start() function
-          console.log('[WASM Loader] ✅ Thread pool initialized successfully');
+          console.log('[WASM Loader] Initializing thread pool with fixed state management...');
+          const threadCount = Math.min(navigator.hardwareConcurrency || 4, 12); // Use available cores, max 12
+          const promise = wasmJs.initThreadPool(threadCount);
+          await promise;
+          
+          // Use our fixed state management functions
+          wasmJs.confirm_threading_success();
+          console.log('[WASM Loader] ✅ Thread pool initialized successfully with', wasmJs.get_thread_count(), 'threads');
         } catch (error) {
-          console.warn('[WASM Loader] ⚠️ Thread pool initialization failed, continuing in single-threaded mode:', error);
+          console.warn('[WASM Loader] ⚠️ Thread pool initialization failed:', error);
+          // Mark failure using our fixed state management
+          if (wasmJs.mark_threading_failed) {
+            wasmJs.mark_threading_failed();
+          }
+          console.warn('[WASM Loader] Continuing in single-threaded mode');
         }
       } else if (!isIsolated) {
         console.log('[WASM Loader] ℹ️ Not cross-origin isolated, running in single-threaded mode');
-      } else if (!wasmJs.start) {
-        console.log('[WASM Loader] ℹ️ Thread pool start function not available');
+      } else if (!wasmJs.initThreadPool) {
+        console.log('[WASM Loader] ℹ️ Fixed initThreadPool function not available');
       }
       
       // Verify key exports are available
@@ -72,9 +82,12 @@ export async function loadVectorizer() {
         WasmVectorizer: !!wasmJs.WasmVectorizer,
         WasmBackend: !!wasmJs.WasmBackend,
         WasmPreset: !!wasmJs.WasmPreset,
-        start: typeof wasmJs.start === 'function',
+        initThreadPool: typeof wasmJs.initThreadPool === 'function',
         is_threading_supported: typeof wasmJs.is_threading_supported === 'function',
-        check_threading_requirements: typeof wasmJs.check_threading_requirements === 'function'
+        check_threading_requirements: typeof wasmJs.check_threading_requirements === 'function',
+        confirm_threading_success: typeof wasmJs.confirm_threading_success === 'function',
+        mark_threading_failed: typeof wasmJs.mark_threading_failed === 'function',
+        get_thread_count: typeof wasmJs.get_thread_count === 'function'
       };
       
       console.log('[WASM Loader] Available exports:', exports);
