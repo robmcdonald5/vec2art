@@ -13,7 +13,7 @@ import type {
 } from '$lib/types/vectorizer';
 
 // Import WASM initialization utilities
-import { initializeWasm, ensureInitialized, WasmVectorizer } from '$lib/wasm/proper-init';
+import { loadVectorizer, createVectorizer, getCapabilities, getAvailableBackends, getAvailablePresets } from '$lib/wasm/loader';
 
 // Dynamic import type for WASM module
 type WasmModule = any; // We'll type this properly after loading
@@ -58,17 +58,11 @@ export class VectorizerService {
 
   private async _doInitialize(): Promise<void> {
     try {
-      // Initialize WASM module with proper threading support
-      await initializeWasm();
-      
-      // Get the WASM module through proper-init
-      const { getWasmModule } = await import('$lib/wasm/proper-init');
-      this.wasmModule = await getWasmModule();
+      // Initialize WASM module with proper threading support using new loader
+      this.wasmModule = await loadVectorizer();
       
       // Create a vectorizer instance using the properly exported WasmVectorizer
-      if (this.wasmModule.WasmVectorizer) {
-        this.vectorizer = new this.wasmModule.WasmVectorizer();
-      }
+      this.vectorizer = await createVectorizer();
       
       this.isInitialized = true;
       console.log('✅ VectorizerService initialized successfully');
@@ -104,54 +98,59 @@ export class VectorizerService {
       };
     }
 
-    await this.initialize();
-    
-    if (!this.wasmModule) {
-      throw new Error('WASM module not initialized');
+    try {
+      // Use the new capabilities function from loader
+      const capabilities = await getCapabilities();
+      
+      const missingRequirements: string[] = [];
+      const recommendations: string[] = [];
+      
+      if (!capabilities.crossOriginIsolated) {
+        missingRequirements.push('Cross-origin isolation required');
+        recommendations.push('Enable COOP/COEP headers');
+      }
+      
+      if (!capabilities.sharedArrayBuffer) {
+        missingRequirements.push('SharedArrayBuffer not available');
+        recommendations.push('Ensure secure context and proper headers');
+      }
+      
+      return {
+        threading_supported: capabilities.threading,
+        shared_array_buffer_available: capabilities.sharedArrayBuffer,
+        cross_origin_isolated: capabilities.crossOriginIsolated,
+        hardware_concurrency: navigator.hardwareConcurrency || 1,
+        missing_requirements: missingRequirements,
+        recommendations: recommendations
+      };
+    } catch (error) {
+      // Fallback to basic check if loader fails
+      const crossOriginIsolated = typeof window !== 'undefined' ? window.crossOriginIsolated : false;
+      const sharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
+      
+      return {
+        threading_supported: false,
+        shared_array_buffer_available: sharedArrayBuffer,
+        cross_origin_isolated: crossOriginIsolated,
+        hardware_concurrency: navigator.hardwareConcurrency || 1,
+        missing_requirements: ['WASM initialization failed'],
+        recommendations: ['Check console for errors']
+      };
     }
-
-    // Simple capability check that actually works
-    const isThreadingSupported = typeof this.wasmModule.is_threading_supported === 'function' 
-      ? this.wasmModule.is_threading_supported() 
-      : false;
-    
-    const crossOriginIsolated = typeof window !== 'undefined' ? window.crossOriginIsolated : false;
-    const sharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
-    
-    return {
-      threading_supported: isThreadingSupported,
-      shared_array_buffer_available: sharedArrayBuffer,
-      cross_origin_isolated: crossOriginIsolated,
-      hardware_concurrency: navigator.hardwareConcurrency || 1,
-      missing_requirements: !crossOriginIsolated ? ['Cross-origin isolation required'] : [],
-      recommendations: !crossOriginIsolated ? ['Enable COOP/COEP headers'] : []
-    };
   }
 
   /**
    * Get available backends
    */
   async getAvailableBackends(): Promise<string[]> {
-    await this.initialize();
-    
-    if (!this.wasmModule) {
-      throw new Error('WASM module not initialized');
-    }
-
-    return this.wasmModule.get_available_backends();
+    return getAvailableBackends();
   }
 
   /**
    * Get available presets
    */
   async getAvailablePresets(): Promise<string[]> {
-    await this.initialize();
-    
-    if (!this.wasmModule) {
-      throw new Error('WASM module not initialized');
-    }
-
-    return this.wasmModule.get_available_presets();
+    return getAvailablePresets();
   }
 
   /**
@@ -354,6 +353,7 @@ export class VectorizerService {
 
   /**
    * Initialize threading with specified thread count
+   * Note: Threading is automatically initialized during WASM loading with the new loader
    */
   async initializeThreading(threadCount?: number): Promise<void> {
     if (!browser) {
@@ -362,20 +362,9 @@ export class VectorizerService {
 
     await this.initialize();
     
-    if (!this.wasmModule) {
-      throw new Error('WASM module not initialized');
-    }
-
-    try {
-      await this.wasmModule.init_threading(threadCount);
-    } catch (error) {
-      const threadingError: VectorizerError = {
-        type: 'threading',
-        message: 'Failed to initialize threading',
-        details: error instanceof Error ? error.message : String(error)
-      };
-      throw threadingError;
-    }
+    // Threading is now automatically initialized during loadVectorizer()
+    // This method is kept for compatibility but doesn't need to do anything
+    console.log('[VectorizerService] Threading initialization is handled automatically by the new loader');
   }
 
   /**

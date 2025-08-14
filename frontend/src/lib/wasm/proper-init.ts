@@ -1,9 +1,10 @@
 /**
  * Proper WASM initialization for threading support
- * This handles the correct initialization sequence for --target web builds
+ * Updated to use new start() function for thread pool initialization
  */
 
 import { browser } from '$app/environment';
+import { loadVectorizer } from './loader';
 
 // Dynamic import to avoid SSR issues - these will be loaded only when needed
 let wasmModule: any = null;
@@ -34,43 +35,12 @@ export async function initializeWasm(): Promise<void> {
 
 async function doInit(): Promise<void> {
     try {
-        console.log('[WASM] Initializing module...');
+        console.log('[WASM] Initializing module using new loader...');
         
-        // Dynamically import the WASM module to avoid SSR issues
-        wasmModule = await import('./pkg/vectorize_wasm.js');
+        // Use the new loader which follows proper wasm-bindgen patterns
+        wasmModule = await loadVectorizer();
         
-        // Initialize the WASM module
-        // For --target web, the init function handles all the imports internally
-        await wasmModule.default();
-        
-        console.log('[WASM] Module initialized');
-        
-        // Check if we're cross-origin isolated for threading
-        if (typeof window !== 'undefined' && window.crossOriginIsolated && wasmModule.initThreadPool) {
-            try {
-                const threadCount = navigator.hardwareConcurrency || 4;
-                console.log(`[WASM] Initializing thread pool with ${threadCount} threads...`);
-                
-                // Initialize the thread pool
-                await wasmModule.initThreadPool(threadCount);
-                
-                console.log('[WASM] ✅ Thread pool initialized');
-            } catch (error) {
-                console.warn('[WASM] ⚠️ Thread pool initialization failed:', error);
-                console.log('[WASM] Continuing in single-threaded mode');
-            }
-        } else {
-            if (typeof window !== 'undefined') {
-                if (!window.crossOriginIsolated) {
-                    console.log('[WASM] Not cross-origin isolated, running single-threaded');
-                    console.log('[WASM] To enable threading, ensure COOP and COEP headers are set');
-                } else if (!wasmModule.initThreadPool) {
-                    console.log('[WASM] initThreadPool not available - built without threading support');
-                }
-            } else {
-                console.log('[WASM] Running in single-threaded mode (server-side)');
-            }
-        }
+        console.log('[WASM] ✅ Module initialized successfully');
         
     } catch (error) {
         console.error('[WASM] Failed to initialize:', error);

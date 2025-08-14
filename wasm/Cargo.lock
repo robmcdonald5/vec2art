@@ -2191,6 +2191,7 @@ dependencies = [
  "serde_json",
  "vectorize-core",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "wasm-bindgen-rayon",
  "wasm-bindgen-test",
  "web-sys",

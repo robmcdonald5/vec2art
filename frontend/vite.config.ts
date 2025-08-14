@@ -6,7 +6,7 @@ import topLevelAwait from 'vite-plugin-top-level-await';
 
 export default defineConfig({
 	plugins: [
-		wasm(),
+		wasm(), // Re-enabled with proper exclusions
 		topLevelAwait(),
 		tailwindcss(),
 		{
@@ -23,12 +23,12 @@ export default defineConfig({
 	],
 	resolve: {
 		alias: {
-			'__wbindgen_placeholder__': '/src/lib/wasm/pkg/__wbindgen_placeholder__.js'
+			'__wbindgen_placeholder__': '/wasm/__wbindgen_placeholder__.js'
 		}
 	},
 	optimizeDeps: {
 		include: ['class-variance-authority', 'tailwind-merge', 'clsx'],
-		exclude: ['vectorize-wasm'] // Let vite-plugin-wasm handle this
+		exclude: ['vectorize-wasm', '/wasm/vectorize_wasm.js'] // Exclude our static WASM files
 	},
 	server: {
 		headers: {

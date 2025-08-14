@@ -8,6 +8,32 @@ mod error;
 // mod threading;  // Temporarily disabled to fix LinkError
 mod utils;
 
+// Stub threading module to replace disabled threading::* calls
+mod threading_stubs {
+    /// Always return 1 for single-threaded execution
+    pub fn get_thread_count() -> usize { 1 }
+    /// Always false for single-threaded build
+    pub fn is_threading_active() -> bool { false }
+    /// Return 1 (single threaded)
+    pub fn get_available_parallelism() -> usize { 1 }
+    /// No-op stub for initialization
+    pub fn init_thread_pool(_num_threads: Option<usize>) -> js_sys::Promise {
+        js_sys::Promise::resolve(&wasm_bindgen::JsValue::from_str("single-threaded"))
+    }
+    /// Always return not supported
+    pub fn is_shared_array_buffer_supported() -> bool { false }
+    /// Return not supported state
+    pub fn get_thread_pool_state() -> &'static str { "NotSupported" }
+    /// Return threading info string
+    pub fn get_threading_info() -> String {
+        "Single-threaded mode (stubs active)".to_string()
+    }
+    /// No-op stub for forcing single-threaded mode
+    pub fn force_single_threaded() {
+        // No-op, already single-threaded
+    }
+}
+
 use crate::error::ErrorRecoveryManager;
 use image::ImageBuffer;
 use js_sys::Function;
@@ -23,33 +49,6 @@ use web_sys::ImageData;
 // #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
 // pub use wasm_bindgen_rayon::init_thread_pool as initThreadPool;
 
-// Stub threading module to replace disabled threading::* calls
-mod threading_stubs {
-    /// Always return 1 for single-threaded execution
-    pub fn get_thread_count() -> usize {
-        1
-    }
-    
-    /// Always false for single-threaded build
-    pub fn is_threading_active() -> bool {
-        false
-    }
-    
-    /// Return 1 (single threaded)
-    pub fn get_available_parallelism() -> usize {
-        1
-    }
-    
-    /// Return single-threaded info
-    pub fn get_threading_info() -> String {
-        "WASM Threading Info:\n- Status: SingleThreaded\n- Active Threads: 1\n- SharedArrayBuffer: false\n- Hardware Concurrency: 1\n- Feature 'wasm-parallel': false".to_string()
-    }
-    
-    /// No-op for single-threaded build
-    pub fn force_single_threaded() {
-        // No-op in single-threaded build
-    }
-}
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator for smaller wasm binary size
@@ -114,7 +113,7 @@ struct PerformanceMetrics {
     avg_processing_time_ms: f64,
 }
 
-/// Initialize the wasm module with robust fallback handling
+/// Initialize the wasm module with basic setup
 #[wasm_bindgen(start)]
 pub fn init() {
     utils::set_panic_hook();
@@ -130,7 +129,7 @@ pub fn init() {
     // Log threading status
     #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
     {
-        log::info!("WASM parallel feature enabled - use initThreadPool() from JavaScript");
+        log::info!("WASM parallel feature enabled - use start() to initialize threading");
         update_threading_state(
             PerformanceMode::MultiThreaded,
             None,
@@ -149,6 +148,51 @@ pub fn init() {
     }
 
     log::info!("vectorize-wasm initialized with fallback support");
+}
+
+/// Initialize the thread pool for WASM parallel processing
+/// This must be called from JavaScript before using any parallel functions
+#[wasm_bindgen]
+pub async fn start() -> Result<(), JsValue> {
+    #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
+    {
+        use wasm_bindgen_futures::JsFuture;
+        
+        // Get the hardware concurrency from the browser
+        let thread_count = web_sys::window()
+            .and_then(|w| Some(w.navigator().hardware_concurrency() as usize))
+            .unwrap_or(1);
+        
+        let thread_count = std::cmp::max(1, std::cmp::min(16, thread_count)); // Clamp to reasonable bounds
+        
+        log::info!("Initializing WASM thread pool with {} threads", thread_count);
+        
+        // Initialize the thread pool - convert Promise to Future
+        let promise = wasm_bindgen_rayon::init_thread_pool(thread_count);
+        JsFuture::from(promise)
+            .await
+            .map_err(|e| JsValue::from_str(&format!("Failed to initialize thread pool: {:?}", e)))?;
+        
+        log::info!("WASM thread pool initialized successfully");
+        
+        update_threading_state(
+            PerformanceMode::MultiThreaded,
+            None,
+            Some(js_sys::Date::now()),
+        );
+    }
+    
+    #[cfg(not(all(target_arch = "wasm32", feature = "wasm-parallel")))]
+    {
+        log::info!("WASM parallel feature not enabled, using single-threaded execution");
+        update_threading_state(
+            PerformanceMode::SingleThreaded,
+            Some("Feature not enabled".to_string()),
+            None,
+        );
+    }
+    
+    Ok(())
 }
 
 
@@ -862,7 +906,7 @@ pub fn get_preset_description(preset: &str) -> Result<String, JsValue> {
 /// Legacy function - use initThreadPool() directly from JavaScript instead
 /// This is kept for compatibility but just logs a warning
 #[wasm_bindgen]
-pub fn init_threading(num_threads: Option<u32>) -> JsValue {
+pub fn init_threading(_num_threads: Option<u32>) -> JsValue {
     log::warn!("init_threading() is deprecated. Use initThreadPool() directly from the WASM exports.");
     
     // Return a resolved promise for compatibility

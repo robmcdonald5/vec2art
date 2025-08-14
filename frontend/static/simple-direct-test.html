@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Direct Test</title>
+    <style>body { font-family: monospace; background: #1a1a1a; color: #e0e0e0; padding: 20px; }</style>
+</head>
+<body>
+    <h1>Simple Direct Test</h1>
+    <div id="log"></div>
+    
+    <script>
+        const log = (msg) => {
+            document.getElementById('log').innerHTML += '<div>' + msg + '</div>';
+            console.log(msg);
+        };
+        
+        // Test different ways to access the WASM module
+        async function testImports() {
+            log('Testing different import methods...');
+            
+            // Test 1: Direct script tag (not ES module)
+            log('1. Testing if files are accessible at all...');
+            
+            try {
+                const response = await fetch('/wasm/vectorize_wasm.js');
+                log('✅ fetch(/wasm/vectorize_wasm.js): ' + response.status);
+                
+                if (response.ok) {
+                    const content = await response.text();
+                    log('File size: ' + content.length + ' bytes');
+                    log('First line: ' + content.split('\n')[0]);
+                }
+            } catch (e) {
+                log('❌ fetch failed: ' + e.message);
+            }
+            
+            // Test 2: Try ES module import
+            log('2. Testing ES module import...');
+            try {
+                // This is the line that's failing
+                const wasmModule = await import('/wasm/vectorize_wasm.js');
+                log('✅ ES import success!');
+                console.log('Module:', wasmModule);
+            } catch (e) {
+                log('❌ ES import failed: ' + e.message);
+                console.error('Full error:', e);
+            }
+        }
+        
+        testImports();
+    </script>
+</body>
+</html>
