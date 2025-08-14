@@ -16,6 +16,11 @@ import type {
 } from '$lib/types/vectorizer';
 import { DEFAULT_CONFIG as defaultConfig } from '$lib/types/vectorizer';
 
+interface InitializationOptions {
+  threadCount?: number;
+  autoInitThreads?: boolean;
+}
+
 class VectorizerStore {
   // Core state using SvelteKit 5 runes
   private _state = $state<VectorizerState>({
@@ -29,6 +34,17 @@ class VectorizerStore {
     capabilities: undefined,
     input_image: undefined,
     input_file: undefined
+  });
+  
+  // Track initialization state separately
+  private _initState = $state<{
+    wasmLoaded: boolean;
+    threadsInitialized: boolean;
+    requestedThreadCount: number;
+  }>({
+    wasmLoaded: false,
+    threadsInitialized: false,
+    requestedThreadCount: 0
   });
 
   // Getters for reactive access
@@ -75,29 +91,49 @@ class VectorizerStore {
   get inputFile(): File | undefined {
     return this._state.input_file;
   }
+  
+  get wasmLoaded(): boolean {
+    return this._initState.wasmLoaded;
+  }
+  
+  get threadsInitialized(): boolean {
+    return this._initState.threadsInitialized;
+  }
+  
+  get requestedThreadCount(): number {
+    return this._initState.requestedThreadCount;
+  }
 
   /**
-   * Initialize the vectorizer system
+   * Initialize the vectorizer system with optional thread configuration
+   * Now supports lazy loading - loads WASM without initializing threads by default
    */
-  async initialize(): Promise<void> {
+  async initialize(options?: InitializationOptions): Promise<void> {
     if (!browser) {
       return; // No-op in SSR
     }
 
-    if (this._state.is_initialized) {
-      return; // Already initialized
+    if (this._state.is_initialized && this._initState.threadsInitialized) {
+      return; // Fully initialized
     }
 
     try {
       this.clearError();
       
-      // Initialize the service
-      await vectorizerService.initialize();
+      // Initialize the service with lazy loading by default
+      await vectorizerService.initialize(options);
+      this._initState.wasmLoaded = true;
       
       // Get capabilities using the simple check
       const caps = await vectorizerService.checkCapabilities();
       this._state.capabilities = caps;
       this._state.is_initialized = true;
+      
+      // Track thread initialization state
+      if (options?.autoInitThreads) {
+        this._initState.threadsInitialized = caps.threading_supported;
+        this._initState.requestedThreadCount = options.threadCount || 0;
+      }
 
     } catch (error) {
       this.setError({
@@ -106,6 +142,43 @@ class VectorizerStore {
         details: error instanceof Error ? error.message : String(error)
       });
       throw error;
+    }
+  }
+  
+  /**
+   * Initialize thread pool separately (for lazy loading)
+   */
+  async initializeThreads(threadCount?: number): Promise<boolean> {
+    if (!browser || !this._state.is_initialized) {
+      throw new Error('WASM must be initialized first');
+    }
+    
+    if (this._initState.threadsInitialized) {
+      console.log('Threads already initialized');
+      return true;
+    }
+    
+    try {
+      this.clearError();
+      const success = await vectorizerService.initializeThreadPool(threadCount);
+      
+      if (success) {
+        this._initState.threadsInitialized = true;
+        this._initState.requestedThreadCount = threadCount || 0;
+        
+        // Update capabilities
+        const caps = await vectorizerService.checkCapabilities();
+        this._state.capabilities = caps;
+      }
+      
+      return success;
+    } catch (error) {
+      this.setError({
+        type: 'threading',
+        message: 'Failed to initialize thread pool',
+        details: error instanceof Error ? error.message : String(error)
+      });
+      return false;
     }
   }
 
@@ -479,8 +552,12 @@ class VectorizerStore {
    * Cleanup resources
    */
   cleanup(): void {
-    workerManager.cleanup();
+    // Note: workerManager was removed as it's not defined
+    // WASM cleanup is handled by the service
+    vectorizerService.cleanup();
     this._state.is_initialized = false;
+    this._initState.wasmLoaded = false;
+    this._initState.threadsInitialized = false;
     this.clearInput();
     this.clearError();
   }

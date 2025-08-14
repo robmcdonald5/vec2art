@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM Lazy Loading Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .status {
+            padding: 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .status.info { background: #e3f2fd; color: #1976d2; }
+        .status.success { background: #e8f5e9; color: #388e3c; }
+        .status.warning { background: #fff3e0; color: #f57c00; }
+        .status.error { background: #ffebee; color: #c62828; }
+        .perf-modes {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .perf-mode {
+            padding: 15px;
+            text-align: center;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+        .perf-mode:hover {
+            border-color: #2196f3;
+            background: #f5f5f5;
+        }
+        .perf-mode.selected {
+            border-color: #2196f3;
+            background: #e3f2fd;
+        }
+        .perf-mode .icon { font-size: 24px; margin-bottom: 5px; }
+        .perf-mode .title { font-weight: bold; margin-bottom: 3px; }
+        .perf-mode .threads { font-size: 12px; color: #666; }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover:not(:disabled) {
+            background: #1976d2;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .metric {
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .metric .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .metric .label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        #console {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .console-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+            border-bottom: 1px solid #37474f;
+        }
+        .console-entry.error { color: #ef5350; }
+        .console-entry.warn { color: #ffb74d; }
+        .console-entry.success { color: #66bb6a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 WASM Lazy Loading Test</h1>
+        <p>This page tests the new lazy loading implementation that prevents CPU overload.</p>
+        
+        <div id="status" class="status info">Page loaded. WASM not initialized.</div>
+        
+        <div class="container">
+            <h3>Step 1: Load WASM Module (No Threads)</h3>
+            <p>This loads the WASM module without initializing any threads - lightweight and fast.</p>
+            <button id="loadWasm" onclick="loadWasmModule()">Load WASM Module</button>
+        </div>
+        
+        <div class="container">
+            <h3>Step 2: Choose Performance Mode</h3>
+            <div class="perf-modes" id="perfModes">
+                <div class="perf-mode" data-mode="battery" data-threads="1">
+                    <div class="icon">🔋</div>
+                    <div class="title">Battery Saver</div>
+                    <div class="threads">1 thread</div>
+                </div>
+                <div class="perf-mode selected" data-mode="balanced" data-threads="0">
+                    <div class="icon">⚡</div>
+                    <div class="title">Balanced</div>
+                    <div class="threads" id="balancedThreads">? threads</div>
+                </div>
+                <div class="perf-mode" data-mode="performance" data-threads="0">
+                    <div class="icon">🚀</div>
+                    <div class="title">Max Performance</div>
+                    <div class="threads" id="maxThreads">? threads</div>
+                </div>
+            </div>
+            <button id="initThreads" onclick="initializeThreads()" disabled>Initialize Thread Pool</button>
+        </div>
+        
+        <div class="container">
+            <h3>System Information</h3>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="value" id="coreCount">?</div>
+                    <div class="label">CPU Cores</div>
+                </div>
+                <div class="metric">
+                    <div class="value" id="wasmStatus">❌</div>
+                    <div class="label">WASM Loaded</div>
+                </div>
+                <div class="metric">
+                    <div class="value" id="threadStatus">❌</div>
+                    <div class="label">Threads Active</div>
+                </div>
+                <div class="metric">
+                    <div class="value" id="activeThreads">0</div>
+                    <div class="label">Active Threads</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="container">
+            <h3>Console Output</h3>
+            <div id="console"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Console logging
+        const consoleDiv = document.getElementById('console');
+        const log = (message, type = 'info') => {
+            const entry = document.createElement('div');
+            entry.className = `console-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleDiv.appendChild(entry);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
+
+        // Override console methods
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        console.log = (...args) => {
+            originalLog(...args);
+            log(args.join(' '), 'info');
+        };
+        console.warn = (...args) => {
+            originalWarn(...args);
+            log(args.join(' '), 'warn');
+        };
+        console.error = (...args) => {
+            originalError(...args);
+            log(args.join(' '), 'error');
+        };
+
+        // System info
+        const cores = navigator.hardwareConcurrency || 4;
+        const maxThreads = Math.min(cores, 12);
+        const recommendedThreads = Math.min(Math.max(1, cores - 2), 8);
+        
+        document.getElementById('coreCount').textContent = cores;
+        document.getElementById('balancedThreads').textContent = `${recommendedThreads} threads`;
+        document.getElementById('maxThreads').textContent = `${maxThreads} threads`;
+        
+        // Update balanced mode thread count
+        document.querySelector('[data-mode="balanced"]').dataset.threads = recommendedThreads;
+        document.querySelector('[data-mode="performance"]').dataset.threads = maxThreads;
+        
+        // Performance mode selection
+        let selectedMode = 'balanced';
+        let selectedThreads = recommendedThreads;
+        
+        document.querySelectorAll('.perf-mode').forEach(mode => {
+            mode.addEventListener('click', () => {
+                document.querySelectorAll('.perf-mode').forEach(m => m.classList.remove('selected'));
+                mode.classList.add('selected');
+                selectedMode = mode.dataset.mode;
+                selectedThreads = parseInt(mode.dataset.threads);
+                log(`Selected ${selectedMode} mode with ${selectedThreads} threads`);
+            });
+        });
+        
+        // Global variables
+        let wasmModule = null;
+        let vectorizer = null;
+        
+        // Load WASM module (no threads)
+        window.loadWasmModule = async function() {
+            const button = document.getElementById('loadWasm');
+            const status = document.getElementById('status');
+            
+            button.disabled = true;
+            button.textContent = 'Loading...';
+            status.className = 'status info';
+            status.textContent = 'Loading WASM module...';
+            
+            try {
+                log('Starting WASM module load (no threads)...');
+                const startTime = performance.now();
+                
+                // Import the WASM module
+                const wasmJs = await import('/wasm/vectorize_wasm.js');
+                await wasmJs.default(new URL('/wasm/vectorize_wasm_bg.wasm', location.origin));
+                
+                wasmModule = wasmJs;
+                
+                const loadTime = performance.now() - startTime;
+                log(`✅ WASM module loaded in ${loadTime.toFixed(0)}ms`, 'success');
+                
+                // Check capabilities
+                const isIsolated = window.crossOriginIsolated;
+                const hasSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
+                
+                if (!isIsolated) {
+                    log('⚠️ Not cross-origin isolated - threading unavailable', 'warn');
+                } else if (!hasSharedArrayBuffer) {
+                    log('⚠️ SharedArrayBuffer not available - threading unavailable', 'warn');
+                } else {
+                    log('✅ Threading environment ready', 'success');
+                }
+                
+                // Update UI
+                status.className = 'status success';
+                status.textContent = `WASM loaded (${loadTime.toFixed(0)}ms). Ready to initialize threads.`;
+                document.getElementById('wasmStatus').textContent = '✅';
+                document.getElementById('initThreads').disabled = false;
+                button.textContent = 'WASM Loaded ✓';
+                
+                // Create vectorizer instance
+                if (wasmModule.WasmVectorizer) {
+                    vectorizer = new wasmModule.WasmVectorizer();
+                    log('Vectorizer instance created');
+                }
+                
+            } catch (error) {
+                log(`❌ Failed to load WASM: ${error.message}`, 'error');
+                status.className = 'status error';
+                status.textContent = `Failed to load WASM: ${error.message}`;
+                button.disabled = false;
+                button.textContent = 'Retry Load';
+            }
+        };
+        
+        // Initialize thread pool
+        window.initializeThreads = async function() {
+            if (!wasmModule) {
+                log('❌ WASM module not loaded', 'error');
+                return;
+            }
+            
+            const button = document.getElementById('initThreads');
+            const status = document.getElementById('status');
+            
+            button.disabled = true;
+            button.textContent = 'Initializing...';
+            status.className = 'status info';
+            status.textContent = `Initializing ${selectedThreads} threads...`;
+            
+            try {
+                log(`Starting thread pool initialization with ${selectedThreads} threads...`);
+                const startTime = performance.now();
+                
+                if (!wasmModule.initThreadPool) {
+                    throw new Error('initThreadPool function not available');
+                }
+                
+                // Initialize threads
+                const promise = wasmModule.initThreadPool(selectedThreads);
+                await promise;
+                
+                // Confirm success
+                if (wasmModule.confirm_threading_success) {
+                    wasmModule.confirm_threading_success();
+                }
+                
+                const initTime = performance.now() - startTime;
+                log(`✅ Thread pool initialized in ${initTime.toFixed(0)}ms`, 'success');
+                
+                // Check actual thread count
+                let actualThreads = selectedThreads;
+                if (wasmModule.get_thread_count) {
+                    actualThreads = wasmModule.get_thread_count();
+                    log(`Active thread count: ${actualThreads}`);
+                }
+                
+                // Update UI
+                status.className = 'status success';
+                status.textContent = `Thread pool active with ${actualThreads} threads (${initTime.toFixed(0)}ms)`;
+                document.getElementById('threadStatus').textContent = '✅';
+                document.getElementById('activeThreads').textContent = actualThreads;
+                button.textContent = 'Threads Initialized ✓';
+                
+                // Test vectorizer
+                if (vectorizer) {
+                    log('Testing vectorizer functionality...');
+                    try {
+                        vectorizer.set_backend('edge');
+                        vectorizer.set_detail(5);
+                        log('✅ Vectorizer configured successfully', 'success');
+                    } catch (error) {
+                        log(`⚠️ Vectorizer test warning: ${error.message}`, 'warn');
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ Failed to initialize threads: ${error.message}`, 'error');
+                status.className = 'status warning';
+                status.textContent = `Thread initialization failed. Using single-threaded mode.`;
+                
+                if (wasmModule.mark_threading_failed) {
+                    wasmModule.mark_threading_failed();
+                }
+                
+                button.textContent = 'Failed (Single-threaded)';
+            }
+        };
+        
+        // Initial status
+        log('Page loaded. Ready to test lazy loading.');
+        log(`System: ${cores} cores detected, recommended ${recommendedThreads} threads`);
+        log(`Cross-Origin Isolated: ${window.crossOriginIsolated ? 'Yes' : 'No'}`);
+    </script>
+</body>
+</html>

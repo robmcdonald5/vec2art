@@ -13,7 +13,18 @@ import type {
 } from '$lib/types/vectorizer';
 
 // Import WASM initialization utilities
-import { loadVectorizer, createVectorizer, getCapabilities, getAvailableBackends, getAvailablePresets } from '$lib/wasm/loader';
+import { 
+  loadVectorizer, 
+  createVectorizer, 
+  getCapabilities, 
+  getAvailableBackends, 
+  getAvailablePresets,
+  initializeThreadPool as initThreads,
+  isThreadPoolInitialized,
+  getCurrentThreadCount,
+  getMaxThreads,
+  getRecommendedThreadCount
+} from '$lib/wasm/loader';
 
 // Dynamic import type for WASM module
 type WasmModule = any; // We'll type this properly after loading
@@ -36,10 +47,13 @@ export class VectorizerService {
   }
 
   /**
-   * Initialize the WASM module (browser-only)
+   * Initialize the WASM module (browser-only) with optional threading
    * Safe to call multiple times - will return the same promise
    */
-  async initialize(): Promise<void> {
+  async initialize(options?: {
+    threadCount?: number;
+    autoInitThreads?: boolean;
+  }): Promise<void> {
     if (!browser) {
       throw new Error('VectorizerService can only be initialized in the browser');
     }
@@ -52,20 +66,26 @@ export class VectorizerService {
       return this.initializationPromise;
     }
 
-    this.initializationPromise = this._doInitialize();
+    this.initializationPromise = this._doInitialize(options);
     return this.initializationPromise;
   }
 
-  private async _doInitialize(): Promise<void> {
+  private async _doInitialize(options?: {
+    threadCount?: number;
+    autoInitThreads?: boolean;
+  }): Promise<void> {
     try {
-      // Initialize WASM module with proper threading support using new loader
-      this.wasmModule = await loadVectorizer();
+      // Initialize WASM module with lazy loading by default
+      this.wasmModule = await loadVectorizer({
+        initializeThreads: options?.autoInitThreads ?? false,
+        threadCount: options?.threadCount
+      });
       
       // Create a vectorizer instance using the properly exported WasmVectorizer
       this.vectorizer = await createVectorizer();
       
       this.isInitialized = true;
-      console.log('✅ VectorizerService initialized successfully');
+      console.log('✅ VectorizerService initialized successfully (lazy mode by default)');
     } catch (error) {
       const wasmError: VectorizerError = {
         type: 'unknown',
@@ -352,19 +372,43 @@ export class VectorizerService {
   }
 
   /**
-   * Initialize threading with specified thread count
-   * Note: Threading is automatically initialized during WASM loading with the new loader
+   * Initialize thread pool separately (for lazy loading)
+   * Returns true if successful, false otherwise
    */
-  async initializeThreading(threadCount?: number): Promise<void> {
+  async initializeThreadPool(threadCount?: number): Promise<boolean> {
     if (!browser) {
-      return; // No-op in SSR
+      return false; // No-op in SSR
     }
 
-    await this.initialize();
+    if (!this.isInitialized) {
+      throw new Error('WASM module must be initialized first');
+    }
     
-    // Threading is now automatically initialized during loadVectorizer()
-    // This method is kept for compatibility but doesn't need to do anything
-    console.log('[VectorizerService] Threading initialization is handled automatically by the new loader');
+    try {
+      const success = await initThreads(threadCount);
+      console.log(`[VectorizerService] Thread pool initialization ${success ? 'succeeded' : 'failed'}`);
+      return success;
+    } catch (error) {
+      console.error('[VectorizerService] Thread pool initialization error:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Get thread pool status
+   */
+  getThreadPoolStatus(): {
+    initialized: boolean;
+    threadCount: number;
+    maxThreads: number;
+    recommendedThreads: number;
+  } {
+    return {
+      initialized: isThreadPoolInitialized(),
+      threadCount: getCurrentThreadCount(),
+      maxThreads: getMaxThreads(),
+      recommendedThreads: getRecommendedThreadCount()
+    };
   }
 
   /**

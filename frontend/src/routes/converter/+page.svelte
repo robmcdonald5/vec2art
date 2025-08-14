@@ -3,6 +3,7 @@
 	import Button from '$lib/components/ui/button.svelte';
 	import FileDropzone from '$lib/components/ui/file-dropzone.svelte';
 	import ProgressBar from '$lib/components/ui/progress-bar.svelte';
+	import SmartPerformanceSelector from '$lib/components/ui/smart-performance-selector.svelte';
 	import { Upload, Settings, Download, Image, AlertCircle, CheckCircle, Loader2 } from 'lucide-svelte';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte';
 	import ErrorBoundary from '$lib/components/ui/error-boundary.svelte';
@@ -15,13 +16,41 @@
 	let selectedPreset = $state<VectorizerPreset | 'custom'>('sketch');
 	let previewSvgUrl = $state<string | null>(null);
 
+	// Smart initialization state
+	let isInitializing = $state(false);
+	let selectedPerformanceMode = $state<string>('balanced');
+	
+	// Initialize WASM without threads (lazy loading)
 	onMount(async () => {
 		try {
-			await store.initialize();
+			// Only load WASM module, don't initialize threads
+			await store.initialize({ autoInitThreads: false });
+			console.log('WASM module loaded (threads not initialized)');
 		} catch (error) {
-			console.error('Failed to initialize vectorizer:', error);
+			console.error('Failed to load WASM module:', error);
 		}
 	});
+	
+	// Handle smart performance selection
+	async function handlePerformanceSelection(threadCount: number, mode: string) {
+		isInitializing = true;
+		selectedPerformanceMode = mode;
+		
+		try {
+			console.log(`Initializing with ${threadCount} threads in ${mode} mode`);
+			const success = await store.initializeThreads(threadCount);
+			
+			if (!success) {
+				console.warn('Thread pool initialization failed, will use single-threaded mode');
+			} else {
+				console.log(`Successfully initialized ${threadCount} threads`);
+			}
+		} catch (error) {
+			console.error('Failed to initialize thread pool:', error);
+		} finally {
+			isInitializing = false;
+		}
+	}
 
 	function handleFileSelect(file: File | null) {
 		if (file) {
@@ -132,7 +161,8 @@
 		};
 	});
 
-	const canConvert = $derived(store.inputImage && store.isConfigValid() && !store.isProcessing);
+	// Need threads initialized before we can convert
+	const canConvert = $derived(store.inputImage && store.isConfigValid() && !store.isProcessing && store.threadsInitialized);
 	const canDownload = $derived(store.lastResult && !store.isProcessing);
 	const stats = $derived(store.getStats());
 </script>
@@ -146,19 +176,30 @@
 		</p>
 		
 		<!-- Initialization Status -->
-		{#if !store.isInitialized}
+		{#if !store.wasmLoaded}
 			<div class="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
 				<Loader2 class="h-4 w-4 animate-spin" />
-				Initializing vectorizer...
+				Loading converter module...
+			</div>
+		{:else if !store.threadsInitialized}
+			<!-- Smart Performance Selector -->
+			<div class="mt-4">
+				<SmartPerformanceSelector 
+					onSelect={handlePerformanceSelection}
+					isInitializing={isInitializing}
+					disabled={false}
+				/>
 			</div>
 		{:else if store.capabilities}
 			<div class="mt-4 flex items-center gap-2 text-sm">
 				{#if store.capabilities.threading_supported}
 					<CheckCircle class="h-4 w-4 text-green-500" />
-					<span class="text-green-700 dark:text-green-400">Multi-threading enabled ({store.capabilities.hardware_concurrency} cores)</span>
+					<span class="text-green-700 dark:text-green-400">
+						{selectedPerformanceMode.charAt(0).toUpperCase() + selectedPerformanceMode.slice(1)} mode active ({store.requestedThreadCount || store.capabilities.hardware_concurrency} threads)
+					</span>
 				{:else}
 					<AlertCircle class="h-4 w-4 text-yellow-500" />
-					<span class="text-yellow-700 dark:text-yellow-400">Single-threaded mode (CORS headers required for multi-threading)</span>
+					<span class="text-yellow-700 dark:text-yellow-400">Single-threaded mode active</span>
 				{/if}
 			</div>
 		{/if}
@@ -426,6 +467,8 @@
 					{#if store.isProcessing}
 						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 						Processing...
+					{:else if !store.threadsInitialized}
+						Initialize Converter First
 					{:else}
 						Convert to SVG
 					{/if}
