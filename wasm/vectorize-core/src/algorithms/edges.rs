@@ -161,7 +161,7 @@ pub fn compute_fdog(gray: &GrayImage, etf: &EtfField, config: &FdogConfig) -> Ed
     let height = gray.height();
 
     log::debug!("Computing FDoG for {width}x{height} image with config: {config:?}");
-    let start_time = std::time::Instant::now();
+    let start_time = crate::utils::Instant::now();
 
     let mut edge_response = EdgeResponse::new(width, height);
 
@@ -216,7 +216,7 @@ pub fn compute_xdog(gray: &GrayImage, etf: &EtfField, config: &XdogConfig) -> Ed
     let height = gray.height();
 
     log::debug!("Computing XDoG for {width}x{height} image with config: {config:?}");
-    let start_time = std::time::Instant::now();
+    let start_time = crate::utils::Instant::now();
 
     // Compute two directional Gaussians with different scales
     let g1 = compute_directional_gaussian(gray, etf, config.sigma);
@@ -369,7 +369,7 @@ pub fn apply_nms(edge_response: &EdgeResponse, etf: &EtfField, config: &NmsConfi
     let height = edge_response.height;
 
     log::debug!("Applying NMS to {width}x{height} edge map");
-    let start_time = std::time::Instant::now();
+    let start_time = crate::utils::Instant::now();
 
     // Optional smoothing before NMS
     let smoothed_magnitude = if config.smooth_before_nms {
@@ -450,7 +450,7 @@ pub fn hysteresis_threshold(
     high: f32,
 ) -> Vec<f32> {
     log::debug!("Applying hysteresis thresholding with low={low}, high={high}");
-    let start_time = std::time::Instant::now();
+    let start_time = crate::utils::Instant::now();
 
     let mut result = vec![0.0; nms_edges.len()];
     let mut visited = vec![false; nms_edges.len()];
@@ -545,7 +545,7 @@ pub fn compute_multi_direction_edges(
         "Computing multi-directional edges for {} orientations",
         orientations.len()
     );
-    let start_time = std::time::Instant::now();
+    let start_time = crate::utils::Instant::now();
 
     // Compute ETF field for the image
     let etf_config = EtfConfig::default();

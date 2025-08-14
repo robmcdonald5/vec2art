@@ -13,6 +13,7 @@ pub mod performance;
 pub mod preprocessing;
 pub mod svg;
 pub mod telemetry;
+pub mod utils;
 
 // Re-export main types for convenience
 pub use algorithms::{vectorize_trace_low, TraceBackend, TraceLowConfig};

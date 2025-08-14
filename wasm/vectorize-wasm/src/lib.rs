@@ -5,34 +5,11 @@
 
 mod capabilities;
 mod error;
-// mod threading;  // Temporarily disabled to fix LinkError
+mod threading;
 mod utils;
 
-// Stub threading module to replace disabled threading::* calls
-mod threading_stubs {
-    /// Always return 1 for single-threaded execution
-    pub fn get_thread_count() -> usize { 1 }
-    /// Always false for single-threaded build
-    pub fn is_threading_active() -> bool { false }
-    /// Return 1 (single threaded)
-    pub fn get_available_parallelism() -> usize { 1 }
-    /// No-op stub for initialization
-    pub fn init_thread_pool(_num_threads: Option<usize>) -> js_sys::Promise {
-        js_sys::Promise::resolve(&wasm_bindgen::JsValue::from_str("single-threaded"))
-    }
-    /// Always return not supported
-    pub fn is_shared_array_buffer_supported() -> bool { false }
-    /// Return not supported state
-    pub fn get_thread_pool_state() -> &'static str { "NotSupported" }
-    /// Return threading info string
-    pub fn get_threading_info() -> String {
-        "Single-threaded mode (stubs active)".to_string()
-    }
-    /// No-op stub for forcing single-threaded mode
-    pub fn force_single_threaded() {
-        // No-op, already single-threaded
-    }
-}
+// Stub threading module disabled - using real threading module now
+// mod threading_stubs { ... }
 
 use crate::error::ErrorRecoveryManager;
 use image::ImageBuffer;
@@ -46,8 +23,8 @@ use wasm_bindgen::prelude::*;
 use web_sys::ImageData;
 
 // Re-export wasm-bindgen-rayon init function for JavaScript
-// #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
-// pub use wasm_bindgen_rayon::init_thread_pool as initThreadPool;
+#[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
+pub use wasm_bindgen_rayon::init_thread_pool as initThreadPool;
 
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -598,7 +575,7 @@ impl WasmVectorizer {
     #[wasm_bindgen]
     pub fn get_thread_count(&self) -> u32 {
         self.thread_count
-            .unwrap_or_else(|| threading_stubs::get_thread_count()) as u32
+            .unwrap_or_else(|| threading::get_thread_count()) as u32
     }
 
     // Validation
@@ -929,7 +906,7 @@ impl Default for WasmVectorizer {
 /// * `true` if multi-threading is available and working, `false` otherwise
 #[wasm_bindgen]
 pub fn is_threading_supported() -> bool {
-    threading_stubs::is_threading_active()
+    threading::is_threading_active()
 }
 
 /// Get the current number of threads available for parallel processing
@@ -938,7 +915,7 @@ pub fn is_threading_supported() -> bool {
 /// * Number of threads available (1 if single-threaded)
 #[wasm_bindgen]
 pub fn get_thread_count() -> u32 {
-    threading_stubs::get_thread_count() as u32
+    threading::get_thread_count() as u32
 }
 
 /// Get the browser's hardware concurrency (logical processor count)
@@ -947,7 +924,7 @@ pub fn get_thread_count() -> u32 {
 /// * Number of logical processors available to the browser
 #[wasm_bindgen]
 pub fn get_hardware_concurrency() -> u32 {
-    threading_stubs::get_available_parallelism() as u32
+    threading::get_available_parallelism() as u32
 }
 
 /// Get detailed information about the threading environment
@@ -956,7 +933,7 @@ pub fn get_hardware_concurrency() -> u32 {
 /// * Diagnostic string with threading details
 #[wasm_bindgen]
 pub fn get_threading_info() -> String {
-    threading_stubs::get_threading_info()
+    threading::get_threading_info()
 }
 
 /// Force single-threaded execution (for debugging or fallback)
@@ -965,7 +942,7 @@ pub fn get_threading_info() -> String {
 /// for debugging or ensuring consistent behavior across environments
 #[wasm_bindgen]
 pub fn force_single_threaded() {
-    threading_stubs::force_single_threaded();
+    threading::force_single_threaded();
     log::info!("Forced single-threaded mode");
 }
 

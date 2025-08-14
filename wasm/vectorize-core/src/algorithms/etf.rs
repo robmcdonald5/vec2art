@@ -117,7 +117,7 @@ pub fn compute_etf(gray: &GrayImage, cfg: &EtfConfig) -> EtfField {
     let height = gray.height();
 
     log::debug!("Computing ETF field for {width}x{height} image with config: {cfg:?}");
-    let start_time = std::time::Instant::now();
+    let start_time = crate::utils::Instant::now();
 
     // Step 1: Compute image gradients
     let (grad_x, grad_y) = compute_gradients(gray);

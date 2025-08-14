@@ -37,9 +37,9 @@ function waitForMsgType(target, type) {
 // side ever in the future, but works well with bundlers today. The whole
 // point of this crate, after all, is to abstract away unstable features
 // and temporary bugs so that you don't need to deal with them in your code.
-import { initSync, wbg_rayon_start_worker } from '../../..';
+import { initSync, wbg_rayon_start_worker } from '../../../vectorize_wasm.js';
 
-if (self.name === "wasm_bindgen_worker") {
+if (typeof self !== 'undefined' && self.name === "wasm_bindgen_worker") {
   waitForMsgType(self, 'wasm_bindgen_worker_init').then(async data => {
     initSync(data.init);
     postMessage({ type: 'wasm_bindgen_worker_ready' });

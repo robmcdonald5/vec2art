@@ -27,7 +27,7 @@ use image::{GrayImage, ImageBuffer, Luma, Rgba};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::collections::{HashMap, VecDeque};
-use std::time::Instant;
+use crate::utils::Instant;
 
 /// Rectangle structure for region identification
 #[derive(Debug, Clone, Copy)]
@@ -76,7 +76,7 @@ struct ProcessingBudget {
     /// Time consumed so far
     consumed_ms: u64,
     /// Processing start time
-    _start_time: std::time::Instant,
+    _start_time: Instant,
     /// Priority order for directional passes
     pass_priority: Vec<ProcessingDirection>,
     /// Whether early termination is enabled
@@ -384,7 +384,7 @@ pub fn vectorize_trace_low_multipass(
         config.backend,
         config.detail
     );
-    let total_start = std::time::Instant::now();
+    let total_start = Instant::now();
 
     // Calculate adaptive thresholds
     let (conservative_detail, aggressive_detail) = calculate_adaptive_thresholds(config);
@@ -394,7 +394,7 @@ pub fn vectorize_trace_low_multipass(
     );
 
     // PASS 1: Conservative foundation with higher thresholds
-    let phase_start = std::time::Instant::now();
+    let phase_start = Instant::now();
     let conservative_config = TraceLowConfig {
         detail: conservative_detail,
         enable_multipass: false, // Prevent recursion
@@ -418,7 +418,7 @@ pub fn vectorize_trace_low_multipass(
     }
 
     // Analyze edge density for content-aware processing
-    let phase_start = std::time::Instant::now();
+    let phase_start = Instant::now();
     let analysis = analyze_edge_density(image, &conservative_paths)?;
     let analysis_time = phase_start.elapsed();
     log::debug!(
@@ -427,7 +427,7 @@ pub fn vectorize_trace_low_multipass(
     );
 
     // PASS 2: Aggressive detail capture with content-aware filtering
-    let phase_start = std::time::Instant::now();
+    let phase_start = Instant::now();
     let aggressive_config = TraceLowConfig {
         detail: aggressive_detail,
         enable_multipass: false, // Prevent recursion
@@ -443,7 +443,7 @@ pub fn vectorize_trace_low_multipass(
     );
 
     // Merge results with intelligent deduplication
-    let phase_start = std::time::Instant::now();
+    let phase_start = Instant::now();
     let merged_paths = merge_multipass_results(conservative_paths, aggressive_paths, config);
     let merge_time = phase_start.elapsed();
     log::debug!(
@@ -475,7 +475,7 @@ pub fn vectorize_trace_low_directional(
         config.backend, config.detail
     );
 
-    let total_start = std::time::Instant::now();
+    let total_start = Instant::now();
     let mut budget = ProcessingBudget {
         total_budget_ms: config.max_processing_time_ms,
         consumed_ms: 0,
@@ -604,10 +604,10 @@ fn trace_edge(
     config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     log::info!("Running edge backend");
-    let total_start = std::time::Instant::now();
+    let total_start = Instant::now();
 
     // Convert to grayscale
-    let phase_start = std::time::Instant::now();
+    let phase_start = Instant::now();
     let gray = rgba_to_gray(image);
     let grayscale_time = phase_start.elapsed();
     log::debug!(
@@ -616,14 +616,14 @@ fn trace_edge(
     );
 
     // Apply Gaussian blur (σ=1.0-2.0 based on detail)
-    let phase_start = std::time::Instant::now();
+    let phase_start = Instant::now();
     let sigma = 1.0 + (1.0 * config.detail);
     let blurred = gaussian_blur(&gray, sigma);
     let blur_time = phase_start.elapsed();
     log::debug!("Gaussian blur: {:.3}ms", blur_time.as_secs_f64() * 1000.0);
 
     // Edge detection: ETF/FDoG or traditional Canny
-    let phase_start = std::time::Instant::now();
+    let phase_start = Instant::now();
     let edges = if config.enable_etf_fdog {
         // ETF/FDoG advanced edge detection
         log::debug!("Using ETF/FDoG edge detection");
@@ -702,7 +702,7 @@ fn trace_edge(
     );
 
     // Link edges into polylines or use flow-guided tracing
-    let phase_start = std::time::Instant::now();
+    let phase_start = Instant::now();
     let (polylines, bezier_curves) = if config.enable_etf_fdog && config.enable_flow_tracing {
         // Use flow-guided polyline tracing with ETF field
         log::debug!("Using flow-guided polyline tracing");
@@ -785,7 +785,7 @@ fn trace_edge(
     let is_flow_traced = config.enable_etf_fdog && config.enable_flow_tracing;
 
     // Simplify with Douglas-Peucker and prune short strokes (unless we have Bézier curves)
-    let phase_start = std::time::Instant::now();
+    let phase_start = Instant::now();
     let (svg_paths, simplification_time, svg_generation_time) = if let Some(beziers) = bezier_curves
     {
         // Use Bézier curves directly (no simplification needed)
@@ -839,7 +839,7 @@ fn trace_edge(
         );
 
         // Convert to SVG paths with stroke styling
-        let svg_start = std::time::Instant::now();
+        let svg_start = Instant::now();
         let stroke_width = calculate_stroke_width(image, config.stroke_px_at_1080p);
         let clamped_width = clamp_stroke_width(stroke_width, config);
 
@@ -1857,7 +1857,7 @@ fn trace_dots(
     config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     log::info!("Running dots backend");
-    let total_start = std::time::Instant::now();
+    let total_start = Instant::now();
 
     // Create DotConfig from TraceLowConfig
     let dot_config = DotConfig {
@@ -1897,7 +1897,7 @@ fn trace_dots(
     );
 
     // Generate dots using the complete pipeline
-    let phase_start = std::time::Instant::now();
+    let phase_start = Instant::now();
     let dots = generate_dots_from_image(
         image,
         &dot_config,
@@ -1913,7 +1913,7 @@ fn trace_dots(
     );
 
     // Convert dots to SVG paths
-    let phase_start = std::time::Instant::now();
+    let phase_start = Instant::now();
     let svg_paths = dots_to_svg_paths(&dots);
     let svg_conversion_time = phase_start.elapsed();
 

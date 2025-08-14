@@ -2159,6 +2159,7 @@ dependencies = [
  "env_logger",
  "image",
  "imageproc",
+ "js-sys",
  "log",
  "nalgebra 0.33.2",
  "once_cell",

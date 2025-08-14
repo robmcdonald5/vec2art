@@ -8,13 +8,13 @@ repository = "https://github.com/your-org/vec2art"
 
 [features]
 default = ["parallel", "telemetry"]
-wasm = ["single-threaded", "wasm-bindgen", "web-sys"]
+wasm = ["single-threaded", "wasm-bindgen", "web-sys", "js-sys"]
 parallel = ["rayon"]
 telemetry = ["file-output"] 
 single-threaded = []
 file-output = []
 # Multi-threading support for WASM with atomics
-wasm-parallel = ["parallel", "wasm-bindgen", "web-sys"]
+wasm-parallel = ["parallel", "wasm-bindgen", "web-sys", "js-sys"]
 
 [dependencies]
 # Core image processing
@@ -43,6 +43,7 @@ rand_distr = "0.4"
 # WebAssembly support (optional)
 wasm-bindgen = { workspace = true, optional = true }
 web-sys = { workspace = true, optional = true, features = ["Window", "Performance"] }
+js-sys = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }

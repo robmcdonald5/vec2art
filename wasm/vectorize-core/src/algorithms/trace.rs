@@ -119,7 +119,7 @@ pub fn trace_polylines(binary: &GrayImage, etf: &EtfField, cfg: &TraceConfig) ->
     let height = binary.height();
 
     log::debug!("Starting polyline tracing for {width}x{height} image with config: {cfg:?}");
-    let start_time = std::time::Instant::now();
+    let start_time = crate::utils::Instant::now();
 
     // Find seed points (edge pixels with sufficient gradient/coherency)
     let seed_points = find_seed_points(binary, etf, cfg);

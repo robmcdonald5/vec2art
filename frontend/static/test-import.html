@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Import Test</title>
+</head>
+<body>
+    <h1>Testing WASM Import</h1>
+    <div id="result"></div>
+
+    <script type="module">
+        const resultDiv = document.getElementById('result');
+        
+        try {
+            resultDiv.innerHTML += '<p>🔄 Testing WASM import...</p>';
+            
+            // Try to import the WASM module
+            const wasm = await import('/wasm/vectorize_wasm.js');
+            resultDiv.innerHTML += '<p>✅ WASM module imported successfully</p>';
+            
+            // Try to initialize
+            await wasm.default();
+            resultDiv.innerHTML += '<p>✅ WASM module initialized successfully</p>';
+            
+            // Check for required functions
+            const funcs = ['WasmVectorizer', 'initThreadPool', 'get_thread_count', 'is_threading_supported'];
+            funcs.forEach(func => {
+                if (typeof wasm[func] !== 'undefined') {
+                    resultDiv.innerHTML += `<p>✅ Function ${func} available</p>`;
+                } else {
+                    resultDiv.innerHTML += `<p>❌ Function ${func} missing</p>`;
+                }
+            });
+            
+            resultDiv.innerHTML += '<p>🎉 All imports successful!</p>';
+            
+        } catch (error) {
+            resultDiv.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+            console.error('Import error:', error);
+        }
+    </script>
+</body>
+</html>

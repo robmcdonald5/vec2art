@@ -836,11 +836,11 @@ mod tests {
             ..Default::default()
         };
 
-        let start = std::time::Instant::now();
+        let start = crate::utils::Instant::now();
         let standard_dots = generate_dots_optimized_pipeline(&img, &standard_config);
         let standard_time = start.elapsed();
 
-        let start = std::time::Instant::now();
+        let start = crate::utils::Instant::now();
         let optimized_dots = generate_dots_optimized_pipeline(&img, &optimized_config);
         let optimized_time = start.elapsed();
 

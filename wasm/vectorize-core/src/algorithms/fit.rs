@@ -150,7 +150,7 @@ pub fn fit_beziers(poly: &Polyline, cfg: &FitConfig) -> Vec<CubicBezier> {
         "Fitting Bézier curves to polyline with {} points",
         poly.len()
     );
-    let start_time = std::time::Instant::now();
+    let start_time = crate::utils::Instant::now();
 
     // Step 1: Detect corners and split polyline into segments
     let corner_indices = detect_corners(poly, cfg);

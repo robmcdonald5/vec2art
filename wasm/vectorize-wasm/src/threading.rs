@@ -59,13 +59,10 @@ pub fn init_thread_pool(num_threads: Option<usize>) -> JsValue {
     // Initialize wasm-bindgen-rayon thread pool and return the promise
     let promise = wasm_bindgen_rayon::init_thread_pool(thread_count);
 
-    // Mark as initialized (will be confirmed when promise resolves)
-    unsafe {
-        THREAD_POOL_STATE = ThreadPoolState::Initialized;
-    }
-
+    // DO NOT mark as initialized yet - wait for promise resolution
+    // State remains "Supported" until confirmed by JavaScript
     log::info!(
-        "WASM thread pool initialization started with {} threads",
+        "WASM thread pool initialization started with {} threads - awaiting promise resolution",
         thread_count
     );
 
@@ -162,6 +159,28 @@ pub fn force_single_threaded() {
         THREAD_POOL_STATE = ThreadPoolState::NotSupported;
     }
     log::info!("Forced single-threaded execution mode");
+}
+
+/// Confirm successful thread pool initialization
+/// 
+/// This should be called by JavaScript when the initThreadPool promise resolves successfully
+#[wasm_bindgen]
+pub fn confirm_threading_success() {
+    unsafe {
+        THREAD_POOL_STATE = ThreadPoolState::Initialized;
+    }
+    log::info!("Thread pool initialization confirmed successful");
+}
+
+/// Mark thread pool initialization failure
+/// 
+/// This should be called by JavaScript when the initThreadPool promise rejects
+#[wasm_bindgen]
+pub fn mark_threading_failed() {
+    unsafe {
+        THREAD_POOL_STATE = ThreadPoolState::Failed;
+    }
+    log::info!("Thread pool initialization marked as failed");
 }
 
 /// Get diagnostic information about the threading environment
