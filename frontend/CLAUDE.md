@@ -4,7 +4,7 @@ This document provides SvelteKit 5-specific implementation guidelines for the ve
 
 ## Scope Overview
 
-This directory contains the SvelteKit 5 frontend application that provides a user interface for the vec2art image-to-SVG conversion tool. The frontend loads and interacts with the WASM module for client-side processing.
+This directory contains the SvelteKit 5 frontend application that provides a user interface for the vec2art image-to-SVG conversion tool. The frontend loads and interacts with the WASM module for client-side processing with full multithreading support (12 parallel threads).
 
 ## Application Architecture
 
@@ -253,31 +253,57 @@ frontend/
 
 ### WASM Integration
 
+#### Multithreading Architecture
+- **12 parallel threads** for high-performance image processing
+- **SharedArrayBuffer** support with Cross-Origin Isolation (COEP/COOP)
+- **Promise-based initialization** with proper state management
+- **Automatic fallback** to single-threaded mode when threading unavailable
+
 #### Dual-Location Strategy
 The WASM files are maintained in **two locations** for different use cases:
 
 1. **Production Integration** (`src/lib/wasm/`):
-   - Used by SvelteKit application code via local imports: `import('./vectorize_wasm.js')`
-   - Bundled and optimized by Vite for production deployment
-   - Source of truth for WASM files (built from `../wasm/vectorize-wasm/pkg/`)
+   - Primary loader: `loader.ts` handles threading initialization
+   - Used by SvelteKit application via: `import { loadVectorizer } from '$lib/wasm/loader'`
+   - Source of truth for WASM files (built from `../wasm/vectorize-wasm/`)
+   - Full multithreading support with 12 threads
 
-2. **Static Testing** (`static/wasm/`):
-   - Used by static test pages via URL imports: `import('/wasm/vectorize_wasm.js')`
-   - Accessed directly by browsers for testing and debugging
-   - Copy of production files for development/testing purposes
+2. **Static Serving** (`static/wasm/`):
+   - Required for proper WASM serving with correct MIME types
+   - Used by static URLs: `import('/wasm/vectorize_wasm.js')`
+   - Synchronized copy of production files
+
+#### Threading Initialization
+```typescript
+// loader.ts implementation
+const promise = wasmJs.initThreadPool(threadCount);
+await promise;
+wasmJs.confirm_threading_success(); // Mark state as initialized
+```
+
+#### Required Configuration
+```javascript
+// vite.config.ts - Enable Cross-Origin Isolation
+headers: {
+  'Cross-Origin-Embedder-Policy': 'require-corp',
+  'Cross-Origin-Opener-Policy': 'same-origin'
+}
+```
 
 #### Implementation Guidelines
-- Lazy-load WASM module on first use
-- Implement loading states and error handling  
-- Use Web Workers for processing to avoid blocking UI
-- Handle COOP/COEP headers for SharedArrayBuffer support
-- **IMPORTANT**: When updating WASM, copy from `src/lib/wasm/` to `static/wasm/`
+- Initialize thread pool immediately on WASM load
+- Use `initThreadPool()` NOT deprecated `start()` function
+- Monitor thread status with `get_thread_count()` and `is_threading_supported()`
+- Handle promise rejection with `mark_threading_failed()` for fallback
+- **IMPORTANT**: After WASM rebuild, manually fix import paths:
+  - Fix: `'__wbindgen_placeholder__'` → `'./__wbindgen_placeholder__.js'`
+  - Fix: `if (name === "wasm_bindgen_worker")` → `if (typeof self !== 'undefined' && self.name === "wasm_bindgen_worker")`
 
 #### File Synchronization
 ```bash
-# After WASM rebuild, sync files:
+# After WASM rebuild and import fixes:
 cp src/lib/wasm/*.{js,wasm,d.ts} static/wasm/
-# (Don't copy .ts files to static/)
+cp -r src/lib/wasm/snippets static/wasm/
 
 ### Styling Guidelines
 
