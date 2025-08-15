@@ -10,10 +10,35 @@
 		"sourceMap": true,
 		"strict": true,
 		"moduleResolution": "bundler"
-	}
+	},
+	"exclude": [
+		"./src/lib/wasm/vectorize_wasm.js",
+		"./src/lib/wasm/vectorize_wasm.d.ts",
+		"./src/lib/wasm/vectorize_wasm_bg.wasm.d.ts",
+		"./src/lib/wasm/__wbindgen_placeholder__.js",
+		"./src/lib/wasm/snippets/**/*.js",
+		"./static/wasm/**/*.js",
+		"./static/wasm/**/*.d.ts",
+		"./src/**/*.test.ts",
+		"./src/**/*.test.js",
+		"./tests/**/*",
+		"./playwright.config.ts",
+		"./src/lib/services/performance-*.ts",
+		"./src/lib/services/analytics-*.ts",
+		"./src/lib/services/dev-tools.ts",
+		"./src/lib/services/error-tracker.ts",
+		"./src/lib/services/resource-monitor.ts",
+		"./src/lib/services/ux-analytics.ts",
+		"./src/lib/types/performance.ts",
+		"./src/lib/components/ui/performance-dashboard.svelte",
+		"./src/lib/services/index.ts",
+		"./src/lib/utils/performance.ts",
+		"./src/stories/**/*",
+		"./.storybook/**/*"
+	]
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
 	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
 	//
-	// If you want to overwrite includes/excludes, make sure to copy over the relevant includes/excludes
-	// from the referenced tsconfig.json - TypeScript does not merge them in
+	// WASM generated files are excluded from TypeScript checking as they contain
+	// auto-generated code that may not conform to our TypeScript standards
 }

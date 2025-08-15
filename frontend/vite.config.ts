@@ -23,7 +23,7 @@ export default defineConfig({
 	],
 	resolve: {
 		alias: {
-			'__wbindgen_placeholder__': '/wasm/__wbindgen_placeholder__.js'
+			__wbindgen_placeholder__: '/wasm/__wbindgen_placeholder__.js'
 		}
 	},
 	optimizeDeps: {

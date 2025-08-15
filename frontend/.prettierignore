@@ -1,0 +1,26 @@
+# Ignore generated files and build outputs
+.svelte-kit/
+build/
+dist/
+node_modules/
+
+# Ignore WASM generated files
+src/lib/wasm/vectorize_wasm.js
+src/lib/wasm/vectorize_wasm.d.ts
+src/lib/wasm/vectorize_wasm_bg.wasm.d.ts
+src/lib/wasm/__wbindgen_placeholder__.js
+src/lib/wasm/snippets/**/*.js
+static/wasm/**/*.js
+static/wasm/**/*.d.ts
+
+# Ignore test files that are not actual source
+static/*.html
+
+# Ignore coverage reports
+coverage/
+
+# Ignore documentation that doesn't need formatting
+*.md
+README.md
+CLAUDE.md
+*.MD
