@@ -8,13 +8,15 @@
 		onPresetChange: (preset: VectorizerPreset | 'custom') => void;
 		disabled?: boolean;
 		isCustom?: boolean;
+		compact?: boolean;
 	}
 
 	let {
 		selectedPreset,
 		onPresetChange,
 		disabled = false,
-		isCustom = false
+		isCustom = false,
+		compact = false
 	}: PresetSelectorProps = $props();
 
 	const presetIcons = {
@@ -50,30 +52,64 @@
 	const allPresets = [...(Object.keys(presetIcons) as VectorizerPreset[]), 'custom' as const];
 </script>
 
-<section class="space-y-4" aria-labelledby="preset-selector-heading">
-	<div class="flex items-center justify-between">
+{#if compact}
+	<!-- Compact Mode: Dropdown Selection -->
+	<div class="space-y-2">
 		<div class="flex items-center gap-2">
-			<Wand2 class="text-primary h-5 w-5" aria-hidden="true" />
-			<h3 id="preset-selector-heading" class="text-lg font-semibold">Style Presets</h3>
+			{#if isCustom}
+				<span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+					Modified
+				</span>
+			{/if}
 		</div>
-		{#if isCustom}
-			<span
-				class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200"
-			>
-				Modified
-			</span>
-		{/if}
+		
+		<select
+			value={selectedPreset}
+			onchange={(e) => handlePresetClick(e.currentTarget.value as VectorizerPreset | 'custom')}
+			{disabled}
+			class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+		>
+			{#each allPresets as preset (preset)}
+				<option value={preset}>
+					{preset === 'custom' ? 'Custom Settings' : presetTitles[preset as VectorizerPreset]}
+				</option>
+			{/each}
+		</select>
+		
+		<p class="text-xs text-muted-foreground">
+			{#if selectedPreset === 'custom'}
+				Fine-tuned custom settings
+			{:else}
+				{PRESET_DESCRIPTIONS[selectedPreset as VectorizerPreset]}
+			{/if}
+		</p>
 	</div>
+{:else}
+	<!-- Full Mode: Card Selection -->
+	<section class="space-y-4" aria-labelledby="preset-selector-heading">
+		<div class="flex items-center justify-between">
+			<div class="flex items-center gap-2">
+				<Wand2 class="text-primary h-5 w-5" aria-hidden="true" />
+				<h3 id="preset-selector-heading" class="text-lg font-semibold">Style Presets</h3>
+			</div>
+			{#if isCustom}
+				<span
+					class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+				>
+					Modified
+				</span>
+			{/if}
+		</div>
 
-	<p class="text-muted-foreground text-sm">
-		Quick start with optimized settings for common use cases, or create custom settings.
-	</p>
+		<p class="text-muted-foreground text-sm">
+			Quick start with optimized settings for common use cases, or create custom settings.
+		</p>
 
-	<div
-		class="grid gap-2 sm:grid-cols-2 lg:grid-cols-1"
-		role="radiogroup"
-		aria-labelledby="preset-selector-heading"
-	>
+		<div
+			class="grid gap-2 sm:grid-cols-2 lg:grid-cols-1"
+			role="radiogroup"
+			aria-labelledby="preset-selector-heading"
+		>
 		{#each allPresets as preset (preset)}
 			{@const isSelected = selectedPreset === preset}
 			{@const isCustomPreset = preset === 'custom'}
@@ -227,7 +263,8 @@
 			</div>
 		</div>
 	{/if}
-</section>
+	</section>
+{/if}
 
 <style>
 	.line-clamp-1 {

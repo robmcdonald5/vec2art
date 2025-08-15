@@ -7,9 +7,10 @@
 		selectedBackend: VectorizerBackend;
 		onBackendChange: (backend: VectorizerBackend) => void;
 		disabled?: boolean;
+		compact?: boolean;
 	}
 
-	let { selectedBackend, onBackendChange, disabled = false }: BackendSelectorProps = $props();
+	let { selectedBackend, onBackendChange, disabled = false, compact = false }: BackendSelectorProps = $props();
 
 	const backendIcons = {
 		edge: PenTool,
@@ -39,21 +40,43 @@
 	}
 </script>
 
-<section class="space-y-4" aria-labelledby="backend-selector-heading">
-	<div class="flex items-center gap-2">
-		<Palette class="text-primary h-5 w-5" aria-hidden="true" />
-		<h3 id="backend-selector-heading" class="text-lg font-semibold">Processing Algorithm</h3>
+{#if compact}
+	<!-- Compact Mode: Dropdown Selection -->
+	<div class="space-y-2">
+		<select
+			value={selectedBackend}
+			onchange={(e) => handleBackendClick(e.currentTarget.value as VectorizerBackend)}
+			{disabled}
+			class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+		>
+			{#each Object.keys(backendIcons) as backend (backend)}
+				<option value={backend}>
+					{backendTitles[backend as VectorizerBackend]}
+				</option>
+			{/each}
+		</select>
+		
+		<p class="text-xs text-muted-foreground">
+			{BACKEND_DESCRIPTIONS[selectedBackend]}
+		</p>
 	</div>
+{:else}
+	<!-- Full Mode: Card Selection -->
+	<section class="space-y-4" aria-labelledby="backend-selector-heading">
+		<div class="flex items-center gap-2">
+			<Palette class="text-primary h-5 w-5" aria-hidden="true" />
+			<h3 id="backend-selector-heading" class="text-lg font-semibold">Processing Algorithm</h3>
+		</div>
 
-	<p class="text-muted-foreground text-sm">
-		Choose the processing algorithm that best fits your image style and desired output.
-	</p>
+		<p class="text-muted-foreground text-sm">
+			Choose the processing algorithm that best fits your image style and desired output.
+		</p>
 
-	<div
-		class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"
-		role="radiogroup"
-		aria-labelledby="backend-selector-heading"
-	>
+		<div
+			class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"
+			role="radiogroup"
+			aria-labelledby="backend-selector-heading"
+		>
 		{#each Object.keys(backendIcons) as backend (backend)}
 			{@const BackendIcon = backendIcons[backend as VectorizerBackend]}
 			{@const isSelected = selectedBackend === backend}
@@ -158,7 +181,8 @@
 			</div>
 		</div>
 	{/if}
-</section>
+	</section>
+{/if}
 
 <style>
 	.line-clamp-2 {

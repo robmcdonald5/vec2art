@@ -18,11 +18,10 @@
 	import { PRESET_CONFIGS } from '$lib/types/vectorizer';
 
 	// Import new component system
-	import BackendSelector from '$lib/components/converter/BackendSelector.svelte';
-	import PresetSelector from '$lib/components/converter/PresetSelector.svelte';
-	import ParameterPanel from '$lib/components/converter/ParameterPanel.svelte';
-	import AdvancedControls from '$lib/components/converter/AdvancedControls.svelte';
-	import MobileControlsSheet from '$lib/components/converter/MobileControlsSheet.svelte';
+	import MultiFileDropzone from '$lib/components/ui/multi-file-dropzone.svelte';
+	import ImagePreviewCarousel from '$lib/components/converter/ImagePreviewCarousel.svelte';
+	import ConverterLayout from '$lib/components/converter/ConverterLayout.svelte';
+	import DevTestingPanel from '$lib/components/dev/DevTestingPanel.svelte';
 
 	// Reactive state from store
 	let store = vectorizerStore;
@@ -47,15 +46,16 @@
 	}
 
 	let selectedPreset = $state<VectorizerPreset | 'custom'>('sketch');
-	let previewSvgUrl = $state<string | null>(null);
+	let previewSvgUrls = $state<(string | null)[]>([]);
 
 	// Smart initialization state
 	let isInitializing = $state(false);
 	let selectedPerformanceMode = $state<string>('balanced');
 	let hasUserInitiatedConversion = $state(false);
 
-	// Mobile controls state
-	let showMobileControls = $state(false);
+	// Batch processing state
+	let isBatchProcessing = $state(false);
+	let batchProgress = $state<{ imageIndex: number; totalImages: number; progress: any } | null>(null);
 
 	// Initialize WASM without threads (lazy loading)
 	onMount(async () => {
@@ -106,20 +106,20 @@
 		}
 	}
 
-	function handleFileSelect(file: File | null) {
-		if (file) {
-			// File upload doesn't need threading - just store the file
-			store.setInputFile(file);
-			announceToScreenReader(`File selected: ${file.name}`);
+	function handleFilesSelect(files: File[]) {
+		if (files.length > 0) {
+			// Multi-file upload doesn't need threading - just store the files
+			store.setInputFiles(files);
+			announceToScreenReader(`${files.length} file(s) selected`);
 		} else {
 			store.clearInput();
-			announceToScreenReader('File removed');
+			announceToScreenReader('All files removed');
 		}
-		// Clear previous result when new file is selected
-		if (previewSvgUrl) {
-			URL.revokeObjectURL(previewSvgUrl);
-			previewSvgUrl = null;
-		}
+		// Clear previous results when new files are selected
+		previewSvgUrls.forEach(url => {
+			if (url) URL.revokeObjectURL(url);
+		});
+		previewSvgUrls = [];
 	}
 
 	function handleBackendChange(backend: VectorizerBackend) {
@@ -166,22 +166,60 @@
 			}
 		}
 
+		// Check if this is batch processing
+		if (store.hasMultipleImages) {
+			await handleBatchConvert();
+		} else {
+			await handleSingleConvert();
+		}
+	}
+
+	async function handleSingleConvert() {
 		announceProcessingStatus('Starting image conversion');
 		try {
 			const result = await store.processImage();
 
 			// Create blob URL for preview
-			if (previewSvgUrl) {
-				URL.revokeObjectURL(previewSvgUrl);
+			if (previewSvgUrls[0]) {
+				URL.revokeObjectURL(previewSvgUrls[0]);
 			}
 			const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-			previewSvgUrl = URL.createObjectURL(blob);
+			previewSvgUrls[0] = URL.createObjectURL(blob);
 
 			announceProcessingStatus('Conversion completed successfully');
 		} catch (error) {
-			// Error is already handled by the store
 			console.error('Conversion failed:', error);
 			announceProcessingStatus('Conversion failed');
+		}
+	}
+
+	async function handleBatchConvert() {
+		isBatchProcessing = true;
+		announceProcessingStatus('Starting batch conversion');
+		
+		try {
+			const results = await store.processBatch((imageIndex, totalImages, progress) => {
+				batchProgress = { imageIndex, totalImages, progress };
+				announceProcessingStatus(`Processing image ${imageIndex + 1} of ${totalImages}: ${progress.stage}`);
+			});
+
+			// Create blob URLs for all results
+			previewSvgUrls.forEach(url => {
+				if (url) URL.revokeObjectURL(url);
+			});
+			
+			previewSvgUrls = results.map(result => {
+				const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+				return URL.createObjectURL(blob);
+			});
+
+			announceProcessingStatus(`Batch conversion completed: ${results.length} images processed`);
+		} catch (error) {
+			console.error('Batch conversion failed:', error);
+			announceProcessingStatus('Batch conversion failed');
+		} finally {
+			isBatchProcessing = false;
+			batchProgress = null;
 		}
 	}
 
@@ -194,17 +232,24 @@
 	}
 
 	function handleResetAll() {
-		if (previewSvgUrl) {
-			URL.revokeObjectURL(previewSvgUrl);
-			previewSvgUrl = null;
-		}
+		previewSvgUrls.forEach(url => {
+			if (url) URL.revokeObjectURL(url);
+		});
+		previewSvgUrls = [];
 		store.reset();
 	}
 
-	function handleDownload() {
+	function handleDownload(imageIndex?: number) {
+		if (store.hasMultipleImages) {
+			handleBatchDownload(imageIndex);
+		} else {
+			handleSingleDownload();
+		}
+	}
+
+	function handleSingleDownload() {
 		if (!store.lastResult) return;
 
-		// Downloads don't need threading - just use the already processed result
 		const blob = new Blob([store.lastResult.svg], { type: 'image/svg+xml' });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
@@ -217,21 +262,81 @@
 		announceToScreenReader('SVG file downloaded');
 	}
 
+	function handleBatchDownload(imageIndex?: number) {
+		const results = store.batchResults;
+		const files = store.inputFiles;
+
+		if (imageIndex !== undefined) {
+			// Download single image from batch
+			const result = results[imageIndex];
+			const file = files[imageIndex];
+			if (!result || !file) return;
+
+			const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `${file.name.replace(/\.[^/.]+$/, '')}.svg`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+			announceToScreenReader(`Downloaded ${file.name}.svg`);
+		} else {
+			// Download all as zip would be complex, so download individually
+			results.forEach((result, index) => {
+				const file = files[index];
+				if (result && file) {
+					const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+					const url = URL.createObjectURL(blob);
+					const a = document.createElement('a');
+					a.href = url;
+					a.download = `${file.name.replace(/\.[^/.]+$/, '')}.svg`;
+					document.body.appendChild(a);
+					a.click();
+					document.body.removeChild(a);
+					URL.revokeObjectURL(url);
+				}
+			});
+			announceToScreenReader(`Downloaded ${results.length} SVG files`);
+		}
+	}
+
+	function handleImageIndexChange(index: number) {
+		store.setCurrentImageIndex(index);
+	}
+
+	function handleAbort() {
+		store.abortProcessing();
+		announceProcessingStatus('Processing stopped');
+	}
+
 	// Derived values
 	$effect(() => {
-		// Clean up blob URL when component is destroyed
+		// Clean up blob URLs when component is destroyed
 		return () => {
-			if (previewSvgUrl) {
-				URL.revokeObjectURL(previewSvgUrl);
-			}
+			previewSvgUrls.forEach(url => {
+				if (url) URL.revokeObjectURL(url);
+			});
 		};
 	});
 
-	// Can convert as long as we have an image and valid config (threads will initialize on-demand)
+	// Can convert as long as we have images and valid config (threads will initialize on-demand)
 	const canConvert = $derived(
-		store.inputImage && store.isConfigValid() && !store.isProcessing && !isInitializing
+		(store.inputImages.length > 0 || store.inputImage) && 
+		store.isConfigValid() && 
+		!store.isProcessing && 
+		!isInitializing && 
+		!isBatchProcessing
 	);
-	const canDownload = $derived(store.lastResult && !store.isProcessing);
+
+	const canDownload = $derived(
+		(store.batchResults.length > 0 || store.lastResult) && 
+		!store.isProcessing && 
+		!isBatchProcessing
+	);
+
+	const hasImages = $derived(store.inputFiles.length > 0 || !!store.inputFile);
 	const stats = $derived(store.getStats());
 </script>
 
@@ -336,238 +441,52 @@
 	<!-- Main Converter Interface -->
 	<main class="grid gap-8 lg:grid-cols-3">
 		<!-- Upload and Preview Area -->
-		<section class="lg:col-span-2" aria-labelledby="upload-preview-heading">
-			<h2 id="upload-preview-heading" class="sr-only">Upload and Preview</h2>
-
+		<section class="lg:col-span-2 space-y-6">
 			<!-- Upload Area -->
-			<FileDropzone
-				onFileSelect={handleFileSelect}
-				currentFile={store.inputFile}
-				disabled={store.isProcessing}
+			<MultiFileDropzone
+				onFilesSelect={handleFilesSelect}
+				currentFiles={store.inputFiles}
+				disabled={store.isProcessing || isBatchProcessing}
+				maxFiles={5}
 			/>
 
-			<!-- Preview Area -->
-			<section class="mt-6 rounded-lg border" aria-labelledby="preview-heading">
-				<header class="border-b p-4">
-					<div class="flex items-center justify-between">
-						<h3 id="preview-heading" class="font-semibold">Preview</h3>
-						{#if store.inputImage}
-							<span class="text-muted-foreground text-sm" aria-label="Image dimensions">
-								{store.inputImage.width}×{store.inputImage.height}
-							</span>
-						{/if}
-					</div>
-				</header>
-				<div
-					class="bg-muted/30 flex aspect-video items-center justify-center p-4"
-					role="img"
-					aria-label="Image preview area"
-				>
-					{#if isInitializing}
-						<!-- Initialization State -->
-						<div
-							class="w-full max-w-md space-y-4 text-center"
-							role="status"
-							aria-live="polite"
-							aria-label="Initializing converter"
-						>
-							<Loader2 class="text-primary mx-auto h-12 w-12 animate-spin" aria-hidden="true" />
-							<div class="space-y-2">
-								<p class="font-medium">Initializing high-performance converter...</p>
-								<p class="text-muted-foreground text-sm">
-									Setting up optimal processing with {navigator.hardwareConcurrency || 4} CPU cores
-								</p>
-							</div>
-						</div>
-					{:else if store.isProcessing && store.currentProgress}
-						<!-- Processing State -->
-						<div
-							class="w-full max-w-md space-y-4 text-center"
-							role="status"
-							aria-live="polite"
-							aria-label="Processing status"
-						>
-							<Loader2 class="text-primary mx-auto h-12 w-12 animate-spin" aria-hidden="true" />
-							<div class="space-y-2">
-								<p class="font-medium" id="processing-stage">{store.currentProgress.stage}</p>
-								<ProgressBar
-									value={store.currentProgress.progress}
-									label="Processing..."
-									showValue={true}
-									id="main-progress"
-								/>
-								<p class="text-muted-foreground text-sm" aria-describedby="processing-stage">
-									{Math.round(store.currentProgress.elapsed_ms / 1000)}s elapsed
-									{#if store.currentProgress.estimated_remaining_ms}
-										• ~{Math.round(store.currentProgress.estimated_remaining_ms / 1000)}s remaining
-									{/if}
-								</p>
-							</div>
-						</div>
-					{:else if previewSvgUrl}
-						<!-- Result Preview -->
-						<div class="flex h-full w-full items-center justify-center">
-							<img
-								src={previewSvgUrl}
-								alt="Converted SVG line art from {store.inputFile?.name || 'uploaded image'}"
-								class="max-h-full max-w-full object-contain"
-							/>
-						</div>
-					{:else if store.inputFile}
-						<!-- Input Image Preview -->
-						<div class="flex h-full w-full items-center justify-center">
-							<img
-								src={URL.createObjectURL(store.inputFile)}
-								alt="Original image: {store.inputFile.name}"
-								class="max-h-full max-w-full object-contain"
-							/>
-						</div>
-					{:else}
-						<!-- Empty State -->
-						<div class="text-center" role="status">
-							<Image class="text-muted-foreground mx-auto h-12 w-12" aria-hidden="true" />
-							<p class="text-muted-foreground mt-2 text-sm">Upload an image to see the preview</p>
-						</div>
-					{/if}
-				</div>
-			</section>
+			<!-- Dynamic Preview with Carousel -->
+			<ImagePreviewCarousel
+				inputFiles={store.inputFiles}
+				inputImages={store.inputImages}
+				currentImageIndex={store.currentImageIndex}
+				isProcessing={store.isProcessing || isBatchProcessing}
+				currentProgress={batchProgress?.progress || store.currentProgress}
+				results={store.batchResults}
+				{previewSvgUrls}
+				onImageIndexChange={handleImageIndexChange}
+				onDownload={handleDownload}
+			/>
 		</section>
 
-		<!-- Desktop Controls Panel -->
-		<aside class="hidden space-y-6 lg:block" aria-labelledby="controls-heading">
-			<h2 id="controls-heading" class="sr-only">Conversion Settings</h2>
-
-			<!-- Preset Selection -->
-			<PresetSelector
+		<!-- Desktop Settings Panel -->
+		<aside class="hidden lg:block">
+			<ConverterLayout
+				config={store.config}
 				{selectedPreset}
+				{canConvert}
+				{canDownload}
+				isProcessing={store.isProcessing || isBatchProcessing}
+				{hasImages}
+				onConfigChange={handleConfigChange}
 				onPresetChange={handlePresetChange}
-				disabled={store.isProcessing}
-				isCustom={selectedPreset === 'custom'}
-			/>
-
-			<!-- Backend Selection -->
-			<BackendSelector
-				selectedBackend={store.config.backend}
 				onBackendChange={handleBackendChange}
-				disabled={store.isProcessing}
-			/>
-
-			<!-- Essential Parameters -->
-			<ParameterPanel
-				config={store.config}
-				onConfigChange={handleConfigChange}
-				disabled={store.isProcessing}
 				onParameterChange={handleParameterChange}
+				onConvert={handleConvert}
+				onDownload={handleDownload}
+				onReset={handleResetAll}
+				onAbort={handleAbort}
 			/>
-
-			<!-- Advanced Controls -->
-			<AdvancedControls
-				config={store.config}
-				onConfigChange={handleConfigChange}
-				disabled={store.isProcessing}
-				onParameterChange={handleParameterChange}
-			/>
-
-			<!-- Action Buttons -->
-			<section class="space-y-3" aria-labelledby="actions-heading">
-				<h3 id="actions-heading" class="sr-only">Actions</h3>
-				<Button
-					class="w-full focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-					size="lg"
-					disabled={!canConvert}
-					onclick={handleConvert}
-					aria-describedby={!canConvert ? 'convert-requirements' : undefined}
-				>
-					{#if store.isProcessing}
-						<Loader2 class="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-						Processing...
-					{:else if !store.threadsInitialized}
-						Initialize Converter First
-					{:else}
-						Convert to SVG
-					{/if}
-				</Button>
-				{#if !canConvert}
-					<div id="convert-requirements" class="sr-only">
-						{#if !store.inputImage}
-							Upload an image first.
-						{:else if !store.threadsInitialized}
-							Initialize the converter first.
-						{:else if !store.isConfigValid()}
-							Check your settings configuration.
-						{/if}
-					</div>
-				{/if}
-				<Button
-					variant="outline"
-					class="w-full gap-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-					disabled={!canDownload}
-					onclick={handleDownload}
-					aria-describedby={!canDownload ? 'download-requirements' : undefined}
-				>
-					<Download class="h-4 w-4" aria-hidden="true" />
-					Download SVG
-				</Button>
-				{#if !canDownload}
-					<div id="download-requirements" class="sr-only">
-						Convert an image first to download the result.
-					</div>
-				{/if}
-			</section>
-
-			<!-- Processing Info -->
-			<section class="rounded-lg border p-4" aria-labelledby="processing-info-heading">
-				<h3 id="processing-info-heading" class="font-semibold">Processing Info</h3>
-				<div
-					class="text-muted-foreground mt-2 space-y-1 text-xs"
-					role="list"
-					aria-label="Processing statistics"
-				>
-					{#if stats.processing_time}
-						<p role="listitem">• Processing time: {Math.round(stats.processing_time)}ms</p>
-					{:else}
-						<p role="listitem">• Processing time: ~1.5s</p>
-					{/if}
-					{#if stats.input_size}
-						<p role="listitem">• Input size: {stats.input_size}</p>
-					{/if}
-					{#if stats.output_size}
-						<p role="listitem">• Output size: {stats.output_size}</p>
-					{/if}
-					{#if stats.compression_ratio}
-						<p role="listitem">• Compression: {(stats.compression_ratio * 100).toFixed(1)}%</p>
-					{/if}
-					<p role="listitem">• Output format: SVG</p>
-					<p role="listitem">• Client-side processing</p>
-				</div>
-			</section>
 		</aside>
-
-		<!-- Mobile Controls Button -->
-		<div class="fixed right-4 bottom-4 z-40 lg:hidden">
-			<Button
-				size="lg"
-				onclick={() => (showMobileControls = true)}
-				class="rounded-full shadow-lg"
-				aria-label="Open conversion settings"
-			>
-				<Settings class="h-5 w-5" aria-hidden="true" />
-			</Button>
-		</div>
 	</main>
 
-	<!-- Mobile Controls Sheet -->
-	<MobileControlsSheet
-		isOpen={showMobileControls}
-		onClose={() => (showMobileControls = false)}
-		config={store.config}
-		onConfigChange={handleConfigChange}
-		{selectedPreset}
-		onPresetChange={handlePresetChange}
-		onBackendChange={handleBackendChange}
-		disabled={store.isProcessing}
-		onParameterChange={handleParameterChange}
-	/>
+	<!-- Development Testing Panel (only visible in dev mode) -->
+	<DevTestingPanel />
 </div>
 
 <style>

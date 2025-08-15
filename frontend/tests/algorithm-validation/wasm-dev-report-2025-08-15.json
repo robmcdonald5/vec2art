@@ -1,0 +1,578 @@
+{
+  "timestamp": "2025-08-15T18:16:43.915Z",
+  "introspection": {
+    "timestamp": "2025-08-15T18:16:32.817Z",
+    "module": {
+      "found": true,
+      "type": "object",
+      "constructor": "WasmVectorizer"
+    },
+    "functions": {
+      "found": [
+        {
+          "name": "set_detail",
+          "backend": "all",
+          "required": true,
+          "type": "float",
+          "range": "0.0-1.0",
+          "actualType": "function"
+        },
+        {
+          "name": "set_stroke_width",
+          "backend": "all",
+          "required": true,
+          "type": "float",
+          "range": "0.1-10.0",
+          "actualType": "function"
+        },
+        {
+          "name": "set_noise_filtering",
+          "backend": "all",
+          "required": true,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_backend",
+          "backend": "all",
+          "required": true,
+          "type": "string",
+          "actualType": "function"
+        },
+        {
+          "name": "set_hand_drawn_preset",
+          "backend": "all",
+          "required": true,
+          "type": "string",
+          "actualType": "function"
+        },
+        {
+          "name": "set_custom_variable_weights",
+          "backend": "edge,centerline,superpixel",
+          "required": false,
+          "type": "float",
+          "range": "0.0-1.0",
+          "actualType": "function"
+        },
+        {
+          "name": "set_custom_tremor",
+          "backend": "edge,centerline,superpixel",
+          "required": false,
+          "type": "float",
+          "range": "0.0-0.5",
+          "actualType": "function"
+        },
+        {
+          "name": "set_multipass",
+          "backend": "edge",
+          "required": true,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_reverse_pass",
+          "backend": "edge",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_diagonal_pass",
+          "backend": "edge",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_enable_etf_fdog",
+          "backend": "edge",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_enable_flow_tracing",
+          "backend": "edge",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_enable_bezier_fitting",
+          "backend": "edge",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_dot_density",
+          "backend": "dots",
+          "required": false,
+          "type": "float",
+          "range": "0.0-1.0",
+          "actualType": "function"
+        },
+        {
+          "name": "set_dot_size_range",
+          "backend": "dots",
+          "required": false,
+          "type": "function",
+          "params": [
+            "min_radius",
+            "max_radius"
+          ],
+          "actualType": "function"
+        },
+        {
+          "name": "set_preserve_colors",
+          "backend": "dots",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_adaptive_sizing",
+          "backend": "dots",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_background_tolerance",
+          "backend": "dots",
+          "required": false,
+          "type": "float",
+          "range": "0.0-1.0",
+          "actualType": "function"
+        },
+        {
+          "name": "set_max_processing_time_ms",
+          "backend": "all",
+          "required": false,
+          "type": "bigint",
+          "actualType": "function"
+        },
+        {
+          "name": "set_thread_count",
+          "backend": "all",
+          "required": false,
+          "type": "int",
+          "actualType": "function"
+        },
+        {
+          "name": "vectorize",
+          "backend": "all",
+          "required": true,
+          "type": "function",
+          "params": [
+            "ImageData"
+          ],
+          "actualType": "function"
+        },
+        {
+          "name": "vectorize_with_progress",
+          "backend": "all",
+          "required": false,
+          "type": "function",
+          "params": [
+            "ImageData",
+            "callback"
+          ],
+          "actualType": "function"
+        },
+        {
+          "name": "validate_config",
+          "backend": "all",
+          "required": false,
+          "type": "function",
+          "actualType": "function"
+        },
+        {
+          "name": "export_config",
+          "backend": "all",
+          "required": false,
+          "type": "function",
+          "actualType": "function"
+        },
+        {
+          "name": "import_config",
+          "backend": "all",
+          "required": false,
+          "type": "function",
+          "params": [
+            "string"
+          ],
+          "actualType": "function"
+        },
+        {
+          "name": "use_preset",
+          "backend": "all",
+          "required": false,
+          "type": "function",
+          "params": [
+            "string"
+          ],
+          "actualType": "function"
+        }
+      ],
+      "missing": [
+        {
+          "name": "set_tapering",
+          "backend": "edge,centerline,superpixel",
+          "required": false,
+          "type": "float",
+          "range": "0.0-1.0"
+        },
+        {
+          "name": "set_enable_adaptive_threshold",
+          "backend": "centerline",
+          "required": false,
+          "type": "bool"
+        },
+        {
+          "name": "set_window_size",
+          "backend": "centerline",
+          "required": false,
+          "type": "int",
+          "range": "15-50"
+        },
+        {
+          "name": "set_sensitivity_k",
+          "backend": "centerline",
+          "required": false,
+          "type": "float",
+          "range": "0.1-1.0"
+        },
+        {
+          "name": "set_min_branch_length",
+          "backend": "centerline",
+          "required": false,
+          "type": "int",
+          "range": "4-24"
+        },
+        {
+          "name": "set_enable_width_modulation",
+          "backend": "centerline",
+          "required": false,
+          "type": "bool"
+        },
+        {
+          "name": "set_douglas_peucker_epsilon",
+          "backend": "centerline",
+          "required": false,
+          "type": "float",
+          "range": "0.5-3.0"
+        },
+        {
+          "name": "set_num_superpixels",
+          "backend": "superpixel",
+          "required": false,
+          "type": "int",
+          "range": "20-1000"
+        },
+        {
+          "name": "set_compactness",
+          "backend": "superpixel",
+          "required": false,
+          "type": "float",
+          "range": "1-50"
+        },
+        {
+          "name": "set_slic_iterations",
+          "backend": "superpixel",
+          "required": false,
+          "type": "int",
+          "range": "5-15"
+        },
+        {
+          "name": "set_fill_regions",
+          "backend": "superpixel",
+          "required": false,
+          "type": "bool"
+        },
+        {
+          "name": "set_stroke_regions",
+          "backend": "superpixel",
+          "required": false,
+          "type": "bool"
+        },
+        {
+          "name": "set_simplify_boundaries",
+          "backend": "superpixel",
+          "required": false,
+          "type": "bool"
+        },
+        {
+          "name": "set_boundary_epsilon",
+          "backend": "superpixel",
+          "required": false,
+          "type": "float",
+          "range": "0.5-3.0"
+        },
+        {
+          "name": "set_poisson_disk_sampling",
+          "backend": "dots",
+          "required": false,
+          "type": "bool"
+        },
+        {
+          "name": "set_gradient_based_sizing",
+          "backend": "dots",
+          "required": false,
+          "type": "bool"
+        },
+        {
+          "name": "set_svg_precision",
+          "backend": "all",
+          "required": false,
+          "type": "int",
+          "range": "0-4"
+        },
+        {
+          "name": "set_optimize_svg",
+          "backend": "all",
+          "required": false,
+          "type": "bool"
+        },
+        {
+          "name": "set_include_metadata",
+          "backend": "all",
+          "required": false,
+          "type": "bool"
+        },
+        {
+          "name": "set_max_image_size",
+          "backend": "all",
+          "required": false,
+          "type": "int"
+        },
+        {
+          "name": "abort_processing",
+          "backend": "all",
+          "required": false,
+          "type": "function"
+        },
+        {
+          "name": "cleanup",
+          "backend": "all",
+          "required": false,
+          "type": "function"
+        }
+      ],
+      "unexpected": [
+        {
+          "name": "__destroy_into_raw",
+          "type": "function"
+        },
+        {
+          "name": "constructor",
+          "type": "function"
+        },
+        {
+          "name": "free",
+          "type": "function"
+        },
+        {
+          "name": "get_backend",
+          "type": "function"
+        },
+        {
+          "name": "get_detail",
+          "type": "function"
+        },
+        {
+          "name": "get_multipass",
+          "type": "function"
+        },
+        {
+          "name": "get_stroke_width",
+          "type": "function"
+        },
+        {
+          "name": "get_thread_count",
+          "type": "function"
+        }
+      ]
+    },
+    "properties": [
+      "__destroy_into_raw",
+      "__wbg_ptr",
+      "constructor",
+      "export_config",
+      "free",
+      "get_backend",
+      "get_detail",
+      "get_multipass",
+      "get_stroke_width",
+      "get_thread_count",
+      "import_config",
+      "set_adaptive_sizing",
+      "set_backend",
+      "set_background_tolerance",
+      "set_custom_tremor",
+      "set_custom_variable_weights",
+      "set_detail",
+      "set_diagonal_pass",
+      "set_dot_density",
+      "set_dot_size_range",
+      "set_enable_bezier_fitting",
+      "set_enable_etf_fdog",
+      "set_enable_flow_tracing",
+      "set_hand_drawn_preset",
+      "set_max_processing_time_ms",
+      "set_multipass",
+      "set_noise_filtering",
+      "set_preserve_colors",
+      "set_reverse_pass",
+      "set_stroke_width",
+      "set_thread_count",
+      "use_preset",
+      "validate_config",
+      "vectorize",
+      "vectorize_with_progress"
+    ],
+    "summary": {
+      "totalExpected": 48,
+      "totalFound": 26,
+      "totalMissing": 22,
+      "totalUnexpected": 8,
+      "completeness": 54
+    }
+  },
+  "validation": [
+    {
+      "name": "edge-minimal",
+      "backend": "edge",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T18:16:27.042Z"
+    },
+    {
+      "name": "edge-with-handdrawn",
+      "backend": "edge",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T18:16:27.042Z"
+    },
+    {
+      "name": "centerline-minimal",
+      "backend": "centerline",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T18:16:27.043Z"
+    },
+    {
+      "name": "dots-minimal",
+      "backend": "dots",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T18:16:27.044Z"
+    },
+    {
+      "name": "superpixel-minimal",
+      "backend": "superpixel",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T18:16:27.045Z"
+    }
+  ],
+  "function_tests": [
+    {
+      "name": "set_detail",
+      "description": "Set detail level",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T18:16:29.451Z"
+    },
+    {
+      "name": "set_stroke_width",
+      "description": "Set stroke width",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T18:16:29.451Z"
+    },
+    {
+      "name": "set_backend",
+      "description": "Set backend type",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T18:16:29.451Z"
+    },
+    {
+      "name": "set_hand_drawn_preset",
+      "description": "Set hand-drawn preset",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T18:16:29.451Z"
+    },
+    {
+      "name": "set_tapering",
+      "description": "Set tapering (should fail)",
+      "status": "missing",
+      "error": "Function does not exist",
+      "timestamp": "2025-08-15T18:16:29.451Z"
+    },
+    {
+      "name": "set_custom_variable_weights",
+      "description": "Set variable weights",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T18:16:29.451Z"
+    },
+    {
+      "name": "set_custom_tremor",
+      "description": "Set tremor strength",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T18:16:29.452Z"
+    },
+    {
+      "name": "validate_config",
+      "description": "Validate configuration",
+      "status": "failed",
+      "error": "Configuration validation failed: Validation failed: Hand-drawn preset must be specified when using custom tremor or variable weights",
+      "timestamp": "2025-08-15T18:16:29.452Z"
+    },
+    {
+      "name": "export_config",
+      "description": "Export configuration",
+      "status": "failed",
+      "error": "Config build failed: Validation failed: Hand-drawn preset must be specified when using custom tremor or variable weights",
+      "timestamp": "2025-08-15T18:16:29.452Z"
+    }
+  ],
+  "store_state": {
+    "wasmLoaded": true,
+    "threadsInitialized": false,
+    "capabilities": {
+      "threading_supported": false,
+      "shared_array_buffer_available": true,
+      "cross_origin_isolated": true,
+      "hardware_concurrency": 12,
+      "missing_requirements": [],
+      "recommendations": []
+    },
+    "config": {
+      "backend": "edge",
+      "detail": 0.4,
+      "stroke_width": 1,
+      "noise_filtering": true,
+      "multipass": true,
+      "reverse_pass": false,
+      "diagonal_pass": false,
+      "enable_etf_fdog": false,
+      "enable_flow_tracing": false,
+      "enable_bezier_fitting": false,
+      "hand_drawn_preset": "medium",
+      "variable_weights": 0.3,
+      "tremor_strength": 0.2,
+      "tapering": 0.5,
+      "max_processing_time_ms": 30000
+    }
+  },
+  "recommendations": [
+    "Centerline backend unusable: 6 functions missing",
+    "Superpixel backend unusable: 7 functions missing",
+    "Consider implementing missing optional functions for better feature coverage"
+  ]
+}

@@ -1,0 +1,340 @@
+{
+  "timestamp": "2025-08-15T17:17:38.580Z",
+  "totalConfigurations": 70,
+  "configurationsByBackend": {
+    "edge": 20,
+    "centerline": 17,
+    "superpixel": 15,
+    "dots": 18
+  },
+  "expectedFunctions": [
+    {
+      "name": "set_detail",
+      "backend": "all",
+      "required": true,
+      "type": "float",
+      "range": "0.0-1.0"
+    },
+    {
+      "name": "set_stroke_width",
+      "backend": "all",
+      "required": true,
+      "type": "float",
+      "range": "0.1-10.0"
+    },
+    {
+      "name": "set_noise_filtering",
+      "backend": "all",
+      "required": true,
+      "type": "bool"
+    },
+    {
+      "name": "set_backend",
+      "backend": "all",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "name": "set_hand_drawn_preset",
+      "backend": "all",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "name": "set_custom_variable_weights",
+      "backend": "edge,centerline,superpixel",
+      "required": false,
+      "type": "float",
+      "range": "0.0-1.0"
+    },
+    {
+      "name": "set_custom_tremor",
+      "backend": "edge,centerline,superpixel",
+      "required": false,
+      "type": "float",
+      "range": "0.0-0.5"
+    },
+    {
+      "name": "set_tapering",
+      "backend": "edge,centerline,superpixel",
+      "required": false,
+      "type": "float",
+      "range": "0.0-1.0"
+    },
+    {
+      "name": "set_multipass",
+      "backend": "edge",
+      "required": true,
+      "type": "bool"
+    },
+    {
+      "name": "set_reverse_pass",
+      "backend": "edge",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_diagonal_pass",
+      "backend": "edge",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_enable_etf_fdog",
+      "backend": "edge",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_enable_flow_tracing",
+      "backend": "edge",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_enable_bezier_fitting",
+      "backend": "edge",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_enable_adaptive_threshold",
+      "backend": "centerline",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_window_size",
+      "backend": "centerline",
+      "required": false,
+      "type": "int",
+      "range": "15-50"
+    },
+    {
+      "name": "set_sensitivity_k",
+      "backend": "centerline",
+      "required": false,
+      "type": "float",
+      "range": "0.1-1.0"
+    },
+    {
+      "name": "set_min_branch_length",
+      "backend": "centerline",
+      "required": false,
+      "type": "int",
+      "range": "4-24"
+    },
+    {
+      "name": "set_enable_width_modulation",
+      "backend": "centerline",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_douglas_peucker_epsilon",
+      "backend": "centerline",
+      "required": false,
+      "type": "float",
+      "range": "0.5-3.0"
+    },
+    {
+      "name": "set_num_superpixels",
+      "backend": "superpixel",
+      "required": false,
+      "type": "int",
+      "range": "20-1000"
+    },
+    {
+      "name": "set_compactness",
+      "backend": "superpixel",
+      "required": false,
+      "type": "float",
+      "range": "1-50"
+    },
+    {
+      "name": "set_slic_iterations",
+      "backend": "superpixel",
+      "required": false,
+      "type": "int",
+      "range": "5-15"
+    },
+    {
+      "name": "set_fill_regions",
+      "backend": "superpixel",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_stroke_regions",
+      "backend": "superpixel",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_simplify_boundaries",
+      "backend": "superpixel",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_boundary_epsilon",
+      "backend": "superpixel",
+      "required": false,
+      "type": "float",
+      "range": "0.5-3.0"
+    },
+    {
+      "name": "set_dot_density",
+      "backend": "dots",
+      "required": false,
+      "type": "float",
+      "range": "0.0-1.0"
+    },
+    {
+      "name": "set_dot_size_range",
+      "backend": "dots",
+      "required": false,
+      "type": "function",
+      "params": [
+        "min_radius",
+        "max_radius"
+      ]
+    },
+    {
+      "name": "set_preserve_colors",
+      "backend": "dots",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_adaptive_sizing",
+      "backend": "dots",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_background_tolerance",
+      "backend": "dots",
+      "required": false,
+      "type": "float",
+      "range": "0.0-1.0"
+    },
+    {
+      "name": "set_poisson_disk_sampling",
+      "backend": "dots",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_gradient_based_sizing",
+      "backend": "dots",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_svg_precision",
+      "backend": "all",
+      "required": false,
+      "type": "int",
+      "range": "0-4"
+    },
+    {
+      "name": "set_optimize_svg",
+      "backend": "all",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_include_metadata",
+      "backend": "all",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "name": "set_max_processing_time_ms",
+      "backend": "all",
+      "required": false,
+      "type": "bigint"
+    },
+    {
+      "name": "set_thread_count",
+      "backend": "all",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "name": "set_max_image_size",
+      "backend": "all",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "name": "vectorize",
+      "backend": "all",
+      "required": true,
+      "type": "function",
+      "params": [
+        "ImageData"
+      ]
+    },
+    {
+      "name": "vectorize_with_progress",
+      "backend": "all",
+      "required": false,
+      "type": "function",
+      "params": [
+        "ImageData",
+        "callback"
+      ]
+    },
+    {
+      "name": "validate_config",
+      "backend": "all",
+      "required": false,
+      "type": "function"
+    },
+    {
+      "name": "export_config",
+      "backend": "all",
+      "required": false,
+      "type": "function"
+    },
+    {
+      "name": "import_config",
+      "backend": "all",
+      "required": false,
+      "type": "function",
+      "params": [
+        "string"
+      ]
+    },
+    {
+      "name": "use_preset",
+      "backend": "all",
+      "required": false,
+      "type": "function",
+      "params": [
+        "string"
+      ]
+    },
+    {
+      "name": "abort_processing",
+      "backend": "all",
+      "required": false,
+      "type": "function"
+    },
+    {
+      "name": "cleanup",
+      "backend": "all",
+      "required": false,
+      "type": "function"
+    }
+  ],
+  "instructions": [
+    "1. Open browser-test-suite.html in a web browser",
+    "2. Open the converter application in another tab",
+    "3. Wait for WASM initialization",
+    "4. Return to test suite and click \"Run All Tests\"",
+    "5. Download the results for analysis"
+  ]
+}

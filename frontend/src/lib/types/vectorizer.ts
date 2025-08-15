@@ -52,10 +52,8 @@ export interface VectorizerConfig {
 
 	// Hand-drawn aesthetics
 	hand_drawn_preset: HandDrawnPreset;
-	hand_drawn_style?: boolean; // Legacy compatibility for hand-drawn style toggle
 	variable_weights: number; // 0.0-1.0
 	tremor_strength: number; // 0.0-0.5
-	tremor_effects?: boolean; // Legacy compatibility for tremor effects toggle
 	tapering: number; // 0.0-1.0
 	pressure_variation?: number; // 0.0-1.0
 	base_width_multiplier?: number; // 0.5-2.0
@@ -163,14 +161,18 @@ export interface VectorizerState {
 	// Current operation
 	current_progress?: ProcessingProgress;
 	last_result?: ProcessingResult;
+	batch_results?: ProcessingResult[]; // For multi-image processing
 
 	// Configuration
 	config: VectorizerConfig;
 	capabilities?: WasmCapabilityReport;
 
-	// Input image
-	input_image?: ImageData;
-	input_file?: File;
+	// Input images - support both single and multi-image workflows
+	input_image?: ImageData; // Legacy single image support
+	input_file?: File; // Legacy single file support
+	input_images?: ImageData[]; // Multi-image support
+	input_files?: File[]; // Multi-file support
+	current_image_index?: number; // Active image for preview/processing
 }
 
 // Web Worker message types
@@ -229,7 +231,7 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	diagonal_pass: false,
 	enable_etf_fdog: false,
 	enable_flow_tracing: false,
-	enable_bezier_fitting: true,
+	enable_bezier_fitting: false, // Disabled by default to avoid flow_tracing dependency
 	hand_drawn_preset: 'medium',
 	variable_weights: 0.3,
 	tremor_strength: 0.2,
@@ -240,47 +242,94 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 // Preset configurations
 export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>> = {
 	sketch: {
+		// Edge backend - perfect for sketch-like line art
 		backend: 'edge',
 		detail: 0.4,
+		stroke_width: 1.2,
 		hand_drawn_preset: 'medium',
 		multipass: true,
+		noise_filtering: true,
 		variable_weights: 0.4,
 		tremor_strength: 0.3,
-		tapering: 0.6
+		tapering: 0.6,
+		// Enable smooth curves for natural sketch appearance
+		enable_flow_tracing: true,
+		enable_bezier_fitting: true,
+		reverse_pass: false,
+		diagonal_pass: false
 	},
 	technical: {
+		// Centerline backend - precise skeleton extraction
 		backend: 'centerline',
 		detail: 0.3,
+		stroke_width: 0.8,
 		hand_drawn_preset: 'none',
-		enable_adaptive_threshold: true,
+		multipass: false,
+		noise_filtering: true,
 		variable_weights: 0.0,
 		tremor_strength: 0.0,
-		tapering: 0.0
+		tapering: 0.0,
+		// Centerline-specific settings for precision
+		enable_adaptive_threshold: true,
+		window_size: 25,
+		sensitivity_k: 0.4,
+		min_branch_length: 8,
+		enable_width_modulation: false,
+		douglas_peucker_epsilon: 1.0
 	},
 	artistic: {
+		// Dots backend - stippling and pointillism
 		backend: 'dots',
+		detail: 0.3, // Less detail for cleaner stippling
+		hand_drawn_preset: 'none', // Hand-drawn effects don't apply to dots
+		variable_weights: 0.0,
+		tremor_strength: 0.0,
+		tapering: 0.0,
+		// Dots-specific settings
 		dot_density_threshold: 0.15,
 		preserve_colors: true,
 		adaptive_sizing: true,
 		min_radius: 0.5,
-		max_radius: 3.0
+		max_radius: 3.0,
+		background_tolerance: 0.1,
+		poisson_disk_sampling: true,
+		gradient_based_sizing: true
 	},
 	poster: {
+		// Superpixel backend - bold regions and clean shapes
 		backend: 'superpixel',
+		detail: 0.2, // Low detail for clean regions
+		stroke_width: 1.5,
+		hand_drawn_preset: 'subtle', // Slight artistic touch for style
+		variable_weights: 0.1,
+		tremor_strength: 0.0,
+		tapering: 0.2,
+		// Superpixel-specific settings
 		num_superpixels: 150,
-		fill_regions: true,
 		compactness: 20,
-		stroke_regions: true
+		slic_iterations: 10,
+		fill_regions: true,
+		stroke_regions: true,
+		simplify_boundaries: true,
+		boundary_epsilon: 1.0
 	},
 	comic: {
+		// Edge backend - high-quality comic book style
 		backend: 'edge',
 		detail: 0.5,
+		stroke_width: 1.3,
 		hand_drawn_preset: 'strong',
+		multipass: true,
+		noise_filtering: true,
 		reverse_pass: true,
 		diagonal_pass: true,
 		variable_weights: 0.6,
 		tremor_strength: 0.4,
-		tapering: 0.7
+		tapering: 0.7,
+		// Advanced edge features for complex artwork
+		enable_flow_tracing: true,
+		enable_bezier_fitting: true,
+		enable_etf_fdog: true
 	}
 };
 
