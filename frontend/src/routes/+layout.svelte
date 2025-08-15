@@ -4,11 +4,15 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import Button from '$lib/components/ui/button.svelte';
+	import { inject } from '@vercel/analytics';
 
 	let { children } = $props();
 
 	onMount(() => {
 		if (browser) {
+			// Initialize Vercel Analytics
+			inject();
+			
 			// Set initial theme based on system preference
 			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 			const savedTheme = localStorage.getItem('theme');
