@@ -14,10 +14,8 @@ pub enum ThreadPoolState {
     /// Threading is supported but not initialized
     Supported,
     /// Thread pool is initialized and ready
-    #[allow(dead_code)]
     Initialized,
     /// Thread pool initialization failed
-    #[allow(dead_code)]
     Failed,
 }
 

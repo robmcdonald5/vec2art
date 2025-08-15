@@ -9,8 +9,6 @@ use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant as StdInstant;
 
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
 
 /// Cross-platform time measurement abstraction
 #[derive(Debug, Clone, Copy)]

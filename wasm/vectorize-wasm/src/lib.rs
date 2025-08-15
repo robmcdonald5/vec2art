@@ -41,11 +41,7 @@ static THREADING_STATE: LazyLock<Mutex<ThreadingState>> = LazyLock::new(|| {
     Mutex::new(ThreadingState {
         mode: PerformanceMode::Unknown,
         fallback_reason: None,
-        retry_count: 0,
-        last_error: None,
-        auto_fallback_enabled: true,
-        forced_single_threaded: false,
-        performance_metrics: PerformanceMetrics::default(),
+        last_init_time_ms: None,
     })
 });
 
@@ -63,32 +59,9 @@ pub enum PerformanceMode {
 struct ThreadingState {
     mode: PerformanceMode,
     fallback_reason: Option<String>,
-    #[allow(dead_code)]
-    retry_count: u32,
-    #[allow(dead_code)]
-    last_error: Option<String>,
-    #[allow(dead_code)]
-    auto_fallback_enabled: bool,
-    #[allow(dead_code)]
-    forced_single_threaded: bool,
-    performance_metrics: PerformanceMetrics,
+    last_init_time_ms: Option<f64>,
 }
 
-/// Performance metrics tracking
-#[derive(Debug, Clone, Default)]
-struct PerformanceMetrics {
-    #[allow(dead_code)]
-    fallback_count: u32,
-    #[allow(dead_code)]
-    retry_attempts: u32,
-    #[allow(dead_code)]
-    successful_initializations: u32,
-    #[allow(dead_code)]
-    failed_initializations: u32,
-    last_init_time_ms: Option<f64>,
-    #[allow(dead_code)]
-    avg_processing_time_ms: f64,
-}
 
 /// Initialize the wasm module with basic setup
 #[wasm_bindgen(start)]
@@ -180,43 +153,10 @@ fn update_threading_state(mode: PerformanceMode, reason: Option<String>, init_ti
     if let Ok(mut state) = THREADING_STATE.lock() {
         state.mode = mode;
         state.fallback_reason = reason;
-        if let Some(time) = init_time {
-            state.performance_metrics.last_init_time_ms = Some(time);
-        }
+        state.last_init_time_ms = init_time;
     }
 }
 
-/// Increment fallback count in metrics
-#[allow(dead_code)]
-fn increment_fallback_count() {
-    if let Ok(mut state) = THREADING_STATE.lock() {
-        state.performance_metrics.fallback_count += 1;
-    }
-}
-
-/// Increment retry attempts in metrics
-#[allow(dead_code)]
-fn increment_retry_attempts(count: u32) {
-    if let Ok(mut state) = THREADING_STATE.lock() {
-        state.performance_metrics.retry_attempts += count;
-    }
-}
-
-/// Increment successful initializations in metrics
-#[allow(dead_code)]
-fn increment_successful_initializations() {
-    if let Ok(mut state) = THREADING_STATE.lock() {
-        state.performance_metrics.successful_initializations += 1;
-    }
-}
-
-/// Increment failed initializations in metrics
-#[allow(dead_code)]
-fn increment_failed_initializations() {
-    if let Ok(mut state) = THREADING_STATE.lock() {
-        state.performance_metrics.failed_initializations += 1;
-    }
-}
 
 /// Available presets for JavaScript interaction
 #[wasm_bindgen]

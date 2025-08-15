@@ -12,11 +12,6 @@ use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
-#[cfg(target_arch = "wasm32")]
-use web_sys::Performance;
-
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
 
 /// Cross-platform time measurement abstraction
 #[derive(Debug, Clone, Copy)]

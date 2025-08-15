@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # Core vectorization library with conditional parallel features
-vectorize-core = { path = "../vectorize-core", default-features = false, features = ["wasm-bindgen", "web-sys"] }
+vectorize-core = { path = "../vectorize-core", default-features = false, features = ["wasm", "single-threaded"] }
 
 # Multi-threading support for WASM
 # Using RReverser fork since GoogleChromeLabs archived their version in July 2024
