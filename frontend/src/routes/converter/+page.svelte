@@ -4,7 +4,15 @@
 	import FileDropzone from '$lib/components/ui/file-dropzone.svelte';
 	import ProgressBar from '$lib/components/ui/progress-bar.svelte';
 	import SmartPerformanceSelector from '$lib/components/ui/smart-performance-selector.svelte';
-	import { Upload, Settings, Download, Image, AlertCircle, CheckCircle, Loader2 } from 'lucide-svelte';
+	import {
+		Upload,
+		Settings,
+		Download,
+		Image,
+		AlertCircle,
+		CheckCircle,
+		Loader2
+	} from 'lucide-svelte';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte';
 	import ErrorBoundary from '$lib/components/ui/error-boundary.svelte';
 	import type { VectorizerBackend, VectorizerPreset } from '$lib/types/vectorizer';
@@ -12,14 +20,33 @@
 
 	// Reactive state from store
 	let store = vectorizerStore;
-	
+
+	// Accessibility state
+	let announceText = $state<string>('');
+	let processingAnnouncement = $state<string>('');
+
+	// Announce processing status changes to screen readers
+	function announceProcessingStatus(status: string) {
+		processingAnnouncement = status;
+		setTimeout(() => {
+			processingAnnouncement = '';
+		}, 1000);
+	}
+
+	function announceToScreenReader(message: string) {
+		announceText = message;
+		setTimeout(() => {
+			announceText = '';
+		}, 1000);
+	}
+
 	let selectedPreset = $state<VectorizerPreset | 'custom'>('sketch');
 	let previewSvgUrl = $state<string | null>(null);
 
 	// Smart initialization state
 	let isInitializing = $state(false);
 	let selectedPerformanceMode = $state<string>('balanced');
-	
+
 	// Initialize WASM without threads (lazy loading)
 	onMount(async () => {
 		try {
@@ -30,23 +57,27 @@
 			console.error('Failed to load WASM module:', error);
 		}
 	});
-	
+
 	// Handle smart performance selection
 	async function handlePerformanceSelection(threadCount: number, mode: string) {
 		isInitializing = true;
 		selectedPerformanceMode = mode;
-		
+		announceProcessingStatus(`Initializing ${mode} mode with ${threadCount} threads`);
+
 		try {
 			console.log(`Initializing with ${threadCount} threads in ${mode} mode`);
 			const success = await store.initializeThreads(threadCount);
-			
+
 			if (!success) {
 				console.warn('Thread pool initialization failed, will use single-threaded mode');
+				announceProcessingStatus('Initialization failed, using single-threaded mode');
 			} else {
 				console.log(`Successfully initialized ${threadCount} threads`);
+				announceProcessingStatus(`Successfully initialized ${threadCount} threads in ${mode} mode`);
 			}
 		} catch (error) {
 			console.error('Failed to initialize thread pool:', error);
+			announceProcessingStatus('Thread initialization failed');
 		} finally {
 			isInitializing = false;
 		}
@@ -55,8 +86,10 @@
 	function handleFileSelect(file: File | null) {
 		if (file) {
 			store.setInputFile(file);
+			announceToScreenReader(`File selected: ${file.name}`);
 		} else {
 			store.clearInput();
+			announceToScreenReader('File removed');
 		}
 		// Clear previous result when new file is selected
 		if (previewSvgUrl) {
@@ -68,12 +101,16 @@
 	function handleBackendChange(event: Event) {
 		const target = event.target as HTMLInputElement;
 		store.updateConfig({ backend: target.value as VectorizerBackend });
+		announceToScreenReader(`Algorithm changed to ${target.value.replace('_', ' ')}`);
 	}
 
 	function handlePresetChange(preset: VectorizerPreset | 'custom') {
 		selectedPreset = preset;
 		if (preset !== 'custom') {
 			store.usePreset(preset);
+			announceToScreenReader(`Preset changed to ${preset.replace('_', ' ')}`);
+		} else {
+			announceToScreenReader('Custom settings mode enabled');
 		}
 	}
 
@@ -105,19 +142,22 @@
 	}
 
 	async function handleConvert() {
+		announceProcessingStatus('Starting image conversion');
 		try {
 			const result = await store.processImage();
-			
+
 			// Create blob URL for preview
 			if (previewSvgUrl) {
 				URL.revokeObjectURL(previewSvgUrl);
 			}
 			const blob = new Blob([result.svg], { type: 'image/svg+xml' });
 			previewSvgUrl = URL.createObjectURL(blob);
-			
+
+			announceProcessingStatus('Conversion completed successfully');
 		} catch (error) {
 			// Error is already handled by the store
 			console.error('Conversion failed:', error);
+			announceProcessingStatus('Conversion failed');
 		}
 	}
 
@@ -139,7 +179,7 @@
 
 	function handleDownload() {
 		if (!store.lastResult) return;
-		
+
 		const blob = new Blob([store.lastResult.svg], { type: 'image/svg+xml' });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
@@ -162,43 +202,63 @@
 	});
 
 	// Need threads initialized before we can convert
-	const canConvert = $derived(store.inputImage && store.isConfigValid() && !store.isProcessing && store.threadsInitialized);
+	const canConvert = $derived(
+		store.inputImage && store.isConfigValid() && !store.isProcessing && store.threadsInitialized
+	);
 	const canDownload = $derived(store.lastResult && !store.isProcessing);
 	const stats = $derived(store.getStats());
 </script>
 
 <div class="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 lg:px-8">
+	<!-- Live regions for screen reader announcements -->
+	<div aria-live="polite" aria-atomic="true" class="sr-only">
+		{announceText}
+	</div>
+	<div aria-live="assertive" aria-atomic="true" class="sr-only">
+		{processingAnnouncement}
+	</div>
+
 	<!-- Header -->
-	<div class="mb-8">
-		<h1 class="text-3xl font-bold bg-gradient-to-r from-orange-800 to-red-700 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">Image to SVG Converter</h1>
+	<header class="mb-8">
+		<h1
+			class="bg-gradient-to-r from-orange-800 to-red-700 bg-clip-text text-3xl font-bold text-transparent dark:from-purple-400 dark:to-blue-400"
+		>
+			Image to SVG Converter
+		</h1>
 		<p class="text-muted-foreground mt-2">
 			Transform any raster image into expressive line art SVGs
 		</p>
-		
+
 		<!-- Initialization Status -->
 		{#if !store.wasmLoaded}
-			<div class="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-				<Loader2 class="h-4 w-4 animate-spin" />
+			<div
+				class="text-muted-foreground mt-4 flex items-center gap-2 text-sm"
+				role="status"
+				aria-label="Loading converter module"
+			>
+				<Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
 				Loading converter module...
 			</div>
 		{:else if !store.threadsInitialized}
 			<!-- Smart Performance Selector -->
-			<div class="mt-4">
-				<SmartPerformanceSelector 
+			<section class="mt-4" aria-labelledby="performance-selector-heading">
+				<h2 id="performance-selector-heading" class="sr-only">Performance Settings</h2>
+				<SmartPerformanceSelector
 					onSelect={handlePerformanceSelection}
-					isInitializing={isInitializing}
+					{isInitializing}
 					disabled={false}
 				/>
-			</div>
+			</section>
 		{:else if store.capabilities}
-			<div class="mt-4 flex items-center gap-2 text-sm">
+			<div class="mt-4 flex items-center gap-2 text-sm" role="status" aria-label="Converter status">
 				{#if store.capabilities.threading_supported}
-					<CheckCircle class="h-4 w-4 text-green-500" />
+					<CheckCircle class="h-4 w-4 text-green-500" aria-hidden="true" />
 					<span class="text-green-700 dark:text-green-400">
-						{selectedPerformanceMode.charAt(0).toUpperCase() + selectedPerformanceMode.slice(1)} mode active ({store.requestedThreadCount || store.capabilities.hardware_concurrency} threads)
+						{selectedPerformanceMode.charAt(0).toUpperCase() + selectedPerformanceMode.slice(1)} mode
+						active ({store.requestedThreadCount || store.capabilities.hardware_concurrency} threads)
 					</span>
 				{:else}
-					<AlertCircle class="h-4 w-4 text-yellow-500" />
+					<AlertCircle class="h-4 w-4 text-yellow-500" aria-hidden="true" />
 					<span class="text-yellow-700 dark:text-yellow-400">Single-threaded mode active</span>
 				{/if}
 			</div>
@@ -217,13 +277,15 @@
 					onDismiss={() => store.clearError()}
 					variant="error"
 				/>
-				
+
 				<!-- Recovery Suggestions -->
 				{#if store.getRecoverySuggestions().length > 0}
 					{@const suggestions = store.getRecoverySuggestions()}
-					<div class="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
-						<h4 class="font-medium text-blue-700 dark:text-blue-400 mb-2">Suggestions:</h4>
-						<ul class="text-sm text-blue-600 dark:text-blue-300 space-y-1">
+					<div
+						class="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950"
+					>
+						<h4 class="mb-2 font-medium text-blue-700 dark:text-blue-400">Suggestions:</h4>
+						<ul class="space-y-1 text-sm text-blue-600 dark:text-blue-300">
 							{#each suggestions as suggestion}
 								<li>• {suggestion}</li>
 							{/each}
@@ -233,7 +295,7 @@
 								variant="outline"
 								size="sm"
 								onclick={handleResetAll}
-								class="text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-600"
+								class="border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-400"
 							>
 								Reset All
 							</Button>
@@ -241,7 +303,7 @@
 								variant="outline"
 								size="sm"
 								onclick={() => store.resetConfig()}
-								class="text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-600"
+								class="border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-400"
 							>
 								Reset Settings
 							</Button>
@@ -250,44 +312,56 @@
 				{/if}
 			</div>
 		{/if}
-	</div>
+	</header>
 
 	<!-- Main Converter Interface -->
-	<div class="grid gap-8 lg:grid-cols-3">
+	<main class="grid gap-8 lg:grid-cols-3">
 		<!-- Upload and Preview Area -->
-		<div class="lg:col-span-2">
+		<section class="lg:col-span-2" aria-labelledby="upload-preview-heading">
+			<h2 id="upload-preview-heading" class="sr-only">Upload and Preview</h2>
+
 			<!-- Upload Area -->
-			<FileDropzone 
+			<FileDropzone
 				onFileSelect={handleFileSelect}
 				currentFile={store.inputFile}
 				disabled={store.isProcessing}
 			/>
 
 			<!-- Preview Area -->
-			<div class="mt-6 rounded-lg border">
-				<div class="border-b p-4">
+			<section class="mt-6 rounded-lg border" aria-labelledby="preview-heading">
+				<header class="border-b p-4">
 					<div class="flex items-center justify-between">
-						<h3 class="font-semibold">Preview</h3>
+						<h3 id="preview-heading" class="font-semibold">Preview</h3>
 						{#if store.inputImage}
-							<span class="text-sm text-muted-foreground">
+							<span class="text-muted-foreground text-sm" aria-label="Image dimensions">
 								{store.inputImage.width}×{store.inputImage.height}
 							</span>
 						{/if}
 					</div>
-				</div>
-				<div class="aspect-video bg-muted/30 flex items-center justify-center p-4">
+				</header>
+				<div
+					class="bg-muted/30 flex aspect-video items-center justify-center p-4"
+					role="img"
+					aria-label="Image preview area"
+				>
 					{#if store.isProcessing && store.currentProgress}
 						<!-- Processing State -->
-						<div class="w-full max-w-md space-y-4 text-center">
-							<Loader2 class="mx-auto h-12 w-12 animate-spin text-primary" />
+						<div
+							class="w-full max-w-md space-y-4 text-center"
+							role="status"
+							aria-live="polite"
+							aria-label="Processing status"
+						>
+							<Loader2 class="text-primary mx-auto h-12 w-12 animate-spin" aria-hidden="true" />
 							<div class="space-y-2">
-								<p class="font-medium">{store.currentProgress.stage}</p>
-								<ProgressBar 
-									value={store.currentProgress.progress} 
-									label="Processing..." 
+								<p class="font-medium" id="processing-stage">{store.currentProgress.stage}</p>
+								<ProgressBar
+									value={store.currentProgress.progress}
+									label="Processing..."
 									showValue={true}
+									id="main-progress"
 								/>
-								<p class="text-sm text-muted-foreground">
+								<p class="text-muted-foreground text-sm" aria-describedby="processing-stage">
 									{Math.round(store.currentProgress.elapsed_ms / 1000)}s elapsed
 									{#if store.currentProgress.estimated_remaining_ms}
 										• ~{Math.round(store.currentProgress.estimated_remaining_ms / 1000)}s remaining
@@ -297,175 +371,223 @@
 						</div>
 					{:else if previewSvgUrl}
 						<!-- Result Preview -->
-						<div class="h-full w-full flex items-center justify-center">
-							<img 
-								src={previewSvgUrl} 
-								alt="Converted SVG" 
+						<div class="flex h-full w-full items-center justify-center">
+							<img
+								src={previewSvgUrl}
+								alt="Converted SVG line art from {store.inputFile?.name || 'uploaded image'}"
 								class="max-h-full max-w-full object-contain"
 							/>
 						</div>
 					{:else if store.inputFile}
 						<!-- Input Image Preview -->
-						<div class="h-full w-full flex items-center justify-center">
-							<img 
-								src={URL.createObjectURL(store.inputFile)} 
-								alt="Input" 
+						<div class="flex h-full w-full items-center justify-center">
+							<img
+								src={URL.createObjectURL(store.inputFile)}
+								alt="Original image: {store.inputFile.name}"
 								class="max-h-full max-w-full object-contain"
 							/>
 						</div>
 					{:else}
 						<!-- Empty State -->
-						<div class="text-center">
-							<Image class="text-muted-foreground mx-auto h-12 w-12" />
-							<p class="text-muted-foreground mt-2 text-sm">
-								Upload an image to see the preview
-							</p>
+						<div class="text-center" role="status">
+							<Image class="text-muted-foreground mx-auto h-12 w-12" aria-hidden="true" />
+							<p class="text-muted-foreground mt-2 text-sm">Upload an image to see the preview</p>
 						</div>
 					{/if}
 				</div>
-			</div>
-		</div>
+			</section>
+		</section>
 
 		<!-- Controls Panel -->
-		<div class="space-y-6">
+		<aside class="space-y-6" aria-labelledby="controls-heading">
+			<h2 id="controls-heading" class="sr-only">Conversion Settings</h2>
+
 			<!-- Preset Selection -->
-			<div class="rounded-lg border p-4">
-				<h3 class="font-semibold mb-3">Style Presets</h3>
-				<div class="grid grid-cols-2 gap-2">
+			<section class="rounded-lg border p-4" aria-labelledby="presets-heading">
+				<h3 id="presets-heading" class="mb-3 font-semibold">Style Presets</h3>
+				<fieldset class="grid grid-cols-2 gap-2">
+					<legend class="sr-only">Choose a style preset</legend>
 					{#each Object.entries(PRESET_DESCRIPTIONS) as [preset, description]}
 						<button
-							class="p-2 text-left text-sm rounded border transition-colors
-								{selectedPreset === preset ? 'border-primary bg-primary/10' : 'border-muted hover:border-primary/50'}"
+							class="rounded border p-2 text-left text-sm transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none
+								{selectedPreset === preset
+								? 'border-primary bg-primary/10'
+								: 'border-muted hover:border-primary/50'}"
 							onclick={() => handlePresetChange(preset as VectorizerPreset)}
 							disabled={store.isProcessing}
+							aria-pressed={selectedPreset === preset}
+							aria-describedby="preset-{preset}-desc"
 						>
 							<div class="font-medium capitalize">{preset.replace('_', ' ')}</div>
+							<div id="preset-{preset}-desc" class="sr-only">{description}</div>
 						</button>
 					{/each}
 					<button
-						class="p-2 text-left text-sm rounded border transition-colors
-							{selectedPreset === 'custom' ? 'border-primary bg-primary/10' : 'border-muted hover:border-primary/50'}"
+						class="rounded border p-2 text-left text-sm transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none
+							{selectedPreset === 'custom'
+							? 'border-primary bg-primary/10'
+							: 'border-muted hover:border-primary/50'}"
 						onclick={() => handlePresetChange('custom')}
 						disabled={store.isProcessing}
+						aria-pressed={selectedPreset === 'custom'}
+						aria-describedby="preset-custom-desc"
 					>
 						<div class="font-medium">Custom</div>
+						<div id="preset-custom-desc" class="sr-only">Create your own custom settings</div>
 					</button>
-				</div>
-			</div>
+				</fieldset>
+			</section>
 
 			<!-- Algorithm Selection -->
-			<div class="rounded-lg border p-4">
-				<h3 class="flex items-center gap-2 font-semibold">
-					<Settings class="h-4 w-4" />
+			<section class="rounded-lg border p-4" aria-labelledby="algorithm-heading">
+				<h3 id="algorithm-heading" class="flex items-center gap-2 font-semibold">
+					<Settings class="h-4 w-4" aria-hidden="true" />
 					Algorithm
 				</h3>
-				<div class="mt-3 space-y-3">
+				<fieldset class="mt-3 space-y-3">
+					<legend class="sr-only">Choose conversion algorithm</legend>
 					{#each Object.entries(BACKEND_DESCRIPTIONS) as [backend, description]}
-						<label class="flex items-start gap-3">
-							<input 
-								type="radio" 
-								name="algorithm" 
+						<label class="flex cursor-pointer items-start gap-3">
+							<input
+								type="radio"
+								name="algorithm"
 								value={backend}
 								checked={store.config.backend === backend}
 								onchange={handleBackendChange}
 								disabled={store.isProcessing}
-								class="text-primary mt-0.5" 
+								class="text-primary mt-0.5 focus:ring-2 focus:ring-blue-500"
+								aria-describedby="backend-{backend}-desc"
 							/>
 							<div class="flex-1">
 								<span class="text-sm font-medium capitalize">{backend.replace('_', ' ')}</span>
-								<p class="text-xs text-muted-foreground mt-1">{description}</p>
+								<p id="backend-{backend}-desc" class="text-muted-foreground mt-1 text-xs">
+									{description}
+								</p>
 							</div>
 						</label>
 					{/each}
-				</div>
-			</div>
+				</fieldset>
+			</section>
 
 			<!-- Quality Settings -->
-			<div class="rounded-lg border p-4">
-				<h3 class="font-semibold">Quality Settings</h3>
+			<section class="rounded-lg border p-4" aria-labelledby="quality-heading">
+				<h3 id="quality-heading" class="font-semibold">Quality Settings</h3>
 				<div class="mt-3 space-y-4">
 					<div>
 						<div class="flex justify-between">
 							<label for="detail-level" class="text-sm font-medium">Detail Level</label>
-							<span class="text-sm text-muted-foreground">{store.config.detail}</span>
+							<span class="text-muted-foreground text-sm" aria-live="polite"
+								>{store.config.detail}</span
+							>
 						</div>
-						<input 
-							id="detail-level" 
-							type="range" 
-							min="1" 
-							max="10" 
+						<input
+							id="detail-level"
+							type="range"
+							min="1"
+							max="10"
 							value={store.config.detail}
 							onchange={handleDetailChange}
+							oninput={() => announceToScreenReader(`Detail level set to ${store.config.detail}`)}
 							disabled={store.isProcessing}
-							class="mt-1 w-full" 
+							class="mt-1 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+							aria-describedby="detail-level-desc"
 						/>
+						<div id="detail-level-desc" class="sr-only">
+							Controls the amount of detail captured. Higher values capture more details but may
+							include noise.
+						</div>
 					</div>
 					<div>
 						<div class="flex justify-between">
 							<label for="smoothness" class="text-sm font-medium">Smoothness</label>
-							<span class="text-sm text-muted-foreground">{Math.round((2.0 - store.config.stroke_width) / 0.15) + 1}</span>
+							<span class="text-muted-foreground text-sm" aria-live="polite"
+								>{Math.round((2.0 - store.config.stroke_width) / 0.15) + 1}</span
+							>
 						</div>
-						<input 
-							id="smoothness" 
-							type="range" 
-							min="1" 
-							max="10" 
+						<input
+							id="smoothness"
+							type="range"
+							min="1"
+							max="10"
 							value={Math.round((2.0 - store.config.stroke_width) / 0.15) + 1}
 							onchange={handleSmoothnessChange}
+							oninput={() =>
+								announceToScreenReader(
+									`Smoothness set to ${Math.round((2.0 - store.config.stroke_width) / 0.15) + 1}`
+								)}
 							disabled={store.isProcessing}
-							class="mt-1 w-full" 
+							class="mt-1 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+							aria-describedby="smoothness-desc"
 						/>
+						<div id="smoothness-desc" class="sr-only">
+							Controls line smoothness. Higher values create smoother, more flowing lines.
+						</div>
 					</div>
 				</div>
-			</div>
+			</section>
 
 			<!-- Artistic Effects -->
-			<div class="rounded-lg border p-4">
-				<h3 class="font-semibold">Artistic Effects</h3>
-				<div class="mt-3 space-y-3">
-					<label class="flex items-center gap-2">
-						<input 
-							type="checkbox" 
+			<section class="rounded-lg border p-4" aria-labelledby="effects-heading">
+				<h3 id="effects-heading" class="font-semibold">Artistic Effects</h3>
+				<fieldset class="mt-3 space-y-3">
+					<legend class="sr-only">Enable artistic effects</legend>
+					<label class="flex cursor-pointer items-center gap-2">
+						<input
+							type="checkbox"
 							checked={store.config.hand_drawn_style}
 							onchange={(e) => handleArtisticEffect('hand_drawn_style', e)}
 							disabled={store.isProcessing}
-							class="text-primary" 
+							class="text-primary focus:ring-2 focus:ring-blue-500"
+							aria-describedby="hand-drawn-desc"
 						/>
 						<span class="text-sm">Hand-drawn style</span>
+						<div id="hand-drawn-desc" class="sr-only">
+							Adds natural hand-drawn characteristics with slight irregularities
+						</div>
 					</label>
-					<label class="flex items-center gap-2">
-						<input 
-							type="checkbox" 
+					<label class="flex cursor-pointer items-center gap-2">
+						<input
+							type="checkbox"
 							checked={store.config.variable_weights}
 							onchange={(e) => handleArtisticEffect('variable_weights', e)}
 							disabled={store.isProcessing}
-							class="text-primary" 
+							class="text-primary focus:ring-2 focus:ring-blue-500"
+							aria-describedby="variable-weights-desc"
 						/>
 						<span class="text-sm">Variable line weights</span>
+						<div id="variable-weights-desc" class="sr-only">
+							Creates lines with varying thickness for more expressive results
+						</div>
 					</label>
-					<label class="flex items-center gap-2">
-						<input 
-							type="checkbox" 
+					<label class="flex cursor-pointer items-center gap-2">
+						<input
+							type="checkbox"
 							checked={store.config.tremor_effects}
 							onchange={(e) => handleArtisticEffect('tremor_effects', e)}
 							disabled={store.isProcessing}
-							class="text-primary" 
+							class="text-primary focus:ring-2 focus:ring-blue-500"
+							aria-describedby="tremor-desc"
 						/>
 						<span class="text-sm">Tremor effects</span>
+						<div id="tremor-desc" class="sr-only">
+							Adds subtle tremor for organic, human-like line quality
+						</div>
 					</label>
-				</div>
-			</div>
+				</fieldset>
+			</section>
 
 			<!-- Action Buttons -->
-			<div class="space-y-3">
-				<Button 
-					class="w-full" 
+			<section class="space-y-3" aria-labelledby="actions-heading">
+				<h3 id="actions-heading" class="sr-only">Actions</h3>
+				<Button
+					class="w-full focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 					size="lg"
 					disabled={!canConvert}
 					onclick={handleConvert}
+					aria-describedby={!canConvert ? 'convert-requirements' : undefined}
 				>
 					{#if store.isProcessing}
-						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+						<Loader2 class="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
 						Processing...
 					{:else if !store.threadsInitialized}
 						Initialize Converter First
@@ -473,39 +595,75 @@
 						Convert to SVG
 					{/if}
 				</Button>
-				<Button 
-					variant="outline" 
-					class="w-full gap-2" 
+				{#if !canConvert}
+					<div id="convert-requirements" class="sr-only">
+						{#if !store.inputImage}
+							Upload an image first.
+						{:else if !store.threadsInitialized}
+							Initialize the converter first.
+						{:else if !store.isConfigValid()}
+							Check your settings configuration.
+						{/if}
+					</div>
+				{/if}
+				<Button
+					variant="outline"
+					class="w-full gap-2 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 					disabled={!canDownload}
 					onclick={handleDownload}
+					aria-describedby={!canDownload ? 'download-requirements' : undefined}
 				>
-					<Download class="h-4 w-4" />
+					<Download class="h-4 w-4" aria-hidden="true" />
 					Download SVG
 				</Button>
-			</div>
+				{#if !canDownload}
+					<div id="download-requirements" class="sr-only">
+						Convert an image first to download the result.
+					</div>
+				{/if}
+			</section>
 
 			<!-- Processing Info -->
-			<div class="rounded-lg border p-4">
-				<h3 class="font-semibold">Processing Info</h3>
-				<div class="text-muted-foreground mt-2 space-y-1 text-xs">
+			<section class="rounded-lg border p-4" aria-labelledby="processing-info-heading">
+				<h3 id="processing-info-heading" class="font-semibold">Processing Info</h3>
+				<div
+					class="text-muted-foreground mt-2 space-y-1 text-xs"
+					role="list"
+					aria-label="Processing statistics"
+				>
 					{#if stats.processing_time}
-						<p>• Processing time: {Math.round(stats.processing_time)}ms</p>
+						<p role="listitem">• Processing time: {Math.round(stats.processing_time)}ms</p>
 					{:else}
-						<p>• Processing time: ~1.5s</p>
+						<p role="listitem">• Processing time: ~1.5s</p>
 					{/if}
 					{#if stats.input_size}
-						<p>• Input size: {stats.input_size}</p>
+						<p role="listitem">• Input size: {stats.input_size}</p>
 					{/if}
 					{#if stats.output_size}
-						<p>• Output size: {stats.output_size}</p>
+						<p role="listitem">• Output size: {stats.output_size}</p>
 					{/if}
 					{#if stats.compression_ratio}
-						<p>• Compression: {(stats.compression_ratio * 100).toFixed(1)}%</p>
+						<p role="listitem">• Compression: {(stats.compression_ratio * 100).toFixed(1)}%</p>
 					{/if}
-					<p>• Output format: SVG</p>
-					<p>• Client-side processing</p>
+					<p role="listitem">• Output format: SVG</p>
+					<p role="listitem">• Client-side processing</p>
 				</div>
-			</div>
-		</div>
-	</div>
+			</section>
+		</aside>
+	</main>
 </div>
+
+<style>
+	/* Screen reader only text */
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+</style>

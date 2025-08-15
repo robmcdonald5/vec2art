@@ -6,602 +6,610 @@
 import { browser } from '$app/environment';
 import { vectorizerService } from '$lib/services/vectorizer-service';
 import type {
-  VectorizerState,
-  VectorizerConfig,
-  VectorizerError,
-  ProcessingResult,
-  ProcessingProgress,
-  WasmCapabilityReport,
-  DEFAULT_CONFIG
+	VectorizerState,
+	VectorizerConfig,
+	VectorizerError,
+	ProcessingResult,
+	ProcessingProgress,
+	WasmCapabilityReport,
+	DEFAULT_CONFIG
 } from '$lib/types/vectorizer';
 import { DEFAULT_CONFIG as defaultConfig } from '$lib/types/vectorizer';
 
 interface InitializationOptions {
-  threadCount?: number;
-  autoInitThreads?: boolean;
+	threadCount?: number;
+	autoInitThreads?: boolean;
 }
 
 class VectorizerStore {
-  // Core state using SvelteKit 5 runes
-  private _state = $state<VectorizerState>({
-    is_processing: false,
-    is_initialized: false,
-    has_error: false,
-    error: undefined,
-    current_progress: undefined,
-    last_result: undefined,
-    config: { ...defaultConfig },
-    capabilities: undefined,
-    input_image: undefined,
-    input_file: undefined
-  });
-  
-  // Track initialization state separately
-  private _initState = $state<{
-    wasmLoaded: boolean;
-    threadsInitialized: boolean;
-    requestedThreadCount: number;
-  }>({
-    wasmLoaded: false,
-    threadsInitialized: false,
-    requestedThreadCount: 0
-  });
+	// Core state using SvelteKit 5 runes
+	private _state = $state<VectorizerState>({
+		is_processing: false,
+		is_initialized: false,
+		has_error: false,
+		error: undefined,
+		current_progress: undefined,
+		last_result: undefined,
+		config: { ...defaultConfig },
+		capabilities: undefined,
+		input_image: undefined,
+		input_file: undefined
+	});
 
-  // Getters for reactive access
-  get state(): VectorizerState {
-    return this._state;
-  }
+	// Track initialization state separately
+	private _initState = $state<{
+		wasmLoaded: boolean;
+		threadsInitialized: boolean;
+		requestedThreadCount: number;
+	}>({
+		wasmLoaded: false,
+		threadsInitialized: false,
+		requestedThreadCount: 0
+	});
 
-  get isProcessing(): boolean {
-    return this._state.is_processing;
-  }
+	// Getters for reactive access
+	get state(): VectorizerState {
+		return this._state;
+	}
 
-  get isInitialized(): boolean {
-    return this._state.is_initialized;
-  }
+	get isProcessing(): boolean {
+		return this._state.is_processing;
+	}
 
-  get hasError(): boolean {
-    return this._state.has_error;
-  }
+	get isInitialized(): boolean {
+		return this._state.is_initialized;
+	}
 
-  get error(): VectorizerError | undefined {
-    return this._state.error;
-  }
+	get hasError(): boolean {
+		return this._state.has_error;
+	}
 
-  get config(): VectorizerConfig {
-    return this._state.config;
-  }
+	get error(): VectorizerError | undefined {
+		return this._state.error;
+	}
 
-  get capabilities(): WasmCapabilityReport | undefined {
-    return this._state.capabilities;
-  }
+	get config(): VectorizerConfig {
+		return this._state.config;
+	}
 
-  get currentProgress(): ProcessingProgress | undefined {
-    return this._state.current_progress;
-  }
+	get capabilities(): WasmCapabilityReport | undefined {
+		return this._state.capabilities;
+	}
 
-  get lastResult(): ProcessingResult | undefined {
-    return this._state.last_result;
-  }
+	get currentProgress(): ProcessingProgress | undefined {
+		return this._state.current_progress;
+	}
 
-  get inputImage(): ImageData | undefined {
-    return this._state.input_image;
-  }
+	get lastResult(): ProcessingResult | undefined {
+		return this._state.last_result;
+	}
 
-  get inputFile(): File | undefined {
-    return this._state.input_file;
-  }
-  
-  get wasmLoaded(): boolean {
-    return this._initState.wasmLoaded;
-  }
-  
-  get threadsInitialized(): boolean {
-    return this._initState.threadsInitialized;
-  }
-  
-  get requestedThreadCount(): number {
-    return this._initState.requestedThreadCount;
-  }
+	get inputImage(): ImageData | undefined {
+		return this._state.input_image;
+	}
 
-  /**
-   * Initialize the vectorizer system with optional thread configuration
-   * Now supports lazy loading - loads WASM without initializing threads by default
-   */
-  async initialize(options?: InitializationOptions): Promise<void> {
-    if (!browser) {
-      return; // No-op in SSR
-    }
+	get inputFile(): File | undefined {
+		return this._state.input_file;
+	}
 
-    if (this._state.is_initialized && this._initState.threadsInitialized) {
-      return; // Fully initialized
-    }
+	get wasmLoaded(): boolean {
+		return this._initState.wasmLoaded;
+	}
 
-    try {
-      this.clearError();
-      
-      // Initialize the service with lazy loading by default
-      await vectorizerService.initialize(options);
-      this._initState.wasmLoaded = true;
-      
-      // Get capabilities using the simple check
-      const caps = await vectorizerService.checkCapabilities();
-      this._state.capabilities = caps;
-      this._state.is_initialized = true;
-      
-      // Track thread initialization state
-      if (options?.autoInitThreads) {
-        this._initState.threadsInitialized = caps.threading_supported;
-        this._initState.requestedThreadCount = options.threadCount || 0;
-      }
+	get threadsInitialized(): boolean {
+		return this._initState.threadsInitialized;
+	}
 
-    } catch (error) {
-      this.setError({
-        type: 'unknown',
-        message: 'Failed to initialize vectorizer',
-        details: error instanceof Error ? error.message : String(error)
-      });
-      throw error;
-    }
-  }
-  
-  /**
-   * Initialize thread pool separately (for lazy loading)
-   */
-  async initializeThreads(threadCount?: number): Promise<boolean> {
-    if (!browser || !this._state.is_initialized) {
-      throw new Error('WASM must be initialized first');
-    }
-    
-    if (this._initState.threadsInitialized) {
-      console.log('Threads already initialized');
-      return true;
-    }
-    
-    try {
-      this.clearError();
-      const success = await vectorizerService.initializeThreadPool(threadCount);
-      
-      if (success) {
-        this._initState.threadsInitialized = true;
-        this._initState.requestedThreadCount = threadCount || 0;
-        
-        // Update capabilities
-        const caps = await vectorizerService.checkCapabilities();
-        this._state.capabilities = caps;
-      }
-      
-      return success;
-    } catch (error) {
-      this.setError({
-        type: 'threading',
-        message: 'Failed to initialize thread pool',
-        details: error instanceof Error ? error.message : String(error)
-      });
-      return false;
-    }
-  }
+	get requestedThreadCount(): number {
+		return this._initState.requestedThreadCount;
+	}
 
-  /**
-   * Update configuration
-   */
-  updateConfig(updates: Partial<VectorizerConfig>): void {
-    this._state.config = { ...this._state.config, ...updates };
-    this.clearError(); // Clear any previous config errors
-  }
+	/**
+	 * Initialize the vectorizer system with optional thread configuration
+	 * Now supports lazy loading - loads WASM without initializing threads by default
+	 */
+	async initialize(options?: InitializationOptions): Promise<void> {
+		if (!browser) {
+			return; // No-op in SSR
+		}
 
-  /**
-   * Reset configuration to defaults
-   */
-  resetConfig(): void {
-    this._state.config = { ...defaultConfig };
-    this.clearError();
-  }
+		if (this._state.is_initialized && this._initState.threadsInitialized) {
+			return; // Fully initialized
+		}
 
-  /**
-   * Use a preset configuration
-   */
-  usePreset(preset: VectorizerConfig['preset']): void {
-    const presetConfigs: Record<NonNullable<VectorizerConfig['preset']>, Partial<VectorizerConfig>> = {
-      sketch: {
-        preset: 'sketch',
-        backend: 'edge',
-        detail: 6,
-        hand_drawn_style: true,
-        tremor_effects: true,
-        variable_weights: true,
-        multipass: true
-      },
-      line_art: {
-        preset: 'line_art',
-        backend: 'edge',
-        detail: 7,
-        hand_drawn_style: false,
-        tremor_effects: false,
-        variable_weights: false,
-        enable_bezier_fitting: true
-      },
-      technical: {
-        preset: 'technical',
-        backend: 'centerline',
-        detail: 8,
-        hand_drawn_style: false,
-        tremor_effects: false,
-        variable_weights: false,
-        stroke_width: 0.8
-      },
-      bold_artistic: {
-        preset: 'bold_artistic',
-        backend: 'edge',
-        detail: 5,
-        hand_drawn_style: true,
-        tremor_effects: true,
-        variable_weights: true,
-        stroke_width: 1.5
-      },
-      dense_stippling: {
-        preset: 'dense_stippling',
-        backend: 'dots',
-        dot_density: 1.5,
-        preserve_colors: true,
-        adaptive_sizing: true
-      },
-      fine_stippling: {
-        preset: 'fine_stippling',
-        backend: 'dots',
-        dot_density: 0.8,
-        dot_size_range: [0.5, 2.0],
-        preserve_colors: false
-      },
-      sparse_dots: {
-        preset: 'sparse_dots',
-        backend: 'dots',
-        dot_density: 0.3,
-        dot_size_range: [1.0, 4.0],
-        adaptive_sizing: false
-      },
-      pointillism: {
-        preset: 'pointillism',
-        backend: 'dots',
-        dot_density: 1.2,
-        preserve_colors: true,
-        adaptive_sizing: true,
-        dot_size_range: [0.8, 3.0]
-      }
-    };
+		try {
+			this.clearError();
 
-    if (preset && presetConfigs[preset]) {
-      this.updateConfig(presetConfigs[preset]);
-    }
-  }
+			// Initialize the service with lazy loading by default
+			await vectorizerService.initialize(options);
+			this._initState.wasmLoaded = true;
 
-  /**
-   * Set input image from File
-   */
-  async setInputFile(file: File): Promise<void> {
-    try {
-      this.clearError();
-      this._state.input_file = file;
+			// Get capabilities using the simple check
+			const caps = await vectorizerService.checkCapabilities();
+			this._state.capabilities = caps;
+			this._state.is_initialized = true;
 
-      // Convert file to ImageData
-      const imageData = await this.fileToImageData(file);
-      this._state.input_image = imageData;
+			// Track thread initialization state
+			if (options?.autoInitThreads) {
+				this._initState.threadsInitialized = caps.threading_supported;
+				this._initState.requestedThreadCount = options.threadCount || 0;
+			}
+		} catch (error) {
+			this.setError({
+				type: 'unknown',
+				message: 'Failed to initialize vectorizer',
+				details: error instanceof Error ? error.message : String(error)
+			});
+			throw error;
+		}
+	}
 
-    } catch (error) {
-      this.setError({
-        type: 'unknown',
-        message: 'Failed to load image file',
-        details: error instanceof Error ? error.message : String(error)
-      });
-      throw error;
-    }
-  }
+	/**
+	 * Initialize thread pool separately (for lazy loading)
+	 */
+	async initializeThreads(threadCount?: number): Promise<boolean> {
+		if (!browser || !this._state.is_initialized) {
+			throw new Error('WASM must be initialized first');
+		}
 
-  /**
-   * Set input image directly from ImageData
-   */
-  setInputImage(imageData: ImageData): void {
-    this._state.input_image = imageData;
-    this._state.input_file = undefined; // Clear file if setting raw ImageData
-    this.clearError();
-  }
+		if (this._initState.threadsInitialized) {
+			console.log('Threads already initialized');
+			return true;
+		}
 
-  /**
-   * Process the current input image
-   */
-  async processImage(): Promise<ProcessingResult> {
-    if (!this._state.is_initialized) {
-      throw new Error('Vectorizer not initialized');
-    }
+		try {
+			this.clearError();
+			const success = await vectorizerService.initializeThreadPool(threadCount);
 
-    if (!this._state.input_image) {
-      throw new Error('No input image set');
-    }
+			if (success) {
+				this._initState.threadsInitialized = true;
+				this._initState.requestedThreadCount = threadCount || 0;
 
-    try {
-      this._state.is_processing = true;
-      this._state.current_progress = undefined;
-      this.clearError();
+				// Update capabilities
+				const caps = await vectorizerService.checkCapabilities();
+				this._state.capabilities = caps;
+			}
 
-      const result = await vectorizerService.processImage(
-        this._state.input_image,
-        this._state.config,
-        (progress) => {
-          this._state.current_progress = progress;
-        }
-      );
+			return success;
+		} catch (error) {
+			this.setError({
+				type: 'threading',
+				message: 'Failed to initialize thread pool',
+				details: error instanceof Error ? error.message : String(error)
+			});
+			return false;
+		}
+	}
 
-      this._state.last_result = result;
-      return result;
+	/**
+	 * Update configuration
+	 */
+	updateConfig(updates: Partial<VectorizerConfig>): void {
+		this._state.config = { ...this._state.config, ...updates };
+		this.clearError(); // Clear any previous config errors
+	}
 
-    } catch (error) {
-      const processingError = error as VectorizerError;
-      this.setError(processingError);
-      throw error;
-    } finally {
-      this._state.is_processing = false;
-      this._state.current_progress = undefined;
-    }
-  }
+	/**
+	 * Reset configuration to defaults
+	 */
+	resetConfig(): void {
+		this._state.config = { ...defaultConfig };
+		this.clearError();
+	}
 
-  /**
-   * Clear the current input
-   */
-  clearInput(): void {
-    this._state.input_image = undefined;
-    this._state.input_file = undefined;
-    this._state.last_result = undefined;
-    this.clearError();
-  }
+	/**
+	 * Use a preset configuration
+	 */
+	usePreset(preset: VectorizerConfig['preset']): void {
+		const presetConfigs: Record<
+			NonNullable<VectorizerConfig['preset']>,
+			Partial<VectorizerConfig>
+		> = {
+			sketch: {
+				preset: 'sketch',
+				backend: 'edge',
+				detail: 6,
+				hand_drawn_style: true,
+				tremor_effects: true,
+				variable_weights: true,
+				multipass: true
+			},
+			line_art: {
+				preset: 'line_art',
+				backend: 'edge',
+				detail: 7,
+				hand_drawn_style: false,
+				tremor_effects: false,
+				variable_weights: false,
+				enable_bezier_fitting: true
+			},
+			technical: {
+				preset: 'technical',
+				backend: 'centerline',
+				detail: 8,
+				hand_drawn_style: false,
+				tremor_effects: false,
+				variable_weights: false,
+				stroke_width: 0.8
+			},
+			bold_artistic: {
+				preset: 'bold_artistic',
+				backend: 'edge',
+				detail: 5,
+				hand_drawn_style: true,
+				tremor_effects: true,
+				variable_weights: true,
+				stroke_width: 1.5
+			},
+			dense_stippling: {
+				preset: 'dense_stippling',
+				backend: 'dots',
+				dot_density: 1.5,
+				preserve_colors: true,
+				adaptive_sizing: true
+			},
+			fine_stippling: {
+				preset: 'fine_stippling',
+				backend: 'dots',
+				dot_density: 0.8,
+				dot_size_range: [0.5, 2.0],
+				preserve_colors: false
+			},
+			sparse_dots: {
+				preset: 'sparse_dots',
+				backend: 'dots',
+				dot_density: 0.3,
+				dot_size_range: [1.0, 4.0],
+				adaptive_sizing: false
+			},
+			pointillism: {
+				preset: 'pointillism',
+				backend: 'dots',
+				dot_density: 1.2,
+				preserve_colors: true,
+				adaptive_sizing: true,
+				dot_size_range: [0.8, 3.0]
+			}
+		};
 
-  /**
-   * Clear the last result
-   */
-  clearResult(): void {
-    this._state.last_result = undefined;
-  }
+		if (preset && presetConfigs[preset]) {
+			this.updateConfig(presetConfigs[preset]);
+		}
+	}
 
-  /**
-   * Set error state
-   */
-  private setError(error: VectorizerError): void {
-    this._state.error = error;
-    this._state.has_error = true;
-    
-    // Log error for debugging
-    console.error('Vectorizer error:', error);
-    
-    // Auto-clear certain types of errors after a delay
-    if (error.type === 'config') {
-      setTimeout(() => {
-        if (this._state.error === error) {
-          this.clearError();
-        }
-      }, 10000); // Clear config errors after 10 seconds
-    }
-  }
+	/**
+	 * Set input image from File
+	 */
+	async setInputFile(file: File): Promise<void> {
+		try {
+			this.clearError();
+			this._state.input_file = file;
 
-  /**
-   * Clear error state
-   */
-  clearError(): void {
-    this._state.error = undefined;
-    this._state.has_error = false;
-  }
+			// Convert file to ImageData
+			const imageData = await this.fileToImageData(file);
+			this._state.input_image = imageData;
+		} catch (error) {
+			this.setError({
+				type: 'unknown',
+				message: 'Failed to load image file',
+				details: error instanceof Error ? error.message : String(error)
+			});
+			throw error;
+		}
+	}
 
-  /**
-   * Retry the last failed operation
-   */
-  async retryLastOperation(): Promise<void> {
-    if (!this._state.has_error) {
-      return;
-    }
+	/**
+	 * Set input image directly from ImageData
+	 */
+	setInputImage(imageData: ImageData): void {
+		this._state.input_image = imageData;
+		this._state.input_file = undefined; // Clear file if setting raw ImageData
+		this.clearError();
+	}
 
-    this.clearError();
+	/**
+	 * Process the current input image
+	 */
+	async processImage(): Promise<ProcessingResult> {
+		if (!this._state.is_initialized) {
+			throw new Error('Vectorizer not initialized');
+		}
 
-    // Determine what to retry based on current state
-    if (this._state.input_image && !this._state.is_initialized) {
-      // Retry initialization
-      await this.initialize();
-    } else if (this._state.input_image && this._state.is_initialized) {
-      // Retry processing
-      await this.processImage();
-    }
-  }
+		if (!this._state.input_image) {
+			throw new Error('No input image set');
+		}
 
-  /**
-   * Reset the entire state to initial values
-   */
-  reset(): void {
-    this._state.is_processing = false;
-    this._state.current_progress = undefined;
-    this._state.last_result = undefined;
-    this._state.input_image = undefined;
-    this._state.input_file = undefined;
-    this.clearError();
-    this.resetConfig();
-  }
+		try {
+			this._state.is_processing = true;
+			this._state.current_progress = undefined;
+			this.clearError();
 
-  /**
-   * Get user-friendly error message
-   */
-  getErrorMessage(error?: VectorizerError): string {
-    const err = error || this._state.error;
-    if (!err) return '';
+			const result = await vectorizerService.processImage(
+				this._state.input_image,
+				this._state.config,
+				(progress) => {
+					this._state.current_progress = progress;
+				}
+			);
 
-    const baseMessages: Record<VectorizerError['type'], string> = {
-      config: 'Configuration error. Please check your settings and try again.',
-      processing: 'Processing failed. The image might be too complex or corrupted.',
-      memory: 'Not enough memory to process this image. Try a smaller image or reduce quality settings.',
-      threading: 'Multi-threading setup failed. Processing will continue in single-threaded mode.',
-      unknown: 'An unexpected error occurred. Please try again.'
-    };
+			this._state.last_result = result;
+			return result;
+		} catch (error) {
+			const processingError = error as VectorizerError;
+			this.setError(processingError);
+			throw error;
+		} finally {
+			this._state.is_processing = false;
+			this._state.current_progress = undefined;
+		}
+	}
 
-    let message = baseMessages[err.type] || baseMessages.unknown;
+	/**
+	 * Clear the current input
+	 */
+	clearInput(): void {
+		this._state.input_image = undefined;
+		this._state.input_file = undefined;
+		this._state.last_result = undefined;
+		this.clearError();
+	}
 
-    // Add specific guidance based on error details
-    if (err.details) {
-      if (err.details.includes('SharedArrayBuffer')) {
-        message += ' Note: Multi-threading requires HTTPS and specific CORS headers.';
-      } else if (err.details.includes('memory') || err.details.includes('allocation')) {
-        message += ' Try reducing the image size or detail level.';
-      } else if (err.details.includes('timeout')) {
-        message += ' The operation took too long. Try reducing complexity or increasing the timeout.';
-      }
-    }
+	/**
+	 * Clear the last result
+	 */
+	clearResult(): void {
+		this._state.last_result = undefined;
+	}
 
-    return message;
-  }
+	/**
+	 * Set error state
+	 */
+	private setError(error: VectorizerError): void {
+		this._state.error = error;
+		this._state.has_error = true;
 
-  /**
-   * Get recovery suggestions for current error
-   */
-  getRecoverySuggestions(): string[] {
-    if (!this._state.error) return [];
+		// Log error for debugging
+		console.error('Vectorizer error:', error);
 
-    const suggestions: string[] = [];
+		// Auto-clear certain types of errors after a delay
+		if (error.type === 'config') {
+			setTimeout(() => {
+				if (this._state.error === error) {
+					this.clearError();
+				}
+			}, 10000); // Clear config errors after 10 seconds
+		}
+	}
 
-    switch (this._state.error.type) {
-      case 'config':
-        suggestions.push('Reset to default settings');
-        suggestions.push('Try a different algorithm or preset');
-        break;
+	/**
+	 * Clear error state
+	 */
+	clearError(): void {
+		this._state.error = undefined;
+		this._state.has_error = false;
+	}
 
-      case 'processing':
-        suggestions.push('Try a smaller image (reduce resolution)');
-        suggestions.push('Lower the detail level');
-        suggestions.push('Use a simpler algorithm like "centerline"');
-        break;
+	/**
+	 * Retry the last failed operation
+	 */
+	async retryLastOperation(): Promise<void> {
+		if (!this._state.has_error) {
+			return;
+		}
 
-      case 'memory':
-        suggestions.push('Reduce image size before uploading');
-        suggestions.push('Lower quality settings');
-        suggestions.push('Close other browser tabs to free memory');
-        break;
+		this.clearError();
 
-      case 'threading':
-        suggestions.push('Processing will continue in single-threaded mode');
-        suggestions.push('For faster processing, serve over HTTPS with proper CORS headers');
-        break;
+		// Determine what to retry based on current state
+		if (this._state.input_image && !this._state.is_initialized) {
+			// Retry initialization
+			await this.initialize();
+		} else if (this._state.input_image && this._state.is_initialized) {
+			// Retry processing
+			await this.processImage();
+		}
+	}
 
-      case 'unknown':
-        suggestions.push('Refresh the page and try again');
-        suggestions.push('Check browser console for more details');
-        suggestions.push('Try a different image or settings');
-        break;
-    }
+	/**
+	 * Reset the entire state to initial values
+	 */
+	reset(): void {
+		this._state.is_processing = false;
+		this._state.current_progress = undefined;
+		this._state.last_result = undefined;
+		this._state.input_image = undefined;
+		this._state.input_file = undefined;
+		this.clearError();
+		this.resetConfig();
+	}
 
-    return suggestions;
-  }
+	/**
+	 * Get user-friendly error message
+	 */
+	getErrorMessage(error?: VectorizerError): string {
+		const err = error || this._state.error;
+		if (!err) return '';
 
-  /**
-   * Get processing statistics
-   */
-  getStats(): {
-    processing_time?: number;
-    input_size?: string;
-    output_size?: string;
-    compression_ratio?: number;
-  } {
-    if (!this._state.last_result) {
-      return {};
-    }
+		const baseMessages: Record<VectorizerError['type'], string> = {
+			config: 'Configuration error. Please check your settings and try again.',
+			processing: 'Processing failed. The image might be too complex or corrupted.',
+			memory:
+				'Not enough memory to process this image. Try a smaller image or reduce quality settings.',
+			threading: 'Multi-threading setup failed. Processing will continue in single-threaded mode.',
+			unknown: 'An unexpected error occurred. Please try again.'
+		};
 
-    const result = this._state.last_result;
-    const stats: any = {
-      processing_time: result.processing_time_ms
-    };
+		let message = baseMessages[err.type] || baseMessages.unknown;
 
-    if (result.statistics) {
-      const [width, height] = result.statistics.input_dimensions;
-      stats.input_size = `${width}×${height}`;
-      stats.compression_ratio = result.statistics.compression_ratio;
-      
-      // Estimate output size
-      const svgSize = new TextEncoder().encode(result.svg).length;
-      stats.output_size = this.formatFileSize(svgSize);
-    }
+		// Add specific guidance based on error details
+		if (err.details) {
+			if (err.details.includes('SharedArrayBuffer')) {
+				message += ' Note: Multi-threading requires HTTPS and specific CORS headers.';
+			} else if (err.details.includes('memory') || err.details.includes('allocation')) {
+				message += ' Try reducing the image size or detail level.';
+			} else if (err.details.includes('timeout')) {
+				message +=
+					' The operation took too long. Try reducing complexity or increasing the timeout.';
+			}
+		}
 
-    return stats;
-  }
+		return message;
+	}
 
-  /**
-   * Check if current configuration is valid for processing
-   */
-  isConfigValid(): boolean {
-    const config = this._state.config;
-    
-    // Basic validation
-    if (config.detail < 1 || config.detail > 10) return false;
-    if (config.stroke_width < 0.1 || config.stroke_width > 10) return false;
-    
-    // Backend-specific validation
-    if (config.backend === 'dots') {
-      if (config.dot_density !== undefined && (config.dot_density < 0.1 || config.dot_density > 3.0)) {
-        return false;
-      }
-      if (config.background_tolerance !== undefined && (config.background_tolerance < 0 || config.background_tolerance > 1)) {
-        return false;
-      }
-    }
+	/**
+	 * Get recovery suggestions for current error
+	 */
+	getRecoverySuggestions(): string[] {
+		if (!this._state.error) return [];
 
-    return true;
-  }
+		const suggestions: string[] = [];
 
-  /**
-   * Cleanup resources
-   */
-  cleanup(): void {
-    // Note: workerManager was removed as it's not defined
-    // WASM cleanup is handled by the service
-    vectorizerService.cleanup();
-    this._state.is_initialized = false;
-    this._initState.wasmLoaded = false;
-    this._initState.threadsInitialized = false;
-    this.clearInput();
-    this.clearError();
-  }
+		switch (this._state.error.type) {
+			case 'config':
+				suggestions.push('Reset to default settings');
+				suggestions.push('Try a different algorithm or preset');
+				break;
 
-  // Helper methods
-  private async fileToImageData(file: File): Promise<ImageData> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+			case 'processing':
+				suggestions.push('Try a smaller image (reduce resolution)');
+				suggestions.push('Lower the detail level');
+				suggestions.push('Use a simpler algorithm like "centerline"');
+				break;
 
-      if (!ctx) {
-        reject(new Error('Failed to get canvas context'));
-        return;
-      }
+			case 'memory':
+				suggestions.push('Reduce image size before uploading');
+				suggestions.push('Lower quality settings');
+				suggestions.push('Close other browser tabs to free memory');
+				break;
 
-      img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        
-        try {
-          const imageData = ctx.getImageData(0, 0, img.width, img.height);
-          resolve(imageData);
-        } catch (error) {
-          reject(error);
-        }
-      };
+			case 'threading':
+				suggestions.push('Processing will continue in single-threaded mode');
+				suggestions.push('For faster processing, serve over HTTPS with proper CORS headers');
+				break;
 
-      img.onerror = () => {
-        reject(new Error('Failed to load image'));
-      };
+			case 'unknown':
+				suggestions.push('Refresh the page and try again');
+				suggestions.push('Check browser console for more details');
+				suggestions.push('Try a different image or settings');
+				break;
+		}
 
-      img.src = URL.createObjectURL(file);
-    });
-  }
+		return suggestions;
+	}
 
-  private formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  }
+	/**
+	 * Get processing statistics
+	 */
+	getStats(): {
+		processing_time?: number;
+		input_size?: string;
+		output_size?: string;
+		compression_ratio?: number;
+	} {
+		if (!this._state.last_result) {
+			return {};
+		}
+
+		const result = this._state.last_result;
+		const stats: any = {
+			processing_time: result.processing_time_ms
+		};
+
+		if (result.statistics) {
+			const [width, height] = result.statistics.input_dimensions;
+			stats.input_size = `${width}×${height}`;
+			stats.compression_ratio = result.statistics.compression_ratio;
+
+			// Estimate output size
+			const svgSize = new TextEncoder().encode(result.svg).length;
+			stats.output_size = this.formatFileSize(svgSize);
+		}
+
+		return stats;
+	}
+
+	/**
+	 * Check if current configuration is valid for processing
+	 */
+	isConfigValid(): boolean {
+		const config = this._state.config;
+
+		// Basic validation
+		if (config.detail < 1 || config.detail > 10) return false;
+		if (config.stroke_width < 0.1 || config.stroke_width > 10) return false;
+
+		// Backend-specific validation
+		if (config.backend === 'dots') {
+			if (
+				config.dot_density !== undefined &&
+				(config.dot_density < 0.1 || config.dot_density > 3.0)
+			) {
+				return false;
+			}
+			if (
+				config.background_tolerance !== undefined &&
+				(config.background_tolerance < 0 || config.background_tolerance > 1)
+			) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Cleanup resources
+	 */
+	cleanup(): void {
+		// Note: workerManager was removed as it's not defined
+		// WASM cleanup is handled by the service
+		vectorizerService.cleanup();
+		this._state.is_initialized = false;
+		this._initState.wasmLoaded = false;
+		this._initState.threadsInitialized = false;
+		this.clearInput();
+		this.clearError();
+	}
+
+	// Helper methods
+	private async fileToImageData(file: File): Promise<ImageData> {
+		return new Promise((resolve, reject) => {
+			const img = new Image();
+			const canvas = document.createElement('canvas');
+			const ctx = canvas.getContext('2d');
+
+			if (!ctx) {
+				reject(new Error('Failed to get canvas context'));
+				return;
+			}
+
+			img.onload = () => {
+				canvas.width = img.width;
+				canvas.height = img.height;
+				ctx.drawImage(img, 0, 0);
+
+				try {
+					const imageData = ctx.getImageData(0, 0, img.width, img.height);
+					resolve(imageData);
+				} catch (error) {
+					reject(error);
+				}
+			};
+
+			img.onerror = () => {
+				reject(new Error('Failed to load image'));
+			};
+
+			img.src = URL.createObjectURL(file);
+		});
+	}
+
+	private formatFileSize(bytes: number): string {
+		if (bytes === 0) return '0 B';
+		const k = 1024;
+		const sizes = ['B', 'KB', 'MB', 'GB'];
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+		return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+	}
 }
 
 // Export singleton instance
