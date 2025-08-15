@@ -28,47 +28,56 @@
 		}
 	);
 
-	type $$Props = {
+	interface Props {
 		variant?: VariantProps<typeof buttonVariants>['variant'];
 		size?: VariantProps<typeof buttonVariants>['size'];
 		href?: string;
 		class?: string;
 		type?: 'button' | 'submit' | 'reset';
 		disabled?: boolean;
+		onclick?: (event: MouseEvent) => void;
+		onmouseenter?: (event: MouseEvent) => void;
+		onmouseleave?: (event: MouseEvent) => void;
+		children?: any;
 		[key: string]: any;
-	};
+	}
 
-	export let variant: $$Props['variant'] = 'default';
-	export let size: $$Props['size'] = 'default';
-	export let href: $$Props['href'] = undefined;
-	export let type: $$Props['type'] = 'button';
-	export let disabled: $$Props['disabled'] = false;
-
-	let className: string = '';
-	export { className as class };
+	let {
+		variant = 'default',
+		size = 'default',
+		href = undefined,
+		type = 'button',
+		disabled = false,
+		class: className = '',
+		onclick,
+		onmouseenter,
+		onmouseleave,
+		children,
+		...restProps
+	}: Props = $props();
 </script>
 
 {#if href}
 	<a
 		{href}
 		class={cn(buttonVariants({ variant, size }), className)}
-		{...$$restProps}
-		on:click
-		on:mouseenter
-		on:mouseleave
+		{onclick}
+		{onmouseenter}
+		{onmouseleave}
+		{...restProps}
 	>
-		<slot />
+		{@render children?.()}
 	</a>
 {:else}
 	<button
 		{type}
 		{disabled}
 		class={cn(buttonVariants({ variant, size }), className)}
-		{...$$restProps}
-		on:click
-		on:mouseenter
-		on:mouseleave
+		{onclick}
+		{onmouseenter}
+		{onmouseleave}
+		{...restProps}
 	>
-		<slot />
+		{@render children?.()}
 	</button>
 {/if}

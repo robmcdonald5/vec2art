@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	
+
 	interface Props {
 		beforeImage: string;
 		afterImage: string;
@@ -9,7 +9,7 @@
 		startPosition?: number;
 		class?: string;
 	}
-	
+
 	let {
 		beforeImage,
 		afterImage,
@@ -18,37 +18,37 @@
 		startPosition = 50,
 		class: className = ''
 	}: Props = $props();
-	
+
 	let container: HTMLDivElement;
 	let isDragging = $state(false);
 	let sliderPosition = $state(startPosition);
 	let containerRect: DOMRect | null = null;
-	
+
 	function handleStart(e: MouseEvent | TouchEvent) {
 		isDragging = true;
 		containerRect = container.getBoundingClientRect();
 		handleMove(e);
 	}
-	
+
 	function handleMove(e: MouseEvent | TouchEvent) {
 		if (!isDragging || !containerRect) return;
-		
+
 		e.preventDefault();
 		const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
 		const position = ((clientX - containerRect.left) / containerRect.width) * 100;
 		sliderPosition = Math.max(0, Math.min(100, position));
 	}
-	
+
 	function handleEnd() {
 		isDragging = false;
 	}
-	
+
 	onMount(() => {
 		document.addEventListener('mousemove', handleMove as EventListener);
 		document.addEventListener('mouseup', handleEnd);
 		document.addEventListener('touchmove', handleMove as EventListener);
 		document.addEventListener('touchend', handleEnd);
-		
+
 		return () => {
 			document.removeEventListener('mousemove', handleMove as EventListener);
 			document.removeEventListener('mouseup', handleEnd);
@@ -58,38 +58,28 @@
 	});
 </script>
 
-<div 
+<div
 	bind:this={container}
 	class="relative overflow-hidden select-none {className}"
 	role="application"
 	aria-label="Before and after comparison slider"
 >
 	<!-- After Image (Bottom Layer) -->
-	<div class="relative w-full h-full">
-		<img 
-			src={afterImage} 
-			alt={afterAlt}
-			class="w-full h-full object-contain"
-			draggable="false"
-		/>
+	<div class="relative h-full w-full">
+		<img src={afterImage} alt={afterAlt} class="h-full w-full object-contain" draggable="false" />
 	</div>
-	
+
 	<!-- Before Image (Top Layer with Clip) -->
-	<div 
+	<div
 		class="absolute inset-0"
 		style="clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%)"
 	>
-		<img 
-			src={beforeImage} 
-			alt={beforeAlt}
-			class="w-full h-full object-contain"
-			draggable="false"
-		/>
+		<img src={beforeImage} alt={beforeAlt} class="h-full w-full object-contain" draggable="false" />
 	</div>
-	
+
 	<!-- Slider Handle -->
-	<div 
-		class="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize border-l border-r border-gray-400"
+	<div
+		class="absolute top-0 bottom-0 w-1 cursor-ew-resize border-r border-l border-gray-400 bg-white shadow-lg"
 		style="left: {sliderPosition}%"
 		onmousedown={handleStart}
 		ontouchstart={handleStart}
@@ -101,22 +91,26 @@
 		tabindex="0"
 	>
 		<!-- Handle Rectangle and Arrows -->
-		<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-12 bg-white rounded shadow-lg border border-gray-200 flex items-center justify-center">
+		<div
+			class="absolute top-1/2 left-1/2 flex h-12 w-3 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded border border-gray-200 bg-white shadow-lg"
+		>
 			<!-- Left Arrow -->
-			<svg class="absolute -left-3 w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
-				<path d="M8 2L4 6l4 4V2z" stroke="#374151" stroke-width="0.5"/>
+			<svg class="absolute -left-3 h-3 w-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+				<path d="M8 2L4 6l4 4V2z" stroke="#374151" stroke-width="0.5" />
 			</svg>
 			<!-- Right Arrow -->
-			<svg class="absolute -right-3 w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
-				<path d="M4 2l4 4-4 4V2z" stroke="#374151" stroke-width="0.5"/>
+			<svg class="absolute -right-3 h-3 w-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+				<path d="M4 2l4 4-4 4V2z" stroke="#374151" stroke-width="0.5" />
 			</svg>
 		</div>
-		
+
 		<!-- Labels -->
-		<div class="absolute top-4 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+		<div
+			class="absolute top-4 right-2 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white"
+		>
 			Before
 		</div>
-		<div class="absolute top-4 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+		<div class="absolute top-4 left-2 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white">
 			After
 		</div>
 	</div>
