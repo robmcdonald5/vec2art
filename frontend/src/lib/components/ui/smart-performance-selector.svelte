@@ -470,8 +470,8 @@
 		{/if}
 
 		<!-- Current Selection Summary -->
-		{@const selectedRec = selectedRecommendation}
-		{#if selectedRec}
+		{#if selectedRecommendation}
+			{@const selectedRec = selectedRecommendation}
 			<section
 				class="rounded border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950"
 				aria-labelledby="selection-summary-title"
@@ -505,7 +505,7 @@
 				class="flex flex-1 items-center justify-center gap-2 rounded bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:bg-gray-400"
 				onclick={handleInitialize}
 				disabled={disabled || isInitializing}
-				aria-describedby={selectedRec ? 'selection-summary-title' : undefined}
+				aria-describedby={selectedRecommendation ? 'selection-summary-title' : undefined}
 			>
 				{#if isInitializing}
 					<Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />

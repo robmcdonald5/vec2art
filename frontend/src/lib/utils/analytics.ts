@@ -19,7 +19,7 @@ export const analytics = {
 		browserInfo?: string;
 	}) {
 		if (!browser) return;
-		
+
 		track('wasm_init_success', {
 			thread_count: data.threadCount,
 			init_time_ms: data.initTimeMs,
@@ -38,7 +38,7 @@ export const analytics = {
 		browserInfo?: string;
 	}) {
 		if (!browser) return;
-		
+
 		track('wasm_init_failure', {
 			reason: data.reason,
 			missing_features: data.missingFeatures.join(','),
@@ -59,7 +59,7 @@ export const analytics = {
 		preset?: string;
 	}) {
 		if (!browser) return;
-		
+
 		track('vectorization_complete', {
 			backend: data.backend,
 			processing_time_ms: data.processingTimeMs,
@@ -80,7 +80,7 @@ export const analytics = {
 		threadCount: number;
 	}) {
 		if (!browser) return;
-		
+
 		track('vectorization_error', {
 			backend: data.backend,
 			error: data.error,
@@ -99,7 +99,7 @@ export const analytics = {
 		deviceType: string;
 	}) {
 		if (!browser) return;
-		
+
 		track('performance_mode_selected', {
 			mode: data.mode,
 			thread_count: data.threadCount,
@@ -118,7 +118,7 @@ export const analytics = {
 		uploadMethod: 'drag-drop' | 'file-picker';
 	}) {
 		if (!browser) return;
-		
+
 		track('file_uploaded', {
 			file_type: data.fileType,
 			file_size_mb: data.fileSizeMb,
@@ -137,7 +137,7 @@ export const analytics = {
 		backend: string;
 	}) {
 		if (!browser) return;
-		
+
 		track('svg_exported', {
 			format: data.format,
 			file_size_kb: data.fileSizeKb,
@@ -151,7 +151,7 @@ export const analytics = {
 	 */
 	pageView(pageName: string, additionalData?: Record<string, string | number>) {
 		if (!browser) return;
-		
+
 		track('page_view', {
 			page: pageName,
 			...additionalData
@@ -164,7 +164,7 @@ export const analytics = {
  */
 export function getBrowserInfo(): string {
 	if (!browser) return 'unknown';
-	
+
 	const ua = navigator.userAgent;
 	if (ua.includes('Chrome')) return 'chrome';
 	if (ua.includes('Firefox')) return 'firefox';
@@ -178,7 +178,7 @@ export function getBrowserInfo(): string {
  */
 export function getDeviceType(): string {
 	if (!browser) return 'unknown';
-	
+
 	if (navigator.userAgent.includes('Mobile')) return 'mobile';
 	if (navigator.userAgent.includes('Tablet')) return 'tablet';
 	return 'desktop';

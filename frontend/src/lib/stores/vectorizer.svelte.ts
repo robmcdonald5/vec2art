@@ -12,9 +12,9 @@ import type {
 	ProcessingResult,
 	ProcessingProgress,
 	WasmCapabilityReport,
-	DEFAULT_CONFIG
+	VectorizerPreset
 } from '$lib/types/vectorizer';
-import { DEFAULT_CONFIG as defaultConfig } from '$lib/types/vectorizer';
+import { DEFAULT_CONFIG as defaultConfig, PRESET_CONFIGS } from '$lib/types/vectorizer';
 
 interface InitializationOptions {
 	threadCount?: number;
@@ -200,80 +200,9 @@ class VectorizerStore {
 	/**
 	 * Use a preset configuration
 	 */
-	usePreset(preset: VectorizerConfig['preset']): void {
-		const presetConfigs: Record<
-			NonNullable<VectorizerConfig['preset']>,
-			Partial<VectorizerConfig>
-		> = {
-			sketch: {
-				preset: 'sketch',
-				backend: 'edge',
-				detail: 6,
-				hand_drawn_style: true,
-				tremor_effects: true,
-				variable_weights: true,
-				multipass: true
-			},
-			line_art: {
-				preset: 'line_art',
-				backend: 'edge',
-				detail: 7,
-				hand_drawn_style: false,
-				tremor_effects: false,
-				variable_weights: false,
-				enable_bezier_fitting: true
-			},
-			technical: {
-				preset: 'technical',
-				backend: 'centerline',
-				detail: 8,
-				hand_drawn_style: false,
-				tremor_effects: false,
-				variable_weights: false,
-				stroke_width: 0.8
-			},
-			bold_artistic: {
-				preset: 'bold_artistic',
-				backend: 'edge',
-				detail: 5,
-				hand_drawn_style: true,
-				tremor_effects: true,
-				variable_weights: true,
-				stroke_width: 1.5
-			},
-			dense_stippling: {
-				preset: 'dense_stippling',
-				backend: 'dots',
-				dot_density: 1.5,
-				preserve_colors: true,
-				adaptive_sizing: true
-			},
-			fine_stippling: {
-				preset: 'fine_stippling',
-				backend: 'dots',
-				dot_density: 0.8,
-				dot_size_range: [0.5, 2.0],
-				preserve_colors: false
-			},
-			sparse_dots: {
-				preset: 'sparse_dots',
-				backend: 'dots',
-				dot_density: 0.3,
-				dot_size_range: [1.0, 4.0],
-				adaptive_sizing: false
-			},
-			pointillism: {
-				preset: 'pointillism',
-				backend: 'dots',
-				dot_density: 1.2,
-				preserve_colors: true,
-				adaptive_sizing: true,
-				dot_size_range: [0.8, 3.0]
-			}
-		};
-
-		if (preset && presetConfigs[preset]) {
-			this.updateConfig(presetConfigs[preset]);
+	usePreset(preset: VectorizerPreset): void {
+		if (preset && PRESET_CONFIGS[preset]) {
+			this.updateConfig({ preset, ...PRESET_CONFIGS[preset] });
 		}
 	}
 
@@ -533,16 +462,15 @@ class VectorizerStore {
 	isConfigValid(): boolean {
 		const config = this._state.config;
 
-		// Basic validation
-		if (config.detail < 1 || config.detail > 10) return false;
+		// Basic validation  
+		if (config.detail < 0 || config.detail > 1) return false;
 		if (config.stroke_width < 0.1 || config.stroke_width > 10) return false;
 
 		// Backend-specific validation
 		if (config.backend === 'dots') {
-			if (
-				config.dot_density !== undefined &&
-				(config.dot_density < 0.1 || config.dot_density > 3.0)
-			) {
+			// Check both legacy dot_density and new dot_density_threshold
+			const density = config.dot_density ?? config.dot_density_threshold;
+			if (density !== undefined && (density < 0.0 || density > 1.0)) {
 				return false;
 			}
 			if (

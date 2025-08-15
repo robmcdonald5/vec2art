@@ -14,8 +14,15 @@
 	} from 'lucide-svelte';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte';
 	import ErrorBoundary from '$lib/components/ui/error-boundary.svelte';
-	import type { VectorizerBackend, VectorizerPreset } from '$lib/types/vectorizer';
-	import { BACKEND_DESCRIPTIONS, PRESET_DESCRIPTIONS } from '$lib/types/vectorizer';
+	import type { VectorizerBackend, VectorizerPreset, VectorizerConfig } from '$lib/types/vectorizer';
+	import { PRESET_CONFIGS } from '$lib/types/vectorizer';
+
+	// Import new component system
+	import BackendSelector from '$lib/components/converter/BackendSelector.svelte';
+	import PresetSelector from '$lib/components/converter/PresetSelector.svelte';
+	import ParameterPanel from '$lib/components/converter/ParameterPanel.svelte';
+	import AdvancedControls from '$lib/components/converter/AdvancedControls.svelte';
+	import MobileControlsSheet from '$lib/components/converter/MobileControlsSheet.svelte';
 
 	// Reactive state from store
 	let store = vectorizerStore;
@@ -47,6 +54,9 @@
 	let selectedPerformanceMode = $state<string>('balanced');
 	let hasUserInitiatedConversion = $state(false);
 
+	// Mobile controls state
+	let showMobileControls = $state(false);
+
 	// Initialize WASM without threads (lazy loading)
 	onMount(async () => {
 		try {
@@ -71,7 +81,7 @@
 			// Determine optimal thread count based on system capabilities
 			const cores = navigator.hardwareConcurrency || 4;
 			const optimalThreadCount = Math.min(Math.max(1, cores - 1), 8); // Leave 1 core free, max 8
-			
+
 			console.log(`Auto-initializing with ${optimalThreadCount} threads for conversion`);
 			const success = await store.initializeThreads(optimalThreadCount);
 
@@ -112,52 +122,41 @@
 		}
 	}
 
-	function handleBackendChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		store.updateConfig({ backend: target.value as VectorizerBackend });
-		announceToScreenReader(`Algorithm changed to ${target.value.replace('_', ' ')}`);
+	function handleBackendChange(backend: VectorizerBackend) {
+		store.updateConfig({ backend });
+		announceToScreenReader(`Algorithm changed to ${backend.replace('_', ' ')}`);
+		if (selectedPreset !== 'custom') {
+			selectedPreset = 'custom';
+		}
 	}
 
 	function handlePresetChange(preset: VectorizerPreset | 'custom') {
 		selectedPreset = preset;
-		if (preset !== 'custom') {
-			store.usePreset(preset);
-			announceToScreenReader(`Preset changed to ${preset.replace('_', ' ')}`);
+		if (preset !== 'custom' && PRESET_CONFIGS[preset]) {
+			// Apply preset configuration
+			const presetConfig = PRESET_CONFIGS[preset];
+			store.updateConfig(presetConfig);
+			announceToScreenReader(`Preset changed to ${preset}`);
 		} else {
 			announceToScreenReader('Custom settings mode enabled');
 		}
 	}
 
-	function handleDetailChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		store.updateConfig({ detail: parseInt(target.value) });
+	function handleParameterChange() {
+		// Switch to custom mode when any parameter is changed
 		if (selectedPreset !== 'custom') {
 			selectedPreset = 'custom';
 		}
 	}
 
-	function handleSmoothnessChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		// Map smoothness to stroke width (inverted - higher smoothness = lower stroke width)
-		const smoothness = parseInt(target.value);
-		const strokeWidth = 2.0 - (smoothness - 1) * 0.15; // Range from 0.5 to 2.0
-		store.updateConfig({ stroke_width: Math.max(0.5, Math.min(2.0, strokeWidth)) });
-		if (selectedPreset !== 'custom') {
-			selectedPreset = 'custom';
-		}
-	}
-
-	function handleArtisticEffect(property: string, event: Event) {
-		const target = event.target as HTMLInputElement;
-		store.updateConfig({ [property]: target.checked } as any);
-		if (selectedPreset !== 'custom') {
-			selectedPreset = 'custom';
-		}
+	function handleConfigChange(updates: Partial<VectorizerConfig>) {
+		store.updateConfig(updates);
+		handleParameterChange();
 	}
 
 	async function handleConvert() {
 		hasUserInitiatedConversion = true;
-		
+
 		// Initialize threads if not already done (lazy initialization)
 		if (!store.threadsInitialized) {
 			const initialized = await initializeThreadsForConversion();
@@ -166,7 +165,7 @@
 				return;
 			}
 		}
-		
+
 		announceProcessingStatus('Starting image conversion');
 		try {
 			const result = await store.processImage();
@@ -271,7 +270,8 @@
 				{#if store.threadsInitialized && store.capabilities.threading_supported}
 					<CheckCircle class="h-4 w-4 text-green-500" aria-hidden="true" />
 					<span class="text-green-700 dark:text-green-400">
-						High-performance mode active ({store.requestedThreadCount || store.capabilities.hardware_concurrency} threads)
+						High-performance mode active ({store.requestedThreadCount ||
+							store.capabilities.hardware_concurrency} threads)
 					</span>
 				{:else if store.threadsInitialized}
 					<AlertCircle class="h-4 w-4 text-yellow-500" aria-hidden="true" />
@@ -433,183 +433,40 @@
 			</section>
 		</section>
 
-		<!-- Controls Panel -->
-		<aside class="space-y-6" aria-labelledby="controls-heading">
+		<!-- Desktop Controls Panel -->
+		<aside class="hidden space-y-6 lg:block" aria-labelledby="controls-heading">
 			<h2 id="controls-heading" class="sr-only">Conversion Settings</h2>
 
 			<!-- Preset Selection -->
-			<section class="rounded-lg border p-4" aria-labelledby="presets-heading">
-				<h3 id="presets-heading" class="mb-3 font-semibold">Style Presets</h3>
-				<fieldset class="grid grid-cols-2 gap-2">
-					<legend class="sr-only">Choose a style preset</legend>
-					{#each Object.entries(PRESET_DESCRIPTIONS) as [preset, description]}
-						<button
-							class="rounded border p-2 text-left text-sm transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none
-								{selectedPreset === preset
-								? 'border-primary bg-primary/10'
-								: 'border-muted hover:border-primary/50'}"
-							onclick={() => handlePresetChange(preset as VectorizerPreset)}
-							disabled={store.isProcessing}
-							aria-pressed={selectedPreset === preset}
-							aria-describedby="preset-{preset}-desc"
-						>
-							<div class="font-medium capitalize">{preset.replace('_', ' ')}</div>
-							<div id="preset-{preset}-desc" class="sr-only">{description}</div>
-						</button>
-					{/each}
-					<button
-						class="rounded border p-2 text-left text-sm transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none
-							{selectedPreset === 'custom'
-							? 'border-primary bg-primary/10'
-							: 'border-muted hover:border-primary/50'}"
-						onclick={() => handlePresetChange('custom')}
-						disabled={store.isProcessing}
-						aria-pressed={selectedPreset === 'custom'}
-						aria-describedby="preset-custom-desc"
-					>
-						<div class="font-medium">Custom</div>
-						<div id="preset-custom-desc" class="sr-only">Create your own custom settings</div>
-					</button>
-				</fieldset>
-			</section>
+			<PresetSelector
+				{selectedPreset}
+				onPresetChange={handlePresetChange}
+				disabled={store.isProcessing}
+				isCustom={selectedPreset === 'custom'}
+			/>
 
-			<!-- Algorithm Selection -->
-			<section class="rounded-lg border p-4" aria-labelledby="algorithm-heading">
-				<h3 id="algorithm-heading" class="flex items-center gap-2 font-semibold">
-					<Settings class="h-4 w-4" aria-hidden="true" />
-					Algorithm
-				</h3>
-				<fieldset class="mt-3 space-y-3">
-					<legend class="sr-only">Choose conversion algorithm</legend>
-					{#each Object.entries(BACKEND_DESCRIPTIONS) as [backend, description]}
-						<label class="flex cursor-pointer items-start gap-3">
-							<input
-								type="radio"
-								name="algorithm"
-								value={backend}
-								checked={store.config.backend === backend}
-								onchange={handleBackendChange}
-								disabled={store.isProcessing}
-								class="text-primary mt-0.5 focus:ring-2 focus:ring-blue-500"
-								aria-describedby="backend-{backend}-desc"
-							/>
-							<div class="flex-1">
-								<span class="text-sm font-medium capitalize">{backend.replace('_', ' ')}</span>
-								<p id="backend-{backend}-desc" class="text-muted-foreground mt-1 text-xs">
-									{description}
-								</p>
-							</div>
-						</label>
-					{/each}
-				</fieldset>
-			</section>
+			<!-- Backend Selection -->
+			<BackendSelector
+				selectedBackend={store.config.backend}
+				onBackendChange={handleBackendChange}
+				disabled={store.isProcessing}
+			/>
 
-			<!-- Quality Settings -->
-			<section class="rounded-lg border p-4" aria-labelledby="quality-heading">
-				<h3 id="quality-heading" class="font-semibold">Quality Settings</h3>
-				<div class="mt-3 space-y-4">
-					<div>
-						<div class="flex justify-between">
-							<label for="detail-level" class="text-sm font-medium">Detail Level</label>
-							<span class="text-muted-foreground text-sm" aria-live="polite"
-								>{store.config.detail}</span
-							>
-						</div>
-						<input
-							id="detail-level"
-							type="range"
-							min="1"
-							max="10"
-							value={store.config.detail}
-							onchange={handleDetailChange}
-							oninput={() => announceToScreenReader(`Detail level set to ${store.config.detail}`)}
-							disabled={store.isProcessing}
-							class="mt-1 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-							aria-describedby="detail-level-desc"
-						/>
-						<div id="detail-level-desc" class="sr-only">
-							Controls the amount of detail captured. Higher values capture more details but may
-							include noise.
-						</div>
-					</div>
-					<div>
-						<div class="flex justify-between">
-							<label for="smoothness" class="text-sm font-medium">Smoothness</label>
-							<span class="text-muted-foreground text-sm" aria-live="polite"
-								>{Math.round((2.0 - store.config.stroke_width) / 0.15) + 1}</span
-							>
-						</div>
-						<input
-							id="smoothness"
-							type="range"
-							min="1"
-							max="10"
-							value={Math.round((2.0 - store.config.stroke_width) / 0.15) + 1}
-							onchange={handleSmoothnessChange}
-							oninput={() =>
-								announceToScreenReader(
-									`Smoothness set to ${Math.round((2.0 - store.config.stroke_width) / 0.15) + 1}`
-								)}
-							disabled={store.isProcessing}
-							class="mt-1 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-							aria-describedby="smoothness-desc"
-						/>
-						<div id="smoothness-desc" class="sr-only">
-							Controls line smoothness. Higher values create smoother, more flowing lines.
-						</div>
-					</div>
-				</div>
-			</section>
+			<!-- Essential Parameters -->
+			<ParameterPanel
+				config={store.config}
+				onConfigChange={handleConfigChange}
+				disabled={store.isProcessing}
+				onParameterChange={handleParameterChange}
+			/>
 
-			<!-- Artistic Effects -->
-			<section class="rounded-lg border p-4" aria-labelledby="effects-heading">
-				<h3 id="effects-heading" class="font-semibold">Artistic Effects</h3>
-				<fieldset class="mt-3 space-y-3">
-					<legend class="sr-only">Enable artistic effects</legend>
-					<label class="flex cursor-pointer items-center gap-2">
-						<input
-							type="checkbox"
-							checked={store.config.hand_drawn_style}
-							onchange={(e) => handleArtisticEffect('hand_drawn_style', e)}
-							disabled={store.isProcessing}
-							class="text-primary focus:ring-2 focus:ring-blue-500"
-							aria-describedby="hand-drawn-desc"
-						/>
-						<span class="text-sm">Hand-drawn style</span>
-						<div id="hand-drawn-desc" class="sr-only">
-							Adds natural hand-drawn characteristics with slight irregularities
-						</div>
-					</label>
-					<label class="flex cursor-pointer items-center gap-2">
-						<input
-							type="checkbox"
-							checked={store.config.variable_weights}
-							onchange={(e) => handleArtisticEffect('variable_weights', e)}
-							disabled={store.isProcessing}
-							class="text-primary focus:ring-2 focus:ring-blue-500"
-							aria-describedby="variable-weights-desc"
-						/>
-						<span class="text-sm">Variable line weights</span>
-						<div id="variable-weights-desc" class="sr-only">
-							Creates lines with varying thickness for more expressive results
-						</div>
-					</label>
-					<label class="flex cursor-pointer items-center gap-2">
-						<input
-							type="checkbox"
-							checked={store.config.tremor_effects}
-							onchange={(e) => handleArtisticEffect('tremor_effects', e)}
-							disabled={store.isProcessing}
-							class="text-primary focus:ring-2 focus:ring-blue-500"
-							aria-describedby="tremor-desc"
-						/>
-						<span class="text-sm">Tremor effects</span>
-						<div id="tremor-desc" class="sr-only">
-							Adds subtle tremor for organic, human-like line quality
-						</div>
-					</label>
-				</fieldset>
-			</section>
+			<!-- Advanced Controls -->
+			<AdvancedControls
+				config={store.config}
+				onConfigChange={handleConfigChange}
+				disabled={store.isProcessing}
+				onParameterChange={handleParameterChange}
+			/>
 
 			<!-- Action Buttons -->
 			<section class="space-y-3" aria-labelledby="actions-heading">
@@ -685,7 +542,32 @@
 				</div>
 			</section>
 		</aside>
+
+		<!-- Mobile Controls Button -->
+		<div class="fixed right-4 bottom-4 z-40 lg:hidden">
+			<Button
+				size="lg"
+				onclick={() => (showMobileControls = true)}
+				class="rounded-full shadow-lg"
+				aria-label="Open conversion settings"
+			>
+				<Settings class="h-5 w-5" aria-hidden="true" />
+			</Button>
+		</div>
 	</main>
+
+	<!-- Mobile Controls Sheet -->
+	<MobileControlsSheet
+		isOpen={showMobileControls}
+		onClose={() => (showMobileControls = false)}
+		config={store.config}
+		onConfigChange={handleConfigChange}
+		{selectedPreset}
+		onPresetChange={handlePresetChange}
+		onBackendChange={handleBackendChange}
+		disabled={store.isProcessing}
+		onParameterChange={handleParameterChange}
+	/>
 </div>
 
 <style>

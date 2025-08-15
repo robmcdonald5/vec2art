@@ -12,7 +12,7 @@
 		if (browser) {
 			// Initialize Vercel Analytics
 			inject();
-			
+
 			// Set initial theme based on system preference
 			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 			const savedTheme = localStorage.getItem('theme');
