@@ -1,0 +1,465 @@
+import { Meta } from '@storybook/addon-docs';
+
+<Meta title="Introduction/Accessibility Guide" />
+
+# Accessibility Guide
+
+Accessibility is a core principle of the vec2art design system. Every component is designed to be inclusive and usable by everyone, regardless of their abilities or assistive technologies.
+
+## Our Accessibility Commitment
+
+We strive to meet and exceed **WCAG 2.1 AA** standards across all components and interactions:
+
+- ✅ **Perceivable** - Information is presentable in ways users can perceive
+- ✅ **Operable** - Interface components are operable by all users
+- ✅ **Understandable** - Information and UI operation are understandable
+- ✅ **Robust** - Content works with a wide variety of assistive technologies
+
+## Testing Tools
+
+This Storybook includes the **@storybook/addon-a11y** addon powered by **axe-core** for automated accessibility testing. Look for the accessibility panel in each story to see:
+
+- Color contrast analysis
+- Keyboard navigation testing
+- Screen reader compatibility
+- ARIA implementation review
+
+## Component Accessibility Features
+
+### Universal Features
+
+Every component in our library includes:
+
+#### 🎯 **Focus Management**
+
+- Visible focus indicators with high contrast rings
+- Logical tab order through interactive elements
+- Focus trapping in modals and complex components
+- Programmatic focus control for dynamic content
+
+#### ⌨️ **Keyboard Navigation**
+
+- Full keyboard accessibility for all interactions
+- Standard keyboard shortcuts (Enter, Space, Arrow keys, Escape)
+- Skip links and keyboard shortcuts where appropriate
+- No keyboard traps in normal flow
+
+#### 📢 **Screen Reader Support**
+
+- Semantic HTML structure with proper heading hierarchy
+- Comprehensive ARIA labels and descriptions
+- Live regions for dynamic content updates
+- Screen reader only content for additional context
+
+#### 🎨 **Visual Accessibility**
+
+- WCAG AA compliant color contrast (4.5:1 for normal text, 3:1 for large text)
+- Support for high contrast mode
+- Respects user's reduced motion preferences
+- Scalable text and responsive design
+
+## Component-Specific Accessibility
+
+### Button Component
+
+```svelte
+<!-- Accessible button with proper semantics -->
+<Button disabled={isLoading} aria-describedby="action-description" onclick={handleSubmit}>
+	{#if isLoading}
+		<Loader2 class="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+		Processing...
+	{:else}
+		Submit Form
+	{/if}
+</Button>
+
+<div id="action-description" class="sr-only">This will validate and submit your form data</div>
+```
+
+**Accessibility Features:**
+
+- Proper button semantics with `role="button"`
+- Loading states communicated to screen readers
+- Disabled state prevents interaction and is announced
+- ARIA descriptions for additional context
+
+### Modal Component
+
+```svelte
+<Modal
+	open={showModal}
+	onClose={() => (showModal = false)}
+	title="Confirmation Required"
+	description="This action cannot be undone"
+>
+	<div class="p-6">
+		<!-- Modal content with proper focus management -->
+	</div>
+</Modal>
+```
+
+**Accessibility Features:**
+
+- Focus trapped within modal when open
+- ESC key and backdrop click support
+- Automatic focus to first interactive element
+- Focus restoration to trigger element when closed
+- Proper ARIA attributes (`aria-modal`, `aria-labelledby`)
+
+### File Dropzone Component
+
+```svelte
+<FileDropzone
+	accept="image/*"
+	maxSize={10 * 1024 * 1024}
+	onFileSelect={handleFileSelect}
+	aria-label="Upload image file. Drag and drop or press Enter to browse."
+/>
+```
+
+**Accessibility Features:**
+
+- Keyboard accessible with Enter/Space activation
+- Screen reader announcements for all state changes
+- Error messages announced to assistive technologies
+- File selection and validation feedback
+- Drag and drop states communicated properly
+
+### Smart Performance Selector
+
+```svelte
+<SmartPerformanceSelector
+	onSelect={handleSelection}
+	aria-label="Choose performance mode for image processing"
+/>
+```
+
+**Accessibility Features:**
+
+- Radio button group semantics with fieldset/legend
+- Arrow key navigation between options
+- System detection results announced
+- Live updates for selection changes
+- Advanced settings properly labeled and described
+
+## Implementation Guidelines
+
+### 1. Semantic HTML First
+
+Always start with semantic HTML elements before adding ARIA:
+
+```svelte
+<!-- Good: Semantic HTML -->
+<button onclick={handleClick}>Submit</button>
+
+<!-- Avoid: Generic elements with ARIA when semantic options exist -->
+<div role="button" onclick={handleClick}>Submit</div>
+```
+
+### 2. ARIA Best Practices
+
+Use ARIA to enhance semantics, not replace them:
+
+```svelte
+<!-- Descriptive labels -->
+<input type="email" id="email" aria-describedby="email-help email-error" aria-invalid={hasError} />
+<div id="email-help">We'll never share your email</div>
+{#if hasError}
+	<div id="email-error" role="alert">Please enter a valid email</div>
+{/if}
+
+<!-- Live regions for dynamic content -->
+<div aria-live="polite" aria-atomic="true" class="sr-only">
+	{statusMessage}
+</div>
+```
+
+### 3. Keyboard Navigation Patterns
+
+Implement standard keyboard interactions:
+
+```svelte
+<script>
+	function handleKeydown(event) {
+		switch (event.key) {
+			case 'Enter':
+			case ' ':
+				event.preventDefault();
+				handleActivation();
+				break;
+			case 'Escape':
+				handleCancel();
+				break;
+			case 'ArrowDown':
+				navigateNext();
+				break;
+			case 'ArrowUp':
+				navigatePrevious();
+				break;
+		}
+	}
+</script>
+
+<div role="listbox" tabindex="0" onkeydown={handleKeydown} aria-label="Select an option">
+	<!-- Interactive content -->
+</div>
+```
+
+### 4. Focus Management
+
+Handle focus properly in dynamic interfaces:
+
+```svelte
+<script>
+	import { tick } from 'svelte';
+
+	async function showModal() {
+		isModalOpen = true;
+		await tick();
+		modalElement?.focus();
+	}
+
+	function closeModal() {
+		isModalOpen = false;
+		triggerButton?.focus(); // Restore focus
+	}
+</script>
+```
+
+## Color and Contrast
+
+### Color Contrast Requirements
+
+All text must meet WCAG AA standards:
+
+- **Normal text (< 18pt):** 4.5:1 contrast ratio
+- **Large text (≥ 18pt or 14pt bold):** 3:1 contrast ratio
+- **Non-text elements:** 3:1 contrast ratio for UI components
+
+### Testing Color Contrast
+
+```svelte
+<!-- High contrast text combinations -->
+<div class="bg-primary text-primary-foreground">Primary text on primary background (4.5:1+)</div>
+
+<div class="bg-muted text-foreground">Dark text on muted background (4.5:1+)</div>
+
+<!-- Interactive elements -->
+<button class="border-primary focus:ring-ring border-2 focus:ring-2">
+	Button with visible focus ring (3:1+)
+</button>
+```
+
+### Color Independence
+
+Never rely solely on color to convey information:
+
+```svelte
+<!-- Good: Multiple indicators -->
+<div class="flex items-center gap-2">
+	<CheckCircle class="h-4 w-4 text-green-600" aria-hidden="true" />
+	<span class="font-medium text-green-700">Success</span>
+</div>
+
+<!-- Good: Text labels with color -->
+<div class="rounded border border-red-200 bg-red-50 p-3">
+	<strong class="text-red-800">Error:</strong>
+	<span class="text-red-700">Please fix the errors below</span>
+</div>
+```
+
+## Motion and Animation
+
+Respect user preferences for reduced motion:
+
+```css
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+	.animate-spin {
+		animation: none;
+	}
+
+	.transition-all {
+		transition: none;
+	}
+}
+```
+
+```svelte
+<script>
+	import { browser } from '$app/environment';
+
+	const prefersReducedMotion =
+		browser && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+</script>
+
+<div class="transition-transform duration-300" class:duration-0={prefersReducedMotion}>
+	Content with respectful animation
+</div>
+```
+
+## Screen Reader Patterns
+
+### Announcement Patterns
+
+```svelte
+<script>
+	let announcements = $state('');
+
+	function announceToScreenReader(message) {
+		announcements = message;
+		// Clear after announcement
+		setTimeout(() => (announcements = ''), 1000);
+	}
+</script>
+
+<!-- Live region for announcements -->
+<div aria-live="polite" aria-atomic="true" class="sr-only">
+	{announcements}
+</div>
+```
+
+### Screen Reader Only Content
+
+```svelte
+<!-- Provide additional context for screen readers -->
+<button onclick={deleteItem} aria-label="Delete item: {item.name}">
+	<Trash2 class="h-4 w-4" aria-hidden="true" />
+	<span class="sr-only">Delete {item.name}</span>
+</button>
+
+<style>
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+</style>
+```
+
+## Form Accessibility
+
+### Label Association
+
+```svelte
+<!-- Explicit label association -->
+<label for="username" class="mb-1 block text-sm font-medium"> Username * </label>
+<input
+	id="username"
+	type="text"
+	required
+	aria-describedby="username-help username-error"
+	aria-invalid={hasUsernameError}
+	class="w-full rounded border px-3 py-2"
+/>
+<div id="username-help" class="text-muted-foreground text-xs">
+	Must be 3-20 characters, letters and numbers only
+</div>
+{#if hasUsernameError}
+	<div id="username-error" class="text-xs text-red-600" role="alert">
+		Username is required and must be at least 3 characters
+	</div>
+{/if}
+```
+
+### Error Handling
+
+```svelte
+<script>
+	let formErrors = $state([]);
+
+	function validateForm() {
+		const errors = [];
+		// Validation logic...
+
+		if (errors.length > 0) {
+			// Announce errors to screen readers
+			announceToScreenReader(`Form has ${errors.length} errors. Please review and correct.`);
+
+			// Focus first invalid field
+			const firstErrorField = document.querySelector('[aria-invalid="true"]');
+			firstErrorField?.focus();
+		}
+
+		return errors.length === 0;
+	}
+</script>
+```
+
+## Testing Checklist
+
+Use this checklist to verify accessibility in your implementations:
+
+### ⌨️ Keyboard Testing
+
+- [ ] All interactive elements are keyboard accessible
+- [ ] Tab order is logical and intuitive
+- [ ] Focus indicators are visible and high contrast
+- [ ] No keyboard traps in normal flow
+- [ ] Modal focus is properly managed
+
+### 📱 Screen Reader Testing
+
+- [ ] All content is accessible with screen reader
+- [ ] Images have appropriate alt text
+- [ ] Form fields have proper labels
+- [ ] Dynamic content is announced
+- [ ] Page structure is logical with headings
+
+### 🎨 Visual Testing
+
+- [ ] Color contrast meets WCAG AA standards
+- [ ] Information isn't conveyed by color alone
+- [ ] Text is readable at 200% zoom
+- [ ] High contrast mode is supported
+- [ ] Focus indicators are visible
+
+### 🔄 Interaction Testing
+
+- [ ] Error messages are clear and helpful
+- [ ] Loading states are communicated
+- [ ] Form validation is accessible
+- [ ] Modal dialogs work properly
+- [ ] Dynamic content updates are announced
+
+## Tools and Resources
+
+### Testing Tools
+
+- **axe-core** (integrated in Storybook) - Automated accessibility testing
+- **NVDA/JAWS** - Screen reader testing
+- **Lighthouse** - Accessibility audit in Chrome DevTools
+- **Colour Contrast Analyser** - Manual contrast testing
+
+### Browser Extensions
+
+- **axe DevTools** - Browser extension for axe testing
+- **WAVE** - Web accessibility evaluation tool
+- **Accessibility Insights** - Microsoft's accessibility testing tools
+
+### Guidelines and Standards
+
+- [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
+- [ARIA Authoring Practices Guide](https://www.w3.org/WAI/ARIA/apg/)
+- [WebAIM Resources](https://webaim.org/resources/)
+
+## Getting Help
+
+If you encounter accessibility issues or have questions:
+
+1. **Check Component Stories** - Each component includes accessibility examples
+2. **Use the A11y Addon** - Review automated test results in Storybook
+3. **Test with Real Users** - Nothing replaces testing with actual assistive technology users
+4. **Stay Updated** - Accessibility standards and best practices evolve
+
+Remember: Accessibility is not a checklist to complete, but an ongoing commitment to inclusive design. Every user deserves a great experience, regardless of how they access your application.
+
+---
+
+_Building accessible interfaces benefits everyone. A curb cut helps wheelchair users, but also people with strollers, delivery workers, and anyone who struggles with steps._
