@@ -44,6 +44,15 @@ pub struct ConfigBuilder {
     hand_drawn_preset: Option<String>,
     custom_tremor: Option<f32>,
     custom_variable_weights: Option<f32>,
+    custom_tapering: Option<f32>,
+    // Superpixel-specific configuration
+    num_superpixels: Option<u32>,
+    compactness: Option<f32>,
+    slic_iterations: Option<u32>,
+    fill_regions: Option<bool>,
+    stroke_regions: Option<bool>,
+    simplify_boundaries: Option<bool>,
+    boundary_epsilon: Option<f32>,
 }
 
 impl Default for ConfigBuilder {
@@ -60,6 +69,15 @@ impl ConfigBuilder {
             hand_drawn_preset: None,
             custom_tremor: None,
             custom_variable_weights: None,
+            custom_tapering: None,
+            // Initialize superpixel fields
+            num_superpixels: None,
+            compactness: None,
+            slic_iterations: None,
+            fill_regions: None,
+            stroke_regions: None,
+            simplify_boundaries: None,
+            boundary_epsilon: None,
         }
     }
 
@@ -186,6 +204,18 @@ impl ConfigBuilder {
         self
     }
 
+    /// Enable or disable Poisson disk sampling for natural dot distribution
+    pub fn set_poisson_disk_sampling(mut self, enabled: bool) -> Self {
+        self.config.dot_poisson_disk_sampling = enabled;
+        self
+    }
+
+    /// Enable or disable gradient-based sizing for dot scaling based on local image gradients
+    pub fn set_gradient_based_sizing(mut self, enabled: bool) -> Self {
+        self.config.dot_gradient_based_sizing = enabled;
+        self
+    }
+
     // Hand-drawn aesthetic parameters
 
     /// Set hand-drawn preset by name
@@ -209,6 +239,13 @@ impl ConfigBuilder {
         Ok(self)
     }
 
+    /// Set custom tapering strength (overrides preset)
+    pub fn custom_tapering(mut self, tapering: f32) -> ConfigBuilderResult<Self> {
+        self.validate_unit_range(tapering, "tapering")?;
+        self.custom_tapering = Some(tapering);
+        Ok(self)
+    }
+
     // Advanced parameters for ETF/FDoG
 
     /// Enable ETF/FDoG advanced edge detection
@@ -227,6 +264,113 @@ impl ConfigBuilder {
     pub fn enable_bezier_fitting(mut self, enabled: bool) -> Self {
         self.config.enable_bezier_fitting = enabled;
         self
+    }
+
+    // Centerline-specific parameters
+
+    /// Enable or disable adaptive thresholding for centerline backend
+    pub fn enable_adaptive_threshold(mut self, enabled: bool) -> Self {
+        self.config.enable_adaptive_threshold = enabled;
+        self
+    }
+
+    /// Set window size for adaptive thresholding (15-50 pixels)
+    pub fn window_size(mut self, size: u32) -> ConfigBuilderResult<Self> {
+        self.validate_window_size(size)?;
+        self.config.adaptive_threshold_window_size = size;
+        Ok(self)
+    }
+
+    /// Set sensitivity parameter k for Sauvola thresholding (0.1-1.0)
+    pub fn sensitivity_k(mut self, k: f32) -> ConfigBuilderResult<Self> {
+        self.validate_sensitivity_k(k)?;
+        self.config.adaptive_threshold_k = k;
+        Ok(self)
+    }
+
+    /// Enable or disable width modulation for centerline SVG strokes
+    pub fn enable_width_modulation(mut self, enabled: bool) -> Self {
+        self.config.enable_width_modulation = enabled;
+        self
+    }
+
+    /// Set minimum branch length for centerline tracing (4-24 pixels)
+    pub fn min_branch_length(mut self, length: f32) -> ConfigBuilderResult<Self> {
+        self.validate_min_branch_length(length)?;
+        self.config.min_branch_length = length;
+        Ok(self)
+    }
+
+    /// Set Douglas-Peucker epsilon for path simplification (0.5-3.0)
+    pub fn douglas_peucker_epsilon(mut self, epsilon: f32) -> ConfigBuilderResult<Self> {
+        self.validate_douglas_peucker_epsilon(epsilon)?;
+        self.config.douglas_peucker_epsilon = epsilon;
+        Ok(self)
+    }
+
+    // Superpixel-specific parameters
+
+    /// Set number of superpixels to generate (20-1000)
+    pub fn num_superpixels(mut self, num: u32) -> ConfigBuilderResult<Self> {
+        self.validate_num_superpixels(num)?;
+        self.num_superpixels = Some(num);
+        Ok(self)
+    }
+
+    /// Set SLIC compactness parameter (1.0-50.0)
+    /// Higher values create more regular shapes, lower values follow color similarity more closely
+    pub fn compactness(mut self, compactness: f32) -> ConfigBuilderResult<Self> {
+        self.validate_compactness(compactness)?;
+        self.compactness = Some(compactness);
+        Ok(self)
+    }
+
+    /// Set SLIC iterations for convergence (5-15)
+    pub fn slic_iterations(mut self, iterations: u32) -> ConfigBuilderResult<Self> {
+        self.validate_slic_iterations(iterations)?;
+        self.slic_iterations = Some(iterations);
+        Ok(self)
+    }
+
+    /// Enable or disable filled superpixel regions
+    pub fn fill_regions(mut self, enabled: bool) -> Self {
+        self.fill_regions = Some(enabled);
+        self
+    }
+
+    /// Enable or disable superpixel region boundary strokes
+    pub fn stroke_regions(mut self, enabled: bool) -> Self {
+        self.stroke_regions = Some(enabled);
+        self
+    }
+
+    /// Enable or disable boundary path simplification
+    pub fn simplify_boundaries(mut self, enabled: bool) -> Self {
+        self.simplify_boundaries = Some(enabled);
+        self
+    }
+
+    /// Set boundary simplification tolerance (0.5-3.0)
+    pub fn boundary_epsilon(mut self, epsilon: f32) -> ConfigBuilderResult<Self> {
+        self.validate_boundary_epsilon(epsilon)?;
+        self.boundary_epsilon = Some(epsilon);
+        Ok(self)
+    }
+
+    // Safety and optimization parameters
+
+    /// Set maximum image size before automatic resizing (512-8192 pixels)
+    pub fn max_image_size(mut self, size: u32) -> ConfigBuilderResult<Self> {
+        self.validate_max_image_size(size)?;
+        self.config.max_image_size = size;
+        Ok(self)
+    }
+
+    /// Set SVG coordinate precision in decimal places (0-4)
+    pub fn svg_precision(mut self, precision: u8) -> ConfigBuilderResult<Self> {
+        self.validate_svg_precision(precision)?;
+        self.config.svg_precision = precision;
+        Ok(self)
     }
 
     // Preset configurations for common use cases
@@ -268,6 +412,16 @@ impl ConfigBuilder {
             .multipass(true)
             .reverse_pass(true)
             .diagonal_pass(true)
+            .enable_adaptive_threshold(true)
+            .window_size(25)
+            .unwrap()
+            .sensitivity_k(0.3)
+            .unwrap()
+            .min_branch_length(8.0)
+            .unwrap()
+            .douglas_peucker_epsilon(1.0)
+            .unwrap()
+            .enable_width_modulation(false)
     }
 
     /// Configure for dense stippling effect
@@ -296,6 +450,8 @@ impl ConfigBuilder {
             .unwrap()
             .adaptive_sizing(true)
             .preserve_colors(true)
+            .set_poisson_disk_sampling(true)
+            .set_gradient_based_sizing(true)
     }
 
     /// Configure for sparse artistic dots
@@ -324,6 +480,8 @@ impl ConfigBuilder {
             .unwrap()
             .adaptive_sizing(true)
             .preserve_colors(false)
+            .set_poisson_disk_sampling(true)
+            .set_gradient_based_sizing(true)
     }
 
     /// Configure for bold artistic style
@@ -344,7 +502,32 @@ impl ConfigBuilder {
     pub fn build(self) -> ConfigBuilderResult<TraceLowConfig> {
         // Validate the complete configuration
         self.validate_complete_config()?;
-        Ok(self.config)
+        
+        // Apply superpixel configuration if specified
+        let mut config = self.config;
+        if let Some(num) = self.num_superpixels {
+            config.num_superpixels = num;
+        }
+        if let Some(compactness) = self.compactness {
+            config.superpixel_compactness = compactness;
+        }
+        if let Some(iterations) = self.slic_iterations {
+            config.superpixel_slic_iterations = iterations;
+        }
+        if let Some(fill) = self.fill_regions {
+            config.superpixel_fill_regions = fill;
+        }
+        if let Some(stroke) = self.stroke_regions {
+            config.superpixel_stroke_regions = stroke;
+        }
+        if let Some(simplify) = self.simplify_boundaries {
+            config.superpixel_simplify_boundaries = simplify;
+        }
+        if let Some(epsilon) = self.boundary_epsilon {
+            config.superpixel_boundary_epsilon = epsilon;
+        }
+        
+        Ok(config)
     }
 
     /// Build TraceLowConfig with optional hand-drawn configuration
@@ -357,8 +540,29 @@ impl ConfigBuilder {
         // Build hand-drawn config before consuming self
         let hand_drawn_config = self.build_hand_drawn_config()?;
 
-        // Build final config (consumes self)
-        let config = self.config;
+        // Apply superpixel configuration if specified
+        let mut config = self.config;
+        if let Some(num) = self.num_superpixels {
+            config.num_superpixels = num;
+        }
+        if let Some(compactness) = self.compactness {
+            config.superpixel_compactness = compactness;
+        }
+        if let Some(iterations) = self.slic_iterations {
+            config.superpixel_slic_iterations = iterations;
+        }
+        if let Some(fill) = self.fill_regions {
+            config.superpixel_fill_regions = fill;
+        }
+        if let Some(stroke) = self.stroke_regions {
+            config.superpixel_stroke_regions = stroke;
+        }
+        if let Some(simplify) = self.simplify_boundaries {
+            config.superpixel_simplify_boundaries = simplify;
+        }
+        if let Some(epsilon) = self.boundary_epsilon {
+            config.superpixel_boundary_epsilon = epsilon;
+        }
 
         Ok((config, hand_drawn_config))
     }
@@ -395,6 +599,10 @@ impl ConfigBuilder {
             TraceBackend::Superpixel => {
                 recommendations.insert("detail", "0.2-0.4 for cell-shaded look".to_string());
                 recommendations.insert("multipass", "false - single pass sufficient".to_string());
+                recommendations.insert("num_superpixels", "50-200 for poster style, 200-500 for detailed".to_string());
+                recommendations.insert("compactness", "5-15 for organic shapes, 20-40 for geometric".to_string());
+                recommendations.insert("fill_regions", "true for poster style".to_string());
+                recommendations.insert("stroke_regions", "true for defined boundaries".to_string());
             }
             TraceBackend::Dots => {
                 recommendations.insert(
@@ -521,6 +729,98 @@ impl ConfigBuilder {
         }
     }
 
+    fn validate_window_size(&self, size: u32) -> ConfigBuilderResult<()> {
+        if !(15..=50).contains(&size) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Window size must be between 15 and 50 pixels, got: {size}"
+            )));
+        }
+        Ok(())
+    }
+
+    fn validate_sensitivity_k(&self, k: f32) -> ConfigBuilderResult<()> {
+        if !(0.1..=1.0).contains(&k) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Sensitivity k must be between 0.1 and 1.0, got: {k}"
+            )));
+        }
+        Ok(())
+    }
+
+    fn validate_min_branch_length(&self, length: f32) -> ConfigBuilderResult<()> {
+        if !(4.0..=24.0).contains(&length) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Minimum branch length must be between 4.0 and 24.0 pixels, got: {length}"
+            )));
+        }
+        Ok(())
+    }
+
+    fn validate_douglas_peucker_epsilon(&self, epsilon: f32) -> ConfigBuilderResult<()> {
+        if !(0.5..=3.0).contains(&epsilon) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Douglas-Peucker epsilon must be between 0.5 and 3.0, got: {epsilon}"
+            )));
+        }
+        Ok(())
+    }
+
+    // Superpixel validation methods
+
+    fn validate_num_superpixels(&self, num: u32) -> ConfigBuilderResult<()> {
+        if !(20..=1000).contains(&num) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Number of superpixels must be between 20 and 1000, got: {num}"
+            )));
+        }
+        Ok(())
+    }
+
+    fn validate_compactness(&self, compactness: f32) -> ConfigBuilderResult<()> {
+        if !(1.0..=50.0).contains(&compactness) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Superpixel compactness must be between 1.0 and 50.0, got: {compactness}"
+            )));
+        }
+        Ok(())
+    }
+
+    fn validate_slic_iterations(&self, iterations: u32) -> ConfigBuilderResult<()> {
+        if !(5..=15).contains(&iterations) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "SLIC iterations must be between 5 and 15, got: {iterations}"
+            )));
+        }
+        Ok(())
+    }
+
+    fn validate_boundary_epsilon(&self, epsilon: f32) -> ConfigBuilderResult<()> {
+        if !(0.5..=3.0).contains(&epsilon) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Boundary epsilon must be between 0.5 and 3.0, got: {epsilon}"
+            )));
+        }
+        Ok(())
+    }
+
+    fn validate_max_image_size(&self, size: u32) -> ConfigBuilderResult<()> {
+        if !(512..=8192).contains(&size) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Maximum image size must be between 512 and 8192 pixels, got: {size}"
+            )));
+        }
+        Ok(())
+    }
+
+    fn validate_svg_precision(&self, precision: u8) -> ConfigBuilderResult<()> {
+        if precision > 4 {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "SVG precision must be between 0 and 4 decimal places, got: {precision}"
+            )));
+        }
+        Ok(())
+    }
+
     fn validate_complete_config(&self) -> ConfigBuilderResult<()> {
         // Validate ETF/FDoG dependencies
         if self.config.enable_flow_tracing && !self.config.enable_etf_fdog {
@@ -536,11 +836,11 @@ impl ConfigBuilder {
         }
 
         // Validate hand-drawn custom overrides
-        if (self.custom_tremor.is_some() || self.custom_variable_weights.is_some())
+        if (self.custom_tremor.is_some() || self.custom_variable_weights.is_some() || self.custom_tapering.is_some())
             && matches!(self.hand_drawn_preset.as_deref(), None | Some("none"))
         {
             return Err(ConfigBuilderError::ValidationFailed(
-                "Hand-drawn preset must be specified when using custom tremor or variable weights"
+                "Hand-drawn preset must be specified when using custom tremor, variable weights, or tapering"
                     .to_string(),
             ));
         }
@@ -570,6 +870,9 @@ impl ConfigBuilder {
         }
         if let Some(weights) = self.custom_variable_weights {
             config.variable_weights = weights;
+        }
+        if let Some(tapering) = self.custom_tapering {
+            config.tapering = tapering;
         }
 
         Ok(Some(config))
@@ -698,12 +1001,15 @@ mod tests {
             .unwrap()
             .custom_variable_weights(0.8)
             .unwrap()
+            .custom_tapering(0.6)
+            .unwrap()
             .build_with_hand_drawn()
             .unwrap();
 
         let hd = hand_drawn.unwrap();
         assert_eq!(hd.tremor_strength, 0.3);
         assert_eq!(hd.variable_weights, 0.8);
+        assert_eq!(hd.tapering, 0.6);
     }
 
     #[test]
@@ -718,6 +1024,10 @@ mod tests {
 
         // Hand-drawn custom without preset
         let result = ConfigBuilder::new().custom_tremor(0.2).unwrap().build();
+        assert!(result.is_err());
+
+        // Custom tapering without preset
+        let result = ConfigBuilder::new().custom_tapering(0.5).unwrap().build();
         assert!(result.is_err());
     }
 
@@ -744,6 +1054,90 @@ mod tests {
     }
 
     #[test]
+    fn test_centerline_parameters() {
+        // Test enable_adaptive_threshold
+        let config = ConfigBuilder::new()
+            .enable_adaptive_threshold(false)
+            .build()
+            .unwrap();
+        assert!(!config.enable_adaptive_threshold);
+
+        // Test window_size validation
+        assert!(ConfigBuilder::new().window_size(25).is_ok());
+        assert!(ConfigBuilder::new().window_size(15).is_ok());
+        assert!(ConfigBuilder::new().window_size(50).is_ok());
+        assert!(ConfigBuilder::new().window_size(14).is_err()); // Too small
+        assert!(ConfigBuilder::new().window_size(51).is_err()); // Too large
+
+        // Test sensitivity_k validation
+        assert!(ConfigBuilder::new().sensitivity_k(0.5).is_ok());
+        assert!(ConfigBuilder::new().sensitivity_k(0.1).is_ok());
+        assert!(ConfigBuilder::new().sensitivity_k(1.0).is_ok());
+        assert!(ConfigBuilder::new().sensitivity_k(0.09).is_err()); // Too small
+        assert!(ConfigBuilder::new().sensitivity_k(1.1).is_err()); // Too large
+
+        // Test min_branch_length validation
+        assert!(ConfigBuilder::new().min_branch_length(12.0).is_ok());
+        assert!(ConfigBuilder::new().min_branch_length(4.0).is_ok());
+        assert!(ConfigBuilder::new().min_branch_length(24.0).is_ok());
+        assert!(ConfigBuilder::new().min_branch_length(3.9).is_err()); // Too small
+        assert!(ConfigBuilder::new().min_branch_length(24.1).is_err()); // Too large
+
+        // Test douglas_peucker_epsilon validation
+        assert!(ConfigBuilder::new().douglas_peucker_epsilon(1.5).is_ok());
+        assert!(ConfigBuilder::new().douglas_peucker_epsilon(0.5).is_ok());
+        assert!(ConfigBuilder::new().douglas_peucker_epsilon(3.0).is_ok());
+        assert!(ConfigBuilder::new().douglas_peucker_epsilon(0.4).is_err()); // Too small
+        assert!(ConfigBuilder::new().douglas_peucker_epsilon(3.1).is_err()); // Too large
+
+        // Test enable_width_modulation
+        let config = ConfigBuilder::new()
+            .enable_width_modulation(true)
+            .build()
+            .unwrap();
+        assert!(config.enable_width_modulation);
+    }
+
+    #[test]
+    fn test_centerline_builder_chain() {
+        let config = ConfigBuilder::new()
+            .backend(TraceBackend::Centerline)
+            .enable_adaptive_threshold(true)
+            .window_size(31)
+            .unwrap()
+            .sensitivity_k(0.4)
+            .unwrap()
+            .min_branch_length(10.0)
+            .unwrap()
+            .douglas_peucker_epsilon(1.2)
+            .unwrap()
+            .enable_width_modulation(false)
+            .build()
+            .unwrap();
+
+        assert_eq!(config.backend, TraceBackend::Centerline);
+        assert!(config.enable_adaptive_threshold);
+        assert_eq!(config.adaptive_threshold_window_size, 31);
+        assert_eq!(config.adaptive_threshold_k, 0.4);
+        assert_eq!(config.min_branch_length, 10.0);
+        assert_eq!(config.douglas_peucker_epsilon, 1.2);
+        assert!(!config.enable_width_modulation);
+    }
+
+    #[test]
+    fn test_technical_preset_centerline_parameters() {
+        let config = ConfigBuilder::for_technical().build().unwrap();
+        
+        assert_eq!(config.backend, TraceBackend::Centerline);
+        assert!(config.enable_adaptive_threshold);
+        assert_eq!(config.adaptive_threshold_window_size, 25);
+        assert_eq!(config.adaptive_threshold_k, 0.3);
+        assert_eq!(config.min_branch_length, 8.0);
+        assert_eq!(config.douglas_peucker_epsilon, 1.0);
+        assert!(!config.enable_width_modulation);
+    }
+
+    #[test]
     fn test_stroke_width_validation() {
         // Valid stroke widths
         assert!(ConfigBuilder::new().stroke_width(0.1).is_ok());
@@ -754,5 +1148,62 @@ mod tests {
         assert!(ConfigBuilder::new().stroke_width(0.0).is_err());
         assert!(ConfigBuilder::new().stroke_width(-1.0).is_err());
         assert!(ConfigBuilder::new().stroke_width(51.0).is_err());
+    }
+
+    #[test]
+    fn test_superpixel_parameters() {
+        // Test valid superpixel parameters
+        let config = ConfigBuilder::new()
+            .backend(TraceBackend::Superpixel)
+            .num_superpixels(200)
+            .unwrap()
+            .compactness(15.0)
+            .unwrap()
+            .slic_iterations(8)
+            .unwrap()
+            .fill_regions(true)
+            .stroke_regions(false)
+            .simplify_boundaries(true)
+            .boundary_epsilon(1.5)
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(config.backend, TraceBackend::Superpixel);
+        assert_eq!(config.num_superpixels, 200);
+        assert_eq!(config.superpixel_compactness, 15.0);
+        assert_eq!(config.superpixel_slic_iterations, 8);
+        assert!(config.superpixel_fill_regions);
+        assert!(!config.superpixel_stroke_regions);
+        assert!(config.superpixel_simplify_boundaries);
+        assert_eq!(config.superpixel_boundary_epsilon, 1.5);
+    }
+
+    #[test]
+    fn test_superpixel_validation_errors() {
+        // Test invalid num_superpixels
+        assert!(ConfigBuilder::new().num_superpixels(15).is_err()); // Too low
+        assert!(ConfigBuilder::new().num_superpixels(1200).is_err()); // Too high
+
+        // Test invalid compactness
+        assert!(ConfigBuilder::new().compactness(0.5).is_err()); // Too low
+        assert!(ConfigBuilder::new().compactness(60.0).is_err()); // Too high
+
+        // Test invalid slic_iterations
+        assert!(ConfigBuilder::new().slic_iterations(3).is_err()); // Too low
+        assert!(ConfigBuilder::new().slic_iterations(20).is_err()); // Too high
+
+        // Test invalid boundary_epsilon
+        assert!(ConfigBuilder::new().boundary_epsilon(0.3).is_err()); // Too low
+        assert!(ConfigBuilder::new().boundary_epsilon(4.0).is_err()); // Too high
+    }
+
+    #[test]
+    fn test_superpixel_recommendations() {
+        let recommendations = ConfigBuilder::get_backend_recommendations(TraceBackend::Superpixel);
+        assert!(recommendations.contains_key("num_superpixels"));
+        assert!(recommendations.contains_key("compactness"));
+        assert!(recommendations.contains_key("fill_regions"));
+        assert!(recommendations.contains_key("stroke_regions"));
     }
 }

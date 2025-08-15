@@ -1,7 +1,7 @@
 {
-  "timestamp": "2025-08-15T18:16:43.915Z",
+  "timestamp": "2025-08-15T19:35:56.475Z",
   "introspection": {
-    "timestamp": "2025-08-15T18:16:32.817Z",
+    "timestamp": "2025-08-15T19:35:50.725Z",
     "module": {
       "found": true,
       "type": "object",
@@ -105,6 +105,105 @@
           "actualType": "function"
         },
         {
+          "name": "set_enable_adaptive_threshold",
+          "backend": "centerline",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_window_size",
+          "backend": "centerline",
+          "required": false,
+          "type": "int",
+          "range": "15-50",
+          "actualType": "function"
+        },
+        {
+          "name": "set_sensitivity_k",
+          "backend": "centerline",
+          "required": false,
+          "type": "float",
+          "range": "0.1-1.0",
+          "actualType": "function"
+        },
+        {
+          "name": "set_min_branch_length",
+          "backend": "centerline",
+          "required": false,
+          "type": "int",
+          "range": "4-24",
+          "actualType": "function"
+        },
+        {
+          "name": "set_enable_width_modulation",
+          "backend": "centerline",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_douglas_peucker_epsilon",
+          "backend": "centerline",
+          "required": false,
+          "type": "float",
+          "range": "0.5-3.0",
+          "actualType": "function"
+        },
+        {
+          "name": "set_num_superpixels",
+          "backend": "superpixel",
+          "required": false,
+          "type": "int",
+          "range": "20-1000",
+          "actualType": "function"
+        },
+        {
+          "name": "set_compactness",
+          "backend": "superpixel",
+          "required": false,
+          "type": "float",
+          "range": "1-50",
+          "actualType": "function"
+        },
+        {
+          "name": "set_slic_iterations",
+          "backend": "superpixel",
+          "required": false,
+          "type": "int",
+          "range": "5-15",
+          "actualType": "function"
+        },
+        {
+          "name": "set_fill_regions",
+          "backend": "superpixel",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_stroke_regions",
+          "backend": "superpixel",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_simplify_boundaries",
+          "backend": "superpixel",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_boundary_epsilon",
+          "backend": "superpixel",
+          "required": false,
+          "type": "float",
+          "range": "0.5-3.0",
+          "actualType": "function"
+        },
+        {
           "name": "set_dot_density",
           "backend": "dots",
           "required": false,
@@ -146,6 +245,28 @@
           "actualType": "function"
         },
         {
+          "name": "set_poisson_disk_sampling",
+          "backend": "dots",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_gradient_based_sizing",
+          "backend": "dots",
+          "required": false,
+          "type": "bool",
+          "actualType": "function"
+        },
+        {
+          "name": "set_svg_precision",
+          "backend": "all",
+          "required": false,
+          "type": "int",
+          "range": "0-4",
+          "actualType": "function"
+        },
+        {
           "name": "set_max_processing_time_ms",
           "backend": "all",
           "required": false,
@@ -154,6 +275,13 @@
         },
         {
           "name": "set_thread_count",
+          "backend": "all",
+          "required": false,
+          "type": "int",
+          "actualType": "function"
+        },
+        {
+          "name": "set_max_image_size",
           "backend": "all",
           "required": false,
           "type": "int",
@@ -224,111 +352,6 @@
           "range": "0.0-1.0"
         },
         {
-          "name": "set_enable_adaptive_threshold",
-          "backend": "centerline",
-          "required": false,
-          "type": "bool"
-        },
-        {
-          "name": "set_window_size",
-          "backend": "centerline",
-          "required": false,
-          "type": "int",
-          "range": "15-50"
-        },
-        {
-          "name": "set_sensitivity_k",
-          "backend": "centerline",
-          "required": false,
-          "type": "float",
-          "range": "0.1-1.0"
-        },
-        {
-          "name": "set_min_branch_length",
-          "backend": "centerline",
-          "required": false,
-          "type": "int",
-          "range": "4-24"
-        },
-        {
-          "name": "set_enable_width_modulation",
-          "backend": "centerline",
-          "required": false,
-          "type": "bool"
-        },
-        {
-          "name": "set_douglas_peucker_epsilon",
-          "backend": "centerline",
-          "required": false,
-          "type": "float",
-          "range": "0.5-3.0"
-        },
-        {
-          "name": "set_num_superpixels",
-          "backend": "superpixel",
-          "required": false,
-          "type": "int",
-          "range": "20-1000"
-        },
-        {
-          "name": "set_compactness",
-          "backend": "superpixel",
-          "required": false,
-          "type": "float",
-          "range": "1-50"
-        },
-        {
-          "name": "set_slic_iterations",
-          "backend": "superpixel",
-          "required": false,
-          "type": "int",
-          "range": "5-15"
-        },
-        {
-          "name": "set_fill_regions",
-          "backend": "superpixel",
-          "required": false,
-          "type": "bool"
-        },
-        {
-          "name": "set_stroke_regions",
-          "backend": "superpixel",
-          "required": false,
-          "type": "bool"
-        },
-        {
-          "name": "set_simplify_boundaries",
-          "backend": "superpixel",
-          "required": false,
-          "type": "bool"
-        },
-        {
-          "name": "set_boundary_epsilon",
-          "backend": "superpixel",
-          "required": false,
-          "type": "float",
-          "range": "0.5-3.0"
-        },
-        {
-          "name": "set_poisson_disk_sampling",
-          "backend": "dots",
-          "required": false,
-          "type": "bool"
-        },
-        {
-          "name": "set_gradient_based_sizing",
-          "backend": "dots",
-          "required": false,
-          "type": "bool"
-        },
-        {
-          "name": "set_svg_precision",
-          "backend": "all",
-          "required": false,
-          "type": "int",
-          "range": "0-4"
-        },
-        {
           "name": "set_optimize_svg",
           "backend": "all",
           "required": false,
@@ -339,12 +362,6 @@
           "backend": "all",
           "required": false,
           "type": "bool"
-        },
-        {
-          "name": "set_max_image_size",
-          "backend": "all",
-          "required": false,
-          "type": "int"
         },
         {
           "name": "abort_processing",
@@ -381,6 +398,10 @@
           "type": "function"
         },
         {
+          "name": "get_max_image_size",
+          "type": "function"
+        },
+        {
           "name": "get_multipass",
           "type": "function"
         },
@@ -389,7 +410,15 @@
           "type": "function"
         },
         {
+          "name": "get_svg_precision",
+          "type": "function"
+        },
+        {
           "name": "get_thread_count",
+          "type": "function"
+        },
+        {
+          "name": "set_custom_tapering",
           "type": "function"
         }
       ]
@@ -402,30 +431,50 @@
       "free",
       "get_backend",
       "get_detail",
+      "get_max_image_size",
       "get_multipass",
       "get_stroke_width",
+      "get_svg_precision",
       "get_thread_count",
       "import_config",
       "set_adaptive_sizing",
       "set_backend",
       "set_background_tolerance",
+      "set_boundary_epsilon",
+      "set_compactness",
+      "set_custom_tapering",
       "set_custom_tremor",
       "set_custom_variable_weights",
       "set_detail",
       "set_diagonal_pass",
       "set_dot_density",
       "set_dot_size_range",
+      "set_douglas_peucker_epsilon",
+      "set_enable_adaptive_threshold",
       "set_enable_bezier_fitting",
       "set_enable_etf_fdog",
       "set_enable_flow_tracing",
+      "set_enable_width_modulation",
+      "set_fill_regions",
+      "set_gradient_based_sizing",
       "set_hand_drawn_preset",
+      "set_max_image_size",
       "set_max_processing_time_ms",
+      "set_min_branch_length",
       "set_multipass",
       "set_noise_filtering",
+      "set_num_superpixels",
+      "set_poisson_disk_sampling",
       "set_preserve_colors",
       "set_reverse_pass",
+      "set_sensitivity_k",
+      "set_simplify_boundaries",
+      "set_slic_iterations",
+      "set_stroke_regions",
       "set_stroke_width",
+      "set_svg_precision",
       "set_thread_count",
+      "set_window_size",
       "use_preset",
       "validate_config",
       "vectorize",
@@ -433,10 +482,10 @@
     ],
     "summary": {
       "totalExpected": 48,
-      "totalFound": 26,
-      "totalMissing": 22,
-      "totalUnexpected": 8,
-      "completeness": 54
+      "totalFound": 43,
+      "totalMissing": 5,
+      "totalUnexpected": 11,
+      "completeness": 90
     }
   },
   "validation": [
@@ -445,35 +494,35 @@
       "backend": "edge",
       "status": "passed",
       "error": null,
-      "timestamp": "2025-08-15T18:16:27.042Z"
+      "timestamp": "2025-08-15T19:35:44.743Z"
     },
     {
       "name": "edge-with-handdrawn",
       "backend": "edge",
       "status": "passed",
       "error": null,
-      "timestamp": "2025-08-15T18:16:27.042Z"
+      "timestamp": "2025-08-15T19:35:44.744Z"
     },
     {
       "name": "centerline-minimal",
       "backend": "centerline",
       "status": "passed",
       "error": null,
-      "timestamp": "2025-08-15T18:16:27.043Z"
+      "timestamp": "2025-08-15T19:35:44.744Z"
     },
     {
       "name": "dots-minimal",
       "backend": "dots",
       "status": "passed",
       "error": null,
-      "timestamp": "2025-08-15T18:16:27.044Z"
+      "timestamp": "2025-08-15T19:35:44.745Z"
     },
     {
       "name": "superpixel-minimal",
       "backend": "superpixel",
       "status": "passed",
       "error": null,
-      "timestamp": "2025-08-15T18:16:27.045Z"
+      "timestamp": "2025-08-15T19:35:44.746Z"
     }
   ],
   "function_tests": [
@@ -482,63 +531,84 @@
       "description": "Set detail level",
       "status": "passed",
       "error": null,
-      "timestamp": "2025-08-15T18:16:29.451Z"
+      "timestamp": "2025-08-15T19:35:46.542Z"
     },
     {
       "name": "set_stroke_width",
       "description": "Set stroke width",
       "status": "passed",
       "error": null,
-      "timestamp": "2025-08-15T18:16:29.451Z"
+      "timestamp": "2025-08-15T19:35:46.542Z"
     },
     {
       "name": "set_backend",
       "description": "Set backend type",
       "status": "passed",
       "error": null,
-      "timestamp": "2025-08-15T18:16:29.451Z"
+      "timestamp": "2025-08-15T19:35:46.542Z"
     },
     {
       "name": "set_hand_drawn_preset",
       "description": "Set hand-drawn preset",
       "status": "passed",
       "error": null,
-      "timestamp": "2025-08-15T18:16:29.451Z"
+      "timestamp": "2025-08-15T19:35:46.542Z"
     },
     {
       "name": "set_tapering",
       "description": "Set tapering (should fail)",
       "status": "missing",
       "error": "Function does not exist",
-      "timestamp": "2025-08-15T18:16:29.451Z"
-    },
-    {
-      "name": "set_custom_variable_weights",
-      "description": "Set variable weights",
-      "status": "passed",
-      "error": null,
-      "timestamp": "2025-08-15T18:16:29.451Z"
-    },
-    {
-      "name": "set_custom_tremor",
-      "description": "Set tremor strength",
-      "status": "passed",
-      "error": null,
-      "timestamp": "2025-08-15T18:16:29.452Z"
+      "timestamp": "2025-08-15T19:35:46.542Z"
     },
     {
       "name": "validate_config",
-      "description": "Validate configuration",
-      "status": "failed",
-      "error": "Configuration validation failed: Validation failed: Hand-drawn preset must be specified when using custom tremor or variable weights",
-      "timestamp": "2025-08-15T18:16:29.452Z"
+      "description": "Validate clean configuration",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T19:35:46.542Z"
     },
     {
       "name": "export_config",
-      "description": "Export configuration",
-      "status": "failed",
-      "error": "Config build failed: Validation failed: Hand-drawn preset must be specified when using custom tremor or variable weights",
-      "timestamp": "2025-08-15T18:16:29.452Z"
+      "description": "Export clean configuration",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T19:35:46.542Z"
+    },
+    {
+      "name": "set_hand_drawn_preset_with_preset",
+      "description": "Set hand-drawn preset to medium",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T19:35:46.542Z"
+    },
+    {
+      "name": "set_custom_variable_weights_with_preset",
+      "description": "Set variable weights with preset",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T19:35:46.542Z"
+    },
+    {
+      "name": "set_custom_tremor_with_preset",
+      "description": "Set tremor strength with preset",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T19:35:46.543Z"
+    },
+    {
+      "name": "validate_config_with_preset",
+      "description": "Validate hand-drawn configuration",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T19:35:46.543Z"
+    },
+    {
+      "name": "export_config_with_preset",
+      "description": "Export hand-drawn configuration",
+      "status": "passed",
+      "error": null,
+      "timestamp": "2025-08-15T19:35:46.543Z"
     }
   ],
   "store_state": {
@@ -570,9 +640,5 @@
       "max_processing_time_ms": 30000
     }
   },
-  "recommendations": [
-    "Centerline backend unusable: 6 functions missing",
-    "Superpixel backend unusable: 7 functions missing",
-    "Consider implementing missing optional functions for better feature coverage"
-  ]
+  "recommendations": []
 }

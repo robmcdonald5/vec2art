@@ -230,14 +230,28 @@ pub struct ConfigData {
     preserve_colors: bool,
     adaptive_sizing: bool,
     background_tolerance: f32,
+    poisson_disk_sampling: bool,
+    gradient_based_sizing: bool,
     // Hand-drawn
     hand_drawn_preset: Option<String>,
     custom_tremor: Option<f32>,
     custom_variable_weights: Option<f32>,
+    custom_tapering: Option<f32>,
     // Advanced
     enable_etf_fdog: bool,
     enable_flow_tracing: bool,
     enable_bezier_fitting: bool,
+    // Superpixel-specific
+    num_superpixels: u32,
+    superpixel_compactness: f32,
+    superpixel_slic_iterations: u32,
+    superpixel_fill_regions: bool,
+    superpixel_stroke_regions: bool,
+    superpixel_simplify_boundaries: bool,
+    superpixel_boundary_epsilon: f32,
+    // Safety and optimization
+    max_image_size: u32,
+    svg_precision: u8,
 }
 
 /// Main WebAssembly vectorizer struct wrapping ConfigBuilder
@@ -420,6 +434,18 @@ impl WasmVectorizer {
         self.builder = self.builder.clone().adaptive_sizing(enabled);
     }
 
+    /// Enable or disable Poisson disk sampling for natural dot distribution
+    #[wasm_bindgen]
+    pub fn set_poisson_disk_sampling(&mut self, enabled: bool) {
+        self.builder = self.builder.clone().set_poisson_disk_sampling(enabled);
+    }
+
+    /// Enable or disable gradient-based sizing for dot scaling based on local image gradients
+    #[wasm_bindgen]
+    pub fn set_gradient_based_sizing(&mut self, enabled: bool) {
+        self.builder = self.builder.clone().set_gradient_based_sizing(enabled);
+    }
+
     /// Set background tolerance for automatic background detection
     #[wasm_bindgen]
     pub fn set_background_tolerance(&mut self, tolerance: f32) -> Result<(), JsValue> {
@@ -466,6 +492,17 @@ impl WasmVectorizer {
         Ok(())
     }
 
+    /// Set custom tapering strength (overrides preset)
+    #[wasm_bindgen]
+    pub fn set_custom_tapering(&mut self, tapering: f32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .custom_tapering(tapering)
+            .map_err(|e| JsValue::from_str(&format!("Custom tapering error: {e}")))?;
+        Ok(())
+    }
+
     // Advanced options
 
     /// Enable ETF/FDoG advanced edge detection
@@ -490,6 +527,175 @@ impl WasmVectorizer {
     #[wasm_bindgen]
     pub fn set_max_processing_time_ms(&mut self, time_ms: u64) {
         self.builder = self.builder.clone().max_processing_time_ms(time_ms);
+    }
+
+    // Centerline-specific configuration
+
+    /// Enable or disable adaptive thresholding for centerline backend
+    #[wasm_bindgen]
+    pub fn set_enable_adaptive_threshold(&mut self, enabled: bool) {
+        self.builder = self.builder.clone().enable_adaptive_threshold(enabled);
+    }
+
+    /// Set window size for adaptive thresholding (15-50 pixels)
+    #[wasm_bindgen]
+    pub fn set_window_size(&mut self, size: u32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .window_size(size)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(())
+    }
+
+    /// Set sensitivity parameter k for Sauvola thresholding (0.1-1.0)
+    #[wasm_bindgen]
+    pub fn set_sensitivity_k(&mut self, k: f32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .sensitivity_k(k)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(())
+    }
+
+    /// Set minimum branch length for centerline tracing (4-24 pixels)
+    #[wasm_bindgen]
+    pub fn set_min_branch_length(&mut self, length: f32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .min_branch_length(length)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(())
+    }
+
+    /// Set Douglas-Peucker epsilon for path simplification (0.5-3.0)
+    #[wasm_bindgen]
+    pub fn set_douglas_peucker_epsilon(&mut self, epsilon: f32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .douglas_peucker_epsilon(epsilon)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(())
+    }
+
+    /// Enable or disable width modulation for centerline SVG strokes
+    #[wasm_bindgen]
+    pub fn set_enable_width_modulation(&mut self, enabled: bool) {
+        self.builder = self.builder.clone().enable_width_modulation(enabled);
+    }
+
+    // Superpixel-specific configuration
+
+    /// Set number of superpixels to generate (20-1000)
+    #[wasm_bindgen]
+    pub fn set_num_superpixels(&mut self, num: u32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .num_superpixels(num)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(())
+    }
+
+    /// Set SLIC compactness parameter (1.0-50.0)
+    /// Higher values create more regular shapes, lower values follow color similarity more closely
+    #[wasm_bindgen]
+    pub fn set_compactness(&mut self, compactness: f32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .compactness(compactness)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(())
+    }
+
+    /// Set SLIC iterations for convergence (5-15)
+    #[wasm_bindgen]
+    pub fn set_slic_iterations(&mut self, iterations: u32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .slic_iterations(iterations)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(())
+    }
+
+    /// Enable or disable filled superpixel regions
+    #[wasm_bindgen]
+    pub fn set_fill_regions(&mut self, enabled: bool) {
+        self.builder = self.builder.clone().fill_regions(enabled);
+    }
+
+    /// Enable or disable superpixel region boundary strokes
+    #[wasm_bindgen]
+    pub fn set_stroke_regions(&mut self, enabled: bool) {
+        self.builder = self.builder.clone().stroke_regions(enabled);
+    }
+
+    /// Enable or disable boundary path simplification
+    #[wasm_bindgen]
+    pub fn set_simplify_boundaries(&mut self, enabled: bool) {
+        self.builder = self.builder.clone().simplify_boundaries(enabled);
+    }
+
+    /// Set boundary simplification tolerance (0.5-3.0)
+    #[wasm_bindgen]
+    pub fn set_boundary_epsilon(&mut self, epsilon: f32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .boundary_epsilon(epsilon)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(())
+    }
+
+    // Safety and optimization parameters
+
+    /// Set maximum image size before automatic resizing (512-8192 pixels)
+    /// Images larger than this will be automatically resized to prevent memory/timeout issues
+    #[wasm_bindgen]
+    pub fn set_max_image_size(&mut self, size: u32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .max_image_size(size)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(())
+    }
+
+    /// Get current maximum image size setting
+    #[wasm_bindgen]
+    pub fn get_max_image_size(&self) -> u32 {
+        self.builder
+            .clone()
+            .build()
+            .unwrap_or_default()
+            .max_image_size
+    }
+
+    /// Set SVG coordinate precision in decimal places (0-4)
+    /// Higher precision = larger file size but better quality. 0 = integers only.
+    #[wasm_bindgen]
+    pub fn set_svg_precision(&mut self, precision: u8) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .svg_precision(precision)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(())
+    }
+
+    /// Get current SVG precision setting
+    #[wasm_bindgen]
+    pub fn get_svg_precision(&self) -> u8 {
+        self.builder
+            .clone()
+            .build()
+            .unwrap_or_default()
+            .svg_precision
     }
 
     // Threading configuration
@@ -689,12 +895,26 @@ impl WasmVectorizer {
             preserve_colors: config.dot_preserve_colors,
             adaptive_sizing: config.dot_adaptive_sizing,
             background_tolerance: config.dot_background_tolerance,
+            poisson_disk_sampling: config.dot_poisson_disk_sampling,
+            gradient_based_sizing: config.dot_gradient_based_sizing,
             hand_drawn_preset: None, // TODO: Extract from builder if possible
             custom_tremor: None,     // TODO: Extract from builder if possible
             custom_variable_weights: None, // TODO: Extract from builder if possible
+            custom_tapering: None,   // TODO: Extract from builder if possible
             enable_etf_fdog: config.enable_etf_fdog,
             enable_flow_tracing: config.enable_flow_tracing,
             enable_bezier_fitting: config.enable_bezier_fitting,
+            // Superpixel parameters
+            num_superpixels: config.num_superpixels,
+            superpixel_compactness: config.superpixel_compactness,
+            superpixel_slic_iterations: config.superpixel_slic_iterations,
+            superpixel_fill_regions: config.superpixel_fill_regions,
+            superpixel_stroke_regions: config.superpixel_stroke_regions,
+            superpixel_simplify_boundaries: config.superpixel_simplify_boundaries,
+            superpixel_boundary_epsilon: config.superpixel_boundary_epsilon,
+            // Safety and optimization parameters
+            max_image_size: config.max_image_size,
+            svg_precision: config.svg_precision,
         };
 
         serde_json::to_string(&config_data)
@@ -730,9 +950,29 @@ impl WasmVectorizer {
             .adaptive_sizing(config_data.adaptive_sizing)
             .background_tolerance(config_data.background_tolerance)
             .map_err(|e| JsValue::from_str(&format!("Background tolerance error: {e}")))?
+            .set_poisson_disk_sampling(config_data.poisson_disk_sampling)
+            .set_gradient_based_sizing(config_data.gradient_based_sizing)
             .enable_etf_fdog(config_data.enable_etf_fdog)
             .enable_flow_tracing(config_data.enable_flow_tracing)
             .enable_bezier_fitting(config_data.enable_bezier_fitting);
+
+        // Apply superpixel parameters
+        builder = builder
+            .num_superpixels(config_data.num_superpixels)
+            .map_err(|e| JsValue::from_str(&format!("Num superpixels error: {e}")))?
+            .compactness(config_data.superpixel_compactness)
+            .map_err(|e| JsValue::from_str(&format!("Compactness error: {e}")))?
+            .slic_iterations(config_data.superpixel_slic_iterations)
+            .map_err(|e| JsValue::from_str(&format!("SLIC iterations error: {e}")))?
+            .fill_regions(config_data.superpixel_fill_regions)
+            .stroke_regions(config_data.superpixel_stroke_regions)
+            .simplify_boundaries(config_data.superpixel_simplify_boundaries)
+            .boundary_epsilon(config_data.superpixel_boundary_epsilon)
+            .map_err(|e| JsValue::from_str(&format!("Boundary epsilon error: {e}")))?
+            .max_image_size(config_data.max_image_size)
+            .map_err(|e| JsValue::from_str(&format!("Max image size error: {e}")))?
+            .svg_precision(config_data.svg_precision)
+            .map_err(|e| JsValue::from_str(&format!("SVG precision error: {e}")))?;
 
         // Apply conservative/aggressive detail if present
         if let Some(conservative) = config_data.conservative_detail {
@@ -766,6 +1006,12 @@ impl WasmVectorizer {
             builder = builder
                 .custom_variable_weights(weights)
                 .map_err(|e| JsValue::from_str(&format!("Custom variable weights error: {e}")))?;
+        }
+
+        if let Some(tapering) = config_data.custom_tapering {
+            builder = builder
+                .custom_tapering(tapering)
+                .map_err(|e| JsValue::from_str(&format!("Custom tapering error: {e}")))?;
         }
 
         self.builder = builder;
@@ -1102,5 +1348,52 @@ mod tests {
         // Should still be consistent after refresh
         assert_eq!(report.threading_supported(), report2.threading_supported());
         assert_eq!(report.environment_type(), report2.environment_type());
+    }
+
+    #[wasm_bindgen_test]
+    fn test_centerline_wasm_interface() {
+        let mut vectorizer = WasmVectorizer::new();
+        
+        // Test centerline-specific functions
+        vectorizer.set_enable_adaptive_threshold(true);
+        assert!(vectorizer.set_window_size(25).is_ok());
+        assert!(vectorizer.set_sensitivity_k(0.4).is_ok());
+        assert!(vectorizer.set_min_branch_length(10.0).is_ok());
+        assert!(vectorizer.set_douglas_peucker_epsilon(1.5).is_ok());
+        vectorizer.set_enable_width_modulation(false);
+        
+        // Test validation errors
+        assert!(vectorizer.set_window_size(14).is_err()); // Too small
+        assert!(vectorizer.set_window_size(51).is_err()); // Too large
+        assert!(vectorizer.set_sensitivity_k(0.05).is_err()); // Too small
+        assert!(vectorizer.set_sensitivity_k(1.1).is_err()); // Too large
+        assert!(vectorizer.set_min_branch_length(3.0).is_err()); // Too small
+        assert!(vectorizer.set_min_branch_length(25.0).is_err()); // Too large
+        assert!(vectorizer.set_douglas_peucker_epsilon(0.4).is_err()); // Too small
+        assert!(vectorizer.set_douglas_peucker_epsilon(3.1).is_err()); // Too large
+    }
+
+    #[wasm_bindgen_test]
+    fn test_superpixel_wasm_interface() {
+        let mut vectorizer = WasmVectorizer::new();
+        
+        // Test superpixel-specific functions
+        assert!(vectorizer.set_num_superpixels(150).is_ok());
+        assert!(vectorizer.set_compactness(20.0).is_ok());
+        assert!(vectorizer.set_slic_iterations(10).is_ok());
+        vectorizer.set_fill_regions(true);
+        vectorizer.set_stroke_regions(false);
+        vectorizer.set_simplify_boundaries(true);
+        assert!(vectorizer.set_boundary_epsilon(2.0).is_ok());
+        
+        // Test validation errors
+        assert!(vectorizer.set_num_superpixels(15).is_err()); // Too small
+        assert!(vectorizer.set_num_superpixels(1200).is_err()); // Too large
+        assert!(vectorizer.set_compactness(0.5).is_err()); // Too small
+        assert!(vectorizer.set_compactness(60.0).is_err()); // Too large
+        assert!(vectorizer.set_slic_iterations(3).is_err()); // Too small
+        assert!(vectorizer.set_slic_iterations(20).is_err()); // Too large
+        assert!(vectorizer.set_boundary_epsilon(0.3).is_err()); // Too small
+        assert!(vectorizer.set_boundary_epsilon(4.0).is_err()); // Too large
     }
 }

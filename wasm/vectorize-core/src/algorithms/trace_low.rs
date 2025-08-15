@@ -209,6 +209,10 @@ pub struct TraceLowConfig {
     pub dot_adaptive_sizing: bool,
     /// Background color tolerance for background detection (0.0 to 1.0)
     pub dot_background_tolerance: f32,
+    /// Enable Poisson disk sampling for natural dot distribution (default: false)
+    pub dot_poisson_disk_sampling: bool,
+    /// Enable gradient-based sizing for dot scaling based on local image gradients (default: false)
+    pub dot_gradient_based_sizing: bool,
     /// Enable adaptive thresholding for centerline backend (default: true)
     pub enable_adaptive_threshold: bool,
     /// Window size for adaptive thresholding (default: computed from detail level, 25-35 pixels)
@@ -219,6 +223,30 @@ pub struct TraceLowConfig {
     pub adaptive_threshold_use_optimized: bool,
     /// Enable EDT-based width modulation for centerline SVG strokes (default: false)
     pub enable_width_modulation: bool,
+    /// Minimum branch length for centerline tracing in pixels (4-24, default: computed from detail level)
+    pub min_branch_length: f32,
+    /// Douglas-Peucker epsilon for path simplification (0.5-3.0, default: computed from detail level)
+    pub douglas_peucker_epsilon: f32,
+    // Superpixel-specific configuration fields
+    /// Number of superpixels to generate (20-1000, default: computed from detail level)
+    pub num_superpixels: u32,
+    /// SLIC compactness parameter - higher values create more regular shapes (1.0-50.0, default: 10.0)
+    pub superpixel_compactness: f32,
+    /// SLIC iterations for convergence (5-15, default: 10)
+    pub superpixel_slic_iterations: u32,
+    /// Whether to fill superpixel regions with solid color (default: true)
+    pub superpixel_fill_regions: bool,
+    /// Whether to stroke superpixel region boundaries (default: true)
+    pub superpixel_stroke_regions: bool,
+    /// Whether to simplify superpixel boundaries using Douglas-Peucker (default: true)
+    pub superpixel_simplify_boundaries: bool,
+    /// Boundary simplification tolerance (0.5-3.0, default: 1.0)
+    pub superpixel_boundary_epsilon: f32,
+    // Safety and optimization parameters
+    /// Maximum image size (width or height) before automatic resizing (512-8192, default: 4096)
+    pub max_image_size: u32,
+    /// SVG coordinate precision in decimal places (0-4, default: 2)
+    pub svg_precision: u8,
 }
 
 impl Default for TraceLowConfig {
@@ -263,12 +291,28 @@ impl Default for TraceLowConfig {
             dot_preserve_colors: true,
             dot_adaptive_sizing: true,
             dot_background_tolerance: 0.1,
+            dot_poisson_disk_sampling: false,
+            dot_gradient_based_sizing: false,
             // Adaptive thresholding defaults
             enable_adaptive_threshold: true,
             adaptive_threshold_window_size: 31, // Will be adjusted based on detail level
             adaptive_threshold_k: 0.4,          // Will be adjusted based on detail level
             adaptive_threshold_use_optimized: true,
             enable_width_modulation: false,
+            // Centerline processing defaults
+            min_branch_length: 12.0,        // Will be adjusted based on detail level
+            douglas_peucker_epsilon: 1.5,   // Will be adjusted based on detail level
+            // Superpixel defaults
+            num_superpixels: 100,            // Reasonable default for moderate segmentation
+            superpixel_compactness: 10.0,    // Balanced shape vs color similarity
+            superpixel_slic_iterations: 10,  // Standard convergence iterations
+            superpixel_fill_regions: true,   // Default to filled poster-style look
+            superpixel_stroke_regions: true, // Include boundaries for definition
+            superpixel_simplify_boundaries: true, // Simplified paths for cleaner output
+            superpixel_boundary_epsilon: 1.0, // Moderate simplification
+            // Safety and optimization defaults
+            max_image_size: 4096,    // 4K maximum dimension before resizing
+            svg_precision: 2,        // 2 decimal places for balanced file size/quality
         }
     }
 }
@@ -1195,11 +1239,9 @@ fn trace_centerline(
     // Phase 3: Binary thresholding - adaptive or Otsu based on configuration
     let phase_start = Instant::now();
     let binary = if config.enable_adaptive_threshold {
-        // Calculate parameters based on detail level with bounds checking (playbook optimized)
-        let window_size = (27.0 + 6.0 * config.detail.clamp(0.0, 1.0)).round() as u32;
-        let window_size = window_size.clamp(27, 33);
-        let k = 0.34 + 0.08 * config.detail.clamp(0.0, 1.0);
-        let k = k.clamp(0.34, 0.42);
+        // Use configuration parameters directly
+        let window_size = config.adaptive_threshold_window_size;
+        let k = config.adaptive_threshold_k;
 
         log::debug!(
             "Using adaptive thresholding: window_size={}, k={:.3}",
@@ -1269,7 +1311,7 @@ fn trace_centerline(
 
     // Phase 6: EDT-based intelligent branch pruning (playbook optimized)
     let phase_start = Instant::now();
-    let min_branch = (4.0_f32).max(8.0 + 16.0 * config.detail); // Improved formula from playbook
+    let min_branch = config.min_branch_length; // Use configured value directly
     let pruned_polylines = prune_branches_with_edt(polylines, &edt, min_branch);
     let pruning_time = phase_start.elapsed();
     
@@ -1283,10 +1325,9 @@ fn trace_centerline(
     let cleaned_polylines = remove_micro_loops(pruned_polylines, min_perimeter_px);
     let _microloop_time = phase_start.elapsed();
 
-    // Phase 7: Simplify using Douglas-Peucker with tighter epsilon for centerlines
+    // Phase 7: Simplify using Douglas-Peucker with configured epsilon for centerlines
     let phase_start = Instant::now();
-    let mut dp_eps = (0.0008 + 0.0022 * config.detail) * thresholds.image_diagonal_px;
-    dp_eps = dp_eps.clamp(0.75, 3.0); // ~sub-pixel to a few px at 1080p
+    let dp_eps = config.douglas_peucker_epsilon; // Use configured value directly
     let simplified_polylines: Vec<Vec<Point>> = cleaned_polylines
         .into_iter()
         .map(|polyline| simplify_adaptive(&polyline, dp_eps))
@@ -1382,9 +1423,13 @@ fn trace_superpixel(
     let start_time = Instant::now();
     let (width, height) = (image.width() as usize, image.height() as usize);
 
-    // Calculate superpixel parameters based on detail level
-    let superpixel_count = (50.0 + 150.0 * config.detail) as usize;
-    let superpixel_compactness = 10.0;
+    // Use configured superpixel parameters (with fallback based on detail level)
+    let superpixel_count = if config.num_superpixels > 0 {
+        config.num_superpixels as usize
+    } else {
+        (50.0 + 150.0 * config.detail) as usize
+    };
+    let superpixel_compactness = config.superpixel_compactness;
 
     log::info!(
         "Starting SLIC superpixel segmentation: {}×{} → {} superpixels (detail: {:.2})",
@@ -1407,7 +1452,7 @@ fn trace_superpixel(
         height,
         superpixel_count,
         superpixel_compactness,
-        10, // max iterations
+        config.superpixel_slic_iterations as usize, // Use configured iterations
     );
     log::debug!("SLIC segmentation: {:?}", phase_start.elapsed());
 
@@ -1418,7 +1463,11 @@ fn trace_superpixel(
 
     // 4. Generate SVG paths based on artistic mode
     let phase_start = Instant::now();
-    let dp_epsilon = calculate_douglas_peucker_epsilon(width as u32, height as u32, 0.005) as f32;
+    let dp_epsilon = if config.superpixel_simplify_boundaries {
+        config.superpixel_boundary_epsilon
+    } else {
+        calculate_douglas_peucker_epsilon(width as u32, height as u32, 0.005) as f32
+    };
 
     let svg_paths = generate_superpixel_svg_paths(
         &regions,
@@ -1428,6 +1477,8 @@ fn trace_superpixel(
         config.stroke_px_at_1080p,
         dp_epsilon,
         config.detail,
+        config.superpixel_fill_regions,
+        config.superpixel_stroke_regions,
     )?;
     log::debug!("SVG generation: {:?}", phase_start.elapsed());
 
@@ -1774,23 +1825,23 @@ fn generate_superpixel_svg_paths(
     stroke_width: f32,
     dp_epsilon: f32,
     detail: f32,
+    fill_regions: bool,
+    stroke_regions: bool,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     let mut svg_paths = Vec::new();
 
-    // Determine artistic mode based on detail level
-    // 0.0-0.3: Filled regions only (stained glass effect)
-    // 0.3-0.7: Filled regions with black borders (comic book style)
-    // 0.7-1.0: Strokes only (cell animation style)
-
-    let mode = if detail < 0.33 {
-        "filled_only"
-    } else if detail < 0.67 {
-        "filled_with_borders"
-    } else {
-        "strokes_only"
+    // Determine artistic mode based on configuration
+    let mode = match (fill_regions, stroke_regions) {
+        (true, true) => "filled_with_borders",
+        (true, false) => "filled_only", 
+        (false, true) => "strokes_only",
+        (false, false) => {
+            // Fallback to detail-based mode if both are disabled
+            if detail < 0.5 { "filled_only" } else { "strokes_only" }
+        }
     };
 
-    log::debug!("Using superpixel artistic mode: {mode} (detail: {detail:.2})");
+    log::debug!("Using superpixel artistic mode: {mode} (fill: {fill_regions}, stroke: {stroke_regions}, detail: {detail:.2})");
 
     for region in regions {
         if region.boundary_points.len() < 3 {
@@ -1871,6 +1922,8 @@ fn trace_dots(
         use_parallel: true,
         parallel_threshold: 10000,
         random_seed: 42,
+        poisson_disk_sampling: config.dot_poisson_disk_sampling,
+        gradient_based_sizing: config.dot_gradient_based_sizing,
     };
 
     // Create GradientConfig - can use defaults for now

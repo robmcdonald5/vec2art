@@ -82,8 +82,10 @@ pub fn vectorize_trace_low_rgba(
         ));
     }
 
-    // Simplified resolution processing (no complex adaptive processing needed)
-    let resolution_config = ResolutionConfig::default();
+    // Create resolution config with max image size from config
+    let resolution_config = ResolutionConfig {
+        max_dimension: config.max_image_size,
+    };
     let resolution_analysis = analyze_resolution_requirements(image, &resolution_config);
 
     // Apply resolution-aware processing
@@ -115,8 +117,12 @@ pub fn vectorize_trace_low_rgba(
         ));
     }
 
-    // Generate complete SVG document
-    let svg_config = SvgConfig::default();
+    // Generate complete SVG document with precision from config
+    let svg_config = SvgConfig {
+        precision: config.svg_precision,
+        optimize: true,
+        include_metadata: false,
+    };
     let svg_document = svg::generate_svg_document(
         &svg_paths,
         processing_image.width(),

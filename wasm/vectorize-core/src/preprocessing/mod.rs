@@ -37,27 +37,57 @@ impl Default for ResolutionConfig {
     }
 }
 
-/// Simplified resolution analysis (no complex adaptive processing)
+/// Simplified resolution analysis with max size checking
 pub fn analyze_resolution_requirements(
     image: &RgbaImage,
-    _config: &ResolutionConfig,
+    config: &ResolutionConfig,
 ) -> ResolutionAnalysis {
     let (width, height) = image.dimensions();
-
-    ResolutionAnalysis {
-        scale_factor: 1.0,
-        original_dimensions: (width, height),
-        processing_dimensions: (width, height),
-        parameter_adjustments: ParameterAdjustments { epsilon_scale: 1.0 },
+    let max_dimension = std::cmp::max(width, height);
+    
+    if max_dimension <= config.max_dimension {
+        // No resizing needed
+        ResolutionAnalysis {
+            scale_factor: 1.0,
+            original_dimensions: (width, height),
+            processing_dimensions: (width, height),
+            parameter_adjustments: ParameterAdjustments { epsilon_scale: 1.0 },
+        }
+    } else {
+        // Calculate resize factor to fit within max_dimension
+        let scale_factor = config.max_dimension as f32 / max_dimension as f32;
+        let new_width = (width as f32 * scale_factor).round() as u32;
+        let new_height = (height as f32 * scale_factor).round() as u32;
+        
+        ResolutionAnalysis {
+            scale_factor,
+            original_dimensions: (width, height),
+            processing_dimensions: (new_width, new_height),
+            parameter_adjustments: ParameterAdjustments { 
+                epsilon_scale: scale_factor as f64,
+            },
+        }
     }
 }
 
-/// Simplified resolution processing (just return clone)
+/// Resolution processing with image resizing support
 pub fn apply_resolution_processing(
     image: &RgbaImage,
-    _analysis: &ResolutionAnalysis,
+    analysis: &ResolutionAnalysis,
 ) -> VectorizeResult<RgbaImage> {
-    Ok(image.clone())
+    if analysis.scale_factor == 1.0 {
+        // No resizing needed
+        Ok(image.clone())
+    } else {
+        // Resize image using high-quality resampling
+        let resized = image::imageops::resize(
+            image,
+            analysis.processing_dimensions.0,
+            analysis.processing_dimensions.1,
+            image::imageops::FilterType::Lanczos3,
+        );
+        Ok(resized)
+    }
 }
 
 /// Simplified trace-low config adjustment (no adjustments needed)

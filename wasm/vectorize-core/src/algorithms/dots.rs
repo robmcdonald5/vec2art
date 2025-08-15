@@ -74,6 +74,10 @@ pub struct DotConfig {
     pub parallel_threshold: usize,
     /// Random seed for consistent spatial distribution
     pub random_seed: u64,
+    /// Enable Poisson disk sampling for natural dot distribution (default: false)
+    pub poisson_disk_sampling: bool,
+    /// Enable gradient-based sizing for dot scaling based on local image gradients (default: false)
+    pub gradient_based_sizing: bool,
 }
 
 impl Default for DotConfig {
@@ -89,6 +93,8 @@ impl Default for DotConfig {
             use_parallel: true,
             parallel_threshold: 10000,
             random_seed: 42,
+            poisson_disk_sampling: false,
+            gradient_based_sizing: false,
         }
     }
 }
@@ -104,10 +110,22 @@ fn calculate_gradient_strength(
     x: u32,
     y: u32,
     adaptive_sizing: bool,
+    gradient_based_sizing: bool,
 ) -> f32 {
     let magnitude = gradient_analysis.get_magnitude(x, y).unwrap_or(0.0);
 
-    if adaptive_sizing {
+    if gradient_based_sizing {
+        // Enhanced gradient-based sizing uses both magnitude and variance with improved scaling
+        let variance = gradient_analysis.get_variance(x, y).unwrap_or(0.0);
+        let variance_factor = variance.sqrt().min(255.0) / 255.0;
+        let magnitude_factor = magnitude.min(362.0) / 362.0;
+        
+        // Gradient-based sizing emphasizes local detail more strongly
+        // Uses a non-linear scaling for better visual results
+        let detail_factor = 0.6 * magnitude_factor + 0.4 * variance_factor;
+        // Apply power curve to enhance contrast in detail areas
+        detail_factor.powf(0.8)
+    } else if adaptive_sizing {
         let variance = gradient_analysis.get_variance(x, y).unwrap_or(0.0);
         // Combine magnitude and variance for adaptive strength
         // Use square root of variance (standard deviation) for better scaling
@@ -135,6 +153,135 @@ fn strength_to_opacity(strength: f32) -> f32 {
     let min_opacity = 0.3;
     let max_opacity = 1.0;
     min_opacity + strength * (max_opacity - min_opacity)
+}
+
+/// Poisson disk sampling implementation for natural dot distribution
+/// Uses Mitchell's algorithm for fast O(n) generation
+struct PoissonDiskSampler {
+    width: f32,
+    height: f32,
+    min_distance: f32,
+    grid_size: f32,
+    grid_width: usize,
+    grid_height: usize,
+    grid: Vec<Option<usize>>,
+    active_list: Vec<usize>,
+    samples: Vec<(f32, f32)>,
+    rng_state: u64,
+}
+
+impl PoissonDiskSampler {
+    fn new(width: f32, height: f32, min_distance: f32, seed: u64) -> Self {
+        let grid_size = min_distance / (2.0_f32).sqrt();
+        let grid_width = (width / grid_size).ceil() as usize;
+        let grid_height = (height / grid_size).ceil() as usize;
+        
+        Self {
+            width,
+            height,
+            min_distance,
+            grid_size,
+            grid_width,
+            grid_height,
+            grid: vec![None; grid_width * grid_height],
+            active_list: Vec::new(),
+            samples: Vec::new(),
+            rng_state: seed,
+        }
+    }
+    
+    /// Simple LCG random number generator for deterministic results
+    fn next_random(&mut self) -> f32 {
+        self.rng_state = self.rng_state.wrapping_mul(1103515245).wrapping_add(12345);
+        (self.rng_state % 2147483648) as f32 / 2147483648.0
+    }
+    
+    fn grid_coords(&self, x: f32, y: f32) -> (usize, usize) {
+        let gx = (x / self.grid_size).floor() as usize;
+        let gy = (y / self.grid_size).floor() as usize;
+        (gx.min(self.grid_width - 1), gy.min(self.grid_height - 1))
+    }
+    
+    fn is_valid_point(&self, x: f32, y: f32) -> bool {
+        if x < 0.0 || x >= self.width || y < 0.0 || y >= self.height {
+            return false;
+        }
+        
+        let (gx, gy) = self.grid_coords(x, y);
+        let start_gx = gx.saturating_sub(2);
+        let end_gx = (gx + 3).min(self.grid_width);
+        let start_gy = gy.saturating_sub(2);
+        let end_gy = (gy + 3).min(self.grid_height);
+        
+        for check_gy in start_gy..end_gy {
+            for check_gx in start_gx..end_gx {
+                let idx = check_gy * self.grid_width + check_gx;
+                if let Some(sample_idx) = self.grid[idx] {
+                    if sample_idx < self.samples.len() {
+                        let (sx, sy) = self.samples[sample_idx];
+                        let dx = x - sx;
+                        let dy = y - sy;
+                        let dist_sq = dx * dx + dy * dy;
+                        if dist_sq < self.min_distance * self.min_distance {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        true
+    }
+    
+    fn add_sample(&mut self, x: f32, y: f32) -> usize {
+        let sample_idx = self.samples.len();
+        self.samples.push((x, y));
+        
+        let (gx, gy) = self.grid_coords(x, y);
+        let grid_idx = gy * self.grid_width + gx;
+        self.grid[grid_idx] = Some(sample_idx);
+        
+        self.active_list.push(sample_idx);
+        sample_idx
+    }
+    
+    fn generate_around(&mut self, around_idx: usize, k: usize) -> Option<(f32, f32)> {
+        let (center_x, center_y) = self.samples[around_idx];
+        
+        for _ in 0..k {
+            let angle = self.next_random() * 2.0 * std::f32::consts::PI;
+            let distance = self.min_distance * (1.0 + self.next_random());
+            
+            let x = center_x + distance * angle.cos();
+            let y = center_y + distance * angle.sin();
+            
+            if self.is_valid_point(x, y) {
+                return Some((x, y));
+            }
+        }
+        None
+    }
+    
+    fn generate(&mut self) -> Vec<(f32, f32)> {
+        // Add initial sample
+        let initial_x = self.width * 0.5;
+        let initial_y = self.height * 0.5;
+        self.add_sample(initial_x, initial_y);
+        
+        const K: usize = 30; // Number of attempts per active sample
+        
+        while !self.active_list.is_empty() {
+            let active_idx = (self.next_random() * self.active_list.len() as f32) as usize;
+            let sample_idx = self.active_list[active_idx];
+            
+            if let Some((x, y)) = self.generate_around(sample_idx, K) {
+                self.add_sample(x, y);
+            } else {
+                self.active_list.swap_remove(active_idx);
+            }
+        }
+        
+        self.samples.clone()
+    }
 }
 
 /// Simple spatial distribution check to prevent clustering
@@ -271,8 +418,13 @@ pub fn generate_dots(
                 }
 
                 // Calculate gradient strength
-                let strength =
-                    calculate_gradient_strength(gradient_analysis, x, y, config.adaptive_sizing);
+                let strength = calculate_gradient_strength(
+                    gradient_analysis,
+                    x,
+                    y,
+                    config.adaptive_sizing,
+                    config.gradient_based_sizing,
+                );
 
                 // Skip pixels below density threshold
                 if strength < config.density_threshold {
@@ -306,8 +458,13 @@ pub fn generate_dots(
                 }
 
                 // Calculate gradient strength
-                let strength =
-                    calculate_gradient_strength(gradient_analysis, x, y, config.adaptive_sizing);
+                let strength = calculate_gradient_strength(
+                    gradient_analysis,
+                    x,
+                    y,
+                    config.adaptive_sizing,
+                    config.gradient_based_sizing,
+                );
 
                 // Skip pixels below density threshold
                 if strength < config.density_threshold {
@@ -332,24 +489,86 @@ pub fn generate_dots(
             candidates
         };
 
-    // Sort candidates by gradient strength (strongest first) for better spatial distribution
-    let mut sorted_candidates = candidates;
-    sorted_candidates.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
-
-    // Generate dots with spatial distribution
+    // Generate dots with chosen spatial distribution method
     let mut dots = Vec::new();
-    let mut spatial_grid =
-        SpatialGrid::new(width, height, config.max_radius, config.spacing_factor);
-
-    for (x, y, radius, opacity, color) in sorted_candidates {
-        let fx = x as f32 + 0.5; // Center of pixel
-        let fy = y as f32 + 0.5;
-
-        // Check spatial distribution
-        if spatial_grid.is_position_valid(fx, fy, radius, &dots, config.spacing_factor) {
+    
+    if config.poisson_disk_sampling {
+        // Use Poisson disk sampling for natural distribution
+        let min_distance = config.max_radius * config.spacing_factor;
+        let mut poisson_sampler = PoissonDiskSampler::new(
+            width as f32,
+            height as f32,
+            min_distance,
+            config.random_seed,
+        );
+        
+        let sample_points = poisson_sampler.generate();
+        
+        // For each Poisson sample point, find the best candidate dot properties
+        for (fx, fy) in sample_points {
+            let x = fx.floor() as u32;
+            let y = fy.floor() as u32;
+            
+            // Skip if outside image bounds
+            if x >= width || y >= height {
+                continue;
+            }
+            
+            let index = (y * width + x) as usize;
+            
+            // Skip background pixels
+            if background_mask[index] {
+                continue;
+            }
+            
+            // Calculate gradient strength for this position
+            let strength = calculate_gradient_strength(
+                gradient_analysis,
+                x,
+                y,
+                config.adaptive_sizing,
+                config.gradient_based_sizing,
+            );
+            
+            // Skip pixels below density threshold
+            if strength < config.density_threshold {
+                continue;
+            }
+            
+            // Calculate dot properties
+            let radius = strength_to_radius(strength, config.min_radius, config.max_radius);
+            let opacity = strength_to_opacity(strength);
+            
+            // Get color
+            let color = if config.preserve_colors {
+                let pixel = rgba.get_pixel(x, y);
+                rgba_to_hex(pixel)
+            } else {
+                config.default_color.clone()
+            };
+            
             let dot = Dot::new(fx, fy, radius, opacity, color);
-            spatial_grid.add_dot(dots.len(), fx, fy);
             dots.push(dot);
+        }
+    } else {
+        // Use traditional grid-based spatial distribution
+        // Sort candidates by gradient strength (strongest first) for better spatial distribution
+        let mut sorted_candidates = candidates;
+        sorted_candidates.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+
+        let mut spatial_grid =
+            SpatialGrid::new(width, height, config.max_radius, config.spacing_factor);
+
+        for (x, y, radius, opacity, color) in sorted_candidates {
+            let fx = x as f32 + 0.5; // Center of pixel
+            let fy = y as f32 + 0.5;
+
+            // Check spatial distribution
+            if spatial_grid.is_position_valid(fx, fy, radius, &dots, config.spacing_factor) {
+                let dot = Dot::new(fx, fy, radius, opacity, color);
+                spatial_grid.add_dot(dots.len(), fx, fy);
+                dots.push(dot);
+            }
         }
     }
 
@@ -469,8 +688,13 @@ pub fn generate_dots_from_image(
     let height = rgba.height();
     for y in (0..height).step_by(height as usize / 10) {
         for x in (0..width).step_by(width as usize / 10) {
-            let strength =
-                calculate_gradient_strength(&gradient_analysis, x, y, dot_config.adaptive_sizing);
+            let strength = calculate_gradient_strength(
+                &gradient_analysis,
+                x,
+                y,
+                dot_config.adaptive_sizing,
+                dot_config.gradient_based_sizing,
+            );
             sample_strengths.push(strength);
         }
     }
@@ -597,8 +821,8 @@ mod tests {
         let gradient_analysis = analyze_image_gradients(&gray);
 
         // Test center pixel
-        let strength_adaptive = calculate_gradient_strength(&gradient_analysis, 50, 50, true);
-        let strength_simple = calculate_gradient_strength(&gradient_analysis, 50, 50, false);
+        let strength_adaptive = calculate_gradient_strength(&gradient_analysis, 50, 50, true, false);
+        let strength_simple = calculate_gradient_strength(&gradient_analysis, 50, 50, false, false);
 
         assert!((0.0..=1.0).contains(&strength_adaptive));
         assert!((0.0..=1.0).contains(&strength_simple));
@@ -928,5 +1152,99 @@ mod tests {
         assert!(config.use_parallel);
         assert_eq!(config.parallel_threshold, 10000);
         assert_eq!(config.random_seed, 42);
+        assert!(!config.poisson_disk_sampling);
+        assert!(!config.gradient_based_sizing);
+    }
+
+    #[test]
+    fn test_poisson_disk_sampling() {
+        let mut sampler = PoissonDiskSampler::new(100.0, 100.0, 5.0, 42);
+        let samples = sampler.generate();
+        
+        // Should generate some samples
+        assert!(!samples.is_empty(), "Should generate at least one sample");
+        
+        // All samples should be within bounds
+        for (x, y) in &samples {
+            assert!(*x >= 0.0 && *x < 100.0, "X coordinate out of bounds: {}", x);
+            assert!(*y >= 0.0 && *y < 100.0, "Y coordinate out of bounds: {}", y);
+        }
+        
+        // Check minimum distance constraint
+        for i in 0..samples.len() {
+            for j in i + 1..samples.len() {
+                let (x1, y1) = samples[i];
+                let (x2, y2) = samples[j];
+                let distance = ((x2 - x1).powi(2) + (y2 - y1).powi(2)).sqrt();
+                assert!(
+                    distance >= 5.0,
+                    "Samples too close: distance {} < min_distance 5.0",
+                    distance
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_gradient_based_sizing() {
+        let img = create_gradient_image();
+        let gray = image::imageops::grayscale(&img);
+        let gradient_analysis = analyze_image_gradients(&gray);
+        
+        // Test standard vs gradient-based sizing
+        let strength_standard = calculate_gradient_strength(&gradient_analysis, 50, 50, false, false);
+        let strength_adaptive = calculate_gradient_strength(&gradient_analysis, 50, 50, true, false);
+        let strength_gradient = calculate_gradient_strength(&gradient_analysis, 50, 50, false, true);
+        
+        // All should be valid strengths
+        assert!((0.0..=1.0).contains(&strength_standard));
+        assert!((0.0..=1.0).contains(&strength_adaptive));
+        assert!((0.0..=1.0).contains(&strength_gradient));
+        
+        // Gradient-based sizing should generally produce different results
+        // Note: They might be equal for some pixels, but for a gradient image they should differ
+        assert_ne!(strength_standard, strength_gradient, "Standard and gradient-based sizing should produce different results");
+    }
+
+    #[test]
+    fn test_poisson_disk_sampling_integration() {
+        let img = create_test_image();
+        let gray = image::imageops::grayscale(&img);
+        let gradient_analysis = analyze_image_gradients(&gray);
+        let background_mask = create_simple_background_mask(50, 50);
+        
+        let config_poisson = DotConfig {
+            poisson_disk_sampling: true,
+            gradient_based_sizing: true,
+            density_threshold: 0.05, // Lower threshold to ensure dots
+            ..Default::default()
+        };
+        
+        let config_grid = DotConfig {
+            poisson_disk_sampling: false,
+            gradient_based_sizing: false,
+            density_threshold: 0.05,
+            ..Default::default()
+        };
+        
+        let dots_poisson = generate_dots(&img, &gradient_analysis, &background_mask, &config_poisson);
+        let dots_grid = generate_dots(&img, &gradient_analysis, &background_mask, &config_grid);
+        
+        // Both methods should generate dots (though potentially different counts)
+        if !dots_poisson.is_empty() && !dots_grid.is_empty() {
+            // Poisson distribution should have more natural spacing
+            // This is hard to test directly, but we can verify basic properties
+            
+            // All dots should be within image bounds
+            for dot in &dots_poisson {
+                assert!(dot.x >= 0.0 && dot.x <= 50.0);
+                assert!(dot.y >= 0.0 && dot.y <= 50.0);
+            }
+            
+            for dot in &dots_grid {
+                assert!(dot.x >= 0.0 && dot.x <= 50.0);
+                assert!(dot.y >= 0.0 && dot.y <= 50.0);
+            }
+        }
     }
 }
