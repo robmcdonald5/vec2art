@@ -1,0 +1,470 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/**'
+      - 'wasm/**'
+      - '.github/workflows/e2e-tests.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - 'wasm/**'
+      - '.github/workflows/e2e-tests.yml'
+  schedule:
+    # Run nightly tests at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - smoke
+          - core
+          - wasm
+          - accessibility
+          - performance
+          - cross-platform
+
+env:
+  NODE_VERSION: '18'
+  RUST_VERSION: 'stable'
+
+jobs:
+  # Quick smoke tests for PRs
+  smoke-tests:
+    if: github.event_name == 'pull_request' || github.event.inputs.test_suite == 'smoke'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          target: wasm32-unknown-unknown
+          
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        
+      - name: Build WASM module
+        working-directory: wasm/vectorize-wasm
+        run: wasm-pack build --target web --out-dir pkg
+        
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install chromium --with-deps
+        
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        
+      - name: Run smoke tests
+        working-directory: frontend
+        run: npm run test:smoke
+        env:
+          CI: true
+          
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 7
+
+  # Comprehensive E2E tests
+  e2e-tests:
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event.inputs.test_suite == 'all'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        browser: [chromium, firefox, webkit]
+        test-suite: [core, wasm, accessibility, performance]
+        exclude:
+          # Webkit not available on Linux
+          - os: ubuntu-latest
+            browser: webkit
+          # Skip some combinations to reduce CI time
+          - os: windows-latest
+            browser: firefox
+          - os: macos-latest
+            browser: firefox
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          target: wasm32-unknown-unknown
+          
+      - name: Install wasm-pack
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+          else
+            curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          fi
+        shell: bash
+        
+      - name: Build WASM module
+        working-directory: wasm/vectorize-wasm
+        run: wasm-pack build --target web --out-dir pkg
+        
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install ${{ matrix.browser }} --with-deps
+        
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        
+      - name: Run E2E tests
+        working-directory: frontend
+        run: npm run test:e2e:${{ matrix.test-suite }} -- --project=${{ matrix.browser }}
+        env:
+          CI: true
+          PWTEST_SCREENSHOT: only-on-failure
+          PWTEST_VIDEO: retain-on-failure
+          
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.os }}-${{ matrix.browser }}-${{ matrix.test-suite }}
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 7
+
+  # Cross-platform and mobile tests
+  cross-platform-tests:
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event.inputs.test_suite == 'cross-platform'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [mobile-chrome, mobile-safari, tablet-chrome, low-end-device, high-dpi]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          target: wasm32-unknown-unknown
+          
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        
+      - name: Build WASM module
+        working-directory: wasm/vectorize-wasm
+        run: wasm-pack build --target web --out-dir pkg
+        
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps
+        
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        
+      - name: Run cross-platform tests
+        working-directory: frontend
+        run: npm run test:e2e:cross-platform -- --project=${{ matrix.project }}
+        env:
+          CI: true
+          
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-platform-results-${{ matrix.project }}
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 7
+
+  # Performance monitoring
+  performance-monitoring:
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event.inputs.test_suite == 'performance'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          target: wasm32-unknown-unknown
+          
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        
+      - name: Build WASM module
+        working-directory: wasm/vectorize-wasm
+        run: wasm-pack build --target web --out-dir pkg
+        
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install chromium --with-deps
+        
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        
+      - name: Run performance tests
+        working-directory: frontend
+        run: npm run test:e2e:performance -- --project=chromium
+        env:
+          CI: true
+          
+      - name: Upload performance results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 30
+
+  # Error handling tests
+  error-handling-tests:
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event.inputs.test_suite == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          target: wasm32-unknown-unknown
+          
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        
+      - name: Build WASM module
+        working-directory: wasm/vectorize-wasm
+        run: wasm-pack build --target web --out-dir pkg
+        
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install chromium --with-deps
+        
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        
+      - name: Run error handling tests
+        working-directory: frontend
+        run: npm run test:e2e:errors -- --project=chromium
+        env:
+          CI: true
+          
+      - name: Upload error test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-handling-results
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 7
+
+  # Test report generation
+  generate-report:
+    if: always() && (github.event_name == 'push' || github.event_name == 'schedule')
+    needs: [smoke-tests, e2e-tests, cross-platform-tests, performance-monitoring, error-handling-tests]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test-artifacts
+          
+      - name: Generate combined test report
+        run: |
+          echo "# E2E Test Results Summary" > test-summary.md
+          echo "" >> test-summary.md
+          echo "## Test Run Information" >> test-summary.md
+          echo "- **Trigger**: ${{ github.event_name }}" >> test-summary.md
+          echo "- **Branch**: ${{ github.ref_name }}" >> test-summary.md
+          echo "- **Commit**: ${{ github.sha }}" >> test-summary.md
+          echo "- **Timestamp**: $(date -u)" >> test-summary.md
+          echo "" >> test-summary.md
+          
+          # Count artifacts to gauge test completion
+          artifact_count=$(find test-artifacts -name "*.json" | wc -l)
+          echo "- **Test Artifacts**: $artifact_count" >> test-summary.md
+          
+          if [ "$artifact_count" -gt 0 ]; then
+            echo "⚠️ Some tests failed - check individual artifacts" >> test-summary.md
+          else
+            echo "✅ All tests passed" >> test-summary.md
+          fi
+          
+      - name: Upload combined report
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-summary
+          path: test-summary.md
+          retention-days: 30
+          
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('test-summary.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+
+  # Accessibility audit
+  accessibility-audit:
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event.inputs.test_suite == 'accessibility'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          target: wasm32-unknown-unknown
+          
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        
+      - name: Build WASM module
+        working-directory: wasm/vectorize-wasm
+        run: wasm-pack build --target web --out-dir pkg
+        
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install chromium --with-deps
+        
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        
+      - name: Run accessibility tests
+        working-directory: frontend
+        run: npm run test:accessibility
+        env:
+          CI: true
+          
+      - name: Upload accessibility results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-results
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 30

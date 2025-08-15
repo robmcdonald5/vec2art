@@ -1,0 +1,105 @@
+# Dependabot configuration for automated dependency updates
+version: 2
+updates:
+  # Frontend NPM dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "McDon"
+    assignees:
+      - "McDon"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    # Group dependency updates to reduce PR noise
+    groups:
+      svelte-ecosystem:
+        patterns:
+          - "@sveltejs/*"
+          - "svelte*"
+        update-types:
+          - "minor"
+          - "patch"
+      
+      testing-tools:
+        patterns:
+          - "@playwright/*"
+          - "vitest*"
+          - "@vitest/*"
+          - "@testing-library/*"
+        update-types:
+          - "minor"
+          - "patch"
+      
+      dev-tools:
+        patterns:
+          - "eslint*"
+          - "prettier*"
+          - "typescript"
+          - "@typescript-eslint/*"
+        update-types:
+          - "minor"
+          - "patch"
+      
+      build-tools:
+        patterns:
+          - "vite*"
+          - "@tailwindcss/*"
+          - "tailwindcss"
+          - "postcss*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Rust/Cargo dependencies (when needed)
+  - package-ecosystem: "cargo"
+    directory: "/vectorize-core"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "McDon"
+    assignees:
+      - "McDon"
+    commit-message:
+      prefix: "chore(rust-deps)"
+      include: "scope"
+
+  # WASM workspace
+  - package-ecosystem: "cargo"
+    directory: "/vectorize-wasm"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:30"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "McDon"
+    assignees:
+      - "McDon"
+    commit-message:
+      prefix: "chore(wasm-deps)"
+      include: "scope"
+
+  # GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "first monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "McDon"
+    assignees:
+      - "McDon"
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
