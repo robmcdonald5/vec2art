@@ -3,7 +3,6 @@
 	import Button from '$lib/components/ui/button.svelte';
 	import FileDropzone from '$lib/components/ui/file-dropzone.svelte';
 	import ProgressBar from '$lib/components/ui/progress-bar.svelte';
-	import SmartPerformanceSelector from '$lib/components/ui/smart-performance-selector.svelte';
 	import {
 		Upload,
 		Settings,
@@ -46,6 +45,7 @@
 	// Smart initialization state
 	let isInitializing = $state(false);
 	let selectedPerformanceMode = $state<string>('balanced');
+	let hasUserInitiatedConversion = $state(false);
 
 	// Initialize WASM without threads (lazy loading)
 	onMount(async () => {
@@ -58,26 +58,39 @@
 		}
 	});
 
-	// Handle smart performance selection
-	async function handlePerformanceSelection(threadCount: number, mode: string) {
+	// Initialize threads on-demand for conversions
+	async function initializeThreadsForConversion(): Promise<boolean> {
+		if (store.threadsInitialized) {
+			return true;
+		}
+
 		isInitializing = true;
-		selectedPerformanceMode = mode;
-		announceProcessingStatus(`Initializing ${mode} mode with ${threadCount} threads`);
+		announceProcessingStatus('Initializing converter for optimal performance...');
 
 		try {
-			console.log(`Initializing with ${threadCount} threads in ${mode} mode`);
-			const success = await store.initializeThreads(threadCount);
+			// Determine optimal thread count based on system capabilities
+			const cores = navigator.hardwareConcurrency || 4;
+			const optimalThreadCount = Math.min(Math.max(1, cores - 1), 8); // Leave 1 core free, max 8
+			
+			console.log(`Auto-initializing with ${optimalThreadCount} threads for conversion`);
+			const success = await store.initializeThreads(optimalThreadCount);
 
 			if (!success) {
 				console.warn('Thread pool initialization failed, will use single-threaded mode');
-				announceProcessingStatus('Initialization failed, using single-threaded mode');
+				announceProcessingStatus('Using single-threaded mode');
+				// Still return true as single-threaded mode is valid
+				return true;
 			} else {
-				console.log(`Successfully initialized ${threadCount} threads`);
-				announceProcessingStatus(`Successfully initialized ${threadCount} threads in ${mode} mode`);
+				console.log(`Successfully initialized ${optimalThreadCount} threads`);
+				selectedPerformanceMode = cores > 4 ? 'performance' : 'balanced';
+				announceProcessingStatus(`Converter ready with ${optimalThreadCount} threads`);
+				return true;
 			}
 		} catch (error) {
 			console.error('Failed to initialize thread pool:', error);
-			announceProcessingStatus('Thread initialization failed');
+			announceProcessingStatus('Using fallback processing mode');
+			// Still return true to allow single-threaded processing
+			return true;
 		} finally {
 			isInitializing = false;
 		}
@@ -85,6 +98,7 @@
 
 	function handleFileSelect(file: File | null) {
 		if (file) {
+			// File upload doesn't need threading - just store the file
 			store.setInputFile(file);
 			announceToScreenReader(`File selected: ${file.name}`);
 		} else {
@@ -142,6 +156,17 @@
 	}
 
 	async function handleConvert() {
+		hasUserInitiatedConversion = true;
+		
+		// Initialize threads if not already done (lazy initialization)
+		if (!store.threadsInitialized) {
+			const initialized = await initializeThreadsForConversion();
+			if (!initialized) {
+				console.error('Failed to initialize converter');
+				return;
+			}
+		}
+		
 		announceProcessingStatus('Starting image conversion');
 		try {
 			const result = await store.processImage();
@@ -180,6 +205,7 @@
 	function handleDownload() {
 		if (!store.lastResult) return;
 
+		// Downloads don't need threading - just use the already processed result
 		const blob = new Blob([store.lastResult.svg], { type: 'image/svg+xml' });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
@@ -189,6 +215,7 @@
 		a.click();
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
+		announceToScreenReader('SVG file downloaded');
 	}
 
 	// Derived values
@@ -201,9 +228,9 @@
 		};
 	});
 
-	// Need threads initialized before we can convert
+	// Can convert as long as we have an image and valid config (threads will initialize on-demand)
 	const canConvert = $derived(
-		store.inputImage && store.isConfigValid() && !store.isProcessing && store.threadsInitialized
+		store.inputImage && store.isConfigValid() && !store.isProcessing && !isInitializing
 	);
 	const canDownload = $derived(store.lastResult && !store.isProcessing);
 	const stats = $derived(store.getStats());
@@ -239,27 +266,19 @@
 				<Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
 				Loading converter module...
 			</div>
-		{:else if !store.threadsInitialized}
-			<!-- Smart Performance Selector -->
-			<section class="mt-4" aria-labelledby="performance-selector-heading">
-				<h2 id="performance-selector-heading" class="sr-only">Performance Settings</h2>
-				<SmartPerformanceSelector
-					onSelect={handlePerformanceSelection}
-					{isInitializing}
-					disabled={false}
-				/>
-			</section>
 		{:else if store.capabilities}
 			<div class="mt-4 flex items-center gap-2 text-sm" role="status" aria-label="Converter status">
-				{#if store.capabilities.threading_supported}
+				{#if store.threadsInitialized && store.capabilities.threading_supported}
 					<CheckCircle class="h-4 w-4 text-green-500" aria-hidden="true" />
 					<span class="text-green-700 dark:text-green-400">
-						{selectedPerformanceMode.charAt(0).toUpperCase() + selectedPerformanceMode.slice(1)} mode
-						active ({store.requestedThreadCount || store.capabilities.hardware_concurrency} threads)
+						High-performance mode active ({store.requestedThreadCount || store.capabilities.hardware_concurrency} threads)
 					</span>
-				{:else}
+				{:else if store.threadsInitialized}
 					<AlertCircle class="h-4 w-4 text-yellow-500" aria-hidden="true" />
 					<span class="text-yellow-700 dark:text-yellow-400">Single-threaded mode active</span>
+				{:else}
+					<CheckCircle class="h-4 w-4 text-blue-500" aria-hidden="true" />
+					<span class="text-blue-700 dark:text-blue-400">Converter ready</span>
 				{/if}
 			</div>
 		{/if}
@@ -344,7 +363,23 @@
 					role="img"
 					aria-label="Image preview area"
 				>
-					{#if store.isProcessing && store.currentProgress}
+					{#if isInitializing}
+						<!-- Initialization State -->
+						<div
+							class="w-full max-w-md space-y-4 text-center"
+							role="status"
+							aria-live="polite"
+							aria-label="Initializing converter"
+						>
+							<Loader2 class="text-primary mx-auto h-12 w-12 animate-spin" aria-hidden="true" />
+							<div class="space-y-2">
+								<p class="font-medium">Initializing high-performance converter...</p>
+								<p class="text-muted-foreground text-sm">
+									Setting up optimal processing with {navigator.hardwareConcurrency || 4} CPU cores
+								</p>
+							</div>
+						</div>
+					{:else if store.isProcessing && store.currentProgress}
 						<!-- Processing State -->
 						<div
 							class="w-full max-w-md space-y-4 text-center"
