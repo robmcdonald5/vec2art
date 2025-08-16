@@ -27,8 +27,8 @@
 					<p
 						class="animate-slide-up mx-auto mt-8 max-w-3xl text-xl leading-relaxed text-gray-200 sm:text-2xl"
 					>
-						High-performance browser-based tool that converts raster images into expressive,
-						hand-drawn style vector graphics using advanced tracing algorithms.
+						High-performance browser-based tool that converts images into expressive,
+						hand-drawn style graphics.
 					</p>
 					<div class="mt-12 flex flex-col gap-6 sm:flex-row sm:justify-center">
 						<Button
@@ -77,7 +77,7 @@
 				>
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-orange-500 to-red-500 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<Zap class="h-8 w-8 text-white" />
 						</div>
@@ -99,7 +99,7 @@
 				>
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-red-500 to-orange-500 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<Image class="h-8 w-8 text-white" />
 						</div>
@@ -158,7 +158,7 @@
 				>
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-orange-500 to-red-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
@@ -196,7 +196,7 @@
 				>
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-red-500 to-orange-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
@@ -268,7 +268,7 @@
 				>
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-orange-500 to-red-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
@@ -280,7 +280,7 @@
 							</svg>
 						</div>
 						<h3 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-							Superpixel Mapping
+							Superpixel
 						</h3>
 						<p class="leading-relaxed text-gray-600 dark:text-gray-300">
 							SLIC segmentation for stylized and abstract art
@@ -380,7 +380,7 @@
 							</li>
 							<li>
 								<span class="cursor-not-allowed text-sm text-gray-500"
-									>More Conversion Algorithms! (Coming Soon)</span
+									>Account persistance with preset saving (Coming Soon)</span
 								>
 							</li>
 						</ul>
