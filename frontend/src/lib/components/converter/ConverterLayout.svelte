@@ -46,36 +46,30 @@
 	let showQuickSettings = $state(true);
 	let isMobileSettingsOpen = $state(false);
 
-	// Auto-hide quick settings when images are uploaded to give more space to preview
-	$effect(() => {
-		if (hasImages) {
-			showQuickSettings = false;
-		}
-	});
+	// Keep quick settings visible when images are uploaded
 </script>
 
 <div class="space-y-6">
 	<!-- Quick Settings Bar (Collapsible) -->
 	<div class="rounded-lg border bg-card">
 		<div class="p-4">
-			<div class="flex items-center justify-between">
+			<button
+				class="w-full flex items-center justify-between hover:bg-muted/50 rounded-md p-2 -m-2 transition-colors focus:outline-none"
+				onclick={() => showQuickSettings = !showQuickSettings}
+				aria-label={showQuickSettings ? 'Hide quick settings' : 'Show quick settings'}
+			>
 				<h3 class="font-medium flex items-center gap-2">
 					<Sliders class="h-4 w-4" />
 					Quick Settings
 				</h3>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={() => showQuickSettings = !showQuickSettings}
-					aria-label={showQuickSettings ? 'Hide quick settings' : 'Show quick settings'}
-				>
+				<div class="flex-shrink-0">
 					{#if showQuickSettings}
 						<ChevronUp class="h-4 w-4" />
 					{:else}
 						<ChevronDown class="h-4 w-4" />
 					{/if}
-				</Button>
-			</div>
+				</div>
+			</button>
 
 			{#if showQuickSettings}
 				<div class="mt-4 space-y-4">
@@ -149,88 +143,27 @@
 		</div>
 	</div>
 
-	<!-- Primary Action Button - Most Prominent -->
-	{#if hasImages}
-		<div class="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950 rounded-lg border-2 border-dashed border-orange-200 dark:border-orange-800 p-6 text-center">
-			<div class="space-y-4">
-				<div>
-					<h3 class="text-lg font-semibold text-orange-900 dark:text-orange-100">Ready to Convert</h3>
-					<p class="text-sm text-orange-700 dark:text-orange-300">
-						Transform your images into beautiful line art SVGs
-					</p>
-				</div>
-
-				{#if isProcessing}
-					<Button
-						size="lg"
-						variant="destructive"
-						onclick={onAbort}
-						class="bg-red-600 hover:bg-red-700 text-white font-semibold px-8 py-3"
-					>
-						<div class="flex items-center gap-2">
-							<div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-							Stop Processing
-						</div>
-					</Button>
-				{:else}
-					<Button
-						size="lg"
-						onclick={onConvert}
-						disabled={!canConvert}
-						class="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-semibold px-8 py-3"
-					>
-						<div class="flex items-center gap-2">
-							<Play class="h-5 w-5" />
-							Convert to SVG
-						</div>
-					</Button>
-				{/if}
-
-				{#if canDownload}
-					<div class="flex items-center justify-center gap-3">
-						<Button
-							variant="outline"
-							onclick={onDownload}
-							class="flex items-center gap-2"
-						>
-							<Download class="h-4 w-4" />
-							Download Result
-						</Button>
-						<Button
-							variant="ghost"
-							onclick={onReset}
-							class="flex items-center gap-2 text-muted-foreground"
-						>
-							<RotateCcw class="h-4 w-4" />
-							Start Over
-						</Button>
-					</div>
-				{/if}
-			</div>
-		</div>
-	{/if}
 
 	<!-- Advanced Settings (Collapsible) -->
 	<div class="rounded-lg border bg-card">
 		<div class="p-4">
-			<div class="flex items-center justify-between">
+			<button
+				class="w-full flex items-center justify-between hover:bg-muted/50 rounded-md p-2 -m-2 transition-colors focus:outline-none"
+				onclick={() => showAdvanced = !showAdvanced}
+				aria-label={showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
+			>
 				<h3 class="font-medium flex items-center gap-2">
 					<Settings class="h-4 w-4" />
 					Advanced Settings
 				</h3>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={() => showAdvanced = !showAdvanced}
-					aria-label={showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
-				>
+				<div class="flex-shrink-0">
 					{#if showAdvanced}
 						<ChevronUp class="h-4 w-4" />
 					{:else}
 						<ChevronDown class="h-4 w-4" />
 					{/if}
-				</Button>
-			</div>
+				</div>
+			</button>
 
 			{#if showAdvanced}
 				<div class="mt-4 space-y-6">

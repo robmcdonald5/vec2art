@@ -13,6 +13,7 @@
 
 	interface AdvancedControlsProps {
 		config: VectorizerConfig;
+		// eslint-disable-next-line no-unused-vars
 		onConfigChange: (updates: Partial<VectorizerConfig>) => void;
 		disabled?: boolean;
 		onParameterChange?: () => void;
@@ -54,35 +55,48 @@
 		return (event: Event) => {
 			const target = event.target as HTMLInputElement;
 			const value = parseFloat(target.value) * scale;
+			
+			// Update progressive fill
+			updateSliderFill(target);
+			
 			onConfigChange({ [key]: value } as Partial<VectorizerConfig>);
 			onParameterChange?.();
 		};
 	}
 
-	// Check if any advanced parameters are non-default  
-	let hasAdvancedChanges = $derived(
-		config.enable_etf_fdog ||
-		config.enable_flow_tracing ||
-		config.reverse_pass ||
-		config.diagonal_pass ||
-		config.conservative_detail !== undefined ||
-		config.aggressive_detail !== undefined
-	);
+	// Live input handler that doesn't trigger parameter change notification
+	function handleRangeInput(key: keyof VectorizerConfig, scale = 1) {
+		return (event: Event) => {
+			const target = event.target as HTMLInputElement;
+			const value = parseFloat(target.value) * scale;
+			
+			// Update progressive fill
+			updateSliderFill(target);
+			
+			// Only update config, don't notify parameter change for live updates
+			onConfigChange({ [key]: value } as Partial<VectorizerConfig>);
+		};
+	}
+
+	function updateSliderFill(slider: HTMLInputElement) {
+		const min = parseFloat(slider.min);
+		const max = parseFloat(slider.max);
+		const value = parseFloat(slider.value);
+		const percentage = ((value - min) / (max - min)) * 100;
+		slider.style.setProperty('--value', `${percentage}%`);
+	}
+
+	function initializeSliderFill(slider: HTMLInputElement) {
+		updateSliderFill(slider);
+		slider.addEventListener('input', () => updateSliderFill(slider));
+	}
+
 </script>
 
 <section class="space-y-4" aria-labelledby="advanced-controls-heading">
-	<div class="flex items-center justify-between">
-		<div class="flex items-center gap-2">
-			<Settings2 class="text-primary h-5 w-5" aria-hidden="true" />
-			<h3 id="advanced-controls-heading" class="text-lg font-semibold">Advanced Controls</h3>
-		</div>
-		{#if hasAdvancedChanges}
-			<span
-				class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-			>
-				Modified
-			</span>
-		{/if}
+	<div class="flex items-center gap-2">
+		<Settings2 class="text-primary h-5 w-5" aria-hidden="true" />
+		<h3 id="advanced-controls-heading" class="text-lg font-semibold">Advanced Controls</h3>
 	</div>
 
 	<p class="text-muted-foreground text-sm">
@@ -94,7 +108,7 @@
 		<!-- Multi-pass Processing -->
 		<div class="rounded-lg border">
 			<button
-				class="hover:bg-accent/50 focus:ring-primary flex w-full items-center justify-between rounded-lg p-4 text-left focus:ring-2 focus:ring-offset-2 focus:outline-none"
+				class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 				onclick={() => toggleSection('multipass')}
 				aria-expanded={openSections.multipass}
 				{disabled}
@@ -106,7 +120,7 @@
 						<span
 							class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
 						>
-							Enabled
+							Active
 						</span>
 					{/if}
 				</div>
@@ -128,7 +142,7 @@
 							checked={config.multipass}
 							onchange={handleToggle('multipass')}
 							{disabled}
-							class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2"
+							class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 						/>
 						<label for="multipass" class="cursor-pointer text-sm font-medium">
 							Enable Multi-pass Processing
@@ -156,8 +170,10 @@
 								step="0.01"
 								value={config.conservative_detail ?? config.detail}
 								onchange={handleRangeChange('conservative_detail')}
+								oninput={handleRangeInput('conservative_detail')}
 								{disabled}
-								class="bg-muted h-1 w-full rounded-lg"
+								class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								use:initializeSliderFill
 							/>
 							<div class="text-muted-foreground text-xs">
 								First pass threshold. Leave at auto to use main detail level.
@@ -172,7 +188,7 @@
 		{#if config.backend === 'edge'}
 			<div class="rounded-lg border">
 				<button
-					class="hover:bg-accent/50 focus:ring-primary flex w-full items-center justify-between rounded-lg p-4 text-left focus:ring-2 focus:ring-offset-2 focus:outline-none"
+					class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 					onclick={() => toggleSection('directional')}
 					aria-expanded={openSections.directional}
 					{disabled}
@@ -206,7 +222,7 @@
 								checked={config.reverse_pass}
 								onchange={handleToggle('reverse_pass')}
 								{disabled}
-								class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2"
+								class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 							/>
 							<label for="reverse-pass" class="cursor-pointer text-sm font-medium">
 								Enable Reverse Pass
@@ -224,7 +240,7 @@
 								checked={config.diagonal_pass}
 								onchange={handleToggle('diagonal_pass')}
 								{disabled}
-								class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2"
+								class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 							/>
 							<label for="diagonal-pass" class="cursor-pointer text-sm font-medium">
 								Enable Diagonal Pass
@@ -251,8 +267,10 @@
 									step="0.01"
 									value={config.directional_strength_threshold ?? 0.3}
 									onchange={handleRangeChange('directional_strength_threshold')}
+									oninput={handleRangeInput('directional_strength_threshold')}
 									{disabled}
-									class="bg-muted h-1 w-full rounded-lg"
+									class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								use:initializeSliderFill
 								/>
 								<div class="text-muted-foreground text-xs">
 									Skip directional passes if not beneficial (0.0 = always run, 1.0 = never run).
@@ -268,7 +286,7 @@
 		{#if config.backend === 'edge'}
 			<div class="rounded-lg border">
 				<button
-					class="hover:bg-accent/50 focus:ring-primary flex w-full items-center justify-between rounded-lg p-4 text-left focus:ring-2 focus:ring-offset-2 focus:outline-none"
+					class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 					onclick={() => toggleSection('artistic')}
 					aria-expanded={openSections.artistic}
 					{disabled}
@@ -276,13 +294,6 @@
 					<div class="flex items-center gap-2">
 						<Brush class="text-muted-foreground h-4 w-4" aria-hidden="true" />
 						<span class="font-medium">Artistic Effects</span>
-						{#if config.variable_weights > 0 || config.tremor_strength > 0 || config.tapering > 0}
-							<span
-								class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-							>
-								Active
-							</span>
-						{/if}
 					</div>
 					<ChevronDown
 						class="h-4 w-4 transition-transform duration-200 {openSections.artistic
@@ -310,8 +321,10 @@
 								step="0.1"
 								value={config.variable_weights}
 								onchange={handleRangeChange('variable_weights')}
+								oninput={handleRangeInput('variable_weights')}
 								{disabled}
-								class="bg-muted h-1 w-full rounded-lg"
+								class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								use:initializeSliderFill
 							/>
 							<div class="text-muted-foreground text-xs">
 								Line weight variation based on confidence for more expressive results.
@@ -334,8 +347,10 @@
 								step="0.1"
 								value={config.tremor_strength}
 								onchange={handleRangeChange('tremor_strength')}
+								oninput={handleRangeInput('tremor_strength')}
 								{disabled}
-								class="bg-muted h-1 w-full rounded-lg"
+								class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								use:initializeSliderFill
 							/>
 							<div class="text-muted-foreground text-xs">
 								Organic line jitter and imperfection for natural hand-drawn feel.
@@ -358,8 +373,10 @@
 								step="0.1"
 								value={config.tapering}
 								onchange={handleRangeChange('tapering')}
+								oninput={handleRangeInput('tapering')}
 								{disabled}
-								class="bg-muted h-1 w-full rounded-lg"
+								class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								use:initializeSliderFill
 							/>
 							<div class="text-muted-foreground text-xs">
 								Natural line endpoint tapering for smoother line endings.
@@ -374,7 +391,7 @@
 		{#if config.backend === 'edge'}
 			<div class="rounded-lg border">
 				<button
-					class="hover:bg-accent/50 focus:ring-primary flex w-full items-center justify-between rounded-lg p-4 text-left focus:ring-2 focus:ring-offset-2 focus:outline-none"
+					class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 					onclick={() => toggleSection('edgeDetection')}
 					aria-expanded={openSections.edgeDetection}
 					{disabled}
@@ -384,7 +401,7 @@
 						<span class="font-medium">Advanced Edge Detection</span>
 						{#if config.enable_etf_fdog || config.enable_flow_tracing}
 							<span
-								class="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+								class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
 							>
 								Active
 							</span>
@@ -415,7 +432,7 @@
 								checked={config.enable_etf_fdog}
 								onchange={handleToggle('enable_etf_fdog')}
 								{disabled}
-								class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2"
+								class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 							/>
 							<label for="etf-fdog" class="cursor-pointer text-sm font-medium">
 								Enable ETF/FDoG Processing
@@ -433,7 +450,7 @@
 								checked={config.enable_flow_tracing}
 								onchange={handleToggle('enable_flow_tracing')}
 								{disabled}
-								class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2"
+								class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 							/>
 							<label for="flow-tracing" class="cursor-pointer text-sm font-medium">
 								Enable Flow-Guided Tracing
@@ -451,7 +468,7 @@
 		{#if config.backend === 'dots'}
 			<div class="rounded-lg border">
 				<button
-					class="hover:bg-accent/50 focus:ring-primary flex w-full items-center justify-between rounded-lg p-4 text-left focus:ring-2 focus:ring-offset-2 focus:outline-none"
+					class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 					onclick={() => toggleSection('dotsAdvanced')}
 					aria-expanded={openSections.dotsAdvanced}
 					{disabled}
@@ -459,6 +476,13 @@
 					<div class="flex items-center gap-2">
 						<Sparkles class="text-muted-foreground h-4 w-4" aria-hidden="true" />
 						<span class="font-medium">Advanced Stippling</span>
+						{#if config.adaptive_sizing !== false || config.poisson_disk_sampling}
+							<span
+								class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
+							>
+								Active
+							</span>
+						{/if}
 					</div>
 					<ChevronDown
 						class="h-4 w-4 transition-transform duration-200 {openSections.dotsAdvanced
@@ -478,7 +502,7 @@
 								checked={config.adaptive_sizing ?? true}
 								onchange={handleToggle('adaptive_sizing')}
 								{disabled}
-								class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2"
+								class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 							/>
 							<label for="adaptive-sizing" class="cursor-pointer text-sm font-medium">
 								Adaptive Dot Sizing
@@ -496,7 +520,7 @@
 								checked={config.poisson_disk_sampling ?? false}
 								onchange={handleToggle('poisson_disk_sampling')}
 								{disabled}
-								class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2"
+								class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 							/>
 							<label for="poisson-sampling" class="cursor-pointer text-sm font-medium">
 								Poisson Disk Sampling
@@ -514,7 +538,7 @@
 		{#if config.backend === 'superpixel'}
 			<div class="rounded-lg border">
 				<button
-					class="hover:bg-accent/50 focus:ring-primary flex w-full items-center justify-between rounded-lg p-4 text-left focus:ring-2 focus:ring-offset-2 focus:outline-none"
+					class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 					onclick={() => toggleSection('superpixelAdvanced')}
 					aria-expanded={openSections.superpixelAdvanced}
 					{disabled}
@@ -522,6 +546,13 @@
 					<div class="flex items-center gap-2">
 						<Grid class="text-muted-foreground h-4 w-4" aria-hidden="true" />
 						<span class="font-medium">Advanced Regions</span>
+						{#if (config.compactness && config.compactness !== 20) || config.simplify_boundaries !== true}
+							<span
+								class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
+							>
+								Active
+							</span>
+						{/if}
 					</div>
 					<ChevronDown
 						class="h-4 w-4 transition-transform duration-200 {openSections.superpixelAdvanced
@@ -549,8 +580,10 @@
 								step="1"
 								value={config.compactness ?? 20}
 								onchange={handleRangeChange('compactness')}
+								oninput={handleRangeInput('compactness')}
 								{disabled}
-								class="bg-muted h-1 w-full rounded-lg"
+								class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								use:initializeSliderFill
 							/>
 							<div class="text-muted-foreground text-xs">
 								Region regularity vs color fidelity (5=irregular/accurate, 30=regular/smooth).
@@ -565,7 +598,7 @@
 								checked={config.simplify_boundaries ?? true}
 								onchange={handleToggle('simplify_boundaries')}
 								{disabled}
-								class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2"
+								class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 							/>
 							<label for="simplify-boundaries" class="cursor-pointer text-sm font-medium">
 								Simplify Boundaries
@@ -582,7 +615,7 @@
 		<!-- Performance Settings -->
 		<div class="rounded-lg border">
 			<button
-				class="hover:bg-accent/50 focus:ring-primary flex w-full items-center justify-between rounded-lg p-4 text-left focus:ring-2 focus:ring-offset-2 focus:outline-none"
+				class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 				onclick={() => toggleSection('performance')}
 				aria-expanded={openSections.performance}
 				{disabled}
@@ -609,7 +642,7 @@
 							checked={config.optimize_svg ?? true}
 							onchange={handleToggle('optimize_svg')}
 							{disabled}
-							class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2"
+							class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 						/>
 						<label for="optimize-svg" class="cursor-pointer text-sm font-medium">
 							Optimize SVG Output
@@ -627,7 +660,7 @@
 							checked={config.include_metadata ?? false}
 							onchange={handleToggle('include_metadata')}
 							{disabled}
-							class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2"
+							class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 						/>
 						<label for="include-metadata" class="cursor-pointer text-sm font-medium">
 							Include Processing Metadata
@@ -653,8 +686,10 @@
 							step="5000"
 							value={config.max_processing_time_ms ?? 30000}
 							onchange={handleRangeChange('max_processing_time_ms')}
+							oninput={handleRangeInput('max_processing_time_ms')}
 							{disabled}
-							class="bg-muted h-1 w-full rounded-lg"
+							class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								use:initializeSliderFill
 						/>
 						<div class="text-muted-foreground text-xs">
 							Maximum time budget before processing is interrupted (5-120 seconds).
@@ -667,48 +702,65 @@
 </section>
 
 <style>
-	/* Range slider styling */
-	input[type='range'] {
+	/* Progressive slider styling to match Quick Settings */
+	.progressive-slider {
 		-webkit-appearance: none;
-		background: transparent;
+		background: linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--value, 0%), #f1f5f9 var(--value, 0%), #f1f5f9 100%);
+		border-radius: 4px;
+		outline: none;
+		transition: all 0.2s ease;
 	}
 
-	input[type='range']::-webkit-slider-thumb {
+	.progressive-slider::-webkit-slider-thumb {
 		-webkit-appearance: none;
-		height: 16px;
-		width: 16px;
+		width: 20px;
+		height: 20px;
 		border-radius: 50%;
-		background: hsl(var(--primary));
+		background: white;
+		border: 3px solid #94a3b8;
 		cursor: pointer;
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-		border: 1px solid white;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		transition: all 0.2s ease;
 	}
 
-	input[type='range']::-webkit-slider-track {
-		background: hsl(var(--muted));
-		height: 4px;
-		border-radius: 2px;
+	.progressive-slider:hover::-webkit-slider-thumb {
+		border-color: #cbd5e1;
+		box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
 	}
 
-	input[type='range']::-moz-range-thumb {
-		height: 16px;
-		width: 16px;
+	.progressive-slider:hover {
+		background: linear-gradient(to right, #60a5fa 0%, #60a5fa var(--value, 0%), #e2e8f0 var(--value, 0%), #e2e8f0 100%);
+	}
+
+	.progressive-slider::-moz-range-thumb {
+		width: 20px;
+		height: 20px;
 		border-radius: 50%;
-		background: hsl(var(--primary));
+		background: white;
+		border: 3px solid #94a3b8;
 		cursor: pointer;
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-		border: 1px solid white;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		transition: all 0.2s ease;
 	}
 
-	input[type='range']::-moz-range-track {
-		background: hsl(var(--muted));
-		height: 4px;
-		border-radius: 2px;
+	.progressive-slider:hover::-moz-range-thumb {
+		border-color: #cbd5e1;
+		box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+	}
+
+	.progressive-slider::-moz-range-track {
+		background: linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--value, 0%), #f1f5f9 var(--value, 0%), #f1f5f9 100%);
+		height: 8px;
+		border-radius: 4px;
 		border: none;
 	}
 
-	input[type='range']:disabled {
+	.progressive-slider:disabled {
 		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.progressive-slider:disabled::-webkit-slider-thumb {
 		cursor: not-allowed;
 	}
 </style>

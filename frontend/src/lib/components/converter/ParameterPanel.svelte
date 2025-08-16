@@ -2,9 +2,11 @@
 	import { Sliders, Eye, PenTool, Filter } from 'lucide-svelte';
 	import type { VectorizerConfig, HandDrawnPreset } from '$lib/types/vectorizer';
 	import { HAND_DRAWN_DESCRIPTIONS } from '$lib/types/vectorizer';
+	import CustomSelect from '$lib/components/ui/custom-select.svelte';
 
 	interface ParameterPanelProps {
 		config: VectorizerConfig;
+		// eslint-disable-next-line no-unused-vars
 		onConfigChange: (updates: Partial<VectorizerConfig>) => void;
 		disabled?: boolean;
 		onParameterChange?: () => void; // Called when any parameter changes to indicate custom mode
@@ -36,12 +38,20 @@
 		const target = event.target as HTMLInputElement;
 		const uiValue = parseInt(target.value);
 		const internalValue = detailFromUI(uiValue);
+		
+		// Update progressive fill
+		updateSliderFill(target);
+		
 		onConfigChange({ detail: internalValue });
 		onParameterChange?.();
 	}
 
 	function handleStrokeWidthChange(event: Event) {
 		const target = event.target as HTMLInputElement;
+		
+		// Update progressive fill
+		updateSliderFill(target);
+		
 		onConfigChange({ stroke_width: parseFloat(target.value) });
 		onParameterChange?.();
 	}
@@ -51,6 +61,9 @@
 		const uiValue = parseInt(target.value);
 		const roughnessValue = smoothnessFromUI(uiValue);
 
+		// Update progressive fill
+		updateSliderFill(target);
+
 		onConfigChange({
 			tremor_strength: Math.min(0.5, roughnessValue),
 			variable_weights: Math.min(1.0, roughnessValue * 2)
@@ -58,9 +71,8 @@
 		onParameterChange?.();
 	}
 
-	function handleHandDrawnChange(event: Event) {
-		const target = event.target as HTMLSelectElement;
-		onConfigChange({ hand_drawn_preset: target.value as HandDrawnPreset });
+	function handleHandDrawnChange(value: string) {
+		onConfigChange({ hand_drawn_preset: value as HandDrawnPreset });
 		onParameterChange?.();
 	}
 
@@ -75,6 +87,10 @@
 		const target = event.target as HTMLInputElement;
 		const uiValue = parseInt(target.value);
 		const density = (10 - uiValue) / 90 + 0.05; // Map 1-10 to 0.15-0.05 (inverted)
+		
+		// Update progressive fill
+		updateSliderFill(target);
+		
 		onConfigChange({ dot_density_threshold: density });
 		onParameterChange?.();
 	}
@@ -89,6 +105,10 @@
 		const target = event.target as HTMLInputElement;
 		const uiValue = parseInt(target.value);
 		const regions = Math.round(uiValue * 45 + 50); // Map 1-10 to 50-500
+		
+		// Update progressive fill
+		updateSliderFill(target);
+		
 		onConfigChange({ num_superpixels: regions });
 		onParameterChange?.();
 	}
@@ -112,6 +132,20 @@
 		? Math.round((0.15 - config.dot_density_threshold) * 90 + 1)
 		: 5);
 	let regionCountUI = $derived(config.num_superpixels ? Math.round((config.num_superpixels - 50) / 45) : 3);
+
+	// Progressive slider fill functions
+	function updateSliderFill(slider: HTMLInputElement) {
+		const min = parseFloat(slider.min);
+		const max = parseFloat(slider.max);
+		const value = parseFloat(slider.value);
+		const percentage = ((value - min) / (max - min)) * 100;
+		slider.style.setProperty('--value', `${percentage}%`);
+	}
+
+	function initializeSliderFill(slider: HTMLInputElement) {
+		updateSliderFill(slider);
+		slider.addEventListener('input', () => updateSliderFill(slider));
+	}
 </script>
 
 <section class="space-y-6" aria-labelledby="parameter-panel-heading">
@@ -143,9 +177,9 @@
 				onchange={handleDetailChange}
 				oninput={handleDetailChange}
 				{disabled}
-				class="bg-muted focus:ring-primary slider-thumb:appearance-none slider-thumb:w-5 slider-thumb:h-5 slider-thumb:rounded-full slider-thumb:bg-primary slider-thumb:cursor-pointer slider-thumb:shadow-md h-2
-					w-full cursor-pointer appearance-none rounded-lg focus:ring-2 focus:ring-offset-2 focus:outline-none"
+				class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
 				aria-describedby="detail-level-desc"
+				use:initializeSliderFill
 			/>
 			<div id="detail-level-desc" class="text-muted-foreground text-xs">
 				Controls line density and sensitivity. Higher values capture more details but may include
@@ -175,8 +209,9 @@
 				onchange={handleStrokeWidthChange}
 				oninput={handleStrokeWidthChange}
 				{disabled}
-				class="bg-muted focus:ring-primary h-2 w-full cursor-pointer appearance-none rounded-lg focus:ring-2 focus:ring-offset-2 focus:outline-none"
+				class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
 				aria-describedby="stroke-width-desc"
+				use:initializeSliderFill
 			/>
 			<div id="stroke-width-desc" class="text-muted-foreground text-xs">
 				Base thickness of generated lines at standard resolution.
@@ -205,8 +240,9 @@
 					onchange={handleSmoothnessChange}
 					oninput={handleSmoothnessChange}
 					{disabled}
-					class="bg-muted focus:ring-primary h-2 w-full cursor-pointer appearance-none rounded-lg focus:ring-2 focus:ring-offset-2 focus:outline-none"
+					class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
 					aria-describedby="smoothness-desc"
+					use:initializeSliderFill
 				/>
 				<div id="smoothness-desc" class="text-muted-foreground text-xs">
 					Controls line character from smooth and clean to rough and textured.
@@ -218,18 +254,16 @@
 		{#if config.backend === 'edge'}
 			<div class="space-y-2">
 				<label for="hand-drawn-preset" class="text-sm font-medium">Hand-drawn Style</label>
-				<select
-					id="hand-drawn-preset"
+				<CustomSelect
 					value={config.hand_drawn_preset}
+					options={Object.keys(HAND_DRAWN_DESCRIPTIONS).map(preset => ({
+						value: preset,
+						label: preset.charAt(0).toUpperCase() + preset.slice(1)
+					}))}
 					onchange={handleHandDrawnChange}
 					{disabled}
-					class="border-border bg-background focus:ring-primary w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-offset-2 focus:outline-none"
-					aria-describedby="hand-drawn-desc"
-				>
-					{#each Object.entries(HAND_DRAWN_DESCRIPTIONS) as [preset] (preset)}
-						<option value={preset}>{preset.charAt(0).toUpperCase() + preset.slice(1)}</option>
-					{/each}
-				</select>
+					placeholder="Select hand-drawn style"
+				/>
 				<div id="hand-drawn-desc" class="text-muted-foreground text-xs">
 					{HAND_DRAWN_DESCRIPTIONS[config.hand_drawn_preset]}
 				</div>
@@ -260,8 +294,9 @@
 					onchange={handleDotDensityChange}
 					oninput={handleDotDensityChange}
 					{disabled}
-					class="bg-muted focus:ring-primary h-2 w-full cursor-pointer appearance-none rounded-lg focus:ring-2 focus:ring-offset-2 focus:outline-none"
+					class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
 					aria-describedby="dot-density-desc"
+					use:initializeSliderFill
 				/>
 				<div id="dot-density-desc" class="text-muted-foreground text-xs">
 					Controls dot placement density. Higher values create denser stippling patterns.
@@ -276,7 +311,7 @@
 					checked={config.preserve_colors ?? true}
 					onchange={handlePreserveColorsChange}
 					{disabled}
-					class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2 focus:ring-offset-2"
+					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 				/>
 				<label for="preserve-colors" class="cursor-pointer text-sm font-medium">
 					Preserve Colors
@@ -308,8 +343,9 @@
 					onchange={handleRegionCountChange}
 					oninput={handleRegionCountChange}
 					{disabled}
-					class="bg-muted focus:ring-primary h-2 w-full cursor-pointer appearance-none rounded-lg focus:ring-2 focus:ring-offset-2 focus:outline-none"
+					class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
 					aria-describedby="region-count-desc"
+					use:initializeSliderFill
 				/>
 				<div id="region-count-desc" class="text-muted-foreground text-xs">
 					Controls number of color regions. Higher values create more detailed segmentation.
@@ -324,7 +360,7 @@
 					checked={config.fill_regions ?? true}
 					onchange={handleFillRegionsChange}
 					{disabled}
-					class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2 focus:ring-offset-2"
+					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 				/>
 				<label for="fill-regions" class="cursor-pointer text-sm font-medium"> Fill Regions </label>
 			</div>
@@ -344,7 +380,7 @@
 					checked={config.enable_adaptive_threshold ?? true}
 					onchange={handleAdaptiveThresholdChange}
 					{disabled}
-					class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2 focus:ring-offset-2"
+					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 				/>
 				<label for="adaptive-threshold" class="cursor-pointer text-sm font-medium">
 					Adaptive Threshold
@@ -365,7 +401,7 @@
 				checked={config.noise_filtering}
 				onchange={handleNoiseFilteringChange}
 				{disabled}
-				class="border-border text-primary focus:ring-primary h-4 w-4 rounded focus:ring-2 focus:ring-offset-2"
+				class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 			/>
 			<label for="noise-filtering" class="cursor-pointer text-sm font-medium">
 				Noise Filtering
@@ -378,13 +414,75 @@
 </section>
 
 <style>
-	/* Custom range slider styling */
-	input[type='range'] {
+	/* Progressive slider styling to match Quick Settings */
+	.progressive-slider {
+		-webkit-appearance: none;
+		background: linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--value, 0%), #f1f5f9 var(--value, 0%), #f1f5f9 100%);
+		border-radius: 4px;
+		outline: none;
+		transition: all 0.2s ease;
+	}
+
+	.progressive-slider::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: white;
+		border: 3px solid #94a3b8;
+		cursor: pointer;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		transition: all 0.2s ease;
+	}
+
+	.progressive-slider:hover::-webkit-slider-thumb {
+		border-color: #cbd5e1;
+		box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+	}
+
+	.progressive-slider:hover {
+		background: linear-gradient(to right, #60a5fa 0%, #60a5fa var(--value, 0%), #e2e8f0 var(--value, 0%), #e2e8f0 100%);
+	}
+
+	.progressive-slider::-moz-range-thumb {
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: white;
+		border: 3px solid #94a3b8;
+		cursor: pointer;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		transition: all 0.2s ease;
+	}
+
+	.progressive-slider:hover::-moz-range-thumb {
+		border-color: #cbd5e1;
+		box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+	}
+
+	.progressive-slider::-moz-range-track {
+		background: linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--value, 0%), #f1f5f9 var(--value, 0%), #f1f5f9 100%);
+		height: 8px;
+		border-radius: 4px;
+		border: none;
+	}
+
+	.progressive-slider:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.progressive-slider:disabled::-webkit-slider-thumb {
+		cursor: not-allowed;
+	}
+
+	/* Legacy slider styling for non-progressive sliders */
+	input[type='range']:not(.progressive-slider) {
 		-webkit-appearance: none;
 		background: transparent;
 	}
 
-	input[type='range']::-webkit-slider-thumb {
+	input[type='range']:not(.progressive-slider)::-webkit-slider-thumb {
 		-webkit-appearance: none;
 		height: 20px;
 		width: 20px;
@@ -395,11 +493,11 @@
 		border: 2px solid white;
 	}
 
-	input[type='range']::-webkit-slider-thumb:hover {
+	input[type='range']:not(.progressive-slider)::-webkit-slider-thumb:hover {
 		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 	}
 
-	input[type='range']::-moz-range-thumb {
+	input[type='range']:not(.progressive-slider)::-moz-range-thumb {
 		height: 20px;
 		width: 20px;
 		border-radius: 50%;
@@ -409,13 +507,13 @@
 		border: 2px solid white;
 	}
 
-	input[type='range']::-webkit-slider-track {
+	input[type='range']:not(.progressive-slider)::-webkit-slider-track {
 		background: hsl(var(--muted));
 		height: 8px;
 		border-radius: 4px;
 	}
 
-	input[type='range']::-moz-range-track {
+	input[type='range']:not(.progressive-slider)::-moz-range-track {
 		background: hsl(var(--muted));
 		height: 8px;
 		border-radius: 4px;
@@ -426,7 +524,7 @@
 		outline: none;
 	}
 
-	input[type='range']:focus::-webkit-slider-thumb {
+	input[type='range']:not(.progressive-slider):focus::-webkit-slider-thumb {
 		box-shadow:
 			0 0 0 2px hsl(var(--primary)),
 			0 2px 6px rgba(0, 0, 0, 0.3);

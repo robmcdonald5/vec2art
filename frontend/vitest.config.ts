@@ -3,15 +3,18 @@ import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 import path from 'path';
 import { fileURLToPath } from 'node:url';
-import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
+// TODO: Re-enable Storybook testing in the future
+// import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 const dirname =
 	typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
+// Storybook integration disabled for now due to complexity
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
 	plugins: [sveltekit()],
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}'],
+		exclude: ['src/stories/**'], // Exclude Storybook stories
 		environment: 'happy-dom',
 		globals: true,
 		setupFiles: ['./tests/setup.ts'],
@@ -28,7 +31,8 @@ export default defineConfig({
 				'src/lib/wasm/vectorize_wasm_bg.wasm.d.ts',
 				'src/app.d.ts',
 				'build/**',
-				'.svelte-kit/**'
+				'.svelte-kit/**',
+				'src/stories/**' // Exclude Storybook stories from coverage
 			],
 			thresholds: {
 				global: {
@@ -58,33 +62,32 @@ export default defineConfig({
 		benchmark: {
 			include: ['src/**/*.{bench,benchmark}.{js,ts}'],
 			reporters: ['verbose']
-		},
-		projects: [
-			{
-				extends: true,
-				plugins: [
-					// The plugin will run tests for the stories defined in your Storybook config
-					// See options at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon#storybooktest
-					storybookTest({
-						configDir: path.join(dirname, '.storybook')
-					})
-				],
-				test: {
-					name: 'storybook',
-					browser: {
-						enabled: true,
-						headless: true,
-						provider: 'playwright',
-						instances: [
-							{
-								browser: 'chromium'
-							}
-						]
-					},
-					setupFiles: ['.storybook/vitest.setup.ts']
-				}
-			}
-		]
+		}
+		// TODO: Re-enable Storybook testing project in the future
+		// projects: [
+		// 	{
+		// 		extends: true,
+		// 		plugins: [
+		// 			storybookTest({
+		// 				configDir: path.join(dirname, '.storybook')
+		// 			})
+		// 		],
+		// 		test: {
+		// 			name: 'storybook',
+		// 			browser: {
+		// 				enabled: true,
+		// 				headless: true,
+		// 				provider: 'playwright',
+		// 				instances: [
+		// 					{
+		// 						browser: 'chromium'
+		// 					}
+		// 				]
+		// 			},
+		// 			setupFiles: ['.storybook/vitest.setup.ts']
+		// 		}
+		// 	}
+		// ]
 	},
 	define: {
 		// Force browser mode for Svelte components

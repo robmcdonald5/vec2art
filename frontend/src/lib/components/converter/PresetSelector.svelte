@@ -2,6 +2,7 @@
 	import { Wand2, Pencil, Ruler, Palette, BookOpen, Settings } from 'lucide-svelte';
 	import type { VectorizerPreset } from '$lib/types/vectorizer';
 	import { PRESET_DESCRIPTIONS, PRESET_CONFIGS } from '$lib/types/vectorizer';
+	import CustomSelect from '$lib/components/ui/custom-select.svelte';
 
 	interface PresetSelectorProps {
 		selectedPreset: VectorizerPreset | 'custom';
@@ -55,26 +56,17 @@
 {#if compact}
 	<!-- Compact Mode: Dropdown Selection -->
 	<div class="space-y-2">
-		<div class="flex items-center gap-2">
-			{#if isCustom}
-				<span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-					Modified
-				</span>
-			{/if}
-		</div>
 		
-		<select
+		<CustomSelect
 			value={selectedPreset}
-			onchange={(e) => handlePresetClick(e.currentTarget.value as VectorizerPreset | 'custom')}
+			options={allPresets.map(preset => ({
+				value: preset,
+				label: preset === 'custom' ? 'Custom Settings' : presetTitles[preset as VectorizerPreset]
+			}))}
+			onchange={(value) => handlePresetClick(value as VectorizerPreset | 'custom')}
 			{disabled}
-			class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-		>
-			{#each allPresets as preset (preset)}
-				<option value={preset}>
-					{preset === 'custom' ? 'Custom Settings' : presetTitles[preset as VectorizerPreset]}
-				</option>
-			{/each}
-		</select>
+			placeholder="Select a preset"
+		/>
 		
 		<p class="text-xs text-muted-foreground">
 			{#if selectedPreset === 'custom'}
@@ -87,18 +79,9 @@
 {:else}
 	<!-- Full Mode: Card Selection -->
 	<section class="space-y-4" aria-labelledby="preset-selector-heading">
-		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-2">
-				<Wand2 class="text-primary h-5 w-5" aria-hidden="true" />
-				<h3 id="preset-selector-heading" class="text-lg font-semibold">Style Presets</h3>
-			</div>
-			{#if isCustom}
-				<span
-					class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200"
-				>
-					Modified
-				</span>
-			{/if}
+		<div class="flex items-center gap-2">
+			<Wand2 class="text-primary h-5 w-5" aria-hidden="true" />
+			<h3 id="preset-selector-heading" class="text-lg font-semibold">Style Presets</h3>
 		</div>
 
 		<p class="text-muted-foreground text-sm">

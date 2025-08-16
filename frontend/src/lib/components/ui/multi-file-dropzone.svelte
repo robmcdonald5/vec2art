@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Upload, X, AlertCircle, ChevronLeft, ChevronRight, FileImage } from 'lucide-svelte';
+	import { Upload, X, AlertCircle, ChevronLeft, ChevronRight, FileImage, Play, Download, RotateCcw } from 'lucide-svelte';
 	import Button from './button.svelte';
 
 	interface Props {
@@ -9,6 +9,14 @@
 		onFilesSelect?: (files: File[]) => void;
 		disabled?: boolean;
 		currentFiles?: File[];
+		// Converter actions
+		canConvert?: boolean;
+		canDownload?: boolean;
+		isProcessing?: boolean;
+		onConvert?: () => void;
+		onDownload?: () => void;
+		onReset?: () => void;
+		onAbort?: () => void;
 	}
 
 	let {
@@ -17,7 +25,15 @@
 		maxFiles = 5,
 		onFilesSelect,
 		disabled = false,
-		currentFiles = []
+		currentFiles = [],
+		// Converter actions
+		canConvert = false,
+		canDownload = false,
+		isProcessing = false,
+		onConvert,
+		onDownload,
+		onReset,
+		onAbort
 	}: Props = $props();
 
 	let dragOver = $state(false);
@@ -256,6 +272,45 @@
 				<div class="flex items-center justify-between">
 					<h4 class="font-medium">Uploaded Files ({currentFiles.length}/{maxFiles})</h4>
 					<div class="flex gap-2">
+						<!-- Primary Convert Action -->
+						{#if isProcessing}
+							<Button
+								variant="destructive"
+								size="sm"
+								onclick={onAbort}
+								aria-label="Stop processing"
+							>
+								<div class="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent mr-1"></div>
+								Stop
+							</Button>
+						{:else if canConvert && onConvert}
+							<Button
+								variant="default"
+								size="sm"
+								onclick={onConvert}
+								disabled={!canConvert}
+								aria-label="Convert to SVG"
+								class="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white"
+							>
+								<Play class="h-3 w-3 mr-1" aria-hidden="true" />
+								Convert
+							</Button>
+						{/if}
+
+						<!-- Download Action -->
+						{#if canDownload && onDownload}
+							<Button
+								variant="outline"
+								size="sm"
+								onclick={onDownload}
+								aria-label="Download result"
+							>
+								<Download class="h-3 w-3 mr-1" aria-hidden="true" />
+								Download
+							</Button>
+						{/if}
+
+						<!-- File Management Actions -->
 						{#if currentFiles.length < maxFiles}
 							<Button
 								variant="outline"
@@ -264,7 +319,7 @@
 								{disabled}
 								aria-label="Add more files"
 							>
-								<Upload class="h-4 w-4 mr-1" aria-hidden="true" />
+								<Upload class="h-3 w-3 mr-1" aria-hidden="true" />
 								Add More
 							</Button>
 						{/if}
@@ -275,7 +330,7 @@
 							{disabled}
 							aria-label="Clear all files"
 						>
-							<X class="h-4 w-4" aria-hidden="true" />
+							<X class="h-3 w-3" aria-hidden="true" />
 							Clear All
 						</Button>
 					</div>

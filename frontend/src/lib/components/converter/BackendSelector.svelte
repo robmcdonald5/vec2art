@@ -2,6 +2,7 @@
 	import { Settings, PenTool, Palette, Grid, Sparkles } from 'lucide-svelte';
 	import type { VectorizerBackend } from '$lib/types/vectorizer';
 	import { BACKEND_DESCRIPTIONS } from '$lib/types/vectorizer';
+	import CustomSelect from '$lib/components/ui/custom-select.svelte';
 
 	interface BackendSelectorProps {
 		selectedBackend: VectorizerBackend;
@@ -43,18 +44,16 @@
 {#if compact}
 	<!-- Compact Mode: Dropdown Selection -->
 	<div class="space-y-2">
-		<select
+		<CustomSelect
 			value={selectedBackend}
-			onchange={(e) => handleBackendClick(e.currentTarget.value as VectorizerBackend)}
+			options={Object.keys(backendIcons).map(backend => ({
+				value: backend,
+				label: backendTitles[backend as VectorizerBackend]
+			}))}
+			onchange={(value) => handleBackendClick(value as VectorizerBackend)}
 			{disabled}
-			class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-		>
-			{#each Object.keys(backendIcons) as backend (backend)}
-				<option value={backend}>
-					{backendTitles[backend as VectorizerBackend]}
-				</option>
-			{/each}
-		</select>
+			placeholder="Select an algorithm"
+		/>
 		
 		<p class="text-xs text-muted-foreground">
 			{BACKEND_DESCRIPTIONS[selectedBackend]}
