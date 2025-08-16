@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Upload, X, AlertCircle, ChevronLeft, ChevronRight, FileImage, Play, Download, RotateCcw } from 'lucide-svelte';
-	import Button from './button.svelte';
+	import { Button } from '$lib/components/ui/button';
 
 	interface Props {
 		accept?: string;

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Settings, Play, Download, RotateCcw, ChevronDown, ChevronUp, Sliders } from 'lucide-svelte';
-	import Button from '$lib/components/ui/button.svelte';
+	import { Button } from '$lib/components/ui/button';
 	import type { VectorizerConfig, VectorizerBackend, VectorizerPreset } from '$lib/types/vectorizer';
 	import BackendSelector from './BackendSelector.svelte';
 	import PresetSelector from './PresetSelector.svelte';

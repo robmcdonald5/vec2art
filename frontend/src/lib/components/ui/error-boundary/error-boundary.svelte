@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { AlertTriangle, RefreshCw, X } from 'lucide-svelte';
-	import Button from './button.svelte';
+	import { Button } from '$lib/components/ui/button';
 
 	interface Props {
 		error?: Error | null;

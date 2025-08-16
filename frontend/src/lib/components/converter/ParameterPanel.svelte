@@ -2,7 +2,7 @@
 	import { Sliders, Eye, PenTool, Filter } from 'lucide-svelte';
 	import type { VectorizerConfig, HandDrawnPreset } from '$lib/types/vectorizer';
 	import { HAND_DRAWN_DESCRIPTIONS } from '$lib/types/vectorizer';
-	import CustomSelect from '$lib/components/ui/custom-select.svelte';
+	import { CustomSelect } from '$lib/components/ui/custom-select';
 
 	interface ParameterPanelProps {
 		config: VectorizerConfig;

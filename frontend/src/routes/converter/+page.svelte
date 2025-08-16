@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Button from '$lib/components/ui/button.svelte';
-	import FileDropzone from '$lib/components/ui/file-dropzone.svelte';
-	import ProgressBar from '$lib/components/ui/progress-bar.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { FileDropzone } from '$lib/components/ui/file-dropzone';
+	import { ProgressBar } from '$lib/components/ui/progress-bar';
 	import {
 		Upload,
 		Settings,
@@ -13,12 +13,12 @@
 		Loader2
 	} from 'lucide-svelte';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte';
-	import ErrorBoundary from '$lib/components/ui/error-boundary.svelte';
+	import { ErrorBoundary } from '$lib/components/ui/error-boundary';
 	import type { VectorizerBackend, VectorizerPreset, VectorizerConfig } from '$lib/types/vectorizer';
 	import { PRESET_CONFIGS } from '$lib/types/vectorizer';
 
 	// Import new component system
-	import MultiFileDropzone from '$lib/components/ui/multi-file-dropzone.svelte';
+	import { MultiFileDropzone } from '$lib/components/ui/multi-file-dropzone';
 	import ImagePreviewCarousel from '$lib/components/converter/ImagePreviewCarousel.svelte';
 	import ConverterLayout from '$lib/components/converter/ConverterLayout.svelte';
 	import DevTestingPanel from '$lib/components/dev/DevTestingPanel.svelte';
@@ -414,6 +414,14 @@
 		};
 	});
 
+	// Comprehensive processing state tracking
+	const isAnyProcessing = $derived(
+		store.isProcessing || 
+		isBatchProcessing || 
+		isInitializing || 
+		localProcessingState
+	);
+
 	// Can convert as long as we have images and valid config (threads will initialize on-demand)
 	// Allow conversion even after failed attempts - users should be able to retry with different settings
 	const canConvert = $derived(
@@ -424,7 +432,6 @@
 		)
 	);
 
-
 	const canDownload = $derived(
 		Boolean(
 			(store.batchResults.length > 0 || store.lastResult) && 
@@ -434,14 +441,6 @@
 
 	const hasImages = $derived(store.inputFiles.length > 0 || !!store.inputFile);
 	const stats = $derived(store.getStats());
-	
-	// Comprehensive processing state tracking
-	const isAnyProcessing = $derived(
-		store.isProcessing || 
-		isBatchProcessing || 
-		isInitializing || 
-		localProcessingState
-	);
 	
 	// Progress bar management with minimum display time
 	function startProgressBar() {

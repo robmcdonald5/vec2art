@@ -2,7 +2,7 @@
 	import { Settings, PenTool, Palette, Grid, Sparkles } from 'lucide-svelte';
 	import type { VectorizerBackend } from '$lib/types/vectorizer';
 	import { BACKEND_DESCRIPTIONS } from '$lib/types/vectorizer';
-	import CustomSelect from '$lib/components/ui/custom-select.svelte';
+	import { CustomSelect } from '$lib/components/ui/custom-select';
 
 	interface BackendSelectorProps {
 		selectedBackend: VectorizerBackend;

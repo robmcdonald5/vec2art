@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
-import Button from './button.svelte';
+import Button from './button.svelte'; // Test file - keep direct import
 import {
 	interactionTestUtils,
 	assertionUtils,

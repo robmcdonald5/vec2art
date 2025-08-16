@@ -2,7 +2,7 @@
 	import { Wand2, Pencil, Ruler, Palette, BookOpen, Settings } from 'lucide-svelte';
 	import type { VectorizerPreset } from '$lib/types/vectorizer';
 	import { PRESET_DESCRIPTIONS, PRESET_CONFIGS } from '$lib/types/vectorizer';
-	import CustomSelect from '$lib/components/ui/custom-select.svelte';
+	import { CustomSelect } from '$lib/components/ui/custom-select';
 
 	interface PresetSelectorProps {
 		selectedPreset: VectorizerPreset | 'custom';

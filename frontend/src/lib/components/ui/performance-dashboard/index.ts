@@ -1,0 +1,1 @@
+export { default as PerformanceDashboard } from './performance-dashboard.svelte';

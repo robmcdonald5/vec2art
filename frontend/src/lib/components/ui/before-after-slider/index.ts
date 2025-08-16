@@ -1,0 +1,1 @@
+export { default as BeforeAfterSlider } from './before-after-slider.svelte';

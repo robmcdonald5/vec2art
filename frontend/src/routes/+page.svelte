@@ -1,13 +1,13 @@
 <script lang="ts">
-	import Button from '$lib/components/ui/button.svelte';
+	import { Button } from '$lib/components/ui/button';
 	import { ArrowRight, Image, Zap, Download } from 'lucide-svelte';
 </script>
 
 <div>
 	<!-- Hero Section with Gradient -->
-	<section class="bg-hero-gradient relative min-h-[90vh] overflow-hidden">
+	<section class="bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 relative min-h-[90vh] overflow-hidden">
 		<!-- Animated background overlay -->
-		<div class="bg-aurora-tech animate-gradient absolute inset-0 opacity-20"></div>
+		<div class="bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 animate-pulse absolute inset-0 opacity-20"></div>
 		<div class="absolute inset-0 bg-black/20"></div>
 
 		<!-- Content -->
@@ -34,7 +34,7 @@
 						<Button
 							href="/converter"
 							size="lg"
-							class="bg-tech-primary hover:bg-tech-secondary transform gap-2 px-8 py-4 text-lg shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+							class="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white transform gap-2 px-8 py-4 text-lg shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
 						>
 							Start Converting
 							<ArrowRight class="h-5 w-5" />
@@ -58,7 +58,7 @@
 	</section>
 
 	<!-- Features Section -->
-	<section class="bg-features-gradient dark:bg-features-gradient-dark relative py-24 sm:py-32">
+	<section class="bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 relative py-24 sm:py-32">
 		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 			<div class="mb-20 text-center">
 				<h2
@@ -73,11 +73,11 @@
 
 			<div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
 				<div
-					class="group bg-card-gradient relative transform rounded-2xl border border-gray-200/50 p-8 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
+					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative transform rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
 				>
 					<div class="relative">
 						<div
-							class="bg-processing-gradient mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-orange-500 to-red-500 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<Zap class="h-8 w-8 text-white" />
 						</div>
@@ -95,11 +95,11 @@
 				</div>
 
 				<div
-					class="group bg-card-gradient relative transform rounded-2xl border border-gray-200/50 p-8 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
+					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative transform rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
 				>
 					<div class="relative">
 						<div
-							class="bg-tech-secondary mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-red-500 to-orange-500 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<Image class="h-8 w-8 text-white" />
 						</div>
@@ -115,11 +115,11 @@
 				</div>
 
 				<div
-					class="group bg-card-gradient relative transform rounded-2xl border border-gray-200/50 p-8 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl sm:col-span-2 lg:col-span-1 dark:border-gray-700/50"
+					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative transform rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl sm:col-span-2 lg:col-span-1 dark:border-gray-700/50"
 				>
 					<div class="relative">
 						<div
-							class="bg-aurora-tech mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<Download class="h-8 w-8 text-white" />
 						</div>
@@ -139,7 +139,7 @@
 	</section>
 
 	<!-- Algorithm Backends -->
-	<section class="bg-algorithm-gradient dark:bg-algorithm-gradient-dark relative py-24 sm:py-32">
+	<section class="bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 relative py-24 sm:py-32">
 		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 			<div class="mb-16 text-center">
 				<h2
@@ -154,11 +154,11 @@
 
 			<div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
 				<div
-					class="group bg-card-gradient relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
+					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
 				>
 					<div class="relative">
 						<div
-							class="bg-processing-gradient mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-orange-500 to-red-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
@@ -192,11 +192,11 @@
 				</div>
 
 				<div
-					class="group bg-card-gradient relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
+					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
 				>
 					<div class="relative">
 						<div
-							class="bg-tech-secondary mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-red-500 to-orange-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
@@ -228,11 +228,11 @@
 				</div>
 
 				<div
-					class="group bg-card-gradient relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
+					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
 				>
 					<div class="relative">
 						<div
-							class="bg-aurora-tech mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
@@ -264,11 +264,11 @@
 				</div>
 
 				<div
-					class="group bg-card-gradient relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl lg:col-span-1 dark:border-gray-700/50"
+					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl lg:col-span-1 dark:border-gray-700/50"
 				>
 					<div class="relative">
 						<div
-							class="bg-processing-gradient mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="bg-gradient-to-r from-orange-500 to-red-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
 						>
 							<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
@@ -305,13 +305,11 @@
 	</section>
 
 	<!-- Footer -->
-	<footer class="bg-footer-gradient relative text-white">
+	<footer class="bg-gradient-to-b from-gray-900 to-black relative text-white">
 		<!-- Gentle tint overlay (now with a middle stop + lower alpha) -->
 		<div
 			class="pointer-events-none absolute inset-0 bg-gradient-to-r from-purple-900/10 via-indigo-900/8 to-blue-900/10"
 		></div>
-		<!-- Dither/noise overlay (class defined below) -->
-		<div class="bg-noise-overlay pointer-events-none absolute inset-0"></div>
 
 		<!-- Main Footer Content -->
 		<div class="relative py-12 md:py-16">
@@ -453,37 +451,3 @@
 		</div>
 	</footer>
 </div>
-
-<style>
-	/* --- Footer gradient: sRGB fallback + OKLCH (perceptual) when supported --- */
-	.bg-footer-gradient {
-		/* Fallback: plain sRGB (still looks fine if OKLCH unsupported) */
-		background: linear-gradient(180deg, #0f0a1f 0%, #071227 100%);
-	}
-	@supports (color: oklch(50% 0 0)) {
-		.bg-footer-gradient {
-			/* OKLCH greatly reduces visible banding in dark ranges */
-			background: linear-gradient(
-				in oklch to bottom,
-				oklch(18% 0.045 280) 0%,
-				oklch(14% 0.035 255) 58%,
-				oklch(11% 0.03 245) 100%
-			);
-		}
-	}
-
-	/* --- Dither/noise overlay to break up bands (no extra asset) --- */
-	.bg-noise-overlay {
-		opacity: 0.06; /* try 0.04–0.10 */
-		background-image: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'>\
-  <filter id='n'>\
-    <feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/>\
-  </filter>\
-  <rect width='100%' height='100%' filter='url(%23n)'/>\
-</svg>");
-		background-size: 180px 180px; /* tile size; tweak to taste */
-		/* Ensure it doesn’t block clicks (also set pointer-events-none in markup) */
-		pointer-events: none;
-	}
-</style>

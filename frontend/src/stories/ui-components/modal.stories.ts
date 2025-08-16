@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/sveltekit';
-import Modal from '$lib/components/ui/modal.svelte';
-import Button from '$lib/components/ui/button.svelte';
+import Modal from '$lib/components/ui/modal.svelte'; // Storybook - keep direct import
+import Button from '$lib/components/ui/button.svelte'; // Storybook - keep direct import
 
 const meta: Meta<Modal> = {
 	title: 'UI Components/Modal',

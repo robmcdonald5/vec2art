@@ -1,0 +1,1 @@
+export { default as SmartPerformanceSelector } from './smart-performance-selector.svelte';

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, Download, Loader2, FileImage, Maximize2 } from 'lucide-svelte';
-	import Button from '$lib/components/ui/button.svelte';
-	import ProgressBar from '$lib/components/ui/progress-bar.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { ProgressBar } from '$lib/components/ui/progress-bar';
 	import type { ProcessingProgress, ProcessingResult } from '$lib/types/vectorizer';
 
 	interface Props {
@@ -34,9 +34,9 @@
 	let panOffset = $state({ x: 0, y: 0 });
 	let isDragging = $state(false);
 	let dragStart = $state({ x: 0, y: 0 });
-	let imageContainer: HTMLDivElement;
+	let imageContainer = $state<HTMLDivElement>();
 	let autoFitZoom = $state(1);
-	let imageElement: HTMLImageElement;
+	let imageElement = $state<HTMLImageElement>();
 
 	// Computed properties
 	const hasMultipleImages = $derived(inputFiles.length > 1);

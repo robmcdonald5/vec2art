@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Modal from './modal.svelte';
+	import { Modal } from '$lib/components/ui/modal';
 	import { Keyboard, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Command } from 'lucide-svelte';
 
 	interface Props {

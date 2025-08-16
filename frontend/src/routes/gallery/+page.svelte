@@ -1,7 +1,7 @@
 <script lang="ts">
-	import Button from '$lib/components/ui/button.svelte';
-	import BeforeAfterSlider from '$lib/components/ui/before-after-slider.svelte';
-	import Modal from '$lib/components/ui/modal.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { BeforeAfterSlider } from '$lib/components/ui/before-after-slider';
+	import { Modal } from '$lib/components/ui/modal';
 	import { Filter, Grid, List, Search, Download, Eye, Maximize2 } from 'lucide-svelte';
 
 	interface GalleryItem {
