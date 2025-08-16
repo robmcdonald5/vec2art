@@ -50,16 +50,16 @@ async function loadWasmModule() {
 
 		// Initialize thread pool if available
 		if (typeof window !== 'undefined' && window.crossOriginIsolated) {
-			if (typeof wasm.initThreadPool === 'function') {
+			if (typeof wasm.init_thread_pool === 'function') {
 				try {
 					const threadCount = navigator.hardwareConcurrency || 4;
-					await wasm.initThreadPool(threadCount);
+					await wasm.init_thread_pool(threadCount);
 					console.log(`✅ Thread pool initialized with ${threadCount} threads`);
 				} catch (error) {
 					console.warn('⚠️ Thread pool initialization failed:', error);
 				}
 			} else {
-				console.log('ℹ️ initThreadPool not available');
+				console.log('ℹ️ init_thread_pool not available');
 			}
 		} else {
 			console.log('ℹ️ Not cross-origin isolated, running single-threaded');

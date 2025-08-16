@@ -270,7 +270,17 @@
 					stroke_width: 1.0,
 					noise_filtering: true,
 					multipass: true,
-					hand_drawn_preset: 'none'
+					hand_drawn_preset: 'none',
+					// Required boolean fields
+					reverse_pass: false,
+					diagonal_pass: false,
+					enable_etf_fdog: false,
+					enable_flow_tracing: false,
+					enable_bezier_fitting: false,
+					// Required numeric fields
+					variable_weights: 0.0,
+					tremor_strength: 0.0,
+					tapering: 0.0
 				});
 				
 				wasmModule = store.vectorizerService.getVectorizerInstance();
@@ -443,7 +453,17 @@
 				stroke_width: 1.0,
 				noise_filtering: true,
 				multipass: true,
-				hand_drawn_preset: 'none'
+				hand_drawn_preset: 'none',
+				// Required boolean fields
+				reverse_pass: false,
+				diagonal_pass: false,
+				enable_etf_fdog: false,
+				enable_flow_tracing: false,
+				enable_bezier_fitting: false,
+				// Required numeric fields
+				variable_weights: 0.0,
+				tremor_strength: 0.0,
+				tapering: 0.0
 			});
 			wasmModule = store.vectorizerService.getVectorizerInstance();
 		}
@@ -583,18 +603,18 @@
 		const missing = introspectionResults.functions?.missing || [];
 		
 		// Critical missing functions
-		const criticalMissing = missing.filter(f => f.required);
+		const criticalMissing = missing.filter((f: any) => f.required);
 		if (criticalMissing.length > 0) {
-			recommendations.push(`Implement ${criticalMissing.length} critical missing functions: ${criticalMissing.map(f => f.name).join(', ')}`);
+			recommendations.push(`Implement ${criticalMissing.length} critical missing functions: ${criticalMissing.map((f: any) => f.name).join(', ')}`);
 		}
 
 		// Backend-specific issues
-		const centerlineMissing = missing.filter(f => f.backend === 'centerline');
+		const centerlineMissing = missing.filter((f: any) => f.backend === 'centerline');
 		if (centerlineMissing.length > 0) {
 			recommendations.push(`Centerline backend unusable: ${centerlineMissing.length} functions missing`);
 		}
 
-		const superpixelMissing = missing.filter(f => f.backend === 'superpixel');
+		const superpixelMissing = missing.filter((f: any) => f.backend === 'superpixel');
 		if (superpixelMissing.length > 0) {
 			recommendations.push(`Superpixel backend unusable: ${superpixelMissing.length} functions missing`);
 		}

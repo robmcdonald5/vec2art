@@ -323,17 +323,21 @@
 
 	// Can convert as long as we have images and valid config (threads will initialize on-demand)
 	const canConvert = $derived(
-		(store.inputImages.length > 0 || store.inputImage) && 
-		store.isConfigValid() && 
-		!store.isProcessing && 
-		!isInitializing && 
-		!isBatchProcessing
+		Boolean(
+			(store.inputImages.length > 0 || store.inputImage) && 
+			store.isConfigValid() && 
+			!store.isProcessing && 
+			!isInitializing && 
+			!isBatchProcessing
+		)
 	);
 
 	const canDownload = $derived(
-		(store.batchResults.length > 0 || store.lastResult) && 
-		!store.isProcessing && 
-		!isBatchProcessing
+		Boolean(
+			(store.batchResults.length > 0 || store.lastResult) && 
+			!store.isProcessing && 
+			!isBatchProcessing
+		)
 	);
 
 	const hasImages = $derived(store.inputFiles.length > 0 || !!store.inputFile);
@@ -448,6 +452,13 @@
 				currentFiles={store.inputFiles}
 				disabled={store.isProcessing || isBatchProcessing}
 				maxFiles={5}
+				{canConvert}
+				{canDownload}
+				isProcessing={store.isProcessing || isBatchProcessing}
+				onConvert={handleConvert}
+				onDownload={() => handleDownload()}
+				onReset={handleResetAll}
+				onAbort={handleAbort}
 			/>
 
 			<!-- Dynamic Preview with Carousel -->

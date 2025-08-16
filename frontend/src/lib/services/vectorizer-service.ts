@@ -214,7 +214,17 @@ export class VectorizerService {
 			stroke_width: preset === 'minimal' ? 1.0 : 1.5,
 			noise_filtering: true,
 			multipass: backend === 'edge', // Only edge backend uses multipass
-			hand_drawn_preset: preset === 'minimal' ? 'none' : 'medium'
+			hand_drawn_preset: preset === 'minimal' ? 'none' : 'medium',
+			// Required boolean fields
+			reverse_pass: false,
+			diagonal_pass: false,
+			enable_etf_fdog: false,
+			enable_flow_tracing: false,
+			enable_bezier_fitting: false,
+			// Required numeric fields
+			variable_weights: 0.0,
+			tremor_strength: 0.0,
+			tapering: 0.0
 		};
 
 		// Add backend-specific features only if available
@@ -288,7 +298,7 @@ export class VectorizerService {
 			];
 		}
 
-		const backends = [];
+		const backends: Array<{ backend: string; status: 'ready' | 'partial' | 'minimal'; description: string }> = [];
 
 		// Edge backend analysis
 		const edgeFeatures = [

@@ -169,14 +169,14 @@ class VectorizerWorker {
 		this.vectorizer.set_diagonal_pass(config.diagonal_pass);
 
 		// Configure artistic effects
-		if (config.hand_drawn_style) {
-			this.vectorizer.set_hand_drawn_preset('subtle');
+		if (config.hand_drawn_preset) {
+			this.vectorizer.set_hand_drawn_preset(config.hand_drawn_preset);
 		}
 		if (config.variable_weights) {
-			this.vectorizer.set_custom_variable_weights(0.5);
+			this.vectorizer.set_custom_variable_weights(config.variable_weights);
 		}
-		if (config.tremor_effects) {
-			this.vectorizer.set_custom_tremor(0.2);
+		if (config.tremor_strength) {
+			this.vectorizer.set_custom_tremor(config.tremor_strength);
 		}
 
 		this.vectorizer.set_enable_etf_fdog(config.enable_etf_fdog);
