@@ -1,9 +1,12 @@
 # ===========================
-# CLAUDE CODE SETTINGS
+# CLAUDE CODE SETTINGS & DOCUMENTATION
 # ===========================
 
-# Claude Code local settings (user-specific)
-.claude/settings.local.json
+# Claude Code directory (research, settings, documentation)
+.claude/
+
+# Claude Code documentation files (project and local scope)
+**/CLAUDE.md
 
 # ===========================
 # RUST/WASM BUILD ARTIFACTS
