@@ -1,0 +1,15 @@
+# Generated WASM files (keep source/tests but ignore build artifacts)
+vectorize_wasm.js
+vectorize_wasm.d.ts
+vectorize_wasm_bg.wasm
+vectorize_wasm_bg.wasm.d.ts
+__wbindgen_placeholder__.js
+worker-load.js
+package.json
+README.md
+/snippets/
+
+# Keep source files:
+# - loader.ts, index.ts (source)
+# - *.test.ts (test files)
+# - TEST_COVERAGE_REPORT.md (documentation)
