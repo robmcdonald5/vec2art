@@ -197,14 +197,23 @@ class VectorizerStore {
 			throw new Error('WASM must be initialized first');
 		}
 
-		if (this._initState.threadsInitialized) {
-			console.log('Threads already initialized');
-			return true;
-		}
-
 		try {
 			this.clearError();
-			const success = await vectorizerService.initializeThreadPool(threadCount);
+			let success: boolean;
+
+			if (this._initState.threadsInitialized) {
+				// Try to resize if thread count is different
+				if (threadCount && threadCount !== this._initState.requestedThreadCount) {
+					console.log(`Resizing thread pool from ${this._initState.requestedThreadCount} to ${threadCount} threads`);
+					success = await vectorizerService.resizeThreadPool(threadCount);
+				} else {
+					console.log('Threads already initialized with correct count');
+					return true;
+				}
+			} else {
+				// Initialize for the first time
+				success = await vectorizerService.initializeThreadPool(threadCount);
+			}
 
 			if (success) {
 				this._initState.threadsInitialized = true;
@@ -224,6 +233,13 @@ class VectorizerStore {
 			});
 			return false;
 		}
+	}
+
+	/**
+	 * Set performance mode for vectorizer service
+	 */
+	setPerformanceMode(mode: 'economy' | 'balanced' | 'performance' | 'custom'): void {
+		vectorizerService.setPerformanceMode(mode);
 	}
 
 	/**
@@ -389,7 +405,16 @@ class VectorizerStore {
 				throw new Error('Processing was aborted due to timeout');
 			}
 
+			// Clear any previous errors on successful processing
+			this.clearError();
+			
 			this._state.last_result = result;
+			
+			// Log if result has very few paths (might indicate user needs different settings)
+			if (result.statistics?.paths_generated === 0) {
+				console.warn('[VectorizerStore] Conversion produced no paths - user may want to try different settings');
+			}
+			
 			return result;
 		} catch (error) {
 			const processingError = error as VectorizerError;
@@ -464,8 +489,8 @@ class VectorizerStore {
 
 				const imageData = images[i];
 				
-				// Update current index for UI tracking
-				this._state.current_image_index = i;
+				// Don't update current_image_index during batch processing
+				// The UI should manage its own display index separately from processing index
 				
 				try {
 					const result = await vectorizerService.processImage(
@@ -501,6 +526,9 @@ class VectorizerStore {
 			if (isAborted) {
 				throw new Error(`Batch processing was aborted. Processed ${results.length}/${images.length} images.`);
 			}
+
+			// Clear any previous errors on successful batch processing
+			this.clearError();
 
 			this._state.batch_results = results;
 			// Set last result to the final processed image
@@ -568,7 +596,7 @@ class VectorizerStore {
 				if (this._state.error === error) {
 					this.clearError();
 				}
-			}, 10000); // Clear config errors after 10 seconds
+			}, 3000); // Clear config errors after 3 seconds (shorter for better UX)
 		}
 	}
 
@@ -750,12 +778,13 @@ class VectorizerStore {
 
 		// Backend-specific validation
 		if (config.backend === 'edge') {
-			// Advanced feature interdependencies (only for edge backend)
+			// Note: Flow tracing dependencies are now auto-fixed by the service layer
+			// So we don't need to error here, just warn
 			if (config.enable_bezier_fitting && !config.enable_flow_tracing) {
-				errors.push('Bézier curve fitting requires flow-guided tracing to be enabled');
+				console.warn('[VectorizerStore] Bézier curve fitting works best with flow-guided tracing (will be auto-enabled)');
 			}
 			if (config.enable_etf_fdog && !config.enable_flow_tracing) {
-				errors.push('ETF/FDoG edge detection requires flow-guided tracing to be enabled');
+				console.warn('[VectorizerStore] ETF/FDoG edge detection works best with flow-guided tracing (will be auto-enabled)');
 			}
 		}
 
@@ -777,9 +806,9 @@ class VectorizerStore {
 			if (config.max_radius !== undefined && (config.max_radius < 0.5 || config.max_radius > 10.0)) {
 				errors.push('Maximum dot radius must be between 0.5 and 10.0 pixels');
 			}
-			// Hand-drawn effects don't really apply to dots
+			// Hand-drawn effects don't really apply to dots (warn but don't error)
 			if (config.hand_drawn_preset !== 'none' && (config.variable_weights > 0 || config.tremor_strength > 0)) {
-				errors.push('Hand-drawn effects are not recommended for dots backend');
+				console.warn('[VectorizerStore] Hand-drawn effects are not recommended for dots backend');
 			}
 		}
 

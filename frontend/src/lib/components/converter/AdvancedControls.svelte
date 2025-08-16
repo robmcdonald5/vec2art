@@ -108,13 +108,13 @@
 		<!-- Multi-pass Processing -->
 		<div class="rounded-lg border">
 			<button
-				class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
+				class="dropdown-button flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 				onclick={() => toggleSection('multipass')}
 				aria-expanded={openSections.multipass}
 				{disabled}
 			>
 				<div class="flex items-center gap-2">
-					<Layers class="text-muted-foreground h-4 w-4" aria-hidden="true" />
+					<Layers class="lucide-icon text-muted-foreground h-4 w-4" aria-hidden="true" />
 					<span class="font-medium">Multi-pass Processing</span>
 					{#if config.multipass}
 						<span
@@ -188,13 +188,13 @@
 		{#if config.backend === 'edge'}
 			<div class="rounded-lg border">
 				<button
-					class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
+					class="dropdown-button flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 					onclick={() => toggleSection('directional')}
 					aria-expanded={openSections.directional}
 					{disabled}
 				>
 					<div class="flex items-center gap-2">
-						<Target class="text-muted-foreground h-4 w-4" aria-hidden="true" />
+						<Target class="lucide-icon text-muted-foreground h-4 w-4" aria-hidden="true" />
 						<span class="font-medium">Directional Processing</span>
 						{#if config.reverse_pass || config.diagonal_pass}
 							<span
@@ -286,13 +286,13 @@
 		{#if config.backend === 'edge'}
 			<div class="rounded-lg border">
 				<button
-					class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
+					class="dropdown-button flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 					onclick={() => toggleSection('artistic')}
 					aria-expanded={openSections.artistic}
 					{disabled}
 				>
 					<div class="flex items-center gap-2">
-						<Brush class="text-muted-foreground h-4 w-4" aria-hidden="true" />
+						<Brush class="lucide-icon text-muted-foreground h-4 w-4" aria-hidden="true" />
 						<span class="font-medium">Artistic Effects</span>
 					</div>
 					<ChevronDown
@@ -391,13 +391,13 @@
 		{#if config.backend === 'edge'}
 			<div class="rounded-lg border">
 				<button
-					class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
+					class="dropdown-button flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 					onclick={() => toggleSection('edgeDetection')}
 					aria-expanded={openSections.edgeDetection}
 					{disabled}
 				>
 					<div class="flex items-center gap-2">
-						<Zap class="text-muted-foreground h-4 w-4" aria-hidden="true" />
+						<Zap class="lucide-icon text-muted-foreground h-4 w-4" aria-hidden="true" />
 						<span class="font-medium">Advanced Edge Detection</span>
 						{#if config.enable_etf_fdog || config.enable_flow_tracing}
 							<span
@@ -468,13 +468,13 @@
 		{#if config.backend === 'dots'}
 			<div class="rounded-lg border">
 				<button
-					class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
+					class="dropdown-button flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 					onclick={() => toggleSection('dotsAdvanced')}
 					aria-expanded={openSections.dotsAdvanced}
 					{disabled}
 				>
 					<div class="flex items-center gap-2">
-						<Sparkles class="text-muted-foreground h-4 w-4" aria-hidden="true" />
+						<Sparkles class="lucide-icon text-muted-foreground h-4 w-4" aria-hidden="true" />
 						<span class="font-medium">Advanced Stippling</span>
 						{#if config.adaptive_sizing !== false || config.poisson_disk_sampling}
 							<span
@@ -538,13 +538,13 @@
 		{#if config.backend === 'superpixel'}
 			<div class="rounded-lg border">
 				<button
-					class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
+					class="dropdown-button flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 					onclick={() => toggleSection('superpixelAdvanced')}
 					aria-expanded={openSections.superpixelAdvanced}
 					{disabled}
 				>
 					<div class="flex items-center gap-2">
-						<Grid class="text-muted-foreground h-4 w-4" aria-hidden="true" />
+						<Grid class="lucide-icon text-muted-foreground h-4 w-4" aria-hidden="true" />
 						<span class="font-medium">Advanced Regions</span>
 						{#if (config.compactness && config.compactness !== 20) || config.simplify_boundaries !== true}
 							<span
@@ -615,13 +615,13 @@
 		<!-- Performance Settings -->
 		<div class="rounded-lg border">
 			<button
-				class="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
+				class="dropdown-button flex w-full items-center justify-between rounded-lg p-4 text-left focus:outline-none"
 				onclick={() => toggleSection('performance')}
 				aria-expanded={openSections.performance}
 				{disabled}
 			>
 				<div class="flex items-center gap-2">
-					<Zap class="text-muted-foreground h-4 w-4" aria-hidden="true" />
+					<Zap class="lucide-icon text-muted-foreground h-4 w-4" aria-hidden="true" />
 					<span class="font-medium">Performance & Output</span>
 				</div>
 				<ChevronDown
@@ -746,6 +746,73 @@
 	.progressive-slider:hover::-moz-range-thumb {
 		border-color: #cbd5e1;
 		box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+	}
+
+	/* Advanced Controls dropdown button hover animations */
+	.dropdown-button {
+		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		transform: translateY(0);
+		background: transparent;
+		position: relative;
+		overflow: hidden;
+	}
+
+	.dropdown-button::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 51, 234, 0.03) 100%);
+		opacity: 0;
+		transition: opacity 0.3s ease;
+		z-index: 0;
+	}
+
+	.dropdown-button:hover {
+		transform: translateY(-1px);
+		background: rgba(var(--accent), 0.08);
+		box-shadow: 
+			0 4px 12px rgba(0, 0, 0, 0.1),
+			0 2px 4px rgba(59, 130, 246, 0.2);
+	}
+
+	.dropdown-button:hover::before {
+		opacity: 1;
+	}
+
+	.dropdown-button:active {
+		transform: translateY(0);
+		transition: all 0.1s ease;
+	}
+
+	.dropdown-button:disabled {
+		opacity: 0.5;
+		transform: none;
+		box-shadow: none;
+	}
+
+	.dropdown-button:disabled:hover {
+		transform: none;
+		background: transparent;
+		box-shadow: none;
+	}
+
+	.dropdown-button:disabled:hover::before {
+		opacity: 0;
+	}
+
+	/* Enhanced icon animation on hover */
+	.dropdown-button:hover :global(.lucide-icon) {
+		transform: scale(1.1);
+		transition: transform 0.2s ease;
+	}
+
+	/* Subtle glow effect for active sections */
+	.dropdown-button[aria-expanded="true"] {
+		background: rgba(var(--primary), 0.05);
+		box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
 	}
 
 	.progressive-slider::-moz-range-track {

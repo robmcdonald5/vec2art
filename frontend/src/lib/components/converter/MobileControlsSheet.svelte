@@ -189,16 +189,16 @@
 							)}/10
 						</div>
 					{:else}
-						<!-- Preset Selection -->
+						<!-- Algorithm Selection -->
+						<BackendSelector selectedBackend={config.backend} {onBackendChange} {disabled} />
+
+						<!-- Style Preset Selection -->
 						<PresetSelector
 							{selectedPreset}
 							{onPresetChange}
 							{disabled}
 							isCustom={selectedPreset === 'custom'}
 						/>
-
-						<!-- Backend Selection -->
-						<BackendSelector selectedBackend={config.backend} {onBackendChange} {disabled} />
 
 						<!-- Essential Parameters -->
 						<ParameterPanel {config} {onConfigChange} {disabled} {onParameterChange} />

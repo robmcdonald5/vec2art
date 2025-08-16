@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, Download, Loader2, FileImage } from 'lucide-svelte';
+	import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, Download, Loader2, FileImage, Maximize2 } from 'lucide-svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import ProgressBar from '$lib/components/ui/progress-bar.svelte';
 	import type { ProcessingProgress, ProcessingResult } from '$lib/types/vectorizer';
@@ -35,6 +35,8 @@
 	let isDragging = $state(false);
 	let dragStart = $state({ x: 0, y: 0 });
 	let imageContainer: HTMLDivElement;
+	let autoFitZoom = $state(1);
+	let imageElement: HTMLImageElement;
 
 	// Computed properties
 	const hasMultipleImages = $derived(inputFiles.length > 1);
@@ -43,6 +45,13 @@
 	const currentPreviewUrl = $derived(previewSvgUrls[currentImageIndex]);
 	const canNavigatePrev = $derived(currentImageIndex > 0);
 	const canNavigateNext = $derived(currentImageIndex < inputFiles.length - 1);
+	
+	// Debug effect to track what's happening with preview URLs
+	$effect(() => {
+		console.log(`[ImagePreviewCarousel] Index: ${currentImageIndex}, URL exists: ${!!currentPreviewUrl}, URLs array length: ${previewSvgUrls.length}`);
+		console.log(`[ImagePreviewCarousel] Results length: ${results.length}, Files length: ${inputFiles.length}`);
+		console.log(`[ImagePreviewCarousel] Preview URLs:`, previewSvgUrls.map((url, i) => `${i}: ${url ? 'exists' : 'null'}`));
+	});
 
 	function navigateImage(direction: 'prev' | 'next') {
 		if (!hasMultipleImages) return;
@@ -72,16 +81,49 @@
 		}
 	}
 
+	// Define consistent zoom levels for smooth transitions
+	const zoomLevels = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
+
 	function zoomIn() {
-		zoomLevel = Math.min(zoomLevel * 1.5, 5);
+		const currentIndex = findClosestZoomIndex(zoomLevel);
+		const nextIndex = Math.min(currentIndex + 1, zoomLevels.length - 1);
+		zoomLevel = zoomLevels[nextIndex];
 	}
 
 	function zoomOut() {
-		zoomLevel = Math.max(zoomLevel / 1.5, 0.1);
+		const currentIndex = findClosestZoomIndex(zoomLevel);
+		const prevIndex = Math.max(currentIndex - 1, 0);
+		zoomLevel = zoomLevels[prevIndex];
+	}
+
+	function findClosestZoomIndex(currentZoom: number): number {
+		return zoomLevels.reduce((closest, level, index) => {
+			return Math.abs(level - currentZoom) < Math.abs(zoomLevels[closest] - currentZoom) ? index : closest;
+		}, 0);
 	}
 
 	function resetView() {
-		zoomLevel = 1;
+		zoomLevel = autoFitZoom;
+		panOffset = { x: 0, y: 0 };
+	}
+
+	function fitToContainer() {
+		if (!imageElement || !imageContainer) return;
+
+		const containerRect = imageContainer.getBoundingClientRect();
+		const imageRect = imageElement.getBoundingClientRect();
+		
+		// Calculate scaling to fit both width and height with padding
+		const scaleX = (containerRect.width * 0.9) / imageElement.naturalWidth;
+		const scaleY = (containerRect.height * 0.9) / imageElement.naturalHeight;
+		
+		// Use the smaller scale to ensure the image fits completely
+		const optimalScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
+		
+		// Find the closest zoom level to the optimal scale
+		const closestIndex = findClosestZoomIndex(optimalScale);
+		autoFitZoom = zoomLevels[closestIndex];
+		zoomLevel = autoFitZoom;
 		panOffset = { x: 0, y: 0 };
 	}
 
@@ -129,6 +171,16 @@
 				document.removeEventListener('mousemove', handleMouseMove);
 				document.removeEventListener('mouseup', handleMouseUp);
 			};
+		}
+	});
+
+	// Auto-fit when preview URL changes (new conversion)
+	$effect(() => {
+		if (currentPreviewUrl && imageElement) {
+			// Small delay to ensure image is loaded
+			setTimeout(() => {
+				fitToContainer();
+			}, 100);
 		}
 	});
 </script>
@@ -209,6 +261,15 @@
 					<Button
 						variant="ghost"
 						size="sm"
+						onclick={fitToContainer}
+						aria-label="Fit to container"
+						class="p-1 h-6 w-6"
+					>
+						<Maximize2 class="h-3 w-3" />
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
 						onclick={resetView}
 						aria-label="Reset view"
 						class="p-1 h-6 w-6"
@@ -272,26 +333,38 @@
 			aria-label={zoomLevel > 1 ? "Drag to pan image" : undefined}
 		>
 			{#if currentPreviewUrl && !showOriginal}
-				<!-- SVG Preview -->
-				<img
-					src={currentPreviewUrl}
-					alt="Converted SVG: {currentFile?.name || 'Image'}"
-					class="max-h-full max-w-full object-contain rounded"
-					draggable={false}
-				/>
-			{:else if currentFile}
-				<!-- Original Image Preview -->
-				<img
-					src={URL.createObjectURL(currentFile)}
-					alt="Original image: {currentFile.name}"
-					class="max-h-full max-w-full object-contain rounded"
-					draggable={false}
-				/>
+				<!-- SVG Preview with solid white background -->
+				<div class="bg-white rounded shadow-sm border">
+					<img
+						bind:this={imageElement}
+						src={currentPreviewUrl}
+						alt="Converted SVG: {currentFile?.name || 'Image'}"
+						class="max-h-full max-w-full object-contain rounded"
+						draggable={false}
+						onload={(e) => {
+							console.log(`[ImagePreviewCarousel] Image loaded successfully for index ${currentImageIndex}`);
+							fitToContainer();
+						}}
+						onerror={(e) => {
+							console.error(`[ImagePreviewCarousel] Image load error for index ${currentImageIndex}:`, e);
+							console.log(`[ImagePreviewCarousel] Failed URL:`, currentPreviewUrl);
+							console.log(`[ImagePreviewCarousel] URL length:`, currentPreviewUrl?.length);
+						}}
+					/>
+				</div>
+			{:else if currentFile && results.length === 0}
+				<!-- Show message to convert when files are uploaded but no conversion done -->
+				<div class="text-center">
+					<FileImage class="text-muted-foreground mx-auto h-12 w-12 mb-2" />
+					<p class="text-muted-foreground text-sm">Click "Convert" to generate SVG preview</p>
+					<p class="text-xs text-muted-foreground mt-1">Debug: currentPreviewUrl={!!currentPreviewUrl}, showOriginal={showOriginal}</p>
+				</div>
 			{:else}
-				<!-- Empty State -->
+				<!-- Empty State - no files uploaded -->
 				<div class="text-center">
 					<FileImage class="text-muted-foreground mx-auto h-12 w-12 mb-2" />
 					<p class="text-muted-foreground text-sm">Upload images to see preview</p>
+					<p class="text-xs text-muted-foreground mt-1">Debug: currentPreviewUrl={!!currentPreviewUrl}, results.length={results.length}</p>
 				</div>
 			{/if}
 		</div>

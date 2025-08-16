@@ -22,6 +22,10 @@
 	import ImagePreviewCarousel from '$lib/components/converter/ImagePreviewCarousel.svelte';
 	import ConverterLayout from '$lib/components/converter/ConverterLayout.svelte';
 	import DevTestingPanel from '$lib/components/dev/DevTestingPanel.svelte';
+	import PerformanceModeSelector from '$lib/components/converter/PerformanceModeSelector.svelte';
+	
+	// Import performance monitoring
+	import { performanceMonitor, getOptimalThreadCount, type PerformanceMode } from '$lib/utils/performance-monitor';
 
 	// Reactive state from store
 	let store = vectorizerStore;
@@ -50,12 +54,22 @@
 
 	// Smart initialization state
 	let isInitializing = $state(false);
-	let selectedPerformanceMode = $state<string>('balanced');
+	let selectedPerformanceMode = $state<PerformanceMode>('balanced');
+	let currentOptimalThreads = $state(4);
 	let hasUserInitiatedConversion = $state(false);
+	let performanceWarningShown = $state(false);
 
-	// Batch processing state
+	// Enhanced processing state tracking
 	let isBatchProcessing = $state(false);
 	let batchProgress = $state<{ imageIndex: number; totalImages: number; progress: any } | null>(null);
+	let localProcessingState = $state(false);
+	let processingStartTime = $state<Date | null>(null);
+	let showProgressBar = $state(false);
+	let progressBarTimeout: NodeJS.Timeout | null = null;
+	
+	// Enhanced progress tracking
+	let currentProgress = $state(0);
+	let progressSimulationInterval: NodeJS.Timeout | null = null;
 
 	// Initialize WASM without threads (lazy loading)
 	onMount(async () => {
@@ -68,9 +82,15 @@
 		}
 	});
 
-	// Initialize threads on-demand for conversions
+	// Initialize threads on-demand for conversions with performance awareness
 	async function initializeThreadsForConversion(): Promise<boolean> {
 		if (store.threadsInitialized) {
+			// Check if current thread count matches selected performance mode
+			const expectedThreads = getOptimalThreadCount(selectedPerformanceMode, currentOptimalThreads);
+			if (store.requestedThreadCount !== expectedThreads) {
+				console.log(`Adjusting thread count from ${store.requestedThreadCount} to ${expectedThreads} for ${selectedPerformanceMode} mode`);
+				return await store.initializeThreads(expectedThreads);
+			}
 			return true;
 		}
 
@@ -78,11 +98,15 @@
 		announceProcessingStatus('Initializing converter for optimal performance...');
 
 		try {
-			// Determine optimal thread count based on system capabilities
-			const cores = navigator.hardwareConcurrency || 4;
-			const optimalThreadCount = Math.min(Math.max(1, cores - 1), 8); // Leave 1 core free, max 8
+			// Use performance-aware thread calculation
+			const optimalThreadCount = getOptimalThreadCount(selectedPerformanceMode, currentOptimalThreads);
+			const systemCapabilities = performanceMonitor.getSystemCapabilities();
 
-			console.log(`Auto-initializing with ${optimalThreadCount} threads for conversion`);
+			console.log(`Auto-initializing with ${optimalThreadCount} threads for conversion (${selectedPerformanceMode} mode, ${systemCapabilities.cores} cores available)`);
+			
+			// Start performance monitoring
+			performanceMonitor.startMonitoring();
+			
 			const success = await store.initializeThreads(optimalThreadCount);
 
 			if (!success) {
@@ -92,8 +116,15 @@
 				return true;
 			} else {
 				console.log(`Successfully initialized ${optimalThreadCount} threads`);
-				selectedPerformanceMode = cores > 4 ? 'performance' : 'balanced';
-				announceProcessingStatus(`Converter ready with ${optimalThreadCount} threads`);
+				currentOptimalThreads = optimalThreadCount;
+				announceProcessingStatus(`Converter ready with ${optimalThreadCount} threads (${selectedPerformanceMode} mode)`);
+				
+				// Show performance warning for high-performance mode on lower-end systems
+				if (selectedPerformanceMode === 'performance' && !systemCapabilities.supportsHighPerformance && !performanceWarningShown) {
+					console.warn('Performance mode enabled on system that may not support it well');
+					performanceWarningShown = true;
+				}
+				
 				return true;
 			}
 		} catch (error) {
@@ -116,10 +147,7 @@
 			announceToScreenReader('All files removed');
 		}
 		// Clear previous results when new files are selected
-		previewSvgUrls.forEach(url => {
-			if (url) URL.revokeObjectURL(url);
-		});
-		previewSvgUrls = [];
+		cleanupPreviewUrls();
 	}
 
 	function handleBackendChange(backend: VectorizerBackend) {
@@ -175,26 +203,47 @@
 	}
 
 	async function handleSingleConvert() {
+		// Set local processing state immediately
+		localProcessingState = true;
+		processingStartTime = new Date();
+		startProgressBar();
 		announceProcessingStatus('Starting image conversion');
+		
 		try {
+			// Process image with progress callback
 			const result = await store.processImage();
 
-			// Create blob URL for preview
-			if (previewSvgUrls[0]) {
-				URL.revokeObjectURL(previewSvgUrls[0]);
+			// Create blob URL for preview - handle single image properly
+			const currentIndex = store.currentImageIndex || 0;
+			if (previewSvgUrls[currentIndex]) {
+				URL.revokeObjectURL(previewSvgUrls[currentIndex]);
 			}
+			
+			// Ensure array is large enough
+			while (previewSvgUrls.length <= currentIndex) {
+				previewSvgUrls.push(null);
+			}
+			
 			const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-			previewSvgUrls[0] = URL.createObjectURL(blob);
+			previewSvgUrls[currentIndex] = URL.createObjectURL(blob);
 
 			announceProcessingStatus('Conversion completed successfully');
 		} catch (error) {
 			console.error('Conversion failed:', error);
 			announceProcessingStatus('Conversion failed');
+		} finally {
+			// Always clear local processing state
+			localProcessingState = false;
+			processingStartTime = null;
+			endProgressBar();
 		}
 	}
 
 	async function handleBatchConvert() {
 		isBatchProcessing = true;
+		localProcessingState = true;
+		processingStartTime = new Date();
+		startProgressBar();
 		announceProcessingStatus('Starting batch conversion');
 		
 		try {
@@ -203,15 +252,21 @@
 				announceProcessingStatus(`Processing image ${imageIndex + 1} of ${totalImages}: ${progress.stage}`);
 			});
 
-			// Create blob URLs for all results
-			previewSvgUrls.forEach(url => {
-				if (url) URL.revokeObjectURL(url);
+			// Create blob URLs for all results - proper cleanup and assignment
+			// Clean up existing URLs
+			cleanupPreviewUrls();
+			
+			// Create new URLs for all results
+			previewSvgUrls = results.map(result => {
+				if (result && result.svg) {
+					const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+					return URL.createObjectURL(blob);
+				}
+				return null;
 			});
 			
-			previewSvgUrls = results.map(result => {
-				const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-				return URL.createObjectURL(blob);
-			});
+			// Reset to first image after batch completion
+			store.setCurrentImageIndex(0);
 
 			announceProcessingStatus(`Batch conversion completed: ${results.length} images processed`);
 		} catch (error) {
@@ -219,7 +274,10 @@
 			announceProcessingStatus('Batch conversion failed');
 		} finally {
 			isBatchProcessing = false;
+			localProcessingState = false;
+			processingStartTime = null;
 			batchProgress = null;
+			endProgressBar();
 		}
 	}
 
@@ -232,10 +290,7 @@
 	}
 
 	function handleResetAll() {
-		previewSvgUrls.forEach(url => {
-			if (url) URL.revokeObjectURL(url);
-		});
-		previewSvgUrls = [];
+		cleanupPreviewUrls();
 		store.reset();
 	}
 
@@ -303,45 +358,180 @@
 	}
 
 	function handleImageIndexChange(index: number) {
+		console.log(`Image index changed to ${index}, previewSvgUrls.length: ${previewSvgUrls.length}`);
+		console.log(`Preview URL at index ${index}:`, previewSvgUrls[index] ? 'exists' : 'null/undefined');
 		store.setCurrentImageIndex(index);
 	}
 
 	function handleAbort() {
 		store.abortProcessing();
+		// Clear all local processing states
+		localProcessingState = false;
+		isBatchProcessing = false;
+		processingStartTime = null;
+		batchProgress = null;
+		endProgressBar();
 		announceProcessingStatus('Processing stopped');
 	}
 
+	function handlePerformanceModeChange(mode: PerformanceMode, threadCount: number) {
+		selectedPerformanceMode = mode;
+		currentOptimalThreads = threadCount;
+		
+		// Update the vectorizer service performance mode
+		store.setPerformanceMode(mode);
+		
+		// If threads are already initialized, update them
+		if (store.threadsInitialized) {
+			store.initializeThreads(threadCount).then(success => {
+				if (success) {
+					announceToScreenReader(`Performance mode changed to ${mode} with ${threadCount} threads`);
+				} else {
+					announceToScreenReader(`Failed to change performance mode, continuing with current settings`);
+				}
+			}).catch(error => {
+				console.error('Failed to update thread count:', error);
+				announceToScreenReader('Failed to update performance settings');
+			});
+		}
+	}
+
+	function handleAdvancedPerformanceToggle(show: boolean) {
+		// Handle showing/hiding advanced performance details
+		console.log(`Advanced performance details ${show ? 'shown' : 'hidden'}`);
+	}
+
+
 	// Derived values
 	$effect(() => {
-		// Clean up blob URLs when component is destroyed
+		// Clean up blob URLs and intervals when component is destroyed
 		return () => {
-			previewSvgUrls.forEach(url => {
-				if (url) URL.revokeObjectURL(url);
-			});
+			cleanupPreviewUrls();
+			stopProgressSimulation();
+			if (progressBarTimeout) {
+				clearTimeout(progressBarTimeout);
+			}
 		};
 	});
 
 	// Can convert as long as we have images and valid config (threads will initialize on-demand)
+	// Allow conversion even after failed attempts - users should be able to retry with different settings
 	const canConvert = $derived(
 		Boolean(
 			(store.inputImages.length > 0 || store.inputImage) && 
 			store.isConfigValid() && 
-			!store.isProcessing && 
-			!isInitializing && 
-			!isBatchProcessing
+			!isAnyProcessing
 		)
 	);
+
 
 	const canDownload = $derived(
 		Boolean(
 			(store.batchResults.length > 0 || store.lastResult) && 
-			!store.isProcessing && 
-			!isBatchProcessing
+			!isAnyProcessing
 		)
 	);
 
 	const hasImages = $derived(store.inputFiles.length > 0 || !!store.inputFile);
 	const stats = $derived(store.getStats());
+	
+	// Comprehensive processing state tracking
+	const isAnyProcessing = $derived(
+		store.isProcessing || 
+		isBatchProcessing || 
+		isInitializing || 
+		localProcessingState
+	);
+	
+	// Progress bar management with minimum display time
+	function startProgressBar() {
+		showProgressBar = true;
+		currentProgress = 0;
+		if (progressBarTimeout) {
+			clearTimeout(progressBarTimeout);
+			progressBarTimeout = null;
+		}
+		startProgressSimulation();
+	}
+	
+	function endProgressBar() {
+		currentProgress = 100;
+		stopProgressSimulation();
+		
+		// Keep progress bar visible for at least 1 second
+		if (progressBarTimeout) {
+			clearTimeout(progressBarTimeout);
+		}
+		progressBarTimeout = setTimeout(() => {
+			showProgressBar = false;
+			progressBarTimeout = null;
+			currentProgress = 0;
+		}, 1000);
+	}
+	
+	// Progress simulation for smooth user experience
+	function startProgressSimulation() {
+		stopProgressSimulation();
+		let elapsed = 0;
+		const updateInterval = 100; // Update every 100ms
+		
+		progressSimulationInterval = setInterval(() => {
+			elapsed += updateInterval;
+			
+			// Simulate realistic progress curve
+			// Fast initial progress (0-30% in first 200ms)
+			// Slower middle progress (30-80% over next 1-2 seconds)
+			// Final progress (80-95%) waits for actual completion
+			if (elapsed < 200) {
+				currentProgress = Math.min(30, (elapsed / 200) * 30);
+			} else if (elapsed < 2000) {
+				const midProgress = ((elapsed - 200) / 1800) * 50; // 50% over 1.8 seconds
+				currentProgress = Math.min(80, 30 + midProgress);
+			} else {
+				// Slow progress from 80-95%, waiting for real completion
+				const slowProgress = Math.min(15, ((elapsed - 2000) / 3000) * 15);
+				currentProgress = Math.min(95, 80 + slowProgress);
+			}
+		}, updateInterval);
+	}
+	
+	function stopProgressSimulation() {
+		if (progressSimulationInterval) {
+			clearInterval(progressSimulationInterval);
+			progressSimulationInterval = null;
+		}
+	}
+	
+	// Update progress from WASM if available
+	function updateProgress(progress: number) {
+		// If we have real progress from WASM, use it (but keep it above simulation)
+		if (progress > currentProgress) {
+			currentProgress = progress;
+		}
+	}
+	
+	// Watch for real progress updates from the store
+	$effect(() => {
+		if (store.currentProgress?.progress) {
+			updateProgress(store.currentProgress.progress);
+		}
+	});
+	
+	// Helper function to clean up preview URLs
+	function cleanupPreviewUrls() {
+		previewSvgUrls.forEach(url => {
+			if (url) {
+				URL.revokeObjectURL(url);
+			}
+		});
+		previewSvgUrls = [];
+	}
+	
+	// Debug effect to track preview URLs changes
+	$effect(() => {
+		console.log(`Preview URLs changed: length=${previewSvgUrls.length}`, 
+			previewSvgUrls.map((url, i) => `${i}: ${url ? 'exists' : 'null'}`));
+	});
 </script>
 
 <div class="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 lg:px-8">
@@ -379,8 +569,8 @@
 				{#if store.threadsInitialized && store.capabilities.threading_supported}
 					<CheckCircle class="h-4 w-4 text-green-500" aria-hidden="true" />
 					<span class="text-green-700 dark:text-green-400">
-						High-performance mode active ({store.requestedThreadCount ||
-							store.capabilities.hardware_concurrency} threads)
+						{selectedPerformanceMode.charAt(0).toUpperCase() + selectedPerformanceMode.slice(1)} mode active 
+						({currentOptimalThreads} threads)
 					</span>
 				{:else if store.threadsInitialized}
 					<AlertCircle class="h-4 w-4 text-yellow-500" aria-hidden="true" />
@@ -389,6 +579,19 @@
 					<CheckCircle class="h-4 w-4 text-blue-500" aria-hidden="true" />
 					<span class="text-blue-700 dark:text-blue-400">Converter ready</span>
 				{/if}
+			</div>
+
+			<!-- Mobile Performance Controls -->
+			<div class="mt-4 lg:hidden">
+				<div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
+					<PerformanceModeSelector
+						currentMode={selectedPerformanceMode}
+						currentThreadCount={currentOptimalThreads}
+						isProcessing={isAnyProcessing}
+						onModeChange={handlePerformanceModeChange}
+						onAdvancedSettingsToggle={handleAdvancedPerformanceToggle}
+					/>
+				</div>
 			</div>
 		{/if}
 
@@ -442,6 +645,102 @@
 		{/if}
 	</header>
 
+
+	<!-- Global Progress Bar -->
+	{#if showProgressBar || isAnyProcessing}
+		<div class="mb-6 rounded-lg border bg-card p-4 shadow-sm" role="status" aria-live="polite">
+			<div class="space-y-3">
+				<!-- Progress Header -->
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-2">
+						<div class="h-2 w-2 bg-blue-500 rounded-full animate-pulse"></div>
+						<span class="font-medium text-sm">
+							{#if isBatchProcessing && batchProgress}
+								Processing image {batchProgress.imageIndex + 1} of {store.inputFiles.length}
+							{:else if isInitializing}
+								Initializing converter...
+							{:else}
+								Converting image...
+							{/if}
+						</span>
+					</div>
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={handleAbort}
+						class="text-xs px-3 py-1 h-auto"
+					>
+						Cancel
+					</Button>
+				</div>
+
+				<!-- Progress Bar -->
+				<div class="space-y-2">
+					<div class="flex justify-between text-xs text-muted-foreground">
+						<span>
+							{#if batchProgress?.progress?.stage}
+								{batchProgress.progress.stage}
+							{:else if store.currentProgress?.stage}
+								{store.currentProgress.stage}
+							{:else if currentProgress < 30}
+								Loading...
+							{:else if currentProgress < 80}
+								Processing...
+							{:else}
+								Finalizing...
+							{/if}
+						</span>
+						<span>
+							{Math.round(currentProgress)}%
+						</span>
+					</div>
+					
+					<!-- Main Progress Bar -->
+					<div class="w-full bg-muted rounded-full h-2 overflow-hidden">
+						<div 
+							class="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-300 ease-out relative"
+							style="width: {currentProgress}%"
+						>
+							<!-- Animated shimmer effect -->
+							<div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+						</div>
+					</div>
+
+					<!-- Time Information -->
+					{#if batchProgress?.progress || store.currentProgress}
+						{@const progress = batchProgress?.progress || store.currentProgress}
+						<div class="flex justify-between text-xs text-muted-foreground">
+							<span>
+								{Math.round(progress.elapsed_ms / 1000)}s elapsed
+							</span>
+							{#if progress.estimated_remaining_ms}
+								<span>
+									~{Math.round(progress.estimated_remaining_ms / 1000)}s remaining
+								</span>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- Batch Progress -->
+					{#if isBatchProcessing && batchProgress}
+						<div class="mt-2 pt-2 border-t border-muted">
+							<div class="flex justify-between text-xs text-muted-foreground mb-1">
+								<span>Overall Progress</span>
+								<span>{batchProgress.imageIndex + 1} / {store.inputFiles.length}</span>
+							</div>
+							<div class="w-full bg-muted rounded-full h-1">
+								<div 
+									class="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full transition-all duration-500"
+									style="width: {((batchProgress.imageIndex + 1) / store.inputFiles.length) * 100}%"
+								></div>
+							</div>
+						</div>
+					{/if}
+				</div>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Main Converter Interface -->
 	<main class="grid gap-8 lg:grid-cols-3">
 		<!-- Upload and Preview Area -->
@@ -450,11 +749,11 @@
 			<MultiFileDropzone
 				onFilesSelect={handleFilesSelect}
 				currentFiles={store.inputFiles}
-				disabled={store.isProcessing || isBatchProcessing}
+				disabled={isAnyProcessing}
 				maxFiles={5}
 				{canConvert}
 				{canDownload}
-				isProcessing={store.isProcessing || isBatchProcessing}
+				isProcessing={isAnyProcessing}
 				onConvert={handleConvert}
 				onDownload={() => handleDownload()}
 				onReset={handleResetAll}
@@ -466,7 +765,7 @@
 				inputFiles={store.inputFiles}
 				inputImages={store.inputImages}
 				currentImageIndex={store.currentImageIndex}
-				isProcessing={store.isProcessing || isBatchProcessing}
+				isProcessing={isAnyProcessing}
 				currentProgress={batchProgress?.progress || store.currentProgress}
 				results={store.batchResults}
 				{previewSvgUrls}
@@ -476,13 +775,25 @@
 		</section>
 
 		<!-- Desktop Settings Panel -->
-		<aside class="hidden lg:block">
+		<aside class="hidden lg:block space-y-6">
+			<!-- Performance Mode Selector -->
+			<div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+				<PerformanceModeSelector
+					currentMode={selectedPerformanceMode}
+					currentThreadCount={currentOptimalThreads}
+					isProcessing={isAnyProcessing}
+					onModeChange={handlePerformanceModeChange}
+					onAdvancedSettingsToggle={handleAdvancedPerformanceToggle}
+				/>
+			</div>
+
+			<!-- Converter Settings -->
 			<ConverterLayout
 				config={store.config}
 				{selectedPreset}
 				{canConvert}
 				{canDownload}
-				isProcessing={store.isProcessing || isBatchProcessing}
+				isProcessing={isAnyProcessing}
 				{hasImages}
 				onConfigChange={handleConfigChange}
 				onPresetChange={handlePresetChange}

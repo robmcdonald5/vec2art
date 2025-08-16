@@ -50,6 +50,14 @@
 		}, 1000);
 	}
 
+	// Prevent event bubbling helper
+	function withEventPrevention<T extends any[]>(fn: (...args: T) => void) {
+		return (event: Event, ...args: T) => {
+			event.stopPropagation();
+			fn(...args);
+		};
+	}
+
 	function showError(message: string) {
 		errorMessage = message;
 		announceToScreenReader(`Error: ${message}`);
@@ -142,7 +150,9 @@
 		}
 	}
 
-	function removeFile(index: number) {
+	function removeFile(index: number, event?: Event) {
+		// Prevent event bubbling to container's click handler
+		event?.stopPropagation();
 		const newFiles = currentFiles.filter((_, i) => i !== index);
 		// Adjust preview index if necessary
 		if (currentPreviewIndex >= newFiles.length && newFiles.length > 0) {
@@ -159,7 +169,9 @@
 		errorMessage = '';
 	}
 
-	function clearAllFiles() {
+	function clearAllFiles(event?: Event) {
+		// Prevent event bubbling to container's click handler
+		event?.stopPropagation();
 		announceToScreenReader('All files removed');
 		currentPreviewIndex = 0;
 		onFilesSelect?.([]);
@@ -169,7 +181,11 @@
 		errorMessage = '';
 	}
 
-	function openFileDialog() {
+	function openFileDialog(event?: Event) {
+		// Only prevent bubbling if we're in the file list area
+		if (event && currentFiles.length > 0) {
+			event.stopPropagation();
+		}
 		if (disabled) return;
 		fileInput?.click();
 	}
@@ -277,22 +293,22 @@
 							<Button
 								variant="destructive"
 								size="sm"
-								onclick={onAbort}
+								onclick={withEventPrevention(() => onAbort?.())}
 								aria-label="Stop processing"
 							>
-								<div class="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent mr-1"></div>
+								<div class="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent"></div>
 								Stop
 							</Button>
 						{:else if canConvert && onConvert}
 							<Button
 								variant="default"
 								size="sm"
-								onclick={onConvert}
+								onclick={withEventPrevention(() => onConvert?.())}
 								disabled={!canConvert}
 								aria-label="Convert to SVG"
 								class="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white"
 							>
-								<Play class="h-3 w-3 mr-1" aria-hidden="true" />
+								<Play class="h-3 w-3" aria-hidden="true" />
 								Convert
 							</Button>
 						{/if}
@@ -302,10 +318,10 @@
 							<Button
 								variant="outline"
 								size="sm"
-								onclick={onDownload}
+								onclick={withEventPrevention(() => onDownload?.())}
 								aria-label="Download result"
 							>
-								<Download class="h-3 w-3 mr-1" aria-hidden="true" />
+								<Download class="h-3 w-3" aria-hidden="true" />
 								Download
 							</Button>
 						{/if}
@@ -319,7 +335,7 @@
 								{disabled}
 								aria-label="Add more files"
 							>
-								<Upload class="h-3 w-3 mr-1" aria-hidden="true" />
+								<Upload class="h-3 w-3" aria-hidden="true" />
 								Add More
 							</Button>
 						{/if}
@@ -352,7 +368,7 @@
 									<Button
 										variant="ghost"
 										size="sm"
-										onclick={() => currentPreviewIndex = index}
+										onclick={withEventPrevention(() => currentPreviewIndex = index)}
 										disabled={index === currentPreviewIndex}
 										aria-label="Preview {file.name}"
 										class="p-1 h-6 w-6"
@@ -363,7 +379,7 @@
 								<Button
 									variant="ghost"
 									size="sm"
-									onclick={() => removeFile(index)}
+									onclick={(event) => removeFile(index, event)}
 									{disabled}
 									aria-label="Remove {file.name}"
 									class="p-1 h-6 w-6"
@@ -386,7 +402,7 @@
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => navigatePreview('prev')}
+									onclick={withEventPrevention(() => navigatePreview('prev'))}
 									{disabled}
 									aria-label="Previous image"
 									class="p-1 h-7 w-7"
@@ -399,7 +415,7 @@
 								<Button
 									variant="outline"
 									size="sm"
-									onclick={() => navigatePreview('next')}
+									onclick={withEventPrevention(() => navigatePreview('next'))}
 									{disabled}
 									aria-label="Next image"
 									class="p-1 h-7 w-7"

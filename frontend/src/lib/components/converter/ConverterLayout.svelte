@@ -73,7 +73,18 @@
 
 			{#if showQuickSettings}
 				<div class="mt-4 space-y-4">
-					<!-- Preset Selection - Most Important -->
+					<!-- Algorithm Selection - Most Important -->
+					<div>
+						<div class="text-sm font-medium mb-2">Algorithm</div>
+						<BackendSelector
+							selectedBackend={config.backend}
+							onBackendChange={onBackendChange}
+							disabled={isProcessing}
+							compact={true}
+						/>
+					</div>
+
+					<!-- Style Preset Selection -->
 					<div>
 						<div class="text-sm font-medium mb-2">Style Preset</div>
 						<PresetSelector
@@ -81,17 +92,6 @@
 							onPresetChange={onPresetChange}
 							disabled={isProcessing}
 							isCustom={selectedPreset === 'custom'}
-							compact={true}
-						/>
-					</div>
-
-					<!-- Algorithm Selection -->
-					<div>
-						<div class="text-sm font-medium mb-2">Algorithm</div>
-						<BackendSelector
-							selectedBackend={config.backend}
-							onBackendChange={onBackendChange}
-							disabled={isProcessing}
 							compact={true}
 						/>
 					</div>
@@ -240,19 +240,19 @@
 
 				<!-- Mobile Settings Content -->
 				<div class="space-y-6">
-					<!-- Preset Selection -->
+					<!-- Algorithm Selection -->
+					<BackendSelector
+						selectedBackend={config.backend}
+						onBackendChange={onBackendChange}
+						disabled={isProcessing}
+					/>
+
+					<!-- Style Preset Selection -->
 					<PresetSelector
 						{selectedPreset}
 						onPresetChange={onPresetChange}
 						disabled={isProcessing}
 						isCustom={selectedPreset === 'custom'}
-					/>
-
-					<!-- Backend Selection -->
-					<BackendSelector
-						selectedBackend={config.backend}
-						onBackendChange={onBackendChange}
-						disabled={isProcessing}
 					/>
 
 					<!-- Essential Parameters -->

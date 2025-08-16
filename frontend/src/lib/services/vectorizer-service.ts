@@ -23,8 +23,14 @@ import {
 	isThreadPoolInitialized,
 	getCurrentThreadCount,
 	getMaxThreads,
-	getRecommendedThreadCount
+	getRecommendedThreadCount,
+	resizeThreadPool,
+	cleanupThreadPool,
+	optimizeThreadCount
 } from '$lib/wasm/loader';
+
+// Import performance monitoring
+import { performanceMonitor, type PerformanceMode, shouldUseProgressiveProcessing } from '$lib/utils/performance-monitor';
 
 // Dynamic import type for WASM module
 type WasmModule = any; // We'll type this properly after loading
@@ -36,6 +42,9 @@ export class VectorizerService {
 	private vectorizer: WasmVectorizer | null = null;
 	private isInitialized = false;
 	private initializationPromise: Promise<void> | null = null;
+	private isProcessing = false;
+	private abortController: AbortController | null = null;
+	private currentPerformanceMode: PerformanceMode = 'balanced';
 
 	private constructor() {}
 
@@ -138,31 +147,44 @@ export class VectorizerService {
 	private validateConfigurationForBackend(config: VectorizerConfig): { isValid: boolean; errors: string[] } {
 		const errors: string[] = [];
 
-		// Check hand-drawn preset logic
-		if (config.hand_drawn_preset === 'none') {
-			if (config.variable_weights !== undefined && config.variable_weights > 0) {
-				errors.push('Cannot use custom variable weights when hand_drawn_preset is "none"');
-			}
-			if (config.tremor_strength !== undefined && config.tremor_strength > 0) {
-				errors.push('Cannot use custom tremor strength when hand_drawn_preset is "none"');
-			}
-			if (config.tapering !== undefined && config.tapering > 0) {
-				errors.push('Cannot use tapering when hand_drawn_preset is "none"');
-			}
+		// Check hand-drawn preset logic - WASM requires preset to be set if using custom effects
+		const hasHandDrawnEffects = (
+			(config.variable_weights !== undefined && config.variable_weights > 0) ||
+			(config.tremor_strength !== undefined && config.tremor_strength > 0) ||
+			(config.tapering !== undefined && config.tapering > 0)
+		);
+
+		if (hasHandDrawnEffects && config.hand_drawn_preset === 'none') {
+			// Auto-fix: Set a default hand-drawn preset when custom effects are used
+			console.warn('[VectorizerService] Auto-setting hand-drawn preset to "subtle" due to custom hand-drawn effects');
+			// We'll fix this in the applyConfiguration method instead of erroring
 		}
 
-		// Backend-specific validation based on available functions
+		// Flow tracing validation - ETF/FDoG requires flow tracing to be enabled
+		if (config.enable_flow_tracing && 
+			(config.enable_bezier_fitting || config.enable_etf_fdog) && 
+			config.backend === 'edge') {
+			// Flow tracing is enabled, this is valid
+		} else if ((config.enable_bezier_fitting || config.enable_etf_fdog) && 
+				   config.backend === 'edge' && 
+				   !config.enable_flow_tracing) {
+			// Auto-fix: Enable flow tracing when ETF/FDoG or Bezier fitting is requested
+			console.warn('[VectorizerService] Auto-enabling flow tracing due to ETF/FDoG or Bezier fitting being enabled');
+			// We'll fix this in the applyConfiguration method instead of erroring
+		}
+
+		// Backend-specific validation
 		if (config.backend === 'centerline') {
-			// Warn about edge-specific features being used
+			// Warn about edge-specific features being used (but don't error)
 			if (config.enable_flow_tracing || config.enable_bezier_fitting || config.enable_etf_fdog) {
-				errors.push('Flow tracing, Bézier fitting, and ETF/FDoG are not applicable to centerline backend');
+				console.warn('[VectorizerService] Flow tracing, Bézier fitting, and ETF/FDoG are not applicable to centerline backend');
 			}
 		}
 
 		if (config.backend === 'superpixel') {
-			// Warn about edge-specific features being used
+			// Warn about edge-specific features being used (but don't error)
 			if (config.enable_flow_tracing || config.enable_bezier_fitting || config.enable_etf_fdog) {
-				errors.push('Flow tracing, Bézier fitting, and ETF/FDoG are not applicable to superpixel backend');
+				console.warn('[VectorizerService] Flow tracing, Bézier fitting, and ETF/FDoG are not applicable to superpixel backend');
 			}
 		}
 
@@ -445,8 +467,31 @@ export class VectorizerService {
 			throw new Error('Vectorizer not initialized');
 		}
 
-		// Validate configuration before applying
-		const validation = this.validateConfigurationForBackend(config);
+		// Create a working copy of the config to apply auto-fixes
+		const workingConfig = { ...config };
+
+		// Auto-fix: Set hand-drawn preset if custom effects are used
+		const hasHandDrawnEffects = (
+			(workingConfig.variable_weights !== undefined && workingConfig.variable_weights > 0) ||
+			(workingConfig.tremor_strength !== undefined && workingConfig.tremor_strength > 0) ||
+			(workingConfig.tapering !== undefined && workingConfig.tapering > 0)
+		);
+
+		if (hasHandDrawnEffects && workingConfig.hand_drawn_preset === 'none') {
+			console.warn('[VectorizerService] Auto-setting hand-drawn preset to "subtle" due to custom hand-drawn effects');
+			workingConfig.hand_drawn_preset = 'subtle';
+		}
+
+		// Auto-fix: Enable flow tracing if ETF/FDoG or Bezier fitting is requested
+		if ((workingConfig.enable_bezier_fitting || workingConfig.enable_etf_fdog) && 
+			workingConfig.backend === 'edge' && 
+			!workingConfig.enable_flow_tracing) {
+			console.warn('[VectorizerService] Auto-enabling flow tracing due to ETF/FDoG or Bezier fitting being enabled');
+			workingConfig.enable_flow_tracing = true;
+		}
+
+		// Validate configuration after auto-fixes
+		const validation = this.validateConfigurationForBackend(workingConfig);
 		if (!validation.isValid) {
 			const configError: VectorizerError = {
 				type: 'config',
@@ -458,148 +503,148 @@ export class VectorizerService {
 
 		try {
 			// Apply preset if specified
-			if (config.preset) {
-				this.vectorizer.use_preset(config.preset);
+			if (workingConfig.preset) {
+				this.vectorizer.use_preset(workingConfig.preset);
 			}
 
 			// Configure backend
-			this.vectorizer.set_backend(config.backend);
+			this.vectorizer.set_backend(workingConfig.backend);
 
 			// Configure core settings
-			this.vectorizer.set_detail(config.detail);
-			this.vectorizer.set_stroke_width(config.stroke_width);
+			this.vectorizer.set_detail(workingConfig.detail);
+			this.vectorizer.set_stroke_width(workingConfig.stroke_width);
 
 			// Configure multi-pass processing
-			this.vectorizer.set_multipass(config.multipass);
-			this.vectorizer.set_noise_filtering(config.noise_filtering);
-			this.vectorizer.set_reverse_pass(config.reverse_pass);
-			this.vectorizer.set_diagonal_pass(config.diagonal_pass);
+			this.vectorizer.set_multipass(workingConfig.multipass);
+			this.vectorizer.set_noise_filtering(workingConfig.noise_filtering);
+			this.vectorizer.set_reverse_pass(workingConfig.reverse_pass);
+			this.vectorizer.set_diagonal_pass(workingConfig.diagonal_pass);
 
 			// Configure artistic effects (hand-drawn aesthetics)
 			// Always set hand-drawn preset (required by WASM)
-			this.vectorizer.set_hand_drawn_preset(config.hand_drawn_preset);
+			this.vectorizer.set_hand_drawn_preset(workingConfig.hand_drawn_preset);
 			
 			// CRITICAL: Only set custom hand-drawn parameters if preset is NOT 'none'
 			// This prevents the "Hand-drawn preset must be specified" validation error
-			if (config.hand_drawn_preset !== 'none') {
+			if (workingConfig.hand_drawn_preset !== 'none') {
 				// Set variable weights using actual config value (if function exists and config specifies it)
-				if (config.variable_weights !== undefined) {
-					this.safeCall('set_custom_variable_weights', config.variable_weights);
+				if (workingConfig.variable_weights !== undefined) {
+					this.safeCall('set_custom_variable_weights', workingConfig.variable_weights);
 				}
 				
 				// Set tremor using actual config value (if function exists and config specifies it)
-				if (config.tremor_strength !== undefined) {
-					this.safeCall('set_custom_tremor', config.tremor_strength);
+				if (workingConfig.tremor_strength !== undefined) {
+					this.safeCall('set_custom_tremor', workingConfig.tremor_strength);
 				}
 				
 				// Set tapering using actual config value (if function exists and config specifies it)
-				if (config.tapering !== undefined) {
-					this.safeCall('set_tapering', config.tapering);
+				if (workingConfig.tapering !== undefined) {
+					this.safeCall('set_tapering', workingConfig.tapering);
 				}
 			}
 
 			// Configure advanced features (only for edge backend)
-			if (config.backend === 'edge') {
-				this.vectorizer.set_enable_etf_fdog(config.enable_etf_fdog);
-				this.vectorizer.set_enable_flow_tracing(config.enable_flow_tracing);
-				this.vectorizer.set_enable_bezier_fitting(config.enable_bezier_fitting);
+			if (workingConfig.backend === 'edge') {
+				this.vectorizer.set_enable_etf_fdog(workingConfig.enable_etf_fdog);
+				this.vectorizer.set_enable_flow_tracing(workingConfig.enable_flow_tracing);
+				this.vectorizer.set_enable_bezier_fitting(workingConfig.enable_bezier_fitting);
 			}
 
 			// Configure backend-specific settings
-			if (config.backend === 'dots') {
+			if (workingConfig.backend === 'dots') {
 				// Dots backend configuration (using safeCall for potentially missing functions)
-				if (config.dot_density !== undefined) {
-					this.safeCall('set_dot_density', config.dot_density);
+				if (workingConfig.dot_density !== undefined) {
+					this.safeCall('set_dot_density', workingConfig.dot_density);
 				}
-				if (config.dot_density_threshold !== undefined) {
-					this.safeCall('set_dot_density', config.dot_density_threshold);
+				if (workingConfig.dot_density_threshold !== undefined) {
+					this.safeCall('set_dot_density', workingConfig.dot_density_threshold);
 				}
-				if (config.dot_size_range) {
-					this.safeCall('set_dot_size_range', config.dot_size_range[0], config.dot_size_range[1]);
+				if (workingConfig.dot_size_range) {
+					this.safeCall('set_dot_size_range', workingConfig.dot_size_range[0], workingConfig.dot_size_range[1]);
 				}
-				if (config.min_radius !== undefined && config.max_radius !== undefined) {
-					this.safeCall('set_dot_size_range', config.min_radius, config.max_radius);
+				if (workingConfig.min_radius !== undefined && workingConfig.max_radius !== undefined) {
+					this.safeCall('set_dot_size_range', workingConfig.min_radius, workingConfig.max_radius);
 				}
-				if (config.preserve_colors !== undefined) {
-					this.safeCall('set_preserve_colors', config.preserve_colors);
+				if (workingConfig.preserve_colors !== undefined) {
+					this.safeCall('set_preserve_colors', workingConfig.preserve_colors);
 				}
-				if (config.adaptive_sizing !== undefined) {
-					this.safeCall('set_adaptive_sizing', config.adaptive_sizing);
+				if (workingConfig.adaptive_sizing !== undefined) {
+					this.safeCall('set_adaptive_sizing', workingConfig.adaptive_sizing);
 				}
-				if (config.background_tolerance !== undefined) {
-					this.safeCall('set_background_tolerance', config.background_tolerance);
+				if (workingConfig.background_tolerance !== undefined) {
+					this.safeCall('set_background_tolerance', workingConfig.background_tolerance);
 				}
-				if (config.poisson_disk_sampling !== undefined) {
-					this.safeCall('set_poisson_disk_sampling', config.poisson_disk_sampling);
+				if (workingConfig.poisson_disk_sampling !== undefined) {
+					this.safeCall('set_poisson_disk_sampling', workingConfig.poisson_disk_sampling);
 				}
-				if (config.gradient_based_sizing !== undefined) {
-					this.safeCall('set_gradient_based_sizing', config.gradient_based_sizing);
+				if (workingConfig.gradient_based_sizing !== undefined) {
+					this.safeCall('set_gradient_based_sizing', workingConfig.gradient_based_sizing);
 				}
-			} else if (config.backend === 'centerline') {
+			} else if (workingConfig.backend === 'centerline') {
 				// Centerline backend configuration (using safeCall for missing functions)
-				if (config.enable_adaptive_threshold !== undefined) {
-					this.safeCall('set_enable_adaptive_threshold', config.enable_adaptive_threshold);
+				if (workingConfig.enable_adaptive_threshold !== undefined) {
+					this.safeCall('set_enable_adaptive_threshold', workingConfig.enable_adaptive_threshold);
 				}
-				if (config.window_size !== undefined) {
-					this.safeCall('set_window_size', config.window_size);
+				if (workingConfig.window_size !== undefined) {
+					this.safeCall('set_window_size', workingConfig.window_size);
 				}
-				if (config.sensitivity_k !== undefined) {
-					this.safeCall('set_sensitivity_k', config.sensitivity_k);
+				if (workingConfig.sensitivity_k !== undefined) {
+					this.safeCall('set_sensitivity_k', workingConfig.sensitivity_k);
 				}
-				if (config.min_branch_length !== undefined) {
-					this.safeCall('set_min_branch_length', config.min_branch_length);
+				if (workingConfig.min_branch_length !== undefined) {
+					this.safeCall('set_min_branch_length', workingConfig.min_branch_length);
 				}
-				if (config.enable_width_modulation !== undefined) {
-					this.safeCall('set_enable_width_modulation', config.enable_width_modulation);
+				if (workingConfig.enable_width_modulation !== undefined) {
+					this.safeCall('set_enable_width_modulation', workingConfig.enable_width_modulation);
 				}
-				if (config.douglas_peucker_epsilon !== undefined) {
-					this.safeCall('set_douglas_peucker_epsilon', config.douglas_peucker_epsilon);
+				if (workingConfig.douglas_peucker_epsilon !== undefined) {
+					this.safeCall('set_douglas_peucker_epsilon', workingConfig.douglas_peucker_epsilon);
 				}
-			} else if (config.backend === 'superpixel') {
+			} else if (workingConfig.backend === 'superpixel') {
 				// Superpixel backend configuration (using safeCall for potentially missing functions)
-				if (config.num_superpixels !== undefined) {
-					this.safeCall('set_num_superpixels', config.num_superpixels);
+				if (workingConfig.num_superpixels !== undefined) {
+					this.safeCall('set_num_superpixels', workingConfig.num_superpixels);
 				}
-				if (config.compactness !== undefined) {
-					this.safeCall('set_compactness', config.compactness);
+				if (workingConfig.compactness !== undefined) {
+					this.safeCall('set_compactness', workingConfig.compactness);
 				}
-				if (config.slic_iterations !== undefined) {
-					this.safeCall('set_slic_iterations', config.slic_iterations);
+				if (workingConfig.slic_iterations !== undefined) {
+					this.safeCall('set_slic_iterations', workingConfig.slic_iterations);
 				}
-				if (config.fill_regions !== undefined) {
-					this.safeCall('set_fill_regions', config.fill_regions);
+				if (workingConfig.fill_regions !== undefined) {
+					this.safeCall('set_fill_regions', workingConfig.fill_regions);
 				}
-				if (config.stroke_regions !== undefined) {
-					this.safeCall('set_stroke_regions', config.stroke_regions);
+				if (workingConfig.stroke_regions !== undefined) {
+					this.safeCall('set_stroke_regions', workingConfig.stroke_regions);
 				}
-				if (config.simplify_boundaries !== undefined) {
-					this.safeCall('set_simplify_boundaries', config.simplify_boundaries);
+				if (workingConfig.simplify_boundaries !== undefined) {
+					this.safeCall('set_simplify_boundaries', workingConfig.simplify_boundaries);
 				}
-				if (config.boundary_epsilon !== undefined) {
-					this.safeCall('set_boundary_epsilon', config.boundary_epsilon);
+				if (workingConfig.boundary_epsilon !== undefined) {
+					this.safeCall('set_boundary_epsilon', workingConfig.boundary_epsilon);
 				}
 			}
 
 			// Configure global output settings (using safeCall for potentially missing functions)
-			if (config.svg_precision !== undefined) {
-				this.safeCall('set_svg_precision', config.svg_precision);
+			if (workingConfig.svg_precision !== undefined) {
+				this.safeCall('set_svg_precision', workingConfig.svg_precision);
 			}
-			if (config.optimize_svg !== undefined) {
-				this.safeCall('set_optimize_svg', config.optimize_svg);
+			if (workingConfig.optimize_svg !== undefined) {
+				this.safeCall('set_optimize_svg', workingConfig.optimize_svg);
 			}
-			if (config.include_metadata !== undefined) {
-				this.safeCall('set_include_metadata', config.include_metadata);
+			if (workingConfig.include_metadata !== undefined) {
+				this.safeCall('set_include_metadata', workingConfig.include_metadata);
 			}
 
 			// Configure performance settings (using safeCall for potentially missing functions)
-			if (config.max_processing_time_ms !== undefined) {
-				this.safeCall('set_max_processing_time_ms', BigInt(config.max_processing_time_ms));
+			if (workingConfig.max_processing_time_ms !== undefined) {
+				this.safeCall('set_max_processing_time_ms', BigInt(workingConfig.max_processing_time_ms));
 			}
-			if (config.thread_count !== undefined) {
-				this.safeCall('set_thread_count', config.thread_count);
+			if (workingConfig.thread_count !== undefined) {
+				this.safeCall('set_thread_count', workingConfig.thread_count);
 			}
-			if (config.max_image_size !== undefined) {
-				this.safeCall('set_max_image_size', config.max_image_size);
+			if (workingConfig.max_image_size !== undefined) {
+				this.safeCall('set_max_image_size', workingConfig.max_image_size);
 			}
 
 			// Validate configuration
@@ -615,7 +660,7 @@ export class VectorizerService {
 	}
 
 	/**
-	 * Process an image with the current configuration
+	 * Process an image with progressive processing and performance monitoring
 	 */
 	async processImage(
 		imageData: ImageData,
@@ -629,30 +674,88 @@ export class VectorizerService {
 			throw new Error('Vectorizer not initialized');
 		}
 
+		if (this.isProcessing) {
+			throw new Error('Another processing operation is already in progress');
+		}
+
+		this.isProcessing = true;
+		this.abortController = new AbortController();
+		
 		try {
 			const startTime = performance.now();
+			
+			// Record processing start for performance monitoring
+			performanceMonitor.recordProcessingTime(0);
+			
+			// Check if we should use progressive processing
+			const useProgressiveProcessing = shouldUseProgressiveProcessing();
+			const yieldFunction = performanceMonitor.createYieldingFunction(this.currentPerformanceMode);
+			
+			// Optimize thread count based on current system performance
+			if (isThreadPoolInitialized()) {
+				await optimizeThreadCount();
+			}
+			
 			let svg: string;
 
 			if (onProgress) {
-				// Use progress callback version
-				const progressCallback = (stage: string, progress: number, elapsed: number) => {
+				// Enhanced progress callback with yielding
+				const progressCallback = async (stage: string, progress: number, elapsed: number) => {
+					// Check for abort signal
+					if (this.abortController?.signal.aborted) {
+						throw new Error('Processing aborted');
+					}
+					
 					const progressData: ProcessingProgress = {
 						stage,
 						progress: Math.round(progress * 100),
 						elapsed_ms: elapsed,
 						estimated_remaining_ms: elapsed > 0 ? (elapsed / progress) * (1 - progress) : undefined
 					};
+					
+					// Call original progress callback
 					onProgress(progressData);
+					
+					// Yield to browser UI if using progressive processing
+					if (useProgressiveProcessing) {
+						await yieldFunction();
+					}
+					
+					// Monitor system stress and adjust if needed
+					if (performanceMonitor.isSystemStressed()) {
+						console.warn('[VectorizerService] System stress detected during processing');
+						await new Promise(resolve => setTimeout(resolve, 50)); // Extra yield time
+					}
 				};
 
-				svg = this.vectorizer.vectorize_with_progress(imageData, progressCallback);
+				if (this.vectorizer.vectorize_with_progress) {
+					svg = await this._processWithProgressiveCallback(
+						imageData, 
+						progressCallback, 
+						useProgressiveProcessing
+					);
+				} else {
+					// Fallback for WASM without progress support
+					svg = await this._processWithSimulatedProgress(
+						imageData, 
+						progressCallback,
+						useProgressiveProcessing
+					);
+				}
 			} else {
-				// Standard vectorization
-				svg = this.vectorizer.vectorize(imageData);
+				// Standard vectorization with yielding if needed
+				if (useProgressiveProcessing) {
+					svg = await this._processWithYielding(imageData, yieldFunction);
+				} else {
+					svg = this.vectorizer.vectorize(imageData);
+				}
 			}
 
 			const endTime = performance.now();
 			const processingTime = endTime - startTime;
+			
+			// Record processing time for performance monitoring
+			performanceMonitor.recordProcessingTime(processingTime);
 
 			const result: ProcessingResult = {
 				svg,
@@ -672,12 +775,24 @@ export class VectorizerService {
 
 			return result;
 		} catch (error) {
+			if (this.abortController?.signal.aborted) {
+				const abortError: VectorizerError = {
+					type: 'processing',
+					message: 'Processing was aborted',
+					details: 'User requested abort or system performance optimization'
+				};
+				throw abortError;
+			}
+			
 			const processingError: VectorizerError = {
 				type: 'processing',
 				message: 'Failed to process image',
 				details: error instanceof Error ? error.message : String(error)
 			};
 			throw processingError;
+		} finally {
+			this.isProcessing = false;
+			this.abortController = null;
 		}
 	}
 
@@ -717,6 +832,14 @@ export class VectorizerService {
 	}
 
 	/**
+	 * Set performance mode for processing optimization
+	 */
+	setPerformanceMode(mode: PerformanceMode): void {
+		this.currentPerformanceMode = mode;
+		console.log(`[VectorizerService] Performance mode set to: ${mode}`);
+	}
+
+	/**
 	 * Initialize thread pool separately (for lazy loading)
 	 * Returns true if successful, false otherwise
 	 */
@@ -742,6 +865,26 @@ export class VectorizerService {
 	}
 
 	/**
+	 * Resize thread pool dynamically
+	 */
+	async resizeThreadPool(newThreadCount: number): Promise<boolean> {
+		if (!browser || !this.isInitialized) {
+			return false;
+		}
+
+		try {
+			const success = await resizeThreadPool(newThreadCount);
+			console.log(
+				`[VectorizerService] Thread pool resize ${success ? 'succeeded' : 'failed'} (${newThreadCount} threads)`
+			);
+			return success;
+		} catch (error) {
+			console.error('[VectorizerService] Thread pool resize error:', error);
+			return false;
+		}
+	}
+
+	/**
 	 * Get thread pool status
 	 */
 	getThreadPoolStatus(): {
@@ -762,6 +905,11 @@ export class VectorizerService {
 	 * Abort current processing operation
 	 */
 	abortProcessing(): void {
+		// Signal abort to current operation
+		if (this.abortController) {
+			this.abortController.abort();
+		}
+		
 		if (this.vectorizer) {
 			try {
 				// If the WASM module has an abort method, call it
@@ -769,12 +917,111 @@ export class VectorizerService {
 					this.vectorizer.abort_processing();
 					console.log('[VectorizerService] Processing aborted via WASM');
 				} else {
-					console.log('[VectorizerService] WASM abort method not available, relying on timeout');
+					console.log('[VectorizerService] WASM abort method not available, using signal-based abort');
 				}
 			} catch (error) {
 				console.warn('[VectorizerService] Error during abort:', error);
 			}
 		}
+		
+		this.isProcessing = false;
+	}
+
+	/**
+	 * Process with progressive callback (for WASM with progress support)
+	 */
+	private async _processWithProgressiveCallback(
+		imageData: ImageData,
+		progressCallback: (stage: string, progress: number, elapsed: number) => Promise<void>,
+		useProgressive: boolean
+	): Promise<string> {
+		return new Promise((resolve, reject) => {
+			try {
+				// Wrap the progress callback to handle async operations
+				const syncProgressCallback = (stage: string, progress: number, elapsed: number) => {
+					progressCallback(stage, progress, elapsed).catch(error => {
+						if (error.message === 'Processing aborted') {
+							reject(error);
+						} else {
+							console.warn('[VectorizerService] Progress callback error:', error);
+						}
+					});
+				};
+				
+				const svg = this.vectorizer!.vectorize_with_progress(imageData, syncProgressCallback);
+				resolve(svg);
+			} catch (error) {
+				reject(error);
+			}
+		});
+	}
+
+	/**
+	 * Process with simulated progress (for WASM without progress support)
+	 */
+	private async _processWithSimulatedProgress(
+		imageData: ImageData,
+		progressCallback: (stage: string, progress: number, elapsed: number) => Promise<void>,
+		useProgressive: boolean
+	): Promise<string> {
+		const startTime = performance.now();
+		
+		// Simulate progress stages
+		const stages = [
+			{ stage: 'preprocessing', duration: 0.1 },
+			{ stage: 'edge_detection', duration: 0.3 },
+			{ stage: 'path_generation', duration: 0.4 },
+			{ stage: 'optimization', duration: 0.2 }
+		];
+		
+		let totalProgress = 0;
+		
+		for (const stageInfo of stages) {
+			const stageStart = performance.now();
+			const stageDuration = 100; // Simulated stage duration
+			
+			for (let i = 0; i <= 10; i++) {
+				const stageProgress = i / 10;
+				const currentStageProgress = stageProgress * stageInfo.duration;
+				const overallProgress = totalProgress + currentStageProgress;
+				const elapsed = performance.now() - startTime;
+				
+				await progressCallback(stageInfo.stage, overallProgress, elapsed);
+				
+				if (useProgressive) {
+					await new Promise(resolve => setTimeout(resolve, stageDuration / 10));
+				}
+			}
+			
+			totalProgress += stageInfo.duration;
+		}
+		
+		// Actually process the image
+		const svg = this.vectorizer!.vectorize(imageData);
+		
+		// Final progress
+		const elapsed = performance.now() - startTime;
+		await progressCallback('complete', 1.0, elapsed);
+		
+		return svg;
+	}
+
+	/**
+	 * Process with yielding (no progress callback)
+	 */
+	private async _processWithYielding(
+		imageData: ImageData,
+		yieldFunction: () => Promise<void>
+	): Promise<string> {
+		// For now, we just yield before processing
+		// Future WASM versions could support incremental processing
+		await yieldFunction();
+		
+		const svg = this.vectorizer!.vectorize(imageData);
+		
+		await yieldFunction();
+		
+		return svg;
 	}
 
 	/**
@@ -783,6 +1030,14 @@ export class VectorizerService {
 	cleanup(): void {
 		// First try to abort any ongoing processing
 		this.abortProcessing();
+
+		// Stop performance monitoring
+		performanceMonitor.stopMonitoring();
+
+		// Cleanup thread pool
+		if (isThreadPoolInitialized()) {
+			cleanupThreadPool().catch(console.warn);
+		}
 
 		if (this.vectorizer) {
 			try {
