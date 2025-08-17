@@ -8,6 +8,9 @@
 # Claude Code documentation files (project and local scope)
 **/CLAUDE.md
 
+# Playwright MCP
+.playwright-mcp/
+
 # ===========================
 # RUST/WASM BUILD ARTIFACTS
 # ===========================
