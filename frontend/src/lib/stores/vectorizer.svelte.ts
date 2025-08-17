@@ -204,7 +204,9 @@ class VectorizerStore {
 			if (this._initState.threadsInitialized) {
 				// Try to resize if thread count is different
 				if (threadCount && threadCount !== this._initState.requestedThreadCount) {
-					console.log(`Resizing thread pool from ${this._initState.requestedThreadCount} to ${threadCount} threads`);
+					console.log(
+						`Resizing thread pool from ${this._initState.requestedThreadCount} to ${threadCount} threads`
+					);
 					success = await vectorizerService.resizeThreadPool(threadCount);
 				} else {
 					console.log('Threads already initialized with correct count');
@@ -316,7 +318,7 @@ class VectorizerStore {
 				const imageData = await this.fileToImageData(file);
 				imageDataArray.push(imageData);
 			}
-			
+
 			this._state.input_images = imageDataArray;
 
 			// Set current single-image state to first image for backward compatibility
@@ -407,14 +409,16 @@ class VectorizerStore {
 
 			// Clear any previous errors on successful processing
 			this.clearError();
-			
+
 			this._state.last_result = result;
-			
+
 			// Log if result has very few paths (might indicate user needs different settings)
 			if (result.statistics?.paths_generated === 0) {
-				console.warn('[VectorizerStore] Conversion produced no paths - user may want to try different settings');
+				console.warn(
+					'[VectorizerStore] Conversion produced no paths - user may want to try different settings'
+				);
 			}
-			
+
 			return result;
 		} catch (error) {
 			const processingError = error as VectorizerError;
@@ -427,7 +431,7 @@ class VectorizerStore {
 			}
 			this._state.is_processing = false;
 			this._state.current_progress = undefined;
-			
+
 			// Force cleanup of any WASM resources
 			try {
 				// Note: This will be handled by the service cleanup method
@@ -441,7 +445,9 @@ class VectorizerStore {
 	/**
 	 * Process all images in batch with comprehensive validation and cleanup
 	 */
-	async processBatch(onProgress?: (imageIndex: number, totalImages: number, progress: ProcessingProgress) => void): Promise<ProcessingResult[]> {
+	async processBatch(
+		onProgress?: (imageIndex: number, totalImages: number, progress: ProcessingProgress) => void
+	): Promise<ProcessingResult[]> {
 		if (!this._state.is_initialized) {
 			throw new Error('Vectorizer not initialized');
 		}
@@ -477,21 +483,25 @@ class VectorizerStore {
 			const batchTimeoutMs = singleImageTimeoutMs * images.length + 10000; // Extra buffer
 			batchTimeoutId = setTimeout(() => {
 				isAborted = true;
-				console.log(`[VectorizerStore] Batch processing timeout after ${batchTimeoutMs}ms, aborting...`);
+				console.log(
+					`[VectorizerStore] Batch processing timeout after ${batchTimeoutMs}ms, aborting...`
+				);
 				this.abortProcessing();
 			}, batchTimeoutMs);
 
 			for (let i = 0; i < images.length; i++) {
 				if (isAborted) {
-					console.log(`[VectorizerStore] Batch processing aborted at image ${i + 1}/${images.length}`);
+					console.log(
+						`[VectorizerStore] Batch processing aborted at image ${i + 1}/${images.length}`
+					);
 					break;
 				}
 
 				const imageData = images[i];
-				
+
 				// Don't update current_image_index during batch processing
 				// The UI should manage its own display index separately from processing index
-				
+
 				try {
 					const result = await vectorizerService.processImage(
 						imageData,
@@ -524,7 +534,9 @@ class VectorizerStore {
 			}
 
 			if (isAborted) {
-				throw new Error(`Batch processing was aborted. Processed ${results.length}/${images.length} images.`);
+				throw new Error(
+					`Batch processing was aborted. Processed ${results.length}/${images.length} images.`
+				);
 			}
 
 			// Clear any previous errors on successful batch processing
@@ -548,10 +560,12 @@ class VectorizerStore {
 			}
 			this._state.is_processing = false;
 			this._state.current_progress = undefined;
-			
+
 			// Force cleanup of any WASM resources
 			try {
-				console.log(`[VectorizerStore] Batch processing completed, processed ${results.length}/${images.length} images`);
+				console.log(
+					`[VectorizerStore] Batch processing completed, processed ${results.length}/${images.length} images`
+				);
 			} catch (cleanupError) {
 				console.warn('[VectorizerStore] Batch cleanup warning:', cleanupError);
 			}
@@ -781,10 +795,14 @@ class VectorizerStore {
 			// Note: Flow tracing dependencies are now auto-fixed by the service layer
 			// So we don't need to error here, just warn
 			if (config.enable_bezier_fitting && !config.enable_flow_tracing) {
-				console.warn('[VectorizerStore] Bézier curve fitting works best with flow-guided tracing (will be auto-enabled)');
+				console.warn(
+					'[VectorizerStore] Bézier curve fitting works best with flow-guided tracing (will be auto-enabled)'
+				);
 			}
 			if (config.enable_etf_fdog && !config.enable_flow_tracing) {
-				console.warn('[VectorizerStore] ETF/FDoG edge detection works best with flow-guided tracing (will be auto-enabled)');
+				console.warn(
+					'[VectorizerStore] ETF/FDoG edge detection works best with flow-guided tracing (will be auto-enabled)'
+				);
 			}
 		}
 
@@ -794,61 +812,99 @@ class VectorizerStore {
 			if (density !== undefined && (density < 0.0 || density > 1.0)) {
 				errors.push('Dot density must be between 0.0 and 1.0');
 			}
-			if (config.background_tolerance !== undefined && (config.background_tolerance < 0 || config.background_tolerance > 1)) {
+			if (
+				config.background_tolerance !== undefined &&
+				(config.background_tolerance < 0 || config.background_tolerance > 1)
+			) {
 				errors.push('Background tolerance must be between 0.0 and 1.0');
 			}
-			if (config.min_radius !== undefined && config.max_radius !== undefined && config.min_radius >= config.max_radius) {
+			if (
+				config.min_radius !== undefined &&
+				config.max_radius !== undefined &&
+				config.min_radius >= config.max_radius
+			) {
 				errors.push('Minimum dot radius must be smaller than maximum radius');
 			}
 			if (config.min_radius !== undefined && (config.min_radius < 0.2 || config.min_radius > 3.0)) {
 				errors.push('Minimum dot radius must be between 0.2 and 3.0 pixels');
 			}
-			if (config.max_radius !== undefined && (config.max_radius < 0.5 || config.max_radius > 10.0)) {
+			if (
+				config.max_radius !== undefined &&
+				(config.max_radius < 0.5 || config.max_radius > 10.0)
+			) {
 				errors.push('Maximum dot radius must be between 0.5 and 10.0 pixels');
 			}
 			// Hand-drawn effects don't really apply to dots (warn but don't error)
-			if (config.hand_drawn_preset !== 'none' && (config.variable_weights > 0 || config.tremor_strength > 0)) {
+			if (
+				config.hand_drawn_preset !== 'none' &&
+				(config.variable_weights > 0 || config.tremor_strength > 0)
+			) {
 				console.warn('[VectorizerStore] Hand-drawn effects are not recommended for dots backend');
 			}
 		}
 
 		if (config.backend === 'centerline') {
 			// Centerline backend validation
-			if (config.window_size !== undefined && (config.window_size < 15 || config.window_size > 50)) {
+			if (
+				config.window_size !== undefined &&
+				(config.window_size < 15 || config.window_size > 50)
+			) {
 				errors.push('Adaptive threshold window size must be between 15 and 50 pixels');
 			}
-			if (config.sensitivity_k !== undefined && (config.sensitivity_k < 0.1 || config.sensitivity_k > 1.0)) {
+			if (
+				config.sensitivity_k !== undefined &&
+				(config.sensitivity_k < 0.1 || config.sensitivity_k > 1.0)
+			) {
 				errors.push('Sensitivity parameter must be between 0.1 and 1.0');
 			}
-			if (config.min_branch_length !== undefined && (config.min_branch_length < 4 || config.min_branch_length > 24)) {
+			if (
+				config.min_branch_length !== undefined &&
+				(config.min_branch_length < 4 || config.min_branch_length > 24)
+			) {
 				errors.push('Minimum branch length must be between 4 and 24 pixels');
 			}
-			if (config.douglas_peucker_epsilon !== undefined && (config.douglas_peucker_epsilon < 0.5 || config.douglas_peucker_epsilon > 3.0)) {
+			if (
+				config.douglas_peucker_epsilon !== undefined &&
+				(config.douglas_peucker_epsilon < 0.5 || config.douglas_peucker_epsilon > 3.0)
+			) {
 				errors.push('Douglas-Peucker epsilon must be between 0.5 and 3.0 pixels');
 			}
 			// Warn about edge-specific features being used with centerline
 			if (config.enable_flow_tracing || config.enable_bezier_fitting || config.enable_etf_fdog) {
-				errors.push('Flow tracing, Bézier fitting, and ETF/FDoG are not applicable to centerline backend');
+				errors.push(
+					'Flow tracing, Bézier fitting, and ETF/FDoG are not applicable to centerline backend'
+				);
 			}
 		}
 
 		if (config.backend === 'superpixel') {
 			// Superpixel backend validation
-			if (config.num_superpixels !== undefined && (config.num_superpixels < 20 || config.num_superpixels > 1000)) {
+			if (
+				config.num_superpixels !== undefined &&
+				(config.num_superpixels < 20 || config.num_superpixels > 1000)
+			) {
 				errors.push('Number of superpixels must be between 20 and 1000');
 			}
 			if (config.compactness !== undefined && (config.compactness < 1 || config.compactness > 50)) {
 				errors.push('Superpixel compactness must be between 1 and 50');
 			}
-			if (config.slic_iterations !== undefined && (config.slic_iterations < 5 || config.slic_iterations > 15)) {
+			if (
+				config.slic_iterations !== undefined &&
+				(config.slic_iterations < 5 || config.slic_iterations > 15)
+			) {
 				errors.push('SLIC iterations must be between 5 and 15');
 			}
-			if (config.boundary_epsilon !== undefined && (config.boundary_epsilon < 0.5 || config.boundary_epsilon > 3.0)) {
+			if (
+				config.boundary_epsilon !== undefined &&
+				(config.boundary_epsilon < 0.5 || config.boundary_epsilon > 3.0)
+			) {
 				errors.push('Boundary epsilon must be between 0.5 and 3.0 pixels');
 			}
 			// Warn about edge-specific features being used with superpixel
 			if (config.enable_flow_tracing || config.enable_bezier_fitting || config.enable_etf_fdog) {
-				errors.push('Flow tracing, Bézier fitting, and ETF/FDoG are not applicable to superpixel backend');
+				errors.push(
+					'Flow tracing, Bézier fitting, and ETF/FDoG are not applicable to superpixel backend'
+				);
 			}
 		}
 
@@ -858,7 +914,10 @@ class VectorizerStore {
 		}
 
 		// Global output settings validation
-		if (config.svg_precision !== undefined && (config.svg_precision < 0 || config.svg_precision > 4)) {
+		if (
+			config.svg_precision !== undefined &&
+			(config.svg_precision < 0 || config.svg_precision > 4)
+		) {
 			errors.push('SVG precision must be between 0 and 4 decimal places');
 		}
 
@@ -880,14 +939,14 @@ class VectorizerStore {
 	 */
 	abortProcessing(): void {
 		console.log('[VectorizerStore] Aborting processing...');
-		
+
 		// Stop the processing flag
 		this._state.is_processing = false;
 		this._state.current_progress = undefined;
-		
+
 		// Call service abort
 		vectorizerService.abortProcessing();
-		
+
 		// Set error state
 		this.setError({
 			type: 'processing',
@@ -912,7 +971,7 @@ class VectorizerStore {
 		this._initState.threadsInitialized = false;
 		this.clearInput();
 		this.clearError();
-		
+
 		console.log('[VectorizerStore] Store cleanup completed');
 	}
 
