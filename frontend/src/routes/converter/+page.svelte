@@ -18,11 +18,9 @@
 	import { PRESET_CONFIGS } from '$lib/types/vectorizer';
 
 	// Import new component system
-	import { MultiFileDropzone } from '$lib/components/ui/multi-file-dropzone';
-	import ImagePreviewCarousel from '$lib/components/converter/ImagePreviewCarousel.svelte';
+	import UnifiedImageProcessor from '$lib/components/converter/UnifiedImageProcessor.svelte';
 	import ConverterLayout from '$lib/components/converter/ConverterLayout.svelte';
 	import DevTestingPanel from '$lib/components/dev/DevTestingPanel.svelte';
-	import PerformanceModeSelector from '$lib/components/converter/PerformanceModeSelector.svelte';
 	
 	// Import performance monitoring
 	import { performanceMonitor, getOptimalThreadCount, type PerformanceMode } from '$lib/utils/performance-monitor';
@@ -580,18 +578,6 @@
 				{/if}
 			</div>
 
-			<!-- Mobile Performance Controls -->
-			<div class="mt-4 lg:hidden">
-				<div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-					<PerformanceModeSelector
-						currentMode={selectedPerformanceMode}
-						currentThreadCount={currentOptimalThreads}
-						isProcessing={isAnyProcessing}
-						onModeChange={handlePerformanceModeChange}
-						onAdvancedSettingsToggle={handleAdvancedPerformanceToggle}
-					/>
-				</div>
-			</div>
 		{/if}
 
 		<!-- Enhanced Error Display -->
@@ -741,15 +727,14 @@
 	{/if}
 
 	<!-- Main Converter Interface -->
-	<main class="grid gap-8 lg:grid-cols-3">
+	<main class="grid gap-8 lg:grid-cols-3 items-start">
 		<!-- Upload and Preview Area -->
 		<section class="lg:col-span-2 space-y-6">
-			<!-- Upload Area -->
-			<MultiFileDropzone
+			<!-- Unified Image Processor with Side-by-Side Preview -->
+			<UnifiedImageProcessor
 				onFilesSelect={handleFilesSelect}
 				currentFiles={store.inputFiles}
 				disabled={isAnyProcessing}
-				maxFiles={5}
 				{canConvert}
 				{canDownload}
 				isProcessing={isAnyProcessing}
@@ -757,36 +742,42 @@
 				onDownload={() => handleDownload()}
 				onReset={handleResetAll}
 				onAbort={handleAbort}
-			/>
-
-			<!-- Dynamic Preview with Carousel -->
-			<ImagePreviewCarousel
-				inputFiles={store.inputFiles}
 				inputImages={store.inputImages}
 				currentImageIndex={store.currentImageIndex}
-				isProcessing={isAnyProcessing}
 				currentProgress={batchProgress?.progress || store.currentProgress}
 				results={store.batchResults}
 				{previewSvgUrls}
 				onImageIndexChange={handleImageIndexChange}
-				onDownload={handleDownload}
 			/>
+			
+			<!-- Mobile Settings Panel - Visible on mobile only -->
+			<div class="lg:hidden">
+				<ConverterLayout
+					config={store.config}
+					{selectedPreset}
+					{canConvert}
+					{canDownload}
+					isProcessing={isAnyProcessing}
+					{hasImages}
+					performanceMode={selectedPerformanceMode}
+					threadCount={currentOptimalThreads}
+					threadsInitialized={store.threadsInitialized}
+					onConfigChange={handleConfigChange}
+					onPresetChange={handlePresetChange}
+					onBackendChange={handleBackendChange}
+					onParameterChange={handleParameterChange}
+					onConvert={handleConvert}
+					onDownload={handleDownload}
+					onReset={handleResetAll}
+					onAbort={handleAbort}
+					onPerformanceModeChange={handlePerformanceModeChange}
+				/>
+			</div>
 		</section>
 
 		<!-- Desktop Settings Panel -->
-		<aside class="hidden lg:block space-y-6">
-			<!-- Performance Mode Selector -->
-			<div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-				<PerformanceModeSelector
-					currentMode={selectedPerformanceMode}
-					currentThreadCount={currentOptimalThreads}
-					isProcessing={isAnyProcessing}
-					onModeChange={handlePerformanceModeChange}
-					onAdvancedSettingsToggle={handleAdvancedPerformanceToggle}
-				/>
-			</div>
-
-			<!-- Converter Settings -->
+		<aside class="hidden lg:block space-y-6 self-start">
+			<!-- Converter Settings with integrated performance controls -->
 			<ConverterLayout
 				config={store.config}
 				{selectedPreset}
@@ -794,6 +785,9 @@
 				{canDownload}
 				isProcessing={isAnyProcessing}
 				{hasImages}
+				performanceMode={selectedPerformanceMode}
+				threadCount={currentOptimalThreads}
+				threadsInitialized={store.threadsInitialized}
 				onConfigChange={handleConfigChange}
 				onPresetChange={handlePresetChange}
 				onBackendChange={handleBackendChange}
@@ -802,6 +796,7 @@
 				onDownload={handleDownload}
 				onReset={handleResetAll}
 				onAbort={handleAbort}
+				onPerformanceModeChange={handlePerformanceModeChange}
 			/>
 		</aside>
 	</main>

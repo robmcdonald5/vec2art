@@ -67,7 +67,7 @@
 					Why vec2art?
 				</h2>
 				<p class="mx-auto mt-6 max-w-3xl text-xl text-gray-600 dark:text-gray-300">
-					Experience the power of modern image processing with cutting-edge technology
+					Modern image processing with cutting-edge speed in your browser
 				</p>
 			</div>
 

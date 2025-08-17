@@ -1,7 +1,12 @@
 <script lang="ts">
-	import { Settings, Play, Download, RotateCcw, ChevronDown, ChevronUp, Sliders } from 'lucide-svelte';
+	import { Settings, Play, Download, RotateCcw, ChevronDown, ChevronUp, Sliders, Zap, Cpu } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import * as Card from '$lib/components/ui/card';
+	import { Slider } from '$lib/components/ui/slider';
+	import { Badge } from '$lib/components/ui/badge';
 	import type { VectorizerConfig, VectorizerBackend, VectorizerPreset } from '$lib/types/vectorizer';
+	import type { PerformanceMode } from '$lib/utils/performance-monitor';
+	import { performanceMonitor, getOptimalThreadCount } from '$lib/utils/performance-monitor';
 	import BackendSelector from './BackendSelector.svelte';
 	import PresetSelector from './PresetSelector.svelte';
 	import ParameterPanel from './ParameterPanel.svelte';
@@ -14,6 +19,9 @@
 		canDownload: boolean;
 		isProcessing: boolean;
 		hasImages: boolean;
+		performanceMode?: PerformanceMode;
+		threadCount?: number;
+		threadsInitialized?: boolean;
 		onConfigChange: (updates: Partial<VectorizerConfig>) => void;
 		onPresetChange: (preset: VectorizerPreset | 'custom') => void;
 		onBackendChange: (backend: VectorizerBackend) => void;
@@ -22,6 +30,7 @@
 		onDownload: () => void;
 		onReset: () => void;
 		onAbort: () => void;
+		onPerformanceModeChange?: (mode: PerformanceMode, threadCount: number) => void;
 	}
 
 	let {
@@ -31,6 +40,9 @@
 		canDownload,
 		isProcessing,
 		hasImages,
+		performanceMode = 'balanced',
+		threadCount = 4,
+		threadsInitialized = false,
 		onConfigChange,
 		onPresetChange,
 		onBackendChange,
@@ -38,16 +50,45 @@
 		onConvert,
 		onDownload,
 		onReset,
-		onAbort
+		onAbort,
+		onPerformanceModeChange
 	}: Props = $props();
 
 	// UI State
 	let showAdvanced = $state(false);
 	let showQuickSettings = $state(true);
 	let isMobileSettingsOpen = $state(false);
+	
+	// Performance state
+	let localPerformanceMode = $state<PerformanceMode>(performanceMode);
+	let customThreadCount = $state(threadCount);
+	let announcePerformanceChange = $state<string>('');
+	const systemCapabilities = performanceMonitor.getSystemCapabilities();
+	
+	function handlePerformanceModeChange(mode: PerformanceMode) {
+		localPerformanceMode = mode;
+		const optimalThreads = mode === 'custom' ? customThreadCount : getOptimalThreadCount(mode);
+		onPerformanceModeChange?.(mode, optimalThreads);
+		
+		// Announce change to screen readers
+		announcePerformanceChange = `Performance mode changed to ${mode}`;
+		setTimeout(() => announcePerformanceChange = '', 1000);
+	}
+	
+	function handleCustomThreadChange(value: number) {
+		customThreadCount = value;
+		if (localPerformanceMode === 'custom') {
+			onPerformanceModeChange?.('custom', value);
+		}
+	}
 
 	// Keep quick settings visible when images are uploaded
 </script>
+
+<!-- Screen reader announcements -->
+<div aria-live="polite" aria-atomic="true" class="sr-only">
+	{announcePerformanceChange}
+</div>
 
 <div class="space-y-6">
 	<!-- Quick Settings Bar (Collapsible) -->
@@ -167,6 +208,154 @@
 
 			{#if showAdvanced}
 				<div class="mt-4 space-y-6">
+					<!-- Performance Configuration Section -->
+					<Card.Root>
+						<Card.Header>
+							<div class="flex items-center justify-between">
+								<div>
+									<Card.Title class="text-base">Performance Configuration</Card.Title>
+									<Card.Description>
+										Optimize processing settings for your system
+									</Card.Description>
+								</div>
+								<div class="flex items-center gap-2">
+									<Badge variant="outline" class="font-mono">
+										<Cpu class="mr-1 h-3 w-3" />
+										{threadCount}
+									</Badge>
+									<Badge variant={threadsInitialized ? 'default' : 'secondary'}>
+										{threadsInitialized ? 'Active' : 'Ready'}
+									</Badge>
+								</div>
+							</div>
+						</Card.Header>
+						<Card.Content class="space-y-6">
+								<!-- Performance Mode Selection -->
+								<div class="space-y-3">
+									<div>
+										<div class="text-sm font-medium mb-2">Performance Mode</div>
+										<div 
+											role="group" 
+											aria-label="Performance mode selection"
+											class="grid grid-cols-2 gap-1 lg:grid-cols-4 rounded-md border p-1 bg-muted/20"
+										>
+											<Button
+												variant={localPerformanceMode === 'economy' ? 'default' : 'ghost'}
+												size="sm"
+												onclick={() => handlePerformanceModeChange('economy')}
+												disabled={isProcessing}
+												class="text-xs h-8 {localPerformanceMode === 'economy' ? 'shadow-sm' : ''}"
+												aria-pressed={localPerformanceMode === 'economy'}
+											>
+												Economy
+											</Button>
+											<Button
+												variant={localPerformanceMode === 'balanced' ? 'default' : 'ghost'}
+												size="sm"
+												onclick={() => handlePerformanceModeChange('balanced')}
+												disabled={isProcessing}
+												class="text-xs h-8 {localPerformanceMode === 'balanced' ? 'shadow-sm' : ''}"
+												aria-pressed={localPerformanceMode === 'balanced'}
+											>
+												Balanced
+											</Button>
+											<Button
+												variant={localPerformanceMode === 'performance' ? 'default' : 'ghost'}
+												size="sm"
+												onclick={() => handlePerformanceModeChange('performance')}
+												disabled={isProcessing}
+												class="text-xs h-8 {localPerformanceMode === 'performance' ? 'shadow-sm' : ''}"
+												aria-pressed={localPerformanceMode === 'performance'}
+											>
+												<Zap class="h-3 w-3 mr-1" />
+												Performance
+											</Button>
+											<Button
+												variant={localPerformanceMode === 'custom' ? 'default' : 'ghost'}
+												size="sm"
+												onclick={() => handlePerformanceModeChange('custom')}
+												disabled={isProcessing}
+												class="text-xs h-8 {localPerformanceMode === 'custom' ? 'shadow-sm' : ''}"
+												aria-pressed={localPerformanceMode === 'custom'}
+											>
+												Custom
+											</Button>
+										</div>
+									</div>
+									<div class="rounded-md bg-muted/30 p-3">
+										<p class="text-xs text-muted-foreground">
+											{#if localPerformanceMode === 'economy'}
+												<span class="font-medium text-blue-700 dark:text-blue-400">Economy:</span> Minimal CPU usage, slower processing
+											{:else if localPerformanceMode === 'balanced'}
+												<span class="font-medium text-green-700 dark:text-green-400">Balanced:</span> Good balance of speed and system responsiveness
+											{:else if localPerformanceMode === 'performance'}
+												<span class="font-medium text-orange-700 dark:text-orange-400">Performance:</span> Maximum speed, may slow down browser
+											{:else if localPerformanceMode === 'custom'}
+												<span class="font-medium text-purple-700 dark:text-purple-400">Custom:</span> Manual thread count control
+											{/if}
+										</p>
+									</div>
+								</div>
+
+								<!-- Thread Count Slider (for custom mode) -->
+								{#if localPerformanceMode === 'custom'}
+									<div class="space-y-3">
+										<div class="rounded-md border border-purple-200 bg-purple-50/50 dark:border-purple-800 dark:bg-purple-950/50 p-3">
+											<div class="flex items-center justify-between mb-2">
+												<div class="text-sm font-medium text-purple-900 dark:text-purple-100">Thread Count</div>
+												<Badge variant="outline" class="border-purple-300 text-purple-700 dark:border-purple-600 dark:text-purple-300">
+													{customThreadCount} threads
+												</Badge>
+											</div>
+											<Slider
+												value={customThreadCount}
+												onValueChange={handleCustomThreadChange}
+												min={1}
+												max={systemCapabilities.cores}
+												step={1}
+												disabled={isProcessing}
+												class="w-full mb-2"
+											/>
+											<p class="text-xs text-purple-600 dark:text-purple-400">
+												Recommended: {getOptimalThreadCount('balanced')} threads for your system
+											</p>
+										</div>
+									</div>
+								{/if}
+
+							<!-- System Status -->
+							<div class="rounded-md border border-slate-200 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-900/50 p-4">
+								<div class="flex items-center justify-between mb-3">
+									<h4 class="text-sm font-medium text-slate-900 dark:text-slate-100">System Status</h4>
+									<Badge variant="outline" class="font-mono text-xs">
+										{systemCapabilities.cores} cores
+									</Badge>
+								</div>
+								
+								<div class="space-y-2">
+									<div class="flex items-center justify-between text-sm">
+										<span class="text-slate-600 dark:text-slate-400">WebAssembly</span>
+										<span class="text-green-700 dark:text-green-400 font-medium">Ready</span>
+									</div>
+									<div class="flex items-center justify-between text-sm">
+										<span class="text-slate-600 dark:text-slate-400">Active Mode</span>
+										<span class="text-blue-700 dark:text-blue-400 font-medium capitalize">
+											{localPerformanceMode}
+										</span>
+									</div>
+									{#if threadsInitialized}
+										<div class="flex items-center justify-between text-sm">
+											<span class="text-slate-600 dark:text-slate-400">Thread Pool</span>
+											<span class="text-green-700 dark:text-green-400 font-medium">
+												{threadCount} threads active
+											</span>
+										</div>
+									{/if}
+								</div>
+							</div>
+						</Card.Content>
+					</Card.Root>
+
 					<!-- Essential Parameters Panel -->
 					<ParameterPanel
 						{config}
@@ -285,5 +474,18 @@
 		.fixed.bottom-0 {
 			padding-bottom: calc(1rem + env(safe-area-inset-bottom));
 		}
+	}
+	
+	/* Screen reader only text */
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 </style>
