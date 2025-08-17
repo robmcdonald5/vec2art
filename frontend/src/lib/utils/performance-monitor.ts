@@ -99,7 +99,7 @@ class PerformanceMonitor {
 	getCurrentMetrics(): PerformanceMetrics {
 		const currentFps = this.getCurrentFrameRate();
 		const avgProcessingTime = this.getAverageProcessingTime();
-		
+
 		return {
 			frameRate: currentFps,
 			processingTimePerChunk: avgProcessingTime,
@@ -116,7 +116,7 @@ class PerformanceMonitor {
 		const cores = navigator.hardwareConcurrency || 4;
 		const deviceType = this.detectDeviceType();
 		const memoryEstimate = this.estimateMemoryCapability();
-		
+
 		return {
 			cores,
 			deviceType,
@@ -131,28 +131,28 @@ class PerformanceMonitor {
 	calculateOptimalThreadCount(mode: PerformanceMode, customThreads?: number): number {
 		const capabilities = this.getSystemCapabilities();
 		const config = this.performanceModeConfigs[mode];
-		
+
 		if (mode === 'custom' && customThreads !== undefined) {
 			return Math.max(1, Math.min(customThreads, capabilities.cores));
 		}
-		
+
 		let baseThreads = Math.floor(capabilities.cores * config.threadCountMultiplier);
-		
+
 		// Apply device-specific adjustments
 		if (capabilities.deviceType === 'mobile') {
 			baseThreads = Math.min(baseThreads, 2);
 		} else if (capabilities.deviceType === 'tablet') {
 			baseThreads = Math.min(baseThreads, 4);
 		}
-		
+
 		// Apply memory limitations
 		if (capabilities.memoryEstimate === 'low') {
 			baseThreads = Math.min(baseThreads, 2);
 		}
-		
+
 		// Ensure minimum and maximum bounds
 		const optimalThreads = Math.max(1, Math.min(baseThreads, config.maxThreads));
-		
+
 		// Always leave at least 1-2 cores free for browser UI
 		const reservedCores = capabilities.cores > 4 ? 2 : 1;
 		return Math.min(optimalThreads, Math.max(1, capabilities.cores - reservedCores));
@@ -199,15 +199,15 @@ class PerformanceMonitor {
 	getRecommendedPerformanceMode(): PerformanceMode {
 		const capabilities = this.getSystemCapabilities();
 		const isStressed = this.isSystemStressed();
-		
+
 		if (isStressed) {
 			return 'economy';
 		}
-		
+
 		if (!capabilities.supportsHighPerformance) {
 			return 'balanced';
 		}
-		
+
 		return 'performance';
 	}
 
@@ -216,18 +216,18 @@ class PerformanceMonitor {
 	 */
 	createYieldingFunction(mode: PerformanceMode): () => Promise<void> {
 		const config = this.performanceModeConfigs[mode];
-		
+
 		if (!config.enableYielding) {
 			return async () => {}; // No-op for performance mode
 		}
-		
+
 		return async () => {
 			if (this.isSystemStressed()) {
 				// Yield more frequently when stressed
-				await new Promise(resolve => setTimeout(resolve, 16)); // ~1 frame
+				await new Promise((resolve) => setTimeout(resolve, 16)); // ~1 frame
 			} else {
 				// Normal yielding
-				await new Promise(resolve => setTimeout(resolve, 4));
+				await new Promise((resolve) => setTimeout(resolve, 4));
 			}
 		};
 	}
@@ -240,62 +240,64 @@ class PerformanceMonitor {
 		yieldEvery: number = 10
 	): (progress: T) => Promise<void> {
 		let callCount = 0;
-		
+
 		return async (progress: T) => {
 			originalCallback(progress);
-			
+
 			callCount++;
 			if (callCount % yieldEvery === 0) {
-				await new Promise(resolve => requestIdleCallback(resolve));
+				await new Promise((resolve) => requestIdleCallback(resolve));
 			}
 		};
 	}
 
 	private measureFrameRate(): void {
 		if (!this.isMonitoring) return;
-		
+
 		const currentTime = performance.now();
 		const delta = currentTime - this.lastFrameTime;
-		
-		if (delta >= 1000) { // Calculate FPS every second
+
+		if (delta >= 1000) {
+			// Calculate FPS every second
 			const fps = Math.round((this.frameCount * 1000) / delta);
 			this.frameRateHistory.push(fps);
-			
+
 			if (this.frameRateHistory.length > this.historySize) {
 				this.frameRateHistory.shift();
 			}
-			
+
 			this.frameCount = 0;
 			this.lastFrameTime = currentTime;
 		}
-		
+
 		this.frameCount++;
 		this.rafId = requestAnimationFrame(() => this.measureFrameRate());
 	}
 
 	private getCurrentFrameRate(): number {
 		if (this.frameRateHistory.length === 0) return 60; // Assume 60fps if no data
-		
+
 		const recent = this.frameRateHistory.slice(-3); // Last 3 measurements
 		return recent.reduce((sum, fps) => sum + fps, 0) / recent.length;
 	}
 
 	private getAverageProcessingTime(): number {
 		if (this.processingTimes.length === 0) return 0;
-		
+
 		return this.processingTimes.reduce((sum, time) => sum + time, 0) / this.processingTimes.length;
 	}
 
 	private detectDeviceType(): 'mobile' | 'tablet' | 'desktop' {
 		const userAgent = navigator.userAgent.toLowerCase();
 		const isMobile = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-		
+
 		if (isMobile) {
-			const isTablet = /ipad|android(?!.*mobile)|tablet/i.test(userAgent) || 
-							(screen.width >= 768 && screen.height >= 1024);
+			const isTablet =
+				/ipad|android(?!.*mobile)|tablet/i.test(userAgent) ||
+				(screen.width >= 768 && screen.height >= 1024);
 			return isTablet ? 'tablet' : 'mobile';
 		}
-		
+
 		return 'desktop';
 	}
 
@@ -307,11 +309,11 @@ class PerformanceMonitor {
 			if (deviceMemory <= 4) return 'medium';
 			return 'high';
 		}
-		
+
 		// Fallback estimation based on other indicators
 		const cores = navigator.hardwareConcurrency || 4;
 		const deviceType = this.detectDeviceType();
-		
+
 		if (deviceType === 'mobile') {
 			return cores <= 4 ? 'low' : 'medium';
 		} else if (deviceType === 'tablet') {
@@ -328,7 +330,7 @@ class PerformanceMonitor {
 			const usedPercent = (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100;
 			return Math.round(usedPercent);
 		}
-		
+
 		return undefined;
 	}
 }
@@ -343,14 +345,18 @@ export function getOptimalThreadCount(mode: PerformanceMode, customThreads?: num
 
 export function isLowEndDevice(): boolean {
 	const capabilities = performanceMonitor.getSystemCapabilities();
-	return capabilities.deviceType === 'mobile' || 
-		   capabilities.memoryEstimate === 'low' || 
-		   capabilities.cores <= 2;
+	return (
+		capabilities.deviceType === 'mobile' ||
+		capabilities.memoryEstimate === 'low' ||
+		capabilities.cores <= 2
+	);
 }
 
 export function shouldUseProgressiveProcessing(): boolean {
 	const capabilities = performanceMonitor.getSystemCapabilities();
-	return capabilities.deviceType !== 'desktop' || 
-		   capabilities.memoryEstimate === 'low' ||
-		   performanceMonitor.isSystemStressed();
+	return (
+		capabilities.deviceType !== 'desktop' ||
+		capabilities.memoryEstimate === 'low' ||
+		performanceMonitor.isSystemStressed()
+	);
 }
