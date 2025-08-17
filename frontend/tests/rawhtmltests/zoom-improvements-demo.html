@@ -1,401 +1,463 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zoom Improvements Demo</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8fafc;
-            padding: 2rem;
-            margin: 0;
-        }
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Zoom Improvements Demo</title>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+				background: #f8fafc;
+				padding: 2rem;
+				margin: 0;
+			}
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+			}
 
-        .demo-section {
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
+			.demo-section {
+				background: white;
+				border: 2px solid #e2e8f0;
+				border-radius: 12px;
+				padding: 2rem;
+				margin-bottom: 2rem;
+				box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+			}
 
-        .problem-demo {
-            border-color: #fca5a5;
-            background: #fef2f2;
-        }
+			.problem-demo {
+				border-color: #fca5a5;
+				background: #fef2f2;
+			}
 
-        .solution-demo {
-            border-color: #86efac;
-            background: #f0fdf4;
-        }
+			.solution-demo {
+				border-color: #86efac;
+				background: #f0fdf4;
+			}
 
-        h1, h2, h3 {
-            color: #1f2937;
-            margin-bottom: 1rem;
-        }
+			h1,
+			h2,
+			h3 {
+				color: #1f2937;
+				margin-bottom: 1rem;
+			}
 
-        .zoom-demo {
-            background: #f1f5f9;
-            border-radius: 8px;
-            padding: 2rem;
-            margin: 1rem 0;
-            text-align: center;
-        }
+			.zoom-demo {
+				background: #f1f5f9;
+				border-radius: 8px;
+				padding: 2rem;
+				margin: 1rem 0;
+				text-align: center;
+			}
 
-        .zoom-controls {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 0.5rem;
-            margin: 1rem 0;
-            flex-wrap: wrap;
-        }
+			.zoom-controls {
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				gap: 0.5rem;
+				margin: 1rem 0;
+				flex-wrap: wrap;
+			}
 
-        .zoom-btn {
-            background: white;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            padding: 0.5rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            width: 2rem;
-            height: 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+			.zoom-btn {
+				background: white;
+				border: 1px solid #d1d5db;
+				border-radius: 6px;
+				padding: 0.5rem;
+				cursor: pointer;
+				transition: all 0.2s ease;
+				width: 2rem;
+				height: 2rem;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
 
-        .zoom-btn:hover {
-            background: #f9fafb;
-            border-color: #9ca3af;
-        }
+			.zoom-btn:hover {
+				background: #f9fafb;
+				border-color: #9ca3af;
+			}
 
-        .zoom-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+			.zoom-btn:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
 
-        .zoom-percentage {
-            background: white;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            min-width: 2rem;
-            text-align: center;
-            border: 1px solid #d1d5db;
-        }
+			.zoom-percentage {
+				background: white;
+				padding: 0.25rem 0.5rem;
+				border-radius: 4px;
+				font-size: 0.75rem;
+				min-width: 2rem;
+				text-align: center;
+				border: 1px solid #d1d5db;
+			}
 
-        .comparison-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin: 2rem 0;
-        }
+			.comparison-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 2rem;
+				margin: 2rem 0;
+			}
 
-        .zoom-levels-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            margin: 1rem 0;
-            justify-content: center;
-        }
+			.zoom-levels-list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+				margin: 1rem 0;
+				justify-content: center;
+			}
 
-        .zoom-level {
-            background: #e5e7eb;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            color: #374151;
-            border: 1px solid #d1d5db;
-        }
+			.zoom-level {
+				background: #e5e7eb;
+				padding: 0.25rem 0.5rem;
+				border-radius: 4px;
+				font-size: 0.75rem;
+				color: #374151;
+				border: 1px solid #d1d5db;
+			}
 
-        .zoom-level.current {
-            background: #3b82f6;
-            color: white;
-            border-color: #2563eb;
-        }
+			.zoom-level.current {
+				background: #3b82f6;
+				color: white;
+				border-color: #2563eb;
+			}
 
-        .code-block {
-            background: #1f2937;
-            color: #f9fafb;
-            padding: 1rem;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.875rem;
-            margin: 1rem 0;
-            overflow-x: auto;
-        }
+			.code-block {
+				background: #1f2937;
+				color: #f9fafb;
+				padding: 1rem;
+				border-radius: 6px;
+				font-family: 'Courier New', monospace;
+				font-size: 0.875rem;
+				margin: 1rem 0;
+				overflow-x: auto;
+			}
 
-        .benefits-list {
-            margin: 1rem 0;
-            padding-left: 2rem;
-            line-height: 1.6;
-        }
+			.benefits-list {
+				margin: 1rem 0;
+				padding-left: 2rem;
+				line-height: 1.6;
+			}
 
-        .auto-fit-demo {
-            background: white;
-            border: 2px dashed #3b82f6;
-            border-radius: 8px;
-            padding: 1rem;
-            margin: 1rem 0;
-            text-align: center;
-            position: relative;
-        }
+			.auto-fit-demo {
+				background: white;
+				border: 2px dashed #3b82f6;
+				border-radius: 8px;
+				padding: 1rem;
+				margin: 1rem 0;
+				text-align: center;
+				position: relative;
+			}
 
-        .auto-fit-demo::before {
-            content: 'Auto-Fit Active';
-            position: absolute;
-            top: -0.5rem;
-            left: 1rem;
-            background: #3b82f6;
-            color: white;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-        }
+			.auto-fit-demo::before {
+				content: 'Auto-Fit Active';
+				position: absolute;
+				top: -0.5rem;
+				left: 1rem;
+				background: #3b82f6;
+				color: white;
+				padding: 0.25rem 0.5rem;
+				border-radius: 4px;
+				font-size: 0.75rem;
+			}
 
-        @media (max-width: 768px) {
-            .comparison-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🔍 Zoom Functionality Improvements</h1>
-        <p>Major improvements to zoom controls with consistent scaling and automatic image fitting for optimal viewing experience.</p>
+			@media (max-width: 768px) {
+				.comparison-grid {
+					grid-template-columns: 1fr;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>🔍 Zoom Functionality Improvements</h1>
+			<p>
+				Major improvements to zoom controls with consistent scaling and automatic image fitting for
+				optimal viewing experience.
+			</p>
 
-        <!-- Before/After Zoom Scaling -->
-        <div class="demo-section">
-            <h2>📊 Zoom Scaling: Before vs After</h2>
-            <div class="comparison-grid">
-                <div class="problem-demo">
-                    <h3>❌ Before: Inconsistent 1.5x Factor</h3>
-                    <div class="zoom-demo">
-                        <p><strong>Zoom Levels (1.5x factor)</strong></p>
-                        <div class="zoom-levels-list">
-                            <span class="zoom-level">10%</span>
-                            <span class="zoom-level">15%</span>
-                            <span class="zoom-level">23%</span>
-                            <span class="zoom-level">34%</span>
-                            <span class="zoom-level">51%</span>
-                            <span class="zoom-level">67%</span>
-                            <span class="zoom-level current">100%</span>
-                            <span class="zoom-level">150%</span>
-                            <span class="zoom-level">225%</span>
-                            <span class="zoom-level">337%</span>
-                            <span class="zoom-level">500%</span>
-                        </div>
-                        <p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem;">
-                            ⚠️ Awkward increments make it hard to get back to 100%
-                        </p>
-                    </div>
-                </div>
+			<!-- Before/After Zoom Scaling -->
+			<div class="demo-section">
+				<h2>📊 Zoom Scaling: Before vs After</h2>
+				<div class="comparison-grid">
+					<div class="problem-demo">
+						<h3>❌ Before: Inconsistent 1.5x Factor</h3>
+						<div class="zoom-demo">
+							<p><strong>Zoom Levels (1.5x factor)</strong></p>
+							<div class="zoom-levels-list">
+								<span class="zoom-level">10%</span>
+								<span class="zoom-level">15%</span>
+								<span class="zoom-level">23%</span>
+								<span class="zoom-level">34%</span>
+								<span class="zoom-level">51%</span>
+								<span class="zoom-level">67%</span>
+								<span class="zoom-level current">100%</span>
+								<span class="zoom-level">150%</span>
+								<span class="zoom-level">225%</span>
+								<span class="zoom-level">337%</span>
+								<span class="zoom-level">500%</span>
+							</div>
+							<p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem">
+								⚠️ Awkward increments make it hard to get back to 100%
+							</p>
+						</div>
+					</div>
 
-                <div class="solution-demo">
-                    <h3>✅ After: Consistent Preset Levels</h3>
-                    <div class="zoom-demo">
-                        <p><strong>Zoom Levels (Preset levels)</strong></p>
-                        <div class="zoom-levels-list">
-                            <span class="zoom-level">10%</span>
-                            <span class="zoom-level">25%</span>
-                            <span class="zoom-level">50%</span>
-                            <span class="zoom-level">75%</span>
-                            <span class="zoom-level current">100%</span>
-                            <span class="zoom-level">125%</span>
-                            <span class="zoom-level">150%</span>
-                            <span class="zoom-level">200%</span>
-                            <span class="zoom-level">250%</span>
-                            <span class="zoom-level">300%</span>
-                            <span class="zoom-level">400%</span>
-                            <span class="zoom-level">500%</span>
-                        </div>
-                        <p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem;">
-                            ✅ Clean, predictable zoom levels with easy navigation
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+					<div class="solution-demo">
+						<h3>✅ After: Consistent Preset Levels</h3>
+						<div class="zoom-demo">
+							<p><strong>Zoom Levels (Preset levels)</strong></p>
+							<div class="zoom-levels-list">
+								<span class="zoom-level">10%</span>
+								<span class="zoom-level">25%</span>
+								<span class="zoom-level">50%</span>
+								<span class="zoom-level">75%</span>
+								<span class="zoom-level current">100%</span>
+								<span class="zoom-level">125%</span>
+								<span class="zoom-level">150%</span>
+								<span class="zoom-level">200%</span>
+								<span class="zoom-level">250%</span>
+								<span class="zoom-level">300%</span>
+								<span class="zoom-level">400%</span>
+								<span class="zoom-level">500%</span>
+							</div>
+							<p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem">
+								✅ Clean, predictable zoom levels with easy navigation
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
 
-        <!-- Auto-Fit Functionality -->
-        <div class="demo-section solution-demo">
-            <h2>🎯 Auto-Fit for Converted Images</h2>
-            <p>When images are converted, they automatically scale to fit optimally in the preview container.</p>
-            
-            <div class="comparison-grid">
-                <div>
-                    <h3>❌ Before: Manual Zoom Required</h3>
-                    <div class="zoom-demo">
-                        <div style="background: #f3f4f6; padding: 2rem; border-radius: 6px; margin: 1rem 0;">
-                            <div style="background: white; width: 400px; height: 300px; margin: 0 auto; border: 2px solid #e5e7eb; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                                <div style="width: 800px; height: 600px; background: linear-gradient(45deg, #3b82f6, #8b5cf6); opacity: 0.3; position: absolute; top: -150px; left: -200px;"></div>
-                                <span style="position: relative; z-index: 1; color: #374151; font-weight: 500;">Converted SVG (zoomed in too much)</span>
-                            </div>
-                        </div>
-                        <p style="font-size: 0.875rem; color: #6b7280;">
-                            User had to manually zoom out to see the full image
-                        </p>
-                    </div>
-                </div>
+			<!-- Auto-Fit Functionality -->
+			<div class="demo-section solution-demo">
+				<h2>🎯 Auto-Fit for Converted Images</h2>
+				<p>
+					When images are converted, they automatically scale to fit optimally in the preview
+					container.
+				</p>
 
-                <div>
-                    <h3>✅ After: Auto-Fit on Conversion</h3>
-                    <div class="auto-fit-demo">
-                        <div style="background: white; width: 300px; height: 200px; margin: 0 auto; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <div style="width: 250px; height: 150px; background: linear-gradient(45deg, #3b82f6, #8b5cf6); opacity: 0.3; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
-                                <span style="color: #374151; font-weight: 500;">Converted SVG (perfectly fitted)</span>
-                            </div>
-                        </div>
-                        <p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem;">
-                            Automatically scales to 75% for optimal viewing with padding
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+				<div class="comparison-grid">
+					<div>
+						<h3>❌ Before: Manual Zoom Required</h3>
+						<div class="zoom-demo">
+							<div style="background: #f3f4f6; padding: 2rem; border-radius: 6px; margin: 1rem 0">
+								<div
+									style="
+										background: white;
+										width: 400px;
+										height: 300px;
+										margin: 0 auto;
+										border: 2px solid #e5e7eb;
+										display: flex;
+										align-items: center;
+										justify-content: center;
+										position: relative;
+										overflow: hidden;
+									"
+								>
+									<div
+										style="
+											width: 800px;
+											height: 600px;
+											background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+											opacity: 0.3;
+											position: absolute;
+											top: -150px;
+											left: -200px;
+										"
+									></div>
+									<span style="position: relative; z-index: 1; color: #374151; font-weight: 500"
+										>Converted SVG (zoomed in too much)</span
+									>
+								</div>
+							</div>
+							<p style="font-size: 0.875rem; color: #6b7280">
+								User had to manually zoom out to see the full image
+							</p>
+						</div>
+					</div>
 
-        <!-- Enhanced Zoom Controls -->
-        <div class="demo-section">
-            <h2>🛠️ Enhanced Zoom Controls</h2>
-            <p>New control added for intelligent auto-fitting of images.</p>
-            
-            <div class="zoom-demo">
-                <h3>Updated Control Bar</h3>
-                <div class="zoom-controls">
-                    <button class="zoom-btn" title="Zoom Out">-</button>
-                    <span class="zoom-percentage">75%</span>
-                    <button class="zoom-btn" title="Zoom In">+</button>
-                    <button class="zoom-btn" title="Auto-Fit" style="background: #dbeafe; border-color: #3b82f6;">📐</button>
-                    <button class="zoom-btn" title="Reset View">↻</button>
-                </div>
-                <p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem;">
-                    New auto-fit button (📐) intelligently scales images to fit the container
-                </p>
-            </div>
-        </div>
+					<div>
+						<h3>✅ After: Auto-Fit on Conversion</h3>
+						<div class="auto-fit-demo">
+							<div
+								style="
+									background: white;
+									width: 300px;
+									height: 200px;
+									margin: 0 auto;
+									border: 1px solid #e5e7eb;
+									display: flex;
+									align-items: center;
+									justify-content: center;
+									box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+								"
+							>
+								<div
+									style="
+										width: 250px;
+										height: 150px;
+										background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+										opacity: 0.3;
+										border-radius: 4px;
+										display: flex;
+										align-items: center;
+										justify-content: center;
+									"
+								>
+									<span style="color: #374151; font-weight: 500"
+										>Converted SVG (perfectly fitted)</span
+									>
+								</div>
+							</div>
+							<p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem">
+								Automatically scales to 75% for optimal viewing with padding
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
 
-        <!-- Technical Implementation -->
-        <div class="demo-section">
-            <h2>🔧 Technical Implementation</h2>
-            
-            <h3>1. Consistent Zoom Levels</h3>
-            <div class="code-block">// Predefined zoom levels for smooth transitions
-const zoomLevels = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
+			<!-- Enhanced Zoom Controls -->
+			<div class="demo-section">
+				<h2>🛠️ Enhanced Zoom Controls</h2>
+				<p>New control added for intelligent auto-fitting of images.</p>
 
-function zoomIn() {
-    const currentIndex = findClosestZoomIndex(zoomLevel);
-    const nextIndex = Math.min(currentIndex + 1, zoomLevels.length - 1);
-    zoomLevel = zoomLevels[nextIndex];
-}
+				<div class="zoom-demo">
+					<h3>Updated Control Bar</h3>
+					<div class="zoom-controls">
+						<button class="zoom-btn" title="Zoom Out">-</button>
+						<span class="zoom-percentage">75%</span>
+						<button class="zoom-btn" title="Zoom In">+</button>
+						<button
+							class="zoom-btn"
+							title="Auto-Fit"
+							style="background: #dbeafe; border-color: #3b82f6"
+						>
+							📐
+						</button>
+						<button class="zoom-btn" title="Reset View">↻</button>
+					</div>
+					<p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem">
+						New auto-fit button (📐) intelligently scales images to fit the container
+					</p>
+				</div>
+			</div>
 
-function zoomOut() {
-    const currentIndex = findClosestZoomIndex(zoomLevel);
-    const prevIndex = Math.max(currentIndex - 1, 0);
-    zoomLevel = zoomLevels[prevIndex];
-}</div>
+			<!-- Technical Implementation -->
+			<div class="demo-section">
+				<h2>🔧 Technical Implementation</h2>
 
-            <h3>2. Smart Auto-Fit Algorithm</h3>
-            <div class="code-block">function fitToContainer() {
-    if (!imageElement || !imageContainer) return;
+				<h3>1. Consistent Zoom Levels</h3>
+				<div class="code-block">
+					// Predefined zoom levels for smooth transitions const zoomLevels = [0.1, 0.25, 0.5, 0.75,
+					1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0]; function zoomIn() { const currentIndex =
+					findClosestZoomIndex(zoomLevel); const nextIndex = Math.min(currentIndex + 1,
+					zoomLevels.length - 1); zoomLevel = zoomLevels[nextIndex]; } function zoomOut() { const
+					currentIndex = findClosestZoomIndex(zoomLevel); const prevIndex = Math.max(currentIndex -
+					1, 0); zoomLevel = zoomLevels[prevIndex]; }
+				</div>
 
-    const containerRect = imageContainer.getBoundingClientRect();
-    
-    // Calculate scaling to fit both width and height with 10% padding
-    const scaleX = (containerRect.width * 0.9) / imageElement.naturalWidth;
-    const scaleY = (containerRect.height * 0.9) / imageElement.naturalHeight;
-    
-    // Use the smaller scale to ensure the image fits completely
-    const optimalScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
-    
-    // Find the closest predefined zoom level
-    const closestIndex = findClosestZoomIndex(optimalScale);
-    autoFitZoom = zoomLevels[closestIndex];
-    zoomLevel = autoFitZoom;
-    panOffset = { x: 0, y: 0 };
-}</div>
+				<h3>2. Smart Auto-Fit Algorithm</h3>
+				<div class="code-block">
+					function fitToContainer() { if (!imageElement || !imageContainer) return; const
+					containerRect = imageContainer.getBoundingClientRect(); // Calculate scaling to fit both
+					width and height with 10% padding const scaleX = (containerRect.width * 0.9) /
+					imageElement.naturalWidth; const scaleY = (containerRect.height * 0.9) /
+					imageElement.naturalHeight; // Use the smaller scale to ensure the image fits completely
+					const optimalScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100% // Find
+					the closest predefined zoom level const closestIndex = findClosestZoomIndex(optimalScale);
+					autoFitZoom = zoomLevels[closestIndex]; zoomLevel = autoFitZoom; panOffset = { x: 0, y: 0
+					}; }
+				</div>
 
-            <h3>3. Automatic Triggering</h3>
-            <div class="code-block">// Auto-fit when preview URL changes (new conversion)
-$effect(() => {
-    if (currentPreviewUrl && imageElement) {
-        // Small delay to ensure image is loaded
-        setTimeout(() => {
-            fitToContainer();
-        }, 100);
-    }
-});
+				<h3>3. Automatic Triggering</h3>
+				<div class="code-block">
+					// Auto-fit when preview URL changes (new conversion) $effect(() => { if
+					(currentPreviewUrl && imageElement) { // Small delay to ensure image is loaded
+					setTimeout(() => { fitToContainer(); }, 100); } }); // Also trigger on image load event
+					&lt;img bind:this={imageElement} src={currentPreviewUrl} onload={fitToContainer} /&gt;
+				</div>
+			</div>
 
-// Also trigger on image load event
-&lt;img
-    bind:this={imageElement}
-    src={currentPreviewUrl}
-    onload={fitToContainer}
-/&gt;</div>
-        </div>
+			<!-- Benefits -->
+			<div class="demo-section">
+				<h2>🎯 Benefits of the Improvements</h2>
+				<ul class="benefits-list">
+					<li>
+						<strong>Predictable Zoom Behavior:</strong> Clean increments make it easy to navigate
+						between zoom levels
+					</li>
+					<li>
+						<strong>Automatic Optimal Viewing:</strong> Converted images immediately display at the
+						best scale
+					</li>
+					<li>
+						<strong>Intelligent Scaling:</strong> Auto-fit considers both image size and container
+						dimensions
+					</li>
+					<li>
+						<strong>Better User Experience:</strong> No more manual zoom adjustments after each
+						conversion
+					</li>
+					<li>
+						<strong>Consistent Navigation:</strong> Easy to get back to 100% or any specific zoom
+						level
+					</li>
+					<li>
+						<strong>Responsive Design:</strong> Auto-fit adapts to different screen sizes and
+						container dimensions
+					</li>
+					<li>
+						<strong>Accessibility:</strong> Clear zoom percentage display and logical progression
+					</li>
+				</ul>
+			</div>
 
-        <!-- Benefits -->
-        <div class="demo-section">
-            <h2>🎯 Benefits of the Improvements</h2>
-            <ul class="benefits-list">
-                <li><strong>Predictable Zoom Behavior:</strong> Clean increments make it easy to navigate between zoom levels</li>
-                <li><strong>Automatic Optimal Viewing:</strong> Converted images immediately display at the best scale</li>
-                <li><strong>Intelligent Scaling:</strong> Auto-fit considers both image size and container dimensions</li>
-                <li><strong>Better User Experience:</strong> No more manual zoom adjustments after each conversion</li>
-                <li><strong>Consistent Navigation:</strong> Easy to get back to 100% or any specific zoom level</li>
-                <li><strong>Responsive Design:</strong> Auto-fit adapts to different screen sizes and container dimensions</li>
-                <li><strong>Accessibility:</strong> Clear zoom percentage display and logical progression</li>
-            </ul>
-        </div>
+			<!-- Usage Scenarios -->
+			<div class="demo-section">
+				<h2>📱 Usage Scenarios</h2>
 
-        <!-- Usage Scenarios -->
-        <div class="demo-section">
-            <h2>📱 Usage Scenarios</h2>
-            
-            <h3>Scenario 1: Large SVG Conversion</h3>
-            <div class="code-block">1. User uploads large image (2000x1500px)
-2. Converts to SVG
-3. Auto-fit calculates optimal scale (e.g., 50%)
-4. SVG displays perfectly fitted with white background
-5. User can zoom in/out with consistent increments</div>
+				<h3>Scenario 1: Large SVG Conversion</h3>
+				<div class="code-block">
+					1. User uploads large image (2000x1500px) 2. Converts to SVG 3. Auto-fit calculates
+					optimal scale (e.g., 50%) 4. SVG displays perfectly fitted with white background 5. User
+					can zoom in/out with consistent increments
+				</div>
 
-            <h3>Scenario 2: Small SVG Conversion</h3>
-            <div class="code-block">1. User uploads small image (400x300px)
-2. Converts to SVG  
-3. Auto-fit keeps at 100% (no upscaling)
-4. SVG displays at natural size, centered
-5. Clean zoom levels available for closer inspection</div>
+				<h3>Scenario 2: Small SVG Conversion</h3>
+				<div class="code-block">
+					1. User uploads small image (400x300px) 2. Converts to SVG 3. Auto-fit keeps at 100% (no
+					upscaling) 4. SVG displays at natural size, centered 5. Clean zoom levels available for
+					closer inspection
+				</div>
 
-            <h3>Scenario 3: Manual Zoom Control</h3>
-            <div class="code-block">1. User wants to examine details
-2. Clicks zoom in: 75% → 100% → 125% → 150%
-3. Uses auto-fit button to return to optimal view
-4. Reset button returns to calculated auto-fit level</div>
-        </div>
-    </div>
+				<h3>Scenario 3: Manual Zoom Control</h3>
+				<div class="code-block">
+					1. User wants to examine details 2. Clicks zoom in: 75% → 100% → 125% → 150% 3. Uses
+					auto-fit button to return to optimal view 4. Reset button returns to calculated auto-fit
+					level
+				</div>
+			</div>
+		</div>
 
-    <script>
-        // Demo interaction for zoom controls
-        document.addEventListener('DOMContentLoaded', function() {
-            const zoomBtns = document.querySelectorAll('.zoom-btn');
-            zoomBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    // Add click feedback
-                    this.style.transform = 'scale(0.95)';
-                    setTimeout(() => {
-                        this.style.transform = 'scale(1)';
-                    }, 100);
-                });
-            });
-        });
-    </script>
-</body>
+		<script>
+			// Demo interaction for zoom controls
+			document.addEventListener('DOMContentLoaded', function () {
+				const zoomBtns = document.querySelectorAll('.zoom-btn');
+				zoomBtns.forEach((btn) => {
+					btn.addEventListener('click', function () {
+						// Add click feedback
+						this.style.transform = 'scale(0.95)';
+						setTimeout(() => {
+							this.style.transform = 'scale(1)';
+						}, 100);
+					});
+				});
+			});
+		</script>
+	</body>
 </html>

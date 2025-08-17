@@ -1,6 +1,6 @@
 /**
  * Test Image Generator
- * 
+ *
  * Generates simple test images for algorithm validation
  */
 
@@ -12,13 +12,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 async function generateTestImages() {
-    console.log('🎨 Generating test images...');
-    
-    const testImagesDir = join(__dirname, 'test-images');
-    await fs.mkdir(testImagesDir, { recursive: true });
-    
-    // Generate HTML5 Canvas-based test images
-    const htmlContent = `<!DOCTYPE html>
+	console.log('🎨 Generating test images...');
+
+	const testImagesDir = join(__dirname, 'test-images');
+	await fs.mkdir(testImagesDir, { recursive: true });
+
+	// Generate HTML5 Canvas-based test images
+	const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -416,27 +416,27 @@ async function generateTestImages() {
 </body>
 </html>`;
 
-    const generatorPath = join(testImagesDir, 'image-generator.html');
-    await fs.writeFile(generatorPath, htmlContent);
-    
-    console.log(`🎨 Test image generator saved to: ${generatorPath}`);
-    console.log('🌐 Open this file in a browser to generate test images');
+	const generatorPath = join(testImagesDir, 'image-generator.html');
+	await fs.writeFile(generatorPath, htmlContent);
+
+	console.log(`🎨 Test image generator saved to: ${generatorPath}`);
+	console.log('🌐 Open this file in a browser to generate test images');
 }
 
 const currentFilePath = fileURLToPath(import.meta.url);
 if (currentFilePath === process.argv[1]) {
-    generateTestImages()
-        .then(() => {
-            console.log('\n✅ Test image generator created!');
-            console.log('📖 Next steps:');
-            console.log('   1. Open test-images/image-generator.html');
-            console.log('   2. Click "Generate All Images"');
-            console.log('   3. Download the generated test images');
-        })
-        .catch(error => {
-            console.error('\n❌ Failed to create test image generator:', error);
-            process.exit(1);
-        });
+	generateTestImages()
+		.then(() => {
+			console.log('\n✅ Test image generator created!');
+			console.log('📖 Next steps:');
+			console.log('   1. Open test-images/image-generator.html');
+			console.log('   2. Click "Generate All Images"');
+			console.log('   3. Download the generated test images');
+		})
+		.catch((error) => {
+			console.error('\n❌ Failed to create test image generator:', error);
+			process.exit(1);
+		});
 }
 
 export { generateTestImages };

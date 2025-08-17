@@ -1,288 +1,349 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Controls Hover Animation Test</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8fafc;
-            padding: 2rem;
-            margin: 0;
-        }
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Advanced Controls Hover Animation Test</title>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+				background: #f8fafc;
+				padding: 2rem;
+				margin: 0;
+			}
 
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            space-y: 1rem;
-        }
+			.container {
+				max-width: 600px;
+				margin: 0 auto;
+				space-y: 1rem;
+			}
 
-        .space-y-3 > * + * {
-            margin-top: 0.75rem;
-        }
+			.space-y-3 > * + * {
+				margin-top: 0.75rem;
+			}
 
-        .border {
-            border: 1px solid #e2e8f0;
-        }
+			.border {
+				border: 1px solid #e2e8f0;
+			}
 
-        .rounded-lg {
-            border-radius: 0.5rem;
-        }
+			.rounded-lg {
+				border-radius: 0.5rem;
+			}
 
-        /* Advanced Controls dropdown button hover animations */
-        .dropdown-button {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateY(0);
-            background: transparent;
-            position: relative;
-            overflow: hidden;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem;
-            text-align: left;
-            border: none;
-            font-size: 1rem;
-            cursor: pointer;
-        }
+			/* Advanced Controls dropdown button hover animations */
+			.dropdown-button {
+				transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+				transform: translateY(0);
+				background: transparent;
+				position: relative;
+				overflow: hidden;
+				width: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 1rem;
+				text-align: left;
+				border: none;
+				font-size: 1rem;
+				cursor: pointer;
+			}
 
-        .dropdown-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 51, 234, 0.03) 100%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 0;
-        }
+			.dropdown-button::before {
+				content: '';
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background: linear-gradient(
+					135deg,
+					rgba(59, 130, 246, 0.05) 0%,
+					rgba(147, 51, 234, 0.03) 100%
+				);
+				opacity: 0;
+				transition: opacity 0.3s ease;
+				z-index: 0;
+			}
 
-        .dropdown-button:hover {
-            transform: translateY(-1px);
-            background: rgba(59, 130, 246, 0.08);
-            box-shadow: 
-                0 4px 12px rgba(0, 0, 0, 0.1),
-                0 2px 4px rgba(59, 130, 246, 0.2);
-        }
+			.dropdown-button:hover {
+				transform: translateY(-1px);
+				background: rgba(59, 130, 246, 0.08);
+				box-shadow:
+					0 4px 12px rgba(0, 0, 0, 0.1),
+					0 2px 4px rgba(59, 130, 246, 0.2);
+			}
 
-        .dropdown-button:hover::before {
-            opacity: 1;
-        }
+			.dropdown-button:hover::before {
+				opacity: 1;
+			}
 
-        .dropdown-button:active {
-            transform: translateY(0);
-            transition: all 0.1s ease;
-        }
+			.dropdown-button:active {
+				transform: translateY(0);
+				transition: all 0.1s ease;
+			}
 
-        .dropdown-button:disabled {
-            opacity: 0.5;
-            transform: none;
-            box-shadow: none;
-            cursor: not-allowed;
-        }
+			.dropdown-button:disabled {
+				opacity: 0.5;
+				transform: none;
+				box-shadow: none;
+				cursor: not-allowed;
+			}
 
-        .dropdown-button:disabled:hover {
-            transform: none;
-            background: transparent;
-            box-shadow: none;
-        }
+			.dropdown-button:disabled:hover {
+				transform: none;
+				background: transparent;
+				box-shadow: none;
+			}
 
-        .dropdown-button:disabled:hover::before {
-            opacity: 0;
-        }
+			.dropdown-button:disabled:hover::before {
+				opacity: 0;
+			}
 
-        /* Enhanced icon animation on hover */
-        .dropdown-button:hover .lucide-icon {
-            transform: scale(1.1);
-            transition: transform 0.2s ease;
-        }
+			/* Enhanced icon animation on hover */
+			.dropdown-button:hover .lucide-icon {
+				transform: scale(1.1);
+				transition: transform 0.2s ease;
+			}
 
-        /* Subtle glow effect for active sections */
-        .dropdown-button[aria-expanded="true"] {
-            background: rgba(59, 130, 246, 0.05);
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
-        }
+			/* Subtle glow effect for active sections */
+			.dropdown-button[aria-expanded='true'] {
+				background: rgba(59, 130, 246, 0.05);
+				box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+			}
 
-        .flex {
-            display: flex;
-        }
+			.flex {
+				display: flex;
+			}
 
-        .items-center {
-            align-items: center;
-        }
+			.items-center {
+				align-items: center;
+			}
 
-        .gap-2 {
-            gap: 0.5rem;
-        }
+			.gap-2 {
+				gap: 0.5rem;
+			}
 
-        .font-medium {
-            font-weight: 500;
-        }
+			.font-medium {
+				font-weight: 500;
+			}
 
-        .text-muted-foreground {
-            color: #6b7280;
-        }
+			.text-muted-foreground {
+				color: #6b7280;
+			}
 
-        .h-4 {
-            height: 1rem;
-        }
+			.h-4 {
+				height: 1rem;
+			}
 
-        .w-4 {
-            width: 1rem;
-        }
+			.w-4 {
+				width: 1rem;
+			}
 
-        .lucide-icon {
-            transition: transform 0.2s ease;
-        }
+			.lucide-icon {
+				transition: transform 0.2s ease;
+			}
 
-        .chevron {
-            transition: transform 0.2s ease;
-        }
+			.chevron {
+				transition: transform 0.2s ease;
+			}
 
-        .rotate-180 {
-            transform: rotate(180deg);
-        }
+			.rotate-180 {
+				transform: rotate(180deg);
+			}
 
-        .tag {
-            display: inline-flex;
-            align-items: center;
-            border-radius: 9999px;
-            background: #dcfce7;
-            padding: 0.125rem 0.5rem;
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: #166534;
-        }
+			.tag {
+				display: inline-flex;
+				align-items: center;
+				border-radius: 9999px;
+				background: #dcfce7;
+				padding: 0.125rem 0.5rem;
+				font-size: 0.75rem;
+				font-weight: 500;
+				color: #166534;
+			}
 
-        h1 {
-            margin-bottom: 2rem;
-            color: #1f2937;
-        }
+			h1 {
+				margin-bottom: 2rem;
+				color: #1f2937;
+			}
 
-        p {
-            color: #6b7280;
-            margin-bottom: 1.5rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Advanced Controls Hover Animation Test</h1>
-        <p>Hover over the dropdown buttons below to see the new animations:</p>
-        
-        <div class="space-y-3">
-            <!-- Multi-pass Processing -->
-            <div class="rounded-lg border">
-                <button
-                    class="dropdown-button"
-                    aria-expanded="false"
-                >
-                    <div class="flex items-center gap-2">
-                        <svg class="lucide-icon text-muted-foreground h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M3 14h3v7H3z"/>
-                            <path d="M8 14h3v4H8z"/>
-                            <path d="M13 14h3v2h-3z"/>
-                            <path d="M18 14h3v5h-3z"/>
-                            <path d="M8 10V7a4 4 0 1 1 8 0v3"/>
-                        </svg>
-                        <span class="font-medium">Multi-pass Processing</span>
-                        <span class="tag">Active</span>
-                    </div>
-                    <svg class="chevron h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-            </div>
+			p {
+				color: #6b7280;
+				margin-bottom: 1.5rem;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>Advanced Controls Hover Animation Test</h1>
+			<p>Hover over the dropdown buttons below to see the new animations:</p>
 
-            <!-- Directional Processing -->
-            <div class="rounded-lg border">
-                <button
-                    class="dropdown-button"
-                    aria-expanded="true"
-                >
-                    <div class="flex items-center gap-2">
-                        <svg class="lucide-icon text-muted-foreground h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="10"/>
-                            <circle cx="12" cy="12" r="6"/>
-                            <circle cx="12" cy="12" r="2"/>
-                        </svg>
-                        <span class="font-medium">Directional Processing</span>
-                        <span class="tag">Active</span>
-                    </div>
-                    <svg class="chevron h-4 w-4 rotate-180" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-            </div>
+			<div class="space-y-3">
+				<!-- Multi-pass Processing -->
+				<div class="rounded-lg border">
+					<button class="dropdown-button" aria-expanded="false">
+						<div class="flex items-center gap-2">
+							<svg
+								class="lucide-icon text-muted-foreground h-4 w-4"
+								aria-hidden="true"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path d="M3 14h3v7H3z" />
+								<path d="M8 14h3v4H8z" />
+								<path d="M13 14h3v2h-3z" />
+								<path d="M18 14h3v5h-3z" />
+								<path d="M8 10V7a4 4 0 1 1 8 0v3" />
+							</svg>
+							<span class="font-medium">Multi-pass Processing</span>
+							<span class="tag">Active</span>
+						</div>
+						<svg
+							class="chevron h-4 w-4"
+							aria-hidden="true"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M19 9l-7 7-7-7"
+							/>
+						</svg>
+					</button>
+				</div>
 
-            <!-- Artistic Effects -->
-            <div class="rounded-lg border">
-                <button
-                    class="dropdown-button"
-                    aria-expanded="false"
-                >
-                    <div class="flex items-center gap-2">
-                        <svg class="lucide-icon text-muted-foreground h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M9.06 11.9l8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/>
-                            <path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/>
-                        </svg>
-                        <span class="font-medium">Artistic Effects</span>
-                    </div>
-                    <svg class="chevron h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-            </div>
+				<!-- Directional Processing -->
+				<div class="rounded-lg border">
+					<button class="dropdown-button" aria-expanded="true">
+						<div class="flex items-center gap-2">
+							<svg
+								class="lucide-icon text-muted-foreground h-4 w-4"
+								aria-hidden="true"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<circle cx="12" cy="12" r="10" />
+								<circle cx="12" cy="12" r="6" />
+								<circle cx="12" cy="12" r="2" />
+							</svg>
+							<span class="font-medium">Directional Processing</span>
+							<span class="tag">Active</span>
+						</div>
+						<svg
+							class="chevron h-4 w-4 rotate-180"
+							aria-hidden="true"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M19 9l-7 7-7-7"
+							/>
+						</svg>
+					</button>
+				</div>
 
-            <!-- Disabled Button -->
-            <div class="rounded-lg border">
-                <button
-                    class="dropdown-button"
-                    aria-expanded="false"
-                    disabled
-                >
-                    <div class="flex items-center gap-2">
-                        <svg class="lucide-icon text-muted-foreground h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                        </svg>
-                        <span class="font-medium">Disabled Section</span>
-                    </div>
-                    <svg class="chevron h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
+				<!-- Artistic Effects -->
+				<div class="rounded-lg border">
+					<button class="dropdown-button" aria-expanded="false">
+						<div class="flex items-center gap-2">
+							<svg
+								class="lucide-icon text-muted-foreground h-4 w-4"
+								aria-hidden="true"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path d="M9.06 11.9l8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08" />
+								<path
+									d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"
+								/>
+							</svg>
+							<span class="font-medium">Artistic Effects</span>
+						</div>
+						<svg
+							class="chevron h-4 w-4"
+							aria-hidden="true"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M19 9l-7 7-7-7"
+							/>
+						</svg>
+					</button>
+				</div>
 
-        <p style="margin-top: 2rem; font-size: 0.875rem;">
-            <strong>Animation Features:</strong><br>
-            • Smooth lift effect on hover (translateY(-1px))<br>
-            • Gradient background overlay with opacity transition<br>
-            • Enhanced shadow with blue tint<br>
-            • Icon scaling animation (scale(1.1))<br>
-            • Active state glow for expanded sections<br>
-            • Disabled state with no animations<br>
-            • Cubic-bezier easing for professional feel
-        </p>
-    </div>
+				<!-- Disabled Button -->
+				<div class="rounded-lg border">
+					<button class="dropdown-button" aria-expanded="false" disabled>
+						<div class="flex items-center gap-2">
+							<svg
+								class="lucide-icon text-muted-foreground h-4 w-4"
+								aria-hidden="true"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+							</svg>
+							<span class="font-medium">Disabled Section</span>
+						</div>
+						<svg
+							class="chevron h-4 w-4"
+							aria-hidden="true"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M19 9l-7 7-7-7"
+							/>
+						</svg>
+					</button>
+				</div>
+			</div>
 
-    <script>
-        // Add click functionality to test expanded states
-        document.querySelectorAll('.dropdown-button:not([disabled])').forEach(button => {
-            button.addEventListener('click', () => {
-                const isExpanded = button.getAttribute('aria-expanded') === 'true';
-                button.setAttribute('aria-expanded', !isExpanded);
-                
-                const chevron = button.querySelector('.chevron');
-                if (chevron) {
-                    chevron.classList.toggle('rotate-180');
-                }
-            });
-        });
-    </script>
-</body>
+			<p style="margin-top: 2rem; font-size: 0.875rem">
+				<strong>Animation Features:</strong><br />
+				• Smooth lift effect on hover (translateY(-1px))<br />
+				• Gradient background overlay with opacity transition<br />
+				• Enhanced shadow with blue tint<br />
+				• Icon scaling animation (scale(1.1))<br />
+				• Active state glow for expanded sections<br />
+				• Disabled state with no animations<br />
+				• Cubic-bezier easing for professional feel
+			</p>
+		</div>
+
+		<script>
+			// Add click functionality to test expanded states
+			document.querySelectorAll('.dropdown-button:not([disabled])').forEach((button) => {
+				button.addEventListener('click', () => {
+					const isExpanded = button.getAttribute('aria-expanded') === 'true';
+					button.setAttribute('aria-expanded', !isExpanded);
+
+					const chevron = button.querySelector('.chevron');
+					if (chevron) {
+						chevron.classList.toggle('rotate-180');
+					}
+				});
+			});
+		</script>
+	</body>
 </html>

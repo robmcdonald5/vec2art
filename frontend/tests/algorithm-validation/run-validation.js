@@ -1,6 +1,6 @@
 /**
  * Algorithm Validation Test Runner
- * 
+ *
  * Systematically tests all vectorization algorithms with their parameter combinations
  * to identify configuration errors, invalid function calls, and logic issues.
  */
@@ -14,287 +14,387 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 class AlgorithmValidator {
-    constructor(options = {}) {
-        this.options = {
-            verbose: false,
-            backend: null,
-            outputDir: join(__dirname, 'outputs'),
-            ...options
-        };
-        
-        this.results = {
-            timestamp: new Date().toISOString(),
-            summary: {},
-            tests: [],
-            errors: [],
-            configurations: []
-        };
-    }
+	constructor(options = {}) {
+		this.options = {
+			verbose: false,
+			backend: null,
+			outputDir: join(__dirname, 'outputs'),
+			...options
+		};
 
-    async run() {
-        console.log('🧪 Starting Algorithm Validation Suite\n');
-        
-        try {
-            await this.setupOutputDirectories();
-            await this.generateTestConfigurations();
-            await this.generateBrowserTestSuite();
-            await this.generateReports();
-            
-            console.log('\n✅ Validation suite setup complete!');
-            console.log('📁 Check outputs/ directory for results');
-            console.log('🌐 Open browser-test-suite.html to run tests');
-            
-        } catch (error) {
-            console.error('❌ Validation failed:', error);
-            throw error;
-        }
-    }
+		this.results = {
+			timestamp: new Date().toISOString(),
+			summary: {},
+			tests: [],
+			errors: [],
+			configurations: []
+		};
+	}
 
-    async setupOutputDirectories() {
-        const dirs = ['results', 'reports', 'baselines'];
-        
-        for (const dir of dirs) {
-            const path = join(this.options.outputDir, dir);
-            await fs.mkdir(path, { recursive: true });
-        }
-        
-        console.log('📁 Output directories created');
-    }
+	async run() {
+		console.log('🧪 Starting Algorithm Validation Suite\n');
 
-    async generateTestConfigurations() {
-        console.log('⚙️ Generating test configurations...');
-        
-        const configs = {
-            edge: this.generateEdgeConfigurations(),
-            centerline: this.generateCenterlineConfigurations(),
-            superpixel: this.generateSuperpixelConfigurations(),
-            dots: this.generateDotsConfigurations()
-        };
-        
-        // Save individual backend configurations
-        for (const [backend, configurations] of Object.entries(configs)) {
-            const configPath = join(__dirname, 'test-configs', `${backend}-backend.json`);
-            await fs.mkdir(join(__dirname, 'test-configs'), { recursive: true });
-            await fs.writeFile(configPath, JSON.stringify(configurations, null, 2));
-            console.log(`📝 Generated ${configurations.length} configs for ${backend} backend`);
-        }
-        
-        this.results.configurations = configs;
-        return configs;
-    }
+		try {
+			await this.setupOutputDirectories();
+			await this.generateTestConfigurations();
+			await this.generateBrowserTestSuite();
+			await this.generateReports();
 
-    generateEdgeConfigurations() {
-        const baseConfig = {
-            backend: 'edge',
-            detail: 0.4,
-            stroke_width: 1.0,
-            noise_filtering: true,
-            multipass: true,
-            reverse_pass: false,
-            diagonal_pass: false,
-            enable_etf_fdog: false,
-            enable_flow_tracing: false,
-            enable_bezier_fitting: false,
-            hand_drawn_preset: 'medium',
-            variable_weights: 0.3,
-            tremor_strength: 0.2,
-            tapering: 0.5
-        };
+			console.log('\n✅ Validation suite setup complete!');
+			console.log('📁 Check outputs/ directory for results');
+			console.log('🌐 Open browser-test-suite.html to run tests');
+		} catch (error) {
+			console.error('❌ Validation failed:', error);
+			throw error;
+		}
+	}
 
-        const configurations = [
-            // Basic configurations
-            { ...baseConfig, name: 'edge-basic' },
-            { ...baseConfig, name: 'edge-no-multipass', multipass: false },
-            { ...baseConfig, name: 'edge-with-reverse', reverse_pass: true },
-            { ...baseConfig, name: 'edge-with-diagonal', diagonal_pass: true },
-            { ...baseConfig, name: 'edge-all-passes', reverse_pass: true, diagonal_pass: true },
-            
-            // Hand-drawn variations
-            { ...baseConfig, name: 'edge-no-handdrawn', hand_drawn_preset: 'none', variable_weights: 0, tremor_strength: 0, tapering: 0 },
-            { ...baseConfig, name: 'edge-subtle-handdrawn', hand_drawn_preset: 'subtle', variable_weights: 0.1, tremor_strength: 0.1, tapering: 0.2 },
-            { ...baseConfig, name: 'edge-strong-handdrawn', hand_drawn_preset: 'strong', variable_weights: 0.6, tremor_strength: 0.4, tapering: 0.8 },
-            { ...baseConfig, name: 'edge-sketchy-handdrawn', hand_drawn_preset: 'sketchy', variable_weights: 0.8, tremor_strength: 0.5, tapering: 0.9 },
-            
-            // Flow tracing combinations
-            { ...baseConfig, name: 'edge-with-flow', enable_flow_tracing: true },
-            { ...baseConfig, name: 'edge-flow-bezier', enable_flow_tracing: true, enable_bezier_fitting: true },
-            { ...baseConfig, name: 'edge-flow-etf', enable_flow_tracing: true, enable_etf_fdog: true },
-            { ...baseConfig, name: 'edge-all-advanced', enable_flow_tracing: true, enable_bezier_fitting: true, enable_etf_fdog: true },
-            
-            // Detail variations
-            { ...baseConfig, name: 'edge-low-detail', detail: 0.1 },
-            { ...baseConfig, name: 'edge-high-detail', detail: 0.8 },
-            { ...baseConfig, name: 'edge-max-detail', detail: 1.0 },
-            
-            // Stroke width variations
-            { ...baseConfig, name: 'edge-thin-stroke', stroke_width: 0.5 },
-            { ...baseConfig, name: 'edge-thick-stroke', stroke_width: 3.0 },
-            
-            // Invalid combinations (should fail)
-            { ...baseConfig, name: 'edge-invalid-bezier-no-flow', enable_bezier_fitting: true, enable_flow_tracing: false, expectError: true },
-            { ...baseConfig, name: 'edge-invalid-etf-no-flow', enable_etf_fdog: true, enable_flow_tracing: false, expectError: true }
-        ];
+	async setupOutputDirectories() {
+		const dirs = ['results', 'reports', 'baselines'];
 
-        return configurations;
-    }
+		for (const dir of dirs) {
+			const path = join(this.options.outputDir, dir);
+			await fs.mkdir(path, { recursive: true });
+		}
 
-    generateCenterlineConfigurations() {
-        const baseConfig = {
-            backend: 'centerline',
-            detail: 0.3,
-            stroke_width: 0.8,
-            noise_filtering: true,
-            hand_drawn_preset: 'none',
-            variable_weights: 0.0,
-            tremor_strength: 0.0,
-            tapering: 0.0,
-            enable_adaptive_threshold: true,
-            window_size: 25,
-            sensitivity_k: 0.4,
-            min_branch_length: 8,
-            enable_width_modulation: false,
-            douglas_peucker_epsilon: 1.0
-        };
+		console.log('📁 Output directories created');
+	}
 
-        const configurations = [
-            // Basic configurations
-            { ...baseConfig, name: 'centerline-basic' },
-            { ...baseConfig, name: 'centerline-no-adaptive', enable_adaptive_threshold: false },
-            { ...baseConfig, name: 'centerline-with-width-mod', enable_width_modulation: true },
-            
-            // Hand-drawn variations (less common for centerline)
-            { ...baseConfig, name: 'centerline-subtle-handdrawn', hand_drawn_preset: 'subtle', variable_weights: 0.1, tremor_strength: 0.05, tapering: 0.1 },
-            { ...baseConfig, name: 'centerline-medium-handdrawn', hand_drawn_preset: 'medium', variable_weights: 0.2, tremor_strength: 0.1, tapering: 0.3 },
-            
-            // Parameter variations
-            { ...baseConfig, name: 'centerline-small-window', window_size: 15 },
-            { ...baseConfig, name: 'centerline-large-window', window_size: 45 },
-            { ...baseConfig, name: 'centerline-low-sensitivity', sensitivity_k: 0.1 },
-            { ...baseConfig, name: 'centerline-high-sensitivity', sensitivity_k: 0.9 },
-            { ...baseConfig, name: 'centerline-min-branch', min_branch_length: 4 },
-            { ...baseConfig, name: 'centerline-max-branch', min_branch_length: 20 },
-            { ...baseConfig, name: 'centerline-low-epsilon', douglas_peucker_epsilon: 0.5 },
-            { ...baseConfig, name: 'centerline-high-epsilon', douglas_peucker_epsilon: 2.5 },
-            
-            // Detail variations
-            { ...baseConfig, name: 'centerline-low-detail', detail: 0.1 },
-            { ...baseConfig, name: 'centerline-high-detail', detail: 0.6 },
-            
-            // Invalid combinations (should warn)
-            { ...baseConfig, name: 'centerline-invalid-flow', enable_flow_tracing: true, expectWarning: true },
-            { ...baseConfig, name: 'centerline-invalid-bezier', enable_bezier_fitting: true, expectWarning: true }
-        ];
+	async generateTestConfigurations() {
+		console.log('⚙️ Generating test configurations...');
 
-        return configurations;
-    }
+		const configs = {
+			edge: this.generateEdgeConfigurations(),
+			centerline: this.generateCenterlineConfigurations(),
+			superpixel: this.generateSuperpixelConfigurations(),
+			dots: this.generateDotsConfigurations()
+		};
 
-    generateSuperpixelConfigurations() {
-        const baseConfig = {
-            backend: 'superpixel',
-            detail: 0.2,
-            stroke_width: 1.5,
-            hand_drawn_preset: 'subtle',
-            variable_weights: 0.1,
-            tremor_strength: 0.0,
-            tapering: 0.2,
-            num_superpixels: 150,
-            compactness: 20,
-            slic_iterations: 10,
-            fill_regions: true,
-            stroke_regions: true,
-            simplify_boundaries: true,
-            boundary_epsilon: 1.0
-        };
+		// Save individual backend configurations
+		for (const [backend, configurations] of Object.entries(configs)) {
+			const configPath = join(__dirname, 'test-configs', `${backend}-backend.json`);
+			await fs.mkdir(join(__dirname, 'test-configs'), { recursive: true });
+			await fs.writeFile(configPath, JSON.stringify(configurations, null, 2));
+			console.log(`📝 Generated ${configurations.length} configs for ${backend} backend`);
+		}
 
-        const configurations = [
-            // Basic configurations
-            { ...baseConfig, name: 'superpixel-basic' },
-            { ...baseConfig, name: 'superpixel-fill-only', stroke_regions: false },
-            { ...baseConfig, name: 'superpixel-stroke-only', fill_regions: false },
-            { ...baseConfig, name: 'superpixel-no-simplify', simplify_boundaries: false },
-            
-            // Superpixel count variations
-            { ...baseConfig, name: 'superpixel-few', num_superpixels: 50 },
-            { ...baseConfig, name: 'superpixel-many', num_superpixels: 400 },
-            { ...baseConfig, name: 'superpixel-max', num_superpixels: 800 },
-            
-            // Compactness variations
-            { ...baseConfig, name: 'superpixel-loose', compactness: 5 },
-            { ...baseConfig, name: 'superpixel-tight', compactness: 40 },
-            
-            // Iterations variations
-            { ...baseConfig, name: 'superpixel-few-iter', slic_iterations: 5 },
-            { ...baseConfig, name: 'superpixel-many-iter', slic_iterations: 15 },
-            
-            // Boundary epsilon variations
-            { ...baseConfig, name: 'superpixel-fine-boundary', boundary_epsilon: 0.5 },
-            { ...baseConfig, name: 'superpixel-coarse-boundary', boundary_epsilon: 2.5 },
-            
-            // Hand-drawn variations
-            { ...baseConfig, name: 'superpixel-no-handdrawn', hand_drawn_preset: 'none', variable_weights: 0, tremor_strength: 0, tapering: 0 },
-            { ...baseConfig, name: 'superpixel-strong-handdrawn', hand_drawn_preset: 'medium', variable_weights: 0.3, tremor_strength: 0.1, tapering: 0.4 }
-        ];
+		this.results.configurations = configs;
+		return configs;
+	}
 
-        return configurations;
-    }
+	generateEdgeConfigurations() {
+		const baseConfig = {
+			backend: 'edge',
+			detail: 0.4,
+			stroke_width: 1.0,
+			noise_filtering: true,
+			multipass: true,
+			reverse_pass: false,
+			diagonal_pass: false,
+			enable_etf_fdog: false,
+			enable_flow_tracing: false,
+			enable_bezier_fitting: false,
+			hand_drawn_preset: 'medium',
+			variable_weights: 0.3,
+			tremor_strength: 0.2,
+			tapering: 0.5
+		};
 
-    generateDotsConfigurations() {
-        const baseConfig = {
-            backend: 'dots',
-            detail: 0.3,
-            hand_drawn_preset: 'none',
-            variable_weights: 0.0,
-            tremor_strength: 0.0,
-            tapering: 0.0,
-            dot_density_threshold: 0.15,
-            preserve_colors: true,
-            adaptive_sizing: true,
-            min_radius: 0.5,
-            max_radius: 3.0,
-            background_tolerance: 0.1,
-            poisson_disk_sampling: true,
-            gradient_based_sizing: true
-        };
+		const configurations = [
+			// Basic configurations
+			{ ...baseConfig, name: 'edge-basic' },
+			{ ...baseConfig, name: 'edge-no-multipass', multipass: false },
+			{ ...baseConfig, name: 'edge-with-reverse', reverse_pass: true },
+			{ ...baseConfig, name: 'edge-with-diagonal', diagonal_pass: true },
+			{ ...baseConfig, name: 'edge-all-passes', reverse_pass: true, diagonal_pass: true },
 
-        const configurations = [
-            // Basic configurations
-            { ...baseConfig, name: 'dots-basic' },
-            { ...baseConfig, name: 'dots-no-colors', preserve_colors: false },
-            { ...baseConfig, name: 'dots-no-adaptive', adaptive_sizing: false },
-            { ...baseConfig, name: 'dots-no-poisson', poisson_disk_sampling: false },
-            { ...baseConfig, name: 'dots-no-gradient', gradient_based_sizing: false },
-            
-            // Density variations
-            { ...baseConfig, name: 'dots-sparse', dot_density_threshold: 0.05 },
-            { ...baseConfig, name: 'dots-dense', dot_density_threshold: 0.3 },
-            { ...baseConfig, name: 'dots-very-dense', dot_density_threshold: 0.5 },
-            
-            // Size variations
-            { ...baseConfig, name: 'dots-tiny', min_radius: 0.2, max_radius: 1.0 },
-            { ...baseConfig, name: 'dots-large', min_radius: 1.0, max_radius: 6.0 },
-            { ...baseConfig, name: 'dots-huge', min_radius: 2.0, max_radius: 10.0 },
-            { ...baseConfig, name: 'dots-uniform', min_radius: 1.5, max_radius: 1.5 },
-            
-            // Background tolerance variations
-            { ...baseConfig, name: 'dots-sensitive-bg', background_tolerance: 0.01 },
-            { ...baseConfig, name: 'dots-tolerant-bg', background_tolerance: 0.3 },
-            
-            // Detail variations
-            { ...baseConfig, name: 'dots-low-detail', detail: 0.1 },
-            { ...baseConfig, name: 'dots-high-detail', detail: 0.6 },
-            
-            // Invalid combinations
-            { ...baseConfig, name: 'dots-invalid-size-range', min_radius: 3.0, max_radius: 1.0, expectError: true },
-            { ...baseConfig, name: 'dots-invalid-handdrawn', hand_drawn_preset: 'strong', variable_weights: 0.5, expectWarning: true }
-        ];
+			// Hand-drawn variations
+			{
+				...baseConfig,
+				name: 'edge-no-handdrawn',
+				hand_drawn_preset: 'none',
+				variable_weights: 0,
+				tremor_strength: 0,
+				tapering: 0
+			},
+			{
+				...baseConfig,
+				name: 'edge-subtle-handdrawn',
+				hand_drawn_preset: 'subtle',
+				variable_weights: 0.1,
+				tremor_strength: 0.1,
+				tapering: 0.2
+			},
+			{
+				...baseConfig,
+				name: 'edge-strong-handdrawn',
+				hand_drawn_preset: 'strong',
+				variable_weights: 0.6,
+				tremor_strength: 0.4,
+				tapering: 0.8
+			},
+			{
+				...baseConfig,
+				name: 'edge-sketchy-handdrawn',
+				hand_drawn_preset: 'sketchy',
+				variable_weights: 0.8,
+				tremor_strength: 0.5,
+				tapering: 0.9
+			},
 
-        return configurations;
-    }
+			// Flow tracing combinations
+			{ ...baseConfig, name: 'edge-with-flow', enable_flow_tracing: true },
+			{
+				...baseConfig,
+				name: 'edge-flow-bezier',
+				enable_flow_tracing: true,
+				enable_bezier_fitting: true
+			},
+			{ ...baseConfig, name: 'edge-flow-etf', enable_flow_tracing: true, enable_etf_fdog: true },
+			{
+				...baseConfig,
+				name: 'edge-all-advanced',
+				enable_flow_tracing: true,
+				enable_bezier_fitting: true,
+				enable_etf_fdog: true
+			},
 
-    async generateBrowserTestSuite() {
-        console.log('🌐 Generating browser test suite...');
-        
-        const htmlContent = `<!DOCTYPE html>
+			// Detail variations
+			{ ...baseConfig, name: 'edge-low-detail', detail: 0.1 },
+			{ ...baseConfig, name: 'edge-high-detail', detail: 0.8 },
+			{ ...baseConfig, name: 'edge-max-detail', detail: 1.0 },
+
+			// Stroke width variations
+			{ ...baseConfig, name: 'edge-thin-stroke', stroke_width: 0.5 },
+			{ ...baseConfig, name: 'edge-thick-stroke', stroke_width: 3.0 },
+
+			// Invalid combinations (should fail)
+			{
+				...baseConfig,
+				name: 'edge-invalid-bezier-no-flow',
+				enable_bezier_fitting: true,
+				enable_flow_tracing: false,
+				expectError: true
+			},
+			{
+				...baseConfig,
+				name: 'edge-invalid-etf-no-flow',
+				enable_etf_fdog: true,
+				enable_flow_tracing: false,
+				expectError: true
+			}
+		];
+
+		return configurations;
+	}
+
+	generateCenterlineConfigurations() {
+		const baseConfig = {
+			backend: 'centerline',
+			detail: 0.3,
+			stroke_width: 0.8,
+			noise_filtering: true,
+			hand_drawn_preset: 'none',
+			variable_weights: 0.0,
+			tremor_strength: 0.0,
+			tapering: 0.0,
+			enable_adaptive_threshold: true,
+			window_size: 25,
+			sensitivity_k: 0.4,
+			min_branch_length: 8,
+			enable_width_modulation: false,
+			douglas_peucker_epsilon: 1.0
+		};
+
+		const configurations = [
+			// Basic configurations
+			{ ...baseConfig, name: 'centerline-basic' },
+			{ ...baseConfig, name: 'centerline-no-adaptive', enable_adaptive_threshold: false },
+			{ ...baseConfig, name: 'centerline-with-width-mod', enable_width_modulation: true },
+
+			// Hand-drawn variations (less common for centerline)
+			{
+				...baseConfig,
+				name: 'centerline-subtle-handdrawn',
+				hand_drawn_preset: 'subtle',
+				variable_weights: 0.1,
+				tremor_strength: 0.05,
+				tapering: 0.1
+			},
+			{
+				...baseConfig,
+				name: 'centerline-medium-handdrawn',
+				hand_drawn_preset: 'medium',
+				variable_weights: 0.2,
+				tremor_strength: 0.1,
+				tapering: 0.3
+			},
+
+			// Parameter variations
+			{ ...baseConfig, name: 'centerline-small-window', window_size: 15 },
+			{ ...baseConfig, name: 'centerline-large-window', window_size: 45 },
+			{ ...baseConfig, name: 'centerline-low-sensitivity', sensitivity_k: 0.1 },
+			{ ...baseConfig, name: 'centerline-high-sensitivity', sensitivity_k: 0.9 },
+			{ ...baseConfig, name: 'centerline-min-branch', min_branch_length: 4 },
+			{ ...baseConfig, name: 'centerline-max-branch', min_branch_length: 20 },
+			{ ...baseConfig, name: 'centerline-low-epsilon', douglas_peucker_epsilon: 0.5 },
+			{ ...baseConfig, name: 'centerline-high-epsilon', douglas_peucker_epsilon: 2.5 },
+
+			// Detail variations
+			{ ...baseConfig, name: 'centerline-low-detail', detail: 0.1 },
+			{ ...baseConfig, name: 'centerline-high-detail', detail: 0.6 },
+
+			// Invalid combinations (should warn)
+			{
+				...baseConfig,
+				name: 'centerline-invalid-flow',
+				enable_flow_tracing: true,
+				expectWarning: true
+			},
+			{
+				...baseConfig,
+				name: 'centerline-invalid-bezier',
+				enable_bezier_fitting: true,
+				expectWarning: true
+			}
+		];
+
+		return configurations;
+	}
+
+	generateSuperpixelConfigurations() {
+		const baseConfig = {
+			backend: 'superpixel',
+			detail: 0.2,
+			stroke_width: 1.5,
+			hand_drawn_preset: 'subtle',
+			variable_weights: 0.1,
+			tremor_strength: 0.0,
+			tapering: 0.2,
+			num_superpixels: 150,
+			compactness: 20,
+			slic_iterations: 10,
+			fill_regions: true,
+			stroke_regions: true,
+			simplify_boundaries: true,
+			boundary_epsilon: 1.0
+		};
+
+		const configurations = [
+			// Basic configurations
+			{ ...baseConfig, name: 'superpixel-basic' },
+			{ ...baseConfig, name: 'superpixel-fill-only', stroke_regions: false },
+			{ ...baseConfig, name: 'superpixel-stroke-only', fill_regions: false },
+			{ ...baseConfig, name: 'superpixel-no-simplify', simplify_boundaries: false },
+
+			// Superpixel count variations
+			{ ...baseConfig, name: 'superpixel-few', num_superpixels: 50 },
+			{ ...baseConfig, name: 'superpixel-many', num_superpixels: 400 },
+			{ ...baseConfig, name: 'superpixel-max', num_superpixels: 800 },
+
+			// Compactness variations
+			{ ...baseConfig, name: 'superpixel-loose', compactness: 5 },
+			{ ...baseConfig, name: 'superpixel-tight', compactness: 40 },
+
+			// Iterations variations
+			{ ...baseConfig, name: 'superpixel-few-iter', slic_iterations: 5 },
+			{ ...baseConfig, name: 'superpixel-many-iter', slic_iterations: 15 },
+
+			// Boundary epsilon variations
+			{ ...baseConfig, name: 'superpixel-fine-boundary', boundary_epsilon: 0.5 },
+			{ ...baseConfig, name: 'superpixel-coarse-boundary', boundary_epsilon: 2.5 },
+
+			// Hand-drawn variations
+			{
+				...baseConfig,
+				name: 'superpixel-no-handdrawn',
+				hand_drawn_preset: 'none',
+				variable_weights: 0,
+				tremor_strength: 0,
+				tapering: 0
+			},
+			{
+				...baseConfig,
+				name: 'superpixel-strong-handdrawn',
+				hand_drawn_preset: 'medium',
+				variable_weights: 0.3,
+				tremor_strength: 0.1,
+				tapering: 0.4
+			}
+		];
+
+		return configurations;
+	}
+
+	generateDotsConfigurations() {
+		const baseConfig = {
+			backend: 'dots',
+			detail: 0.3,
+			hand_drawn_preset: 'none',
+			variable_weights: 0.0,
+			tremor_strength: 0.0,
+			tapering: 0.0,
+			dot_density_threshold: 0.15,
+			preserve_colors: true,
+			adaptive_sizing: true,
+			min_radius: 0.5,
+			max_radius: 3.0,
+			background_tolerance: 0.1,
+			poisson_disk_sampling: true,
+			gradient_based_sizing: true
+		};
+
+		const configurations = [
+			// Basic configurations
+			{ ...baseConfig, name: 'dots-basic' },
+			{ ...baseConfig, name: 'dots-no-colors', preserve_colors: false },
+			{ ...baseConfig, name: 'dots-no-adaptive', adaptive_sizing: false },
+			{ ...baseConfig, name: 'dots-no-poisson', poisson_disk_sampling: false },
+			{ ...baseConfig, name: 'dots-no-gradient', gradient_based_sizing: false },
+
+			// Density variations
+			{ ...baseConfig, name: 'dots-sparse', dot_density_threshold: 0.05 },
+			{ ...baseConfig, name: 'dots-dense', dot_density_threshold: 0.3 },
+			{ ...baseConfig, name: 'dots-very-dense', dot_density_threshold: 0.5 },
+
+			// Size variations
+			{ ...baseConfig, name: 'dots-tiny', min_radius: 0.2, max_radius: 1.0 },
+			{ ...baseConfig, name: 'dots-large', min_radius: 1.0, max_radius: 6.0 },
+			{ ...baseConfig, name: 'dots-huge', min_radius: 2.0, max_radius: 10.0 },
+			{ ...baseConfig, name: 'dots-uniform', min_radius: 1.5, max_radius: 1.5 },
+
+			// Background tolerance variations
+			{ ...baseConfig, name: 'dots-sensitive-bg', background_tolerance: 0.01 },
+			{ ...baseConfig, name: 'dots-tolerant-bg', background_tolerance: 0.3 },
+
+			// Detail variations
+			{ ...baseConfig, name: 'dots-low-detail', detail: 0.1 },
+			{ ...baseConfig, name: 'dots-high-detail', detail: 0.6 },
+
+			// Invalid combinations
+			{
+				...baseConfig,
+				name: 'dots-invalid-size-range',
+				min_radius: 3.0,
+				max_radius: 1.0,
+				expectError: true
+			},
+			{
+				...baseConfig,
+				name: 'dots-invalid-handdrawn',
+				hand_drawn_preset: 'strong',
+				variable_weights: 0.5,
+				expectWarning: true
+			}
+		];
+
+		return configurations;
+	}
+
+	async generateBrowserTestSuite() {
+		console.log('🌐 Generating browser test suite...');
+
+		const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -643,71 +743,78 @@ class AlgorithmValidator {
 </body>
 </html>`;
 
-        const outputPath = join(this.options.outputDir, 'browser-test-suite.html');
-        await fs.writeFile(outputPath, htmlContent);
-        
-        console.log(`🌐 Browser test suite saved to: ${outputPath}`);
-    }
+		const outputPath = join(this.options.outputDir, 'browser-test-suite.html');
+		await fs.writeFile(outputPath, htmlContent);
 
-    async generateReports() {
-        console.log('📊 Generating test reports...');
-        
-        const summaryReport = {
-            timestamp: this.results.timestamp,
-            totalConfigurations: Object.values(this.results.configurations).reduce((sum, configs) => sum + configs.length, 0),
-            configurationsByBackend: Object.fromEntries(
-                Object.entries(this.results.configurations).map(([backend, configs]) => [backend, configs.length])
-            ),
-            expectedFunctions: getExpectedFunctions(),
-            instructions: [
-                '1. Open browser-test-suite.html in a web browser',
-                '2. Open the converter application in another tab',
-                '3. Wait for WASM initialization',
-                '4. Return to test suite and click "Run All Tests"',
-                '5. Download the results for analysis'
-            ]
-        };
-        
-        const reportPath = join(this.options.outputDir, 'reports', 'validation-summary.json');
-        await fs.writeFile(reportPath, JSON.stringify(summaryReport, null, 2));
-        
-        console.log(`📝 Summary report saved to: ${reportPath}`);
-    }
+		console.log(`🌐 Browser test suite saved to: ${outputPath}`);
+	}
+
+	async generateReports() {
+		console.log('📊 Generating test reports...');
+
+		const summaryReport = {
+			timestamp: this.results.timestamp,
+			totalConfigurations: Object.values(this.results.configurations).reduce(
+				(sum, configs) => sum + configs.length,
+				0
+			),
+			configurationsByBackend: Object.fromEntries(
+				Object.entries(this.results.configurations).map(([backend, configs]) => [
+					backend,
+					configs.length
+				])
+			),
+			expectedFunctions: getExpectedFunctions(),
+			instructions: [
+				'1. Open browser-test-suite.html in a web browser',
+				'2. Open the converter application in another tab',
+				'3. Wait for WASM initialization',
+				'4. Return to test suite and click "Run All Tests"',
+				'5. Download the results for analysis'
+			]
+		};
+
+		const reportPath = join(this.options.outputDir, 'reports', 'validation-summary.json');
+		await fs.writeFile(reportPath, JSON.stringify(summaryReport, null, 2));
+
+		console.log(`📝 Summary report saved to: ${reportPath}`);
+	}
 }
 
 // CLI execution
 const currentFilePath = fileURLToPath(import.meta.url);
 if (currentFilePath === process.argv[1]) {
-    const args = process.argv.slice(2);
-    const options = {};
-    
-    // Parse command line arguments
-    for (let i = 0; i < args.length; i++) {
-        const arg = args[i];
-        if (arg === '--verbose') {
-            options.verbose = true;
-        } else if (arg === '--backend' && args[i + 1]) {
-            options.backend = args[i + 1];
-            i++;
-        } else if (arg === '--output' && args[i + 1]) {
-            options.outputDir = args[i + 1];
-            i++;
-        }
-    }
-    
-    const validator = new AlgorithmValidator(options);
-    validator.run()
-        .then(() => {
-            console.log('\n✅ Algorithm validation setup complete!');
-            console.log('📖 Next steps:');
-            console.log('   1. Open outputs/browser-test-suite.html');
-            console.log('   2. Load converter page in another tab');
-            console.log('   3. Run validation tests');
-        })
-        .catch(error => {
-            console.error('\n❌ Validation setup failed:', error);
-            process.exit(1);
-        });
+	const args = process.argv.slice(2);
+	const options = {};
+
+	// Parse command line arguments
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if (arg === '--verbose') {
+			options.verbose = true;
+		} else if (arg === '--backend' && args[i + 1]) {
+			options.backend = args[i + 1];
+			i++;
+		} else if (arg === '--output' && args[i + 1]) {
+			options.outputDir = args[i + 1];
+			i++;
+		}
+	}
+
+	const validator = new AlgorithmValidator(options);
+	validator
+		.run()
+		.then(() => {
+			console.log('\n✅ Algorithm validation setup complete!');
+			console.log('📖 Next steps:');
+			console.log('   1. Open outputs/browser-test-suite.html');
+			console.log('   2. Load converter page in another tab');
+			console.log('   3. Run validation tests');
+		})
+		.catch((error) => {
+			console.error('\n❌ Validation setup failed:', error);
+			process.exit(1);
+		});
 }
 
 export { AlgorithmValidator };

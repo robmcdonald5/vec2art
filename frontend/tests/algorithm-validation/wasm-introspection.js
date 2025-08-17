@@ -1,6 +1,6 @@
 /**
  * WASM Module Introspection Tool
- * 
+ *
  * This script discovers all available functions in the vectorizer WASM module
  * and generates a comprehensive report of what's actually available vs what
  * we expect to be available.
@@ -15,123 +15,214 @@ const __dirname = dirname(__filename);
 
 // Import the WASM loader (we'll need to run this in a browser-like environment)
 async function introspectWasmModule() {
-    console.log('🔍 Starting WASM Module Introspection...\n');
+	console.log('🔍 Starting WASM Module Introspection...\n');
 
-    try {
-        // We need to load the WASM module in a way that works in Node.js
-        // This is challenging since the module is designed for browsers
-        
-        // For now, let's create a structure that can be used to analyze the actual module
-        const report = {
-            timestamp: new Date().toISOString(),
-            analysis: {
-                expectedFunctions: getExpectedFunctions(),
-                browserTestRequired: true,
-                nodeIncompatible: true,
-                recommendedApproach: [
-                    "Run this introspection in a browser environment",
-                    "Use developer console to inspect WASM module",
-                    "Compare actual vs expected functions",
-                    "Update algorithm-matrix.md with findings"
-                ]
-            }
-        };
+	try {
+		// We need to load the WASM module in a way that works in Node.js
+		// This is challenging since the module is designed for browsers
 
-        // Generate browser-compatible introspection script
-        await generateBrowserIntrospectionScript();
-        
-        console.log('📋 Expected Functions Analysis Complete');
-        console.log(`📝 Generated ${report.analysis.expectedFunctions.length} expected function mappings`);
-        console.log('🌐 Browser introspection script generated at: browser-introspect.html');
-        
-        return report;
-        
-    } catch (error) {
-        console.error('❌ Error during introspection:', error);
-        throw error;
-    }
+		// For now, let's create a structure that can be used to analyze the actual module
+		const report = {
+			timestamp: new Date().toISOString(),
+			analysis: {
+				expectedFunctions: getExpectedFunctions(),
+				browserTestRequired: true,
+				nodeIncompatible: true,
+				recommendedApproach: [
+					'Run this introspection in a browser environment',
+					'Use developer console to inspect WASM module',
+					'Compare actual vs expected functions',
+					'Update algorithm-matrix.md with findings'
+				]
+			}
+		};
+
+		// Generate browser-compatible introspection script
+		await generateBrowserIntrospectionScript();
+
+		console.log('📋 Expected Functions Analysis Complete');
+		console.log(
+			`📝 Generated ${report.analysis.expectedFunctions.length} expected function mappings`
+		);
+		console.log('🌐 Browser introspection script generated at: browser-introspect.html');
+
+		return report;
+	} catch (error) {
+		console.error('❌ Error during introspection:', error);
+		throw error;
+	}
 }
 
 /**
  * Get all expected functions based on our algorithm matrix
  */
 function getExpectedFunctions() {
-    return [
-        // Core functions (all backends)
-        { name: 'set_detail', backend: 'all', required: true, type: 'float', range: '0.0-1.0' },
-        { name: 'set_stroke_width', backend: 'all', required: true, type: 'float', range: '0.1-10.0' },
-        { name: 'set_noise_filtering', backend: 'all', required: true, type: 'bool' },
-        { name: 'set_backend', backend: 'all', required: true, type: 'string' },
-        
-        // Hand-drawn aesthetics (most backends)
-        { name: 'set_hand_drawn_preset', backend: 'all', required: true, type: 'string' },
-        { name: 'set_custom_variable_weights', backend: 'edge,centerline,superpixel', required: false, type: 'float', range: '0.0-1.0' },
-        { name: 'set_custom_tremor', backend: 'edge,centerline,superpixel', required: false, type: 'float', range: '0.0-0.5' },
-        { name: 'set_tapering', backend: 'edge,centerline,superpixel', required: false, type: 'float', range: '0.0-1.0' },
-        
-        // Edge backend specific
-        { name: 'set_multipass', backend: 'edge', required: true, type: 'bool' },
-        { name: 'set_reverse_pass', backend: 'edge', required: false, type: 'bool' },
-        { name: 'set_diagonal_pass', backend: 'edge', required: false, type: 'bool' },
-        { name: 'set_enable_etf_fdog', backend: 'edge', required: false, type: 'bool' },
-        { name: 'set_enable_flow_tracing', backend: 'edge', required: false, type: 'bool' },
-        { name: 'set_enable_bezier_fitting', backend: 'edge', required: false, type: 'bool' },
-        
-        // Centerline backend specific
-        { name: 'set_enable_adaptive_threshold', backend: 'centerline', required: false, type: 'bool' },
-        { name: 'set_window_size', backend: 'centerline', required: false, type: 'int', range: '15-50' },
-        { name: 'set_sensitivity_k', backend: 'centerline', required: false, type: 'float', range: '0.1-1.0' },
-        { name: 'set_min_branch_length', backend: 'centerline', required: false, type: 'int', range: '4-24' },
-        { name: 'set_enable_width_modulation', backend: 'centerline', required: false, type: 'bool' },
-        { name: 'set_douglas_peucker_epsilon', backend: 'centerline', required: false, type: 'float', range: '0.5-3.0' },
-        
-        // Superpixel backend specific
-        { name: 'set_num_superpixels', backend: 'superpixel', required: false, type: 'int', range: '20-1000' },
-        { name: 'set_compactness', backend: 'superpixel', required: false, type: 'float', range: '1-50' },
-        { name: 'set_slic_iterations', backend: 'superpixel', required: false, type: 'int', range: '5-15' },
-        { name: 'set_fill_regions', backend: 'superpixel', required: false, type: 'bool' },
-        { name: 'set_stroke_regions', backend: 'superpixel', required: false, type: 'bool' },
-        { name: 'set_simplify_boundaries', backend: 'superpixel', required: false, type: 'bool' },
-        { name: 'set_boundary_epsilon', backend: 'superpixel', required: false, type: 'float', range: '0.5-3.0' },
-        
-        // Dots backend specific
-        { name: 'set_dot_density', backend: 'dots', required: false, type: 'float', range: '0.0-1.0' },
-        { name: 'set_dot_size_range', backend: 'dots', required: false, type: 'function', params: ['min_radius', 'max_radius'] },
-        { name: 'set_preserve_colors', backend: 'dots', required: false, type: 'bool' },
-        { name: 'set_adaptive_sizing', backend: 'dots', required: false, type: 'bool' },
-        { name: 'set_background_tolerance', backend: 'dots', required: false, type: 'float', range: '0.0-1.0' },
-        { name: 'set_poisson_disk_sampling', backend: 'dots', required: false, type: 'bool' },
-        { name: 'set_gradient_based_sizing', backend: 'dots', required: false, type: 'bool' },
-        
-        // Global output settings
-        { name: 'set_svg_precision', backend: 'all', required: false, type: 'int', range: '0-4' },
-        { name: 'set_optimize_svg', backend: 'all', required: false, type: 'bool' },
-        { name: 'set_include_metadata', backend: 'all', required: false, type: 'bool' },
-        
-        // Performance settings
-        { name: 'set_max_processing_time_ms', backend: 'all', required: false, type: 'bigint' },
-        { name: 'set_thread_count', backend: 'all', required: false, type: 'int' },
-        { name: 'set_max_image_size', backend: 'all', required: false, type: 'int' },
-        
-        // Processing functions
-        { name: 'vectorize', backend: 'all', required: true, type: 'function', params: ['ImageData'] },
-        { name: 'vectorize_with_progress', backend: 'all', required: false, type: 'function', params: ['ImageData', 'callback'] },
-        { name: 'validate_config', backend: 'all', required: false, type: 'function' },
-        { name: 'export_config', backend: 'all', required: false, type: 'function' },
-        { name: 'import_config', backend: 'all', required: false, type: 'function', params: ['string'] },
-        { name: 'use_preset', backend: 'all', required: false, type: 'function', params: ['string'] },
-        
-        // Cleanup and control
-        { name: 'abort_processing', backend: 'all', required: false, type: 'function' },
-        { name: 'cleanup', backend: 'all', required: false, type: 'function' }
-    ];
+	return [
+		// Core functions (all backends)
+		{ name: 'set_detail', backend: 'all', required: true, type: 'float', range: '0.0-1.0' },
+		{ name: 'set_stroke_width', backend: 'all', required: true, type: 'float', range: '0.1-10.0' },
+		{ name: 'set_noise_filtering', backend: 'all', required: true, type: 'bool' },
+		{ name: 'set_backend', backend: 'all', required: true, type: 'string' },
+
+		// Hand-drawn aesthetics (most backends)
+		{ name: 'set_hand_drawn_preset', backend: 'all', required: true, type: 'string' },
+		{
+			name: 'set_custom_variable_weights',
+			backend: 'edge,centerline,superpixel',
+			required: false,
+			type: 'float',
+			range: '0.0-1.0'
+		},
+		{
+			name: 'set_custom_tremor',
+			backend: 'edge,centerline,superpixel',
+			required: false,
+			type: 'float',
+			range: '0.0-0.5'
+		},
+		{
+			name: 'set_tapering',
+			backend: 'edge,centerline,superpixel',
+			required: false,
+			type: 'float',
+			range: '0.0-1.0'
+		},
+
+		// Edge backend specific
+		{ name: 'set_multipass', backend: 'edge', required: true, type: 'bool' },
+		{ name: 'set_reverse_pass', backend: 'edge', required: false, type: 'bool' },
+		{ name: 'set_diagonal_pass', backend: 'edge', required: false, type: 'bool' },
+		{ name: 'set_enable_etf_fdog', backend: 'edge', required: false, type: 'bool' },
+		{ name: 'set_enable_flow_tracing', backend: 'edge', required: false, type: 'bool' },
+		{ name: 'set_enable_bezier_fitting', backend: 'edge', required: false, type: 'bool' },
+
+		// Centerline backend specific
+		{ name: 'set_enable_adaptive_threshold', backend: 'centerline', required: false, type: 'bool' },
+		{
+			name: 'set_window_size',
+			backend: 'centerline',
+			required: false,
+			type: 'int',
+			range: '15-50'
+		},
+		{
+			name: 'set_sensitivity_k',
+			backend: 'centerline',
+			required: false,
+			type: 'float',
+			range: '0.1-1.0'
+		},
+		{
+			name: 'set_min_branch_length',
+			backend: 'centerline',
+			required: false,
+			type: 'int',
+			range: '4-24'
+		},
+		{ name: 'set_enable_width_modulation', backend: 'centerline', required: false, type: 'bool' },
+		{
+			name: 'set_douglas_peucker_epsilon',
+			backend: 'centerline',
+			required: false,
+			type: 'float',
+			range: '0.5-3.0'
+		},
+
+		// Superpixel backend specific
+		{
+			name: 'set_num_superpixels',
+			backend: 'superpixel',
+			required: false,
+			type: 'int',
+			range: '20-1000'
+		},
+		{
+			name: 'set_compactness',
+			backend: 'superpixel',
+			required: false,
+			type: 'float',
+			range: '1-50'
+		},
+		{
+			name: 'set_slic_iterations',
+			backend: 'superpixel',
+			required: false,
+			type: 'int',
+			range: '5-15'
+		},
+		{ name: 'set_fill_regions', backend: 'superpixel', required: false, type: 'bool' },
+		{ name: 'set_stroke_regions', backend: 'superpixel', required: false, type: 'bool' },
+		{ name: 'set_simplify_boundaries', backend: 'superpixel', required: false, type: 'bool' },
+		{
+			name: 'set_boundary_epsilon',
+			backend: 'superpixel',
+			required: false,
+			type: 'float',
+			range: '0.5-3.0'
+		},
+
+		// Dots backend specific
+		{ name: 'set_dot_density', backend: 'dots', required: false, type: 'float', range: '0.0-1.0' },
+		{
+			name: 'set_dot_size_range',
+			backend: 'dots',
+			required: false,
+			type: 'function',
+			params: ['min_radius', 'max_radius']
+		},
+		{ name: 'set_preserve_colors', backend: 'dots', required: false, type: 'bool' },
+		{ name: 'set_adaptive_sizing', backend: 'dots', required: false, type: 'bool' },
+		{
+			name: 'set_background_tolerance',
+			backend: 'dots',
+			required: false,
+			type: 'float',
+			range: '0.0-1.0'
+		},
+		{ name: 'set_poisson_disk_sampling', backend: 'dots', required: false, type: 'bool' },
+		{ name: 'set_gradient_based_sizing', backend: 'dots', required: false, type: 'bool' },
+
+		// Global output settings
+		{ name: 'set_svg_precision', backend: 'all', required: false, type: 'int', range: '0-4' },
+		{ name: 'set_optimize_svg', backend: 'all', required: false, type: 'bool' },
+		{ name: 'set_include_metadata', backend: 'all', required: false, type: 'bool' },
+
+		// Performance settings
+		{ name: 'set_max_processing_time_ms', backend: 'all', required: false, type: 'bigint' },
+		{ name: 'set_thread_count', backend: 'all', required: false, type: 'int' },
+		{ name: 'set_max_image_size', backend: 'all', required: false, type: 'int' },
+
+		// Processing functions
+		{ name: 'vectorize', backend: 'all', required: true, type: 'function', params: ['ImageData'] },
+		{
+			name: 'vectorize_with_progress',
+			backend: 'all',
+			required: false,
+			type: 'function',
+			params: ['ImageData', 'callback']
+		},
+		{ name: 'validate_config', backend: 'all', required: false, type: 'function' },
+		{ name: 'export_config', backend: 'all', required: false, type: 'function' },
+		{
+			name: 'import_config',
+			backend: 'all',
+			required: false,
+			type: 'function',
+			params: ['string']
+		},
+		{ name: 'use_preset', backend: 'all', required: false, type: 'function', params: ['string'] },
+
+		// Cleanup and control
+		{ name: 'abort_processing', backend: 'all', required: false, type: 'function' },
+		{ name: 'cleanup', backend: 'all', required: false, type: 'function' }
+	];
 }
 
 /**
  * Generate a browser-compatible introspection script
  */
 async function generateBrowserIntrospectionScript() {
-    const htmlContent = `<!DOCTYPE html>
+	const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -399,25 +490,25 @@ async function generateBrowserIntrospectionScript() {
 </body>
 </html>`;
 
-    const outputPath = join(__dirname, 'browser-introspect.html');
-    await fs.writeFile(outputPath, htmlContent);
-    
-    console.log(`📝 Browser introspection tool saved to: ${outputPath}`);
-    console.log('🌐 To use: Open this file in a browser alongside the converter page');
+	const outputPath = join(__dirname, 'browser-introspect.html');
+	await fs.writeFile(outputPath, htmlContent);
+
+	console.log(`📝 Browser introspection tool saved to: ${outputPath}`);
+	console.log('🌐 To use: Open this file in a browser alongside the converter page');
 }
 
 // Run introspection if called directly
 const currentFilePath = fileURLToPath(import.meta.url);
 if (currentFilePath === process.argv[1]) {
-    introspectWasmModule()
-        .then(report => {
-            console.log('\n✅ Introspection complete!');
-            console.log('📋 Check browser-introspect.html for detailed analysis');
-        })
-        .catch(error => {
-            console.error('\n❌ Introspection failed:', error);
-            process.exit(1);
-        });
+	introspectWasmModule()
+		.then((report) => {
+			console.log('\n✅ Introspection complete!');
+			console.log('📋 Check browser-introspect.html for detailed analysis');
+		})
+		.catch((error) => {
+			console.error('\n❌ Introspection failed:', error);
+			process.exit(1);
+		});
 }
 
 export { introspectWasmModule, getExpectedFunctions };
