@@ -1,49 +1,87 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { ArrowRight, Image, Zap, Download } from 'lucide-svelte';
+	import { onMount } from 'svelte';
+
+	// Intersection Observer for scroll animations
+	let observer: IntersectionObserver;
+
+	onMount(() => {
+		if (typeof window !== 'undefined') {
+			observer = new IntersectionObserver(
+				(entries) => {
+					entries.forEach((entry) => {
+						if (entry.isIntersecting) {
+							entry.target.classList.add('animate-fadeInUp');
+						}
+					});
+				},
+				{ threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+			);
+
+			// Observe all animation targets
+			const animationTargets = document.querySelectorAll('.animate-on-scroll');
+			animationTargets.forEach((target) => observer.observe(target));
+		}
+
+		return () => {
+			if (observer) {
+				observer.disconnect();
+			}
+		};
+	});
 </script>
 
 <div>
-	<!-- Hero Section with Gradient -->
-	<section class="bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 relative min-h-[90vh] overflow-hidden">
-		<!-- Animated background overlay -->
-		<div class="bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 animate-pulse absolute inset-0 opacity-20"></div>
-		<div class="absolute inset-0 bg-black/20"></div>
+	<!-- Enhanced Hero Section with Modern Gradients -->
+	<section class="relative min-h-[90vh] overflow-hidden">
+		<!-- Modern gradient background -->
+		<div class="absolute inset-0 bg-gradient-to-br from-indigo-100 via-white to-cyan-100"></div>
+		<div
+			class="absolute inset-0 bg-gradient-to-tr from-rose-100/50 via-transparent to-blue-100/50"
+		></div>
+
+		<!-- Animated gradient orbs -->
+		<div
+			class="absolute top-1/4 left-1/4 h-96 w-96 animate-pulse rounded-full bg-gradient-to-r from-blue-400/20 to-purple-400/20 blur-3xl"
+		></div>
+		<div
+			class="absolute right-1/3 bottom-1/3 h-80 w-80 animate-pulse rounded-full bg-gradient-to-r from-pink-400/20 to-red-400/20 blur-3xl delay-75"
+		></div>
+		<div
+			class="absolute top-1/2 right-1/4 h-64 w-64 animate-pulse rounded-full bg-gradient-to-r from-cyan-400/20 to-teal-400/20 blur-3xl delay-150"
+		></div>
 
 		<!-- Content -->
 		<div class="relative z-10 flex min-h-[90vh] items-center justify-center px-4 sm:px-6 lg:px-8">
 			<div class="mx-auto max-w-screen-xl">
 				<div class="text-center">
-					<h1
-						class="animate-fade-in text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl"
-					>
+					<h1 class="heading-hero animate-fade-in">
 						Transform Images into
-						<span
-							class="animate-gradient bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent"
-						>
-							SVG Art</span
-						>
+						<span class="heading-hero-accent animate-gradient-shift">SVG Art</span>
 					</h1>
-					<p
-						class="animate-slide-up mx-auto mt-8 max-w-3xl text-xl leading-relaxed text-gray-200 sm:text-2xl"
-					>
-						High-performance browser-based tool that converts images into expressive,
-						hand-drawn style graphics.
+					<p class="text-premium animate-slide-up mx-auto mt-8 max-w-3xl sm:text-2xl">
+						High-performance browser-based tool that converts images into expressive, hand-drawn
+						style graphics.
 					</p>
-					<div class="mt-12 flex flex-col gap-6 sm:flex-row sm:justify-center">
+					<div
+						class="animate-slide-up mt-12 flex flex-col gap-6 delay-200 sm:flex-row sm:justify-center"
+					>
 						<Button
 							href="/converter"
 							size="lg"
-							class="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white transform gap-2 px-8 py-4 text-lg shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+							class="btn-ferrari-primary group transform px-10 py-5 text-xl shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:shadow-2xl"
 						>
 							Start Converting
-							<ArrowRight class="h-5 w-5" />
+							<ArrowRight
+								class="h-6 w-6 transition-transform group-hover:translate-x-2 group-hover:scale-110"
+							/>
 						</Button>
 						<Button
 							href="/gallery"
 							variant="outline"
 							size="lg"
-							class="border-white/30 px-8 py-4 text-lg text-white transition-all duration-300 hover:border-white/50 hover:bg-white/10"
+							class="btn-ferrari-secondary transform px-10 py-5 text-xl transition-all duration-300 hover:-translate-y-1"
 						>
 							View Gallery
 						</Button>
@@ -51,116 +89,101 @@
 				</div>
 			</div>
 		</div>
-
-		<!-- Decorative elements -->
-		<div class="absolute top-1/4 left-1/4 h-72 w-72 rounded-full bg-purple-500/10 blur-3xl"></div>
-		<div class="absolute right-1/4 bottom-1/4 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl"></div>
 	</section>
 
-	<!-- Features Section -->
-	<section class="bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 relative py-24 sm:py-32">
+	<!-- Enhanced Features Section -->
+	<section class="bg-section-elevated animate-on-scroll relative py-24 sm:py-32">
 		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
-			<div class="mb-20 text-center">
-				<h2
-					class="bg-gradient-to-r from-orange-800 to-red-700 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl dark:from-purple-400 dark:to-blue-400"
-				>
-					Why vec2art?
+			<div class="animate-on-scroll mb-20 text-center">
+				<h2 class="heading-section">
+					Why <span class="text-gradient-modern">vec2art?</span>
 				</h2>
-				<p class="mx-auto mt-6 max-w-3xl text-xl text-gray-600 dark:text-gray-300">
+				<p class="text-premium mx-auto mt-6 max-w-3xl">
 					Modern image processing with cutting-edge speed in your browser
 				</p>
 			</div>
 
 			<div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-				<div
-					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative transform rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
-				>
+				<div class="card-ferrari-interactive animate-on-scroll group rounded-3xl p-10">
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="icon-ferrari-bg mx-auto flex h-20 w-20 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 						>
-							<Zap class="h-8 w-8 text-white" />
+							<Zap class="h-10 w-10 text-white" />
 						</div>
-						<h3 class="mt-6 text-2xl font-bold text-gray-900 dark:text-white">
-							Ultra-Fast Processing
-						</h3>
-						<p class="mt-4 leading-relaxed text-gray-600 dark:text-gray-300">
+						<h3 class="text-speed-gray-900 mt-6 text-2xl font-bold">Ultra-Fast Processing</h3>
+						<p class="text-speed-gray-600 mt-4 leading-relaxed">
 							Process images quickly using your system's local computation with WASM technology for
 							blazing-fast results
 						</p>
 					</div>
+					<!-- Dynamic hover overlay -->
 					<div
-						class="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 					></div>
 				</div>
 
-				<div
-					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative transform rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
-				>
+				<div class="card-ferrari-interactive animate-on-scroll group rounded-3xl p-10 delay-100">
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="icon-ferrari-bg mx-auto flex h-20 w-20 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 						>
-							<Image class="h-8 w-8 text-white" />
+							<Image class="h-10 w-10 text-white" />
 						</div>
-						<h3 class="mt-6 text-2xl font-bold text-gray-900 dark:text-white">Artistic Outputs</h3>
-						<p class="mt-4 leading-relaxed text-gray-600 dark:text-gray-300">
+						<h3 class="text-speed-gray-900 mt-6 text-2xl font-bold">Artistic Outputs</h3>
+						<p class="text-speed-gray-600 mt-4 leading-relaxed">
 							Advanced algorithms with hand-drawn aesthetics, variable weights, and artistic tremor
 							for beautiful results
 						</p>
 					</div>
+					<!-- Dynamic hover overlay -->
 					<div
-						class="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 					></div>
 				</div>
 
 				<div
-					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative transform rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl sm:col-span-2 lg:col-span-1 dark:border-gray-700/50"
+					class="card-ferrari-interactive animate-on-scroll group rounded-3xl p-10 delay-200 sm:col-span-2 lg:col-span-1"
 				>
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="icon-ferrari-bg mx-auto flex h-20 w-20 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 						>
-							<Download class="h-8 w-8 text-white" />
+							<Download class="h-10 w-10 text-white" />
 						</div>
-						<h3 class="mt-6 text-2xl font-bold text-gray-900 dark:text-white">
-							Multiple Export Options
-						</h3>
-						<p class="mt-4 leading-relaxed text-gray-600 dark:text-gray-300">
+						<h3 class="text-speed-gray-900 mt-6 text-2xl font-bold">Multiple Export Options</h3>
+						<p class="text-speed-gray-600 mt-4 leading-relaxed">
 							Convert multiple images in parallel with support for PNG, JPEG, and WebP formats
 						</p>
 					</div>
+					<!-- Dynamic hover overlay -->
 					<div
-						class="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-500/5 to-blue-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 					></div>
 				</div>
 			</div>
 		</div>
 	</section>
 
-	<!-- Algorithm Backends -->
-	<section class="bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 relative py-24 sm:py-32">
+	<!-- Enhanced Algorithm Backends -->
+	<section class="bg-section-premium animate-on-scroll relative py-24 sm:py-32">
 		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
-			<div class="mb-16 text-center">
-				<h2
-					class="bg-gradient-to-r from-orange-800 to-red-700 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl dark:from-purple-400 dark:to-blue-400"
-				>
-					Conversion Pipeline
+			<div class="animate-on-scroll mb-16 text-center">
+				<h2 class="heading-section">
+					Conversion <span class="text-gradient-modern">Pipeline</span>
 				</h2>
-				<p class="mx-auto mt-6 max-w-3xl text-xl text-orange-800 dark:text-gray-300">
+				<p class="text-premium mx-auto mt-6 max-w-3xl">
 					Choose the perfect algorithm for your image type and artistic vision
 				</p>
 			</div>
 
 			<div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-				<div
-					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
-				>
+				<div class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8">
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 						>
-							<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg class="h-9 w-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -169,17 +192,16 @@
 								></path>
 							</svg>
 						</div>
-						<h3 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-							Centerline Tracing
-						</h3>
-						<p class="leading-relaxed text-gray-600 dark:text-gray-300">
+						<h3 class="text-speed-gray-900 mb-4 text-2xl font-bold">Centerline Tracing</h3>
+						<p class="text-speed-gray-600 leading-relaxed">
 							Zhang-Suen algorithm for bold shapes and logos with precise paths
 						</p>
 					</div>
+					<!-- Dynamic hover overlay -->
 					<div
-						class="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 					></div>
-					<div class="mt-auto flex items-center pt-6 text-sm font-medium text-orange-600">
+					<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
 						<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
 							<path
 								fill-rule="evenodd"
@@ -192,13 +214,13 @@
 				</div>
 
 				<div
-					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
+					class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-100"
 				>
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 						>
-							<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg class="h-9 w-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -207,15 +229,16 @@
 								></path>
 							</svg>
 						</div>
-						<h3 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">Dot Mapping</h3>
-						<p class="leading-relaxed text-gray-600 dark:text-gray-300">
+						<h3 class="text-speed-gray-900 mb-4 text-2xl font-bold">Dot Mapping</h3>
+						<p class="text-speed-gray-600 leading-relaxed">
 							Adaptive stippling for artistic textures and vintage effects
 						</p>
 					</div>
+					<!-- Dynamic hover overlay -->
 					<div
-						class="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 					></div>
-					<div class="mt-auto flex items-center pt-6 text-sm font-medium text-orange-600">
+					<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
 						<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
 							<path
 								fill-rule="evenodd"
@@ -228,13 +251,13 @@
 				</div>
 
 				<div
-					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-gray-700/50"
+					class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-200"
 				>
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 						>
-							<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg class="h-9 w-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -243,15 +266,16 @@
 								></path>
 							</svg>
 						</div>
-						<h3 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">Line Tracing</h3>
-						<p class="leading-relaxed text-gray-600 dark:text-gray-300">
+						<h3 class="text-speed-gray-900 mb-4 text-2xl font-bold">Line Tracing</h3>
+						<p class="text-speed-gray-600 leading-relaxed">
 							Canny edge detection for detailed line art and sketches
 						</p>
 					</div>
+					<!-- Dynamic hover overlay -->
 					<div
-						class="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-500/5 to-blue-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 					></div>
-					<div class="mt-auto flex items-center pt-6 text-sm font-medium text-orange-600">
+					<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
 						<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
 							<path
 								fill-rule="evenodd"
@@ -264,13 +288,13 @@
 				</div>
 
 				<div
-					class="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative flex transform flex-col rounded-2xl border border-gray-200/50 p-8 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl lg:col-span-1 dark:border-gray-700/50"
+					class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-300 lg:col-span-1"
 				>
 					<div class="relative">
 						<div
-							class="bg-gradient-to-r from-purple-500 to-blue-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+							class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 						>
-							<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg class="h-9 w-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -279,17 +303,16 @@
 								></path>
 							</svg>
 						</div>
-						<h3 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-							Superpixel
-						</h3>
-						<p class="leading-relaxed text-gray-600 dark:text-gray-300">
+						<h3 class="text-speed-gray-900 mb-4 text-2xl font-bold">Superpixel</h3>
+						<p class="text-speed-gray-600 leading-relaxed">
 							SLIC segmentation for stylized and abstract art
 						</p>
 					</div>
+					<!-- Dynamic hover overlay -->
 					<div
-						class="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 					></div>
-					<div class="mt-auto flex items-center pt-6 text-sm font-medium text-orange-600">
+					<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
 						<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
 							<path
 								fill-rule="evenodd"
@@ -305,10 +328,10 @@
 	</section>
 
 	<!-- Footer -->
-	<footer class="bg-gradient-to-b from-gray-900 to-black relative text-white">
-		<!-- Gentle tint overlay (now with a middle stop + lower alpha) -->
+	<footer class="bg-speed-gray-900 relative text-white">
+		<!-- Clean premium overlay -->
 		<div
-			class="pointer-events-none absolute inset-0 bg-gradient-to-r from-purple-900/10 via-indigo-900/8 to-blue-900/10"
+			class="from-speed-gray-800/20 via-speed-gray-900/10 to-speed-gray-800/20 pointer-events-none absolute inset-0 bg-gradient-to-r"
 		></div>
 
 		<!-- Main Footer Content -->
@@ -319,7 +342,7 @@
 					<div class="lg:col-span-1">
 						<div class="mb-6 flex items-center">
 							<h3
-								class="bg-gradient-to-r from-orange-400 via-yellow-400 to-orange-300 bg-clip-text text-3xl font-bold text-transparent"
+								class="footer-gradient-text text-3xl font-bold"
 							>
 								vec2art
 							</h3>

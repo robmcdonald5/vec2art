@@ -29,14 +29,22 @@
 
 <div class="flex min-h-dvh flex-col">
 	<header
-		class="sticky top-0 z-50 border-b border-gray-800/50 bg-black/95 shadow-lg backdrop-blur-md transition-all duration-200 supports-[backdrop-filter]:bg-black/90"
+		class="border-speed-gray-200/50 bg-nav-clean sticky top-0 z-50 border-b shadow-sm backdrop-blur-xl transition-all duration-200 supports-[backdrop-filter]:bg-white/95"
 	>
+		<!-- Ferrari accent line -->
+		<div
+			class="via-ferrari-500/30 absolute right-0 bottom-0 left-0 h-0.5 bg-gradient-to-r from-transparent to-transparent"
+		></div>
+
 		<div
 			class="mx-auto flex h-14 w-full max-w-screen-xl items-center justify-between px-4 md:h-16 md:px-6 lg:px-8"
 		>
-			<a href="/" class="flex items-center font-semibold transition-opacity hover:opacity-80">
+			<a
+				href="/"
+				class="hover:animate-ferrari-glow flex items-center font-semibold transition-all duration-300"
+			>
 				<span
-					class="bg-gradient-to-r from-orange-400 via-yellow-400 to-orange-300 bg-clip-text text-xl font-bold text-transparent md:text-2xl"
+					class="footer-gradient-text text-3xl font-bold md:text-3xl"
 				>
 					vec2art
 				</span>
@@ -45,46 +53,46 @@
 				<div class="hidden items-center gap-2 md:flex">
 					<a
 						href="/converter"
-						class="relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-black focus:outline-none md:text-base {$page
+						class="focus:ring-ferrari-500 relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:outline-none md:text-base {$page
 							.url.pathname === '/converter'
-							? 'border border-orange-400/30 bg-orange-400/10 text-orange-400'
-							: 'border border-transparent text-gray-400 hover:bg-white/5 hover:text-white'}"
+							? 'border-ferrari-500/30 bg-ferrari-50 text-ferrari-600 border'
+							: 'text-speed-gray-600 hover:bg-speed-gray-50 hover:text-speed-gray-900 border border-transparent'}"
 						aria-current={$page.url.pathname === '/converter' ? 'page' : undefined}
 					>
 						Converter
 						{#if $page.url.pathname === '/converter'}
 							<span
-								class="absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-orange-400"
+								class="bg-ferrari-500 animate-speed-pulse absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
 							></span>
 						{/if}
 					</a>
 					<a
 						href="/gallery"
-						class="relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-black focus:outline-none md:text-base {$page
+						class="focus:ring-ferrari-500 relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:outline-none md:text-base {$page
 							.url.pathname === '/gallery'
-							? 'border border-orange-400/30 bg-orange-400/10 text-orange-400'
-							: 'border border-transparent text-gray-400 hover:bg-white/5 hover:text-white'}"
+							? 'border-ferrari-500/30 bg-ferrari-50 text-ferrari-600 border'
+							: 'text-speed-gray-600 hover:bg-speed-gray-50 hover:text-speed-gray-900 border border-transparent'}"
 						aria-current={$page.url.pathname === '/gallery' ? 'page' : undefined}
 					>
 						Gallery
 						{#if $page.url.pathname === '/gallery'}
 							<span
-								class="absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-orange-400"
+								class="bg-ferrari-500 animate-speed-pulse absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
 							></span>
 						{/if}
 					</a>
 					<a
 						href="/about"
-						class="relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-black focus:outline-none md:text-base {$page
+						class="focus:ring-ferrari-500 relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:outline-none md:text-base {$page
 							.url.pathname === '/about'
-							? 'border border-orange-400/30 bg-orange-400/10 text-orange-400'
-							: 'border border-transparent text-gray-400 hover:bg-white/5 hover:text-white'}"
+							? 'border-ferrari-500/30 bg-ferrari-50 text-ferrari-600 border'
+							: 'text-speed-gray-600 hover:bg-speed-gray-50 hover:text-speed-gray-900 border border-transparent'}"
 						aria-current={$page.url.pathname === '/about' ? 'page' : undefined}
 					>
 						About
 						{#if $page.url.pathname === '/about'}
 							<span
-								class="absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-orange-400"
+								class="bg-ferrari-500 animate-speed-pulse absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
 							></span>
 						{/if}
 					</a>
@@ -93,7 +101,7 @@
 					href="/converter"
 					variant="default"
 					size="sm"
-					class="h-10 border-0 bg-gradient-to-r from-orange-500 to-yellow-500 px-6 font-semibold text-white shadow-lg shadow-orange-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:from-orange-600 hover:to-yellow-600 hover:shadow-xl hover:shadow-orange-500/30"
+					class="btn-ferrari-primary shadow-ferrari-500/25 hover:animate-quick-lift h-10 px-6 shadow-lg"
 				>
 					Get Started
 				</Button>
