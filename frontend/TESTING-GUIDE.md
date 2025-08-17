@@ -23,7 +23,34 @@ This document provides comprehensive guidance on using all available testing too
 npm install
 ```
 
-### Run All Tests
+### Using the `/frontend-ci` Command (Recommended)
+
+The project includes a custom `/frontend-ci` slash command that provides a streamlined, token-efficient way to run CI checks and tests:
+
+```bash
+# Quick validation (formatting, linting, type-check)
+/frontend-ci quick
+
+# Standard CI checks (includes tests and build)
+/frontend-ci
+
+# Full CI pipeline (includes E2E and supply chain)
+/frontend-ci full
+
+# Run specific test suites
+/frontend-ci test              # Unit tests
+/frontend-ci test coverage      # With coverage
+/frontend-ci test e2e          # E2E tests
+/frontend-ci test accessibility # A11y tests
+
+# Development mode with watching
+/frontend-ci watch
+```
+
+### Manual Test Commands
+
+You can also run tests directly using npm scripts:
+
 ```bash
 # Run all unit tests
 npm test
@@ -643,51 +670,79 @@ npm run check:watch
 ## 🔄 CI/CD Testing
 
 ### Overview
-Automated testing in GitHub Actions with comprehensive quality gates.
+Automated testing in GitHub Actions with comprehensive quality gates. The local CI pipeline can be replicated using the `/frontend-ci` command.
 
-### CI Workflows
+### Using the `/frontend-ci` Command
 
-#### Frontend CI Pipeline
+The `/frontend-ci` command provides a complete local CI simulation with multiple modes:
+
+#### Command Modes
+- **`quick`** - Fast validation (formatting, linting, type-check)
+- **`standard`** - Complete CI validation (default)
+- **`full`** - Everything including E2E and supply chain checks
+- **`test`** - Run specific test suites
+- **`watch`** - Development mode with file watching
+
+#### Examples
 ```bash
-# Simulates CI environment locally
-NODE_ENV=test CI=true npm run ci:test
+# Simulate full CI pipeline locally
+/frontend-ci full
+
+# Quick pre-commit validation
+/frontend-ci quick
+
+# Standard CI with skip options
+/frontend-ci standard --skip-build
+
+# Test-specific runs
+/frontend-ci test coverage
+/frontend-ci test e2e
 ```
 
-#### Workflow Files
+### CI Test Stages
+
+The `/frontend-ci` command executes these stages based on the selected mode:
+
+#### 1. Quality Gates
+- **Formatting** - Prettier validation
+- **Linting** - ESLint with zero warnings
+- **Type Checking** - TypeScript and SvelteKit sync
+
+#### 2. Testing
+- **Unit Tests** - Vitest with coverage
+- **E2E Tests** - Playwright (full mode)
+- **Accessibility** - A11y compliance checks
+
+#### 3. Build & Validation
+- **Production Build** - Full build verification
+- **Preview Smoke Test** - Optional runtime validation
+- **Supply Chain Audit** - Security and dependencies (full mode)
+
+### Manual CI Commands
+
+For direct control, you can run individual CI steps:
+
+```bash
+# Quality gates
+npm run format:check    # Code formatting
+npm run lint           # Linting
+npm run type-check     # TypeScript
+
+# Testing
+npm run test:coverage  # Unit tests with coverage
+npm run test:e2e       # Cross-browser E2E tests
+npm run test:accessibility  # A11y compliance
+
+# Build
+npm run build          # Production build
+```
+
+### CI Workflow Files
 ```
 .github/workflows/
 ├── frontend-ci.yml       # Main CI pipeline
 ├── e2e-tests.yml         # E2E testing matrix
 └── storybook.yml         # Storybook deployment
-```
-
-### CI Test Stages
-
-#### 1. Quality Gates
-```bash
-npm run format:check    # Code formatting
-npm run lint           # Linting
-npm run type-check     # TypeScript
-```
-
-#### 2. Unit Testing
-```bash
-npm run test:coverage  # Unit tests with coverage
-```
-
-#### 3. Build Verification
-```bash
-npm run build          # Production build
-```
-
-#### 4. E2E Testing
-```bash
-npm run test:e2e       # Cross-browser E2E tests
-```
-
-#### 5. Accessibility Audit
-```bash
-npm run test:accessibility  # A11y compliance
 ```
 
 ### CI Environment Variables
@@ -890,7 +945,49 @@ When adding new features:
 
 ## 🎯 Quick Reference
 
+### `/frontend-ci` Command Reference
+
+#### Modes
+- **`quick`** - Formatting, linting, type-check only
+- **`standard`** - Full CI validation (default)
+- **`full`** - Complete pipeline with E2E and audits
+- **`test [type]`** - Run specific test suite
+- **`watch`** - Development mode with watching
+
+#### Test Types (for `test` mode)
+- `unit` - Unit tests
+- `coverage` - Tests with coverage
+- `e2e` - End-to-end tests
+- `accessibility` - A11y tests
+- `storybook` - Storybook tests
+- `wasm` - WASM tests
+- `performance` - Performance tests
+
+#### Skip Flags
+- `--skip-build` - Skip build step
+- `--skip-tests` - Skip test execution
+- `--skip-lint` - Skip linting
+- `--skip-format` - Skip format check
+
 ### Most Common Commands
+
+#### Using `/frontend-ci`
+```bash
+# Quick checks before commit
+/frontend-ci quick
+
+# Full validation before PR
+/frontend-ci
+
+# Development with watching
+/frontend-ci watch
+
+# Specific test runs
+/frontend-ci test coverage
+/frontend-ci test e2e
+```
+
+#### Direct npm Commands
 ```bash
 # Development testing
 npm test                    # Unit tests
@@ -906,9 +1003,6 @@ npm run test:coverage      # Coverage report
 npm run test:e2e           # Full E2E suite
 npm run test:accessibility # A11y tests
 npm run test:e2e:core      # Core workflows
-
-# CI simulation
-npm run ci:test            # Full CI pipeline
 ```
 
 This testing guide provides comprehensive coverage of all testing tools and utilities available in the vec2art frontend. Each tool serves a specific purpose in ensuring code quality, functionality, and user experience.
