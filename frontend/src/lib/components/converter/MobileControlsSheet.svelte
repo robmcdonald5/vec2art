@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { X, Settings, ChevronUp, ChevronDown } from 'lucide-svelte';
-	import type { VectorizerConfig, VectorizerPreset, VectorizerBackend } from '$lib/types/vectorizer';
+	import type {
+		VectorizerConfig,
+		VectorizerPreset,
+		VectorizerBackend
+	} from '$lib/types/vectorizer';
 	import BackendSelector from './BackendSelector.svelte';
 	import PresetSelector from './PresetSelector.svelte';
 	import ParameterPanel from './ParameterPanel.svelte';

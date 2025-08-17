@@ -2,14 +2,14 @@
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte';
-	
+
 	// Dev panel state
 	let isExpanded = $state(false);
 	let introspectionResults = $state<any>(null);
 	let validationResults = $state<any[]>([]);
 	let functionTestResults = $state<any[]>([]);
 	let isRunningTests = $state(false);
-	
+
 	// Expected WASM functions from our introspection tool
 	const expectedFunctions = [
 		// Core functions (all backends)
@@ -17,13 +17,31 @@
 		{ name: 'set_stroke_width', backend: 'all', required: true, type: 'float', range: '0.1-10.0' },
 		{ name: 'set_noise_filtering', backend: 'all', required: true, type: 'bool' },
 		{ name: 'set_backend', backend: 'all', required: true, type: 'string' },
-		
+
 		// Hand-drawn aesthetics (most backends)
 		{ name: 'set_hand_drawn_preset', backend: 'all', required: true, type: 'string' },
-		{ name: 'set_custom_variable_weights', backend: 'edge,centerline,superpixel', required: false, type: 'float', range: '0.0-1.0' },
-		{ name: 'set_custom_tremor', backend: 'edge,centerline,superpixel', required: false, type: 'float', range: '0.0-0.5' },
-		{ name: 'set_tapering', backend: 'edge,centerline,superpixel', required: false, type: 'float', range: '0.0-1.0' },
-		
+		{
+			name: 'set_custom_variable_weights',
+			backend: 'edge,centerline,superpixel',
+			required: false,
+			type: 'float',
+			range: '0.0-1.0'
+		},
+		{
+			name: 'set_custom_tremor',
+			backend: 'edge,centerline,superpixel',
+			required: false,
+			type: 'float',
+			range: '0.0-0.5'
+		},
+		{
+			name: 'set_tapering',
+			backend: 'edge,centerline,superpixel',
+			required: false,
+			type: 'float',
+			range: '0.0-1.0'
+		},
+
 		// Edge backend specific
 		{ name: 'set_multipass', backend: 'edge', required: true, type: 'bool' },
 		{ name: 'set_reverse_pass', backend: 'edge', required: false, type: 'bool' },
@@ -31,51 +49,123 @@
 		{ name: 'set_enable_etf_fdog', backend: 'edge', required: false, type: 'bool' },
 		{ name: 'set_enable_flow_tracing', backend: 'edge', required: false, type: 'bool' },
 		{ name: 'set_enable_bezier_fitting', backend: 'edge', required: false, type: 'bool' },
-		
+
 		// Centerline backend specific
 		{ name: 'set_enable_adaptive_threshold', backend: 'centerline', required: false, type: 'bool' },
-		{ name: 'set_window_size', backend: 'centerline', required: false, type: 'int', range: '15-50' },
-		{ name: 'set_sensitivity_k', backend: 'centerline', required: false, type: 'float', range: '0.1-1.0' },
-		{ name: 'set_min_branch_length', backend: 'centerline', required: false, type: 'int', range: '4-24' },
+		{
+			name: 'set_window_size',
+			backend: 'centerline',
+			required: false,
+			type: 'int',
+			range: '15-50'
+		},
+		{
+			name: 'set_sensitivity_k',
+			backend: 'centerline',
+			required: false,
+			type: 'float',
+			range: '0.1-1.0'
+		},
+		{
+			name: 'set_min_branch_length',
+			backend: 'centerline',
+			required: false,
+			type: 'int',
+			range: '4-24'
+		},
 		{ name: 'set_enable_width_modulation', backend: 'centerline', required: false, type: 'bool' },
-		{ name: 'set_douglas_peucker_epsilon', backend: 'centerline', required: false, type: 'float', range: '0.5-3.0' },
-		
+		{
+			name: 'set_douglas_peucker_epsilon',
+			backend: 'centerline',
+			required: false,
+			type: 'float',
+			range: '0.5-3.0'
+		},
+
 		// Superpixel backend specific
-		{ name: 'set_num_superpixels', backend: 'superpixel', required: false, type: 'int', range: '20-1000' },
-		{ name: 'set_compactness', backend: 'superpixel', required: false, type: 'float', range: '1-50' },
-		{ name: 'set_slic_iterations', backend: 'superpixel', required: false, type: 'int', range: '5-15' },
+		{
+			name: 'set_num_superpixels',
+			backend: 'superpixel',
+			required: false,
+			type: 'int',
+			range: '20-1000'
+		},
+		{
+			name: 'set_compactness',
+			backend: 'superpixel',
+			required: false,
+			type: 'float',
+			range: '1-50'
+		},
+		{
+			name: 'set_slic_iterations',
+			backend: 'superpixel',
+			required: false,
+			type: 'int',
+			range: '5-15'
+		},
 		{ name: 'set_fill_regions', backend: 'superpixel', required: false, type: 'bool' },
 		{ name: 'set_stroke_regions', backend: 'superpixel', required: false, type: 'bool' },
 		{ name: 'set_simplify_boundaries', backend: 'superpixel', required: false, type: 'bool' },
-		{ name: 'set_boundary_epsilon', backend: 'superpixel', required: false, type: 'float', range: '0.5-3.0' },
-		
+		{
+			name: 'set_boundary_epsilon',
+			backend: 'superpixel',
+			required: false,
+			type: 'float',
+			range: '0.5-3.0'
+		},
+
 		// Dots backend specific
 		{ name: 'set_dot_density', backend: 'dots', required: false, type: 'float', range: '0.0-1.0' },
-		{ name: 'set_dot_size_range', backend: 'dots', required: false, type: 'function', params: ['min_radius', 'max_radius'] },
+		{
+			name: 'set_dot_size_range',
+			backend: 'dots',
+			required: false,
+			type: 'function',
+			params: ['min_radius', 'max_radius']
+		},
 		{ name: 'set_preserve_colors', backend: 'dots', required: false, type: 'bool' },
 		{ name: 'set_adaptive_sizing', backend: 'dots', required: false, type: 'bool' },
-		{ name: 'set_background_tolerance', backend: 'dots', required: false, type: 'float', range: '0.0-1.0' },
+		{
+			name: 'set_background_tolerance',
+			backend: 'dots',
+			required: false,
+			type: 'float',
+			range: '0.0-1.0'
+		},
 		{ name: 'set_poisson_disk_sampling', backend: 'dots', required: false, type: 'bool' },
 		{ name: 'set_gradient_based_sizing', backend: 'dots', required: false, type: 'bool' },
-		
+
 		// Global output settings
 		{ name: 'set_svg_precision', backend: 'all', required: false, type: 'int', range: '0-4' },
 		{ name: 'set_optimize_svg', backend: 'all', required: false, type: 'bool' },
 		{ name: 'set_include_metadata', backend: 'all', required: false, type: 'bool' },
-		
+
 		// Performance settings
 		{ name: 'set_max_processing_time_ms', backend: 'all', required: false, type: 'bigint' },
 		{ name: 'set_thread_count', backend: 'all', required: false, type: 'int' },
 		{ name: 'set_max_image_size', backend: 'all', required: false, type: 'int' },
-		
+
 		// Processing functions
 		{ name: 'vectorize', backend: 'all', required: true, type: 'function', params: ['ImageData'] },
-		{ name: 'vectorize_with_progress', backend: 'all', required: false, type: 'function', params: ['ImageData', 'callback'] },
+		{
+			name: 'vectorize_with_progress',
+			backend: 'all',
+			required: false,
+			type: 'function',
+			params: ['ImageData', 'callback']
+		},
 		{ name: 'validate_config', backend: 'all', required: false, type: 'function' },
 		{ name: 'export_config', backend: 'all', required: false, type: 'function' },
-		{ name: 'import_config', backend: 'all', required: false, type: 'function', params: ['string'] },
+		{
+			name: 'import_config',
+			backend: 'all',
+			required: false,
+			type: 'function',
+			params: ['string']
+		},
 		{ name: 'use_preset', backend: 'all', required: false, type: 'function', params: ['string'] },
-		
+
 		// Cleanup and control
 		{ name: 'abort_processing', backend: 'all', required: false, type: 'function' },
 		{ name: 'cleanup', backend: 'all', required: false, type: 'function' }
@@ -95,7 +185,7 @@
 
 		// Base configurations for each backend with only core functions
 		const backends = ['edge', 'centerline', 'superpixel', 'dots'];
-		
+
 		for (const backend of backends) {
 			// Minimal configuration with only core parameters
 			const minimalConfig: any = {
@@ -168,7 +258,9 @@
 			configs.push(enhancedConfig);
 		}
 
-		console.log(`[DevTestingPanel] Generated ${configs.length} dynamic test configurations based on available functions`);
+		console.log(
+			`[DevTestingPanel] Generated ${configs.length} dynamic test configurations based on available functions`
+		);
 		return configs;
 	}
 
@@ -203,7 +295,7 @@
 				hand_drawn_preset: 'medium'
 				// IMPORTANT: No explicit variable_weights/tremor_strength - let preset handle it
 			},
-			
+
 			// Centerline backend tests (many functions missing)
 			{
 				name: 'centerline-minimal',
@@ -215,7 +307,7 @@
 				hand_drawn_preset: 'none'
 				// IMPORTANT: No hand-drawn parameters when preset is 'none'
 			},
-			
+
 			// Dots backend tests (some functions missing)
 			{
 				name: 'dots-minimal',
@@ -227,7 +319,7 @@
 				hand_drawn_preset: 'none'
 				// IMPORTANT: Only core parameters, absolutely no hand-drawn effects
 			},
-			
+
 			// Superpixel backend test (all functions missing)
 			{
 				name: 'superpixel-minimal',
@@ -243,13 +335,15 @@
 	}
 
 	// Use dynamic configurations if introspection data is available, otherwise fallback to static
-	const quickTestConfigurations = $derived(introspectionResults ? 
-		generateDynamicTestConfigurations(introspectionResults) : 
-		getStaticTestConfigurations());
+	const quickTestConfigurations = $derived(
+		introspectionResults
+			? generateDynamicTestConfigurations(introspectionResults)
+			: getStaticTestConfigurations()
+	);
 
 	async function runIntrospection() {
 		const store = vectorizerStore;
-		
+
 		try {
 			// Ensure service is initialized
 			if (!store.vectorizerService) {
@@ -259,10 +353,10 @@
 			// For lazy initialization, we need to create the vectorizer instance first
 			// Try to get the instance, and if it doesn't exist, trigger creation by running a basic configure
 			let wasmModule = store.vectorizerService.getVectorizerInstance();
-			
+
 			if (!wasmModule) {
 				console.log('🔧 Vectorizer instance not created yet, triggering lazy initialization...');
-				
+
 				// Trigger vectorizer creation by running a minimal configuration
 				await store.vectorizerService.configure({
 					backend: 'edge',
@@ -282,13 +376,13 @@
 					tremor_strength: 0.0,
 					tapering: 0.0
 				});
-				
+
 				wasmModule = store.vectorizerService.getVectorizerInstance();
-				
+
 				if (!wasmModule) {
 					throw new Error('Failed to create vectorizer instance during lazy initialization.');
 				}
-				
+
 				console.log('✅ Vectorizer instance created successfully');
 			}
 
@@ -296,13 +390,12 @@
 
 			const results = analyzeWasmModule(wasmModule);
 			introspectionResults = results;
-			
+
 			// Also expose to global scope for easier debugging
 			if (typeof window !== 'undefined') {
 				(window as any).wasmModule = wasmModule;
 				(window as any).introspectionResults = results;
 			}
-			
 		} catch (error) {
 			console.error('Introspection failed:', error);
 			introspectionResults = {
@@ -353,7 +446,7 @@
 		}
 
 		// Find unexpected functions
-		const expectedNames = new Set(expectedFunctions.map(f => f.name));
+		const expectedNames = new Set(expectedFunctions.map((f) => f.name));
 		for (const prop of results.properties) {
 			if (typeof wasmModule[prop] === 'function' && !expectedNames.has(prop)) {
 				results.functions.unexpected.push({
@@ -378,9 +471,9 @@
 	async function runQuickValidation() {
 		isRunningTests = true;
 		validationResults = [];
-		
+
 		const store = vectorizerStore;
-		
+
 		try {
 			// Ensure service is available
 			if (!store.vectorizerService) {
@@ -395,12 +488,12 @@
 					error: null as string | null,
 					timestamp: new Date().toISOString()
 				};
-				
+
 				try {
 					// Reset configuration to clean state before each test
 					console.log(`🔄 Resetting configuration for test: ${config.name}`);
 					await store.vectorizerService.resetConfiguration();
-					
+
 					// Try to configure the service with this test config
 					console.log(`🧪 Testing config: ${config.name}`, config);
 					await store.vectorizerService.configure(config as any);
@@ -409,7 +502,7 @@
 				} catch (error) {
 					result.status = 'failed';
 					console.error(`❌ Config ${config.name} failed:`, error);
-					
+
 					// Enhanced error reporting
 					if (error instanceof Error) {
 						result.error = `${error.name}: ${error.message}`;
@@ -422,7 +515,7 @@
 						result.error = String(error);
 					}
 				}
-				
+
 				validationResults.push(result);
 				// Force reactivity update
 				validationResults = [...validationResults];
@@ -437,14 +530,14 @@
 	async function testFunctionAvailability() {
 		const store = vectorizerStore;
 		functionTestResults = [];
-		
+
 		if (!store.vectorizerService) {
 			console.error('Vectorizer service not available');
 			return;
 		}
 
 		let wasmModule = store.vectorizerService.getVectorizerInstance();
-		
+
 		if (!wasmModule) {
 			console.log('🔧 Creating vectorizer instance for function testing...');
 			await store.vectorizerService.configure({
@@ -484,7 +577,7 @@
 		await store.vectorizerService.resetConfiguration();
 
 		console.log('🧪 Testing individual function calls...');
-		
+
 		// Test individual function calls with safe values
 		// IMPORTANT: Don't test custom hand-drawn parameters when preset is 'none'
 		const functionTests = [
@@ -500,8 +593,16 @@
 
 		// Test hand-drawn functionality separately with proper preset
 		const handDrawnTests = [
-			{ name: 'set_hand_drawn_preset', args: ['medium'], description: 'Set hand-drawn preset to medium' },
-			{ name: 'set_custom_variable_weights', args: [0.3], description: 'Set variable weights with preset' },
+			{
+				name: 'set_hand_drawn_preset',
+				args: ['medium'],
+				description: 'Set hand-drawn preset to medium'
+			},
+			{
+				name: 'set_custom_variable_weights',
+				args: [0.3],
+				description: 'Set variable weights with preset'
+			},
 			{ name: 'set_custom_tremor', args: [0.2], description: 'Set tremor strength with preset' },
 			{ name: 'validate_config', args: [], description: 'Validate hand-drawn configuration' },
 			{ name: 'export_config', args: [], description: 'Export hand-drawn configuration' }
@@ -601,27 +702,35 @@
 
 		const recommendations = [];
 		const missing = introspectionResults.functions?.missing || [];
-		
+
 		// Critical missing functions
 		const criticalMissing = missing.filter((f: any) => f.required);
 		if (criticalMissing.length > 0) {
-			recommendations.push(`Implement ${criticalMissing.length} critical missing functions: ${criticalMissing.map((f: any) => f.name).join(', ')}`);
+			recommendations.push(
+				`Implement ${criticalMissing.length} critical missing functions: ${criticalMissing.map((f: any) => f.name).join(', ')}`
+			);
 		}
 
 		// Backend-specific issues
 		const centerlineMissing = missing.filter((f: any) => f.backend === 'centerline');
 		if (centerlineMissing.length > 0) {
-			recommendations.push(`Centerline backend unusable: ${centerlineMissing.length} functions missing`);
+			recommendations.push(
+				`Centerline backend unusable: ${centerlineMissing.length} functions missing`
+			);
 		}
 
 		const superpixelMissing = missing.filter((f: any) => f.backend === 'superpixel');
 		if (superpixelMissing.length > 0) {
-			recommendations.push(`Superpixel backend unusable: ${superpixelMissing.length} functions missing`);
+			recommendations.push(
+				`Superpixel backend unusable: ${superpixelMissing.length} functions missing`
+			);
 		}
 
 		// Performance issues
 		if (introspectionResults.summary?.completeness < 70) {
-			recommendations.push('Consider implementing missing optional functions for better feature coverage');
+			recommendations.push(
+				'Consider implementing missing optional functions for better feature coverage'
+			);
 		}
 
 		return recommendations;
@@ -632,25 +741,27 @@
 </script>
 
 {#if isDev}
-	<div class="fixed bottom-4 right-4 z-50">
+	<div class="fixed right-4 bottom-4 z-50">
 		<!-- Toggle Button -->
 		<Button
-			onclick={() => isExpanded = !isExpanded}
+			onclick={() => (isExpanded = !isExpanded)}
 			variant="outline"
 			size="sm"
-			class="mb-2 bg-slate-900 text-white border-slate-700 hover:bg-slate-800"
+			class="mb-2 border-slate-700 bg-slate-900 text-white hover:bg-slate-800"
 		>
 			{#snippet children()}🧪 Dev Tools{/snippet}
 		</Button>
 
 		<!-- Panel -->
 		{#if isExpanded}
-			<div class="bg-slate-900 text-white border border-slate-700 rounded-lg shadow-xl w-96 max-h-96 overflow-y-auto">
-				<div class="p-4 border-b border-slate-700">
-					<div class="flex justify-between items-center">
+			<div
+				class="max-h-96 w-96 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 text-white shadow-xl"
+			>
+				<div class="border-b border-slate-700 p-4">
+					<div class="flex items-center justify-between">
 						<h3 class="text-sm font-semibold">WASM Development Panel</h3>
 						<Button
-							onclick={() => isExpanded = false}
+							onclick={() => (isExpanded = false)}
 							variant="ghost"
 							size="sm"
 							class="text-slate-400 hover:text-white"
@@ -660,11 +771,11 @@
 					</div>
 				</div>
 
-				<div class="p-4 space-y-4">
+				<div class="space-y-4 p-4">
 					<!-- Status Section -->
 					<div class="space-y-2">
 						<h4 class="text-xs font-medium text-slate-400">Status</h4>
-						<div class="text-xs space-y-1">
+						<div class="space-y-1 text-xs">
 							<div class="flex justify-between">
 								<span>WASM Loaded:</span>
 								<span class={vectorizerStore.wasmLoaded ? 'text-green-400' : 'text-red-400'}>
@@ -673,8 +784,12 @@
 							</div>
 							<div class="flex justify-between">
 								<span>Threads:</span>
-								<span class={vectorizerStore.threadsInitialized ? 'text-green-400' : 'text-yellow-400'}>
-									{vectorizerStore.threadsInitialized ? `${vectorizerStore.requestedThreadCount || 'N/A'}` : 'Not Init'}
+								<span
+									class={vectorizerStore.threadsInitialized ? 'text-green-400' : 'text-yellow-400'}
+								>
+									{vectorizerStore.threadsInitialized
+										? `${vectorizerStore.requestedThreadCount || 'N/A'}`
+										: 'Not Init'}
 								</span>
 							</div>
 							<div class="flex justify-between">
@@ -685,7 +800,11 @@
 							</div>
 							<div class="flex justify-between">
 								<span>Vectorizer:</span>
-								<span class={vectorizerStore.vectorizerService?.getVectorizerInstance() ? 'text-green-400' : 'text-yellow-400'}>
+								<span
+									class={vectorizerStore.vectorizerService?.getVectorizerInstance()
+										? 'text-green-400'
+										: 'text-yellow-400'}
+								>
 									{vectorizerStore.vectorizerService?.getVectorizerInstance() ? '✓' : 'Lazy'}
 								</span>
 							</div>
@@ -706,11 +825,15 @@
 							</Button>
 							<Button
 								onclick={runQuickValidation}
-								disabled={!vectorizerStore.wasmLoaded || !vectorizerStore.vectorizerService || isRunningTests}
+								disabled={!vectorizerStore.wasmLoaded ||
+									!vectorizerStore.vectorizerService ||
+									isRunningTests}
 								size="sm"
 								class="text-xs"
 							>
-								{#snippet children()}{isRunningTests ? '⏳ Testing...' : '🧪 Quick Validation'}{/snippet}
+								{#snippet children()}{isRunningTests
+										? '⏳ Testing...'
+										: '🧪 Quick Validation'}{/snippet}
 							</Button>
 							<Button
 								onclick={testFunctionAvailability}
@@ -741,14 +864,18 @@
 									Error: {introspectionResults.error}
 								</div>
 							{:else}
-								<div class="text-xs space-y-1">
+								<div class="space-y-1 text-xs">
 									<div class="flex justify-between">
 										<span>Found:</span>
-										<span class="text-green-400">{introspectionResults.summary?.totalFound || 0}</span>
+										<span class="text-green-400"
+											>{introspectionResults.summary?.totalFound || 0}</span
+										>
 									</div>
 									<div class="flex justify-between">
 										<span>Missing:</span>
-										<span class="text-red-400">{introspectionResults.summary?.totalMissing || 0}</span>
+										<span class="text-red-400"
+											>{introspectionResults.summary?.totalMissing || 0}</span
+										>
 									</div>
 									<div class="flex justify-between">
 										<span>Completeness:</span>
@@ -759,12 +886,14 @@
 								{#if introspectionResults.functions?.missing?.length > 0}
 									<div class="mt-2">
 										<div class="text-xs font-medium text-red-400">Missing Functions:</div>
-										<div class="text-xs text-slate-300 max-h-20 overflow-y-auto">
+										<div class="max-h-20 overflow-y-auto text-xs text-slate-300">
 											{#each introspectionResults.functions.missing.slice(0, 5) as missing}
 												<div>• {missing.name} ({missing.backend})</div>
 											{/each}
 											{#if introspectionResults.functions.missing.length > 5}
-												<div class="text-slate-500">... and {introspectionResults.functions.missing.length - 5} more</div>
+												<div class="text-slate-500">
+													... and {introspectionResults.functions.missing.length - 5} more
+												</div>
 											{/if}
 										</div>
 									</div>
@@ -777,16 +906,22 @@
 					{#if validationResults.length > 0}
 						<div class="space-y-2">
 							<h4 class="text-xs font-medium text-slate-400">Quick Tests</h4>
-							<div class="text-xs space-y-1">
+							<div class="space-y-1 text-xs">
 								{#each validationResults as result}
-									<div class="flex justify-between items-center">
+									<div class="flex items-center justify-between">
 										<span>{result.name}:</span>
-										<span class={result.status === 'passed' ? 'text-green-400' : result.status === 'failed' ? 'text-red-400' : 'text-yellow-400'}>
+										<span
+											class={result.status === 'passed'
+												? 'text-green-400'
+												: result.status === 'failed'
+													? 'text-red-400'
+													: 'text-yellow-400'}
+										>
 											{result.status === 'passed' ? '✓' : result.status === 'failed' ? '✗' : '⏳'}
 										</span>
 									</div>
 									{#if result.error}
-										<div class="text-xs text-red-300 pl-2 truncate" title={result.error}>
+										<div class="truncate pl-2 text-xs text-red-300" title={result.error}>
 											{result.error}
 										</div>
 									{/if}
@@ -799,16 +934,22 @@
 					{#if functionTestResults.length > 0}
 						<div class="space-y-2">
 							<h4 class="text-xs font-medium text-slate-400">Function Tests</h4>
-							<div class="text-xs space-y-1 max-h-32 overflow-y-auto">
+							<div class="max-h-32 space-y-1 overflow-y-auto text-xs">
 								{#each functionTestResults as result}
-									<div class="flex justify-between items-center">
+									<div class="flex items-center justify-between">
 										<span class="truncate">{result.name}:</span>
-										<span class={result.status === 'passed' ? 'text-green-400' : result.status === 'missing' ? 'text-yellow-400' : 'text-red-400'}>
+										<span
+											class={result.status === 'passed'
+												? 'text-green-400'
+												: result.status === 'missing'
+													? 'text-yellow-400'
+													: 'text-red-400'}
+										>
 											{result.status === 'passed' ? '✓' : result.status === 'missing' ? '?' : '✗'}
 										</span>
 									</div>
 									{#if result.error}
-										<div class="text-xs text-slate-400 pl-2 truncate" title={result.error}>
+										<div class="truncate pl-2 text-xs text-slate-400" title={result.error}>
 											{result.error}
 										</div>
 									{/if}

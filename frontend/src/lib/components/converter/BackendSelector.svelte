@@ -11,7 +11,12 @@
 		compact?: boolean;
 	}
 
-	let { selectedBackend, onBackendChange, disabled = false, compact = false }: BackendSelectorProps = $props();
+	let {
+		selectedBackend,
+		onBackendChange,
+		disabled = false,
+		compact = false
+	}: BackendSelectorProps = $props();
 
 	const backendIcons = {
 		edge: PenTool,
@@ -46,7 +51,7 @@
 	<div class="space-y-2">
 		<CustomSelect
 			value={selectedBackend}
-			options={Object.keys(backendIcons).map(backend => ({
+			options={Object.keys(backendIcons).map((backend) => ({
 				value: backend,
 				label: backendTitles[backend as VectorizerBackend]
 			}))}
@@ -54,8 +59,8 @@
 			{disabled}
 			placeholder="Select an algorithm"
 		/>
-		
-		<p class="text-xs text-muted-foreground">
+
+		<p class="text-muted-foreground text-xs">
 			{BACKEND_DESCRIPTIONS[selectedBackend]}
 		</p>
 	</div>
@@ -76,110 +81,112 @@
 			role="radiogroup"
 			aria-labelledby="backend-selector-heading"
 		>
-		{#each Object.keys(backendIcons) as backend (backend)}
-			{@const BackendIcon = backendIcons[backend as VectorizerBackend]}
-			{@const isSelected = selectedBackend === backend}
+			{#each Object.keys(backendIcons) as backend (backend)}
+				{@const BackendIcon = backendIcons[backend as VectorizerBackend]}
+				{@const isSelected = selectedBackend === backend}
 
-			<button
-				class="group focus:ring-primary relative flex min-h-[120px] flex-col items-start gap-3 rounded-lg border p-4 text-left transition-all duration-200 hover:shadow-md focus:ring-2 focus:ring-offset-2 focus:outline-none
+				<button
+					class="group focus:ring-primary relative flex min-h-[120px] flex-col items-start gap-3 rounded-lg border p-4 text-left transition-all duration-200 hover:shadow-md focus:ring-2 focus:ring-offset-2 focus:outline-none
 					{isSelected
-					? 'border-primary bg-primary/5 shadow-sm'
-					: 'border-border hover:border-primary/50 hover:bg-accent/50'} 
+						? 'border-primary bg-primary/5 shadow-sm'
+						: 'border-border hover:border-primary/50 hover:bg-accent/50'} 
 					{disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}"
-				onclick={() => handleBackendClick(backend as VectorizerBackend)}
-				role="radio"
-				aria-checked={isSelected}
-				aria-describedby="backend-{backend}-desc"
-				{disabled}
-			>
-				<!-- Header with Icon and Title -->
-				<div class="flex w-full items-center gap-3">
-					<div
-						class="flex h-10 w-10 items-center justify-center rounded-lg
-						{isSelected
-							? 'bg-primary text-primary-foreground'
-							: 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'} 
-						transition-colors duration-200"
-					>
-						<BackendIcon class="h-5 w-5" aria-hidden="true" />
-					</div>
-					<div class="min-w-0 flex-1">
-						<h4 class="text-sm font-semibold {isSelected ? 'text-primary' : 'text-foreground'}">
-							{backendTitles[backend as VectorizerBackend]}
-						</h4>
-					</div>
-					{#if isSelected}
-						<div
-							class="bg-primary h-2 w-2 flex-shrink-0 rounded-full"
-							aria-label="Selected"
-							role="img"
-						></div>
-					{/if}
-				</div>
-
-				<!-- Description -->
-				<p
-					id="backend-{backend}-desc"
-					class="text-muted-foreground line-clamp-2 text-xs leading-relaxed"
+					onclick={() => handleBackendClick(backend as VectorizerBackend)}
+					role="radio"
+					aria-checked={isSelected}
+					aria-describedby="backend-{backend}-desc"
+					{disabled}
 				>
-					{BACKEND_DESCRIPTIONS[backend as VectorizerBackend]}
-				</p>
-
-				<!-- Feature Tags -->
-				<div class="flex flex-wrap gap-1">
-					{#each backendFeatures[backend as VectorizerBackend].slice(0, 3) as feature (feature)}
-						<span
-							class="inline-flex items-center rounded px-2 py-1 text-xs font-medium
-							{isSelected
-								? 'bg-primary/10 text-primary'
-								: 'bg-muted text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary/80'}
-							transition-colors duration-200"
+					<!-- Header with Icon and Title -->
+					<div class="flex w-full items-center gap-3">
+						<div
+							class="flex h-10 w-10 items-center justify-center rounded-lg
+						{isSelected
+								? 'bg-primary text-primary-foreground'
+								: 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'} 
+						transition-colors duration-200"
 						>
-							{feature}
-						</span>
-					{/each}
-				</div>
+							<BackendIcon class="h-5 w-5" aria-hidden="true" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<h4 class="text-sm font-semibold {isSelected ? 'text-primary' : 'text-foreground'}">
+								{backendTitles[backend as VectorizerBackend]}
+							</h4>
+						</div>
+						{#if isSelected}
+							<div
+								class="bg-primary h-2 w-2 flex-shrink-0 rounded-full"
+								aria-label="Selected"
+								role="img"
+							></div>
+						{/if}
+					</div>
 
-				<!-- Selection Indicator -->
-				{#if isSelected}
-					<div
-						class="border-primary pointer-events-none absolute inset-0 rounded-lg border-2 opacity-20"
-						aria-hidden="true"
-					></div>
-				{/if}
-			</button>
-		{/each}
-	</div>
-
-	<!-- Current Selection Summary -->
-	{#if selectedBackend}
-		{@const SelectedIcon = backendIcons[selectedBackend]}
-		<div
-			class="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/50"
-			role="status"
-			aria-live="polite"
-		>
-			<div class="flex items-start gap-2">
-				<div class="flex h-6 w-6 items-center justify-center rounded bg-blue-100 dark:bg-blue-900">
-					<SelectedIcon class="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-				</div>
-				<div class="flex-1">
-					<p class="text-sm font-medium text-blue-700 dark:text-blue-300">
-						Selected: {backendTitles[selectedBackend]}
+					<!-- Description -->
+					<p
+						id="backend-{backend}-desc"
+						class="text-muted-foreground line-clamp-2 text-xs leading-relaxed"
+					>
+						{BACKEND_DESCRIPTIONS[backend as VectorizerBackend]}
 					</p>
-					<div class="mt-1 flex flex-wrap gap-1">
-						{#each backendFeatures[selectedBackend] as feature (feature)}
+
+					<!-- Feature Tags -->
+					<div class="flex flex-wrap gap-1">
+						{#each backendFeatures[backend as VectorizerBackend].slice(0, 3) as feature (feature)}
 							<span
-								class="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+								class="inline-flex items-center rounded px-2 py-1 text-xs font-medium
+							{isSelected
+									? 'bg-primary/10 text-primary'
+									: 'bg-muted text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary/80'}
+							transition-colors duration-200"
 							>
 								{feature}
 							</span>
 						{/each}
 					</div>
+
+					<!-- Selection Indicator -->
+					{#if isSelected}
+						<div
+							class="border-primary pointer-events-none absolute inset-0 rounded-lg border-2 opacity-20"
+							aria-hidden="true"
+						></div>
+					{/if}
+				</button>
+			{/each}
+		</div>
+
+		<!-- Current Selection Summary -->
+		{#if selectedBackend}
+			{@const SelectedIcon = backendIcons[selectedBackend]}
+			<div
+				class="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/50"
+				role="status"
+				aria-live="polite"
+			>
+				<div class="flex items-start gap-2">
+					<div
+						class="flex h-6 w-6 items-center justify-center rounded bg-blue-100 dark:bg-blue-900"
+					>
+						<SelectedIcon class="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+					</div>
+					<div class="flex-1">
+						<p class="text-sm font-medium text-blue-700 dark:text-blue-300">
+							Selected: {backendTitles[selectedBackend]}
+						</p>
+						<div class="mt-1 flex flex-wrap gap-1">
+							{#each backendFeatures[selectedBackend] as feature (feature)}
+								<span
+									class="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+								>
+									{feature}
+								</span>
+							{/each}
+						</div>
+					</div>
 				</div>
 			</div>
-		</div>
-	{/if}
+		{/if}
 	</section>
 {/if}
 

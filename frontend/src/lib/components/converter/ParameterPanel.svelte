@@ -38,20 +38,20 @@
 		const target = event.target as HTMLInputElement;
 		const uiValue = parseInt(target.value);
 		const internalValue = detailFromUI(uiValue);
-		
+
 		// Update progressive fill
 		updateSliderFill(target);
-		
+
 		onConfigChange({ detail: internalValue });
 		onParameterChange?.();
 	}
 
 	function handleStrokeWidthChange(event: Event) {
 		const target = event.target as HTMLInputElement;
-		
+
 		// Update progressive fill
 		updateSliderFill(target);
-		
+
 		onConfigChange({ stroke_width: parseFloat(target.value) });
 		onParameterChange?.();
 	}
@@ -87,10 +87,10 @@
 		const target = event.target as HTMLInputElement;
 		const uiValue = parseInt(target.value);
 		const density = (10 - uiValue) / 90 + 0.05; // Map 1-10 to 0.15-0.05 (inverted)
-		
+
 		// Update progressive fill
 		updateSliderFill(target);
-		
+
 		onConfigChange({ dot_density_threshold: density });
 		onParameterChange?.();
 	}
@@ -105,10 +105,10 @@
 		const target = event.target as HTMLInputElement;
 		const uiValue = parseInt(target.value);
 		const regions = Math.round(uiValue * 45 + 50); // Map 1-10 to 50-500
-		
+
 		// Update progressive fill
 		updateSliderFill(target);
-		
+
 		onConfigChange({ num_superpixels: regions });
 		onParameterChange?.();
 	}
@@ -128,10 +128,12 @@
 	// Derived values for UI display
 	let detailUI = $derived(detailToUI(config.detail));
 	let smoothnessUI = $derived(smoothnessToUI(config));
-	let dotDensityUI = $derived(config.dot_density_threshold
-		? Math.round((0.15 - config.dot_density_threshold) * 90 + 1)
-		: 5);
-	let regionCountUI = $derived(config.num_superpixels ? Math.round((config.num_superpixels - 50) / 45) : 3);
+	let dotDensityUI = $derived(
+		config.dot_density_threshold ? Math.round((0.15 - config.dot_density_threshold) * 90 + 1) : 5
+	);
+	let regionCountUI = $derived(
+		config.num_superpixels ? Math.round((config.num_superpixels - 50) / 45) : 3
+	);
 
 	// Progressive slider fill functions
 	function updateSliderFill(slider: HTMLInputElement) {
@@ -177,7 +179,7 @@
 				onchange={handleDetailChange}
 				oninput={handleDetailChange}
 				{disabled}
-				class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+				class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
 				aria-describedby="detail-level-desc"
 				use:initializeSliderFill
 			/>
@@ -209,7 +211,7 @@
 				onchange={handleStrokeWidthChange}
 				oninput={handleStrokeWidthChange}
 				{disabled}
-				class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+				class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
 				aria-describedby="stroke-width-desc"
 				use:initializeSliderFill
 			/>
@@ -240,7 +242,7 @@
 					onchange={handleSmoothnessChange}
 					oninput={handleSmoothnessChange}
 					{disabled}
-					class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+					class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
 					aria-describedby="smoothness-desc"
 					use:initializeSliderFill
 				/>
@@ -256,7 +258,7 @@
 				<label for="hand-drawn-preset" class="text-sm font-medium">Hand-drawn Style</label>
 				<CustomSelect
 					value={config.hand_drawn_preset}
-					options={Object.keys(HAND_DRAWN_DESCRIPTIONS).map(preset => ({
+					options={Object.keys(HAND_DRAWN_DESCRIPTIONS).map((preset) => ({
 						value: preset,
 						label: preset.charAt(0).toUpperCase() + preset.slice(1)
 					}))}
@@ -294,7 +296,7 @@
 					onchange={handleDotDensityChange}
 					oninput={handleDotDensityChange}
 					{disabled}
-					class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+					class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
 					aria-describedby="dot-density-desc"
 					use:initializeSliderFill
 				/>
@@ -343,7 +345,7 @@
 					onchange={handleRegionCountChange}
 					oninput={handleRegionCountChange}
 					{disabled}
-					class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+					class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
 					aria-describedby="region-count-desc"
 					use:initializeSliderFill
 				/>
@@ -417,7 +419,13 @@
 	/* Progressive slider styling to match Quick Settings */
 	.progressive-slider {
 		-webkit-appearance: none;
-		background: linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--value, 0%), #f1f5f9 var(--value, 0%), #f1f5f9 100%);
+		background: linear-gradient(
+			to right,
+			#3b82f6 0%,
+			#3b82f6 var(--value, 0%),
+			#f1f5f9 var(--value, 0%),
+			#f1f5f9 100%
+		);
 		border-radius: 4px;
 		outline: none;
 		transition: all 0.2s ease;
@@ -441,7 +449,13 @@
 	}
 
 	.progressive-slider:hover {
-		background: linear-gradient(to right, #60a5fa 0%, #60a5fa var(--value, 0%), #e2e8f0 var(--value, 0%), #e2e8f0 100%);
+		background: linear-gradient(
+			to right,
+			#60a5fa 0%,
+			#60a5fa var(--value, 0%),
+			#e2e8f0 var(--value, 0%),
+			#e2e8f0 100%
+		);
 	}
 
 	.progressive-slider::-moz-range-thumb {
@@ -461,7 +475,13 @@
 	}
 
 	.progressive-slider::-moz-range-track {
-		background: linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--value, 0%), #f1f5f9 var(--value, 0%), #f1f5f9 100%);
+		background: linear-gradient(
+			to right,
+			#3b82f6 0%,
+			#3b82f6 var(--value, 0%),
+			#f1f5f9 var(--value, 0%),
+			#f1f5f9 100%
+		);
 		height: 8px;
 		border-radius: 4px;
 		border: none;

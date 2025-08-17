@@ -55,10 +55,10 @@
 		return (event: Event) => {
 			const target = event.target as HTMLInputElement;
 			const value = parseFloat(target.value) * scale;
-			
+
 			// Update progressive fill
 			updateSliderFill(target);
-			
+
 			onConfigChange({ [key]: value } as Partial<VectorizerConfig>);
 			onParameterChange?.();
 		};
@@ -69,10 +69,10 @@
 		return (event: Event) => {
 			const target = event.target as HTMLInputElement;
 			const value = parseFloat(target.value) * scale;
-			
+
 			// Update progressive fill
 			updateSliderFill(target);
-			
+
 			// Only update config, don't notify parameter change for live updates
 			onConfigChange({ [key]: value } as Partial<VectorizerConfig>);
 		};
@@ -90,7 +90,6 @@
 		updateSliderFill(slider);
 		slider.addEventListener('input', () => updateSliderFill(slider));
 	}
-
 </script>
 
 <section class="space-y-4" aria-labelledby="advanced-controls-heading">
@@ -172,7 +171,7 @@
 								onchange={handleRangeChange('conservative_detail')}
 								oninput={handleRangeInput('conservative_detail')}
 								{disabled}
-								class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
 								use:initializeSliderFill
 							/>
 							<div class="text-muted-foreground text-xs">
@@ -269,8 +268,8 @@
 									onchange={handleRangeChange('directional_strength_threshold')}
 									oninput={handleRangeInput('directional_strength_threshold')}
 									{disabled}
-									class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
-								use:initializeSliderFill
+									class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
+									use:initializeSliderFill
 								/>
 								<div class="text-muted-foreground text-xs">
 									Skip directional passes if not beneficial (0.0 = always run, 1.0 = never run).
@@ -323,7 +322,7 @@
 								onchange={handleRangeChange('variable_weights')}
 								oninput={handleRangeInput('variable_weights')}
 								{disabled}
-								class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
 								use:initializeSliderFill
 							/>
 							<div class="text-muted-foreground text-xs">
@@ -349,7 +348,7 @@
 								onchange={handleRangeChange('tremor_strength')}
 								oninput={handleRangeInput('tremor_strength')}
 								{disabled}
-								class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
 								use:initializeSliderFill
 							/>
 							<div class="text-muted-foreground text-xs">
@@ -375,7 +374,7 @@
 								onchange={handleRangeChange('tapering')}
 								oninput={handleRangeInput('tapering')}
 								{disabled}
-								class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
 								use:initializeSliderFill
 							/>
 							<div class="text-muted-foreground text-xs">
@@ -582,7 +581,7 @@
 								onchange={handleRangeChange('compactness')}
 								oninput={handleRangeInput('compactness')}
 								{disabled}
-								class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
+								class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
 								use:initializeSliderFill
 							/>
 							<div class="text-muted-foreground text-xs">
@@ -688,8 +687,8 @@
 							onchange={handleRangeChange('max_processing_time_ms')}
 							oninput={handleRangeInput('max_processing_time_ms')}
 							{disabled}
-							class="bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none progressive-slider"
-								use:initializeSliderFill
+							class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
+							use:initializeSliderFill
 						/>
 						<div class="text-muted-foreground text-xs">
 							Maximum time budget before processing is interrupted (5-120 seconds).
@@ -705,7 +704,13 @@
 	/* Progressive slider styling to match Quick Settings */
 	.progressive-slider {
 		-webkit-appearance: none;
-		background: linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--value, 0%), #f1f5f9 var(--value, 0%), #f1f5f9 100%);
+		background: linear-gradient(
+			to right,
+			#3b82f6 0%,
+			#3b82f6 var(--value, 0%),
+			#f1f5f9 var(--value, 0%),
+			#f1f5f9 100%
+		);
 		border-radius: 4px;
 		outline: none;
 		transition: all 0.2s ease;
@@ -729,7 +734,13 @@
 	}
 
 	.progressive-slider:hover {
-		background: linear-gradient(to right, #60a5fa 0%, #60a5fa var(--value, 0%), #e2e8f0 var(--value, 0%), #e2e8f0 100%);
+		background: linear-gradient(
+			to right,
+			#60a5fa 0%,
+			#60a5fa var(--value, 0%),
+			#e2e8f0 var(--value, 0%),
+			#e2e8f0 100%
+		);
 	}
 
 	.progressive-slider::-moz-range-thumb {
@@ -773,7 +784,7 @@
 	.dropdown-button:hover {
 		transform: translateY(-1px);
 		background: rgba(var(--accent), 0.08);
-		box-shadow: 
+		box-shadow:
 			0 4px 12px rgba(0, 0, 0, 0.1),
 			0 2px 4px rgba(59, 130, 246, 0.2);
 	}
@@ -810,13 +821,19 @@
 	}
 
 	/* Subtle glow effect for active sections */
-	.dropdown-button[aria-expanded="true"] {
+	.dropdown-button[aria-expanded='true'] {
 		background: rgba(var(--primary), 0.05);
 		box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
 	}
 
 	.progressive-slider::-moz-range-track {
-		background: linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--value, 0%), #f1f5f9 var(--value, 0%), #f1f5f9 100%);
+		background: linear-gradient(
+			to right,
+			#3b82f6 0%,
+			#3b82f6 var(--value, 0%),
+			#f1f5f9 var(--value, 0%),
+			#f1f5f9 100%
+		);
 		height: 8px;
 		border-radius: 4px;
 		border: none;
