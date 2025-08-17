@@ -25,7 +25,7 @@
 	}: Props = $props();
 
 	let isOpen = $state(false);
-	let selectedOption = $derived(options.find(opt => opt.value === value));
+	let selectedOption = $derived(options.find((opt) => opt.value === value));
 	let dropdownElement: HTMLDivElement;
 	let triggerElement: HTMLButtonElement;
 
@@ -36,7 +36,7 @@
 
 	function selectOption(option: SelectOption) {
 		if (option.disabled) return;
-		
+
 		value = option.value;
 		isOpen = false;
 		onchange?.(option.value);
@@ -60,7 +60,7 @@
 				if (!isOpen) {
 					toggleDropdown();
 				} else {
-					const currentIndex = options.findIndex(opt => opt.value === value);
+					const currentIndex = options.findIndex((opt) => opt.value === value);
 					const nextIndex = Math.min(currentIndex + 1, options.length - 1);
 					if (options[nextIndex] && !options[nextIndex].disabled) {
 						selectOption(options[nextIndex]);
@@ -70,7 +70,7 @@
 			case 'ArrowUp':
 				event.preventDefault();
 				if (isOpen) {
-					const currentIndex = options.findIndex(opt => opt.value === value);
+					const currentIndex = options.findIndex((opt) => opt.value === value);
 					const prevIndex = Math.max(currentIndex - 1, 0);
 					if (options[prevIndex] && !options[prevIndex].disabled) {
 						selectOption(options[prevIndex]);
@@ -94,28 +94,31 @@
 	});
 
 	// Dynamic classes for trigger button
-	const triggerClasses = $derived([
-		'w-full px-3 py-2.5 text-sm font-medium text-left',
-		'bg-gradient-to-r from-orange-50/80 to-red-50/80',
-		'dark:from-orange-950/40 dark:to-red-950/40',
-		'border border-orange-200/60 dark:border-orange-700/40',
-		'shadow-sm',
-		'hover:from-orange-100/90 hover:to-red-100/90',
-		'dark:hover:from-orange-900/50 dark:hover:to-red-900/50',
-		'hover:border-orange-300 dark:hover:border-orange-600',
-		'focus:outline-none',
-		'disabled:cursor-not-allowed disabled:opacity-50',
-		'transition-all duration-200 backdrop-blur-sm',
-		// Dynamic border radius and border states
-		isOpen ? 'rounded-t-md border-orange-400 dark:border-orange-500 border-b-transparent' : 'rounded-md',
-		isOpen ? 'from-orange-100/90 to-red-100/90 dark:from-orange-900/50 dark:to-red-900/50' : ''
-	].filter(Boolean).join(' '))
+	const triggerClasses = $derived(
+		[
+			'w-full px-3 py-2.5 text-sm font-medium text-left',
+			'bg-gradient-to-r from-orange-50/80 to-red-50/80',
+			'dark:from-orange-950/40 dark:to-red-950/40',
+			'border border-orange-200/60 dark:border-orange-700/40',
+			'shadow-sm',
+			'hover:from-orange-100/90 hover:to-red-100/90',
+			'dark:hover:from-orange-900/50 dark:hover:to-red-900/50',
+			'hover:border-orange-300 dark:hover:border-orange-600',
+			'focus:outline-none',
+			'disabled:cursor-not-allowed disabled:opacity-50',
+			'transition-all duration-200 backdrop-blur-sm',
+			// Dynamic border radius and border states
+			isOpen
+				? 'rounded-t-md border-orange-400 dark:border-orange-500 border-b-transparent'
+				: 'rounded-md',
+			isOpen ? 'from-orange-100/90 to-red-100/90 dark:from-orange-900/50 dark:to-red-900/50' : ''
+		]
+			.filter(Boolean)
+			.join(' ')
+	);
 </script>
 
-<div 
-	bind:this={dropdownElement}
-	class="relative w-full"
->
+<div bind:this={dropdownElement} class="relative w-full">
 	<!-- Trigger Button -->
 	<button
 		bind:this={triggerElement}
@@ -133,7 +136,7 @@
 			<span class="block truncate text-gray-800 dark:text-gray-200">
 				{selectedOption?.label || placeholder}
 			</span>
-			<span class="flex items-center ml-2 text-orange-600 dark:text-orange-400">
+			<span class="ml-2 flex items-center text-orange-600 dark:text-orange-400">
 				{#if isOpen}
 					<ChevronUp class="h-4 w-4 transition-transform duration-200" />
 				{:else}
@@ -145,16 +148,18 @@
 
 	<!-- Dropdown Menu -->
 	{#if isOpen}
-		<div class="
-			absolute top-full left-0 right-0 z-50
-			bg-gradient-to-b from-white/95 to-orange-50/95
-			dark:from-gray-900/95 dark:to-orange-950/95
+		<div
+			class="
+			dropdown-animate-in absolute top-full right-0 left-0
+			z-50 max-h-60 overflow-y-auto
+			rounded-b-md border-r
+			border-b border-l
+			border-orange-200/60 bg-gradient-to-b from-white/95 to-orange-50/95 shadow-2xl
 			backdrop-blur-xl backdrop-saturate-150
-			border-l border-r border-b border-orange-200/60 dark:border-orange-700/40
-			rounded-b-md shadow-2xl
-			max-h-60 overflow-y-auto
-			dropdown-animate-in
-		">
+			dark:border-orange-700/40 dark:from-gray-900/95
+			dark:to-orange-950/95
+		"
+		>
 			<div role="listbox" id="dropdown-listbox">
 				{#each options as option (option.value)}
 					{@const isSelected = option.value === value}
@@ -170,10 +175,14 @@
 						'border-b border-orange-100/30 dark:border-orange-800/30 last:border-b-0',
 						'disabled:opacity-50 disabled:cursor-not-allowed',
 						'transition-all duration-150',
-						isSelected ? 'bg-gradient-to-r from-orange-500/25 to-red-500/25 dark:from-orange-600/30 dark:to-red-600/30' : '',
+						isSelected
+							? 'bg-gradient-to-r from-orange-500/25 to-red-500/25 dark:from-orange-600/30 dark:to-red-600/30'
+							: '',
 						isSelected ? 'text-orange-900 dark:text-orange-100 font-medium' : ''
-					].filter(Boolean).join(' ')}
-					
+					]
+						.filter(Boolean)
+						.join(' ')}
+
 					<button
 						type="button"
 						class={optionClasses}
@@ -185,7 +194,10 @@
 						<div class="flex items-center justify-between">
 							<span class="block truncate">{option.label}</span>
 							{#if isSelected}
-								<span class="h-2 w-2 bg-orange-600 dark:bg-orange-400 rounded-full flex-shrink-0" aria-label="Selected"></span>
+								<span
+									class="h-2 w-2 flex-shrink-0 rounded-full bg-orange-600 dark:bg-orange-400"
+									aria-label="Selected"
+								></span>
 							{/if}
 						</div>
 					</button>
@@ -214,20 +226,20 @@
 	}
 
 	/* Custom scrollbar */
-	div[role="listbox"]::-webkit-scrollbar {
+	div[role='listbox']::-webkit-scrollbar {
 		width: 6px;
 	}
 
-	div[role="listbox"]::-webkit-scrollbar-track {
+	div[role='listbox']::-webkit-scrollbar-track {
 		background: transparent;
 	}
 
-	div[role="listbox"]::-webkit-scrollbar-thumb {
+	div[role='listbox']::-webkit-scrollbar-thumb {
 		background: rgba(251, 146, 60, 0.3);
 		border-radius: 3px;
 	}
 
-	div[role="listbox"]::-webkit-scrollbar-thumb:hover {
+	div[role='listbox']::-webkit-scrollbar-thumb:hover {
 		background: rgba(251, 146, 60, 0.5);
 	}
 </style>

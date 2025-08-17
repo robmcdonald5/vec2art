@@ -7,11 +7,16 @@
 		{
 			variants: {
 				variant: {
-					default: 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 hover:scale-105 active:scale-95',
-					destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:shadow-lg hover:shadow-destructive/25 hover:scale-105 active:scale-95',
-					outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20 hover:scale-105 hover:border-accent active:scale-95',
-					secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-md hover:shadow-secondary/20 hover:scale-105 active:scale-95',
-					ghost: 'hover:bg-accent hover:text-accent-foreground hover:shadow-sm hover:scale-105 active:scale-95',
+					default:
+						'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 hover:scale-105 active:scale-95',
+					destructive:
+						'bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:shadow-lg hover:shadow-destructive/25 hover:scale-105 active:scale-95',
+					outline:
+						'border border-input bg-background hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:shadow-accent/20 hover:scale-105 hover:border-accent active:scale-95',
+					secondary:
+						'bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-md hover:shadow-secondary/20 hover:scale-105 active:scale-95',
+					ghost:
+						'hover:bg-accent hover:text-accent-foreground hover:shadow-sm hover:scale-105 active:scale-95',
 					link: 'text-primary underline-offset-4 hover:underline hover:scale-105 active:scale-95'
 				},
 				size: {
@@ -67,7 +72,9 @@
 		{...restProps}
 	>
 		<!-- Shimmer effect overlay -->
-		<div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+		<div
+			class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+		>
 			<div class="shimmer-effect"></div>
 		</div>
 		<div class="relative z-10 flex items-center gap-1">
@@ -85,7 +92,9 @@
 		{...restProps}
 	>
 		<!-- Shimmer effect overlay -->
-		<div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+		<div
+			class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+		>
 			<div class="shimmer-effect"></div>
 		</div>
 		<div class="relative z-10 flex items-center gap-1">
@@ -127,11 +136,11 @@
 		.shimmer-effect {
 			animation: none;
 		}
-		
+
 		:global(.group) {
 			transition: none !important;
 		}
-		
+
 		:global(.group:hover) {
 			transform: none !important;
 		}

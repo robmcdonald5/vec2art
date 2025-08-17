@@ -114,7 +114,7 @@
 
 		<!-- Modal Content -->
 		<div
-			class="relative max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-900 {className}"
+			class="relative max-h-[90vh] w-full max-w-6xl overflow-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-900 {className}"
 			transition:scale={{ duration: 200, start: 0.95 }}
 		>
 			<!-- Header with title if provided -->
@@ -134,14 +134,14 @@
 			<!-- Close Button -->
 			<button
 				onclick={onClose}
-				class="absolute top-4 right-4 z-10 rounded-full bg-white/10 p-2 backdrop-blur-sm transition-colors hover:bg-white/20 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+				class="absolute top-4 right-4 z-10 rounded-full bg-gray-100 hover:bg-gray-200 p-2 transition-colors focus:ring-2 focus:ring-ferrari-500 focus:outline-none shadow-lg"
 				aria-label="Close modal"
 			>
-				<X class="h-6 w-6 text-white" aria-hidden="true" />
+				<X class="h-6 w-6 text-gray-700" aria-hidden="true" />
 			</button>
 
 			<!-- Content -->
-			<div class="h-full w-full overflow-auto" role="document">
+			<div class="h-full w-full" role="document">
 				{@render children?.()}
 			</div>
 		</div>

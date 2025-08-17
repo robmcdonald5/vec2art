@@ -1,5 +1,15 @@
 <script lang="ts">
-	import { Upload, X, AlertCircle, ChevronLeft, ChevronRight, FileImage, Play, Download, RotateCcw } from 'lucide-svelte';
+	import {
+		Upload,
+		X,
+		AlertCircle,
+		ChevronLeft,
+		ChevronRight,
+		FileImage,
+		Play,
+		Download,
+		RotateCcw
+	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 
 	interface Props {
@@ -131,7 +141,9 @@
 			}
 
 			// Check for duplicates
-			if (currentFiles.some(existing => existing.name === file.name && existing.size === file.size)) {
+			if (
+				currentFiles.some((existing) => existing.name === file.name && existing.size === file.size)
+			) {
 				errors.push(`${file.name}: File already uploaded`);
 				continue;
 			}
@@ -162,7 +174,7 @@
 		}
 		announceToScreenReader(`File removed. ${newFiles.length} files remaining`);
 		onFilesSelect?.(newFiles);
-		
+
 		if (fileInput) {
 			fileInput.value = '';
 		}
@@ -207,14 +219,18 @@
 
 	function navigatePreview(direction: 'prev' | 'next') {
 		if (currentFiles.length <= 1) return;
-		
+
 		if (direction === 'prev') {
-			currentPreviewIndex = currentPreviewIndex === 0 ? currentFiles.length - 1 : currentPreviewIndex - 1;
+			currentPreviewIndex =
+				currentPreviewIndex === 0 ? currentFiles.length - 1 : currentPreviewIndex - 1;
 		} else {
-			currentPreviewIndex = currentPreviewIndex === currentFiles.length - 1 ? 0 : currentPreviewIndex + 1;
+			currentPreviewIndex =
+				currentPreviewIndex === currentFiles.length - 1 ? 0 : currentPreviewIndex + 1;
 		}
-		
-		announceToScreenReader(`Viewing image ${currentPreviewIndex + 1} of ${currentFiles.length}: ${currentFiles[currentPreviewIndex].name}`);
+
+		announceToScreenReader(
+			`Viewing image ${currentPreviewIndex + 1} of ${currentFiles.length}: ${currentFiles[currentPreviewIndex].name}`
+		);
 	}
 
 	function formatFileSize(bytes: number): string {
@@ -296,7 +312,9 @@
 								onclick={withEventPrevention(() => onAbort?.())}
 								aria-label="Stop processing"
 							>
-								<div class="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent"></div>
+								<div
+									class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
+								></div>
 								Stop
 							</Button>
 						{:else if canConvert && onConvert}
@@ -306,7 +324,7 @@
 								onclick={withEventPrevention(() => onConvert?.())}
 								disabled={!canConvert}
 								aria-label="Convert to SVG"
-								class="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white"
+								class="bg-gradient-to-r from-orange-600 to-red-600 text-white hover:from-orange-700 hover:to-red-700"
 							>
 								<Play class="h-3 w-3" aria-hidden="true" />
 								Convert
@@ -351,27 +369,31 @@
 						</Button>
 					</div>
 				</div>
-				
+
 				<!-- File List -->
-				<div class="max-h-32 overflow-y-auto space-y-1 border rounded-md p-2 bg-muted/10">
+				<div class="bg-muted/10 max-h-32 space-y-1 overflow-y-auto rounded-md border p-2">
 					{#each currentFiles as file, index}
-						<div class="flex items-center justify-between p-2 rounded {index === currentPreviewIndex ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/20'}">
-							<div class="flex items-center gap-2 flex-1 min-w-0">
-								<FileImage class="h-4 w-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
+						<div
+							class="flex items-center justify-between rounded p-2 {index === currentPreviewIndex
+								? 'bg-primary/10 border-primary/20 border'
+								: 'hover:bg-muted/20'}"
+						>
+							<div class="flex min-w-0 flex-1 items-center gap-2">
+								<FileImage class="text-muted-foreground h-4 w-4 flex-shrink-0" aria-hidden="true" />
 								<div class="min-w-0 flex-1">
-									<p class="font-medium text-sm truncate" title={file.name}>{file.name}</p>
-									<p class="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+									<p class="truncate text-sm font-medium" title={file.name}>{file.name}</p>
+									<p class="text-muted-foreground text-xs">{formatFileSize(file.size)}</p>
 								</div>
 							</div>
-							<div class="flex gap-1 ml-2">
+							<div class="ml-2 flex gap-1">
 								{#if currentFiles.length > 1}
 									<Button
 										variant="ghost"
 										size="sm"
-										onclick={withEventPrevention(() => currentPreviewIndex = index)}
+										onclick={withEventPrevention(() => (currentPreviewIndex = index))}
 										disabled={index === currentPreviewIndex}
 										aria-label="Preview {file.name}"
-										class="p-1 h-6 w-6"
+										class="h-6 w-6 p-1"
 									>
 										<FileImage class="h-3 w-3" aria-hidden="true" />
 									</Button>
@@ -382,7 +404,7 @@
 									onclick={(event) => removeFile(index, event)}
 									{disabled}
 									aria-label="Remove {file.name}"
-									class="p-1 h-6 w-6"
+									class="h-6 w-6 p-1"
 								>
 									<X class="h-3 w-3" aria-hidden="true" />
 								</Button>
@@ -395,7 +417,7 @@
 			<!-- Image Preview with Navigation -->
 			{#if currentFiles.length > 0}
 				<div class="relative">
-					<div class="flex items-center justify-between mb-2">
+					<div class="mb-2 flex items-center justify-between">
 						<h4 class="text-sm font-medium">Preview</h4>
 						{#if currentFiles.length > 1}
 							<div class="flex items-center gap-2">
@@ -405,11 +427,11 @@
 									onclick={withEventPrevention(() => navigatePreview('prev'))}
 									{disabled}
 									aria-label="Previous image"
-									class="p-1 h-7 w-7"
+									class="h-7 w-7 p-1"
 								>
 									<ChevronLeft class="h-4 w-4" aria-hidden="true" />
 								</Button>
-								<span class="text-sm text-muted-foreground">
+								<span class="text-muted-foreground text-sm">
 									{currentPreviewIndex + 1} / {currentFiles.length}
 								</span>
 								<Button
@@ -418,26 +440,26 @@
 									onclick={withEventPrevention(() => navigatePreview('next'))}
 									{disabled}
 									aria-label="Next image"
-									class="p-1 h-7 w-7"
+									class="h-7 w-7 p-1"
 								>
 									<ChevronRight class="h-4 w-4" aria-hidden="true" />
 								</Button>
 							</div>
 						{/if}
 					</div>
-					
-					<div class="bg-muted/30 rounded-lg p-4 flex items-center justify-center min-h-[200px]">
+
+					<div class="bg-muted/30 flex min-h-[200px] items-center justify-center rounded-lg p-4">
 						{#if currentFiles[currentPreviewIndex]}
 							<img
 								src={URL.createObjectURL(currentFiles[currentPreviewIndex])}
 								alt="Preview of {currentFiles[currentPreviewIndex].name}"
-								class="max-h-48 max-w-full object-contain rounded"
+								class="max-h-48 max-w-full rounded object-contain"
 							/>
 						{/if}
 					</div>
-					
+
 					{#if currentFiles.length > 0}
-						<p class="text-center text-sm text-muted-foreground mt-2">
+						<p class="text-muted-foreground mt-2 text-center text-sm">
 							{currentFiles[currentPreviewIndex].name}
 						</p>
 					{/if}
@@ -458,7 +480,8 @@
 				Drag and drop your images here, or click to browse
 			</p>
 			<p class="text-muted-foreground mt-1 text-xs" id="file-upload-instructions">
-				Supports PNG, JPG, WebP up to {Math.round(maxSize / (1024 * 1024))}MB per file • Maximum {maxFiles} files
+				Supports PNG, JPG, WebP up to {Math.round(maxSize / (1024 * 1024))}MB per file • Maximum {maxFiles}
+				files
 			</p>
 			<Button
 				class="mt-4"
