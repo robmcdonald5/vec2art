@@ -267,7 +267,9 @@ export async function initializeThreadPool(threadCount?: number): Promise<boolea
 	if (isThreadPoolInitialized()) {
 		const currentThreads = getCurrentThreadCount();
 		if (threadCount && threadCount !== currentThreads) {
-			console.log(`[WASM Loader] Resizing thread pool from ${currentThreads} to ${threadCount} threads`);
+			console.log(
+				`[WASM Loader] Resizing thread pool from ${currentThreads} to ${threadCount} threads`
+			);
 			return await resizeThreadPool(threadCount);
 		}
 		console.log('[WASM Loader] Thread pool already initialized with correct count');
@@ -280,15 +282,17 @@ export async function initializeThreadPool(threadCount?: number): Promise<boolea
 		const defaultThreadCount = Math.max(1, Math.min(cores - 2, 6));
 		const actualThreadCount = threadCount ?? defaultThreadCount;
 
-		console.log(`[WASM Loader] Initializing thread pool with ${actualThreadCount} threads (${cores} cores available)...`);
+		console.log(
+			`[WASM Loader] Initializing thread pool with ${actualThreadCount} threads (${cores} cores available)...`
+		);
 		const startTime = performance.now();
-		
+
 		// Use the correct function name based on the WASM exports
 		const initFunction = wasmModule.init_thread_pool || wasmModule.initThreadPool;
 		if (!initFunction) {
 			throw new Error('Thread pool initialization function not found');
 		}
-		
+
 		const promise = initFunction(actualThreadCount);
 		await promise;
 
@@ -300,7 +304,12 @@ export async function initializeThreadPool(threadCount?: number): Promise<boolea
 		analytics.wasmInitSuccess({
 			threadCount: wasmModule.get_thread_count(),
 			initTimeMs: initTime,
-			supportedFeatures: ['shared-array-buffer', 'cross-origin-isolated', 'lazy-init', 'dynamic-resize'],
+			supportedFeatures: [
+				'shared-array-buffer',
+				'cross-origin-isolated',
+				'lazy-init',
+				'dynamic-resize'
+			],
 			browserInfo: getBrowserInfo()
 		});
 
@@ -385,9 +394,9 @@ export async function resizeThreadPool(newThreadCount: number): Promise<boolean>
 	try {
 		const cores = navigator.hardwareConcurrency || 4;
 		const safeThreadCount = Math.max(1, Math.min(newThreadCount, cores - 1));
-		
+
 		console.log(`[WASM Loader] Resizing thread pool to ${safeThreadCount} threads...`);
-		
+
 		// If WASM supports dynamic resizing, use it
 		if (wasmModule.resize_thread_pool) {
 			await wasmModule.resize_thread_pool(safeThreadCount);
@@ -396,15 +405,15 @@ export async function resizeThreadPool(newThreadCount: number): Promise<boolean>
 		} else {
 			// Fallback: destroy and recreate thread pool
 			console.log('[WASM Loader] Resizing via pool recreation...');
-			
+
 			if (wasmModule.destroy_thread_pool) {
 				await wasmModule.destroy_thread_pool();
 			}
-			
+
 			const initFunction = wasmModule.init_thread_pool || wasmModule.initThreadPool;
 			await initFunction(safeThreadCount);
 			wasmModule.confirm_threading_success();
-			
+
 			console.log('[WASM Loader] ✅ Thread pool recreated with new size');
 			return true;
 		}
@@ -425,15 +434,15 @@ export async function cleanupThreadPool(): Promise<void> {
 
 	try {
 		console.log('[WASM Loader] Cleaning up thread pool...');
-		
+
 		if (wasmModule.destroy_thread_pool) {
 			await wasmModule.destroy_thread_pool();
 		}
-		
+
 		if (wasmModule.mark_threading_failed) {
 			wasmModule.mark_threading_failed();
 		}
-		
+
 		console.log('[WASM Loader] ✅ Thread pool cleanup completed');
 	} catch (error) {
 		console.warn('[WASM Loader] Thread pool cleanup warning:', error);
@@ -462,7 +471,7 @@ export function getThreadPoolStatus(): {
 		const initialized = isThreadPoolInitialized();
 		const threadCount = getCurrentThreadCount();
 		const maxThreads = navigator.hardwareConcurrency || 4;
-		
+
 		// Basic health check - try to get thread count
 		let healthCheck = false;
 		try {
@@ -494,34 +503,36 @@ export function getThreadPoolStatus(): {
 export async function optimizeThreadCount(): Promise<number> {
 	const status = getThreadPoolStatus();
 	const cores = navigator.hardwareConcurrency || 4;
-	
+
 	// Use performance API to detect if system is under stress
 	let recommendedThreads = status.threadCount;
-	
+
 	try {
 		// Check if performance timing is available (Chrome only)
 		if (typeof performance !== 'undefined' && (performance as any).memory) {
 			const memory = (performance as any).memory;
 			const memoryUsagePercent = (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100;
-			
+
 			if (memoryUsagePercent > 80) {
 				// High memory usage, reduce threads
 				recommendedThreads = Math.max(1, Math.floor(status.threadCount * 0.5));
-				console.log(`[WASM Loader] High memory usage (${memoryUsagePercent.toFixed(1)}%), reducing threads to ${recommendedThreads}`);
+				console.log(
+					`[WASM Loader] High memory usage (${memoryUsagePercent.toFixed(1)}%), reducing threads to ${recommendedThreads}`
+				);
 			}
 		}
-		
+
 		// Conservative approach: never use more than 75% of available cores
 		const maxSafeThreads = Math.max(1, Math.floor(cores * 0.75));
 		recommendedThreads = Math.min(recommendedThreads, maxSafeThreads);
-		
+
 		if (recommendedThreads !== status.threadCount && status.initialized) {
 			const success = await resizeThreadPool(recommendedThreads);
 			if (success) {
 				return recommendedThreads;
 			}
 		}
-		
+
 		return status.threadCount;
 	} catch (error) {
 		console.warn('[WASM Loader] Thread optimization failed:', error);
@@ -537,7 +548,7 @@ export function resetWasm() {
 	if (wasmModule) {
 		cleanupThreadPool().catch(console.warn);
 	}
-	
+
 	wasmModule = null;
 	initPromise = null;
 	console.log('[WASM Loader] Module reset');
