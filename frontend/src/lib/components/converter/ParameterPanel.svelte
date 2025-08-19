@@ -135,7 +135,7 @@
 		config.num_superpixels ? Math.round((config.num_superpixels - 50) / 45) : 3
 	);
 
-	// Progressive slider fill functions
+	// Progressive slider functionality
 	function updateSliderFill(slider: HTMLInputElement) {
 		const min = parseFloat(slider.min);
 		const max = parseFloat(slider.max);
@@ -150,14 +150,7 @@
 	}
 </script>
 
-<section class="space-y-6" aria-labelledby="parameter-panel-heading">
-	<div class="flex items-center gap-2">
-		<div class="bg-ferrari-100 rounded-lg p-1.5">
-			<Sliders class="h-4 w-4 text-ferrari-600" aria-hidden="true" />
-		</div>
-		<h3 id="parameter-panel-heading" class="text-lg font-semibold text-converter-primary">Essential Controls</h3>
-	</div>
-
+<section class="space-y-6">
 	<!-- Core Parameters (Always Visible) -->
 	<div class="space-y-4">
 		<!-- Detail Level -->
@@ -184,7 +177,7 @@
 				onchange={handleDetailChange}
 				oninput={handleDetailChange}
 				{disabled}
-				class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
+				class="slider-ferrari w-full"
 				aria-describedby="detail-level-desc"
 				use:initializeSliderFill
 			/>
@@ -219,7 +212,7 @@
 				onchange={handleStrokeWidthChange}
 				oninput={handleStrokeWidthChange}
 				{disabled}
-				class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
+				class="slider-ferrari w-full"
 				aria-describedby="stroke-width-desc"
 				use:initializeSliderFill
 			/>
@@ -253,7 +246,7 @@
 					onchange={handleSmoothnessChange}
 					oninput={handleSmoothnessChange}
 					{disabled}
-					class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
+					class="slider-ferrari w-full"
 					aria-describedby="smoothness-desc"
 					use:initializeSliderFill
 				/>
@@ -311,7 +304,7 @@
 					onchange={handleDotDensityChange}
 					oninput={handleDotDensityChange}
 					{disabled}
-					class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
+					class="slider-ferrari w-full"
 					aria-describedby="dot-density-desc"
 					use:initializeSliderFill
 				/>
@@ -365,7 +358,7 @@
 					onchange={handleRegionCountChange}
 					oninput={handleRegionCountChange}
 					{disabled}
-					class="bg-muted progressive-slider h-2 w-full cursor-pointer appearance-none rounded-lg focus:outline-none"
+					class="slider-ferrari w-full"
 					aria-describedby="region-count-desc"
 					use:initializeSliderFill
 				/>
@@ -444,146 +437,98 @@
 </section>
 
 <style>
-	/* Progressive slider styling to match Quick Settings */
-	.progressive-slider {
+	/* Unified Progressive Ferrari Slider Styles */
+	.slider-ferrari {
 		-webkit-appearance: none;
+		appearance: none;
 		background: linear-gradient(
 			to right,
-			#3b82f6 0%,
-			#3b82f6 var(--value, 0%),
-			#f1f5f9 var(--value, 0%),
-			#f1f5f9 100%
-		);
-		border-radius: 4px;
-		outline: none;
-		transition: all 0.2s ease;
-	}
-
-	.progressive-slider::-webkit-slider-thumb {
-		-webkit-appearance: none;
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		background: white;
-		border: 3px solid #94a3b8;
-		cursor: pointer;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-		transition: all 0.2s ease;
-	}
-
-	.progressive-slider:hover::-webkit-slider-thumb {
-		border-color: #cbd5e1;
-		box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
-	}
-
-	.progressive-slider:hover {
-		background: linear-gradient(
-			to right,
-			#60a5fa 0%,
-			#60a5fa var(--value, 0%),
-			#e2e8f0 var(--value, 0%),
-			#e2e8f0 100%
-		);
-	}
-
-	.progressive-slider::-moz-range-thumb {
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		background: white;
-		border: 3px solid #94a3b8;
-		cursor: pointer;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-		transition: all 0.2s ease;
-	}
-
-	.progressive-slider:hover::-moz-range-thumb {
-		border-color: #cbd5e1;
-		box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
-	}
-
-	.progressive-slider::-moz-range-track {
-		background: linear-gradient(
-			to right,
-			#3b82f6 0%,
-			#3b82f6 var(--value, 0%),
-			#f1f5f9 var(--value, 0%),
-			#f1f5f9 100%
+			#dc143c 0%,
+			#dc143c var(--value, 0%),
+			#ffe5e0 var(--value, 0%),
+			#ffe5e0 100%
 		);
 		height: 8px;
 		border-radius: 4px;
-		border: none;
+		cursor: pointer;
+		outline: none;
+		transition: all 0.2s ease;
+		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 	}
 
-	.progressive-slider:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
+	.slider-ferrari:hover {
+		background: linear-gradient(
+			to right,
+			#ff2800 0%,
+			#ff2800 var(--value, 0%),
+			#ffb5b0 var(--value, 0%),
+			#ffb5b0 100%
+		);
 	}
 
-	.progressive-slider:disabled::-webkit-slider-thumb {
-		cursor: not-allowed;
-	}
-
-	/* Legacy slider styling for non-progressive sliders */
-	input[type='range']:not(.progressive-slider) {
-		-webkit-appearance: none;
+	.slider-ferrari::-webkit-slider-track {
 		background: transparent;
 	}
 
-	input[type='range']:not(.progressive-slider)::-webkit-slider-thumb {
+	.slider-ferrari::-webkit-slider-thumb {
 		-webkit-appearance: none;
-		height: 20px;
+		appearance: none;
+		background: linear-gradient(135deg, #ff2800, #dc2626);
 		width: 20px;
-		border-radius: 50%;
-		background: hsl(var(--primary));
-		cursor: pointer;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-		border: 2px solid white;
-	}
-
-	input[type='range']:not(.progressive-slider)::-webkit-slider-thumb:hover {
-		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-	}
-
-	input[type='range']:not(.progressive-slider)::-moz-range-thumb {
 		height: 20px;
-		width: 20px;
 		border-radius: 50%;
-		background: hsl(var(--primary));
-		cursor: pointer;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 		border: 2px solid white;
+		box-shadow:
+			0 2px 4px rgba(0, 0, 0, 0.2),
+			0 1px 2px rgba(0, 0, 0, 0.1);
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
+		cursor: pointer;
 	}
 
-	input[type='range']:not(.progressive-slider)::-webkit-slider-track {
-		background: hsl(var(--muted));
+	.slider-ferrari::-webkit-slider-thumb:hover {
+		transform: scale(1.1);
+		box-shadow:
+			0 4px 8px rgba(255, 40, 0, 0.3),
+			0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+
+	.slider-ferrari::-moz-range-track {
+		background: transparent;
 		height: 8px;
 		border-radius: 4px;
 	}
 
-	input[type='range']:not(.progressive-slider)::-moz-range-track {
-		background: hsl(var(--muted));
-		height: 8px;
-		border-radius: 4px;
+	.slider-ferrari::-moz-range-thumb {
+		background: linear-gradient(135deg, #ff2800, #dc2626);
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		border: 2px solid white;
+		box-shadow:
+			0 2px 4px rgba(0, 0, 0, 0.2),
+			0 1px 2px rgba(0, 0, 0, 0.1);
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
+		cursor: pointer;
 		border: none;
 	}
 
-	input[type='range']:focus {
-		outline: none;
-	}
-
-	input[type='range']:not(.progressive-slider):focus::-webkit-slider-thumb {
+	.slider-ferrari::-moz-range-thumb:hover {
+		transform: scale(1.1);
 		box-shadow:
-			0 0 0 2px hsl(var(--primary)),
-			0 2px 6px rgba(0, 0, 0, 0.3);
+			0 4px 8px rgba(255, 40, 0, 0.3),
+			0 2px 4px rgba(0, 0, 0, 0.1);
 	}
 
-	input[type='range']:disabled {
+	.slider-ferrari:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
 
-	input[type='range']:disabled::-webkit-slider-thumb {
+	.slider-ferrari:disabled::-webkit-slider-thumb {
 		cursor: not-allowed;
 	}
 </style>

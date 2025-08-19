@@ -1,131 +1,140 @@
 <script lang="ts">
-import {
-	Settings,
-	Sliders,
-	ChevronDown,
-	ChevronUp,
-	Zap,
-	Cpu
-} from 'lucide-svelte';
-import type {
-	VectorizerConfig,
-	VectorizerBackend,
-	VectorizerPreset
-} from '$lib/types/vectorizer';
-import type { PerformanceMode } from '$lib/utils/performance-monitor';
-import { performanceMonitor, getOptimalThreadCount } from '$lib/utils/performance-monitor';
-import BackendSelector from './BackendSelector.svelte';
-import PresetSelector from './PresetSelector.svelte';
-import ParameterPanel from './ParameterPanel.svelte';
-import AdvancedControls from './AdvancedControls.svelte';
-import Tooltip from '$lib/components/ui/tooltip/Tooltip.svelte';
+	import { Settings, Sliders, ChevronDown, ChevronUp, Zap, Cpu } from 'lucide-svelte';
+	import type {
+		VectorizerConfig,
+		VectorizerBackend,
+		VectorizerPreset
+	} from '$lib/types/vectorizer';
+	import type { PerformanceMode } from '$lib/utils/performance-monitor';
+	import { performanceMonitor, getOptimalThreadCount } from '$lib/utils/performance-monitor';
+	import BackendSelector from './BackendSelector.svelte';
+	import PresetSelector from './PresetSelector.svelte';
+	import ParameterPanel from './ParameterPanel.svelte';
+	import AdvancedControls from './AdvancedControls.svelte';
+	import Tooltip from '$lib/components/ui/tooltip/Tooltip.svelte';
 
-interface Props {
-	config: VectorizerConfig;
-	selectedPreset: VectorizerPreset | 'custom';
-	performanceMode?: PerformanceMode;
-	threadCount?: number;
-	threadsInitialized?: boolean;
-	disabled?: boolean;
-	onConfigChange: (updates: Partial<VectorizerConfig>) => void;
-	onPresetChange: (preset: VectorizerPreset | 'custom') => void;
-	onBackendChange: (backend: VectorizerBackend) => void;
-	onParameterChange: () => void;
-	onPerformanceModeChange?: (mode: PerformanceMode, threadCount: number) => void;
-}
-
-let {
-	config,
-	selectedPreset,
-	performanceMode = 'balanced',
-	threadCount = 4,
-	threadsInitialized = false,
-	disabled = false,
-	onConfigChange,
-	onPresetChange,
-	onBackendChange,
-	onParameterChange,
-	onPerformanceModeChange
-}: Props = $props();
-
-// UI state management
-let isQuickSettingsExpanded = $state(true);
-let isAdvancedSettingsExpanded = $state(false);
-
-// Performance state
-let currentPerformanceMode = $state<PerformanceMode>(performanceMode);
-let currentThreadCount = $state(threadCount);
-const systemCapabilities = performanceMonitor.getSystemCapabilities();
-
-// Update performance mode
-function clickPerformanceMode(mode: PerformanceMode) {
-	console.log('🔧 Performance Mode selected:', mode);
-	currentPerformanceMode = mode;
-	const optimalThreads = mode === 'custom' ? currentThreadCount : getOptimalThreadCount(mode);
-	onPerformanceModeChange?.(mode, optimalThreads);
-}
-
-// Thread count handler
-function updateThreadCount(event: Event) {
-	const target = event.target as HTMLInputElement;
-	currentThreadCount = parseInt(target.value);
-	if (currentPerformanceMode === 'custom') {
-		onPerformanceModeChange?.('custom', currentThreadCount);
+	interface Props {
+		config: VectorizerConfig;
+		selectedPreset: VectorizerPreset | 'custom';
+		performanceMode?: PerformanceMode;
+		threadCount?: number;
+		threadsInitialized?: boolean;
+		disabled?: boolean;
+		onConfigChange: (updates: Partial<VectorizerConfig>) => void;
+		onPresetChange: (preset: VectorizerPreset | 'custom') => void;
+		onBackendChange: (backend: VectorizerBackend) => void;
+		onParameterChange: () => void;
+		onPerformanceModeChange?: (mode: PerformanceMode, threadCount: number) => void;
 	}
-}
 
-// Parameter update handler
-function updateConfig(key: keyof VectorizerConfig) {
-	return (event: Event) => {
+	let {
+		config,
+		selectedPreset,
+		performanceMode = 'balanced',
+		threadCount = 4,
+		threadsInitialized = false,
+		disabled = false,
+		onConfigChange,
+		onPresetChange,
+		onBackendChange,
+		onParameterChange,
+		onPerformanceModeChange
+	}: Props = $props();
+
+	// UI state management
+	let isQuickSettingsExpanded = $state(true);
+	let isAdvancedSettingsExpanded = $state(false);
+
+	// Performance state
+	let currentPerformanceMode = $state<PerformanceMode>(performanceMode);
+	let currentThreadCount = $state(threadCount);
+	const systemCapabilities = performanceMonitor.getSystemCapabilities();
+
+	// Update performance mode
+	function clickPerformanceMode(mode: PerformanceMode) {
+		console.log('🔧 Performance Mode selected:', mode);
+		currentPerformanceMode = mode;
+		const optimalThreads = mode === 'custom' ? currentThreadCount : getOptimalThreadCount(mode);
+		onPerformanceModeChange?.(mode, optimalThreads);
+	}
+
+	// Thread count handler
+	function updateThreadCount(event: Event) {
 		const target = event.target as HTMLInputElement;
-		let value: any = target.value;
-		
-		// Convert value based on input type
-		if (target.type === 'checkbox') {
-			value = target.checked;
-		} else if (target.type === 'range' || target.type === 'number') {
-			value = parseFloat(target.value);
+		currentThreadCount = parseInt(target.value);
+		if (currentPerformanceMode === 'custom') {
+			onPerformanceModeChange?.('custom', currentThreadCount);
 		}
-		
-		console.log(`🔧 Config update: ${key} = ${value}`);
-		onConfigChange({ [key]: value } as Partial<VectorizerConfig>);
-		onParameterChange();
-	};
-}
+	}
+
+	// Parameter update handler
+	function updateConfig(key: keyof VectorizerConfig) {
+		return (event: Event) => {
+			const target = event.target as HTMLInputElement;
+			let value: any = target.value;
+
+			// Convert value based on input type
+			if (target.type === 'checkbox') {
+				value = target.checked;
+			} else if (target.type === 'range' || target.type === 'number') {
+				value = parseFloat(target.value);
+			}
+
+			console.log(`🔧 Config update: ${key} = ${value}`);
+			onConfigChange({ [key]: value } as Partial<VectorizerConfig>);
+			onParameterChange();
+		};
+	}
+
+	// Progressive slider functionality
+	function updateSliderFill(slider: HTMLInputElement) {
+		const min = parseFloat(slider.min);
+		const max = parseFloat(slider.max);
+		const value = parseFloat(slider.value);
+		const percentage = ((value - min) / (max - min)) * 100;
+		slider.style.setProperty('--value', `${percentage}%`);
+	}
+
+	function initializeSliderFill(slider: HTMLInputElement) {
+		updateSliderFill(slider);
+		slider.addEventListener('input', () => updateSliderFill(slider));
+	}
 </script>
 
 <div class="w-full max-w-sm space-y-4">
 	<!-- Quick Settings Panel -->
-	<div class="card-ferrari-static overflow-hidden rounded-2xl bg-gradient-to-br from-white to-ferrari-50/20 dark:from-gray-900 dark:to-ferrari-950/20 border border-ferrari-200/50 dark:border-ferrari-800/50 shadow-lg">
-		<button 
-			class="w-full flex items-center justify-between p-4 text-left bg-gradient-to-r from-transparent to-ferrari-50/30 dark:to-ferrari-900/30 hover:from-ferrari-50 hover:to-ferrari-100/50 dark:hover:from-ferrari-900/50 dark:hover:to-ferrari-800/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ferrari-500 focus:ring-offset-2"
-			onclick={() => isQuickSettingsExpanded = !isQuickSettingsExpanded}
+	<div
+		class="card-ferrari-static to-ferrari-50/20 border-ferrari-200/50 overflow-hidden rounded-2xl border bg-gradient-to-br from-white shadow-lg"
+	>
+		<button
+			class="to-ferrari-50/30 hover:from-ferrari-50 hover:to-ferrari-100/50 flex w-full items-center justify-between bg-gradient-to-r from-transparent p-4 text-left transition-all duration-200 focus:outline-none {isQuickSettingsExpanded
+				? 'ring-ferrari-500 ring-2 ring-offset-2'
+				: ''}"
+			onclick={() => (isQuickSettingsExpanded = !isQuickSettingsExpanded)}
 			type="button"
 		>
 			<div class="flex items-center gap-3">
-				<div class="bg-gradient-to-br from-ferrari-500 to-ferrari-600 rounded-lg p-2 shadow-md">
-					<Sliders class="h-4 w-4 text-white drop-shadow" />
+				<div class="bg-ferrari-100 rounded-lg p-2">
+					<Sliders class="text-ferrari-600 h-4 w-4" />
 				</div>
 				<h3 class="text-converter-primary text-lg font-semibold">Quick Settings</h3>
 			</div>
 			<div class="flex-shrink-0">
 				{#if isQuickSettingsExpanded}
-					<ChevronUp class="h-5 w-5 text-converter-secondary" />
+					<ChevronUp class="text-converter-secondary h-5 w-5" />
 				{:else}
-					<ChevronDown class="h-5 w-5 text-converter-secondary" />
+					<ChevronDown class="text-converter-secondary h-5 w-5" />
 				{/if}
 			</div>
 		</button>
 
 		{#if isQuickSettingsExpanded}
-			<div class="border-t border-ferrari-200/50 dark:border-ferrari-800/50 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-4 space-y-6">
+			<div class="space-y-6 bg-white/50 p-4 backdrop-blur-sm">
 				<!-- Algorithm Selection -->
 				<div>
-					<div class="flex items-center gap-2 mb-3">
-						<label class="block text-sm font-medium text-converter-primary">
-							Algorithm
-						</label>
-						<Tooltip 
+					<div class="mb-3 flex items-center gap-2">
+						<label class="text-converter-primary block text-sm font-medium"> Algorithm </label>
+						<Tooltip
 							content="Choose the line tracing algorithm. Edge is best for detailed drawings, Centerline for simple shapes, Superpixel for stylized art, and Dots for stippling effects."
 							position="right"
 							size="md"
@@ -133,19 +142,17 @@ function updateConfig(key: keyof VectorizerConfig) {
 					</div>
 					<BackendSelector
 						selectedBackend={config.backend}
-						onBackendChange={onBackendChange}
-						disabled={disabled}
+						{onBackendChange}
+						{disabled}
 						compact={true}
 					/>
 				</div>
 
 				<!-- Style Preset -->
 				<div>
-					<div class="flex items-center gap-2 mb-3">
-						<label class="block text-sm font-medium text-converter-primary">
-							Style Preset
-						</label>
-						<Tooltip 
+					<div class="mb-3 flex items-center gap-2">
+						<label class="text-converter-primary block text-sm font-medium"> Style Preset </label>
+						<Tooltip
 							content="Pre-configured settings for different art styles. Photo for realistic images, Logo for sharp graphics, Artistic for creative effects, and Sketch for hand-drawn appearance."
 							position="right"
 							size="md"
@@ -153,8 +160,8 @@ function updateConfig(key: keyof VectorizerConfig) {
 					</div>
 					<PresetSelector
 						{selectedPreset}
-						onPresetChange={onPresetChange}
-						disabled={disabled}
+						{onPresetChange}
+						{disabled}
 						isCustom={selectedPreset === 'custom'}
 						compact={true}
 					/>
@@ -164,11 +171,9 @@ function updateConfig(key: keyof VectorizerConfig) {
 				<div class="grid grid-cols-1 gap-6">
 					<!-- Detail Level -->
 					<div>
-						<div class="flex items-center gap-2 mb-2">
-							<label class="block text-sm font-medium text-converter-primary">
-								Detail Level
-							</label>
-							<Tooltip 
+						<div class="mb-2 flex items-center gap-2">
+							<label class="text-converter-primary block text-sm font-medium"> Detail Level </label>
+							<Tooltip
 								content="Controls how much detail is captured in the conversion. Lower values create simpler, cleaner lines. Higher values preserve more fine details and texture."
 								position="top"
 								size="md"
@@ -181,10 +186,11 @@ function updateConfig(key: keyof VectorizerConfig) {
 							step="0.1"
 							value={config.detail}
 							oninput={updateConfig('detail')}
-							disabled={disabled}
-							class="w-full slider-ferrari"
+							{disabled}
+							class="slider-ferrari w-full"
+							use:initializeSliderFill
 						/>
-						<div class="flex justify-between text-xs text-converter-secondary mt-1">
+						<div class="text-converter-secondary mt-1 flex justify-between text-xs">
 							<span>Simple</span>
 							<span class="font-medium">{Math.round(config.detail * 10)}/10</span>
 							<span>Detailed</span>
@@ -193,11 +199,9 @@ function updateConfig(key: keyof VectorizerConfig) {
 
 					<!-- Line Width -->
 					<div>
-						<div class="flex items-center gap-2 mb-2">
-							<label class="block text-sm font-medium text-converter-primary">
-								Line Width
-							</label>
-							<Tooltip 
+						<div class="mb-2 flex items-center gap-2">
+							<label class="text-converter-primary block text-sm font-medium"> Line Width </label>
+							<Tooltip
 								content="Adjusts the thickness of traced lines in the SVG output. Thinner lines work better for detailed images, while thicker lines are good for bold, graphic styles."
 								position="top"
 								size="md"
@@ -210,10 +214,11 @@ function updateConfig(key: keyof VectorizerConfig) {
 							step="0.1"
 							value={config.stroke_width}
 							oninput={updateConfig('stroke_width')}
-							disabled={disabled}
-							class="w-full slider-ferrari"
+							{disabled}
+							class="slider-ferrari w-full"
+							use:initializeSliderFill
 						/>
-						<div class="flex justify-between text-xs text-converter-secondary mt-1">
+						<div class="text-converter-secondary mt-1 flex justify-between text-xs">
 							<span>Thin</span>
 							<span class="font-medium">{config.stroke_width.toFixed(1)}px</span>
 							<span>Thick</span>
@@ -225,39 +230,51 @@ function updateConfig(key: keyof VectorizerConfig) {
 	</div>
 
 	<!-- Advanced Settings Panel -->
-	<div class="card-ferrari-static overflow-hidden rounded-2xl bg-gradient-to-br from-white to-ferrari-50/20 dark:from-gray-900 dark:to-ferrari-950/20 border border-ferrari-200/50 dark:border-ferrari-800/50 shadow-lg">
-		<button 
-			class="w-full flex items-center justify-between p-4 text-left bg-gradient-to-r from-transparent to-ferrari-50/30 dark:to-ferrari-900/30 hover:from-ferrari-50 hover:to-ferrari-100/50 dark:hover:from-ferrari-900/50 dark:hover:to-ferrari-800/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ferrari-500 focus:ring-offset-2"
-			onclick={() => isAdvancedSettingsExpanded = !isAdvancedSettingsExpanded}
+	<div
+		class="card-ferrari-static to-ferrari-50/20 border-ferrari-200/50 overflow-hidden rounded-2xl border bg-gradient-to-br from-white shadow-lg"
+	>
+		<button
+			class="to-ferrari-50/30 hover:from-ferrari-50 hover:to-ferrari-100/50 flex w-full items-center justify-between bg-gradient-to-r from-transparent p-4 text-left transition-all duration-200 focus:outline-none {isAdvancedSettingsExpanded
+				? 'ring-ferrari-500 ring-2 ring-offset-2'
+				: ''}"
+			onclick={() => (isAdvancedSettingsExpanded = !isAdvancedSettingsExpanded)}
 			type="button"
 		>
 			<div class="flex items-center gap-3">
-				<div class="bg-gradient-to-br from-ferrari-500 to-ferrari-600 rounded-lg p-2 shadow-md">
-					<Settings class="h-4 w-4 text-white drop-shadow" />
+				<div class="bg-ferrari-100 rounded-lg p-2">
+					<Settings class="text-ferrari-600 h-4 w-4" />
 				</div>
 				<h3 class="text-converter-primary text-lg font-semibold">Advanced Settings</h3>
 			</div>
 			<div class="flex-shrink-0">
 				{#if isAdvancedSettingsExpanded}
-					<ChevronUp class="h-5 w-5 text-converter-secondary" />
+					<ChevronUp class="text-converter-secondary h-5 w-5" />
 				{:else}
-					<ChevronDown class="h-5 w-5 text-converter-secondary" />
+					<ChevronDown class="text-converter-secondary h-5 w-5" />
 				{/if}
 			</div>
 		</button>
 
 		{#if isAdvancedSettingsExpanded}
-			<div class="border-t border-ferrari-200/50 dark:border-ferrari-800/50 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-4 space-y-6">
+			<div class="space-y-6 bg-white/50 p-4 backdrop-blur-sm">
 				<!-- Performance Configuration -->
-				<div class="bg-gradient-to-br from-ferrari-50 to-ferrari-100/30 dark:from-ferrari-950/50 dark:to-ferrari-900/30 rounded-xl p-4 border border-ferrari-200/30 dark:border-ferrari-800/30">
-					<div class="flex items-center justify-between mb-4">
+				<div
+					class="from-ferrari-50 to-ferrari-100/30 border-ferrari-200/30 rounded-xl border bg-gradient-to-br p-4"
+				>
+					<div class="mb-4 flex items-center justify-between">
 						<h4 class="text-converter-primary font-medium">Performance</h4>
 						<div class="flex items-center gap-2">
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-ferrari-100 text-ferrari-800 dark:bg-ferrari-900 dark:text-ferrari-200">
-								<Cpu class="w-3 h-3 mr-1" />
+							<span
+								class="bg-ferrari-100 text-ferrari-800 inline-flex items-center rounded-full px-2 py-1 text-xs font-medium"
+							>
+								<Cpu class="mr-1 h-3 w-3" />
 								{threadCount}
 							</span>
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {threadsInitialized ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'}">
+							<span
+								class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {threadsInitialized
+									? 'bg-green-100 text-green-800 '
+									: 'bg-gray-100 text-gray-800 '}"
+							>
 								{threadsInitialized ? 'Active' : 'Ready'}
 							</span>
 						</div>
@@ -266,60 +283,75 @@ function updateConfig(key: keyof VectorizerConfig) {
 					<!-- Performance Mode Buttons -->
 					<div class="space-y-3">
 						<div class="flex items-center gap-2">
-							<label class="block text-sm font-medium text-converter-primary">
+							<label class="text-converter-primary block text-sm font-medium">
 								Performance Mode
 							</label>
-							<Tooltip 
+							<Tooltip
 								content="Controls CPU usage and processing speed. Economy uses fewer threads for background processing, Balanced provides optimal speed/resource balance, Performance maximizes speed using all available cores."
 								position="top"
 								size="md"
 							/>
 						</div>
-						<div class="grid grid-cols-2 gap-2 p-1 bg-ferrari-100 dark:bg-ferrari-900 rounded-lg">
+						<div class="bg-ferrari-100 grid grid-cols-2 gap-2 rounded-lg p-1">
 							<button
-								class="px-3 py-2 text-xs font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-ferrari-500 {currentPerformanceMode === 'economy' ? 'bg-ferrari-600 text-white' : 'bg-white text-ferrari-700 hover:bg-ferrari-50 dark:bg-ferrari-800 dark:text-ferrari-300 dark:hover:bg-ferrari-700'}"
+								class="focus:ring-ferrari-500 rounded-md px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:outline-none {currentPerformanceMode ===
+								'economy'
+									? 'bg-ferrari-600 text-white'
+									: 'text-ferrari-700 hover:bg-ferrari-50 bg-white '}"
 								onclick={() => clickPerformanceMode('economy')}
-								disabled={disabled}
+								{disabled}
 								type="button"
 							>
 								Economy
 							</button>
 							<button
-								class="px-3 py-2 text-xs font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-ferrari-500 {currentPerformanceMode === 'balanced' ? 'bg-ferrari-600 text-white' : 'bg-white text-ferrari-700 hover:bg-ferrari-50 dark:bg-ferrari-800 dark:text-ferrari-300 dark:hover:bg-ferrari-700'}"
+								class="focus:ring-ferrari-500 rounded-md px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:outline-none {currentPerformanceMode ===
+								'balanced'
+									? 'bg-ferrari-600 text-white'
+									: 'text-ferrari-700 hover:bg-ferrari-50 bg-white '}"
 								onclick={() => clickPerformanceMode('balanced')}
-								disabled={disabled}
+								{disabled}
 								type="button"
 							>
 								Balanced
 							</button>
 							<button
-								class="px-3 py-2 text-xs font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-ferrari-500 {currentPerformanceMode === 'performance' ? 'bg-ferrari-600 text-white' : 'bg-white text-ferrari-700 hover:bg-ferrari-50 dark:bg-ferrari-800 dark:text-ferrari-300 dark:hover:bg-ferrari-700'}"
+								class="focus:ring-ferrari-500 rounded-md px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:outline-none {currentPerformanceMode ===
+								'performance'
+									? 'bg-ferrari-600 text-white'
+									: 'text-ferrari-700 hover:bg-ferrari-50 bg-white '}"
 								onclick={() => clickPerformanceMode('performance')}
-								disabled={disabled}
+								{disabled}
 								type="button"
 							>
-								<Zap class="w-3 h-3 mr-1 inline" />
+								<Zap class="mr-1 inline h-3 w-3" />
 								Performance
 							</button>
 							<button
-								class="px-3 py-2 text-xs font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-ferrari-500 {currentPerformanceMode === 'custom' ? 'bg-ferrari-600 text-white' : 'bg-white text-ferrari-700 hover:bg-ferrari-50 dark:bg-ferrari-800 dark:text-ferrari-300 dark:hover:bg-ferrari-700'}"
+								class="focus:ring-ferrari-500 rounded-md px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:outline-none {currentPerformanceMode ===
+								'custom'
+									? 'bg-ferrari-600 text-white'
+									: 'text-ferrari-700 hover:bg-ferrari-50 bg-white '}"
 								onclick={() => clickPerformanceMode('custom')}
-								disabled={disabled}
+								{disabled}
 								type="button"
 							>
 								Custom
 							</button>
 						</div>
-						
-						<div class="text-xs text-converter-secondary bg-ferrari-100 dark:bg-ferrari-900 rounded-lg p-3">
+
+						<div class="text-converter-secondary bg-ferrari-100 rounded-lg p-3 text-xs">
 							{#if currentPerformanceMode === 'economy'}
-								<span class="font-medium text-ferrari-600">Economy:</span> Minimal CPU usage, slower processing
+								<span class="text-ferrari-600 font-medium">Economy:</span> Minimal CPU usage, slower
+								processing
 							{:else if currentPerformanceMode === 'balanced'}
-								<span class="font-medium text-ferrari-600">Balanced:</span> Good balance of speed and system responsiveness
+								<span class="text-ferrari-600 font-medium">Balanced:</span> Good balance of speed and
+								system responsiveness
 							{:else if currentPerformanceMode === 'performance'}
-								<span class="font-medium text-ferrari-600">Performance:</span> Maximum speed, may slow down browser
+								<span class="text-ferrari-600 font-medium">Performance:</span> Maximum speed, may slow
+								down browser
 							{:else if currentPerformanceMode === 'custom'}
-								<span class="font-medium text-ferrari-600">Custom:</span> Manual thread count control
+								<span class="text-ferrari-600 font-medium">Custom:</span> Manual thread count control
 							{/if}
 						</div>
 					</div>
@@ -329,14 +361,16 @@ function updateConfig(key: keyof VectorizerConfig) {
 						<div class="mt-4 space-y-3">
 							<div class="flex items-center justify-between">
 								<div class="flex items-center gap-2">
-									<label class="text-sm font-medium text-converter-primary">Thread Count</label>
-									<Tooltip 
+									<label class="text-converter-primary text-sm font-medium">Thread Count</label>
+									<Tooltip
 										content="Number of parallel processing threads. More threads = faster processing but higher CPU usage. Optimal number depends on your device's capabilities."
 										position="top"
 										size="md"
 									/>
 								</div>
-								<span class="text-xs font-mono bg-ferrari-100 dark:bg-ferrari-900 px-2 py-1 rounded">{currentThreadCount}</span>
+								<span class="bg-ferrari-100 rounded px-2 py-1 font-mono text-xs"
+									>{currentThreadCount}</span
+								>
 							</div>
 							<input
 								type="range"
@@ -345,10 +379,11 @@ function updateConfig(key: keyof VectorizerConfig) {
 								step="1"
 								value={currentThreadCount}
 								oninput={updateThreadCount}
-								disabled={disabled}
-								class="w-full slider-ferrari"
+								{disabled}
+								class="slider-ferrari w-full"
+								use:initializeSliderFill
 							/>
-							<p class="text-xs text-converter-secondary">
+							<p class="text-converter-secondary text-xs">
 								Recommended: {getOptimalThreadCount('balanced')} threads for your system
 							</p>
 						</div>
@@ -356,87 +391,108 @@ function updateConfig(key: keyof VectorizerConfig) {
 				</div>
 
 				<!-- Parameter Panel -->
-				<ParameterPanel {config} onConfigChange={onConfigChange} disabled={disabled} onParameterChange={onParameterChange} />
+				<ParameterPanel {config} {onConfigChange} {disabled} {onParameterChange} />
 
 				<!-- Advanced Controls -->
-				<AdvancedControls {config} onConfigChange={onConfigChange} disabled={disabled} onParameterChange={onParameterChange} />
+				<AdvancedControls {config} {onConfigChange} {disabled} {onParameterChange} />
 			</div>
 		{/if}
 	</div>
 </div>
 
 <style>
-	/* Ferrari-themed range slider styles */
+	/* Unified Progressive Ferrari Slider Styles */
 	.slider-ferrari {
 		-webkit-appearance: none;
 		appearance: none;
-		background: transparent;
-		cursor: pointer;
-	}
-	
-	.slider-ferrari::-webkit-slider-track {
-		background: linear-gradient(to right, #FFE5E0, #FFB5B0);
+		background: linear-gradient(
+			to right,
+			#dc143c 0%,
+			#dc143c var(--value, 0%),
+			#ffe5e0 var(--value, 0%),
+			#ffe5e0 100%
+		);
 		height: 8px;
 		border-radius: 4px;
+		cursor: pointer;
+		outline: none;
+		transition: all 0.2s ease;
 		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 	}
-	
+
+	.slider-ferrari:hover {
+		background: linear-gradient(
+			to right,
+			#ff2800 0%,
+			#ff2800 var(--value, 0%),
+			#ffb5b0 var(--value, 0%),
+			#ffb5b0 100%
+		);
+	}
+
+	.slider-ferrari::-webkit-slider-track {
+		background: transparent;
+	}
+
 	.slider-ferrari::-webkit-slider-thumb {
 		-webkit-appearance: none;
 		appearance: none;
-		background: linear-gradient(135deg, #FF2800, #DC2626);
+		background: linear-gradient(135deg, #ff2800, #dc2626);
 		width: 20px;
 		height: 20px;
 		border-radius: 50%;
 		border: 2px solid white;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1);
-		transition: transform 0.2s, box-shadow 0.2s;
-	}
-	
-	.slider-ferrari::-webkit-slider-thumb:hover {
-		transform: scale(1.1);
-		box-shadow: 0 4px 8px rgba(255, 40, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-	
-	.slider-ferrari::-moz-range-track {
-		background: linear-gradient(to right, #FFE5E0, #FFB5B0);
-		height: 8px;
-		border-radius: 4px;
-		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-	}
-	
-	.slider-ferrari::-moz-range-thumb {
-		background: linear-gradient(135deg, #FF2800, #DC2626);
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		border: 2px solid white;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1);
-		transition: transform 0.2s, box-shadow 0.2s;
+		box-shadow:
+			0 2px 4px rgba(0, 0, 0, 0.2),
+			0 1px 2px rgba(0, 0, 0, 0.1);
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
 		cursor: pointer;
 	}
-	
+
+	.slider-ferrari::-webkit-slider-thumb:hover {
+		transform: scale(1.1);
+		box-shadow:
+			0 4px 8px rgba(255, 40, 0, 0.3),
+			0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+
+	.slider-ferrari::-moz-range-track {
+		background: transparent;
+		height: 8px;
+		border-radius: 4px;
+	}
+
+	.slider-ferrari::-moz-range-thumb {
+		background: linear-gradient(135deg, #ff2800, #dc2626);
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		border: 2px solid white;
+		box-shadow:
+			0 2px 4px rgba(0, 0, 0, 0.2),
+			0 1px 2px rgba(0, 0, 0, 0.1);
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
+		cursor: pointer;
+		border: none;
+	}
+
 	.slider-ferrari::-moz-range-thumb:hover {
 		transform: scale(1.1);
-		box-shadow: 0 4px 8px rgba(255, 40, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
+		box-shadow:
+			0 4px 8px rgba(255, 40, 0, 0.3),
+			0 2px 4px rgba(0, 0, 0, 0.1);
 	}
-	
-	/* Dark mode adjustments */
-	:global(.dark) .slider-ferrari::-webkit-slider-track {
-		background: linear-gradient(to right, #7F1D1D, #991B1B);
+
+	.slider-ferrari:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
-	
-	:global(.dark) .slider-ferrari::-moz-range-track {
-		background: linear-gradient(to right, #7F1D1D, #991B1B);
-	}
-	
-	:global(.dark) .slider-ferrari::-webkit-slider-thumb {
-		background: linear-gradient(135deg, #FF2800, #EF4444);
-		border-color: #1F2937;
-	}
-	
-	:global(.dark) .slider-ferrari::-moz-range-thumb {
-		background: linear-gradient(135deg, #FF2800, #EF4444);
-		border-color: #1F2937;
+
+	.slider-ferrari:disabled::-webkit-slider-thumb {
+		cursor: not-allowed;
 	}
 </style>

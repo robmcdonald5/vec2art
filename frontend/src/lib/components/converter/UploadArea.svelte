@@ -1,92 +1,92 @@
 <script lang="ts">
-import { Upload, FileImage, AlertCircle } from 'lucide-svelte';
-import { validateImageFiles } from '$lib/utils/file-validation';
+	import { Upload, FileImage, AlertCircle } from 'lucide-svelte';
+	import { validateImageFiles } from '$lib/utils/file-validation';
 
-interface Props {
-	onFilesSelect: (files: File[]) => void;
-	disabled?: boolean;
-	maxSize?: number;
-	accept?: string;
-}
-
-let {
-	onFilesSelect,
-	disabled = false,
-	maxSize = 10 * 1024 * 1024, // 10MB
-	accept = 'image/jpeg,image/png,image/webp'
-}: Props = $props();
-
-// Local state for drag and drop
-let fileInput: HTMLInputElement;
-let dragOver = $state(false);
-let errorMessage = $state('');
-let successMessage = $state('');
-
-// Handle file validation and upload
-function handleFiles(newFiles: File[]) {
-	if (disabled) return;
-
-	errorMessage = '';
-	successMessage = '';
-	
-	// Use the validation utility
-	const { validFiles, errors } = validateImageFiles(newFiles);
-
-	if (errors.length > 0) {
-		errorMessage = errors.map(e => `${e.file}: ${e.error}`).join('\n');
+	interface Props {
+		onFilesSelect: (files: File[]) => void;
+		disabled?: boolean;
+		maxSize?: number;
+		accept?: string;
 	}
 
-	if (validFiles.length > 0) {
-		successMessage = `${validFiles.length} file(s) ready for conversion`;
-		onFilesSelect(validFiles);
+	let {
+		onFilesSelect,
+		disabled = false,
+		maxSize = 10 * 1024 * 1024, // 10MB
+		accept = 'image/jpeg,image/png,image/webp'
+	}: Props = $props();
+
+	// Local state for drag and drop
+	let fileInput: HTMLInputElement;
+	let dragOver = $state(false);
+	let errorMessage = $state('');
+	let successMessage = $state('');
+
+	// Handle file validation and upload
+	function handleFiles(newFiles: File[]) {
+		if (disabled) return;
+
+		errorMessage = '';
+		successMessage = '';
+
+		// Use the validation utility
+		const { validFiles, errors } = validateImageFiles(newFiles);
+
+		if (errors.length > 0) {
+			errorMessage = errors.map((e) => `${e.file}: ${e.error}`).join('\n');
+		}
+
+		if (validFiles.length > 0) {
+			successMessage = `${validFiles.length} file(s) ready for conversion`;
+			onFilesSelect(validFiles);
+		}
 	}
-}
 
-// Event handlers
-function handleDragOver(event: DragEvent) {
-	if (disabled) return;
-	event.preventDefault();
-	dragOver = true;
-}
-
-function handleDragLeave(event: DragEvent) {
-	if (disabled) return;
-	event.preventDefault();
-	dragOver = false;
-}
-
-function handleDrop(event: DragEvent) {
-	if (disabled) return;
-	event.preventDefault();
-	dragOver = false;
-
-	const files = event.dataTransfer?.files;
-	if (files && files.length > 0) {
-		handleFiles(Array.from(files));
+	// Event handlers
+	function handleDragOver(event: DragEvent) {
+		if (disabled) return;
+		event.preventDefault();
+		dragOver = true;
 	}
-}
 
-function handleFileInput(event: Event) {
-	const target = event.target as HTMLInputElement;
-	const files = target.files;
-	if (files && files.length > 0) {
-		handleFiles(Array.from(files));
+	function handleDragLeave(event: DragEvent) {
+		if (disabled) return;
+		event.preventDefault();
+		dragOver = false;
 	}
-}
 
-function openFileDialog() {
-	if (!disabled && fileInput) {
-		fileInput.click();
+	function handleDrop(event: DragEvent) {
+		if (disabled) return;
+		event.preventDefault();
+		dragOver = false;
+
+		const files = event.dataTransfer?.files;
+		if (files && files.length > 0) {
+			handleFiles(Array.from(files));
+		}
 	}
-}
 
-function formatFileSize(bytes: number): string {
-	if (bytes === 0) return '0 B';
-	const k = 1024;
-	const sizes = ['B', 'KB', 'MB', 'GB'];
-	const i = Math.floor(Math.log(bytes) / Math.log(k));
-	return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
+	function handleFileInput(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const files = target.files;
+		if (files && files.length > 0) {
+			handleFiles(Array.from(files));
+		}
+	}
+
+	function openFileDialog() {
+		if (!disabled && fileInput) {
+			fileInput.click();
+		}
+	}
+
+	function formatFileSize(bytes: number): string {
+		if (bytes === 0) return '0 B';
+		const k = 1024;
+		const sizes = ['B', 'KB', 'MB', 'GB'];
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+		return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+	}
 </script>
 
 <!-- Hidden file input -->
@@ -117,7 +117,9 @@ function formatFileSize(bytes: number): string {
 	<!-- Upload Dropzone -->
 	<div
 		class="card-ferrari-static min-h-[600px] cursor-pointer rounded-3xl border-2 border-dashed p-12 transition-all duration-300 hover:shadow-2xl
-		{dragOver ? 'border-ferrari-500 bg-ferrari-50/20 dark:bg-ferrari-950/20' : 'border-ferrari-200 dark:border-ferrari-800'}
+		{dragOver
+			? 'border-ferrari-500 bg-ferrari-50/20 dark:bg-ferrari-950/20'
+			: 'border-ferrari-200 dark:border-ferrari-800'}
 		{disabled ? 'cursor-not-allowed opacity-50' : ''}"
 		ondragover={handleDragOver}
 		ondragleave={handleDragLeave}
@@ -138,7 +140,7 @@ function formatFileSize(bytes: number): string {
 			<div class="icon-ferrari-bg rounded-full p-6">
 				<Upload class="h-12 w-12 text-white" aria-hidden="true" />
 			</div>
-			
+
 			<!-- Content -->
 			<div class="space-y-4">
 				<h2 class="text-gradient-modern text-3xl font-bold">Upload Images</h2>
@@ -161,18 +163,16 @@ function formatFileSize(bytes: number): string {
 					Drop files here to upload
 				</div>
 			{:else if errorMessage}
-				<div class="flex items-center gap-2 text-red-600 text-sm mt-2">
+				<div class="mt-2 flex items-center gap-2 text-sm text-red-600">
 					<AlertCircle class="h-4 w-4" />
 					<span class="whitespace-pre-line">{errorMessage}</span>
 				</div>
 			{:else if successMessage}
-				<div class="text-green-600 text-sm mt-2">
+				<div class="mt-2 text-sm text-green-600">
 					{successMessage}
 				</div>
 			{:else}
-				<div class="text-converter-muted text-xs">
-					Multiple files supported
-				</div>
+				<div class="text-converter-muted text-xs">Multiple files supported</div>
 			{/if}
 		</div>
 	</div>

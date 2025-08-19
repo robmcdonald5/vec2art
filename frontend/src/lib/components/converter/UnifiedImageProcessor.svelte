@@ -370,7 +370,9 @@
 		<!-- Upload Dropzone - Restored proper styling -->
 		<div
 			class="card-ferrari-static min-h-[480px] cursor-pointer rounded-3xl border-2 border-dashed p-8 transition-all duration-300 hover:shadow-2xl
-			{dragOver ? 'border-ferrari-500 bg-ferrari-50/20 dark:bg-ferrari-950/20' : 'border-ferrari-200 dark:border-ferrari-800'}
+			{dragOver
+				? 'border-ferrari-500 bg-ferrari-50/20 dark:bg-ferrari-950/20'
+				: 'border-ferrari-200 dark:border-ferrari-800'}
 			{disabled ? 'cursor-not-allowed opacity-50' : ''}"
 			ondragover={handleDragOver}
 			ondragleave={handleDragLeave}
@@ -418,7 +420,9 @@
 			<!-- Side-by-Side Preview - Restored proper styling -->
 			<div class="card-ferrari-static overflow-hidden rounded-3xl">
 				<!-- Card header with file chips -->
-				<div class="flex items-center justify-between gap-3 border-b border-ferrari-200 dark:border-ferrari-800 px-4 py-3">
+				<div
+					class="border-ferrari-200 dark:border-ferrari-800 flex items-center justify-between gap-3 border-b px-4 py-3"
+				>
 					<div class="flex items-center gap-3">
 						<h3 class="text-converter-primary text-sm font-medium">
 							Images ({currentFiles.length})
@@ -428,11 +432,11 @@
 								<Button
 									variant="outline"
 									size="icon"
-									class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
+									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 h-6 w-6 rounded bg-white/90 hover:bg-white"
 									onclick={() => navigateImage('prev')}
 									disabled={currentFiles.length <= 1}
 								>
-									<ChevronLeft class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
+									<ChevronLeft class="text-ferrari-700 dark:text-ferrari-300 h-3 w-3" />
 								</Button>
 								<span class="text-converter-primary min-w-[3rem] text-center text-xs font-medium">
 									{currentImageIndex + 1} / {currentFiles.length}
@@ -440,11 +444,11 @@
 								<Button
 									variant="outline"
 									size="icon"
-									class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
+									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 h-6 w-6 rounded bg-white/90 hover:bg-white"
 									onclick={() => navigateImage('next')}
 									disabled={currentFiles.length <= 1}
 								>
-									<ChevronRight class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
+									<ChevronRight class="text-ferrari-700 dark:text-ferrari-300 h-3 w-3" />
 								</Button>
 							</div>
 						{/if}
@@ -453,9 +457,9 @@
 						{#each currentFiles as file, index (file.name + index)}
 							<div
 								class="inline-flex cursor-pointer items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all hover:shadow-sm
-								{index === currentImageIndex 
-									? 'border-ferrari-500 bg-ferrari-100 text-ferrari-800 shadow-sm dark:border-ferrari-400 dark:bg-ferrari-900 dark:text-ferrari-200' 
-									: 'border-ferrari-200 bg-white text-ferrari-600 hover:bg-ferrari-50 dark:border-ferrari-700 dark:bg-ferrari-950 dark:text-ferrari-300 dark:hover:bg-ferrari-900'}"
+								{index === currentImageIndex
+									? 'border-ferrari-500 bg-ferrari-100 text-ferrari-800 dark:border-ferrari-400 dark:bg-ferrari-900 dark:text-ferrari-200 shadow-sm'
+									: 'border-ferrari-200 text-ferrari-600 hover:bg-ferrari-50 dark:border-ferrari-700 dark:bg-ferrari-950 dark:text-ferrari-300 dark:hover:bg-ferrari-900 bg-white'}"
 								onclick={() => onImageIndexChange(index)}
 								onkeydown={(e) => {
 									if (e.key === 'Enter' || e.key === ' ') {
@@ -487,11 +491,13 @@
 				</div>
 
 				<!-- Card body -->
-				<div class="border-b border-ferrari-200 dark:border-ferrari-800 p-4">
+				<div class="border-ferrari-200 dark:border-ferrari-800 border-b p-4">
 					<h3 class="text-converter-primary font-semibold">Before & After</h3>
 				</div>
 
-				<div class="grid grid-cols-1 divide-y divide-ferrari-200 dark:divide-ferrari-800 md:grid-cols-2 md:divide-x md:divide-y-0">
+				<div
+					class="divide-ferrari-200 dark:divide-ferrari-800 grid grid-cols-1 divide-y md:grid-cols-2 md:divide-x md:divide-y-0"
+				>
 					<!-- Original Image -->
 					<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 						<div class="absolute inset-2 flex flex-col">
@@ -502,26 +508,26 @@
 									<Button
 										variant="outline"
 										size="icon"
-										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
+										class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 h-6 w-6 rounded bg-white/90 hover:bg-white"
 										onclick={originalZoomOut}
 									>
-										<ZoomOut class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
+										<ZoomOut class="text-ferrari-700 dark:text-ferrari-300 h-3 w-3" />
 									</Button>
 									<Button
 										variant="outline"
 										size="icon"
-										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
+										class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 h-6 w-6 rounded bg-white/90 hover:bg-white"
 										onclick={originalResetView}
 									>
-										<Maximize2 class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
+										<Maximize2 class="text-ferrari-700 dark:text-ferrari-300 h-3 w-3" />
 									</Button>
 									<Button
 										variant="outline"
 										size="icon"
-										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
+										class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 h-6 w-6 rounded bg-white/90 hover:bg-white"
 										onclick={originalZoomIn}
 									>
-										<ZoomIn class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
+										<ZoomIn class="text-ferrari-700 dark:text-ferrari-300 h-3 w-3" />
 									</Button>
 								</div>
 							</div>
@@ -555,26 +561,26 @@
 									<Button
 										variant="outline"
 										size="icon"
-										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
+										class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 h-6 w-6 rounded bg-white/90 hover:bg-white"
 										onclick={convertedZoomOut}
 									>
-										<ZoomOut class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
+										<ZoomOut class="text-ferrari-700 dark:text-ferrari-300 h-3 w-3" />
 									</Button>
 									<Button
 										variant="outline"
 										size="icon"
-										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
+										class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 h-6 w-6 rounded bg-white/90 hover:bg-white"
 										onclick={convertedResetView}
 									>
-										<Maximize2 class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
+										<Maximize2 class="text-ferrari-700 dark:text-ferrari-300 h-3 w-3" />
 									</Button>
 									<Button
 										variant="outline"
 										size="icon"
-										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
+										class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 h-6 w-6 rounded bg-white/90 hover:bg-white"
 										onclick={convertedZoomIn}
 									>
-										<ZoomIn class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
+										<ZoomIn class="text-ferrari-700 dark:text-ferrari-300 h-3 w-3" />
 									</Button>
 								</div>
 							</div>
@@ -611,7 +617,9 @@
 
 				<!-- Action Buttons -->
 				{#if hasFiles}
-					<div class="flex flex-wrap items-center justify-between gap-4 bg-ferrari-50/50 dark:bg-ferrari-950/50 p-4">
+					<div
+						class="bg-ferrari-50/50 dark:bg-ferrari-950/50 flex flex-wrap items-center justify-between gap-4 p-4"
+					>
 						<!-- File Management Actions -->
 						<div class="flex gap-3">
 							<Button
@@ -650,13 +658,9 @@
 									Download
 								</Button>
 							{/if}
-							
+
 							{#if isProcessing}
-								<Button
-									variant="destructive"
-									size="sm"
-									onclick={clickAbort}
-								>
+								<Button variant="destructive" size="sm" onclick={clickAbort}>
 									<Square class="h-3.5 w-3.5" />
 									Stop
 								</Button>
@@ -664,7 +668,7 @@
 								<Button
 									variant="default"
 									size="sm"
-									class="btn-ferrari-primary bg-gradient-to-r from-ferrari-600 to-red-600 hover:from-ferrari-700 hover:to-red-700 shadow-lg"
+									class="btn-ferrari-primary from-ferrari-600 hover:from-ferrari-700 bg-gradient-to-r to-red-600 shadow-lg hover:to-red-700"
 									onclick={clickConvert}
 									disabled={!canConvert || disabled}
 								>
