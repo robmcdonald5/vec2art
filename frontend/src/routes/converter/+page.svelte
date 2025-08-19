@@ -13,7 +13,6 @@ import UploadArea from '$lib/components/converter/UploadArea.svelte';
 import ConverterInterface from '$lib/components/converter/ConverterInterface.svelte';
 import SettingsPanel from '$lib/components/converter/SettingsPanel.svelte';
 import ConversionProgress from '$lib/components/ui/progress/ConversionProgress.svelte';
-import BatchProgress from '$lib/components/ui/progress/BatchProgress.svelte';
 import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
 import { toastStore } from '$lib/stores/toast.svelte';
 import { parameterHistory } from '$lib/stores/parameter-history.svelte';
@@ -87,15 +86,28 @@ function announceToScreenReader(message: string, priority: 'polite' | 'assertive
 }
 
 // File management functions
-function handleFilesSelect(selectedFiles: File[]) {
+function handleFilesSelect(selectedFiles: File[], preserveCurrentIndex: boolean = false) {
+	const previousFileCount = files.length;
 	files = selectedFiles;
-	currentImageIndex = 0;
-	// Clear previous results
-	results = [];
-	previewSvgUrls = [];
+	
+	// Only reset index if we're replacing all files, not adding to existing ones
+	if (!preserveCurrentIndex || previousFileCount === 0) {
+		currentImageIndex = 0;
+		// Clear previous results when replacing
+		results = [];
+		previewSvgUrls = [];
+	} else {
+		// When adding files, switch to the first newly added file
+		currentImageIndex = previousFileCount;
+	}
 	
 	if (selectedFiles.length > 0) {
-		toastStore.info(`${selectedFiles.length} file(s) ready for conversion`);
+		const addedCount = selectedFiles.length - previousFileCount;
+		if (addedCount > 0 && previousFileCount > 0) {
+			toastStore.info(`Added ${addedCount} more file(s)`);
+		} else {
+			toastStore.info(`${selectedFiles.length} file(s) ready for conversion`);
+		}
 	}
 	announceToScreenReader(`${selectedFiles.length} file(s) selected`);
 }
@@ -115,7 +127,7 @@ function handleAddMore() {
 		const newFiles = Array.from((e.target as HTMLInputElement).files || []);
 		if (newFiles.length > 0) {
 			const allFiles = [...files, ...newFiles];
-			handleFilesSelect(allFiles);
+			handleFilesSelect(allFiles, true); // preserveCurrentIndex = true for adding files
 		}
 	};
 	input.click();
@@ -191,12 +203,40 @@ async function handleConvert() {
 			await vectorizerStore.initializeThreads(threadCount || 4);
 		}
 
-		// Set up vectorizer with current files (MUST await this async operation!)
-		await vectorizerStore.setInputFiles(files);
+		// Smart conversion logic:
+		// 1. Always convert current image (even if already converted)
+		// 2. Convert any images that don't have results yet
+		// 3. Skip already converted images (except current)
+		
+		const filesToProcess: File[] = [];
+		const indexMapping: number[] = []; // Maps processed file index to original file index
+		
+		// Always include current image first (gets re-converted)
+		filesToProcess.push(files[currentImageIndex]);
+		indexMapping.push(currentImageIndex);
+		
+		// Add any files that haven't been converted yet
+		for (let i = 0; i < files.length; i++) {
+			if (i !== currentImageIndex && (!results[i] || !results[i]?.svg)) {
+				filesToProcess.push(files[i]);
+				indexMapping.push(i);
+			}
+		}
+
+		if (filesToProcess.length === 0) {
+			toastStore.info('All images are already converted');
+			return;
+		}
+
+		console.log(`🎯 Smart conversion: Processing ${filesToProcess.length} files (current: ${currentImageIndex}, total: ${files.length})`);
+
+		// Set up vectorizer with files to process
+		await vectorizerStore.setInputFiles(filesToProcess);
 
 		// Process files
 		const processedResults = await vectorizerStore.processBatch((imageIndex, totalImages, progress) => {
-			currentImageIndex = imageIndex;
+			const originalIndex = indexMapping[imageIndex];
+			currentImageIndex = originalIndex; // Show progress on the actual file being processed
 			currentProgress = progress;
 			
 			// Update completed count when a new image starts processing
@@ -204,23 +244,44 @@ async function handleConvert() {
 				completedImages = imageIndex;
 			}
 			
-			announceToScreenReader(`Processing image ${imageIndex + 1} of ${totalImages}: ${progress.stage}`);
+			announceToScreenReader(`Processing image ${originalIndex + 1}: ${progress.stage}`);
 		});
 
-		// Create preview URLs
-		const urls = processedResults.map(result => {
+		// Update results and preview URLs for the processed files
+		let newResults = [...results];
+		let newPreviewUrls = [...previewSvgUrls];
+		
+		for (let i = 0; i < processedResults.length; i++) {
+			const originalIndex = indexMapping[i];
+			const result = processedResults[i];
+			
+			// Clean up old preview URL if it exists
+			if (newPreviewUrls[originalIndex]) {
+				URL.revokeObjectURL(newPreviewUrls[originalIndex]!);
+			}
+			
+			// Update result
+			newResults[originalIndex] = result;
+			
+			// Create new preview URL
 			if (result && result.svg) {
 				const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-				return URL.createObjectURL(blob);
+				newPreviewUrls[originalIndex] = URL.createObjectURL(blob);
+			} else {
+				newPreviewUrls[originalIndex] = null;
 			}
-			return null;
-		});
+		}
 
-		results = processedResults;
-		previewSvgUrls = urls;
-		completedImages = processedResults.length;
-		toastStore.success(`Successfully converted ${processedResults.length} image(s) to SVG`);
-		announceToScreenReader(`Conversion completed: ${processedResults.length} images processed`);
+		results = newResults;
+		previewSvgUrls = newPreviewUrls;
+		completedImages = results.filter(r => r && r.svg).length;
+		
+		const message = filesToProcess.length === 1 
+			? `Successfully converted current image to SVG`
+			: `Successfully converted ${filesToProcess.length} image(s) to SVG`;
+		
+		toastStore.success(message);
+		announceToScreenReader(`Conversion completed: ${filesToProcess.length} images processed`);
 
 	} catch (error) {
 		console.error('Conversion failed:', error);
@@ -469,20 +530,6 @@ if (import.meta.env.DEV) {
 						/>
 					</div>
 				</main>
-			{/if}
-			
-			<!-- Batch Progress (for multiple images) -->
-			{#if files.length > 1 && (isProcessing || completedImages > 0)}
-				<div class="fixed bottom-4 right-4 z-30 max-w-sm">
-					<BatchProgress 
-						totalImages={files.length}
-						{currentImageIndex}
-						{currentProgress}
-						{completedImages}
-						{isProcessing}
-						startTime={batchStartTime}
-					/>
-				</div>
 			{/if}
 			
 			<!-- Conversion Progress Overlay -->
