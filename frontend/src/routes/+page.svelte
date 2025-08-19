@@ -2,6 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { ArrowRight, Image, Zap, Download } from 'lucide-svelte';
 	import { onMount } from 'svelte';
+	import { preload } from '$lib/utils/preload';
 
 	// Intersection Observer for scroll animations
 	let observer: IntersectionObserver;
@@ -67,24 +68,23 @@
 					<div
 						class="animate-slide-up mt-12 flex flex-col gap-6 delay-200 sm:flex-row sm:justify-center"
 					>
-						<Button
+						<a
 							href="/converter"
-							size="lg"
-							class="btn-ferrari-primary group transform px-10 py-5 text-xl shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:shadow-2xl"
+							use:preload
+							class="btn-ferrari-primary group transform px-10 py-3 text-xl shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:shadow-2xl inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium focus:outline-none"
 						>
 							Start Converting
 							<ArrowRight
 								class="h-6 w-6 transition-transform group-hover:translate-x-2 group-hover:scale-110"
 							/>
-						</Button>
-						<Button
+						</a>
+						<a
 							href="/gallery"
-							variant="outline"
-							size="lg"
-							class="btn-ferrari-secondary transform px-10 py-5 text-xl transition-all duration-300 hover:-translate-y-1"
+							use:preload
+							class="transform px-10 py-3 text-xl transition-all duration-300 hover:-translate-y-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium focus:outline-none bg-white border-2 border-ferrari-500 text-ferrari-600 shadow-md hover:bg-ferrari-50 hover:text-ferrari-700 hover:shadow-lg"
 						>
 							View Gallery
-						</Button>
+						</a>
 					</div>
 				</div>
 			</div>
@@ -328,7 +328,7 @@
 	</section>
 
 	<!-- Footer -->
-	<footer class="bg-speed-gray-900 relative text-white">
+	<footer class="relative bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white">
 		<!-- Clean premium overlay -->
 		<div
 			class="from-speed-gray-800/20 via-speed-gray-900/10 to-speed-gray-800/20 pointer-events-none absolute inset-0 bg-gradient-to-r"
