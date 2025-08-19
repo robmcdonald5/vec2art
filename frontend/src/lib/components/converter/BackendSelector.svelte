@@ -60,7 +60,7 @@
 			placeholder="Select an algorithm"
 		/>
 
-		<p class="text-muted-foreground text-xs">
+		<p class="text-converter-secondary text-xs">
 			{BACKEND_DESCRIPTIONS[selectedBackend]}
 		</p>
 	</div>
@@ -72,7 +72,7 @@
 			<h3 id="backend-selector-heading" class="text-lg font-semibold">Processing Algorithm</h3>
 		</div>
 
-		<p class="text-muted-foreground text-sm">
+		<p class="text-converter-secondary text-sm">
 			Choose the processing algorithm that best fits your image style and desired output.
 		</p>
 
@@ -103,7 +103,7 @@
 							class="flex h-10 w-10 items-center justify-center rounded-lg
 						{isSelected
 								? 'bg-primary text-primary-foreground'
-								: 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'} 
+								: 'text-converter-secondary group-hover:bg-primary/10 group-hover:text-primary bg-gray-100'} 
 						transition-colors duration-200"
 						>
 							<BackendIcon class="h-5 w-5" aria-hidden="true" />
@@ -125,7 +125,7 @@
 					<!-- Description -->
 					<p
 						id="backend-{backend}-desc"
-						class="text-muted-foreground line-clamp-2 text-xs leading-relaxed"
+						class="text-converter-secondary line-clamp-2 text-xs leading-relaxed"
 					>
 						{BACKEND_DESCRIPTIONS[backend as VectorizerBackend]}
 					</p>
@@ -137,7 +137,7 @@
 								class="inline-flex items-center rounded px-2 py-1 text-xs font-medium
 							{isSelected
 									? 'bg-primary/10 text-primary'
-									: 'bg-muted text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary/80'}
+									: 'text-converter-secondary group-hover:bg-primary/5 group-hover:text-primary/80 bg-gray-100'}
 							transition-colors duration-200"
 							>
 								{feature}

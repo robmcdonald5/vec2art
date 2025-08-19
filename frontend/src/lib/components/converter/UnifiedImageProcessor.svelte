@@ -11,7 +11,8 @@
 		RotateCcw,
 		ZoomIn,
 		ZoomOut,
-		Maximize2
+		Maximize2,
+		Square
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
@@ -21,17 +22,9 @@
 		// Upload props
 		accept?: string;
 		maxSize?: number;
-		onFilesSelect?: (files: File[]) => void;
+		onFilesSelect: (files: File[]) => void;
 		disabled?: boolean;
 		currentFiles?: File[];
-		// Converter actions
-		canConvert?: boolean;
-		canDownload?: boolean;
-		isProcessing?: boolean;
-		onConvert?: () => void;
-		onDownload?: () => void;
-		onReset?: () => void;
-		onAbort?: () => void;
 		// Preview props
 		inputImages: ImageData[];
 		currentImageIndex: number;
@@ -39,6 +32,15 @@
 		results: ProcessingResult[];
 		previewSvgUrls: (string | null)[];
 		onImageIndexChange: (index: number) => void;
+		// Action callbacks - required
+		onConvert: () => void;
+		onDownload: () => void;
+		onAbort: () => void;
+		onReset: () => void;
+		// State props for buttons
+		canConvert?: boolean;
+		canDownload?: boolean;
+		isProcessing?: boolean;
 	}
 
 	let {
@@ -47,19 +49,20 @@
 		onFilesSelect,
 		disabled = false,
 		currentFiles = [],
-		canConvert = false,
-		canDownload = false,
-		isProcessing = false,
-		onConvert,
-		onDownload,
-		onReset,
-		onAbort,
 		inputImages,
 		currentImageIndex = 0,
 		currentProgress,
 		results = [],
 		previewSvgUrls = [],
-		onImageIndexChange
+		onImageIndexChange,
+		onConvert,
+		onDownload,
+		onAbort,
+		onReset,
+		canConvert = false,
+		canDownload = false,
+		isProcessing = false,
+		...restProps
 	}: Props = $props();
 
 	// Upload state
@@ -88,6 +91,13 @@
 	const currentImageUrl = $derived(currentFile ? URL.createObjectURL(currentFile) : null);
 	const currentSvgUrl = $derived(previewSvgUrls[currentImageIndex]);
 	const hasResult = $derived(Boolean(currentSvgUrl));
+
+	// Validate callback props
+	$effect(() => {
+		if (!onConvert || !onDownload || !onAbort || !onReset) {
+			console.warn('UnifiedImageProcessor: Missing required callbacks');
+		}
+	});
 
 	// Upload functions
 	function announceToScreenReader(message: string) {
@@ -156,7 +166,7 @@
 
 		if (validFiles.length > 0) {
 			const allFiles = [...currentFiles, ...validFiles];
-			onFilesSelect?.(allFiles);
+			onFilesSelect(allFiles);
 			announceToScreenReader(`${validFiles.length} file(s) added successfully`);
 		}
 	}
@@ -169,14 +179,72 @@
 
 	function removeFile(index: number) {
 		const newFiles = currentFiles.filter((_, i) => i !== index);
-		onFilesSelect?.(newFiles);
+		onFilesSelect(newFiles);
 		announceToScreenReader(`File removed. ${newFiles.length} files remaining`);
 	}
 
 	function clearAllFiles() {
-		onFilesSelect?.([]);
-		onReset?.();
+		if (onFilesSelect) {
+			onFilesSelect([]);
+		}
+		if (onReset) {
+			onReset();
+		}
 		announceToScreenReader('All files cleared');
+	}
+
+	// Button handlers - check if callbacks exist before calling
+	function clickConvert() {
+		console.log('🟢 UnifiedImageProcessor clickConvert called');
+		console.log('🔍 onConvert callback:', typeof onConvert, onConvert);
+		if (onConvert) {
+			console.log('🚀 Calling onConvert callback');
+			onConvert();
+		} else {
+			console.error('❌ UnifiedImageProcessor: onConvert callback not provided');
+		}
+	}
+
+	function clickDownload() {
+		if (onDownload) {
+			onDownload();
+		} else {
+			console.error('UnifiedImageProcessor: onDownload callback not provided');
+		}
+	}
+
+	function clickAbort() {
+		if (onAbort) {
+			onAbort();
+		} else {
+			console.error('UnifiedImageProcessor: onAbort callback not provided');
+		}
+	}
+
+	function clickReset() {
+		if (onReset) {
+			onReset();
+		} else {
+			console.error('UnifiedImageProcessor: onReset callback not provided');
+		}
+	}
+
+	function clickAddMore() {
+		console.log('🟢 UnifiedImageProcessor clickAddMore called');
+		console.log('🔍 Creating file input dialog...');
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = accept;
+		input.multiple = true;
+		input.onchange = (e) => {
+			const files = Array.from((e.target as HTMLInputElement).files || []);
+			console.log('📁 Files selected:', files.length);
+			if (files.length > 0) {
+				handleFiles(files);
+			}
+		};
+		console.log('👆 Triggering file input click...');
+		input.click();
 	}
 
 	function navigateImage(direction: 'prev' | 'next') {
@@ -267,14 +335,6 @@
 		convertedZoomLevel = convertedAutoFitZoom;
 		convertedPanOffset = { x: 0, y: 0 };
 	}
-
-	function withEventPrevention(fn: () => void) {
-		return (event: Event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			fn();
-		};
-	}
 </script>
 
 <!-- Live region for screen reader announcements -->
@@ -307,10 +367,10 @@
 	{/if}
 
 	{#if !hasFiles}
-		<!-- Upload Dropzone -->
+		<!-- Upload Dropzone - Restored proper styling -->
 		<div
-			class="border-muted-foreground/25 hover:border-primary/50 min-h-[480px] cursor-pointer rounded-lg border-2 border-dashed p-8 transition-colors
-			{dragOver ? 'border-primary bg-primary/5' : ''}
+			class="card-ferrari-static min-h-[480px] cursor-pointer rounded-3xl border-2 border-dashed p-8 transition-all duration-300 hover:shadow-2xl
+			{dragOver ? 'border-ferrari-500 bg-ferrari-50/20 dark:bg-ferrari-950/20' : 'border-ferrari-200 dark:border-ferrari-800'}
 			{disabled ? 'cursor-not-allowed opacity-50' : ''}"
 			ondragover={handleDragOver}
 			ondragleave={handleDragLeave}
@@ -327,15 +387,15 @@
 			aria-label="Upload image files. Drag and drop or press Enter to browse."
 		>
 			<div class="flex h-full flex-col items-center justify-center space-y-4 text-center">
-				<div class="bg-muted rounded-full p-4">
-					<Upload class="text-muted-foreground h-8 w-8" aria-hidden="true" />
+				<div class="icon-ferrari-bg rounded-full p-4">
+					<Upload class="h-8 w-8 text-white" aria-hidden="true" />
 				</div>
 				<div class="space-y-2">
-					<h3 class="text-lg font-semibold">Upload Images</h3>
-					<p class="text-muted-foreground text-sm">
+					<h3 class="text-converter-primary text-xl font-bold">Upload Images</h3>
+					<p class="text-converter-secondary text-sm">
 						Drag and drop your images here, or click to browse
 					</p>
-					<p class="text-muted-foreground text-xs">
+					<p class="text-ferrari-600 text-xs">
 						Supports JPG, PNG, WebP • Max {Math.round(maxSize / (1024 * 1024))}MB per file
 					</p>
 				</div>
@@ -345,7 +405,7 @@
 		<!-- Files Selected State with Side-by-Side Preview -->
 		<div class="space-y-4">
 			<!-- Progress Bar -->
-			{#if isProcessing && currentProgress}
+			{#if currentProgress}
 				<div class="space-y-2">
 					<div class="flex justify-between text-sm">
 						<span>{currentProgress.stage}</span>
@@ -355,45 +415,47 @@
 				</div>
 			{/if}
 
-			<!-- Side-by-Side Preview -->
-			<div class="bg-background overflow-hidden rounded-lg border">
+			<!-- Side-by-Side Preview - Restored proper styling -->
+			<div class="card-ferrari-static overflow-hidden rounded-3xl">
 				<!-- Card header with file chips -->
-				<div class="flex items-center justify-between gap-3 border-b px-4 py-3">
+				<div class="flex items-center justify-between gap-3 border-b border-ferrari-200 dark:border-ferrari-800 px-4 py-3">
 					<div class="flex items-center gap-3">
-						<h3 class="text-muted-foreground text-sm font-medium">
+						<h3 class="text-converter-primary text-sm font-medium">
 							Images ({currentFiles.length})
 						</h3>
 						{#if hasMultipleFiles}
 							<div class="flex items-center gap-2">
 								<Button
 									variant="outline"
-									size="sm"
+									size="icon"
+									class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
 									onclick={() => navigateImage('prev')}
 									disabled={currentFiles.length <= 1}
-									class="h-6 w-6 p-1"
 								>
-									<ChevronLeft class="h-3 w-3" />
+									<ChevronLeft class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
 								</Button>
-								<span class="text-muted-foreground min-w-[3rem] text-center text-xs">
+								<span class="text-converter-primary min-w-[3rem] text-center text-xs font-medium">
 									{currentImageIndex + 1} / {currentFiles.length}
 								</span>
 								<Button
 									variant="outline"
-									size="sm"
+									size="icon"
+									class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
 									onclick={() => navigateImage('next')}
 									disabled={currentFiles.length <= 1}
-									class="h-6 w-6 p-1"
 								>
-									<ChevronRight class="h-3 w-3" />
+									<ChevronRight class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
 								</Button>
 							</div>
 						{/if}
 					</div>
 					<div class="flex max-w-md flex-wrap gap-2 overflow-x-auto">
 						{#each currentFiles as file, index (file.name + index)}
-							<span
-								class="hover:bg-primary/5 inline-flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors
-								{index === currentImageIndex ? 'border-primary bg-primary/10' : 'border-border'}"
+							<div
+								class="inline-flex cursor-pointer items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all hover:shadow-sm
+								{index === currentImageIndex 
+									? 'border-ferrari-500 bg-ferrari-100 text-ferrari-800 shadow-sm dark:border-ferrari-400 dark:bg-ferrari-900 dark:text-ferrari-200' 
+									: 'border-ferrari-200 bg-white text-ferrari-600 hover:bg-ferrari-50 dark:border-ferrari-700 dark:bg-ferrari-950 dark:text-ferrari-300 dark:hover:bg-ferrari-900'}"
 								onclick={() => onImageIndexChange(index)}
 								onkeydown={(e) => {
 									if (e.key === 'Enter' || e.key === ' ') {
@@ -405,102 +467,61 @@
 								tabindex="0"
 								aria-label="Select {file.name}"
 							>
-								<FileImage class="h-3 w-3 flex-shrink-0" aria-hidden="true" />
-								<span class="max-w-20 truncate">{file.name}</span>
-								<button
-									type="button"
+								<FileImage class="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+								<span class="max-w-24 truncate">{file.name}</span>
+								<Button
+									variant="ghost"
+									size="icon"
+									class="h-4 w-4 flex-shrink-0 p-0 hover:bg-transparent hover:text-red-500"
 									onclick={(e) => {
 										e.stopPropagation();
 										removeFile(index);
 									}}
-									class="text-muted-foreground hover:text-destructive flex-shrink-0 p-0.5"
 									aria-label="Remove {file.name}"
 								>
-									<X class="h-2.5 w-2.5" />
-								</button>
-							</span>
+									<X class="h-3 w-3" />
+								</Button>
+							</div>
 						{/each}
 					</div>
 				</div>
 
 				<!-- Card body -->
-				<div class="border-b p-4">
-					<div class="flex items-center justify-between">
-						<h3 class="font-semibold">Before & After</h3>
-						<div class="flex gap-2">
-							<!-- File Management Actions -->
-							<div class="flex gap-2">
-								<Button variant="outline" size="sm" onclick={openFileDialog} {disabled}>
-									<Upload class="h-3 w-3" aria-hidden="true" />
-									Add More
-								</Button>
-								<Button variant="outline" size="sm" onclick={clearAllFiles}>
-									<RotateCcw class="h-3 w-3" aria-hidden="true" />
-									Clear All
-								</Button>
-							</div>
-
-							<!-- Download Action -->
-							{#if canDownload && onDownload}
-								<Button
-									variant="outline"
-									size="sm"
-									onclick={withEventPrevention(() => onDownload?.())}
-								>
-									<Download class="h-3 w-3" aria-hidden="true" />
-									Download
-								</Button>
-							{/if}
-
-							<!-- Primary Actions (rightmost) -->
-							{#if isProcessing}
-								<Button
-									variant="destructive"
-									size="sm"
-									onclick={withEventPrevention(() => onAbort?.())}
-								>
-									<div
-										class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
-									></div>
-									Stop
-								</Button>
-							{:else if canConvert && onConvert}
-								<Button
-									variant="default"
-									size="sm"
-									onclick={withEventPrevention(() => onConvert?.())}
-									disabled={!canConvert}
-									class="bg-gradient-to-r from-orange-600 to-red-600 text-white hover:from-orange-700 hover:to-red-700"
-								>
-									<Play class="h-3 w-3" aria-hidden="true" />
-									Convert
-								</Button>
-							{/if}
-						</div>
-					</div>
+				<div class="border-b border-ferrari-200 dark:border-ferrari-800 p-4">
+					<h3 class="text-converter-primary font-semibold">Before & After</h3>
 				</div>
 
-				<div class="grid grid-cols-1 divide-y md:grid-cols-2 md:divide-x md:divide-y-0">
+				<div class="grid grid-cols-1 divide-y divide-ferrari-200 dark:divide-ferrari-800 md:grid-cols-2 md:divide-x md:divide-y-0">
 					<!-- Original Image -->
-					<div class="bg-muted/30 relative aspect-square">
+					<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 						<div class="absolute inset-2 flex flex-col">
 							<div class="mb-2 flex items-center justify-between px-2">
-								<div class="text-muted-foreground text-xs font-medium">Original</div>
+								<div class="text-converter-secondary text-xs font-medium">Original</div>
 								<!-- Zoom Controls for Original -->
 								<div class="flex gap-1">
-									<Button variant="outline" size="sm" onclick={originalZoomOut} class="h-6 w-6 p-0">
-										<ZoomOut class="h-3 w-3" />
+									<Button
+										variant="outline"
+										size="icon"
+										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
+										onclick={originalZoomOut}
+									>
+										<ZoomOut class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
 									</Button>
 									<Button
 										variant="outline"
-										size="sm"
+										size="icon"
+										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
 										onclick={originalResetView}
-										class="h-6 w-6 p-0"
 									>
-										<Maximize2 class="h-3 w-3" />
+										<Maximize2 class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
 									</Button>
-									<Button variant="outline" size="sm" onclick={originalZoomIn} class="h-6 w-6 p-0">
-										<ZoomIn class="h-3 w-3" />
+									<Button
+										variant="outline"
+										size="icon"
+										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
+										onclick={originalZoomIn}
+									>
+										<ZoomIn class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
 									</Button>
 								</div>
 							</div>
@@ -517,7 +538,7 @@
 									/>
 								{:else}
 									<div class="flex h-full items-center justify-center">
-										<FileImage class="text-muted-foreground h-16 w-16" />
+										<FileImage class="text-converter-muted h-16 w-16" />
 									</div>
 								{/if}
 							</div>
@@ -525,30 +546,35 @@
 					</div>
 
 					<!-- Converted SVG -->
-					<div class="bg-muted/30 relative aspect-square">
+					<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 						<div class="absolute inset-2 flex flex-col">
 							<div class="mb-2 flex items-center justify-between px-2">
-								<div class="text-muted-foreground text-xs font-medium">Converted SVG</div>
+								<div class="text-converter-secondary text-xs font-medium">Converted SVG</div>
 								<!-- Zoom Controls for Converted SVG -->
 								<div class="flex gap-1">
 									<Button
 										variant="outline"
-										size="sm"
+										size="icon"
+										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
 										onclick={convertedZoomOut}
-										class="h-6 w-6 p-0"
 									>
-										<ZoomOut class="h-3 w-3" />
+										<ZoomOut class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
 									</Button>
 									<Button
 										variant="outline"
-										size="sm"
+										size="icon"
+										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
 										onclick={convertedResetView}
-										class="h-6 w-6 p-0"
 									>
-										<Maximize2 class="h-3 w-3" />
+										<Maximize2 class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
 									</Button>
-									<Button variant="outline" size="sm" onclick={convertedZoomIn} class="h-6 w-6 p-0">
-										<ZoomIn class="h-3 w-3" />
+									<Button
+										variant="outline"
+										size="icon"
+										class="h-6 w-6 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800"
+										onclick={convertedZoomIn}
+									>
+										<ZoomIn class="h-3 w-3 text-ferrari-700 dark:text-ferrari-300" />
 									</Button>
 								</div>
 							</div>
@@ -561,20 +587,20 @@
 										style="transform: scale({convertedZoomLevel}) translate({convertedPanOffset.x}px, {convertedPanOffset.y}px)"
 										draggable="false"
 									/>
-								{:else if isProcessing}
+								{:else if currentProgress}
 									<div class="flex h-full items-center justify-center">
 										<div class="space-y-2 text-center">
 											<div
-												class="border-primary mx-auto h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
+												class="border-ferrari-500 mx-auto h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
 											></div>
-											<p class="text-muted-foreground text-sm">Converting...</p>
+											<p class="text-converter-secondary text-sm">Converting...</p>
 										</div>
 									</div>
 								{:else}
 									<div class="flex h-full items-center justify-center">
 										<div class="space-y-2 text-center">
-											<FileImage class="text-muted-foreground mx-auto h-16 w-16" />
-											<p class="text-muted-foreground text-sm">Click Convert to see result</p>
+											<FileImage class="text-converter-muted mx-auto h-16 w-16" />
+											<p class="text-converter-secondary text-sm">Click Convert to see result</p>
 										</div>
 									</div>
 								{/if}
@@ -582,6 +608,73 @@
 						</div>
 					</div>
 				</div>
+
+				<!-- Action Buttons -->
+				{#if hasFiles}
+					<div class="flex flex-wrap items-center justify-between gap-4 bg-ferrari-50/50 dark:bg-ferrari-950/50 p-4">
+						<!-- File Management Actions -->
+						<div class="flex gap-3">
+							<Button
+								variant="outline"
+								size="sm"
+								class="border-ferrari-300 dark:border-ferrari-600 hover:bg-ferrari-50 dark:hover:bg-ferrari-900"
+								onclick={clickAddMore}
+								disabled={disabled || isProcessing}
+							>
+								<Upload class="h-3.5 w-3.5" />
+								Add More
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								class="border-ferrari-300 dark:border-ferrari-600 hover:bg-ferrari-50 dark:hover:bg-ferrari-900"
+								onclick={clearAllFiles}
+								disabled={disabled || isProcessing}
+							>
+								<RotateCcw class="h-3.5 w-3.5" />
+								Clear All
+							</Button>
+						</div>
+
+						<!-- Primary Actions -->
+						<div class="flex gap-3">
+							{#if canDownload}
+								<Button
+									variant="default"
+									size="sm"
+									class="bg-ferrari-600 hover:bg-ferrari-700 text-white shadow-lg"
+									onclick={clickDownload}
+									disabled={disabled || isProcessing}
+								>
+									<Download class="h-3.5 w-3.5" />
+									Download
+								</Button>
+							{/if}
+							
+							{#if isProcessing}
+								<Button
+									variant="destructive"
+									size="sm"
+									onclick={clickAbort}
+								>
+									<Square class="h-3.5 w-3.5" />
+									Stop
+								</Button>
+							{:else if canConvert}
+								<Button
+									variant="default"
+									size="sm"
+									class="btn-ferrari-primary bg-gradient-to-r from-ferrari-600 to-red-600 hover:from-ferrari-700 hover:to-red-700 shadow-lg"
+									onclick={clickConvert}
+									disabled={!canConvert || disabled}
+								>
+									<Play class="h-3.5 w-3.5" />
+									Convert
+								</Button>
+							{/if}
+						</div>
+					</div>
+				{/if}
 			</div>
 		</div>
 	{/if}

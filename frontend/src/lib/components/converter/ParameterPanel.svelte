@@ -161,12 +161,15 @@
 		<!-- Detail Level -->
 		<div class="space-y-2">
 			<div class="flex items-center justify-between">
-				<label for="detail-level" class="flex items-center gap-2 text-sm font-medium">
-					<Eye class="text-muted-foreground h-4 w-4" aria-hidden="true" />
+				<label
+					for="detail-level"
+					class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+				>
+					<Eye class="text-converter-secondary h-4 w-4" aria-hidden="true" />
 					Detail Level
 				</label>
 				<span
-					class="text-muted-foreground bg-muted rounded px-2 py-1 font-mono text-sm"
+					class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
 					aria-live="polite">{detailUI}/10</span
 				>
 			</div>
@@ -183,7 +186,7 @@
 				aria-describedby="detail-level-desc"
 				use:initializeSliderFill
 			/>
-			<div id="detail-level-desc" class="text-muted-foreground text-xs">
+			<div id="detail-level-desc" class="text-converter-muted text-xs">
 				Controls line density and sensitivity. Higher values capture more details but may include
 				noise.
 			</div>
@@ -192,12 +195,15 @@
 		<!-- Stroke Width -->
 		<div class="space-y-2">
 			<div class="flex items-center justify-between">
-				<label for="stroke-width" class="flex items-center gap-2 text-sm font-medium">
-					<PenTool class="text-muted-foreground h-4 w-4" aria-hidden="true" />
+				<label
+					for="stroke-width"
+					class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+				>
+					<PenTool class="text-converter-secondary h-4 w-4" aria-hidden="true" />
 					Stroke Width
 				</label>
 				<span
-					class="text-muted-foreground bg-muted rounded px-2 py-1 font-mono text-sm"
+					class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
 					aria-live="polite">{config.stroke_width.toFixed(1)}px</span
 				>
 			</div>
@@ -215,7 +221,7 @@
 				aria-describedby="stroke-width-desc"
 				use:initializeSliderFill
 			/>
-			<div id="stroke-width-desc" class="text-muted-foreground text-xs">
+			<div id="stroke-width-desc" class="text-converter-muted text-xs">
 				Base thickness of generated lines at standard resolution.
 			</div>
 		</div>
@@ -224,12 +230,15 @@
 		{#if config.backend === 'edge'}
 			<div class="space-y-2">
 				<div class="flex items-center justify-between">
-					<label for="smoothness" class="flex items-center gap-2 text-sm font-medium">
-						<Filter class="text-muted-foreground h-4 w-4" aria-hidden="true" />
+					<label
+						for="smoothness"
+						class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+					>
+						<Filter class="text-converter-secondary h-4 w-4" aria-hidden="true" />
 						Smoothness
 					</label>
 					<span
-						class="text-muted-foreground bg-muted rounded px-2 py-1 font-mono text-sm"
+						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
 						aria-live="polite">{smoothnessUI}/10</span
 					>
 				</div>
@@ -246,7 +255,7 @@
 					aria-describedby="smoothness-desc"
 					use:initializeSliderFill
 				/>
-				<div id="smoothness-desc" class="text-muted-foreground text-xs">
+				<div id="smoothness-desc" class="text-converter-muted text-xs">
 					Controls line character from smooth and clean to rough and textured.
 				</div>
 			</div>
@@ -255,7 +264,9 @@
 		<!-- Hand-drawn Style (only for edge backend) -->
 		{#if config.backend === 'edge'}
 			<div class="space-y-2">
-				<label for="hand-drawn-preset" class="text-sm font-medium">Hand-drawn Style</label>
+				<label for="hand-drawn-preset" class="text-converter-primary text-sm font-medium"
+					>Hand-drawn Style</label
+				>
 				<CustomSelect
 					value={config.hand_drawn_preset}
 					options={Object.keys(HAND_DRAWN_DESCRIPTIONS).map((preset) => ({
@@ -266,7 +277,7 @@
 					{disabled}
 					placeholder="Select hand-drawn style"
 				/>
-				<div id="hand-drawn-desc" class="text-muted-foreground text-xs">
+				<div id="hand-drawn-desc" class="text-converter-muted text-xs">
 					{HAND_DRAWN_DESCRIPTIONS[config.hand_drawn_preset]}
 				</div>
 			</div>
@@ -276,14 +287,16 @@
 	<!-- Backend-Specific Controls -->
 	{#if config.backend === 'dots'}
 		<div class="space-y-4 border-t pt-4">
-			<h4 class="text-muted-foreground text-sm font-medium">Stippling Controls</h4>
+			<h4 class="text-converter-secondary text-sm font-medium">Stippling Controls</h4>
 
 			<!-- Dot Density -->
 			<div class="space-y-2">
 				<div class="flex items-center justify-between">
-					<label for="dot-density" class="text-sm font-medium">Dot Density</label>
+					<label for="dot-density" class="text-converter-primary text-sm font-medium"
+						>Dot Density</label
+					>
 					<span
-						class="text-muted-foreground bg-muted rounded px-2 py-1 font-mono text-sm"
+						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
 						aria-live="polite">{dotDensityUI}/10</span
 					>
 				</div>
@@ -300,7 +313,7 @@
 					aria-describedby="dot-density-desc"
 					use:initializeSliderFill
 				/>
-				<div id="dot-density-desc" class="text-muted-foreground text-xs">
+				<div id="dot-density-desc" class="text-converter-muted text-xs">
 					Controls dot placement density. Higher values create denser stippling patterns.
 				</div>
 			</div>
@@ -315,24 +328,29 @@
 					{disabled}
 					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 				/>
-				<label for="preserve-colors" class="cursor-pointer text-sm font-medium">
+				<label
+					for="preserve-colors"
+					class="text-converter-primary cursor-pointer text-sm font-medium"
+				>
 					Preserve Colors
 				</label>
 			</div>
-			<div class="text-muted-foreground ml-7 text-xs">
+			<div class="text-converter-muted ml-7 text-xs">
 				Keep original image colors in the stippling effect instead of monochrome dots.
 			</div>
 		</div>
 	{:else if config.backend === 'superpixel'}
 		<div class="space-y-4 border-t pt-4">
-			<h4 class="text-muted-foreground text-sm font-medium">Region Controls</h4>
+			<h4 class="text-converter-secondary text-sm font-medium">Region Controls</h4>
 
 			<!-- Region Count -->
 			<div class="space-y-2">
 				<div class="flex items-center justify-between">
-					<label for="region-count" class="text-sm font-medium">Region Complexity</label>
+					<label for="region-count" class="text-converter-primary text-sm font-medium"
+						>Region Complexity</label
+					>
 					<span
-						class="text-muted-foreground bg-muted rounded px-2 py-1 font-mono text-sm"
+						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
 						aria-live="polite">{regionCountUI}/10</span
 					>
 				</div>
@@ -349,7 +367,7 @@
 					aria-describedby="region-count-desc"
 					use:initializeSliderFill
 				/>
-				<div id="region-count-desc" class="text-muted-foreground text-xs">
+				<div id="region-count-desc" class="text-converter-muted text-xs">
 					Controls number of color regions. Higher values create more detailed segmentation.
 				</div>
 			</div>
@@ -364,15 +382,17 @@
 					{disabled}
 					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 				/>
-				<label for="fill-regions" class="cursor-pointer text-sm font-medium"> Fill Regions </label>
+				<label for="fill-regions" class="text-converter-primary cursor-pointer text-sm font-medium">
+					Fill Regions
+				</label>
 			</div>
-			<div class="text-muted-foreground ml-7 text-xs">
+			<div class="text-converter-muted ml-7 text-xs">
 				Fill color regions instead of showing only outlines for bolder poster-style effects.
 			</div>
 		</div>
 	{:else if config.backend === 'centerline'}
 		<div class="space-y-4 border-t pt-4">
-			<h4 class="text-muted-foreground text-sm font-medium">Precision Controls</h4>
+			<h4 class="text-converter-secondary text-sm font-medium">Precision Controls</h4>
 
 			<!-- Adaptive Threshold -->
 			<div class="flex items-center space-x-3">
@@ -384,11 +404,14 @@
 					{disabled}
 					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 				/>
-				<label for="adaptive-threshold" class="cursor-pointer text-sm font-medium">
+				<label
+					for="adaptive-threshold"
+					class="text-converter-primary cursor-pointer text-sm font-medium"
+				>
 					Adaptive Threshold
 				</label>
 			</div>
-			<div class="text-muted-foreground ml-7 text-xs">
+			<div class="text-converter-muted ml-7 text-xs">
 				Use adaptive thresholding for better extraction from images with varying lighting.
 			</div>
 		</div>
@@ -405,11 +428,14 @@
 				{disabled}
 				class="border-border text-primary h-4 w-4 rounded focus:outline-none"
 			/>
-			<label for="noise-filtering" class="cursor-pointer text-sm font-medium">
+			<label
+				for="noise-filtering"
+				class="text-converter-primary cursor-pointer text-sm font-medium"
+			>
 				Noise Filtering
 			</label>
 		</div>
-		<div class="text-muted-foreground ml-7 text-xs">
+		<div class="text-converter-muted ml-7 text-xs">
 			Apply content-aware noise reduction to clean up the output.
 		</div>
 	</div>

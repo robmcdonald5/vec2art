@@ -67,7 +67,7 @@
 			placeholder="Select a preset"
 		/>
 
-		<p class="text-muted-foreground text-xs">
+		<p class="text-converter-secondary text-xs">
 			{#if selectedPreset === 'custom'}
 				Fine-tuned custom settings
 			{:else}
