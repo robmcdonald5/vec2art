@@ -3,6 +3,7 @@
 	import { ArrowRight, Image, Zap, Download } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { preload } from '$lib/utils/preload';
+	import HeroSlider from '$lib/components/hero/HeroSlider.svelte';
 
 	// Intersection Observer for scroll animations
 	let observer: IntersectionObserver;
@@ -34,62 +35,65 @@
 </script>
 
 <div>
-	<!-- Enhanced Hero Section with Modern Gradients -->
-	<section class="relative min-h-[90vh] overflow-hidden">
-		<!-- Modern gradient background -->
-		<div class="absolute inset-0 bg-gradient-to-br from-indigo-100 via-white to-cyan-100"></div>
-		<div
-			class="absolute inset-0 bg-gradient-to-tr from-rose-100/50 via-transparent to-blue-100/50"
-		></div>
+	<!-- Hero Slider Container -->
+	<HeroSlider autoPlay={true} autoPlayDelay={6000}>
+		<!-- Enhanced Hero Section with Modern Gradients -->
+		<section class="relative min-h-[90vh] overflow-hidden">
+			<!-- Modern gradient background -->
+			<div class="absolute inset-0 bg-gradient-to-br from-indigo-100 via-white to-cyan-100"></div>
+			<div
+				class="absolute inset-0 bg-gradient-to-tr from-rose-100/50 via-transparent to-blue-100/50"
+			></div>
 
-		<!-- Animated gradient orbs -->
-		<div
-			class="absolute top-1/4 left-1/4 h-96 w-96 animate-pulse rounded-full bg-gradient-to-r from-blue-400/20 to-purple-400/20 blur-3xl"
-		></div>
-		<div
-			class="absolute right-1/3 bottom-1/3 h-80 w-80 animate-pulse rounded-full bg-gradient-to-r from-pink-400/20 to-red-400/20 blur-3xl delay-75"
-		></div>
-		<div
-			class="absolute top-1/2 right-1/4 h-64 w-64 animate-pulse rounded-full bg-gradient-to-r from-cyan-400/20 to-teal-400/20 blur-3xl delay-150"
-		></div>
+			<!-- Animated gradient orbs -->
+			<div
+				class="absolute top-1/4 left-1/4 h-96 w-96 animate-pulse rounded-full bg-gradient-to-r from-blue-400/20 to-purple-400/20 blur-3xl"
+			></div>
+			<div
+				class="absolute right-1/3 bottom-1/3 h-80 w-80 animate-pulse rounded-full bg-gradient-to-r from-pink-400/20 to-red-400/20 blur-3xl delay-75"
+			></div>
+			<div
+				class="absolute top-1/2 right-1/4 h-64 w-64 animate-pulse rounded-full bg-gradient-to-r from-cyan-400/20 to-teal-400/20 blur-3xl delay-150"
+			></div>
 
-		<!-- Content -->
-		<div class="relative z-10 flex min-h-[90vh] items-center justify-center px-4 sm:px-6 lg:px-8">
-			<div class="mx-auto max-w-screen-xl">
-				<div class="text-center">
-					<h1 class="heading-hero animate-fade-in">
-						Transform Images into
-						<span class="heading-hero-accent animate-gradient-shift">SVG Art</span>
-					</h1>
-					<p class="text-premium animate-slide-up mx-auto mt-8 max-w-3xl sm:text-2xl">
-						High-performance browser-based tool that converts images into expressive, hand-drawn
-						style graphics.
-					</p>
-					<div
-						class="animate-slide-up mt-12 flex flex-col gap-6 delay-200 sm:flex-row sm:justify-center"
-					>
-						<a
-							href="/converter"
-							use:preload
-							class="btn-ferrari-primary group transform px-10 py-3 text-xl shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:shadow-2xl inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium focus:outline-none"
+			<!-- Content -->
+			<div class="relative z-10 flex min-h-[90vh] items-center justify-center px-4 sm:px-6 lg:px-8">
+				<div class="mx-auto max-w-screen-xl">
+					<div class="text-center">
+						<h1 class="heading-hero animate-fade-in">
+							Transform Images into
+							<span class="heading-hero-accent animate-gradient-shift">SVG Art</span>
+						</h1>
+						<p class="text-premium animate-slide-up mx-auto mt-8 max-w-3xl sm:text-2xl">
+							High-performance browser-based tool that converts images into expressive, hand-drawn
+							style graphics.
+						</p>
+						<div
+							class="animate-slide-up mt-12 flex flex-col gap-6 delay-200 sm:flex-row sm:justify-center"
 						>
-							Start Converting
-							<ArrowRight
-								class="h-6 w-6 transition-transform group-hover:translate-x-2 group-hover:scale-110"
-							/>
-						</a>
-						<a
-							href="/gallery"
-							use:preload
-							class="transform px-10 py-3 text-xl transition-all duration-300 hover:-translate-y-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium focus:outline-none bg-white border-2 border-ferrari-500 text-ferrari-600 shadow-md hover:bg-ferrari-50 hover:text-ferrari-700 hover:shadow-lg"
-						>
-							View Gallery
-						</a>
+							<a
+								href="/converter"
+								use:preload
+								class="btn-ferrari-primary group transform px-10 py-3 text-xl shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:shadow-2xl inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium focus:outline-none"
+							>
+								Start Converting
+								<ArrowRight
+									class="h-6 w-6 transition-transform group-hover:translate-x-2 group-hover:scale-110"
+								/>
+							</a>
+							<a
+								href="/gallery"
+								use:preload
+								class="transform px-10 py-3 text-xl transition-all duration-300 hover:-translate-y-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium focus:outline-none bg-white border-2 border-ferrari-500 text-ferrari-600 shadow-md hover:bg-ferrari-50 hover:text-ferrari-700 hover:shadow-lg"
+							>
+								View Gallery
+							</a>
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	</section>
+		</section>
+	</HeroSlider>
 
 	<!-- Enhanced Features Section -->
 	<section class="bg-section-elevated animate-on-scroll relative py-24 sm:py-32">
