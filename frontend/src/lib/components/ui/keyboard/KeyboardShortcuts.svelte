@@ -74,8 +74,8 @@ const shortcuts = $derived<Shortcut[]>([
 		enabled: !isProcessing
 	},
 	{
-		key: '?',
-		displayKey: '?',
+		key: 'h',
+		displayKey: 'H',
 		description: 'Show/hide keyboard shortcuts',
 		action: () => showHelp = !showHelp,
 		enabled: true
@@ -102,8 +102,8 @@ function handleKeydown(event: KeyboardEvent) {
 		shortcut.action();
 	}
 
-	// Toggle help with ? key
-	if (event.key === '?' && !event.shiftKey) {
+	// Toggle help with H key
+	if (event.key === 'h' && !event.shiftKey) {
 		event.preventDefault();
 		onToggleHelp?.();
 	}
@@ -176,7 +176,7 @@ onMount(() => {
 			<!-- Footer -->
 			<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
 				<p class="text-xs text-gray-500 dark:text-gray-400 text-center">
-					Press <kbd class="px-1 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded">?</kbd> 
+					Press <kbd class="px-1 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded">H</kbd> 
 					to toggle this help
 				</p>
 			</div>
@@ -193,6 +193,6 @@ onMount(() => {
 	>
 		<Keyboard class="h-4 w-4" />
 		<span class="hidden sm:inline">Shortcuts</span>
-		<kbd class="px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded">?</kbd>
+		<kbd class="px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded">H</kbd>
 	</button>
 </div>
