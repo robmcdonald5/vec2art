@@ -25,8 +25,9 @@ class ParameterHistory {
 
 	// Add new entry to history
 	push(config: VectorizerConfig, description: string = 'Parameter change') {
+		// Use JSON parse/stringify for deep clone to avoid structuredClone issues
 		const entry: HistoryEntry = {
-			config: structuredClone(config), // Deep clone to prevent mutations
+			config: JSON.parse(JSON.stringify(config)), // Deep clone to prevent mutations
 			timestamp: new Date(),
 			description
 		};
@@ -52,7 +53,7 @@ class ParameterHistory {
 		if (!this.canUndo) return null;
 		
 		this.currentIndex--;
-		return this.current ? structuredClone(this.current.config) : null;
+		return this.current ? JSON.parse(JSON.stringify(this.current.config)) : null;
 	}
 
 	// Redo to next state
@@ -60,7 +61,7 @@ class ParameterHistory {
 		if (!this.canRedo) return null;
 		
 		this.currentIndex++;
-		return this.current ? structuredClone(this.current.config) : null;
+		return this.current ? JSON.parse(JSON.stringify(this.current.config)) : null;
 	}
 
 	// Get history for display
