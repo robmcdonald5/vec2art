@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
+	import { onMount, onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	import { BeforeAfterSlider } from '$lib/components/ui/before-after-slider';
 	import { Modal } from '$lib/components/ui/modal';
-	import { Filter, Grid, List, Search, Download, Eye, Maximize2 } from 'lucide-svelte';
+	import { Filter, Grid, List, Search, Download, Maximize2 } from 'lucide-svelte';
 
 	interface GalleryItem {
 		id: number;
@@ -17,6 +18,10 @@
 
 	let selectedItem = $state<GalleryItem | null>(null);
 	let modalOpen = $state(false);
+	let viewMode = $state<'grid' | 'list'>('grid');
+	let displayedItems = $state<GalleryItem[]>([]);
+	let isLoading = $state(false);
+	let hasMore = $state(true);
 
 	// Sample gallery data with the stock images
 	const galleryItems: GalleryItem[] = [
@@ -121,6 +126,82 @@
 		link.click();
 		document.body.removeChild(link);
 	}
+
+	function setViewMode(mode: 'grid' | 'list') {
+		viewMode = mode;
+	}
+
+	// Generate more sample items by duplicating and incrementing IDs
+	function generateMoreItems(startId: number, count: number): GalleryItem[] {
+		const baseItems = [...galleryItems];
+		const newItems: GalleryItem[] = [];
+
+		for (let i = 0; i < count; i++) {
+			const baseItem = baseItems[i % baseItems.length];
+			newItems.push({
+				...baseItem,
+				id: startId + i,
+				title: `${baseItem.title} ${Math.floor((startId + i - 1) / baseItems.length) + 1}`
+			});
+		}
+
+		return newItems;
+	}
+
+	// Load initial items (2 rows of 4 = 8 items)
+	function loadInitialItems() {
+		displayedItems = [...galleryItems];
+	}
+
+	// Load more items when scrolling
+	function loadMoreItems() {
+		if (isLoading || !hasMore) return;
+
+		isLoading = true;
+
+		// Simulate loading delay
+		setTimeout(() => {
+			const currentCount = displayedItems.length;
+			const newItems = generateMoreItems(currentCount + 1, 8); // Load 8 more items
+			displayedItems = [...displayedItems, ...newItems];
+
+			// For demo purposes, stop loading after 5 batches (40 items total)
+			if (displayedItems.length >= 40) {
+				hasMore = false;
+			}
+
+			isLoading = false;
+		}, 500);
+	}
+
+	// Infinite scroll handler
+	function handleScroll() {
+		if (!browser || isLoading || !hasMore) return;
+
+		const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+		const windowHeight = window.innerHeight;
+		const documentHeight = document.documentElement.scrollHeight;
+
+		// Load more when user is 300px from bottom
+		if (scrollTop + windowHeight >= documentHeight - 300) {
+			loadMoreItems();
+		}
+	}
+
+	// Setup infinite scroll on mount
+	onMount(() => {
+		loadInitialItems();
+		if (browser) {
+			window.addEventListener('scroll', handleScroll);
+		}
+	});
+
+	// Cleanup on destroy
+	onDestroy(() => {
+		if (browser) {
+			window.removeEventListener('scroll', handleScroll);
+		}
+	});
 </script>
 
 <!-- Gallery Hero Section -->
@@ -141,13 +222,13 @@
 					<input
 						type="text"
 						placeholder="Search examples..."
-						class="focus:border-ferrari-500 focus:ring-ferrari-500/20 text-speed-gray-900 placeholder:text-speed-gray-400 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pl-12 transition-all duration-300 focus:ring-4"
+						class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 placeholder:text-speed-gray-400 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pl-12 transition-all duration-200 focus:ring-1 focus:outline-none"
 					/>
 				</div>
 
 				<!-- Categories -->
 				<select
-					class="focus:border-ferrari-500 focus:ring-ferrari-500/20 text-speed-gray-900 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-all duration-300 focus:ring-4"
+					class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-all duration-200 focus:ring-1 focus:outline-none"
 				>
 					<option value="">All Categories</option>
 					<option value="logos">Logos & Icons</option>
@@ -157,7 +238,7 @@
 				</select>
 
 				<!-- Filter -->
-				<button class="btn-ferrari-secondary flex items-center gap-2">
+				<button class="btn-ferrari-secondary flex items-center gap-2 px-6 py-3">
 					<Filter class="h-4 w-4" />
 					Filter
 				</button>
@@ -166,11 +247,21 @@
 			<div class="flex items-center gap-2">
 				<!-- View Toggle -->
 				<div class="flex overflow-hidden rounded-xl border border-gray-200">
-					<button class="icon-ferrari-bg flex items-center px-4 py-3 text-white">
+					<button
+						class="flex items-center px-4 py-3 transition-all duration-200 {viewMode === 'grid'
+							? 'icon-ferrari-bg text-white'
+							: 'text-speed-gray-600 bg-white hover:bg-gray-50'}"
+						onclick={() => setViewMode('grid')}
+						aria-label="Grid view"
+					>
 						<Grid class="h-4 w-4" />
 					</button>
 					<button
-						class="text-speed-gray-600 flex items-center bg-white px-4 py-3 transition-colors duration-300 hover:bg-gray-50"
+						class="flex items-center px-4 py-3 transition-all duration-200 {viewMode === 'list'
+							? 'icon-ferrari-bg text-white'
+							: 'text-speed-gray-600 bg-white hover:bg-gray-50'}"
+						onclick={() => setViewMode('list')}
+						aria-label="List view"
 					>
 						<List class="h-4 w-4" />
 					</button>
@@ -184,14 +275,25 @@
 <section class="bg-section-premium py-8">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 		<!-- Gallery Grid -->
-		<div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-			{#each galleryItems as item}
+		<div
+			class={viewMode === 'grid'
+				? 'grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+				: 'space-y-6'}
+		>
+			{#each displayedItems || [] as item (item.id)}
 				<div
-					class="group hover:border-ferrari-300 animate-fadeInUp overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-300 hover:shadow-lg"
-					style="animation-delay: {(item.id - 1) * 0.1}s"
+					class="group hover:border-ferrari-300 animate-fadeInUp overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-300 hover:shadow-lg {viewMode ===
+					'list'
+						? 'flex flex-row'
+						: ''}"
+					style="animation-delay: {Math.max(0, (item.id - 1) * 0.1)}s"
 				>
 					<!-- Before/After Slider -->
-					<div class="relative aspect-square bg-gray-50">
+					<div
+						class="relative bg-gray-50 {viewMode === 'grid'
+							? 'aspect-square'
+							: 'h-48 w-72 flex-shrink-0'}"
+					>
 						<BeforeAfterSlider
 							beforeImage={item.beforeImage}
 							afterImage={item.afterImage}
@@ -229,7 +331,9 @@
 					</div>
 
 					<!-- Card Details -->
-					<div class="space-y-3 p-6">
+					<div
+						class="space-y-3 p-6 {viewMode === 'list' ? 'flex flex-1 flex-col justify-center' : ''}"
+					>
 						<h3
 							class="group-hover:text-ferrari-600 text-lg font-semibold text-gray-900 transition-colors duration-300"
 						>
@@ -237,12 +341,17 @@
 						</h3>
 						<div class="flex items-center gap-2">
 							<span
-								class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+								class="rounded-full px-4 py-1.5 text-sm font-semibold text-white shadow-md"
+								style="background: linear-gradient(135deg, #ff6b6b 0%, #dc143c 50%, #b91c2e 100%); box-shadow: 0 4px 15px -3px rgba(220, 20, 60, 0.3);"
 							>
 								{item.algorithm}
 							</span>
 						</div>
-						<div class="flex justify-between text-sm text-gray-600">
+						<div
+							class="flex {viewMode === 'list'
+								? 'flex-col gap-1'
+								: 'justify-between'} text-sm text-gray-600"
+						>
 							<span class="font-medium">{item.dimensions}</span>
 							<span class="font-medium">{item.fileSize}</span>
 						</div>
@@ -250,15 +359,24 @@
 				</div>
 			{/each}
 		</div>
-	</div>
-</section>
 
-<!-- Load More Section -->
-<section class="bg-section-premium py-16">
-	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
-		<div class="text-center">
-			<button class="btn-ferrari-primary mx-auto px-8 py-4 text-lg"> Load More Examples </button>
-		</div>
+		<!-- Loading Indicator -->
+		{#if isLoading && displayedItems.length > 0}
+			<div class="mt-12 flex justify-center">
+				<div class="flex items-center gap-3">
+					<div class="spinner-gradient h-8 w-8"></div>
+					<span class="text-lg text-gray-600">Loading more examples...</span>
+				</div>
+			</div>
+		{/if}
+
+		<!-- End of Results Message -->
+		{#if !hasMore && displayedItems.length > 0}
+			<div class="mt-12 text-center">
+				<p class="text-lg text-gray-600">You've reached the end of the gallery!</p>
+				<p class="mt-2 text-sm text-gray-500">Showing {displayedItems.length} examples</p>
+			</div>
+		{/if}
 	</div>
 </section>
 
@@ -270,7 +388,8 @@
 				<h2 class="text-speed-gray-900 mb-3 text-3xl font-bold">{selectedItem.title}</h2>
 				<div class="flex items-center gap-4">
 					<span
-						class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-4 py-2 text-sm font-semibold"
+						class="rounded-full px-4 py-2 text-sm font-semibold text-white shadow-md"
+						style="background: linear-gradient(135deg, #ff6b6b 0%, #dc143c 50%, #b91c2e 100%); box-shadow: 0 4px 15px -3px rgba(220, 20, 60, 0.3);"
 					>
 						{selectedItem.algorithm}
 					</span>
