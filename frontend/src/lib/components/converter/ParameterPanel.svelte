@@ -152,8 +152,10 @@
 
 <section class="space-y-6" aria-labelledby="parameter-panel-heading">
 	<div class="flex items-center gap-2">
-		<Sliders class="text-primary h-5 w-5" aria-hidden="true" />
-		<h3 id="parameter-panel-heading" class="text-lg font-semibold">Essential Controls</h3>
+		<div class="bg-ferrari-100 rounded-lg p-1.5">
+			<Sliders class="h-4 w-4 text-ferrari-600" aria-hidden="true" />
+		</div>
+		<h3 id="parameter-panel-heading" class="text-lg font-semibold text-converter-primary">Essential Controls</h3>
 	</div>
 
 	<!-- Core Parameters (Always Visible) -->
