@@ -106,7 +106,10 @@ export class PerformanceMonitor {
 			{ name: 'dns-lookup', value: entry.domainLookupEnd - entry.domainLookupStart },
 			{ name: 'tcp-connect', value: entry.connectEnd - entry.connectStart },
 			{ name: 'request-response', value: entry.responseEnd - entry.requestStart },
-			{ name: 'dom-loading', value: entry.domContentLoadedEventEnd - entry.domContentLoadedEventStart },
+			{
+				name: 'dom-loading',
+				value: entry.domContentLoadedEventEnd - entry.domContentLoadedEventStart
+			},
 			{ name: 'page-load', value: entry.loadEventEnd - entry.loadEventStart }
 		];
 
