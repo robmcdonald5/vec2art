@@ -1,31 +1,26 @@
 <script lang="ts">
-/**
- * Error Boundary Component
- * SvelteKit 5 Error Handling
- */
+	/**
+	 * Error Boundary Component
+	 * SvelteKit 5 Error Handling
+	 */
 
-import { AlertCircle } from 'lucide-svelte';
-import { Button } from '../button';
+	import { AlertCircle } from 'lucide-svelte';
+	import { Button } from '../button';
 
-// Component props
-interface Props {
-	handleError?: (error: Error) => void;
-	class?: string;
-	children?: import('svelte').Snippet;
-}
+	// Component props
+	interface Props {
+		handleError?: (error: Error) => void;
+		class?: string;
+		children?: import('svelte').Snippet;
+	}
 
-let { 
-	handleError = () => {},
-	class: className = '',
-	children,
-	...restProps 
-}: Props = $props();
+	let { handleError = () => {}, class: className = '', children, ...restProps }: Props = $props();
 
-// Error handling function
-function onError(error: Error) {
-	console.error('ErrorBoundary caught error:', error);
-	handleError(error);
-}
+	// Error handling function
+	function onError(error: Error) {
+		console.error('ErrorBoundary caught error:', error);
+		handleError(error);
+	}
 </script>
 
 <div class="error-boundary {className}" {...restProps}>

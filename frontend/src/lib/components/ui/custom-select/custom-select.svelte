@@ -125,10 +125,10 @@
 		role="combobox"
 	>
 		<div class="flex items-center justify-between">
-			<span class="block truncate text-converter-primary">
+			<span class="text-converter-primary block truncate">
 				{selectedOption?.label || placeholder}
 			</span>
-			<span class="ml-2 flex items-center text-ferrari-600">
+			<span class="text-ferrari-600 ml-2 flex items-center">
 				{#if isOpen}
 					<ChevronUp class="h-4 w-4 transition-transform duration-200" />
 				{:else}
@@ -142,10 +142,10 @@
 	{#if isOpen}
 		<div
 			class="
-			dropdown-animate-in absolute top-full right-0 left-0
-			z-50 max-h-60 overflow-y-auto
-			rounded-b-md border-r border-b border-l
-			border-ferrari-200/30 bg-white shadow-lg
+			dropdown-animate-in border-ferrari-200/30 absolute top-full right-0
+			left-0 z-50 max-h-60
+			overflow-y-auto rounded-b-md border-r border-b
+			border-l bg-white shadow-lg
 		"
 		>
 			<div role="listbox" id="dropdown-listbox">
@@ -157,8 +157,8 @@
 						'border-b border-ferrari-100/20 last:border-b-0',
 						'disabled:opacity-50 disabled:cursor-not-allowed',
 						'transition-all duration-150',
-						isSelected 
-							? 'text-white font-semibold' 
+						isSelected
+							? 'text-white font-semibold'
 							: 'text-converter-primary hover:bg-ferrari-50/30 hover:text-ferrari-700 focus:bg-ferrari-50/40 focus:text-ferrari-700'
 					]
 						.filter(Boolean)

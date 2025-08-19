@@ -1,76 +1,78 @@
 <script lang="ts">
-import { Undo2, Redo2, History, RotateCcw } from 'lucide-svelte';
-import { parameterHistory } from '$lib/stores/parameter-history.svelte';
-import type { VectorizerConfig } from '$lib/types/vectorizer';
+	import { Undo2, Redo2, History, RotateCcw } from 'lucide-svelte';
+	import { parameterHistory } from '$lib/stores/parameter-history.svelte';
+	import type { VectorizerConfig } from '$lib/types/vectorizer';
 
-interface Props {
-	onConfigChange: (config: VectorizerConfig) => void;
-	disabled?: boolean;
-}
-
-let { onConfigChange, disabled = false }: Props = $props();
-
-function handleUndo() {
-	if (disabled || !parameterHistory.canUndo) return;
-	
-	const previousConfig = parameterHistory.undo();
-	if (previousConfig) {
-		onConfigChange(previousConfig);
+	interface Props {
+		onConfigChange: (config: VectorizerConfig) => void;
+		disabled?: boolean;
 	}
-}
 
-function handleRedo() {
-	if (disabled || !parameterHistory.canRedo) return;
-	
-	const nextConfig = parameterHistory.redo();
-	if (nextConfig) {
-		onConfigChange(nextConfig);
+	let { onConfigChange, disabled = false }: Props = $props();
+
+	function handleUndo() {
+		if (disabled || !parameterHistory.canUndo) return;
+
+		const previousConfig = parameterHistory.undo();
+		if (previousConfig) {
+			onConfigChange(previousConfig);
+		}
 	}
-}
 
-function handleReset() {
-	if (disabled) return;
-	
-	const history = parameterHistory.getHistory();
-	if (history.length > 0) {
-		const initialConfig = history[0].config;
-		onConfigChange(structuredClone(initialConfig));
-		// Push reset action to history
-		parameterHistory.push(initialConfig, 'Reset to initial');
+	function handleRedo() {
+		if (disabled || !parameterHistory.canRedo) return;
+
+		const nextConfig = parameterHistory.redo();
+		if (nextConfig) {
+			onConfigChange(nextConfig);
+		}
 	}
-}
 
-// Keyboard shortcuts
-function handleKeydown(event: KeyboardEvent) {
-	if (disabled) return;
-	
-	// Check for Ctrl/Cmd + Z (undo) and Ctrl/Cmd + Y (redo)
-	if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z') {
-		event.preventDefault();
-		handleUndo();
-	} else if ((event.ctrlKey || event.metaKey) && (
-		(event.shiftKey && event.key.toLowerCase() === 'z') || 
-		event.key.toLowerCase() === 'y'
-	)) {
-		event.preventDefault();
-		handleRedo();
+	function handleReset() {
+		if (disabled) return;
+
+		const history = parameterHistory.getHistory();
+		if (history.length > 0) {
+			const initialConfig = history[0].config;
+			onConfigChange(structuredClone(initialConfig));
+			// Push reset action to history
+			parameterHistory.push(initialConfig, 'Reset to initial');
+		}
 	}
-}
 
-// Mount keyboard listeners
-import { onMount } from 'svelte';
-onMount(() => {
-	document.addEventListener('keydown', handleKeydown);
-	return () => document.removeEventListener('keydown', handleKeydown);
-});
+	// Keyboard shortcuts
+	function handleKeydown(event: KeyboardEvent) {
+		if (disabled) return;
+
+		// Check for Ctrl/Cmd + Z (undo) and Ctrl/Cmd + Y (redo)
+		if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z') {
+			event.preventDefault();
+			handleUndo();
+		} else if (
+			(event.ctrlKey || event.metaKey) &&
+			((event.shiftKey && event.key.toLowerCase() === 'z') || event.key.toLowerCase() === 'y')
+		) {
+			event.preventDefault();
+			handleRedo();
+		}
+	}
+
+	// Mount keyboard listeners
+	import { onMount } from 'svelte';
+	onMount(() => {
+		document.addEventListener('keydown', handleKeydown);
+		return () => document.removeEventListener('keydown', handleKeydown);
+	});
 </script>
 
-<div class="flex items-center gap-1 bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200 p-1">
+<div
+	class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white/90 p-1 backdrop-blur-sm"
+>
 	<!-- Undo Button -->
 	<button
 		onclick={handleUndo}
 		disabled={disabled || !parameterHistory.canUndo}
-		class="p-2 rounded-md transition-colors hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+		class="rounded-md p-2 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
 		title={parameterHistory.getUndoPreview() || 'Undo (Ctrl+Z)'}
 		aria-label="Undo parameter change"
 	>
@@ -81,7 +83,7 @@ onMount(() => {
 	<button
 		onclick={handleRedo}
 		disabled={disabled || !parameterHistory.canRedo}
-		class="p-2 rounded-md transition-colors hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+		class="rounded-md p-2 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
 		title={parameterHistory.getRedoPreview() || 'Redo (Ctrl+Y)'}
 		aria-label="Redo parameter change"
 	>
@@ -89,13 +91,13 @@ onMount(() => {
 	</button>
 
 	<!-- Divider -->
-	<div class="w-px h-6 bg-gray-300"></div>
+	<div class="h-6 w-px bg-gray-300"></div>
 
 	<!-- Reset Button -->
 	<button
 		onclick={handleReset}
-		disabled={disabled}
-		class="p-2 rounded-md transition-colors hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+		{disabled}
+		class="rounded-md p-2 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
 		title="Reset to initial parameters"
 		aria-label="Reset parameters"
 	>

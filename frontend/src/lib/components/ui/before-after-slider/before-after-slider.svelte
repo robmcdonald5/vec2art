@@ -103,15 +103,5 @@
 				<path d="M4 2l4 4-4 4V2z" stroke="#374151" stroke-width="0.5" />
 			</svg>
 		</div>
-
-		<!-- Labels -->
-		<div
-			class="absolute top-4 right-2 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white"
-		>
-			Before
-		</div>
-		<div class="absolute top-4 left-2 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white">
-			After
-		</div>
 	</div>
 </div>
