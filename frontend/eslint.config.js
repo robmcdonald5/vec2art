@@ -28,7 +28,23 @@ export default [
 		}
 	},
 	{
-		ignores: ['build/', '.svelte-kit/', 'dist/']
+		ignores: [
+			'build/',
+			'.svelte-kit/',
+			'dist/',
+			'src/lib/wasm/**/*.js',
+			'src/lib/wasm/**/*.d.ts',
+			'static/wasm/**/*.js',
+			'static/wasm/**/*.d.ts',
+			'public/wasm-loader.js',
+			'node_modules/',
+			'storybook-static/',
+			'coverage/',
+			'.storybook/**/*',
+			'src/stories/**/*',
+			'tests/algorithm-validation/**/*.js',
+			'src/lib/stores/*.svelte.ts'
+		]
 	},
 	...storybook.configs['flat/recommended']
 ];
