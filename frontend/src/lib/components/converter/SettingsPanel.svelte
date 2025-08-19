@@ -96,15 +96,15 @@ function updateConfig(key: keyof VectorizerConfig) {
 
 <div class="w-full max-w-sm space-y-4">
 	<!-- Quick Settings Panel -->
-	<div class="card-ferrari-static overflow-hidden rounded-2xl">
+	<div class="card-ferrari-static overflow-hidden rounded-2xl bg-gradient-to-br from-white to-ferrari-50/20 dark:from-gray-900 dark:to-ferrari-950/20 border border-ferrari-200/50 dark:border-ferrari-800/50 shadow-lg">
 		<button 
-			class="w-full flex items-center justify-between p-4 text-left hover:bg-ferrari-50 dark:hover:bg-ferrari-900/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ferrari-500"
+			class="w-full flex items-center justify-between p-4 text-left bg-gradient-to-r from-transparent to-ferrari-50/30 dark:to-ferrari-900/30 hover:from-ferrari-50 hover:to-ferrari-100/50 dark:hover:from-ferrari-900/50 dark:hover:to-ferrari-800/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ferrari-500 focus:ring-offset-2"
 			onclick={() => isQuickSettingsExpanded = !isQuickSettingsExpanded}
 			type="button"
 		>
 			<div class="flex items-center gap-3">
-				<div class="icon-ferrari-bg rounded-lg p-2">
-					<Sliders class="h-4 w-4 text-white" />
+				<div class="bg-gradient-to-br from-ferrari-500 to-ferrari-600 rounded-lg p-2 shadow-md">
+					<Sliders class="h-4 w-4 text-white drop-shadow" />
 				</div>
 				<h3 class="text-converter-primary text-lg font-semibold">Quick Settings</h3>
 			</div>
@@ -118,7 +118,7 @@ function updateConfig(key: keyof VectorizerConfig) {
 		</button>
 
 		{#if isQuickSettingsExpanded}
-			<div class="border-t border-ferrari-200 dark:border-ferrari-800 p-4 space-y-6">
+			<div class="border-t border-ferrari-200/50 dark:border-ferrari-800/50 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-4 space-y-6">
 				<!-- Algorithm Selection -->
 				<div>
 					<div class="flex items-center gap-2 mb-3">
@@ -182,7 +182,7 @@ function updateConfig(key: keyof VectorizerConfig) {
 							value={config.detail}
 							oninput={updateConfig('detail')}
 							disabled={disabled}
-							class="w-full h-2 bg-ferrari-100 dark:bg-ferrari-800 rounded-lg appearance-none cursor-pointer accent-ferrari-600"
+							class="w-full slider-ferrari"
 						/>
 						<div class="flex justify-between text-xs text-converter-secondary mt-1">
 							<span>Simple</span>
@@ -211,7 +211,7 @@ function updateConfig(key: keyof VectorizerConfig) {
 							value={config.stroke_width}
 							oninput={updateConfig('stroke_width')}
 							disabled={disabled}
-							class="w-full h-2 bg-ferrari-100 dark:bg-ferrari-800 rounded-lg appearance-none cursor-pointer accent-ferrari-600"
+							class="w-full slider-ferrari"
 						/>
 						<div class="flex justify-between text-xs text-converter-secondary mt-1">
 							<span>Thin</span>
@@ -225,15 +225,15 @@ function updateConfig(key: keyof VectorizerConfig) {
 	</div>
 
 	<!-- Advanced Settings Panel -->
-	<div class="card-ferrari-static overflow-hidden rounded-2xl">
+	<div class="card-ferrari-static overflow-hidden rounded-2xl bg-gradient-to-br from-white to-ferrari-50/20 dark:from-gray-900 dark:to-ferrari-950/20 border border-ferrari-200/50 dark:border-ferrari-800/50 shadow-lg">
 		<button 
-			class="w-full flex items-center justify-between p-4 text-left hover:bg-ferrari-50 dark:hover:bg-ferrari-900/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ferrari-500"
+			class="w-full flex items-center justify-between p-4 text-left bg-gradient-to-r from-transparent to-ferrari-50/30 dark:to-ferrari-900/30 hover:from-ferrari-50 hover:to-ferrari-100/50 dark:hover:from-ferrari-900/50 dark:hover:to-ferrari-800/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ferrari-500 focus:ring-offset-2"
 			onclick={() => isAdvancedSettingsExpanded = !isAdvancedSettingsExpanded}
 			type="button"
 		>
 			<div class="flex items-center gap-3">
-				<div class="icon-ferrari-bg rounded-lg p-2">
-					<Settings class="h-4 w-4 text-white" />
+				<div class="bg-gradient-to-br from-ferrari-500 to-ferrari-600 rounded-lg p-2 shadow-md">
+					<Settings class="h-4 w-4 text-white drop-shadow" />
 				</div>
 				<h3 class="text-converter-primary text-lg font-semibold">Advanced Settings</h3>
 			</div>
@@ -247,9 +247,9 @@ function updateConfig(key: keyof VectorizerConfig) {
 		</button>
 
 		{#if isAdvancedSettingsExpanded}
-			<div class="border-t border-ferrari-200 dark:border-ferrari-800 p-4 space-y-6">
+			<div class="border-t border-ferrari-200/50 dark:border-ferrari-800/50 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-4 space-y-6">
 				<!-- Performance Configuration -->
-				<div class="bg-ferrari-50 dark:bg-ferrari-950/50 rounded-xl p-4">
+				<div class="bg-gradient-to-br from-ferrari-50 to-ferrari-100/30 dark:from-ferrari-950/50 dark:to-ferrari-900/30 rounded-xl p-4 border border-ferrari-200/30 dark:border-ferrari-800/30">
 					<div class="flex items-center justify-between mb-4">
 						<h4 class="text-converter-primary font-medium">Performance</h4>
 						<div class="flex items-center gap-2">
@@ -346,7 +346,7 @@ function updateConfig(key: keyof VectorizerConfig) {
 								value={currentThreadCount}
 								oninput={updateThreadCount}
 								disabled={disabled}
-								class="w-full h-2 bg-ferrari-100 dark:bg-ferrari-800 rounded-lg appearance-none cursor-pointer accent-ferrari-600"
+								class="w-full slider-ferrari"
 							/>
 							<p class="text-xs text-converter-secondary">
 								Recommended: {getOptimalThreadCount('balanced')} threads for your system
@@ -364,3 +364,79 @@ function updateConfig(key: keyof VectorizerConfig) {
 		{/if}
 	</div>
 </div>
+
+<style>
+	/* Ferrari-themed range slider styles */
+	.slider-ferrari {
+		-webkit-appearance: none;
+		appearance: none;
+		background: transparent;
+		cursor: pointer;
+	}
+	
+	.slider-ferrari::-webkit-slider-track {
+		background: linear-gradient(to right, #FFE5E0, #FFB5B0);
+		height: 8px;
+		border-radius: 4px;
+		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+	}
+	
+	.slider-ferrari::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		appearance: none;
+		background: linear-gradient(135deg, #FF2800, #DC2626);
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		border: 2px solid white;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1);
+		transition: transform 0.2s, box-shadow 0.2s;
+	}
+	
+	.slider-ferrari::-webkit-slider-thumb:hover {
+		transform: scale(1.1);
+		box-shadow: 0 4px 8px rgba(255, 40, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+	
+	.slider-ferrari::-moz-range-track {
+		background: linear-gradient(to right, #FFE5E0, #FFB5B0);
+		height: 8px;
+		border-radius: 4px;
+		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+	}
+	
+	.slider-ferrari::-moz-range-thumb {
+		background: linear-gradient(135deg, #FF2800, #DC2626);
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		border: 2px solid white;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1);
+		transition: transform 0.2s, box-shadow 0.2s;
+		cursor: pointer;
+	}
+	
+	.slider-ferrari::-moz-range-thumb:hover {
+		transform: scale(1.1);
+		box-shadow: 0 4px 8px rgba(255, 40, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+	
+	/* Dark mode adjustments */
+	:global(.dark) .slider-ferrari::-webkit-slider-track {
+		background: linear-gradient(to right, #7F1D1D, #991B1B);
+	}
+	
+	:global(.dark) .slider-ferrari::-moz-range-track {
+		background: linear-gradient(to right, #7F1D1D, #991B1B);
+	}
+	
+	:global(.dark) .slider-ferrari::-webkit-slider-thumb {
+		background: linear-gradient(135deg, #FF2800, #EF4444);
+		border-color: #1F2937;
+	}
+	
+	:global(.dark) .slider-ferrari::-moz-range-thumb {
+		background: linear-gradient(135deg, #FF2800, #EF4444);
+		border-color: #1F2937;
+	}
+</style>

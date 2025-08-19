@@ -68,37 +68,41 @@
 
 <section class="space-y-4">
 	<div class="flex items-center gap-2">
-		<Settings2 class="h-5 w-5 text-blue-600" />
-		<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Advanced Controls</h3>
+		<div class="bg-gradient-to-br from-ferrari-500 to-ferrari-600 rounded-lg p-1.5 shadow-sm">
+			<Settings2 class="h-4 w-4 text-white" />
+		</div>
+		<h3 class="text-lg font-semibold text-converter-primary">Advanced Controls</h3>
 	</div>
 
-	<p class="text-sm text-gray-600 dark:text-gray-400">
+	<p class="text-sm text-converter-secondary">
 		Fine-tune processing algorithms with advanced parameters. Changes automatically switch to custom mode.
 	</p>
 
 	<div class="space-y-3">
 		<!-- Multi-pass Processing -->
-		<div class="bg-white rounded-lg shadow-sm border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+		<div class="bg-gradient-to-br from-white to-ferrari-50/30 dark:from-gray-900 dark:to-ferrari-950/30 rounded-lg shadow-sm border border-ferrari-200/40 dark:border-ferrari-800/40">
 			<button
-				class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
+				class="w-full flex items-center justify-between p-4 text-left hover:bg-ferrari-50/50 dark:hover:bg-ferrari-900/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ferrari-500 focus:ring-offset-1 rounded-lg"
 				onclick={() => toggleSection('multipass')}
 				{disabled}
 				type="button"
 			>
 				<div class="flex items-center gap-2">
-					<Layers class="h-4 w-4 text-gray-600 dark:text-gray-400" />
-					<span class="font-medium text-gray-900 dark:text-white">Multi-pass Processing</span>
+					<div class="bg-ferrari-100 dark:bg-ferrari-900 rounded p-1">
+						<Layers class="h-4 w-4 text-ferrari-600 dark:text-ferrari-400" />
+					</div>
+					<span class="font-medium text-converter-primary">Multi-pass Processing</span>
 					{#if config.multipass}
-						<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+						<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-ferrari-500 to-ferrari-600 text-white shadow-sm">
 							Active
 						</span>
 					{/if}
 				</div>
 				<div class="flex-shrink-0">
 					{#if expandedSections.multipass}
-						<ChevronUp class="h-4 w-4 text-gray-500" />
+						<ChevronUp class="h-4 w-4 text-ferrari-600 dark:text-ferrari-400" />
 					{:else}
-						<ChevronDown class="h-4 w-4 text-gray-500" />
+						<ChevronDown class="h-4 w-4 text-ferrari-600 dark:text-ferrari-400" />
 					{/if}
 				</div>
 			</button>
@@ -174,7 +178,7 @@
 						{#if expandedSections.directional}
 							<ChevronUp class="h-4 w-4 text-gray-500" />
 						{:else}
-							<ChevronDown class="h-4 w-4 text-gray-500" />
+							<ChevronDown class="h-4 w-4 text-ferrari-600 dark:text-ferrari-400" />
 						{/if}
 					</div>
 				</button>
@@ -264,7 +268,7 @@
 						{#if expandedSections.artistic}
 							<ChevronUp class="h-4 w-4 text-gray-500" />
 						{:else}
-							<ChevronDown class="h-4 w-4 text-gray-500" />
+							<ChevronDown class="h-4 w-4 text-ferrari-600 dark:text-ferrari-400" />
 						{/if}
 					</div>
 				</button>
@@ -369,7 +373,7 @@
 						{#if expandedSections.edgeDetection}
 							<ChevronUp class="h-4 w-4 text-gray-500" />
 						{:else}
-							<ChevronDown class="h-4 w-4 text-gray-500" />
+							<ChevronDown class="h-4 w-4 text-ferrari-600 dark:text-ferrari-400" />
 						{/if}
 					</div>
 				</button>
@@ -444,7 +448,7 @@
 						{#if expandedSections.dotsAdvanced}
 							<ChevronUp class="h-4 w-4 text-gray-500" />
 						{:else}
-							<ChevronDown class="h-4 w-4 text-gray-500" />
+							<ChevronDown class="h-4 w-4 text-ferrari-600 dark:text-ferrari-400" />
 						{/if}
 					</div>
 				</button>
@@ -513,7 +517,7 @@
 						{#if expandedSections.superpixelAdvanced}
 							<ChevronUp class="h-4 w-4 text-gray-500" />
 						{:else}
-							<ChevronDown class="h-4 w-4 text-gray-500" />
+							<ChevronDown class="h-4 w-4 text-ferrari-600 dark:text-ferrari-400" />
 						{/if}
 					</div>
 				</button>
@@ -582,7 +586,7 @@
 					{#if expandedSections.performance}
 						<ChevronUp class="h-4 w-4 text-gray-500" />
 					{:else}
-						<ChevronDown class="h-4 w-4 text-gray-500" />
+						<ChevronDown class="h-4 w-4 text-ferrari-600 dark:text-ferrari-400" />
 					{/if}
 				</div>
 			</button>
