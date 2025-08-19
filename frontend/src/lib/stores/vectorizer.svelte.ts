@@ -977,6 +977,11 @@ class VectorizerStore {
 
 	// Helper methods
 	private async fileToImageData(file: File): Promise<ImageData> {
+		// Validate file type first
+		if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+			throw new Error(`SVG files cannot be used as source images. Please use JPG, PNG, or WebP files.`);
+		}
+		
 		return new Promise((resolve, reject) => {
 			const img = new Image();
 			const canvas = document.createElement('canvas');
@@ -986,6 +991,8 @@ class VectorizerStore {
 				reject(new Error('Failed to get canvas context'));
 				return;
 			}
+			
+			const objectUrl = URL.createObjectURL(file);
 
 			img.onload = () => {
 				canvas.width = img.width;
@@ -994,17 +1001,20 @@ class VectorizerStore {
 
 				try {
 					const imageData = ctx.getImageData(0, 0, img.width, img.height);
+					URL.revokeObjectURL(objectUrl); // Clean up
 					resolve(imageData);
 				} catch (error) {
+					URL.revokeObjectURL(objectUrl); // Clean up
 					reject(error);
 				}
 			};
 
 			img.onerror = () => {
-				reject(new Error('Failed to load image'));
+				URL.revokeObjectURL(objectUrl); // Clean up
+				reject(new Error(`Failed to load image: ${file.name}. Please ensure it's a valid JPG, PNG, or WebP file.`));
 			};
 
-			img.src = URL.createObjectURL(file);
+			img.src = objectUrl;
 		});
 	}
 
