@@ -111,7 +111,7 @@
 @layer components {
 	/* Enhanced Primary Ferrari button with modern gradients */
 	.btn-ferrari-primary {
-		@apply transform rounded-2xl border-0 font-semibold text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:ring-4 focus:outline-none active:translate-y-0 active:shadow-lg;
+		@apply relative overflow-hidden rounded-2xl border-0 font-semibold text-white transition-all duration-300 focus:ring-4 focus:outline-none;
 		background: linear-gradient(135deg, #ff6b6b 0%, #dc143c 50%, #b91c2e 100%);
 		background-size: 200% 200%;
 		box-shadow:
@@ -121,11 +121,17 @@
 
 	.btn-ferrari-primary:hover {
 		background-position: right center;
-		transform: translateY(-4px) scale(1.02);
+		transform: translateY(-2px) scale(1.05);
 		box-shadow:
 			0 25px 50px -12px rgba(220, 20, 60, 0.5),
 			0 0 25px rgba(255, 107, 107, 0.3);
-		animation: gradientShift 0.3s ease-in-out;
+	}
+
+	.btn-ferrari-primary:active {
+		transform: translateY(0px) scale(1.02);
+		box-shadow:
+			0 15px 35px -8px rgba(220, 20, 60, 0.4),
+			0 0 20px rgba(255, 107, 107, 0.2);
 	}
 
 	.btn-ferrari-primary:focus {
@@ -176,6 +182,17 @@
 		box-shadow: 0 25px 50px -12px rgba(220, 20, 60, 0.08);
 	}
 
+	/* Contact section card - no hover transform */
+	.card-ferrari-contact {
+		@apply relative bg-white transition-all duration-300 hover:shadow-lg;
+		border: 1px solid #e5e5e5;
+	}
+
+	.card-ferrari-contact:hover {
+		border-color: rgba(220, 20, 60, 0.3);
+		box-shadow: 0 10px 25px -5px rgba(220, 20, 60, 0.08);
+	}
+
 	/* Typography styles */
 	.heading-hero {
 		@apply text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl;
@@ -185,15 +202,15 @@
 	.heading-hero-accent {
 		/* Provide strong fallback color first */
 		color: #dc143c;
-		background: linear-gradient(45deg, #ff6b6b, #dc143c, #4ecdc4, #45b7d1, #ff6b6b);
-		background-size: 300% 300%;
+		background: linear-gradient(135deg, #ff6b6b 0%, #dc143c 30%, #b91c2e 70%, #dc143c 100%);
+		background-size: 200% 200%;
 		background-clip: text;
 		-webkit-background-clip: text;
 		/* Use -webkit-text-fill-color instead of color: transparent */
 		-webkit-text-fill-color: transparent;
-		animation: gradientShift 3s ease infinite;
-		filter: drop-shadow(0 2px 4px rgba(220, 20, 60, 0.2));
-		
+		animation: gradientShift 4s ease infinite;
+		filter: drop-shadow(0 2px 4px rgba(220, 20, 60, 0.3));
+
 		/* Ensure fallback color works when gradient fails */
 		@supports not (-webkit-background-clip: text) {
 			color: #dc143c !important;
@@ -246,10 +263,12 @@
 	/* Modern section backgrounds with gradients */
 	.bg-section-elevated {
 		/* Reduce gradient complexity for better text readability */
-		background: linear-gradient(135deg, 
-			rgba(254, 252, 252, 0.99) 0%, 
-			rgba(255, 255, 255, 1) 50%, 
-			rgba(248, 250, 252, 0.99) 100%);
+		background: linear-gradient(
+			135deg,
+			rgba(254, 252, 252, 0.99) 0%,
+			rgba(255, 255, 255, 1) 50%,
+			rgba(248, 250, 252, 0.99) 100%
+		);
 		position: relative;
 		overflow: hidden;
 	}
@@ -266,10 +285,12 @@
 
 	.bg-section-premium {
 		/* Optimize gradient for better text contrast */
-		background: linear-gradient(135deg, 
-			rgba(248, 250, 252, 0.99) 0%, 
-			rgba(241, 245, 249, 1) 50%, 
-			rgba(226, 232, 240, 0.98) 100%);
+		background: linear-gradient(
+			135deg,
+			rgba(248, 250, 252, 0.99) 0%,
+			rgba(241, 245, 249, 1) 50%,
+			rgba(226, 232, 240, 0.98) 100%
+		);
 		position: relative;
 	}
 
@@ -288,7 +309,11 @@
 		@apply relative transform bg-white transition-all duration-500 hover:-translate-y-3 hover:shadow-2xl;
 		border: 1px solid #e5e5e5;
 		/* Strengthen background for better text contrast */
-		background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(254, 247, 247, 0.96) 100%);
+		background: linear-gradient(
+			135deg,
+			rgba(255, 255, 255, 0.98) 0%,
+			rgba(254, 247, 247, 0.96) 100%
+		);
 		position: relative;
 		overflow: hidden;
 	}
@@ -346,14 +371,14 @@
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		animation: ferrariGlow 4s ease-in-out infinite alternate;
-		
+
 		/* Fallback for browsers without gradient support */
 		@supports not (-webkit-background-clip: text) {
 			color: #dc143c !important;
 		}
 	}
 
-	/* Modern hero section with animated background */
+	/* Modern hero section with animated background - Ferrari palette */
 	.bg-hero-speed-dynamic {
 		background:
 			radial-gradient(
@@ -363,7 +388,7 @@
 				rgba(248, 250, 252, 0.7) 60%,
 				rgba(241, 245, 249, 0.8) 100%
 			),
-			linear-gradient(135deg, #667eea 0%, #764ba2 50%, #4ecdc4 100%);
+			linear-gradient(135deg, #ff6b6b 0%, #dc143c 50%, #b91c2e 100%);
 		background-size:
 			100% 100%,
 			300% 300%;
@@ -380,8 +405,8 @@
 		bottom: 0;
 		background:
 			radial-gradient(circle at 30% 80%, rgba(255, 107, 107, 0.05) 0%, transparent 50%),
-			radial-gradient(circle at 80% 20%, rgba(69, 183, 209, 0.05) 0%, transparent 50%),
-			radial-gradient(circle at 40% 40%, rgba(78, 205, 196, 0.03) 0%, transparent 50%);
+			radial-gradient(circle at 80% 20%, rgba(220, 20, 60, 0.03) 0%, transparent 50%),
+			radial-gradient(circle at 40% 40%, rgba(185, 28, 46, 0.02) 0%, transparent 50%);
 		pointer-events: none;
 	}
 
@@ -404,19 +429,19 @@
 		}
 	}
 
-	/* Enhanced text gradients - match hero title gradient */
+	/* Enhanced text gradients - Sophisticated Ferrari-only palette */
 	.text-gradient-modern {
-		/* Strong fallback color that matches hero gradient */
+		/* Strong fallback color for accessibility */
 		color: #dc143c;
-		background: linear-gradient(45deg, #ff6b6b, #dc143c, #4ecdc4, #45b7d1, #ff6b6b);
-		background-size: 300% 300%;
+		background: linear-gradient(135deg, #ff6b6b 0%, #dc143c 30%, #b91c2e 70%, #dc143c 100%);
+		background-size: 200% 200%;
 		background-clip: text;
 		-webkit-background-clip: text;
 		/* Use -webkit-text-fill-color instead of color: transparent */
 		-webkit-text-fill-color: transparent;
-		animation: gradientShift 3s ease infinite;
-		filter: drop-shadow(0 2px 4px rgba(220, 20, 60, 0.2));
-		
+		animation: gradientShift 4s ease infinite;
+		filter: drop-shadow(0 2px 4px rgba(220, 20, 60, 0.3));
+
 		/* Feature detection fallback */
 		@supports not (-webkit-background-clip: text) {
 			color: #dc143c !important;
@@ -450,5 +475,363 @@
 	/* Ensure SVG icons in pipeline subtitles are visible */
 	.text-ferrari-600 svg {
 		color: #dc143c !important;
+	}
+
+	/* Converter-specific card styles without movement */
+	.card-ferrari-static {
+		@apply relative bg-white transition-all duration-300 hover:shadow-2xl;
+		border: 1px solid #e5e5e5;
+		background: linear-gradient(
+			135deg,
+			rgba(255, 255, 255, 0.98) 0%,
+			rgba(254, 247, 247, 0.96) 100%
+		);
+		position: relative;
+		overflow: hidden;
+	}
+
+	.card-ferrari-static::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: linear-gradient(135deg, rgba(220, 20, 60, 0.02), rgba(255, 107, 107, 0.01));
+		opacity: 0;
+		transition: opacity 0.3s ease;
+		z-index: 1;
+		pointer-events: none; /* Ensure this overlay doesn't interfere with anything */
+	}
+
+	.card-ferrari-static:hover {
+		border-color: rgba(220, 20, 60, 0.3);
+		box-shadow:
+			0 25px 50px -12px rgba(220, 20, 60, 0.15),
+			0 0 25px rgba(255, 107, 107, 0.1);
+		/* No transform on hover - static positioning */
+	}
+
+	.card-ferrari-static:hover::before {
+		opacity: 1;
+	}
+
+	/* Enhanced text readability on static cards */
+	.card-ferrari-static h3,
+	.card-ferrari-static p,
+	.card-ferrari-static span,
+	.card-ferrari-static label,
+	.card-ferrari-static .text-speed-gray-600,
+	.card-ferrari-static .text-speed-gray-900 {
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+		position: relative;
+		z-index: 2;
+		color: #1f2937 !important; /* Force dark text color */
+	}
+
+	/* CRITICAL FIX: Ensure all interactive elements are above the ::before overlay */
+	.card-ferrari-static button,
+	.card-ferrari-static input,
+	.card-ferrari-static select,
+	.card-ferrari-static [role="combobox"],
+	.card-ferrari-static [role="slider"],
+	.card-ferrari-static [role="button"],
+	.card-ferrari-static .interactive,
+	.card-ferrari-static label {
+		position: relative;
+		z-index: 10;
+		pointer-events: auto !important;
+	}
+
+	/* Enhanced Focus Indicators for Accessibility */
+	:focus-visible {
+		outline: 3px solid rgb(220, 38, 38);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
+
+	button:focus-visible,
+	a:focus-visible {
+		outline: 3px solid rgb(220, 38, 38);
+		outline-offset: 2px;
+		box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.2);
+	}
+
+	input:focus-visible,
+	textarea:focus-visible,
+	select:focus-visible {
+		outline: 3px solid rgb(220, 38, 38);
+		outline-offset: 1px;
+		border-color: rgb(220, 38, 38);
+	}
+
+	[role="slider"]:focus-visible {
+		outline: 3px solid rgb(220, 38, 38);
+		outline-offset: 4px;
+	}
+
+	[role="combobox"]:focus-visible {
+		outline: 3px solid rgb(220, 38, 38);
+		outline-offset: 2px;
+		box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15);
+	}
+
+	/* TRANSPARENCY FIX: Force visible text in all dropdown and slider elements */
+	.card-ferrari-static button span,
+	.card-ferrari-static [role="combobox"] span,
+	.card-ferrari-static .flex span {
+		color: #1f2937 !important;
+		opacity: 1 !important;
+		-webkit-text-fill-color: #1f2937 !important;
+	}
+
+	/* AGGRESSIVE FIX: Target all text in settings panels specifically by structure */
+	.card-ferrari-static .space-y-4 span,
+	.card-ferrari-static .grid span {
+		color: #000000 !important;
+		opacity: 1 !important;
+		-webkit-text-fill-color: #000000 !important;
+		text-shadow: none !important;
+	}
+
+	/* NUCLEAR OPTION: Force text visibility in settings panels */
+	.bg-white.rounded-lg.shadow-sm span {
+		color: #000000 !important;
+		opacity: 1 !important;
+		-webkit-text-fill-color: #000000 !important;
+	}
+
+	/* ULTIMATE FIX: Target settings panels by structure */
+	.card-ferrari-static h3 + div span,
+	.card-ferrari-static .space-y-4 span,
+	.card-ferrari-static .grid span,
+	.card-ferrari-static .flex.items-center span {
+		color: #000000 !important;
+		opacity: 1 !important;
+		background-color: transparent !important;
+		-webkit-text-fill-color: #000000 !important;
+		text-decoration: none !important;
+		text-shadow: none !important;
+	}
+
+	/* TARGETED FIX: Only override problematic transparent text elements */
+	[role="combobox"] span.block.truncate,
+	.font-medium {
+		color: #1f2937 !important;
+		opacity: 1 !important;
+		-webkit-text-fill-color: #1f2937 !important;
+	}
+
+	/* Better color contrast for converter interface */
+	.text-converter-primary {
+		color: #1a1a1a !important;
+		font-weight: 600;
+	}
+
+	.text-converter-secondary {
+		color: #404040 !important;
+		font-weight: 500;
+	}
+
+	.text-converter-muted {
+		color: #6b7280 !important;
+	}
+
+	/* Enhanced status indicators */
+	.status-indicator-success {
+		color: #059669 !important;
+		font-weight: 600;
+	}
+
+	.status-indicator-warning {
+		color: #d97706 !important;
+		font-weight: 600;
+	}
+
+	.status-indicator-error {
+		color: #dc2626 !important;
+		font-weight: 600;
+	}
+
+	/* Improved progress bar styling */
+	.progress-ferrari {
+		background: linear-gradient(90deg, #ff6b6b 0%, #dc143c 50%, #b91c2e 100%);
+		box-shadow: 0 2px 8px rgba(220, 20, 60, 0.3);
+	}
+
+	/* Enhanced form elements for better visibility */
+	.input-ferrari {
+		@apply rounded-lg border-2 border-gray-200 bg-white transition-all duration-200;
+		color: #1a1a1a !important;
+	}
+
+	.input-ferrari:focus {
+		border-color: #dc143c;
+		box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.1);
+	}
+
+	/* Improved button contrast */
+	.btn-ferrari-outline {
+		@apply border-2 border-gray-300 bg-white text-gray-700 transition-all duration-200 hover:border-red-600 hover:text-red-600;
+	}
+
+	/* ===== CONVERTER DESIGN SYSTEM ===== */
+	
+	/* Converter Cards */
+	.card-converter {
+		@apply rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300;
+	}
+	
+	.card-converter-interactive {
+		@apply rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-red-300 hover:shadow-lg hover:shadow-red-500/10;
+	}
+	
+	.card-converter-static {
+		@apply rounded-3xl border border-gray-100 bg-gray-50/30 p-6 shadow-sm transition-all duration-300;
+	}
+
+	/* Upload Dropzone */
+	.upload-dropzone {
+		@apply relative min-h-[300px] cursor-pointer rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50/50 p-10 text-center transition-all duration-300 hover:border-red-400 hover:bg-red-50/30;
+	}
+	
+	.upload-dropzone.drag-over {
+		@apply border-red-500 bg-red-100/50;
+	}
+	
+	.upload-dropzone-content {
+		@apply flex flex-col items-center gap-4;
+	}
+	
+	.upload-dropzone-title {
+		@apply text-2xl font-bold text-gray-800;
+	}
+	
+	.upload-dropzone-subtitle {
+		@apply text-gray-600;
+	}
+	
+	.upload-dropzone-info {
+		@apply text-xs text-gray-500;
+	}
+
+	/* Settings Panel */
+	.settings-panel {
+		@apply rounded-3xl border border-gray-200 bg-white p-6 shadow-sm space-y-6;
+	}
+	
+	.settings-header {
+		@apply flex items-center gap-3;
+	}
+	
+	.settings-title {
+		@apply text-lg font-semibold text-gray-900;
+	}
+	
+	.settings-section {
+		@apply space-y-3;
+	}
+	
+	.settings-label {
+		@apply text-sm font-medium text-gray-700;
+	}
+	
+	.settings-option {
+		@apply flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-left transition-all duration-200 hover:shadow-md hover:shadow-red-500/10 hover:-translate-y-0.5;
+	}
+	
+	.settings-option.selected {
+		@apply border-red-500 bg-red-50;
+	}
+	
+	.settings-option:not(.selected) {
+		@apply hover:border-red-300;
+	}
+	
+	.settings-radio {
+		@apply mt-0.5 flex h-4 w-4 items-center justify-center;
+	}
+	
+	.settings-radio-dot {
+		@apply h-2 w-2 rounded-full;
+	}
+	
+	.settings-radio-dot.selected {
+		@apply bg-red-600;
+	}
+	
+	.settings-radio-dot:not(.selected) {
+		@apply border border-gray-300;
+	}
+
+	/* Preview Components */
+	.preview-container {
+		@apply rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300 relative overflow-hidden;
+	}
+	
+	.preview-image {
+		@apply max-h-96 w-full rounded-lg object-contain;
+	}
+
+	/* Progress Components */
+	.progress-container {
+		@apply rounded-3xl border border-gray-100 bg-gray-50/30 p-6 shadow-sm transition-all duration-300 mb-6;
+	}
+	
+	.progress-bar-bg {
+		@apply h-2 w-full overflow-hidden rounded-full bg-gray-200;
+	}
+	
+	.progress-bar-fill {
+		@apply relative h-full rounded-full bg-gradient-to-r from-red-600 to-red-500 transition-all duration-300 ease-out;
+		box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+	}
+	
+	.progress-bar-shimmer {
+		@apply absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent;
+	}
+
+	/* Icon Backgrounds for Converter */
+	.icon-converter-bg {
+		@apply rounded-full bg-gradient-to-br from-red-500 to-red-600 p-2 transition-all duration-300;
+		box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+	}
+	
+	.icon-converter-bg:hover {
+		@apply scale-110;
+		box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+		animation: ferrari-pulse 2s ease-in-out infinite;
+	}
+	
+	@keyframes ferrari-pulse {
+		0%, 100% {
+			box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+		}
+		50% {
+			box-shadow: 0 8px 25px rgba(220, 38, 38, 0.5);
+		}
+	}
+
+	/* Converter Typography - REMOVED DUPLICATES: Using explicit colors from lines 543-555 instead of Tailwind @apply to prevent transparency issues */
+
+	/* Status Indicators - Using explicit colors for consistent visibility - CORRECTED COLORS */
+	.status-indicator-success {
+		color: #059669 !important;
+		font-weight: 600;
+	}
+	
+	.status-indicator-error {
+		color: #dc2626 !important;
+		font-weight: 600;
+	}
+	
+	.status-indicator-warning {
+		color: #d97706 !important;
+		font-weight: 600;
+	}
+	
+	.status-indicator-info {
+		color: #2563eb !important;
+		font-weight: 600;
 	}
 }
