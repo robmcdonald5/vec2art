@@ -119,14 +119,14 @@
 		return (event: Event) => {
 			const target = event.target as HTMLInputElement;
 			let value: any = target.value;
-			
+
 			// Convert value based on input type
 			if (target.type === 'checkbox') {
 				value = target.checked;
 			} else if (target.type === 'range' || target.type === 'number') {
 				value = parseFloat(target.value);
 			}
-			
+
 			console.log(`🔵 Config update: ${key} = ${value}`);
 			onConfigChange({ [key]: value } as Partial<VectorizerConfig>);
 			onParameterChange();
@@ -141,11 +141,13 @@
 
 <div class="space-y-6">
 	<!-- Quick Settings Panel -->
-	<div class="bg-white rounded-lg shadow-sm border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+	<div
+		class="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+	>
 		<div class="p-4">
 			<!-- Header Button -->
-			<button 
-				class="w-full flex items-center justify-between p-2 -m-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+			<button
+				class="-m-2 flex w-full items-center justify-between rounded-md p-2 transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:hover:bg-gray-700"
 				onclick={clickQuickSettings}
 				type="button"
 			>
@@ -167,12 +169,12 @@
 				<div class="mt-4 space-y-4">
 					<!-- Algorithm Selection -->
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
 							Algorithm
 						</label>
 						<BackendSelector
 							selectedBackend={config.backend}
-							onBackendChange={onBackendChange}
+							{onBackendChange}
 							disabled={isProcessing}
 							compact={true}
 						/>
@@ -180,12 +182,12 @@
 
 					<!-- Style Preset -->
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
 							Style Preset
 						</label>
 						<PresetSelector
 							{selectedPreset}
-							onPresetChange={onPresetChange}
+							{onPresetChange}
 							disabled={isProcessing}
 							isCustom={selectedPreset === 'custom'}
 							compact={true}
@@ -193,10 +195,10 @@
 					</div>
 
 					<!-- Essential Parameters -->
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<!-- Detail Level -->
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
 								Detail Level
 							</label>
 							<input
@@ -207,9 +209,9 @@
 								value={config.detail}
 								oninput={updateConfig('detail')}
 								disabled={isProcessing}
-								class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+								class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 dark:bg-gray-700"
 							/>
-							<div class="flex justify-between text-xs mt-1" style="color: #6b7280 !important;">
+							<div class="mt-1 flex justify-between text-xs" style="color: #6b7280 !important;">
 								<span>Simple</span>
 								<span>{Math.round(config.detail * 10)}/10</span>
 								<span>Detailed</span>
@@ -218,7 +220,7 @@
 
 						<!-- Line Width -->
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+							<label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
 								Line Width
 							</label>
 							<input
@@ -229,9 +231,9 @@
 								value={config.stroke_width}
 								oninput={updateConfig('stroke_width')}
 								disabled={isProcessing}
-								class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+								class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 dark:bg-gray-700"
 							/>
-							<div class="flex justify-between text-xs mt-1" style="color: #6b7280 !important;">
+							<div class="mt-1 flex justify-between text-xs" style="color: #6b7280 !important;">
 								<span>Thin</span>
 								<span>{config.stroke_width.toFixed(1)}px</span>
 								<span>Thick</span>
@@ -244,11 +246,13 @@
 	</div>
 
 	<!-- Advanced Settings Panel -->
-	<div class="bg-white rounded-lg shadow-sm border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+	<div
+		class="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+	>
 		<div class="p-4">
 			<!-- Header Button -->
-			<button 
-				class="w-full flex items-center justify-between p-2 -m-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+			<button
+				class="-m-2 flex w-full items-center justify-between rounded-md p-2 transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:hover:bg-gray-700"
 				onclick={clickAdvancedSettings}
 				type="button"
 			>
@@ -269,15 +273,21 @@
 			{#if isAdvancedSettingsExpanded}
 				<div class="mt-4 space-y-6">
 					<!-- Performance Configuration -->
-					<div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-						<div class="flex items-center justify-between mb-3">
+					<div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50">
+						<div class="mb-3 flex items-center justify-between">
 							<h4 class="font-medium text-gray-900 dark:text-white">Performance Configuration</h4>
 							<div class="flex items-center gap-2">
-								<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-									<Cpu class="w-3 h-3 mr-1" />
+								<span
+									class="inline-flex items-center rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+								>
+									<Cpu class="mr-1 h-3 w-3" />
 									{threadCount}
 								</span>
-								<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {threadsInitialized ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'}">
+								<span
+									class="inline-flex items-center rounded px-2 py-1 text-xs font-medium {threadsInitialized
+										? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+										: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'}"
+								>
 									{threadsInitialized ? 'Active' : 'Ready'}
 								</span>
 							</div>
@@ -288,9 +298,14 @@
 							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
 								Performance Mode
 							</label>
-							<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-md">
+							<div
+								class="grid grid-cols-2 gap-2 rounded-md bg-gray-100 p-1 lg:grid-cols-4 dark:bg-gray-800"
+							>
 								<button
-									class="px-3 py-2 text-xs font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 {currentPerformanceMode === 'economy' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
+									'economy'
+										? 'bg-blue-600 text-white'
+										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
 									onclick={() => clickPerformanceMode('economy')}
 									disabled={isProcessing}
 									type="button"
@@ -298,7 +313,10 @@
 									Economy
 								</button>
 								<button
-									class="px-3 py-2 text-xs font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 {currentPerformanceMode === 'balanced' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
+									'balanced'
+										? 'bg-blue-600 text-white'
+										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
 									onclick={() => clickPerformanceMode('balanced')}
 									disabled={isProcessing}
 									type="button"
@@ -306,16 +324,22 @@
 									Balanced
 								</button>
 								<button
-									class="px-3 py-2 text-xs font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 {currentPerformanceMode === 'performance' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
+									'performance'
+										? 'bg-blue-600 text-white'
+										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
 									onclick={() => clickPerformanceMode('performance')}
 									disabled={isProcessing}
 									type="button"
 								>
-									<Zap class="w-3 h-3 mr-1 inline" />
+									<Zap class="mr-1 inline h-3 w-3" />
 									Performance
 								</button>
 								<button
-									class="px-3 py-2 text-xs font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 {currentPerformanceMode === 'custom' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
+									'custom'
+										? 'bg-blue-600 text-white'
+										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
 									onclick={() => clickPerformanceMode('custom')}
 									disabled={isProcessing}
 									type="button"
@@ -323,14 +347,18 @@
 									Custom
 								</button>
 							</div>
-							
-							<div class="text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded p-2">
+
+							<div
+								class="rounded bg-gray-100 p-2 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+							>
 								{#if currentPerformanceMode === 'economy'}
 									<span class="font-medium text-blue-600">Economy:</span> Minimal CPU usage, slower processing
 								{:else if currentPerformanceMode === 'balanced'}
-									<span class="font-medium text-blue-600">Balanced:</span> Good balance of speed and system responsiveness
+									<span class="font-medium text-blue-600">Balanced:</span> Good balance of speed and
+									system responsiveness
 								{:else if currentPerformanceMode === 'performance'}
-									<span class="font-medium text-blue-600">Performance:</span> Maximum speed, may slow down browser
+									<span class="font-medium text-blue-600">Performance:</span> Maximum speed, may slow
+									down browser
 								{:else if currentPerformanceMode === 'custom'}
 									<span class="font-medium text-blue-600">Custom:</span> Manual thread count control
 								{/if}
@@ -341,8 +369,12 @@
 						{#if currentPerformanceMode === 'custom'}
 							<div class="mt-4 space-y-2">
 								<div class="flex items-center justify-between">
-									<label class="text-sm font-medium text-gray-700 dark:text-gray-300">Thread Count</label>
-									<span class="text-xs font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{currentThreadCount}</span>
+									<label class="text-sm font-medium text-gray-700 dark:text-gray-300"
+										>Thread Count</label
+									>
+									<span class="rounded bg-gray-100 px-2 py-1 font-mono text-xs dark:bg-gray-800"
+										>{currentThreadCount}</span
+									>
 								</div>
 								<input
 									type="range"
@@ -352,7 +384,7 @@
 									value={currentThreadCount}
 									oninput={updateThreadCount}
 									disabled={isProcessing}
-									class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+									class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 dark:bg-gray-700"
 								/>
 								<p class="text-xs text-gray-600 dark:text-gray-400">
 									Recommended: {getOptimalThreadCount('balanced')} threads for your system
@@ -362,61 +394,63 @@
 					</div>
 
 					<!-- Parameter Panel -->
-					<ParameterPanel {config} onConfigChange={onConfigChange} disabled={isProcessing} onParameterChange={onParameterChange} />
+					<ParameterPanel {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
 
 					<!-- Advanced Controls -->
-					<AdvancedControls {config} onConfigChange={onConfigChange} disabled={isProcessing} onParameterChange={onParameterChange} />
+					<AdvancedControls {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
 				</div>
 			{/if}
 		</div>
 	</div>
 
 	<!-- Mobile Action Bar -->
-	<div class="lg:hidden {hasImages ? 'block' : 'hidden'} fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+	<div
+		class="lg:hidden {hasImages
+			? 'block'
+			: 'hidden'} fixed right-0 bottom-0 left-0 z-40 border-t border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+	>
 		<div class="flex items-center gap-3">
-			<Button 
-				class="flex-1 bg-blue-600 hover:bg-blue-700 text-white" 
-				onclick={onConvert} 
+			<Button
+				class="flex-1 bg-blue-600 text-white hover:bg-blue-700"
+				onclick={onConvert}
 				disabled={!canConvert}
 			>
 				{#if isProcessing}
-					<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+					<div
+						class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+					></div>
 					Converting...
 				{:else}
-					<Play class="w-4 h-4 mr-2" />
+					<Play class="mr-2 h-4 w-4" />
 					Convert
 				{/if}
 			</Button>
 
 			{#if canDownload}
-				<Button 
-					variant="outline" 
-					onclick={onDownload}
-					class="border-gray-300 dark:border-gray-600"
-				>
-					<Download class="w-4 h-4" />
+				<Button variant="outline" onclick={onDownload} class="border-gray-300 dark:border-gray-600">
+					<Download class="h-4 w-4" />
 				</Button>
 			{/if}
 
-			<Button 
-				variant="outline" 
+			<Button
+				variant="outline"
 				onclick={clickMobileMenu}
 				class="border-gray-300 dark:border-gray-600"
 			>
-				<Menu class="w-4 h-4" />
+				<Menu class="h-4 w-4" />
 			</Button>
 		</div>
 	</div>
 
 	<!-- Mobile Settings Overlay -->
 	{#if isMobileMenuOpen}
-		<div class="lg:hidden fixed inset-0 z-50 bg-white dark:bg-gray-900 overflow-y-auto">
-			<div class="p-4 space-y-6">
+		<div class="fixed inset-0 z-50 overflow-y-auto bg-white lg:hidden dark:bg-gray-900">
+			<div class="space-y-6 p-4">
 				<!-- Header -->
 				<div class="flex items-center justify-between">
 					<h2 class="text-lg font-semibold text-gray-900 dark:text-white">Conversion Settings</h2>
 					<Button variant="ghost" onclick={clickCloseMobileMenu}>
-						<X class="w-4 h-4" />
+						<X class="h-4 w-4" />
 					</Button>
 				</div>
 
@@ -425,23 +459,23 @@
 					<!-- Algorithm Selection -->
 					<BackendSelector
 						selectedBackend={config.backend}
-						onBackendChange={onBackendChange}
+						{onBackendChange}
 						disabled={isProcessing}
 					/>
 
 					<!-- Style Preset Selection -->
 					<PresetSelector
 						{selectedPreset}
-						onPresetChange={onPresetChange}
+						{onPresetChange}
 						disabled={isProcessing}
 						isCustom={selectedPreset === 'custom'}
 					/>
 
 					<!-- Essential Parameters -->
-					<ParameterPanel {config} onConfigChange={onConfigChange} disabled={isProcessing} onParameterChange={onParameterChange} />
+					<ParameterPanel {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
 
 					<!-- Advanced Controls -->
-					<AdvancedControls {config} onConfigChange={onConfigChange} disabled={isProcessing} onParameterChange={onParameterChange} />
+					<AdvancedControls {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
 				</div>
 
 				<!-- Bottom padding -->

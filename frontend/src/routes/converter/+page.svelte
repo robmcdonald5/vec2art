@@ -1,432 +1,437 @@
 <script lang="ts">
-/**
- * Converter Page - Layered State Architecture 
- * State: EMPTY -> Shows only upload area
- * State: LOADED -> Shows converter interface with settings
- */
+	/**
+	 * Converter Page - Layered State Architecture
+	 * State: EMPTY -> Shows only upload area
+	 * State: LOADED -> Shows converter interface with settings
+	 */
 
-import { onMount } from 'svelte';
-import { Loader2, CheckCircle, AlertCircle } from 'lucide-svelte';
+	import { onMount } from 'svelte';
+	import { Loader2, CheckCircle, AlertCircle } from 'lucide-svelte';
 
-// Import new layered components
-import UploadArea from '$lib/components/converter/UploadArea.svelte';
-import ConverterInterface from '$lib/components/converter/ConverterInterface.svelte';
-import SettingsPanel from '$lib/components/converter/SettingsPanel.svelte';
-import ConversionProgress from '$lib/components/ui/progress/ConversionProgress.svelte';
-import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
-import { toastStore } from '$lib/stores/toast.svelte';
-import { parameterHistory } from '$lib/stores/parameter-history.svelte';
+	// Import new layered components
+	import UploadArea from '$lib/components/converter/UploadArea.svelte';
+	import ConverterInterface from '$lib/components/converter/ConverterInterface.svelte';
+	import SettingsPanel from '$lib/components/converter/SettingsPanel.svelte';
+	import ConversionProgress from '$lib/components/ui/progress/ConversionProgress.svelte';
+	import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
+	import { toastStore } from '$lib/stores/toast.svelte';
+	import { parameterHistory } from '$lib/stores/parameter-history.svelte';
 
-// Types and stores
-import type { 
-	ProcessingProgress, 
-	ProcessingResult,
-	VectorizerConfig,
-	VectorizerBackend,
-	VectorizerPreset
-} from '$lib/types/vectorizer';
-import type { PerformanceMode } from '$lib/utils/performance-monitor';
-import { vectorizerStore } from '$lib/stores/vectorizer.svelte.js';
+	// Types and stores
+	import type {
+		ProcessingProgress,
+		ProcessingResult,
+		VectorizerConfig,
+		VectorizerBackend,
+		VectorizerPreset
+	} from '$lib/types/vectorizer';
+	import type { PerformanceMode } from '$lib/utils/performance-monitor';
+	import { vectorizerStore } from '$lib/stores/vectorizer.svelte.js';
 
-// UI State Management - Using Svelte 5 runes
-let files = $state<File[]>([]);
-let currentImageIndex = $state(0);
-let currentProgress = $state<ProcessingProgress | null>(null);
-let results = $state<ProcessingResult[]>([]);
-let previewSvgUrls = $state<(string | null)[]>([]);
-let isProcessing = $state(false);
+	// UI State Management - Using Svelte 5 runes
+	let files = $state<File[]>([]);
+	let currentImageIndex = $state(0);
+	let currentProgress = $state<ProcessingProgress | null>(null);
+	let results = $state<ProcessingResult[]>([]);
+	let previewSvgUrls = $state<(string | null)[]>([]);
+	let isProcessing = $state(false);
 
-// Batch processing state
-let completedImages = $state(0);
-let batchStartTime = $state<Date | null>(null);
+	// Batch processing state
+	let completedImages = $state(0);
+	let batchStartTime = $state<Date | null>(null);
 
-// Page initialization state
-let pageLoaded = $state(false);
-let initError = $state<string | null>(null);
+	// Page initialization state
+	let pageLoaded = $state(false);
+	let initError = $state<string | null>(null);
 
-// Converter configuration state
-let config = $state<VectorizerConfig>({
-	backend: 'edge',
-	detail: 0.5,
-	stroke_width: 1.5,
-	noise_filtering: true,
-	multipass: false,
-	reverse_pass: false,
-	diagonal_pass: false,
-	enable_etf_fdog: false,
-	enable_flow_tracing: false,
-	enable_bezier_fitting: true,
-	hand_drawn_preset: 'medium',
-	variable_weights: 0.3,
-	tremor_strength: 0.3,
-	tapering: 0.7,
-	optimize_svg: true,
-	svg_precision: 2
-});
+	// Converter configuration state
+	let config = $state<VectorizerConfig>({
+		backend: 'edge',
+		detail: 0.5,
+		stroke_width: 1.5,
+		noise_filtering: true,
+		multipass: false,
+		reverse_pass: false,
+		diagonal_pass: false,
+		enable_etf_fdog: false,
+		enable_flow_tracing: false,
+		enable_bezier_fitting: true,
+		hand_drawn_preset: 'medium',
+		variable_weights: 0.3,
+		tremor_strength: 0.3,
+		tapering: 0.7,
+		optimize_svg: true,
+		svg_precision: 2
+	});
 
-let selectedPreset = $state<VectorizerPreset | 'custom'>('artistic');
-let performanceMode = $state<PerformanceMode>('balanced');
-let threadCount = $state(4);
-let threadsInitialized = $state(false);
+	let selectedPreset = $state<VectorizerPreset | 'custom'>('artistic');
+	let performanceMode = $state<PerformanceMode>('balanced');
+	let threadCount = $state(4);
+	let threadsInitialized = $state(false);
 
-// Derived states for UI logic
-const uiState = $derived(files.length === 0 ? 'EMPTY' : 'LOADED');
-const hasFiles = $derived(files.length > 0);
-const canConvert = $derived(hasFiles && !isProcessing);
-const canDownload = $derived(results.length > 0 && !isProcessing);
+	// Derived states for UI logic
+	const uiState = $derived(files.length === 0 ? 'EMPTY' : 'LOADED');
+	const hasFiles = $derived(files.length > 0);
+	const canConvert = $derived(hasFiles && !isProcessing);
+	const canDownload = $derived(results.length > 0 && !isProcessing);
 
-// Accessibility announcements
-let announceText = $state('');
+	// Accessibility announcements
+	let announceText = $state('');
 
-function announceToScreenReader(message: string, priority: 'polite' | 'assertive' = 'polite') {
-	announceText = message;
-	setTimeout(() => {
-		announceText = '';
-	}, 1000);
-}
-
-// File management functions
-function handleFilesSelect(selectedFiles: File[], preserveCurrentIndex: boolean = false) {
-	const previousFileCount = files.length;
-	files = selectedFiles;
-	
-	// Only reset index if we're replacing all files, not adding to existing ones
-	if (!preserveCurrentIndex || previousFileCount === 0) {
-		currentImageIndex = 0;
-		// Clear previous results when replacing
-		results = [];
-		previewSvgUrls = [];
-	} else {
-		// When adding files, switch to the first newly added file
-		currentImageIndex = previousFileCount;
+	function announceToScreenReader(message: string, priority: 'polite' | 'assertive' = 'polite') {
+		announceText = message;
+		setTimeout(() => {
+			announceText = '';
+		}, 1000);
 	}
-	
-	if (selectedFiles.length > 0) {
-		const addedCount = selectedFiles.length - previousFileCount;
-		if (addedCount > 0 && previousFileCount > 0) {
-			toastStore.info(`Added ${addedCount} more file(s)`);
+
+	// File management functions
+	function handleFilesSelect(selectedFiles: File[], preserveCurrentIndex: boolean = false) {
+		const previousFileCount = files.length;
+		files = selectedFiles;
+
+		// Only reset index if we're replacing all files, not adding to existing ones
+		if (!preserveCurrentIndex || previousFileCount === 0) {
+			currentImageIndex = 0;
+			// Clear previous results when replacing
+			results = [];
+			previewSvgUrls = [];
 		} else {
-			toastStore.info(`${selectedFiles.length} file(s) ready for conversion`);
-		}
-	}
-	announceToScreenReader(`${selectedFiles.length} file(s) selected`);
-}
-
-function handleImageIndexChange(index: number) {
-	if (index >= 0 && index < files.length) {
-		currentImageIndex = index;
-	}
-}
-
-function handleAddMore() {
-	const input = document.createElement('input');
-	input.type = 'file';
-	input.accept = 'image/*';
-	input.multiple = true;
-	input.onchange = (e) => {
-		const newFiles = Array.from((e.target as HTMLInputElement).files || []);
-		if (newFiles.length > 0) {
-			const allFiles = [...files, ...newFiles];
-			handleFilesSelect(allFiles, true); // preserveCurrentIndex = true for adding files
-		}
-	};
-	input.click();
-}
-
-function handleRemoveFile(index: number) {
-	if (index < 0 || index >= files.length || isProcessing) {
-		return;
-	}
-
-	// Get the file name before removing it
-	const removedFileName = files[index]?.name || 'Unknown';
-
-	// Create new arrays without the removed file
-	const newFiles = files.filter((_, i) => i !== index);
-	const newResults = results.filter((_, i) => i !== index);
-	const newPreviewUrls = previewSvgUrls.filter((_, i) => i !== index);
-	
-	// Clean up the removed preview URL
-	const removedUrl = previewSvgUrls[index];
-	if (removedUrl) {
-		URL.revokeObjectURL(removedUrl);
-	}
-
-	// Update current index if necessary
-	let newCurrentIndex = currentImageIndex;
-	if (index === currentImageIndex) {
-		// If we removed the current image, select the previous one or stay at 0
-		newCurrentIndex = Math.max(0, currentImageIndex - 1);
-	} else if (index < currentImageIndex) {
-		// If we removed an image before the current one, adjust the index
-		newCurrentIndex = currentImageIndex - 1;
-	}
-	
-	// Apply changes
-	files = newFiles;
-	results = newResults;
-	previewSvgUrls = newPreviewUrls;
-	currentImageIndex = Math.min(newCurrentIndex, newFiles.length - 1);
-
-	// If no files left, reset everything
-	if (newFiles.length === 0) {
-		handleReset();
-		return;
-	}
-
-	toastStore.info(`Removed ${removedFileName}`);
-	announceToScreenReader(`Removed ${removedFileName}. ${newFiles.length} files remaining`);
-}
-
-// Conversion functions
-async function handleConvert() {
-	if (!canConvert) {
-		console.warn('Cannot convert - no files or already processing');
-		return;
-	}
-
-	try {
-		isProcessing = true;
-		completedImages = 0;
-		batchStartTime = new Date();
-		announceToScreenReader('Starting image conversion');
-
-		// Initialize WASM if needed
-		if (!vectorizerStore.isInitialized) {
-			await vectorizerStore.initialize({ autoInitThreads: true });
+			// When adding files, switch to the first newly added file
+			currentImageIndex = previousFileCount;
 		}
 
-		// CRITICAL: Ensure threads are initialized before processing
-		// This fixes the "first click fails" issue where WASM loads but threads don't
-		if (!vectorizerStore.threadsInitialized) {
-			console.log('🔧 Initializing threads for first-time processing...');
-			await vectorizerStore.initializeThreads(threadCount || 4);
-		}
-
-		// Smart conversion logic:
-		// 1. Always convert current image (even if already converted)
-		// 2. Convert any images that don't have results yet
-		// 3. Skip already converted images (except current)
-		
-		const filesToProcess: File[] = [];
-		const indexMapping: number[] = []; // Maps processed file index to original file index
-		
-		// Always include current image first (gets re-converted)
-		filesToProcess.push(files[currentImageIndex]);
-		indexMapping.push(currentImageIndex);
-		
-		// Add any files that haven't been converted yet
-		for (let i = 0; i < files.length; i++) {
-			if (i !== currentImageIndex && (!results[i] || !results[i]?.svg)) {
-				filesToProcess.push(files[i]);
-				indexMapping.push(i);
+		if (selectedFiles.length > 0) {
+			const addedCount = selectedFiles.length - previousFileCount;
+			if (addedCount > 0 && previousFileCount > 0) {
+				toastStore.info(`Added ${addedCount} more file(s)`);
+			} else {
+				toastStore.info(`${selectedFiles.length} file(s) ready for conversion`);
 			}
 		}
+		announceToScreenReader(`${selectedFiles.length} file(s) selected`);
+	}
 
-		if (filesToProcess.length === 0) {
-			toastStore.info('All images are already converted');
+	function handleImageIndexChange(index: number) {
+		if (index >= 0 && index < files.length) {
+			currentImageIndex = index;
+		}
+	}
+
+	function handleAddMore() {
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'image/*';
+		input.multiple = true;
+		input.onchange = (e) => {
+			const newFiles = Array.from((e.target as HTMLInputElement).files || []);
+			if (newFiles.length > 0) {
+				const allFiles = [...files, ...newFiles];
+				handleFilesSelect(allFiles, true); // preserveCurrentIndex = true for adding files
+			}
+		};
+		input.click();
+	}
+
+	function handleRemoveFile(index: number) {
+		if (index < 0 || index >= files.length || isProcessing) {
 			return;
 		}
 
-		console.log(`🎯 Smart conversion: Processing ${filesToProcess.length} files (current: ${currentImageIndex}, total: ${files.length})`);
+		// Get the file name before removing it
+		const removedFileName = files[index]?.name || 'Unknown';
 
-		// Set up vectorizer with files to process
-		await vectorizerStore.setInputFiles(filesToProcess);
+		// Create new arrays without the removed file
+		const newFiles = files.filter((_, i) => i !== index);
+		const newResults = results.filter((_, i) => i !== index);
+		const newPreviewUrls = previewSvgUrls.filter((_, i) => i !== index);
 
-		// Process files
-		const processedResults = await vectorizerStore.processBatch((imageIndex, totalImages, progress) => {
-			const originalIndex = indexMapping[imageIndex];
-			currentImageIndex = originalIndex; // Show progress on the actual file being processed
-			currentProgress = progress;
-			
-			// Update completed count when a new image starts processing
-			if (progress.stage === 'preprocessing' && progress.progress === 0) {
-				completedImages = imageIndex;
-			}
-			
-			announceToScreenReader(`Processing image ${originalIndex + 1}: ${progress.stage}`);
-		});
-
-		// Update results and preview URLs for the processed files
-		let newResults = [...results];
-		let newPreviewUrls = [...previewSvgUrls];
-		
-		for (let i = 0; i < processedResults.length; i++) {
-			const originalIndex = indexMapping[i];
-			const result = processedResults[i];
-			
-			// Clean up old preview URL if it exists
-			if (newPreviewUrls[originalIndex]) {
-				URL.revokeObjectURL(newPreviewUrls[originalIndex]!);
-			}
-			
-			// Update result
-			newResults[originalIndex] = result;
-			
-			// Create new preview URL
-			if (result && result.svg) {
-				const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-				newPreviewUrls[originalIndex] = URL.createObjectURL(blob);
-			} else {
-				newPreviewUrls[originalIndex] = null;
-			}
+		// Clean up the removed preview URL
+		const removedUrl = previewSvgUrls[index];
+		if (removedUrl) {
+			URL.revokeObjectURL(removedUrl);
 		}
 
+		// Update current index if necessary
+		let newCurrentIndex = currentImageIndex;
+		if (index === currentImageIndex) {
+			// If we removed the current image, select the previous one or stay at 0
+			newCurrentIndex = Math.max(0, currentImageIndex - 1);
+		} else if (index < currentImageIndex) {
+			// If we removed an image before the current one, adjust the index
+			newCurrentIndex = currentImageIndex - 1;
+		}
+
+		// Apply changes
+		files = newFiles;
 		results = newResults;
 		previewSvgUrls = newPreviewUrls;
-		completedImages = results.filter(r => r && r.svg).length;
-		
-		const message = filesToProcess.length === 1 
-			? `Successfully converted current image to SVG`
-			: `Successfully converted ${filesToProcess.length} image(s) to SVG`;
-		
-		toastStore.success(message);
-		announceToScreenReader(`Conversion completed: ${filesToProcess.length} images processed`);
+		currentImageIndex = Math.min(newCurrentIndex, newFiles.length - 1);
 
-	} catch (error) {
-		console.error('Conversion failed:', error);
-		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-		toastStore.error(`Conversion failed: ${errorMessage}`);
-		announceToScreenReader('Conversion failed', 'assertive');
-	} finally {
+		// If no files left, reset everything
+		if (newFiles.length === 0) {
+			handleReset();
+			return;
+		}
+
+		toastStore.info(`Removed ${removedFileName}`);
+		announceToScreenReader(`Removed ${removedFileName}. ${newFiles.length} files remaining`);
+	}
+
+	// Conversion functions
+	async function handleConvert() {
+		if (!canConvert) {
+			console.warn('Cannot convert - no files or already processing');
+			return;
+		}
+
+		try {
+			isProcessing = true;
+			completedImages = 0;
+			batchStartTime = new Date();
+			announceToScreenReader('Starting image conversion');
+
+			// Initialize WASM if needed
+			if (!vectorizerStore.isInitialized) {
+				await vectorizerStore.initialize({ autoInitThreads: true });
+			}
+
+			// CRITICAL: Ensure threads are initialized before processing
+			// This fixes the "first click fails" issue where WASM loads but threads don't
+			if (!vectorizerStore.threadsInitialized) {
+				console.log('🔧 Initializing threads for first-time processing...');
+				await vectorizerStore.initializeThreads(threadCount || 4);
+			}
+
+			// Smart conversion logic:
+			// 1. Always convert current image (even if already converted)
+			// 2. Convert any images that don't have results yet
+			// 3. Skip already converted images (except current)
+
+			const filesToProcess: File[] = [];
+			const indexMapping: number[] = []; // Maps processed file index to original file index
+
+			// Always include current image first (gets re-converted)
+			filesToProcess.push(files[currentImageIndex]);
+			indexMapping.push(currentImageIndex);
+
+			// Add any files that haven't been converted yet
+			for (let i = 0; i < files.length; i++) {
+				if (i !== currentImageIndex && (!results[i] || !results[i]?.svg)) {
+					filesToProcess.push(files[i]);
+					indexMapping.push(i);
+				}
+			}
+
+			if (filesToProcess.length === 0) {
+				toastStore.info('All images are already converted');
+				return;
+			}
+
+			console.log(
+				`🎯 Smart conversion: Processing ${filesToProcess.length} files (current: ${currentImageIndex}, total: ${files.length})`
+			);
+
+			// Set up vectorizer with files to process
+			await vectorizerStore.setInputFiles(filesToProcess);
+
+			// Process files
+			const processedResults = await vectorizerStore.processBatch(
+				(imageIndex, totalImages, progress) => {
+					const originalIndex = indexMapping[imageIndex];
+					currentImageIndex = originalIndex; // Show progress on the actual file being processed
+					currentProgress = progress;
+
+					// Update completed count when a new image starts processing
+					if (progress.stage === 'preprocessing' && progress.progress === 0) {
+						completedImages = imageIndex;
+					}
+
+					announceToScreenReader(`Processing image ${originalIndex + 1}: ${progress.stage}`);
+				}
+			);
+
+			// Update results and preview URLs for the processed files
+			let newResults = [...results];
+			let newPreviewUrls = [...previewSvgUrls];
+
+			for (let i = 0; i < processedResults.length; i++) {
+				const originalIndex = indexMapping[i];
+				const result = processedResults[i];
+
+				// Clean up old preview URL if it exists
+				if (newPreviewUrls[originalIndex]) {
+					URL.revokeObjectURL(newPreviewUrls[originalIndex]!);
+				}
+
+				// Update result
+				newResults[originalIndex] = result;
+
+				// Create new preview URL
+				if (result && result.svg) {
+					const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+					newPreviewUrls[originalIndex] = URL.createObjectURL(blob);
+				} else {
+					newPreviewUrls[originalIndex] = null;
+				}
+			}
+
+			results = newResults;
+			previewSvgUrls = newPreviewUrls;
+			completedImages = results.filter((r) => r && r.svg).length;
+
+			const message =
+				filesToProcess.length === 1
+					? `Successfully converted current image to SVG`
+					: `Successfully converted ${filesToProcess.length} image(s) to SVG`;
+
+			toastStore.success(message);
+			announceToScreenReader(`Conversion completed: ${filesToProcess.length} images processed`);
+		} catch (error) {
+			console.error('Conversion failed:', error);
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+			toastStore.error(`Conversion failed: ${errorMessage}`);
+			announceToScreenReader('Conversion failed', 'assertive');
+		} finally {
+			isProcessing = false;
+			currentProgress = null;
+		}
+	}
+
+	function handleDownload() {
+		if (!canDownload) {
+			console.warn('Cannot download - no results available');
+			return;
+		}
+
+		try {
+			const result = results[currentImageIndex];
+			const file = files[currentImageIndex];
+
+			if (result && file) {
+				const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement('a');
+
+				a.href = url;
+				a.download = `${file.name.replace(/\.[^/.]+$/, '')}.svg`;
+
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				URL.revokeObjectURL(url);
+
+				announceToScreenReader(`Downloaded ${file.name}.svg`);
+			}
+		} catch (error) {
+			console.error('Download failed:', error);
+			announceToScreenReader('Download failed', 'assertive');
+		}
+	}
+
+	function handleAbort() {
+		vectorizerStore.abortProcessing();
 		isProcessing = false;
 		currentProgress = null;
-	}
-}
-
-function handleDownload() {
-	if (!canDownload) {
-		console.warn('Cannot download - no results available');
-		return;
+		announceToScreenReader('Conversion stopped');
 	}
 
-	try {
-		const result = results[currentImageIndex];
-		const file = files[currentImageIndex];
-		
-		if (result && file) {
-			const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			
-			a.href = url;
-			a.download = `${file.name.replace(/\.[^/.]+$/, '')}.svg`;
-			
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
-			
-			announceToScreenReader(`Downloaded ${file.name}.svg`);
-		}
-	} catch (error) {
-		console.error('Download failed:', error);
-		announceToScreenReader('Download failed', 'assertive');
-	}
-}
-
-function handleAbort() {
-	vectorizerStore.abortProcessing();
-	isProcessing = false;
-	currentProgress = null;
-	announceToScreenReader('Conversion stopped');
-}
-
-function handleReset() {
-	// Clean up blob URLs
-	previewSvgUrls.forEach(url => {
-		if (url) URL.revokeObjectURL(url);
-	});
-	
-	files = [];
-	currentImageIndex = 0;
-	results = [];
-	previewSvgUrls = [];
-	currentProgress = null;
-	isProcessing = false;
-	completedImages = 0;
-	batchStartTime = null;
-	announceToScreenReader('Converter reset');
-}
-
-// Configuration functions
-function handleConfigChange(updates: Partial<VectorizerConfig>) {
-	const newConfig = { ...config, ...updates };
-	config = newConfig;
-	
-	// Add to parameter history with description
-	const description = Object.keys(updates).join(', ') + ' changed';
-	parameterHistory.push(newConfig, description);
-}
-
-function handleConfigReplace(newConfig: VectorizerConfig) {
-	config = newConfig;
-}
-
-function handlePresetChange(preset: VectorizerPreset | 'custom') {
-	selectedPreset = preset;
-}
-
-function handleBackendChange(backend: VectorizerBackend) {
-	config = { ...config, backend };
-}
-
-function handleParameterChange() {
-	// Parameter change handled by config updates
-}
-
-function handlePerformanceModeChange(mode: PerformanceMode, threads: number) {
-	performanceMode = mode;
-	threadCount = threads;
-}
-
-// Initialize page
-onMount(async () => {
-	try {
-		
-		// Initialize WASM module 
-		await vectorizerStore.initialize({ autoInitThreads: false });
-		
-		// Initialize parameter history with default config
-		parameterHistory.initialize(config);
-		
-		pageLoaded = true;
-		announceToScreenReader('Converter page loaded');
-		
-	} catch (error) {
-		console.error('❌ Failed to initialize converter page:', error);
-		initError = error instanceof Error ? error.message : 'Failed to load converter';
-		announceToScreenReader('Failed to load converter page', 'assertive');
-	}
-});
-
-// Cleanup on page unload
-$effect(() => {
-	return () => {
-		// Cleanup resources
-	};
-});
-
-// Debug logging in development
-if (import.meta.env.DEV) {
-	$effect(() => {
-		console.log('🔍 Converter Page State:', {
-			uiState,
-			pageLoaded,
-			filesCount: files.length,
-			currentImageIndex,
-			hasFiles,
-			canConvert,
-			canDownload,
-			isProcessing
+	function handleReset() {
+		// Clean up blob URLs
+		previewSvgUrls.forEach((url) => {
+			if (url) URL.revokeObjectURL(url);
 		});
+
+		files = [];
+		currentImageIndex = 0;
+		results = [];
+		previewSvgUrls = [];
+		currentProgress = null;
+		isProcessing = false;
+		completedImages = 0;
+		batchStartTime = null;
+		announceToScreenReader('Converter reset');
+	}
+
+	// Configuration functions
+	function handleConfigChange(updates: Partial<VectorizerConfig>) {
+		const newConfig = { ...config, ...updates };
+		config = newConfig;
+
+		// Add to parameter history with description
+		const description = Object.keys(updates).join(', ') + ' changed';
+		parameterHistory.push(newConfig, description);
+	}
+
+	function handleConfigReplace(newConfig: VectorizerConfig) {
+		config = newConfig;
+	}
+
+	function handlePresetChange(preset: VectorizerPreset | 'custom') {
+		selectedPreset = preset;
+	}
+
+	function handleBackendChange(backend: VectorizerBackend) {
+		config = { ...config, backend };
+	}
+
+	function handleParameterChange() {
+		// Parameter change handled by config updates
+	}
+
+	function handlePerformanceModeChange(mode: PerformanceMode, threads: number) {
+		performanceMode = mode;
+		threadCount = threads;
+	}
+
+	// Initialize page
+	onMount(async () => {
+		try {
+			// Initialize WASM module
+			await vectorizerStore.initialize({ autoInitThreads: false });
+
+			// Initialize parameter history with default config
+			parameterHistory.initialize(config);
+
+			pageLoaded = true;
+			announceToScreenReader('Converter page loaded');
+		} catch (error) {
+			console.error('❌ Failed to initialize converter page:', error);
+			initError = error instanceof Error ? error.message : 'Failed to load converter';
+			announceToScreenReader('Failed to load converter page', 'assertive');
+		}
 	});
-}
+
+	// Cleanup on page unload
+	$effect(() => {
+		return () => {
+			// Cleanup resources
+		};
+	});
+
+	// Debug logging in development
+	if (import.meta.env.DEV) {
+		$effect(() => {
+			console.log('🔍 Converter Page State:', {
+				uiState,
+				pageLoaded,
+				filesCount: files.length,
+				currentImageIndex,
+				hasFiles,
+				canConvert,
+				canDownload,
+				isProcessing
+			});
+		});
+	}
 </script>
 
 <svelte:head>
 	<title>Image to SVG Converter - vec2art</title>
-	<meta name="description" content="Convert images to SVG line art using advanced algorithms powered by Rust and WebAssembly" />
+	<meta
+		name="description"
+		content="Convert images to SVG line art using advanced algorithms powered by Rust and WebAssembly"
+	/>
 </svelte:head>
 
 <!-- Screen reader live region -->
@@ -437,7 +442,6 @@ if (import.meta.env.DEV) {
 <!-- Full viewport background wrapper -->
 <div class="bg-section-elevated min-h-screen">
 	<div class="mx-auto max-w-screen-2xl px-4 py-8 sm:px-6 lg:px-8">
-		
 		<!-- Page Header -->
 		<header class="mb-8 text-center">
 			<h1 class="text-gradient-modern mb-4 text-4xl font-bold">Image to SVG Converter</h1>
@@ -482,15 +486,12 @@ if (import.meta.env.DEV) {
 				<!-- EMPTY State: Just upload area -->
 				<main class="flex justify-center">
 					<div class="w-full max-w-4xl">
-						<UploadArea
-							onFilesSelect={handleFilesSelect}
-							disabled={isProcessing}
-						/>
+						<UploadArea onFilesSelect={handleFilesSelect} disabled={isProcessing} />
 					</div>
 				</main>
 			{:else if uiState === 'LOADED'}
 				<!-- LOADED State: Converter interface with settings -->
-				<main class="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-8">
+				<main class="grid grid-cols-1 gap-8 xl:grid-cols-[1fr_auto]">
 					<!-- Main converter area -->
 					<div class="space-y-6">
 						<ConverterInterface
@@ -513,8 +514,7 @@ if (import.meta.env.DEV) {
 					</div>
 
 					<!-- Settings panel -->
-					<div class="xl:w-80 space-y-4">
-						
+					<div class="space-y-4 xl:w-80">
 						<SettingsPanel
 							{config}
 							{selectedPreset}
@@ -531,12 +531,12 @@ if (import.meta.env.DEV) {
 					</div>
 				</main>
 			{/if}
-			
+
 			<!-- Conversion Progress Overlay -->
 			<ConversionProgress {isProcessing} progress={currentProgress} />
-			
+
 			<!-- Keyboard Shortcuts -->
-			<KeyboardShortcuts 
+			<KeyboardShortcuts
 				onConvert={handleConvert}
 				onDownload={handleDownload}
 				onReset={handleReset}
@@ -559,10 +559,7 @@ if (import.meta.env.DEV) {
 					{initError}
 				</p>
 				<div class="flex justify-center gap-4">
-					<button
-						class="btn-ferrari-secondary px-6 py-2 text-sm"
-						onclick={() => location.reload()}
-					>
+					<button class="btn-ferrari-secondary px-6 py-2 text-sm" onclick={() => location.reload()}>
 						Reload Page
 					</button>
 					<button
@@ -581,7 +578,7 @@ if (import.meta.env.DEV) {
 			<!-- Loading State -->
 			<div class="card-ferrari-static rounded-3xl p-8 text-center" role="status">
 				<div class="mb-4">
-					<Loader2 class="mx-auto h-16 w-16 animate-spin text-ferrari-600" />
+					<Loader2 class="text-ferrari-600 mx-auto h-16 w-16 animate-spin" />
 				</div>
 				<h2 class="mb-2 text-xl font-bold">Loading Converter...</h2>
 				<p class="text-gray-600 dark:text-gray-300">
