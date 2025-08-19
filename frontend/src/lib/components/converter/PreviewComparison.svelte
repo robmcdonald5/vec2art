@@ -1,14 +1,24 @@
 <script lang="ts">
-import { ChevronLeft, ChevronRight, FileImage, ZoomIn, ZoomOut, Maximize2, ArrowLeftRight, Grid2x2 } from 'lucide-svelte';
+import { FileImage, ZoomIn, ZoomOut, Maximize2, ArrowLeftRight, Download, X } from 'lucide-svelte';
 import { Button } from '$lib/components/ui/button';
 import type { ProcessingProgress } from '$lib/types/vectorizer';
+import ConverterHeader from './ConverterHeader.svelte';
 
 interface Props {
 	files: File[];
 	currentImageIndex: number;
 	currentProgress?: ProcessingProgress;
 	previewSvgUrls: (string | null)[];
+	canConvert: boolean;
+	canDownload: boolean;
+	isProcessing: boolean;
 	onImageIndexChange: (index: number) => void;
+	onConvert: () => void;
+	onDownload: () => void;
+	onAbort: () => void;
+	onReset: () => void;
+	onAddMore: () => void;
+	onRemoveFile: (index: number) => void;
 }
 
 let {
@@ -16,7 +26,16 @@ let {
 	currentImageIndex,
 	currentProgress,
 	previewSvgUrls,
-	onImageIndexChange
+	canConvert,
+	canDownload,
+	isProcessing,
+	onImageIndexChange,
+	onConvert,
+	onDownload,
+	onAbort,
+	onReset,
+	onAddMore,
+	onRemoveFile
 }: Props = $props();
 
 // Preview state - separate for original and converted
@@ -91,16 +110,7 @@ function convertedResetView() {
 	convertedPanOffset = { x: 0, y: 0 };
 }
 
-function navigateImage(direction: 'prev' | 'next') {
-	if (!hasMultipleFiles) return;
-
-	let newIndex;
-	if (direction === 'prev') {
-		newIndex = currentImageIndex === 0 ? files.length - 1 : currentImageIndex - 1;
-	} else {
-		newIndex = currentImageIndex === files.length - 1 ? 0 : currentImageIndex + 1;
-	}
-
+function handleImageIndexChange(newIndex: number) {
 	onImageIndexChange(newIndex);
 	originalResetView();
 	convertedResetView();
@@ -203,104 +213,23 @@ $effect(() => {
 
 <!-- Side-by-Side Preview -->
 <div class="card-ferrari-static overflow-hidden rounded-3xl">
-	<!-- Header with file navigation -->
-	{#if hasMultipleFiles}
-		<div class="flex items-center justify-between gap-3 border-b border-ferrari-200 dark:border-ferrari-800 px-6 py-4">
-			<div class="flex items-center gap-3">
-				<h3 class="text-converter-primary text-lg font-semibold">
-					Image {currentImageIndex + 1} of {files.length}
-				</h3>
-				{#if currentFile}
-					<span class="text-converter-secondary text-sm">
-						{currentFile.name}
-					</span>
-				{/if}
-			</div>
-			<div class="flex items-center gap-2">
-				<!-- View Mode Toggle -->
-				<Button
-					variant="outline"
-					size="sm"
-					class="border-ferrari-300 dark:border-ferrari-600 hover:bg-ferrari-50 dark:hover:bg-ferrari-900"
-					onclick={toggleViewMode}
-					disabled={!hasResult}
-				>
-					{#if viewMode === 'side-by-side'}
-						<ArrowLeftRight class="h-4 w-4" />
-						Slider
-					{:else}
-						<Grid2x2 class="h-4 w-4" />
-						Split
-					{/if}
-				</Button>
-				<Button
-					variant="outline"
-					size="sm"
-					class="border-ferrari-300 dark:border-ferrari-600 hover:bg-ferrari-50 dark:hover:bg-ferrari-900"
-					onclick={() => navigateImage('prev')}
-					disabled={files.length <= 1}
-				>
-					<ChevronLeft class="h-4 w-4" />
-					Previous
-				</Button>
-				<Button
-					variant="outline"
-					size="sm"
-					class="border-ferrari-300 dark:border-ferrari-600 hover:bg-ferrari-50 dark:hover:bg-ferrari-900"
-					onclick={() => navigateImage('next')}
-					disabled={files.length <= 1}
-				>
-					Next
-					<ChevronRight class="h-4 w-4" />
-				</Button>
-			</div>
-		</div>
-	{:else}
-		<div class="border-b border-ferrari-200 dark:border-ferrari-800 px-6 py-4">
-			<div class="flex items-center justify-between">
-				<div>
-					<h3 class="text-converter-primary text-lg font-semibold">Before & After</h3>
-					{#if currentFile}
-						<p class="text-converter-secondary text-sm">{currentFile.name}</p>
-					{/if}
-				</div>
-				<div class="flex items-center gap-2">
-					<!-- View Mode Toggle -->
-					<Button
-						variant="outline"
-						size="sm"
-						class="border-ferrari-300 dark:border-ferrari-600 hover:bg-ferrari-50 dark:hover:bg-ferrari-900"
-						onclick={toggleViewMode}
-						disabled={!hasResult}
-					>
-						{#if viewMode === 'side-by-side'}
-							<ArrowLeftRight class="h-4 w-4" />
-							Slider
-						{:else}
-							<Grid2x2 class="h-4 w-4" />
-							Split
-						{/if}
-					</Button>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Progress Bar -->
-	{#if currentProgress}
-		<div class="border-b border-ferrari-200 dark:border-ferrari-800 px-6 py-3">
-			<div class="flex justify-between text-sm mb-2">
-				<span class="text-converter-primary">{currentProgress.stage}</span>
-				<span class="text-converter-secondary">{Math.round(currentProgress.progress)}%</span>
-			</div>
-			<div class="w-full bg-ferrari-100 dark:bg-ferrari-900 rounded-full h-2">
-				<div 
-					class="bg-ferrari-600 h-2 rounded-full transition-all duration-300" 
-					style="width: {currentProgress.progress}%"
-				></div>
-			</div>
-		</div>
-	{/if}
+	<!-- New Unified Header -->
+	<ConverterHeader
+		{files}
+		{currentImageIndex}
+		{currentProgress}
+		{viewMode}
+		{hasResult}
+		{canConvert}
+		{isProcessing}
+		onImageIndexChange={handleImageIndexChange}
+		onViewModeToggle={toggleViewMode}
+		{onConvert}
+		{onAbort}
+		{onReset}
+		{onAddMore}
+		{onRemoveFile}
+	/>
 
 	<!-- Image Comparison Content -->
 	{#if viewMode === 'slider' && hasResult && currentImageUrl && currentSvgUrl}
@@ -423,32 +352,52 @@ $effect(() => {
 		<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 			<div class="absolute inset-4 flex flex-col">
 				<div class="mb-3 flex items-center justify-between px-2">
-					<div class="text-converter-primary text-sm font-medium">Original</div>
+					<div class="text-converter-primary text-sm font-medium flex-1 mr-2" title={currentFile?.name}>
+						<div class="filename-display">
+							{currentFile?.name || 'Original'}
+						</div>
+					</div>
 					<!-- Zoom Controls for Original -->
 					<div class="flex gap-1">
+						<!-- Remove current image button -->
 						<Button
 							variant="outline"
 							size="icon"
-							class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90"
+							class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-400 dark:hover:border-red-500 hover:shadow-md transition-all duration-200 hover:scale-110 active:scale-95"
+							onclick={() => onRemoveFile(currentImageIndex)}
+							disabled={isProcessing}
+							aria-label="Remove current image"
+							title="Remove this image"
+						>
+							<X class="h-4 w-4 text-red-600 dark:text-red-400 transition-transform group-hover:scale-110" />
+						</Button>
+						
+						<Button
+							variant="outline"
+							size="icon"
+							class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 hover:shadow-md transition-all duration-200 hover:scale-110 active:scale-95"
 							onclick={originalZoomOut}
+							aria-label="Zoom out original image"
 						>
-							<ZoomOut class="h-4 w-4" />
+							<ZoomOut class="h-4 w-4 transition-transform group-hover:scale-110" />
 						</Button>
 						<Button
 							variant="outline"
 							size="icon"
-							class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90"
+							class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 hover:shadow-md transition-all duration-200 hover:scale-110 active:scale-95"
 							onclick={originalResetView}
+							aria-label="Reset original image view"
 						>
-							<Maximize2 class="h-4 w-4" />
+							<Maximize2 class="h-4 w-4 transition-transform group-hover:scale-110" />
 						</Button>
 						<Button
 							variant="outline"
 							size="icon"
-							class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90"
+							class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 hover:shadow-md transition-all duration-200 hover:scale-110 active:scale-95"
 							onclick={originalZoomIn}
+							aria-label="Zoom in original image"
 						>
-							<ZoomIn class="h-4 w-4" />
+							<ZoomIn class="h-4 w-4 transition-transform group-hover:scale-110" />
 						</Button>
 					</div>
 				</div>
@@ -477,32 +426,51 @@ $effect(() => {
 			<div class="absolute inset-4 flex flex-col">
 				<div class="mb-3 flex items-center justify-between px-2">
 					<div class="text-converter-primary text-sm font-medium">Converted SVG</div>
-					<!-- Zoom Controls for Converted SVG -->
-					<div class="flex gap-1">
-						<Button
-							variant="outline"
-							size="icon"
-							class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90"
-							onclick={convertedZoomOut}
-						>
-							<ZoomOut class="h-4 w-4" />
-						</Button>
-						<Button
-							variant="outline"
-							size="icon"
-							class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90"
-							onclick={convertedResetView}
-						>
-							<Maximize2 class="h-4 w-4" />
-						</Button>
-						<Button
-							variant="outline"
-							size="icon"
-							class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90"
-							onclick={convertedZoomIn}
-						>
-							<ZoomIn class="h-4 w-4" />
-						</Button>
+					<div class="flex items-center gap-2">
+						<!-- Download Button (only show when result is available) -->
+						{#if hasResult && canDownload}
+							<Button
+								variant="default"
+								size="sm"
+								style="background-color: #FF2800 !important; color: white !important; border-color: #FF2800 !important;"
+								class="hover:shadow-lg transition-all duration-200 hover:scale-105 hover:-translate-y-0.5 active:scale-95 active:translate-y-0"
+								onclick={onDownload}
+								disabled={isProcessing}
+							>
+								<Download class="h-4 w-4 transition-transform group-hover:scale-110" />
+								Download
+							</Button>
+						{/if}
+						<!-- Zoom Controls for Converted SVG -->
+						<div class="flex gap-1">
+							<Button
+								variant="outline"
+								size="icon"
+								class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 hover:shadow-md transition-all duration-200 hover:scale-110 active:scale-95"
+								onclick={convertedZoomOut}
+								aria-label="Zoom out converted SVG"
+							>
+								<ZoomOut class="h-4 w-4 transition-transform group-hover:scale-110" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 hover:shadow-md transition-all duration-200 hover:scale-110 active:scale-95"
+								onclick={convertedResetView}
+								aria-label="Reset converted SVG view"
+							>
+								<Maximize2 class="h-4 w-4 transition-transform group-hover:scale-110" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="h-8 w-8 rounded border-ferrari-300 dark:border-ferrari-600 bg-white/90 dark:bg-ferrari-900/90 hover:bg-white dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 hover:shadow-md transition-all duration-200 hover:scale-110 active:scale-95"
+								onclick={convertedZoomIn}
+								aria-label="Zoom in converted SVG"
+							>
+								<ZoomIn class="h-4 w-4 transition-transform group-hover:scale-110" />
+							</Button>
+						</div>
 					</div>
 				</div>
 				<div class="flex-1 overflow-hidden rounded-lg bg-white dark:bg-ferrari-900">
@@ -537,3 +505,14 @@ $effect(() => {
 		</div>
 	{/if}
 </div>
+
+<style>
+	.filename-display {
+		word-break: break-all;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		max-width: 200px;
+	}
+</style>
