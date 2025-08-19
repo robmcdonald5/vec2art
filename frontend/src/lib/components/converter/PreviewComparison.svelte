@@ -120,18 +120,22 @@ function fitToContainer() {
 	if (!imageElement || !imageContainer) return;
 
 	const containerRect = imageContainer.getBoundingClientRect();
-	const scaleX = (containerRect.width * 0.9) / imageElement.naturalWidth;
-	const scaleY = (containerRect.height * 0.9) / imageElement.naturalHeight;
-	const optimalScale = Math.min(scaleX, scaleY, 1);
+	// Use 95% of container for better fit, and ensure we don't go over 100% (1.0) for true size
+	const scaleX = (containerRect.width * 0.95) / imageElement.naturalWidth;
+	const scaleY = (containerRect.height * 0.95) / imageElement.naturalHeight;
+	const optimalScale = Math.min(scaleX, scaleY, 1.0);
 
-	const closestIndex = findClosestZoomIndex(optimalScale);
-	originalAutoFitZoom = zoomLevels[closestIndex];
-	originalZoomLevel = originalAutoFitZoom;
+	// Use 1.0 (100%) as the default zoom level for better baseline
+	// Only scale down if the image is larger than container, never scale up
+	const normalizedScale = optimalScale >= 0.9 ? 1.0 : optimalScale;
+	
+	originalAutoFitZoom = normalizedScale;
+	originalZoomLevel = normalizedScale;
 	originalPanOffset = { x: 0, y: 0 };
 
 	// Also set converted image to same initial zoom
-	convertedAutoFitZoom = zoomLevels[closestIndex];
-	convertedZoomLevel = convertedAutoFitZoom;
+	convertedAutoFitZoom = normalizedScale;
+	convertedZoomLevel = normalizedScale;
 	convertedPanOffset = { x: 0, y: 0 };
 }
 
@@ -278,20 +282,18 @@ $effect(() => {
 				</div>
 			</div>
 
-			<!-- Background Image (Original) -->
-			<div class="absolute inset-0">
+			<!-- Background Image (Converted SVG) -->
+			<div class="absolute inset-0 flex items-center justify-center">
 				<img 
-					src={currentImageUrl}
-					alt="Original"
-					class="w-full h-full object-contain"
+					src={currentSvgUrl}
+					alt="Converted SVG"
+					class="max-w-full max-h-full object-contain"
 					draggable="false"
+					style="display: block;"
 				/>
-				<div class="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-					Original
-				</div>
 			</div>
 
-			<!-- Overlay Image (Converted SVG) with clip mask -->
+			<!-- Overlay Image (Original) with clip mask -->
 			<div 
 				class="absolute inset-0"
 				style={isVerticalSplit 
@@ -299,16 +301,14 @@ $effect(() => {
 					: `clip-path: polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`
 				}
 			>
-				<div class="w-full h-full flex items-center justify-center bg-white">
+				<div class="w-full h-full flex items-center justify-center">
 					<img 
-						src={currentSvgUrl}
-						alt="Converted SVG"
+						src={currentImageUrl}
+						alt="Original"
 						class="max-w-full max-h-full object-contain"
 						draggable="false"
+						style="display: block;"
 					/>
-				</div>
-				<div class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-					Converted
 				</div>
 			</div>
 
