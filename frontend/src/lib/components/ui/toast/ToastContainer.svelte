@@ -9,7 +9,7 @@ const toasts = $derived(toastStore.all);
 <!-- Toast Container -->
 {#if toasts.length > 0}
 	<div
-		class="fixed bottom-0 right-0 z-50 p-4 sm:p-6"
+		class="fixed bottom-0 left-0 z-50 p-4 sm:p-6"
 		aria-live="polite"
 		aria-label="Notifications"
 	>

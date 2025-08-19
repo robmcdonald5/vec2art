@@ -1,5 +1,6 @@
 /**
  * Toast notification store for displaying user feedback
+ * Implements reliable auto-dismiss functionality using store-based approach
  */
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -15,56 +16,81 @@ export interface Toast {
 	};
 }
 
-class ToastStore {
+class ToastManager {
 	private toasts = $state<Toast[]>([]);
+	private timeoutMap = new Map<string, any>();
 	private nextId = 1;
 
 	get all() {
 		return this.toasts;
 	}
 
-	show(options: Omit<Toast, 'id'>) {
+	add(message: string, options: Partial<Omit<Toast, 'id' | 'message'>> = {}) {
 		const toast: Toast = {
 			id: `toast-${this.nextId++}`,
-			duration: 5000, // Default 5 seconds
+			message,
+			type: 'info',
+			duration: options.duration !== undefined ? options.duration : 5000, // Ensure default 5 seconds
 			...options
 		};
 
 		this.toasts = [...this.toasts, toast];
 
-		// Auto-dismiss after duration
+		// Store-based auto-dismiss - this works reliably with Svelte 5
 		if (toast.duration && toast.duration > 0) {
-			setTimeout(() => {
-				this.dismiss(toast.id);
+			const timeoutId = setTimeout(() => {
+				this.remove(toast.id);
 			}, toast.duration);
+			
+			this.timeoutMap.set(toast.id, timeoutId);
 		}
 
 		return toast.id;
 	}
 
-	success(message: string, duration?: number) {
-		return this.show({ type: 'success', message, duration });
-	}
-
-	error(message: string, duration?: number) {
-		return this.show({ type: 'error', message, duration: duration || 7000 }); // Errors stay longer
-	}
-
-	info(message: string, duration?: number) {
-		return this.show({ type: 'info', message, duration });
-	}
-
-	warning(message: string, duration?: number) {
-		return this.show({ type: 'warning', message, duration });
-	}
-
-	dismiss(id: string) {
+	remove(id: string) {
+		// Clear any pending timeout
+		const timeoutId = this.timeoutMap.get(id);
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+			this.timeoutMap.delete(id);
+		}
+		
 		this.toasts = this.toasts.filter(t => t.id !== id);
 	}
 
+	// Convenience methods
+	success(message: string, duration?: number) {
+		return this.add(message, { type: 'success', duration: duration || 5000 });
+	}
+
+	error(message: string, duration?: number) {
+		return this.add(message, { type: 'error', duration: duration || 7000 }); // Errors stay longer
+	}
+
+	info(message: string, duration?: number) {
+		return this.add(message, { type: 'info', duration: duration || 5000 });
+	}
+
+	warning(message: string, duration?: number) {
+		return this.add(message, { type: 'warning', duration: duration || 5000 });
+	}
+
+	// Legacy methods for backward compatibility
+	show(options: Omit<Toast, 'id'>) {
+		return this.add(options.message, options);
+	}
+
+	dismiss(id: string) {
+		this.remove(id);
+	}
+
 	dismissAll() {
+		// Clear all timeouts
+		this.timeoutMap.forEach(timeoutId => clearTimeout(timeoutId));
+		this.timeoutMap.clear();
 		this.toasts = [];
 	}
 }
 
-export const toastStore = new ToastStore();
+export const toastStore = new ToastManager();

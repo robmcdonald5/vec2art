@@ -10,6 +10,20 @@ interface Props {
 
 let { toast, onDismiss }: Props = $props();
 
+// Auto-dismiss progress
+let progressElement = $state<HTMLDivElement>();
+
+// Start progress animation if auto-dismiss is enabled
+$effect(() => {
+	if (toast.duration && toast.duration > 0 && progressElement) {
+		// Simple CSS animation approach
+		progressElement.style.animationDuration = `${toast.duration}ms`;
+		progressElement.style.animationName = 'toast-progress';
+		progressElement.style.animationTimingFunction = 'linear';
+		progressElement.style.animationFillMode = 'forwards';
+	}
+});
+
 // Icon and color mapping
 const iconMap = {
 	success: CheckCircle,
@@ -38,7 +52,7 @@ const iconColorClass = $derived(iconColorMap[toast.type]);
 </script>
 
 <div
-	class="pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg border shadow-lg {colorClass}"
+	class="pointer-events-auto w-full max-w-md overflow-hidden rounded-lg border shadow-lg {colorClass}"
 	transition:fly={{ y: 50, duration: 300 }}
 	role="alert"
 	aria-live="polite"
@@ -48,8 +62,8 @@ const iconColorClass = $derived(iconColorMap[toast.type]);
 			<div class="flex-shrink-0">
 				<Icon class="h-5 w-5 {iconColorClass}" aria-hidden="true" />
 			</div>
-			<div class="ml-3 w-0 flex-1">
-				<p class="text-sm font-medium">
+			<div class="ml-3 flex-1 min-w-0">
+				<p class="text-sm font-medium leading-5">
 					{toast.message}
 				</p>
 				{#if toast.action}
@@ -72,4 +86,29 @@ const iconColorClass = $derived(iconColorMap[toast.type]);
 			</div>
 		</div>
 	</div>
+	
+	<!-- Auto-dismiss progress bar -->
+	{#if toast.duration && toast.duration > 0}
+		<div class="h-1 bg-black/10">
+			<div 
+				bind:this={progressElement}
+				class="h-full bg-current opacity-30 toast-progress-bar"
+			></div>
+		</div>
+	{/if}
 </div>
+
+<style>
+@keyframes toast-progress {
+	from {
+		width: 100%;
+	}
+	to {
+		width: 0%;
+	}
+}
+
+.toast-progress-bar {
+	width: 100%;
+}
+</style>
