@@ -134,7 +134,7 @@
 			<!-- Close Button -->
 			<button
 				onclick={onClose}
-				class="absolute top-4 right-4 z-10 rounded-full bg-gray-100 hover:bg-gray-200 p-2 transition-colors focus:ring-2 focus:ring-ferrari-500 focus:outline-none shadow-lg"
+				class="focus:ring-ferrari-500 absolute top-4 right-4 z-10 rounded-full bg-gray-100 p-2 shadow-lg transition-colors hover:bg-gray-200 focus:ring-2 focus:outline-none"
 				aria-label="Close modal"
 			>
 				<X class="h-6 w-6 text-gray-700" aria-hidden="true" />

@@ -133,7 +133,7 @@
 		role="combobox"
 	>
 		<div class="flex items-center justify-between">
-			<span class="block truncate text-gray-800 dark:text-gray-200">
+			<span class="block truncate" style="color: #1f2937 !important;">
 				{selectedOption?.label || placeholder}
 			</span>
 			<span class="ml-2 flex items-center text-orange-600 dark:text-orange-400">
@@ -165,7 +165,6 @@
 					{@const isSelected = option.value === value}
 					{@const optionClasses = [
 						'w-full px-4 py-3 text-sm text-left',
-						'text-gray-800 dark:text-gray-200',
 						'hover:bg-gradient-to-r hover:from-orange-500/20 hover:to-red-500/20',
 						'dark:hover:from-orange-600/25 dark:hover:to-red-600/25',
 						'hover:text-orange-900 dark:hover:text-orange-100',
@@ -178,7 +177,7 @@
 						isSelected
 							? 'bg-gradient-to-r from-orange-500/25 to-red-500/25 dark:from-orange-600/30 dark:to-red-600/30'
 							: '',
-						isSelected ? 'text-orange-900 dark:text-orange-100 font-medium' : ''
+						isSelected ? 'font-medium' : ''
 					]
 						.filter(Boolean)
 						.join(' ')}
@@ -190,9 +189,10 @@
 						disabled={option.disabled}
 						role="option"
 						aria-selected={isSelected}
+						style="color: #1f2937 !important;"
 					>
 						<div class="flex items-center justify-between">
-							<span class="block truncate">{option.label}</span>
+							<span class="block truncate" style="color: #1f2937 !important;">{option.label}</span>
 							{#if isSelected}
 								<span
 									class="h-2 w-2 flex-shrink-0 rounded-full bg-orange-600 dark:bg-orange-400"
@@ -223,6 +223,13 @@
 			transform: scaleY(1);
 			transform-origin: top;
 		}
+	}
+
+	/* CRITICAL FIX: Force visible text for browser compatibility */
+	span {
+		color: #1f2937 !important;
+		opacity: 1 !important;
+		-webkit-text-fill-color: #1f2937 !important;
 	}
 
 	/* Custom scrollbar */
