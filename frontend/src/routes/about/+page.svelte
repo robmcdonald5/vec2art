@@ -51,10 +51,7 @@
 </section>
 
 <!-- Algorithm Pipeline Section -->
-<section
-	class="bg-section-premium relative py-16 sm:py-20"
-	aria-labelledby="algorithms-heading"
->
+<section class="bg-section-premium relative py-16 sm:py-20" aria-labelledby="algorithms-heading">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 		<div class="animate-on-scroll mb-16 text-center">
 			<h2 id="algorithms-heading" class="heading-section">
@@ -298,10 +295,7 @@
 </section>
 
 <!-- Performance Metrics Section -->
-<section
-	class="bg-section-elevated relative py-16 sm:py-20"
-	aria-labelledby="performance-heading"
->
+<section class="bg-section-elevated relative py-16 sm:py-20" aria-labelledby="performance-heading">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 		<div class="animate-on-scroll mb-16 text-center">
 			<h2 id="performance-heading" class="heading-section">
@@ -372,10 +366,7 @@
 </section>
 
 <!-- Get in Touch Section -->
-<section
-	class="bg-section-premium relative py-16 sm:py-20"
-	aria-labelledby="contact-heading"
->
+<section class="bg-section-premium relative py-16 sm:py-20" aria-labelledby="contact-heading">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 		<div class="animate-on-scroll mb-12 text-center">
 			<h2 id="contact-heading" class="heading-section">

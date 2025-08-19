@@ -533,9 +533,9 @@
 	.card-ferrari-static button,
 	.card-ferrari-static input,
 	.card-ferrari-static select,
-	.card-ferrari-static [role="combobox"],
-	.card-ferrari-static [role="slider"],
-	.card-ferrari-static [role="button"],
+	.card-ferrari-static [role='combobox'],
+	.card-ferrari-static [role='slider'],
+	.card-ferrari-static [role='button'],
 	.card-ferrari-static .interactive,
 	.card-ferrari-static label {
 		position: relative;
@@ -565,12 +565,12 @@
 		border-color: rgb(220, 38, 38);
 	}
 
-	[role="slider"]:focus-visible {
+	[role='slider']:focus-visible {
 		outline: 3px solid rgb(220, 38, 38);
 		outline-offset: 4px;
 	}
 
-	[role="combobox"]:focus-visible {
+	[role='combobox']:focus-visible {
 		outline: 3px solid rgb(220, 38, 38);
 		outline-offset: 2px;
 		box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15);
@@ -578,7 +578,7 @@
 
 	/* TRANSPARENCY FIX: Force visible text in all dropdown and slider elements */
 	.card-ferrari-static button span,
-	.card-ferrari-static [role="combobox"] span,
+	.card-ferrari-static [role='combobox'] span,
 	.card-ferrari-static .flex span {
 		color: #1f2937 !important;
 		opacity: 1 !important;
@@ -615,7 +615,7 @@
 	}
 
 	/* TARGETED FIX: Only override problematic transparent text elements */
-	[role="combobox"] span.block.truncate,
+	[role='combobox'] span.block.truncate,
 	.font-medium {
 		color: #1f2937 !important;
 		opacity: 1 !important;
@@ -676,16 +676,16 @@
 	}
 
 	/* ===== CONVERTER DESIGN SYSTEM ===== */
-	
+
 	/* Converter Cards */
 	.card-converter {
 		@apply rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300;
 	}
-	
+
 	.card-converter-interactive {
 		@apply rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-red-300 hover:shadow-lg hover:shadow-red-500/10;
 	}
-	
+
 	.card-converter-static {
 		@apply rounded-3xl border border-gray-100 bg-gray-50/30 p-6 shadow-sm transition-all duration-300;
 	}
@@ -694,99 +694,99 @@
 	.upload-dropzone {
 		@apply relative min-h-[300px] cursor-pointer rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50/50 p-10 text-center transition-all duration-300 hover:border-red-400 hover:bg-red-50/30;
 	}
-	
+
 	.upload-dropzone.drag-over {
 		@apply border-red-500 bg-red-100/50;
 	}
-	
+
 	.upload-dropzone-content {
 		@apply flex flex-col items-center gap-4;
 	}
-	
+
 	.upload-dropzone-title {
 		@apply text-2xl font-bold text-gray-800;
 	}
-	
+
 	.upload-dropzone-subtitle {
 		@apply text-gray-600;
 	}
-	
+
 	.upload-dropzone-info {
 		@apply text-xs text-gray-500;
 	}
 
 	/* Settings Panel */
 	.settings-panel {
-		@apply rounded-3xl border border-gray-200 bg-white p-6 shadow-sm space-y-6;
+		@apply space-y-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm;
 	}
-	
+
 	.settings-header {
 		@apply flex items-center gap-3;
 	}
-	
+
 	.settings-title {
 		@apply text-lg font-semibold text-gray-900;
 	}
-	
+
 	.settings-section {
 		@apply space-y-3;
 	}
-	
+
 	.settings-label {
 		@apply text-sm font-medium text-gray-700;
 	}
-	
+
 	.settings-option {
-		@apply flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-left transition-all duration-200 hover:shadow-md hover:shadow-red-500/10 hover:-translate-y-0.5;
+		@apply flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-red-500/10;
 	}
-	
+
 	.settings-option.selected {
 		@apply border-red-500 bg-red-50;
 	}
-	
+
 	.settings-option:not(.selected) {
 		@apply hover:border-red-300;
 	}
-	
+
 	.settings-radio {
 		@apply mt-0.5 flex h-4 w-4 items-center justify-center;
 	}
-	
+
 	.settings-radio-dot {
 		@apply h-2 w-2 rounded-full;
 	}
-	
+
 	.settings-radio-dot.selected {
 		@apply bg-red-600;
 	}
-	
+
 	.settings-radio-dot:not(.selected) {
 		@apply border border-gray-300;
 	}
 
 	/* Preview Components */
 	.preview-container {
-		@apply rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300 relative overflow-hidden;
+		@apply relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300;
 	}
-	
+
 	.preview-image {
 		@apply max-h-96 w-full rounded-lg object-contain;
 	}
 
 	/* Progress Components */
 	.progress-container {
-		@apply rounded-3xl border border-gray-100 bg-gray-50/30 p-6 shadow-sm transition-all duration-300 mb-6;
+		@apply mb-6 rounded-3xl border border-gray-100 bg-gray-50/30 p-6 shadow-sm transition-all duration-300;
 	}
-	
+
 	.progress-bar-bg {
 		@apply h-2 w-full overflow-hidden rounded-full bg-gray-200;
 	}
-	
+
 	.progress-bar-fill {
 		@apply relative h-full rounded-full bg-gradient-to-r from-red-600 to-red-500 transition-all duration-300 ease-out;
 		box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
 	}
-	
+
 	.progress-bar-shimmer {
 		@apply absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent;
 	}
@@ -796,15 +796,16 @@
 		@apply rounded-full bg-gradient-to-br from-red-500 to-red-600 p-2 transition-all duration-300;
 		box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 	}
-	
+
 	.icon-converter-bg:hover {
 		@apply scale-110;
 		box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
 		animation: ferrari-pulse 2s ease-in-out infinite;
 	}
-	
+
 	@keyframes ferrari-pulse {
-		0%, 100% {
+		0%,
+		100% {
 			box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
 		}
 		50% {
@@ -819,17 +820,17 @@
 		color: #059669 !important;
 		font-weight: 600;
 	}
-	
+
 	.status-indicator-error {
 		color: #dc2626 !important;
 		font-weight: 600;
 	}
-	
+
 	.status-indicator-warning {
 		color: #d97706 !important;
 		font-weight: 600;
 	}
-	
+
 	.status-indicator-info {
 		color: #2563eb !important;
 		font-weight: 600;
