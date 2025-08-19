@@ -124,14 +124,12 @@
 </script>
 
 <!-- Gallery Hero Section -->
-<section class="bg-section-elevated py-12 pb-4 relative">
+<section class="bg-section-elevated relative py-12 pb-4">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 		<!-- Header -->
 		<div class="mb-8 text-center">
-			<h1 class="text-gradient-modern text-4xl font-bold mb-4">Gallery</h1>
-			<p class="text-premium">
-				Browse example conversions and see what's possible with vec2art
-			</p>
+			<h1 class="text-gradient-modern mb-4 text-4xl font-bold">Gallery</h1>
+			<p class="text-premium">Browse example conversions and see what's possible with vec2art</p>
 		</div>
 
 		<!-- Controls -->
@@ -139,16 +137,18 @@
 			<div class="flex items-center gap-4">
 				<!-- Search -->
 				<div class="relative">
-					<Search class="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-speed-gray-400" />
+					<Search class="text-speed-gray-400 absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2" />
 					<input
 						type="text"
 						placeholder="Search examples..."
-						class="w-full px-4 py-3 pl-12 rounded-xl border border-gray-200 focus:border-ferrari-500 focus:ring-4 focus:ring-ferrari-500/20 bg-white transition-all duration-300 text-speed-gray-900 placeholder:text-speed-gray-400"
+						class="focus:border-ferrari-500 focus:ring-ferrari-500/20 text-speed-gray-900 placeholder:text-speed-gray-400 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pl-12 transition-all duration-300 focus:ring-4"
 					/>
 				</div>
 
 				<!-- Categories -->
-				<select class="px-4 py-3 rounded-xl border border-gray-200 focus:border-ferrari-500 focus:ring-4 focus:ring-ferrari-500/20 bg-white transition-all duration-300 text-speed-gray-900">
+				<select
+					class="focus:border-ferrari-500 focus:ring-ferrari-500/20 text-speed-gray-900 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-all duration-300 focus:ring-4"
+				>
 					<option value="">All Categories</option>
 					<option value="logos">Logos & Icons</option>
 					<option value="artwork">Artwork</option>
@@ -165,11 +165,13 @@
 
 			<div class="flex items-center gap-2">
 				<!-- View Toggle -->
-				<div class="flex rounded-xl border border-gray-200 overflow-hidden">
+				<div class="flex overflow-hidden rounded-xl border border-gray-200">
 					<button class="icon-ferrari-bg flex items-center px-4 py-3 text-white">
 						<Grid class="h-4 w-4" />
 					</button>
-					<button class="flex items-center px-4 py-3 bg-white hover:bg-gray-50 text-speed-gray-600 transition-colors duration-300">
+					<button
+						class="text-speed-gray-600 flex items-center bg-white px-4 py-3 transition-colors duration-300 hover:bg-gray-50"
+					>
 						<List class="h-4 w-4" />
 					</button>
 				</div>
@@ -181,11 +183,13 @@
 <!-- Main Gallery Section -->
 <section class="bg-section-premium py-8">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
-
 		<!-- Gallery Grid -->
 		<div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 			{#each galleryItems as item}
-				<div class="bg-white rounded-xl border border-gray-200 overflow-hidden group transition-all duration-300 hover:shadow-lg hover:border-ferrari-300 animate-fadeInUp" style="animation-delay: {(item.id - 1) * 0.1}s">
+				<div
+					class="group hover:border-ferrari-300 animate-fadeInUp overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-300 hover:shadow-lg"
+					style="animation-delay: {(item.id - 1) * 0.1}s"
+				>
 					<!-- Before/After Slider -->
 					<div class="relative aspect-square bg-gray-50">
 						<BeforeAfterSlider
@@ -197,38 +201,48 @@
 						/>
 
 						<!-- Subtle Hover Overlay (pointer-events-none to allow slider interaction) -->
-						<div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+						<div
+							class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+						></div>
 
 						<!-- Action Buttons -->
-						<div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+						<div
+							class="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 transform gap-2 opacity-0 transition-all duration-300 group-hover:opacity-100"
+						>
 							<div class="pointer-events-auto flex gap-2">
-							<button
-								onclick={() => openModal(item)}
-								class="bg-white/90 hover:bg-white text-ferrari-600 font-medium px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-lg backdrop-blur-sm transition-all duration-200 hover:scale-105"
-							>
-								<Maximize2 class="h-4 w-4" />
-								Expand
-							</button>
-							<button 
-								onclick={() => downloadSVG(item)}
-								class="bg-ferrari-600 hover:bg-ferrari-700 text-white font-medium px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-lg transition-all duration-200 hover:scale-105"
-							>
-								<Download class="h-4 w-4" />
-								Download
-							</button>
+								<button
+									onclick={() => openModal(item)}
+									class="text-ferrari-600 flex items-center gap-1 rounded-lg bg-white/90 px-3 py-2 text-sm font-medium shadow-lg backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white"
+								>
+									<Maximize2 class="h-4 w-4" />
+									Expand
+								</button>
+								<button
+									onclick={() => downloadSVG(item)}
+									class="bg-ferrari-600 hover:bg-ferrari-700 flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white shadow-lg transition-all duration-200 hover:scale-105"
+								>
+									<Download class="h-4 w-4" />
+									Download
+								</button>
 							</div>
 						</div>
 					</div>
 
 					<!-- Card Details -->
-					<div class="p-6 space-y-3">
-						<h3 class="text-gray-900 text-lg font-semibold group-hover:text-ferrari-600 transition-colors duration-300">{item.title}</h3>
+					<div class="space-y-3 p-6">
+						<h3
+							class="group-hover:text-ferrari-600 text-lg font-semibold text-gray-900 transition-colors duration-300"
+						>
+							{item.title}
+						</h3>
 						<div class="flex items-center gap-2">
-							<span class="text-ferrari-600 font-medium bg-ferrari-50 px-3 py-1 rounded-full text-sm border border-ferrari-100">
+							<span
+								class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							>
 								{item.algorithm}
 							</span>
 						</div>
-						<div class="flex justify-between text-gray-600 text-sm">
+						<div class="flex justify-between text-sm text-gray-600">
 							<span class="font-medium">{item.dimensions}</span>
 							<span class="font-medium">{item.fileSize}</span>
 						</div>
@@ -239,27 +253,25 @@
 	</div>
 </section>
 
-
 <!-- Load More Section -->
 <section class="bg-section-premium py-16">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 		<div class="text-center">
-			<button class="btn-ferrari-primary px-8 py-4 text-lg mx-auto">
-				Load More Examples
-			</button>
+			<button class="btn-ferrari-primary mx-auto px-8 py-4 text-lg"> Load More Examples </button>
 		</div>
 	</div>
 </section>
 
-
 <!-- Modal for expanded view -->
 <Modal open={modalOpen} onClose={closeModal}>
 	{#if selectedItem}
-		<div class="p-8 bg-white rounded-xl">
+		<div class="rounded-xl bg-white p-8">
 			<div class="mb-8">
-				<h2 class="text-speed-gray-900 text-3xl font-bold mb-3">{selectedItem.title}</h2>
+				<h2 class="text-speed-gray-900 mb-3 text-3xl font-bold">{selectedItem.title}</h2>
 				<div class="flex items-center gap-4">
-					<span class="text-ferrari-600 font-semibold bg-ferrari-50 px-4 py-2 rounded-full text-sm border border-ferrari-100">
+					<span
+						class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-4 py-2 text-sm font-semibold"
+					>
 						{selectedItem.algorithm}
 					</span>
 					<span class="text-speed-gray-600 text-sm font-medium">
@@ -268,7 +280,9 @@
 				</div>
 			</div>
 
-			<div class="aspect-video overflow-hidden rounded-xl bg-white shadow-lg border border-gray-100 mb-6">
+			<div
+				class="mb-6 aspect-video overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg"
+			>
 				<BeforeAfterSlider
 					beforeImage={selectedItem.beforeImage}
 					afterImage={selectedItem.afterImage}
@@ -279,9 +293,9 @@
 			</div>
 
 			<div class="flex justify-center gap-4 pb-8">
-				<button 
-					onclick={() => downloadSVG(selectedItem)}
-					class="btn-ferrari-primary px-6 py-3 text-lg flex items-center gap-2"
+				<button
+					onclick={() => selectedItem && downloadSVG(selectedItem)}
+					class="btn-ferrari-primary flex items-center gap-2 px-6 py-3 text-lg"
 				>
 					<Download class="h-5 w-5" />
 					Download SVG

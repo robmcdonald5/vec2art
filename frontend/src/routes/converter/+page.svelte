@@ -1,838 +1,503 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { FileDropzone } from '$lib/components/ui/file-dropzone';
-	import { ProgressBar } from '$lib/components/ui/progress-bar';
-	import {
-		Upload,
-		Settings,
-		Download,
-		Image,
-		AlertCircle,
-		CheckCircle,
-		Loader2
-	} from 'lucide-svelte';
-	import { vectorizerStore } from '$lib/stores/vectorizer.svelte';
-	import { ErrorBoundary } from '$lib/components/ui/error-boundary';
-	import type {
-		VectorizerBackend,
-		VectorizerPreset,
-		VectorizerConfig
-	} from '$lib/types/vectorizer';
-	import { PRESET_CONFIGS } from '$lib/types/vectorizer';
+/**
+ * Converter Page - Layered State Architecture 
+ * State: EMPTY -> Shows only upload area
+ * State: LOADED -> Shows converter interface with settings
+ */
 
-	// Import new component system
-	import UnifiedImageProcessor from '$lib/components/converter/UnifiedImageProcessor.svelte';
-	import ConverterLayout from '$lib/components/converter/ConverterLayout.svelte';
-	import DevTestingPanel from '$lib/components/dev/DevTestingPanel.svelte';
+import { onMount } from 'svelte';
+import { Loader2, CheckCircle, AlertCircle } from 'lucide-svelte';
 
-	// Import performance monitoring
-	import {
-		performanceMonitor,
-		getOptimalThreadCount,
-		type PerformanceMode
-	} from '$lib/utils/performance-monitor';
+// Import new layered components
+import UploadArea from '$lib/components/converter/UploadArea.svelte';
+import ConverterInterface from '$lib/components/converter/ConverterInterface.svelte';
+import SettingsPanel from '$lib/components/converter/SettingsPanel.svelte';
+import ConversionProgress from '$lib/components/ui/progress/ConversionProgress.svelte';
+import BatchProgress from '$lib/components/ui/progress/BatchProgress.svelte';
+import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
+import UndoRedo from '$lib/components/ui/history/UndoRedo.svelte';
+import { toastStore } from '$lib/stores/toast.svelte';
+import { parameterHistory } from '$lib/stores/parameter-history.svelte';
 
-	// Reactive state from store
-	let store = vectorizerStore;
+// Types and stores
+import type { 
+	ProcessingProgress, 
+	ProcessingResult,
+	VectorizerConfig,
+	VectorizerBackend,
+	VectorizerPreset
+} from '$lib/types/vectorizer';
+import type { PerformanceMode } from '$lib/utils/performance-monitor';
+import { vectorizerStore } from '$lib/stores/vectorizer.svelte.js';
 
-	// Accessibility state
-	let announceText = $state<string>('');
-	let processingAnnouncement = $state<string>('');
+// UI State Management - Using Svelte 5 runes
+let files = $state<File[]>([]);
+let currentImageIndex = $state(0);
+let currentProgress = $state<ProcessingProgress | null>(null);
+let results = $state<ProcessingResult[]>([]);
+let previewSvgUrls = $state<(string | null)[]>([]);
+let isProcessing = $state(false);
 
-	// Announce processing status changes to screen readers
-	function announceProcessingStatus(status: string) {
-		processingAnnouncement = status;
-		setTimeout(() => {
-			processingAnnouncement = '';
-		}, 1000);
+// Batch processing state
+let completedImages = $state(0);
+let batchStartTime = $state<Date | null>(null);
+
+// Page initialization state
+let pageLoaded = $state(false);
+let initError = $state<string | null>(null);
+
+// Converter configuration state
+let config = $state<VectorizerConfig>({
+	backend: 'edge',
+	detail: 0.5,
+	stroke_width: 1.5,
+	noise_filtering: true,
+	multipass: false,
+	reverse_pass: false,
+	diagonal_pass: false,
+	enable_etf_fdog: false,
+	enable_flow_tracing: false,
+	enable_bezier_fitting: true,
+	hand_drawn_preset: 'medium',
+	variable_weights: 0.3,
+	tremor_strength: 0.3,
+	tapering: 0.7,
+	optimize_svg: true,
+	svg_precision: 2
+});
+
+let selectedPreset = $state<VectorizerPreset | 'custom'>('artistic');
+let performanceMode = $state<PerformanceMode>('balanced');
+let threadCount = $state(4);
+let threadsInitialized = $state(false);
+
+// Derived states for UI logic
+const uiState = $derived(files.length === 0 ? 'EMPTY' : 'LOADED');
+const hasFiles = $derived(files.length > 0);
+const canConvert = $derived(hasFiles && !isProcessing);
+const canDownload = $derived(results.length > 0 && !isProcessing);
+
+// Accessibility announcements
+let announceText = $state('');
+
+function announceToScreenReader(message: string, priority: 'polite' | 'assertive' = 'polite') {
+	announceText = message;
+	setTimeout(() => {
+		announceText = '';
+	}, 1000);
+}
+
+// File management functions
+function handleFilesSelect(selectedFiles: File[]) {
+	files = selectedFiles;
+	currentImageIndex = 0;
+	// Clear previous results
+	results = [];
+	previewSvgUrls = [];
+	
+	if (selectedFiles.length > 0) {
+		toastStore.info(`${selectedFiles.length} file(s) ready for conversion`);
 	}
+	announceToScreenReader(`${selectedFiles.length} file(s) selected`);
+}
 
-	function announceToScreenReader(message: string) {
-		announceText = message;
-		setTimeout(() => {
-			announceText = '';
-		}, 1000);
+function handleImageIndexChange(index: number) {
+	if (index >= 0 && index < files.length) {
+		currentImageIndex = index;
 	}
+}
 
-	let selectedPreset = $state<VectorizerPreset | 'custom'>('sketch');
-	let previewSvgUrls = $state<(string | null)[]>([]);
-
-	// Smart initialization state
-	let isInitializing = $state(false);
-	let selectedPerformanceMode = $state<PerformanceMode>('balanced');
-	let currentOptimalThreads = $state(4);
-	let hasUserInitiatedConversion = $state(false);
-	let performanceWarningShown = $state(false);
-
-	// Enhanced processing state tracking
-	let isBatchProcessing = $state(false);
-	let batchProgress = $state<{ imageIndex: number; totalImages: number; progress: any } | null>(
-		null
-	);
-	let localProcessingState = $state(false);
-	let processingStartTime = $state<Date | null>(null);
-	let showProgressBar = $state(false);
-	let progressBarTimeout: NodeJS.Timeout | null = null;
-
-	// Enhanced progress tracking
-	let currentProgress = $state(0);
-	let progressSimulationInterval: NodeJS.Timeout | null = null;
-
-	// Initialize WASM without threads (lazy loading)
-	onMount(async () => {
-		try {
-			// Only load WASM module, don't initialize threads
-			await store.initialize({ autoInitThreads: false });
-			console.log('WASM module loaded (threads not initialized)');
-		} catch (error) {
-			console.error('Failed to load WASM module:', error);
+function handleAddMore() {
+	const input = document.createElement('input');
+	input.type = 'file';
+	input.accept = 'image/*';
+	input.multiple = true;
+	input.onchange = (e) => {
+		const newFiles = Array.from((e.target as HTMLInputElement).files || []);
+		if (newFiles.length > 0) {
+			const allFiles = [...files, ...newFiles];
+			handleFilesSelect(allFiles);
 		}
-	});
+	};
+	input.click();
+}
 
-	// Initialize threads on-demand for conversions with performance awareness
-	async function initializeThreadsForConversion(): Promise<boolean> {
-		if (store.threadsInitialized) {
-			// Check if current thread count matches selected performance mode
-			const expectedThreads = getOptimalThreadCount(selectedPerformanceMode, currentOptimalThreads);
-			if (store.requestedThreadCount !== expectedThreads) {
-				console.log(
-					`Adjusting thread count from ${store.requestedThreadCount} to ${expectedThreads} for ${selectedPerformanceMode} mode`
-				);
-				return await store.initializeThreads(expectedThreads);
+// Conversion functions
+async function handleConvert() {
+	if (!canConvert) {
+		console.warn('Cannot convert - no files or already processing');
+		return;
+	}
+
+	try {
+		isProcessing = true;
+		completedImages = 0;
+		batchStartTime = new Date();
+		announceToScreenReader('Starting image conversion');
+
+		// Initialize WASM if needed
+		if (!vectorizerStore.isInitialized) {
+			await vectorizerStore.initialize({ autoInitThreads: true });
+		}
+
+		// Set up vectorizer with current files
+		vectorizerStore.setInputFiles(files);
+
+		// Process files
+		const processedResults = await vectorizerStore.processBatch((imageIndex, totalImages, progress) => {
+			currentImageIndex = imageIndex;
+			currentProgress = progress;
+			
+			// Update completed count when a new image starts processing
+			if (progress.stage === 'preprocessing' && progress.progress === 0) {
+				completedImages = imageIndex;
 			}
-			return true;
-		}
+			
+			announceToScreenReader(`Processing image ${imageIndex + 1} of ${totalImages}: ${progress.stage}`);
+		});
 
-		isInitializing = true;
-		announceProcessingStatus('Initializing converter for optimal performance...');
-
-		try {
-			// Use performance-aware thread calculation
-			const optimalThreadCount = getOptimalThreadCount(
-				selectedPerformanceMode,
-				currentOptimalThreads
-			);
-			const systemCapabilities = performanceMonitor.getSystemCapabilities();
-
-			console.log(
-				`Auto-initializing with ${optimalThreadCount} threads for conversion (${selectedPerformanceMode} mode, ${systemCapabilities.cores} cores available)`
-			);
-
-			// Start performance monitoring
-			performanceMonitor.startMonitoring();
-
-			const success = await store.initializeThreads(optimalThreadCount);
-
-			if (!success) {
-				console.warn('Thread pool initialization failed, will use single-threaded mode');
-				announceProcessingStatus('Using single-threaded mode');
-				// Still return true as single-threaded mode is valid
-				return true;
-			} else {
-				console.log(`Successfully initialized ${optimalThreadCount} threads`);
-				currentOptimalThreads = optimalThreadCount;
-				announceProcessingStatus(
-					`Converter ready with ${optimalThreadCount} threads (${selectedPerformanceMode} mode)`
-				);
-
-				// Show performance warning for high-performance mode on lower-end systems
-				if (
-					selectedPerformanceMode === 'performance' &&
-					!systemCapabilities.supportsHighPerformance &&
-					!performanceWarningShown
-				) {
-					console.warn('Performance mode enabled on system that may not support it well');
-					performanceWarningShown = true;
-				}
-
-				return true;
+		// Create preview URLs
+		const urls = processedResults.map(result => {
+			if (result && result.svg) {
+				const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+				return URL.createObjectURL(blob);
 			}
-		} catch (error) {
-			console.error('Failed to initialize thread pool:', error);
-			announceProcessingStatus('Using fallback processing mode');
-			// Still return true to allow single-threaded processing
-			return true;
-		} finally {
-			isInitializing = false;
-		}
+			return null;
+		});
+
+		results = processedResults;
+		previewSvgUrls = urls;
+		completedImages = processedResults.length;
+		toastStore.success(`Successfully converted ${processedResults.length} image(s) to SVG`);
+		announceToScreenReader(`Conversion completed: ${processedResults.length} images processed`);
+
+	} catch (error) {
+		console.error('Conversion failed:', error);
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+		toastStore.error(`Conversion failed: ${errorMessage}`);
+		announceToScreenReader('Conversion failed', 'assertive');
+	} finally {
+		isProcessing = false;
+		currentProgress = null;
+	}
+}
+
+function handleDownload() {
+	if (!canDownload) {
+		console.warn('Cannot download - no results available');
+		return;
 	}
 
-	function handleFilesSelect(files: File[]) {
-		if (files.length > 0) {
-			// Multi-file upload doesn't need threading - just store the files
-			store.setInputFiles(files);
-			announceToScreenReader(`${files.length} file(s) selected`);
-		} else {
-			store.clearInput();
-			announceToScreenReader('All files removed');
-		}
-		// Clear previous results when new files are selected
-		cleanupPreviewUrls();
-	}
-
-	function handleBackendChange(backend: VectorizerBackend) {
-		store.updateConfig({ backend });
-		announceToScreenReader(`Algorithm changed to ${backend.replace('_', ' ')}`);
-		if (selectedPreset !== 'custom') {
-			selectedPreset = 'custom';
-		}
-	}
-
-	function handlePresetChange(preset: VectorizerPreset | 'custom') {
-		selectedPreset = preset;
-		if (preset !== 'custom' && PRESET_CONFIGS[preset]) {
-			// Apply preset configuration
-			const presetConfig = PRESET_CONFIGS[preset];
-			store.updateConfig(presetConfig);
-			announceToScreenReader(`Preset changed to ${preset}`);
-		} else {
-			announceToScreenReader('Custom settings mode enabled');
-		}
-	}
-
-	function handleParameterChange() {
-		// Switch to custom mode when any parameter is changed
-		if (selectedPreset !== 'custom') {
-			selectedPreset = 'custom';
-		}
-	}
-
-	function handleConfigChange(updates: Partial<VectorizerConfig>) {
-		store.updateConfig(updates);
-		handleParameterChange();
-	}
-
-	async function handleConvert() {
-		hasUserInitiatedConversion = true;
-
-		// Initialize threads if not already done (lazy initialization)
-		if (!store.threadsInitialized) {
-			const initialized = await initializeThreadsForConversion();
-			if (!initialized) {
-				console.error('Failed to initialize converter');
-				return;
-			}
-		}
-
-		// Check if this is batch processing
-		if (store.hasMultipleImages) {
-			await handleBatchConvert();
-		} else {
-			await handleSingleConvert();
-		}
-	}
-
-	async function handleSingleConvert() {
-		// Set local processing state immediately
-		localProcessingState = true;
-		processingStartTime = new Date();
-		startProgressBar();
-		announceProcessingStatus('Starting image conversion');
-
-		try {
-			// Process image with progress callback
-			const result = await store.processImage();
-
-			// Create blob URL for preview - handle single image properly
-			const currentIndex = store.currentImageIndex || 0;
-			if (previewSvgUrls[currentIndex]) {
-				URL.revokeObjectURL(previewSvgUrls[currentIndex]);
-			}
-
-			// Ensure array is large enough
-			while (previewSvgUrls.length <= currentIndex) {
-				previewSvgUrls.push(null);
-			}
-
-			const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-			previewSvgUrls[currentIndex] = URL.createObjectURL(blob);
-
-			announceProcessingStatus('Conversion completed successfully');
-		} catch (error) {
-			console.error('Conversion failed:', error);
-			announceProcessingStatus('Conversion failed');
-		} finally {
-			// Always clear local processing state
-			localProcessingState = false;
-			processingStartTime = null;
-			endProgressBar();
-		}
-	}
-
-	async function handleBatchConvert() {
-		isBatchProcessing = true;
-		localProcessingState = true;
-		processingStartTime = new Date();
-		startProgressBar();
-		announceProcessingStatus('Starting batch conversion');
-
-		try {
-			const results = await store.processBatch((imageIndex, totalImages, progress) => {
-				batchProgress = { imageIndex, totalImages, progress };
-				announceProcessingStatus(
-					`Processing image ${imageIndex + 1} of ${totalImages}: ${progress.stage}`
-				);
-			});
-
-			// Create blob URLs for all results - proper cleanup and assignment
-			// Clean up existing URLs
-			cleanupPreviewUrls();
-
-			// Create new URLs for all results
-			previewSvgUrls = results.map((result) => {
-				if (result && result.svg) {
-					const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-					return URL.createObjectURL(blob);
-				}
-				return null;
-			});
-
-			// Reset to first image after batch completion
-			store.setCurrentImageIndex(0);
-
-			announceProcessingStatus(`Batch conversion completed: ${results.length} images processed`);
-		} catch (error) {
-			console.error('Batch conversion failed:', error);
-			announceProcessingStatus('Batch conversion failed');
-		} finally {
-			isBatchProcessing = false;
-			localProcessingState = false;
-			processingStartTime = null;
-			batchProgress = null;
-			endProgressBar();
-		}
-	}
-
-	async function handleRetryOperation() {
-		try {
-			await store.retryLastOperation();
-		} catch (error) {
-			console.error('Retry failed:', error);
-		}
-	}
-
-	function handleResetAll() {
-		cleanupPreviewUrls();
-		store.reset();
-	}
-
-	function handleDownload(imageIndex?: number) {
-		if (store.hasMultipleImages) {
-			handleBatchDownload(imageIndex);
-		} else {
-			handleSingleDownload();
-		}
-	}
-
-	function handleSingleDownload() {
-		if (!store.lastResult) return;
-
-		const blob = new Blob([store.lastResult.svg], { type: 'image/svg+xml' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `${store.inputFile?.name.replace(/\.[^/.]+$/, '') || 'converted'}.svg`;
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-		URL.revokeObjectURL(url);
-		announceToScreenReader('SVG file downloaded');
-	}
-
-	function handleBatchDownload(imageIndex?: number) {
-		const results = store.batchResults;
-		const files = store.inputFiles;
-
-		if (imageIndex !== undefined) {
-			// Download single image from batch
-			const result = results[imageIndex];
-			const file = files[imageIndex];
-			if (!result || !file) return;
-
+	try {
+		const result = results[currentImageIndex];
+		const file = files[currentImageIndex];
+		
+		if (result && file) {
 			const blob = new Blob([result.svg], { type: 'image/svg+xml' });
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement('a');
+			
 			a.href = url;
 			a.download = `${file.name.replace(/\.[^/.]+$/, '')}.svg`;
+			
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
+			
 			announceToScreenReader(`Downloaded ${file.name}.svg`);
-		} else {
-			// Download all as zip would be complex, so download individually
-			results.forEach((result, index) => {
-				const file = files[index];
-				if (result && file) {
-					const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-					const url = URL.createObjectURL(blob);
-					const a = document.createElement('a');
-					a.href = url;
-					a.download = `${file.name.replace(/\.[^/.]+$/, '')}.svg`;
-					document.body.appendChild(a);
-					a.click();
-					document.body.removeChild(a);
-					URL.revokeObjectURL(url);
-				}
-			});
-			announceToScreenReader(`Downloaded ${results.length} SVG files`);
 		}
+	} catch (error) {
+		console.error('Download failed:', error);
+		announceToScreenReader('Download failed', 'assertive');
 	}
+}
 
-	function handleImageIndexChange(index: number) {
-		console.log(`Image index changed to ${index}, previewSvgUrls.length: ${previewSvgUrls.length}`);
-		console.log(
-			`Preview URL at index ${index}:`,
-			previewSvgUrls[index] ? 'exists' : 'null/undefined'
-		);
-		store.setCurrentImageIndex(index);
-	}
+function handleAbort() {
+	vectorizerStore.abortProcessing();
+	isProcessing = false;
+	currentProgress = null;
+	announceToScreenReader('Conversion stopped');
+}
 
-	function handleAbort() {
-		store.abortProcessing();
-		// Clear all local processing states
-		localProcessingState = false;
-		isBatchProcessing = false;
-		processingStartTime = null;
-		batchProgress = null;
-		endProgressBar();
-		announceProcessingStatus('Processing stopped');
-	}
-
-	function handlePerformanceModeChange(mode: PerformanceMode, threadCount: number) {
-		selectedPerformanceMode = mode;
-		currentOptimalThreads = threadCount;
-
-		// Update the vectorizer service performance mode
-		store.setPerformanceMode(mode);
-
-		// If threads are already initialized, update them
-		if (store.threadsInitialized) {
-			store
-				.initializeThreads(threadCount)
-				.then((success) => {
-					if (success) {
-						announceToScreenReader(
-							`Performance mode changed to ${mode} with ${threadCount} threads`
-						);
-					} else {
-						announceToScreenReader(
-							`Failed to change performance mode, continuing with current settings`
-						);
-					}
-				})
-				.catch((error) => {
-					console.error('Failed to update thread count:', error);
-					announceToScreenReader('Failed to update performance settings');
-				});
-		}
-	}
-
-	function handleAdvancedPerformanceToggle(show: boolean) {
-		// Handle showing/hiding advanced performance details
-		console.log(`Advanced performance details ${show ? 'shown' : 'hidden'}`);
-	}
-
-	// Derived values
-	$effect(() => {
-		// Clean up blob URLs and intervals when component is destroyed
-		return () => {
-			cleanupPreviewUrls();
-			stopProgressSimulation();
-			if (progressBarTimeout) {
-				clearTimeout(progressBarTimeout);
-			}
-		};
+function handleReset() {
+	// Clean up blob URLs
+	previewSvgUrls.forEach(url => {
+		if (url) URL.revokeObjectURL(url);
 	});
+	
+	files = [];
+	currentImageIndex = 0;
+	results = [];
+	previewSvgUrls = [];
+	currentProgress = null;
+	isProcessing = false;
+	completedImages = 0;
+	batchStartTime = null;
+	announceToScreenReader('Converter reset');
+}
 
-	// Comprehensive processing state tracking
-	const isAnyProcessing = $derived(
-		store.isProcessing || isBatchProcessing || isInitializing || localProcessingState
-	);
+// Configuration functions
+function handleConfigChange(updates: Partial<VectorizerConfig>) {
+	const newConfig = { ...config, ...updates };
+	config = newConfig;
+	
+	// Add to parameter history with description
+	const description = Object.keys(updates).join(', ') + ' changed';
+	parameterHistory.push(newConfig, description);
+}
 
-	// Can convert as long as we have images and valid config (threads will initialize on-demand)
-	// Allow conversion even after failed attempts - users should be able to retry with different settings
-	const canConvert = $derived(
-		Boolean(
-			(store.inputImages.length > 0 || store.inputImage) &&
-				store.isConfigValid() &&
-				!isAnyProcessing
-		)
-	);
+function handleConfigReplace(newConfig: VectorizerConfig) {
+	config = newConfig;
+}
 
-	const canDownload = $derived(
-		Boolean((store.batchResults.length > 0 || store.lastResult) && !isAnyProcessing)
-	);
+function handlePresetChange(preset: VectorizerPreset | 'custom') {
+	selectedPreset = preset;
+}
 
-	const hasImages = $derived(store.inputFiles.length > 0 || !!store.inputFile);
-	const stats = $derived(store.getStats());
+function handleBackendChange(backend: VectorizerBackend) {
+	config = { ...config, backend };
+}
 
-	// Progress bar management with minimum display time
-	function startProgressBar() {
-		showProgressBar = true;
-		currentProgress = 0;
-		if (progressBarTimeout) {
-			clearTimeout(progressBarTimeout);
-			progressBarTimeout = null;
-		}
-		startProgressSimulation();
+function handleParameterChange() {
+	// Parameter change handled by config updates
+}
+
+function handlePerformanceModeChange(mode: PerformanceMode, threads: number) {
+	performanceMode = mode;
+	threadCount = threads;
+}
+
+// Initialize page
+onMount(async () => {
+	try {
+		
+		// Initialize WASM module 
+		await vectorizerStore.initialize({ autoInitThreads: false });
+		
+		// Initialize parameter history with default config
+		parameterHistory.initialize(config);
+		
+		pageLoaded = true;
+		announceToScreenReader('Converter page loaded');
+		
+	} catch (error) {
+		console.error('❌ Failed to initialize converter page:', error);
+		initError = error instanceof Error ? error.message : 'Failed to load converter';
+		announceToScreenReader('Failed to load converter page', 'assertive');
 	}
+});
 
-	function endProgressBar() {
-		currentProgress = 100;
-		stopProgressSimulation();
+// Cleanup on page unload
+$effect(() => {
+	return () => {
+		// Cleanup resources
+	};
+});
 
-		// Keep progress bar visible for at least 1 second
-		if (progressBarTimeout) {
-			clearTimeout(progressBarTimeout);
-		}
-		progressBarTimeout = setTimeout(() => {
-			showProgressBar = false;
-			progressBarTimeout = null;
-			currentProgress = 0;
-		}, 1000);
-	}
-
-	// Progress simulation for smooth user experience
-	function startProgressSimulation() {
-		stopProgressSimulation();
-		let elapsed = 0;
-		const updateInterval = 100; // Update every 100ms
-
-		progressSimulationInterval = setInterval(() => {
-			elapsed += updateInterval;
-
-			// Simulate realistic progress curve
-			// Fast initial progress (0-30% in first 200ms)
-			// Slower middle progress (30-80% over next 1-2 seconds)
-			// Final progress (80-95%) waits for actual completion
-			if (elapsed < 200) {
-				currentProgress = Math.min(30, (elapsed / 200) * 30);
-			} else if (elapsed < 2000) {
-				const midProgress = ((elapsed - 200) / 1800) * 50; // 50% over 1.8 seconds
-				currentProgress = Math.min(80, 30 + midProgress);
-			} else {
-				// Slow progress from 80-95%, waiting for real completion
-				const slowProgress = Math.min(15, ((elapsed - 2000) / 3000) * 15);
-				currentProgress = Math.min(95, 80 + slowProgress);
-			}
-		}, updateInterval);
-	}
-
-	function stopProgressSimulation() {
-		if (progressSimulationInterval) {
-			clearInterval(progressSimulationInterval);
-			progressSimulationInterval = null;
-		}
-	}
-
-	// Update progress from WASM if available
-	function updateProgress(progress: number) {
-		// If we have real progress from WASM, use it (but keep it above simulation)
-		if (progress > currentProgress) {
-			currentProgress = progress;
-		}
-	}
-
-	// Watch for real progress updates from the store
+// Debug logging in development
+if (import.meta.env.DEV) {
 	$effect(() => {
-		if (store.currentProgress?.progress) {
-			updateProgress(store.currentProgress.progress);
-		}
-	});
-
-	// Helper function to clean up preview URLs
-	function cleanupPreviewUrls() {
-		previewSvgUrls.forEach((url) => {
-			if (url) {
-				URL.revokeObjectURL(url);
-			}
+		console.log('🔍 Converter Page State:', {
+			uiState,
+			pageLoaded,
+			filesCount: files.length,
+			currentImageIndex,
+			hasFiles,
+			canConvert,
+			canDownload,
+			isProcessing
 		});
-		previewSvgUrls = [];
-	}
-
-	// Debug effect to track preview URLs changes
-	$effect(() => {
-		console.log(
-			`Preview URLs changed: length=${previewSvgUrls.length}`,
-			previewSvgUrls.map((url, i) => `${i}: ${url ? 'exists' : 'null'}`)
-		);
 	});
+}
 </script>
 
-<div class="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 lg:px-8">
-	<!-- Live regions for screen reader announcements -->
-	<div aria-live="polite" aria-atomic="true" class="sr-only">
-		{announceText}
-	</div>
-	<div aria-live="assertive" aria-atomic="true" class="sr-only">
-		{processingAnnouncement}
-	</div>
+<svelte:head>
+	<title>Image to SVG Converter - vec2art</title>
+	<meta name="description" content="Convert images to SVG line art using advanced algorithms powered by Rust and WebAssembly" />
+</svelte:head>
 
-	<!-- Header -->
-	<header class="mb-8">
-		<h1
-			class="bg-gradient-to-r from-orange-800 to-red-700 bg-clip-text text-3xl font-bold text-transparent dark:from-purple-400 dark:to-blue-400"
-		>
-			Image to SVG Converter
-		</h1>
-		<p class="text-muted-foreground mt-2">
-			Transform any raster image into expressive line art SVGs
-		</p>
+<!-- Screen reader live region -->
+<div aria-live="polite" aria-atomic="true" class="sr-only">
+	{announceText}
+</div>
 
-		<!-- Initialization Status -->
-		{#if !store.wasmLoaded}
-			<div
-				class="text-muted-foreground mt-4 flex items-center gap-2 text-sm"
-				role="status"
-				aria-label="Loading converter module"
-			>
-				<Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
-				Loading converter module...
-			</div>
-		{:else if store.capabilities}
-			<div class="mt-4 flex items-center gap-2 text-sm" role="status" aria-label="Converter status">
-				{#if store.threadsInitialized && store.capabilities.threading_supported}
-					<CheckCircle class="h-4 w-4 text-green-500" aria-hidden="true" />
-					<span class="text-green-700 dark:text-green-400">
-						{selectedPerformanceMode.charAt(0).toUpperCase() + selectedPerformanceMode.slice(1)} mode
-						active ({currentOptimalThreads} threads)
-					</span>
-				{:else if store.threadsInitialized}
-					<AlertCircle class="h-4 w-4 text-yellow-500" aria-hidden="true" />
-					<span class="text-yellow-700 dark:text-yellow-400">Single-threaded mode active</span>
-				{:else}
-					<CheckCircle class="h-4 w-4 text-blue-500" aria-hidden="true" />
-					<span class="text-blue-700 dark:text-blue-400">Converter ready</span>
-				{/if}
-			</div>
-		{/if}
+<!-- Full viewport background wrapper -->
+<div class="bg-section-elevated min-h-screen">
+	<div class="mx-auto max-w-screen-2xl px-4 py-8 sm:px-6 lg:px-8">
+		
+		<!-- Page Header -->
+		<header class="mb-8 text-center">
+			<h1 class="text-gradient-modern mb-4 text-4xl font-bold">Image to SVG Converter</h1>
+			<p class="text-premium mx-auto mt-6 max-w-3xl">
+				Transform any raster image into expressive line art SVGs using advanced algorithms
+			</p>
 
-		<!-- Enhanced Error Display -->
-		{#if store.hasError && store.error}
-			<div class="mt-4">
-				<ErrorBoundary
-					error={new Error(store.getErrorMessage())}
-					title="Vectorizer Error"
-					description={store.error.details}
-					showRetry={true}
-					showDismiss={true}
-					onRetry={handleRetryOperation}
-					onDismiss={() => store.clearError()}
-					variant="error"
-				/>
-
-				<!-- Recovery Suggestions -->
-				{#if store.getRecoverySuggestions().length > 0}
-					{@const suggestions = store.getRecoverySuggestions()}
-					<div
-						class="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950"
-					>
-						<h4 class="mb-2 font-medium text-blue-700 dark:text-blue-400">Suggestions:</h4>
-						<ul class="space-y-1 text-sm text-blue-600 dark:text-blue-300">
-							{#each suggestions as suggestion}
-								<li>• {suggestion}</li>
-							{/each}
-						</ul>
-						<div class="mt-3 flex gap-2">
-							<Button
-								variant="outline"
-								size="sm"
-								onclick={handleResetAll}
-								class="border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-400"
-							>
-								Reset All
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								onclick={() => store.resetConfig()}
-								class="border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-400"
-							>
-								Reset Settings
-							</Button>
-						</div>
-					</div>
-				{/if}
-			</div>
-		{/if}
-	</header>
-
-	<!-- Global Progress Bar -->
-	{#if showProgressBar || isAnyProcessing}
-		<div class="bg-card mb-6 rounded-lg border p-4 shadow-sm" role="status" aria-live="polite">
-			<div class="space-y-3">
-				<!-- Progress Header -->
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-2">
-						<div class="h-2 w-2 animate-pulse rounded-full bg-blue-500"></div>
-						<span class="text-sm font-medium">
-							{#if isBatchProcessing && batchProgress}
-								Processing image {batchProgress.imageIndex + 1} of {store.inputFiles.length}
-							{:else if isInitializing}
-								Initializing converter...
-							{:else}
-								Converting image...
-							{/if}
-						</span>
-					</div>
-					<Button
-						variant="outline"
-						size="sm"
-						onclick={handleAbort}
-						class="h-auto px-3 py-1 text-xs"
-					>
-						Cancel
-					</Button>
+			<!-- Status Display -->
+			{#if !pageLoaded}
+				<div
+					class="text-ferrari-600 mt-4 flex items-center justify-center gap-2 text-sm"
+					role="status"
+					aria-label="Loading converter"
+				>
+					<Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
+					Loading converter...
 				</div>
-
-				<!-- Progress Bar -->
-				<div class="space-y-2">
-					<div class="text-muted-foreground flex justify-between text-xs">
-						<span>
-							{#if batchProgress?.progress?.stage}
-								{batchProgress.progress.stage}
-							{:else if store.currentProgress?.stage}
-								{store.currentProgress.stage}
-							{:else if currentProgress < 30}
-								Loading...
-							{:else if currentProgress < 80}
-								Processing...
-							{:else}
-								Finalizing...
-							{/if}
-						</span>
-						<span>
-							{Math.round(currentProgress)}%
-						</span>
-					</div>
-
-					<!-- Main Progress Bar -->
-					<div class="bg-muted h-2 w-full overflow-hidden rounded-full">
-						<div
-							class="relative h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300 ease-out"
-							style="width: {currentProgress}%"
-						>
-							<!-- Animated shimmer effect -->
-							<div
-								class="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent"
-							></div>
-						</div>
-					</div>
-
-					<!-- Time Information -->
-					{#if batchProgress?.progress || store.currentProgress}
-						{@const progress = batchProgress?.progress || store.currentProgress}
-						<div class="text-muted-foreground flex justify-between text-xs">
-							<span>
-								{Math.round(progress.elapsed_ms / 1000)}s elapsed
-							</span>
-							{#if progress.estimated_remaining_ms}
-								<span>
-									~{Math.round(progress.estimated_remaining_ms / 1000)}s remaining
-								</span>
-							{/if}
-						</div>
-					{/if}
-
-					<!-- Batch Progress -->
-					{#if isBatchProcessing && batchProgress}
-						<div class="border-muted mt-2 border-t pt-2">
-							<div class="text-muted-foreground mb-1 flex justify-between text-xs">
-								<span>Overall Progress</span>
-								<span>{batchProgress.imageIndex + 1} / {store.inputFiles.length}</span>
-							</div>
-							<div class="bg-muted h-1 w-full rounded-full">
-								<div
-									class="h-full rounded-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-500"
-									style="width: {((batchProgress.imageIndex + 1) / store.inputFiles.length) * 100}%"
-								></div>
-							</div>
-						</div>
-					{/if}
+			{:else if initError}
+				<div
+					class="mt-4 flex items-center justify-center gap-2 text-sm text-red-600"
+					role="alert"
+					aria-label="Converter error"
+				>
+					<AlertCircle class="h-4 w-4" aria-hidden="true" />
+					<span>{initError}</span>
 				</div>
-			</div>
-		</div>
-	{/if}
+			{:else}
+				<div
+					class="mt-4 flex items-center justify-center gap-2 text-sm"
+					role="status"
+					aria-label="Converter status"
+				>
+					<CheckCircle class="text-ferrari-600 h-4 w-4" aria-hidden="true" />
+					<span class="status-indicator-success">Converter ready</span>
+				</div>
+			{/if}
+		</header>
 
-	<!-- Main Converter Interface -->
-	<main class="grid items-start gap-8 lg:grid-cols-3">
-		<!-- Upload and Preview Area -->
-		<section class="space-y-6 lg:col-span-2">
-			<!-- Unified Image Processor with Side-by-Side Preview -->
-			<UnifiedImageProcessor
-				onFilesSelect={handleFilesSelect}
-				currentFiles={store.inputFiles}
-				disabled={isAnyProcessing}
-				{canConvert}
-				{canDownload}
-				isProcessing={isAnyProcessing}
-				onConvert={handleConvert}
-				onDownload={() => handleDownload()}
-				onReset={handleResetAll}
-				onAbort={handleAbort}
-				inputImages={store.inputImages}
-				currentImageIndex={store.currentImageIndex}
-				currentProgress={batchProgress?.progress || store.currentProgress}
-				results={store.batchResults}
-				{previewSvgUrls}
-				onImageIndexChange={handleImageIndexChange}
-			/>
+		<!-- Main Content - Layered State UI -->
+		{#if pageLoaded && !initError}
+			{#if uiState === 'EMPTY'}
+				<!-- EMPTY State: Just upload area -->
+				<main class="flex justify-center">
+					<div class="w-full max-w-4xl">
+						<UploadArea
+							onFilesSelect={handleFilesSelect}
+							disabled={isProcessing}
+						/>
+					</div>
+				</main>
+			{:else if uiState === 'LOADED'}
+				<!-- LOADED State: Converter interface with settings -->
+				<main class="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-8">
+					<!-- Main converter area -->
+					<div class="space-y-6">
+						<ConverterInterface
+							{files}
+							{currentImageIndex}
+							currentProgress={currentProgress ?? undefined}
+							{results}
+							{previewSvgUrls}
+							{canConvert}
+							{canDownload}
+							{isProcessing}
+							onImageIndexChange={handleImageIndexChange}
+							onConvert={handleConvert}
+							onDownload={handleDownload}
+							onAbort={handleAbort}
+							onReset={handleReset}
+							onAddMore={handleAddMore}
+						/>
+					</div>
 
-			<!-- Mobile Settings Panel - Visible on mobile only -->
-			<div class="lg:hidden">
-				<ConverterLayout
-					config={store.config}
-					{selectedPreset}
-					{canConvert}
-					{canDownload}
-					isProcessing={isAnyProcessing}
-					{hasImages}
-					performanceMode={selectedPerformanceMode}
-					threadCount={currentOptimalThreads}
-					threadsInitialized={store.threadsInitialized}
-					onConfigChange={handleConfigChange}
-					onPresetChange={handlePresetChange}
-					onBackendChange={handleBackendChange}
-					onParameterChange={handleParameterChange}
-					onConvert={handleConvert}
-					onDownload={handleDownload}
-					onReset={handleResetAll}
-					onAbort={handleAbort}
-					onPerformanceModeChange={handlePerformanceModeChange}
-				/>
-			</div>
-		</section>
-
-		<!-- Desktop Settings Panel -->
-		<aside class="hidden space-y-6 self-start lg:block">
-			<!-- Converter Settings with integrated performance controls -->
-			<ConverterLayout
-				config={store.config}
-				{selectedPreset}
-				{canConvert}
-				{canDownload}
-				isProcessing={isAnyProcessing}
-				{hasImages}
-				performanceMode={selectedPerformanceMode}
-				threadCount={currentOptimalThreads}
-				threadsInitialized={store.threadsInitialized}
-				onConfigChange={handleConfigChange}
-				onPresetChange={handlePresetChange}
-				onBackendChange={handleBackendChange}
-				onParameterChange={handleParameterChange}
+					<!-- Settings panel -->
+					<div class="xl:w-80 space-y-4">
+						<!-- Undo/Redo Controls -->
+						<div class="flex justify-end">
+							<UndoRedo 
+								onConfigChange={handleConfigReplace}
+								disabled={isProcessing}
+							/>
+						</div>
+						
+						<SettingsPanel
+							{config}
+							{selectedPreset}
+							{performanceMode}
+							{threadCount}
+							{threadsInitialized}
+							disabled={isProcessing}
+							onConfigChange={handleConfigChange}
+							onPresetChange={handlePresetChange}
+							onBackendChange={handleBackendChange}
+							onParameterChange={handleParameterChange}
+							onPerformanceModeChange={handlePerformanceModeChange}
+						/>
+					</div>
+				</main>
+			{/if}
+			
+			<!-- Batch Progress (for multiple images) -->
+			{#if files.length > 1 && (isProcessing || completedImages > 0)}
+				<div class="fixed bottom-4 right-4 z-30 max-w-sm">
+					<BatchProgress 
+						totalImages={files.length}
+						{currentImageIndex}
+						{currentProgress}
+						{completedImages}
+						{isProcessing}
+						startTime={batchStartTime}
+					/>
+				</div>
+			{/if}
+			
+			<!-- Conversion Progress Overlay -->
+			<ConversionProgress {isProcessing} progress={currentProgress} />
+			
+			<!-- Keyboard Shortcuts -->
+			<KeyboardShortcuts 
 				onConvert={handleConvert}
 				onDownload={handleDownload}
-				onReset={handleResetAll}
+				onReset={handleReset}
 				onAbort={handleAbort}
-				onPerformanceModeChange={handlePerformanceModeChange}
+				onAddMore={handleAddMore}
+				{canConvert}
+				{canDownload}
+				{isProcessing}
 			/>
-		</aside>
-	</main>
-
-	<!-- Development Testing Panel (only visible in dev mode) -->
-	<DevTestingPanel />
+		{:else if initError}
+			<!-- Error State -->
+			<div class="card-ferrari-static rounded-3xl p-8 text-center" role="alert">
+				<div class="mb-4">
+					<AlertCircle class="mx-auto h-16 w-16 text-red-500" />
+				</div>
+				<h2 class="mb-4 text-xl font-bold text-red-700 dark:text-red-400">
+					Failed to Load Converter
+				</h2>
+				<p class="mb-6 text-gray-600 dark:text-gray-300">
+					{initError}
+				</p>
+				<div class="flex justify-center gap-4">
+					<button
+						class="btn-ferrari-secondary px-6 py-2 text-sm"
+						onclick={() => location.reload()}
+					>
+						Reload Page
+					</button>
+					<button
+						class="btn-ferrari-primary px-6 py-2 text-sm"
+						onclick={() => {
+							initError = null;
+							handleReset();
+							pageLoaded = true;
+						}}
+					>
+						Try Again
+					</button>
+				</div>
+			</div>
+		{:else}
+			<!-- Loading State -->
+			<div class="card-ferrari-static rounded-3xl p-8 text-center" role="status">
+				<div class="mb-4">
+					<Loader2 class="mx-auto h-16 w-16 animate-spin text-ferrari-600" />
+				</div>
+				<h2 class="mb-2 text-xl font-bold">Loading Converter...</h2>
+				<p class="text-gray-600 dark:text-gray-300">
+					Initializing high-performance image processing engine
+				</p>
+			</div>
+		{/if}
+	</div>
 </div>
 
 <style>

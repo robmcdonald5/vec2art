@@ -341,11 +341,7 @@
 					<!-- Brand Section -->
 					<div class="lg:col-span-1">
 						<div class="mb-6 flex items-center">
-							<h3
-								class="footer-gradient-text text-3xl font-bold"
-							>
-								vec2art
-							</h3>
+							<h3 class="footer-gradient-text text-3xl font-bold">vec2art</h3>
 						</div>
 						<p class="mb-6 max-w-sm text-sm leading-relaxed text-gray-300">
 							Transform any image into beautiful SVG art using advanced vectorization algorithms

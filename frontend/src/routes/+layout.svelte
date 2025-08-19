@@ -4,9 +4,32 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { Button } from '$lib/components/ui/button';
+	import MobileMenu from '$lib/components/navigation/MobileMenu.svelte';
+	import ToastContainer from '$lib/components/ui/toast/ToastContainer.svelte';
 	import { inject } from '@vercel/analytics';
 
 	let { children } = $props();
+	let mobileMenuOpen = $state(false);
+	
+	// Toggle mobile menu
+	function toggleMobileMenu() {
+		mobileMenuOpen = !mobileMenuOpen;
+		// Prevent body scroll when menu is open
+		if (browser) {
+			document.body.classList.toggle('menu-open', mobileMenuOpen);
+		}
+	}
+	
+	// Close menu on navigation
+	$effect(() => {
+		$page.url.pathname;
+		if (mobileMenuOpen) {
+			mobileMenuOpen = false;
+			if (browser) {
+				document.body.classList.remove('menu-open');
+			}
+		}
+	});
 
 	onMount(() => {
 		if (browser) {
@@ -27,6 +50,14 @@
 	});
 </script>
 
+<!-- Skip Navigation Link for Accessibility -->
+<a 
+	href="#main-content"
+	class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:bg-ferrari-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-md focus:text-sm focus:font-medium focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ferrari-400 focus:ring-offset-2"
+>
+	Skip to main content
+</a>
+
 <div class="flex min-h-dvh flex-col">
 	<header
 		class="border-speed-gray-200/50 bg-nav-clean sticky top-0 z-50 border-b shadow-sm backdrop-blur-xl transition-all duration-200 supports-[backdrop-filter]:bg-white/95"
@@ -43,13 +74,10 @@
 				href="/"
 				class="hover:animate-ferrari-glow flex items-center font-semibold transition-all duration-300"
 			>
-				<span
-					class="footer-gradient-text text-3xl font-bold md:text-3xl"
-				>
-					vec2art
-				</span>
+				<span class="footer-gradient-text text-3xl font-bold md:text-3xl"> vec2art </span>
 			</a>
 			<nav class="flex items-center gap-2 md:gap-3">
+				<!-- Desktop Navigation (hidden on mobile) -->
 				<div class="hidden items-center gap-2 md:flex">
 					<a
 						href="/converter"
@@ -97,19 +125,26 @@
 						{/if}
 					</a>
 				</div>
+				<!-- Desktop CTA Button -->
 				<Button
 					href="/converter"
 					variant="default"
 					size="sm"
-					class="btn-ferrari-primary shadow-ferrari-500/25 hover:animate-quick-lift h-10 px-6 shadow-lg"
+					class="btn-ferrari-primary shadow-ferrari-500/25 hover:animate-quick-lift h-10 px-6 shadow-lg hidden md:inline-flex"
 				>
 					Get Started
 				</Button>
+				
+				<!-- Mobile Menu Component -->
+				<MobileMenu isOpen={mobileMenuOpen} onToggle={toggleMobileMenu} />
 			</nav>
 		</div>
 	</header>
 
-	<main class="flex-1">
+	<main id="main-content" class="flex-1">
 		{@render children?.()}
 	</main>
 </div>
+
+<!-- Toast Notifications -->
+<ToastContainer />
