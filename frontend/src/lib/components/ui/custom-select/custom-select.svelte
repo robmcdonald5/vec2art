@@ -93,25 +93,25 @@
 		};
 	});
 
-	// Dynamic classes for trigger button
+	// Dynamic classes for trigger button with Ferrari theme
 	const triggerClasses = $derived(
 		[
 			'w-full px-3 py-2.5 text-sm font-medium text-left',
-			'bg-gradient-to-r from-orange-50/80 to-red-50/80',
-			'dark:from-orange-950/40 dark:to-red-950/40',
-			'border border-orange-200/60 dark:border-orange-700/40',
+			'bg-gradient-to-r from-white to-ferrari-50/50',
+			'dark:from-gray-900 dark:to-ferrari-950/30',
+			'border border-ferrari-200/60 dark:border-ferrari-800/40',
 			'shadow-sm',
-			'hover:from-orange-100/90 hover:to-red-100/90',
-			'dark:hover:from-orange-900/50 dark:hover:to-red-900/50',
-			'hover:border-orange-300 dark:hover:border-orange-600',
-			'focus:outline-none',
+			'hover:from-ferrari-50 hover:to-ferrari-100/60',
+			'dark:hover:from-ferrari-950/50 dark:hover:to-ferrari-900/50',
+			'hover:border-ferrari-300 dark:hover:border-ferrari-700',
+			'focus:outline-none focus:ring-2 focus:ring-ferrari-500 focus:ring-offset-1',
 			'disabled:cursor-not-allowed disabled:opacity-50',
 			'transition-all duration-200 backdrop-blur-sm',
 			// Dynamic border radius and border states
 			isOpen
-				? 'rounded-t-md border-orange-400 dark:border-orange-500 border-b-transparent'
+				? 'rounded-t-md border-ferrari-400 dark:border-ferrari-600 border-b-transparent'
 				: 'rounded-md',
-			isOpen ? 'from-orange-100/90 to-red-100/90 dark:from-orange-900/50 dark:to-red-900/50' : ''
+			isOpen ? 'from-ferrari-50 to-ferrari-100/70 dark:from-ferrari-950/60 dark:to-ferrari-900/60' : ''
 		]
 			.filter(Boolean)
 			.join(' ')
@@ -136,7 +136,7 @@
 			<span class="block truncate" style="color: #1f2937 !important;">
 				{selectedOption?.label || placeholder}
 			</span>
-			<span class="ml-2 flex items-center text-orange-600 dark:text-orange-400">
+			<span class="ml-2 flex items-center text-ferrari-600 dark:text-ferrari-400">
 				{#if isOpen}
 					<ChevronUp class="h-4 w-4 transition-transform duration-200" />
 				{:else}
@@ -154,10 +154,10 @@
 			z-50 max-h-60 overflow-y-auto
 			rounded-b-md border-r
 			border-b border-l
-			border-orange-200/60 bg-gradient-to-b from-white/95 to-orange-50/95 shadow-2xl
+			border-ferrari-200/60 bg-gradient-to-b from-white/98 to-ferrari-50/50 shadow-2xl
 			backdrop-blur-xl backdrop-saturate-150
-			dark:border-orange-700/40 dark:from-gray-900/95
-			dark:to-orange-950/95
+			dark:border-ferrari-800/40 dark:from-gray-900/98
+			dark:to-ferrari-950/50
 		"
 		>
 			<div role="listbox" id="dropdown-listbox">
@@ -165,19 +165,19 @@
 					{@const isSelected = option.value === value}
 					{@const optionClasses = [
 						'w-full px-4 py-3 text-sm text-left',
-						'hover:bg-gradient-to-r hover:from-orange-500/20 hover:to-red-500/20',
-						'dark:hover:from-orange-600/25 dark:hover:to-red-600/25',
-						'hover:text-orange-900 dark:hover:text-orange-100',
-						'focus:bg-gradient-to-r focus:from-orange-500/30 focus:to-red-500/30',
-						'dark:focus:from-orange-600/35 dark:focus:to-red-600/35',
-						'focus:outline-none focus:text-orange-900 dark:focus:text-orange-100',
-						'border-b border-orange-100/30 dark:border-orange-800/30 last:border-b-0',
+						'hover:bg-gradient-to-r hover:from-ferrari-500/15 hover:to-ferrari-600/15',
+						'dark:hover:from-ferrari-600/20 dark:hover:to-ferrari-700/20',
+						'hover:text-ferrari-900 dark:hover:text-ferrari-100',
+						'focus:bg-gradient-to-r focus:from-ferrari-500/20 focus:to-ferrari-600/20',
+						'dark:focus:from-ferrari-600/25 dark:focus:to-ferrari-700/25',
+						'focus:outline-none focus:text-ferrari-900 dark:focus:text-ferrari-100',
+						'border-b border-ferrari-100/30 dark:border-ferrari-800/30 last:border-b-0',
 						'disabled:opacity-50 disabled:cursor-not-allowed',
 						'transition-all duration-150',
 						isSelected
-							? 'bg-gradient-to-r from-orange-500/25 to-red-500/25 dark:from-orange-600/30 dark:to-red-600/30'
+							? 'bg-gradient-to-r from-ferrari-500/20 to-ferrari-600/20 dark:from-ferrari-600/25 dark:to-ferrari-700/25'
 							: '',
-						isSelected ? 'font-medium' : ''
+						isSelected ? 'font-semibold text-ferrari-800 dark:text-ferrari-200' : ''
 					]
 						.filter(Boolean)
 						.join(' ')}
@@ -195,7 +195,7 @@
 							<span class="block truncate" style="color: #1f2937 !important;">{option.label}</span>
 							{#if isSelected}
 								<span
-									class="h-2 w-2 flex-shrink-0 rounded-full bg-orange-600 dark:bg-orange-400"
+									class="h-2 w-2 flex-shrink-0 rounded-full bg-gradient-to-br from-ferrari-500 to-ferrari-600 shadow-sm"
 									aria-label="Selected"
 								></span>
 							{/if}
@@ -242,11 +242,11 @@
 	}
 
 	div[role='listbox']::-webkit-scrollbar-thumb {
-		background: rgba(251, 146, 60, 0.3);
+		background: rgba(255, 40, 0, 0.3);
 		border-radius: 3px;
 	}
 
 	div[role='listbox']::-webkit-scrollbar-thumb:hover {
-		background: rgba(251, 146, 60, 0.5);
+		background: rgba(255, 40, 0, 0.5);
 	}
 </style>
