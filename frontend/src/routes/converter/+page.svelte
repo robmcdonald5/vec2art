@@ -15,7 +15,6 @@ import SettingsPanel from '$lib/components/converter/SettingsPanel.svelte';
 import ConversionProgress from '$lib/components/ui/progress/ConversionProgress.svelte';
 import BatchProgress from '$lib/components/ui/progress/BatchProgress.svelte';
 import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
-import UndoRedo from '$lib/components/ui/history/UndoRedo.svelte';
 import { toastStore } from '$lib/stores/toast.svelte';
 import { parameterHistory } from '$lib/stores/parameter-history.svelte';
 
@@ -122,6 +121,51 @@ function handleAddMore() {
 	input.click();
 }
 
+function handleRemoveFile(index: number) {
+	if (index < 0 || index >= files.length || isProcessing) {
+		return;
+	}
+
+	// Get the file name before removing it
+	const removedFileName = files[index]?.name || 'Unknown';
+
+	// Create new arrays without the removed file
+	const newFiles = files.filter((_, i) => i !== index);
+	const newResults = results.filter((_, i) => i !== index);
+	const newPreviewUrls = previewSvgUrls.filter((_, i) => i !== index);
+	
+	// Clean up the removed preview URL
+	const removedUrl = previewSvgUrls[index];
+	if (removedUrl) {
+		URL.revokeObjectURL(removedUrl);
+	}
+
+	// Update current index if necessary
+	let newCurrentIndex = currentImageIndex;
+	if (index === currentImageIndex) {
+		// If we removed the current image, select the previous one or stay at 0
+		newCurrentIndex = Math.max(0, currentImageIndex - 1);
+	} else if (index < currentImageIndex) {
+		// If we removed an image before the current one, adjust the index
+		newCurrentIndex = currentImageIndex - 1;
+	}
+	
+	// Apply changes
+	files = newFiles;
+	results = newResults;
+	previewSvgUrls = newPreviewUrls;
+	currentImageIndex = Math.min(newCurrentIndex, newFiles.length - 1);
+
+	// If no files left, reset everything
+	if (newFiles.length === 0) {
+		handleReset();
+		return;
+	}
+
+	toastStore.info(`Removed ${removedFileName}`);
+	announceToScreenReader(`Removed ${removedFileName}. ${newFiles.length} files remaining`);
+}
+
 // Conversion functions
 async function handleConvert() {
 	if (!canConvert) {
@@ -140,8 +184,15 @@ async function handleConvert() {
 			await vectorizerStore.initialize({ autoInitThreads: true });
 		}
 
-		// Set up vectorizer with current files
-		vectorizerStore.setInputFiles(files);
+		// CRITICAL: Ensure threads are initialized before processing
+		// This fixes the "first click fails" issue where WASM loads but threads don't
+		if (!vectorizerStore.threadsInitialized) {
+			console.log('🔧 Initializing threads for first-time processing...');
+			await vectorizerStore.initializeThreads(threadCount || 4);
+		}
+
+		// Set up vectorizer with current files (MUST await this async operation!)
+		await vectorizerStore.setInputFiles(files);
 
 		// Process files
 		const processedResults = await vectorizerStore.processBatch((imageIndex, totalImages, progress) => {
@@ -396,18 +447,12 @@ if (import.meta.env.DEV) {
 							onAbort={handleAbort}
 							onReset={handleReset}
 							onAddMore={handleAddMore}
+							onRemoveFile={handleRemoveFile}
 						/>
 					</div>
 
 					<!-- Settings panel -->
 					<div class="xl:w-80 space-y-4">
-						<!-- Undo/Redo Controls -->
-						<div class="flex justify-end">
-							<UndoRedo 
-								onConfigChange={handleConfigReplace}
-								disabled={isProcessing}
-							/>
-						</div>
 						
 						<SettingsPanel
 							{config}
