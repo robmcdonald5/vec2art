@@ -93,25 +93,17 @@
 		};
 	});
 
-	// Dynamic classes for trigger button with Ferrari theme
+	// Static classes for trigger button with consistent Ferrari theme
 	const triggerClasses = $derived(
 		[
 			'w-full px-3 py-2.5 text-sm font-medium text-left',
-			'bg-gradient-to-r from-white to-ferrari-50/50',
-			'dark:from-gray-900 dark:to-ferrari-950/30',
-			'border border-ferrari-200/60 dark:border-ferrari-800/40',
-			'shadow-sm',
-			'hover:from-ferrari-50 hover:to-ferrari-100/60',
-			'dark:hover:from-ferrari-950/50 dark:hover:to-ferrari-900/50',
-			'hover:border-ferrari-300 dark:hover:border-ferrari-700',
-			'focus:outline-none focus:ring-2 focus:ring-ferrari-500 focus:ring-offset-1',
+			'bg-white border border-ferrari-200/30',
+			'shadow-sm hover:shadow-md',
+			'hover:bg-ferrari-50/10 hover:border-ferrari-300/40',
+			'focus:outline-none',
 			'disabled:cursor-not-allowed disabled:opacity-50',
-			'transition-all duration-200 backdrop-blur-sm',
-			// Dynamic border radius and border states
-			isOpen
-				? 'rounded-t-md border-ferrari-400 dark:border-ferrari-600 border-b-transparent'
-				: 'rounded-md',
-			isOpen ? 'from-ferrari-50 to-ferrari-100/70 dark:from-ferrari-950/60 dark:to-ferrari-900/60' : ''
+			'transition-all duration-200',
+			'rounded-md'
 		]
 			.filter(Boolean)
 			.join(' ')
@@ -133,10 +125,10 @@
 		role="combobox"
 	>
 		<div class="flex items-center justify-between">
-			<span class="block truncate" style="color: #1f2937 !important;">
+			<span class="block truncate text-converter-primary">
 				{selectedOption?.label || placeholder}
 			</span>
-			<span class="ml-2 flex items-center text-ferrari-600 dark:text-ferrari-400">
+			<span class="ml-2 flex items-center text-ferrari-600">
 				{#if isOpen}
 					<ChevronUp class="h-4 w-4 transition-transform duration-200" />
 				{:else}
@@ -152,12 +144,8 @@
 			class="
 			dropdown-animate-in absolute top-full right-0 left-0
 			z-50 max-h-60 overflow-y-auto
-			rounded-b-md border-r
-			border-b border-l
-			border-ferrari-200/60 bg-gradient-to-b from-white/98 to-ferrari-50/50 shadow-2xl
-			backdrop-blur-xl backdrop-saturate-150
-			dark:border-ferrari-800/40 dark:from-gray-900/98
-			dark:to-ferrari-950/50
+			rounded-b-md border-r border-b border-l
+			border-ferrari-200/30 bg-white shadow-lg
 		"
 		>
 			<div role="listbox" id="dropdown-listbox">
@@ -165,19 +153,13 @@
 					{@const isSelected = option.value === value}
 					{@const optionClasses = [
 						'w-full px-4 py-3 text-sm text-left',
-						'hover:bg-gradient-to-r hover:from-ferrari-500/15 hover:to-ferrari-600/15',
-						'dark:hover:from-ferrari-600/20 dark:hover:to-ferrari-700/20',
-						'hover:text-ferrari-900 dark:hover:text-ferrari-100',
-						'focus:bg-gradient-to-r focus:from-ferrari-500/20 focus:to-ferrari-600/20',
-						'dark:focus:from-ferrari-600/25 dark:focus:to-ferrari-700/25',
-						'focus:outline-none focus:text-ferrari-900 dark:focus:text-ferrari-100',
-						'border-b border-ferrari-100/30 dark:border-ferrari-800/30 last:border-b-0',
+						'focus:outline-none',
+						'border-b border-ferrari-100/20 last:border-b-0',
 						'disabled:opacity-50 disabled:cursor-not-allowed',
 						'transition-all duration-150',
-						isSelected
-							? 'bg-gradient-to-r from-ferrari-500/20 to-ferrari-600/20 dark:from-ferrari-600/25 dark:to-ferrari-700/25'
-							: '',
-						isSelected ? 'font-semibold text-ferrari-800 dark:text-ferrari-200' : ''
+						isSelected 
+							? 'text-white font-semibold' 
+							: 'text-converter-primary hover:bg-ferrari-50/30 hover:text-ferrari-700 focus:bg-ferrari-50/40 focus:text-ferrari-700'
 					]
 						.filter(Boolean)
 						.join(' ')}
@@ -185,17 +167,18 @@
 					<button
 						type="button"
 						class={optionClasses}
+						style={isSelected ? 'background-color: #b91c2e !important;' : ''}
 						onclick={() => selectOption(option)}
 						disabled={option.disabled}
 						role="option"
 						aria-selected={isSelected}
-						style="color: #1f2937 !important;"
 					>
 						<div class="flex items-center justify-between">
-							<span class="block truncate" style="color: #1f2937 !important;">{option.label}</span>
+							<span class="block truncate">{option.label}</span>
 							{#if isSelected}
 								<span
-									class="h-2 w-2 flex-shrink-0 rounded-full bg-gradient-to-br from-ferrari-500 to-ferrari-600 shadow-sm"
+									class="h-2 w-2 flex-shrink-0 rounded-full"
+									style="background-color: white;"
 									aria-label="Selected"
 								></span>
 							{/if}
@@ -223,13 +206,6 @@
 			transform: scaleY(1);
 			transform-origin: top;
 		}
-	}
-
-	/* CRITICAL FIX: Force visible text for browser compatibility */
-	span {
-		color: #1f2937 !important;
-		opacity: 1 !important;
-		-webkit-text-fill-color: #1f2937 !important;
 	}
 
 	/* Custom scrollbar */
