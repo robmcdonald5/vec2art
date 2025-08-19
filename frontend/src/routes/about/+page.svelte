@@ -72,7 +72,7 @@
 				class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8"
 				aria-labelledby="edge-detection-heading"
 			>
-				<div class="relative">
+				<div class="relative flex flex-col h-full">
 					<div
 						class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 					>
@@ -88,21 +88,21 @@
 					<h3 id="edge-detection-heading" class="text-speed-gray-900 mb-4 text-2xl font-bold">
 						Edge Detection
 					</h3>
-					<p class="text-speed-gray-600 mb-4 leading-relaxed">
+					<p class="text-speed-gray-600 mb-6 leading-relaxed flex-grow">
 						Uses Canny edge detection with adaptive thresholds for detailed line art. Perfect for
 						drawings, sketches, and complex imagery requiring precise edge capture.
 					</p>
-					<div class="mb-4 flex flex-wrap gap-2">
+					<div class="mt-auto flex flex-wrap gap-2">
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Multi-pass processing</span
 						>
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Hand-drawn aesthetics</span
 						>
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Variable weights</span
 						>
 					</div>
@@ -111,7 +111,7 @@
 				<div
 					class="from-ferrari-500/0 to-ferrari-600/0 group-hover:from-ferrari-500/5 group-hover:to-ferrari-600/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 				></div>
-				<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
+				<div class="text-ferrari-600 mt-4 flex items-center pt-6 text-sm font-medium">
 					<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
 						<path
 							fill-rule="evenodd"
@@ -128,7 +128,7 @@
 				class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-100"
 				aria-labelledby="centerline-heading"
 			>
-				<div class="relative">
+				<div class="relative flex flex-col h-full">
 					<div
 						class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 					>
@@ -144,21 +144,21 @@
 					<h3 id="centerline-heading" class="text-speed-gray-900 mb-4 text-2xl font-bold">
 						Centerline Tracing
 					</h3>
-					<p class="text-speed-gray-600 mb-4 leading-relaxed">
+					<p class="text-speed-gray-600 mb-6 leading-relaxed flex-grow">
 						Zhang-Suen thinning algorithm for skeleton extraction. Ideal for bold shapes, logos,
 						text, and geometric designs requiring precise centerline representation.
 					</p>
-					<div class="mb-4 flex flex-wrap gap-2">
+					<div class="mt-auto flex flex-wrap gap-2">
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Morphological processing</span
 						>
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Contour-based</span
 						>
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Geometric precision</span
 						>
 					</div>
@@ -167,7 +167,7 @@
 				<div
 					class="from-ferrari-500/0 to-ferrari-600/0 group-hover:from-ferrari-500/5 group-hover:to-ferrari-600/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 				></div>
-				<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
+				<div class="text-ferrari-600 mt-4 flex items-center pt-6 text-sm font-medium">
 					<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
 						<path
 							fill-rule="evenodd"
@@ -184,7 +184,7 @@
 				class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-200"
 				aria-labelledby="superpixel-heading"
 			>
-				<div class="relative">
+				<div class="relative flex flex-col h-full">
 					<div
 						class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 					>
@@ -200,21 +200,21 @@
 					<h3 id="superpixel-heading" class="text-speed-gray-900 mb-4 text-2xl font-bold">
 						Superpixel Regions
 					</h3>
-					<p class="text-speed-gray-600 mb-4 leading-relaxed">
+					<p class="text-speed-gray-600 mb-6 leading-relaxed flex-grow">
 						SLIC segmentation for stylized art and abstract representations. Creates polygonal line
 						art based on color and texture regions.
 					</p>
-					<div class="mb-4 flex flex-wrap gap-2">
+					<div class="mt-auto flex flex-wrap gap-2">
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Region-based</span
 						>
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Adaptive clustering</span
 						>
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Modern art styles</span
 						>
 					</div>
@@ -223,7 +223,7 @@
 				<div
 					class="from-ferrari-500/0 to-ferrari-600/0 group-hover:from-ferrari-500/5 group-hover:to-ferrari-600/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 				></div>
-				<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
+				<div class="text-ferrari-600 mt-4 flex items-center pt-6 text-sm font-medium">
 					<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
 						<path
 							fill-rule="evenodd"
@@ -240,7 +240,7 @@
 				class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-300"
 				aria-labelledby="stippling-heading"
 			>
-				<div class="relative">
+				<div class="relative flex flex-col h-full">
 					<div
 						class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 					>
@@ -256,21 +256,21 @@
 					<h3 id="stippling-heading" class="text-speed-gray-900 mb-4 text-2xl font-bold">
 						Stippling Effects
 					</h3>
-					<p class="text-speed-gray-600 mb-4 leading-relaxed">
+					<p class="text-speed-gray-600 mb-6 leading-relaxed flex-grow">
 						Adaptive dot placement for artistic textures and vintage styles. Creates stippling
 						patterns with variable dot sizes and intelligent spacing.
 					</p>
-					<div class="mb-4 flex flex-wrap gap-2">
+					<div class="mt-auto flex flex-wrap gap-2">
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Content-aware</span
 						>
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Color preservation</span
 						>
 						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-100 rounded-full border px-3 py-1 text-sm font-medium"
+							class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700"
 							>Artistic effects</span
 						>
 					</div>
@@ -279,7 +279,7 @@
 				<div
 					class="from-ferrari-500/0 to-ferrari-600/0 group-hover:from-ferrari-500/5 group-hover:to-ferrari-600/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 				></div>
-				<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
+				<div class="text-ferrari-600 mt-4 flex items-center pt-6 text-sm font-medium">
 					<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
 						<path
 							fill-rule="evenodd"
