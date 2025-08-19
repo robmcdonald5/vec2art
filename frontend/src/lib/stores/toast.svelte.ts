@@ -41,7 +41,7 @@ class ToastManager {
 			const timeoutId = setTimeout(() => {
 				this.remove(toast.id);
 			}, toast.duration);
-			
+
 			this.timeoutMap.set(toast.id, timeoutId);
 		}
 
@@ -55,8 +55,8 @@ class ToastManager {
 			clearTimeout(timeoutId);
 			this.timeoutMap.delete(id);
 		}
-		
-		this.toasts = this.toasts.filter(t => t.id !== id);
+
+		this.toasts = this.toasts.filter((t) => t.id !== id);
 	}
 
 	// Convenience methods
@@ -87,7 +87,7 @@ class ToastManager {
 
 	dismissAll() {
 		// Clear all timeouts
-		this.timeoutMap.forEach(timeoutId => clearTimeout(timeoutId));
+		this.timeoutMap.forEach((timeoutId) => clearTimeout(timeoutId));
 		this.timeoutMap.clear();
 		this.toasts = [];
 	}

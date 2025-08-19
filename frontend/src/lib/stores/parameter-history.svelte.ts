@@ -14,7 +14,7 @@ class ParameterHistory {
 	// Derived states
 	canUndo = $derived(this.currentIndex > 0);
 	canRedo = $derived(this.currentIndex < this.history.length - 1);
-	
+
 	// Get current entry
 	current = $derived(() => {
 		if (this.currentIndex >= 0 && this.currentIndex < this.history.length) {
@@ -51,7 +51,7 @@ class ParameterHistory {
 	// Undo to previous state
 	undo(): VectorizerConfig | null {
 		if (!this.canUndo) return null;
-		
+
 		this.currentIndex--;
 		return this.current ? JSON.parse(JSON.stringify(this.current.config)) : null;
 	}
@@ -59,14 +59,14 @@ class ParameterHistory {
 	// Redo to next state
 	redo(): VectorizerConfig | null {
 		if (!this.canRedo) return null;
-		
+
 		this.currentIndex++;
 		return this.current ? JSON.parse(JSON.stringify(this.current.config)) : null;
 	}
 
 	// Get history for display
 	getHistory(): HistoryEntry[] {
-		return this.history.map(entry => ({ ...entry }));
+		return this.history.map((entry) => ({ ...entry }));
 	}
 
 	// Clear all history

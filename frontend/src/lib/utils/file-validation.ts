@@ -28,7 +28,7 @@ export function validateImageFile(file: File): ValidationResult {
 		// Also check file extension as fallback
 		const extension = file.name.split('.').pop()?.toLowerCase();
 		const validExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-		
+
 		if (!extension || !validExtensions.includes(extension)) {
 			return {
 				isValid: false,
