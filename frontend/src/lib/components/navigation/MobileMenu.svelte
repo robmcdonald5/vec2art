@@ -1,40 +1,41 @@
 <script lang="ts">
-import { Menu, X, Image, Package, Info, ChevronRight } from 'lucide-svelte';
-import { page } from '$app/stores';
-import { fly, fade } from 'svelte/transition';
+	import { Menu, X, Image, Package, Info, ChevronRight } from 'lucide-svelte';
+	import { page } from '$app/stores';
+	import { fly, fade } from 'svelte/transition';
+	import { preload } from '$lib/utils/preload';
 
-interface Props {
-	isOpen?: boolean;
-	onToggle?: () => void;
-}
-
-let { isOpen = false, onToggle }: Props = $props();
-
-// Navigation items
-const navItems = [
-	{ href: '/converter', label: 'Converter', icon: Image },
-	{ href: '/gallery', label: 'Gallery', icon: Package },
-	{ href: '/about', label: 'About', icon: Info }
-];
-
-// Determine if a link is active
-function isActive(href: string): boolean {
-	return $page.url.pathname === href;
-}
-
-// Handle navigation click
-function handleNavClick() {
-	// Close menu after navigation on mobile
-	if (onToggle && isOpen) {
-		onToggle();
+	interface Props {
+		isOpen?: boolean;
+		onToggle?: () => void;
 	}
-}
+
+	let { isOpen = false, onToggle }: Props = $props();
+
+	// Navigation items
+	const navItems = [
+		{ href: '/converter', label: 'Converter', icon: Image },
+		{ href: '/gallery', label: 'Gallery', icon: Package },
+		{ href: '/about', label: 'About', icon: Info }
+	];
+
+	// Determine if a link is active
+	function isActive(href: string): boolean {
+		return $page.url.pathname === href;
+	}
+
+	// Handle navigation click
+	function handleNavClick() {
+		// Close menu after navigation on mobile
+		if (onToggle && isOpen) {
+			onToggle();
+		}
+	}
 </script>
 
 <!-- Mobile Menu Button (visible on small screens) -->
 <button
 	onclick={onToggle}
-	class="md:hidden relative z-50 p-2 rounded-lg bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+	class="relative z-50 rounded-lg border border-gray-200 bg-white/80 p-2 backdrop-blur-sm transition-colors hover:bg-gray-50 md:hidden dark:border-gray-700 dark:bg-gray-900/80 dark:hover:bg-gray-800"
 	aria-label={isOpen ? 'Close menu' : 'Open menu'}
 	aria-expanded={isOpen}
 >
@@ -48,7 +49,7 @@ function handleNavClick() {
 <!-- Mobile Menu Overlay -->
 {#if isOpen}
 	<button
-		class="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+		class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
 		onclick={onToggle}
 		aria-label="Close menu"
 		transition:fade={{ duration: 200 }}
@@ -58,19 +59,19 @@ function handleNavClick() {
 <!-- Mobile Menu Panel -->
 {#if isOpen}
 	<nav
-		class="md:hidden fixed top-0 right-0 h-full w-72 bg-white dark:bg-gray-900 shadow-2xl z-40 overflow-y-auto"
+		class="fixed top-0 right-0 z-40 h-full w-72 overflow-y-auto bg-white shadow-2xl md:hidden dark:bg-gray-900"
 		transition:fly={{ x: 300, duration: 300 }}
 		aria-label="Mobile navigation"
 	>
 		<div class="p-6 pt-20">
 			<!-- Logo/Title -->
 			<div class="mb-8">
-				<h2 class="text-2xl font-bold bg-gradient-to-r from-ferrari-500 to-red-600 bg-clip-text text-transparent">
+				<h2
+					class="from-ferrari-500 bg-gradient-to-r to-red-600 bg-clip-text text-2xl font-bold text-transparent"
+				>
 					vec2art
 				</h2>
-				<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-					Image to SVG Converter
-				</p>
+				<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Image to SVG Converter</p>
 			</div>
 
 			<!-- Navigation Links -->
@@ -80,11 +81,12 @@ function handleNavClick() {
 					<li>
 						<a
 							href={item.href}
+							use:preload
 							onclick={handleNavClick}
-							class="flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200
+							class="flex items-center justify-between rounded-lg px-4 py-3 transition-all duration-200
 								{isActive(item.href)
-									? 'bg-gradient-to-r from-ferrari-50 to-red-50 dark:from-ferrari-900/20 dark:to-red-900/20 text-ferrari-600 dark:text-ferrari-400 font-medium'
-									: 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'}"
+								? 'from-ferrari-50 dark:from-ferrari-900/20 text-ferrari-600 dark:text-ferrari-400 bg-gradient-to-r to-red-50 font-medium dark:to-red-900/20'
+								: 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}"
 							aria-current={isActive(item.href) ? 'page' : undefined}
 						>
 							<div class="flex items-center gap-3">
@@ -105,18 +107,17 @@ function handleNavClick() {
 			<!-- CTA Button -->
 			<a
 				href="/converter"
+				use:preload
 				onclick={handleNavClick}
-				class="block w-full px-4 py-3 text-center rounded-lg bg-gradient-to-r from-ferrari-500 to-red-600 text-white font-medium hover:from-ferrari-600 hover:to-red-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+				class="from-ferrari-500 hover:from-ferrari-600 block w-full rounded-lg bg-gradient-to-r to-red-600 px-4 py-3 text-center font-medium text-white shadow-lg transition-all duration-200 hover:to-red-700 hover:shadow-xl"
 			>
 				Start Converting
 			</a>
 
 			<!-- Footer Info -->
-			<div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-				<p class="text-xs text-gray-500 dark:text-gray-400 text-center">
-					© 2025 vec2art
-				</p>
-				<p class="text-xs text-gray-500 dark:text-gray-400 text-center mt-1">
+			<div class="mt-8 border-t border-gray-200 pt-6 dark:border-gray-700">
+				<p class="text-center text-xs text-gray-500 dark:text-gray-400">© 2025 vec2art</p>
+				<p class="mt-1 text-center text-xs text-gray-500 dark:text-gray-400">
 					Powered by Rust WASM
 				</p>
 			</div>
@@ -125,8 +126,8 @@ function handleNavClick() {
 {/if}
 
 <style>
-/* Prevent body scroll when menu is open */
-:global(body.menu-open) {
-	overflow: hidden;
-}
+	/* Prevent body scroll when menu is open */
+	:global(body.menu-open) {
+		overflow: hidden;
+	}
 </style>

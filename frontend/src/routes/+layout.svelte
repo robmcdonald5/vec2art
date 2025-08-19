@@ -7,10 +7,11 @@
 	import MobileMenu from '$lib/components/navigation/MobileMenu.svelte';
 	import ToastContainer from '$lib/components/ui/toast/ToastContainer.svelte';
 	import { inject } from '@vercel/analytics';
+	import { preload } from '$lib/utils/preload';
 
 	let { children } = $props();
 	let mobileMenuOpen = $state(false);
-	
+
 	// Toggle mobile menu
 	function toggleMobileMenu() {
 		mobileMenuOpen = !mobileMenuOpen;
@@ -19,7 +20,7 @@
 			document.body.classList.toggle('menu-open', mobileMenuOpen);
 		}
 	}
-	
+
 	// Close menu on navigation
 	$effect(() => {
 		$page.url.pathname;
@@ -39,7 +40,8 @@
 			// Set initial theme based on system preference
 			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 			const savedTheme = localStorage.getItem('theme');
-			const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+			// TEMPORARY FIX: Force light mode to test settings panel backgrounds
+			const theme = 'light'; // savedTheme || (prefersDark ? 'dark' : 'light');
 
 			if (theme === 'dark') {
 				document.documentElement.classList.add('dark');
@@ -51,9 +53,9 @@
 </script>
 
 <!-- Skip Navigation Link for Accessibility -->
-<a 
+<a
 	href="#main-content"
-	class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:bg-ferrari-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-md focus:text-sm focus:font-medium focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ferrari-400 focus:ring-offset-2"
+	class="focus:bg-ferrari-600 focus:ring-ferrari-400 sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:rounded-md focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white focus:shadow-lg focus:ring-2 focus:ring-offset-2 focus:outline-none"
 >
 	Skip to main content
 </a>
@@ -81,6 +83,7 @@
 				<div class="hidden items-center gap-2 md:flex">
 					<a
 						href="/converter"
+						use:preload
 						class="focus:ring-ferrari-500 relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:outline-none md:text-base {$page
 							.url.pathname === '/converter'
 							? 'border-ferrari-500/30 bg-ferrari-50 text-ferrari-600 border'
@@ -96,6 +99,7 @@
 					</a>
 					<a
 						href="/gallery"
+						use:preload
 						class="focus:ring-ferrari-500 relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:outline-none md:text-base {$page
 							.url.pathname === '/gallery'
 							? 'border-ferrari-500/30 bg-ferrari-50 text-ferrari-600 border'
@@ -126,15 +130,14 @@
 					</a>
 				</div>
 				<!-- Desktop CTA Button -->
-				<Button
+				<a
 					href="/converter"
-					variant="default"
-					size="sm"
-					class="btn-ferrari-primary shadow-ferrari-500/25 hover:animate-quick-lift h-10 px-6 shadow-lg hidden md:inline-flex"
+					use:preload
+					class="btn-ferrari-primary shadow-ferrari-500/25 hover:animate-quick-lift hidden h-10 px-6 shadow-lg md:inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus:outline-none"
 				>
 					Get Started
-				</Button>
-				
+				</a>
+
 				<!-- Mobile Menu Component -->
 				<MobileMenu isOpen={mobileMenuOpen} onToggle={toggleMobileMenu} />
 			</nav>
