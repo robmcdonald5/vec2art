@@ -9,9 +9,9 @@ export function createPreloader(url: string) {
 
 	const handleMouseEnter = () => {
 		if (hasPreloaded) return;
-		
+
 		console.log(`🚀 Preloading route: ${url}`);
-		
+
 		try {
 			// Preload both the page data and the code chunks
 			preloadData(url);

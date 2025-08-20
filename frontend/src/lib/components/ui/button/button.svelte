@@ -30,13 +30,11 @@
 		}
 	);
 
-	type ButtonElement = $$Generic<keyof HTMLElementTagNameMap>;
-
 	interface Props {
 		/**
 		 * The underlying HTML element to render. Defaults to "button".
 		 */
-		as?: ButtonElement;
+		as?: keyof HTMLElementTagNameMap;
 		/**
 		 * The button variant.
 		 */
@@ -80,7 +78,7 @@
 	}
 
 	let {
-		as = 'button' as ButtonElement,
+		as = 'button' as keyof HTMLElementTagNameMap,
 		variant = 'default',
 		size = 'default',
 		disabled = false,

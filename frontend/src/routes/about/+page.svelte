@@ -72,7 +72,7 @@
 				class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8"
 				aria-labelledby="edge-detection-heading"
 			>
-				<div class="relative flex flex-col h-full">
+				<div class="relative flex h-full flex-col">
 					<div
 						class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 					>
@@ -88,7 +88,7 @@
 					<h3 id="edge-detection-heading" class="text-speed-gray-900 mb-4 text-2xl font-bold">
 						Edge Detection
 					</h3>
-					<p class="text-speed-gray-600 mb-6 leading-relaxed flex-grow">
+					<p class="text-speed-gray-600 mb-6 flex-grow leading-relaxed">
 						Uses Canny edge detection with adaptive thresholds for detailed line art. Perfect for
 						drawings, sketches, and complex imagery requiring precise edge capture.
 					</p>
@@ -128,7 +128,7 @@
 				class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-100"
 				aria-labelledby="centerline-heading"
 			>
-				<div class="relative flex flex-col h-full">
+				<div class="relative flex h-full flex-col">
 					<div
 						class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 					>
@@ -144,7 +144,7 @@
 					<h3 id="centerline-heading" class="text-speed-gray-900 mb-4 text-2xl font-bold">
 						Centerline Tracing
 					</h3>
-					<p class="text-speed-gray-600 mb-6 leading-relaxed flex-grow">
+					<p class="text-speed-gray-600 mb-6 flex-grow leading-relaxed">
 						Zhang-Suen thinning algorithm for skeleton extraction. Ideal for bold shapes, logos,
 						text, and geometric designs requiring precise centerline representation.
 					</p>
@@ -184,7 +184,7 @@
 				class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-200"
 				aria-labelledby="superpixel-heading"
 			>
-				<div class="relative flex flex-col h-full">
+				<div class="relative flex h-full flex-col">
 					<div
 						class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 					>
@@ -200,7 +200,7 @@
 					<h3 id="superpixel-heading" class="text-speed-gray-900 mb-4 text-2xl font-bold">
 						Superpixel Regions
 					</h3>
-					<p class="text-speed-gray-600 mb-6 leading-relaxed flex-grow">
+					<p class="text-speed-gray-600 mb-6 flex-grow leading-relaxed">
 						SLIC segmentation for stylized art and abstract representations. Creates polygonal line
 						art based on color and texture regions.
 					</p>
@@ -240,7 +240,7 @@
 				class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-300"
 				aria-labelledby="stippling-heading"
 			>
-				<div class="relative flex flex-col h-full">
+				<div class="relative flex h-full flex-col">
 					<div
 						class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
 					>
@@ -256,7 +256,7 @@
 					<h3 id="stippling-heading" class="text-speed-gray-900 mb-4 text-2xl font-bold">
 						Stippling Effects
 					</h3>
-					<p class="text-speed-gray-600 mb-6 leading-relaxed flex-grow">
+					<p class="text-speed-gray-600 mb-6 flex-grow leading-relaxed">
 						Adaptive dot placement for artistic textures and vintage styles. Creates stippling
 						patterns with variable dot sizes and intelligent spacing.
 					</p>

@@ -6,7 +6,7 @@
 	 */
 
 	import { onMount } from 'svelte';
-	import { Loader2, CheckCircle, AlertCircle } from 'lucide-svelte';
+	import { Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-svelte';
 
 	// Import new layered components
 	import UploadArea from '$lib/components/converter/UploadArea.svelte';
@@ -16,6 +16,8 @@
 	import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
 	import { toastStore } from '$lib/stores/toast.svelte';
 	import { parameterHistory } from '$lib/stores/parameter-history.svelte';
+	import { converterPersistence } from '$lib/stores/converter-persistence';
+	import type { FileMetadata } from '$lib/stores/converter-persistence';
 
 	// Types and stores
 	import type {
@@ -30,9 +32,12 @@
 
 	// UI State Management - Using Svelte 5 runes
 	let files = $state<File[]>([]);
+	let originalImageUrls = $state<(string | null)[]>([]); // URLs for original images (for persistence)
+	let filesMetadata = $state<FileMetadata[]>([]); // Metadata for original files (for persistence)
+	let pendingFilesMetadata = $state<FileMetadata[] | null>(null); // Temporary storage for metadata restoration
 	let currentImageIndex = $state(0);
 	let currentProgress = $state<ProcessingProgress | null>(null);
-	let results = $state<ProcessingResult[]>([]);
+	let results = $state<(ProcessingResult | null)[]>([]);
 	let previewSvgUrls = $state<(string | null)[]>([]);
 	let isProcessing = $state(false);
 
@@ -43,6 +48,7 @@
 	// Page initialization state
 	let pageLoaded = $state(false);
 	let initError = $state<string | null>(null);
+	let hasRecoveredState = $state(false);
 
 	// Converter configuration state
 	let config = $state<VectorizerConfig>({
@@ -69,9 +75,14 @@
 	let threadCount = $state(4);
 	let threadsInitialized = $state(false);
 
-	// Derived states for UI logic
-	const uiState = $derived(files.length === 0 ? 'EMPTY' : 'LOADED');
-	const hasFiles = $derived(files.length > 0);
+	// Derived states for UI logic - account for restored results
+	// UI state - files, original image URLs, AND results control the state
+	const uiState = $derived(
+		files.length === 0 && originalImageUrls.length === 0 && results.length === 0
+			? 'EMPTY'
+			: 'LOADED'
+	);
+	const hasFiles = $derived(files.length > 0 || originalImageUrls.length > 0);
 	const canConvert = $derived(hasFiles && !isProcessing);
 	const canDownload = $derived(results.length > 0 && !isProcessing);
 
@@ -86,19 +97,95 @@
 	}
 
 	// File management functions
-	function handleFilesSelect(selectedFiles: File[], preserveCurrentIndex: boolean = false) {
+	async function handleFilesSelect(selectedFiles: File[], preserveCurrentIndex: boolean = false) {
 		const previousFileCount = files.length;
-		files = selectedFiles;
+		const previousRestoredCount = Math.max(originalImageUrls.length, filesMetadata.length);
+		const hasExistingData = previousFileCount > 0 || previousRestoredCount > 0;
+
+		if (preserveCurrentIndex && hasExistingData) {
+			// Adding files - append to existing arrays
+			files = selectedFiles; // selectedFiles already contains existing + new files from handleAddMore
+
+			// Create URLs for the new files and append to existing URLs
+			const newImageUrls = [...originalImageUrls]; // Keep existing URLs (restored or active)
+			const startIndex = Math.max(previousFileCount, previousRestoredCount); // Start after existing data
+			
+			// Handle both URLs and metadata for new files
+			if (previousFileCount === 0 && previousRestoredCount > 0) {
+				// Restored state case: append all selectedFiles as new
+				for (const file of selectedFiles) {
+					if (file.type.startsWith('image/')) {
+						newImageUrls.push(URL.createObjectURL(file));
+					} else {
+						newImageUrls.push(null);
+					}
+					// Add metadata for new files
+					filesMetadata.push({
+						name: file.name,
+						size: file.size,
+						type: file.type,
+						lastModified: file.lastModified
+					});
+				}
+			} else {
+				// Normal case: append only the new files (from previousFileCount onward)
+				for (let i = previousFileCount; i < selectedFiles.length; i++) {
+					const file = selectedFiles[i];
+					if (file.type.startsWith('image/')) {
+						newImageUrls.push(URL.createObjectURL(file));
+					} else {
+						newImageUrls.push(null);
+					}
+					// Add metadata for new files
+					filesMetadata.push({
+						name: file.name,
+						size: file.size,
+						type: file.type,
+						lastModified: file.lastModified
+					});
+				}
+			}
+			originalImageUrls = newImageUrls;
+		} else {
+			// Replacing files - create new arrays
+			files = selectedFiles;
+
+			// Clean up old URLs before creating new ones
+			originalImageUrls.forEach((url) => {
+				if (url) URL.revokeObjectURL(url);
+			});
+
+			// Create original image URLs and metadata for display
+			const newImageUrls: (string | null)[] = [];
+			const newFilesMetadata: FileMetadata[] = [];
+			for (const file of selectedFiles) {
+				if (file.type.startsWith('image/')) {
+					newImageUrls.push(URL.createObjectURL(file));
+				} else {
+					newImageUrls.push(null);
+				}
+				newFilesMetadata.push({
+					name: file.name,
+					size: file.size,
+					type: file.type,
+					lastModified: file.lastModified
+				});
+			}
+			originalImageUrls = newImageUrls;
+			filesMetadata = newFilesMetadata;
+		}
 
 		// Only reset index if we're replacing all files, not adding to existing ones
-		if (!preserveCurrentIndex || previousFileCount === 0) {
+		if (!preserveCurrentIndex || (!hasExistingData)) {
 			currentImageIndex = 0;
 			// Clear previous results when replacing
 			results = [];
 			previewSvgUrls = [];
 		} else {
 			// When adding files, switch to the first newly added file
-			currentImageIndex = previousFileCount;
+			// For restored state, switch to the newly added file after restored data
+			const indexToSwitchTo = Math.max(previousFileCount, previousRestoredCount);
+			currentImageIndex = indexToSwitchTo;
 		}
 
 		if (selectedFiles.length > 0) {
@@ -113,7 +200,8 @@
 	}
 
 	function handleImageIndexChange(index: number) {
-		if (index >= 0 && index < files.length) {
+		const maxLength = Math.max(files.length, originalImageUrls.length);
+		if (index >= 0 && index < maxLength) {
 			currentImageIndex = index;
 		}
 	}
@@ -126,8 +214,16 @@
 		input.onchange = (e) => {
 			const newFiles = Array.from((e.target as HTMLInputElement).files || []);
 			if (newFiles.length > 0) {
-				const allFiles = [...files, ...newFiles];
-				handleFilesSelect(allFiles, true); // preserveCurrentIndex = true for adding files
+				// For restored state: files array might be empty while originalImageUrls/filesMetadata contain restored data
+				// Only merge if we actually have active File objects, otherwise just add the new files
+				if (files.length > 0) {
+					// Normal case: merge existing files with new files
+					const allFiles = [...files, ...newFiles];
+					handleFilesSelect(allFiles, true); // preserveCurrentIndex = true for adding files
+				} else {
+					// Restored state case: no active File objects, just add new files
+					handleFilesSelect(newFiles, true); // preserveCurrentIndex = true to preserve restored state
+				}
 			}
 		};
 		input.click();
@@ -145,11 +241,18 @@
 		const newFiles = files.filter((_, i) => i !== index);
 		const newResults = results.filter((_, i) => i !== index);
 		const newPreviewUrls = previewSvgUrls.filter((_, i) => i !== index);
+		const newOriginalUrls = originalImageUrls.filter((_, i) => i !== index);
 
 		// Clean up the removed preview URL
 		const removedUrl = previewSvgUrls[index];
 		if (removedUrl) {
 			URL.revokeObjectURL(removedUrl);
+		}
+
+		// Clean up the removed original image URL
+		const removedOriginalUrl = originalImageUrls[index];
+		if (removedOriginalUrl) {
+			URL.revokeObjectURL(removedOriginalUrl);
 		}
 
 		// Update current index if necessary
@@ -166,6 +269,7 @@
 		files = newFiles;
 		results = newResults;
 		previewSvgUrls = newPreviewUrls;
+		originalImageUrls = newOriginalUrls;
 		currentImageIndex = Math.min(newCurrentIndex, newFiles.length - 1);
 
 		// If no files left, reset everything
@@ -341,8 +445,13 @@
 		previewSvgUrls.forEach((url) => {
 			if (url) URL.revokeObjectURL(url);
 		});
+		// Clean up original image URLs
+		originalImageUrls.forEach((url) => {
+			if (url) URL.revokeObjectURL(url);
+		});
 
 		files = [];
+		originalImageUrls = [];
 		currentImageIndex = 0;
 		results = [];
 		previewSvgUrls = [];
@@ -390,7 +499,10 @@
 			// Initialize WASM module
 			await vectorizerStore.initialize({ autoInitThreads: false });
 
-			// Initialize parameter history with default config
+			// Always auto-recover state seamlessly
+			recoverSavedState();
+
+			// Initialize parameter history with config
 			parameterHistory.initialize(config);
 
 			pageLoaded = true;
@@ -402,10 +514,188 @@
 		}
 	});
 
+	// Recover saved state function - completely seamless
+	function recoverSavedState() {
+		console.log('🔄 [DEBUG] Starting state recovery...');
+
+		// Debug localStorage contents
+		const allVec2artKeys = Object.keys(localStorage).filter((k) => k.startsWith('vec2art_'));
+		console.log('🔍 [DEBUG] localStorage vec2art keys found:', allVec2artKeys);
+		allVec2artKeys.forEach((key) => {
+			console.log(`📄 [DEBUG] ${key}:`, localStorage.getItem(key));
+		});
+
+		const state = converterPersistence.loadCompleteState();
+		console.log('📋 [DEBUG] loadCompleteState result:', state);
+
+		if (!state) {
+			console.log('⚠️ [DEBUG] No complete state found, trying individual preferences...');
+			// Even if no complete state, try to load individual preferences
+			const savedConfig = converterPersistence.loadConfig();
+			console.log('⚙️ [DEBUG] savedConfig:', savedConfig);
+			if (savedConfig) {
+				config = savedConfig;
+				console.log('✅ [DEBUG] Config restored');
+			}
+			const savedPreset = converterPersistence.loadPreset();
+			console.log('🎨 [DEBUG] savedPreset:', savedPreset);
+			if (savedPreset) {
+				selectedPreset = savedPreset as VectorizerPreset | 'custom';
+				console.log('✅ [DEBUG] Preset restored');
+			}
+			const perfSettings = converterPersistence.loadPerformanceSettings();
+			console.log('⚡ [DEBUG] perfSettings:', perfSettings);
+			if (perfSettings.mode) {
+				performanceMode = perfSettings.mode as PerformanceMode;
+				threadCount = perfSettings.threadCount;
+				console.log('✅ [DEBUG] Performance settings restored');
+			}
+			return;
+		}
+
+		console.log('✨ [DEBUG] Complete state found, restoring...');
+		// Restore configuration seamlessly
+		if (state.config) {
+			config = state.config;
+			console.log('✅ [DEBUG] Config restored from complete state');
+		}
+		if (state.preset) {
+			selectedPreset = state.preset as VectorizerPreset | 'custom';
+			console.log('✅ [DEBUG] Preset restored from complete state');
+		}
+		if (state.performanceMode) {
+			performanceMode = state.performanceMode as PerformanceMode;
+			console.log('✅ [DEBUG] Performance mode restored from complete state');
+		}
+		if (state.threadCount) {
+			threadCount = state.threadCount;
+			console.log('✅ [DEBUG] Thread count restored from complete state');
+		}
+		if (state.currentIndex !== undefined) {
+			currentImageIndex = state.currentIndex;
+			console.log('✅ [DEBUG] Current index restored from complete state');
+		}
+
+		// Restore original image URLs and file metadata
+		if (state.imageUrls && state.imageUrls.length > 0) {
+			originalImageUrls = state.imageUrls;
+			console.log('✅ [DEBUG] Original image URLs restored from complete state');
+		}
+		if (state.filesMetadata && state.filesMetadata.length > 0) {
+			// Store metadata for restoration after function completes
+			pendingFilesMetadata = [...state.filesMetadata];
+			console.log('✅ [DEBUG] Files metadata scheduled for restoration');
+		}
+
+		// Restore results (but not files - user needs to re-upload)
+		if (state.results && state.results.length > 0) {
+			const loadedResults = converterPersistence.loadResults();
+			results = loadedResults;
+			// Create preview URLs for loaded results
+			previewSvgUrls = loadedResults.map((result) => {
+				if (result && result.svg) {
+					const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+					return URL.createObjectURL(blob);
+				}
+				return null;
+			});
+		}
+
+		// Validate and adjust currentIndex after restoration
+		const maxLength = Math.max(originalImageUrls.length, results.length);
+		if (currentImageIndex >= maxLength) {
+			currentImageIndex = Math.max(0, maxLength - 1);
+			console.log('⚠️ [DEBUG] Adjusted currentIndex to fit restored arrays:', currentImageIndex);
+		}
+
+		// Only show a subtle notification if we recovered actual results
+		const filesMetadata = state.filesMetadata;
+		if (filesMetadata && filesMetadata.length > 0 && state.results && state.results.length > 0) {
+			// Subtle notification - not intrusive
+			console.log(`Restored ${filesMetadata.length} previous results`);
+			hasRecoveredState = true;
+		}
+	}
+
+	// Auto-save individual settings when they change
+	$effect(() => {
+		if (!pageLoaded) return;
+		console.log('💾 [DEBUG] Saving config:', config);
+		const saved = converterPersistence.saveConfig(config);
+		console.log('💾 [DEBUG] Config save result:', saved);
+	});
+
+	$effect(() => {
+		if (!pageLoaded) return;
+		console.log('💾 [DEBUG] Saving preset:', selectedPreset);
+		converterPersistence.savePreset(selectedPreset);
+	});
+
+	$effect(() => {
+		if (!pageLoaded) return;
+		console.log('💾 [DEBUG] Saving performance settings:', performanceMode, threadCount);
+		converterPersistence.savePerformanceSettings(performanceMode, threadCount);
+	});
+
+	$effect(() => {
+		if (!pageLoaded) return;
+		console.log('💾 [DEBUG] Saving current index:', currentImageIndex);
+		converterPersistence.saveCurrentIndex(currentImageIndex);
+	});
+
+	// Save files metadata when files change
+	$effect(() => {
+		if (!pageLoaded || files.length === 0) return;
+		console.log('💾 [DEBUG] Saving files metadata:', files.length, 'files');
+		converterPersistence.saveFilesMetadata(files);
+	});
+
+	// Save image URLs when files change (async) - only save when we have actual files
+	$effect(() => {
+		if (!pageLoaded || files.length === 0) return;
+		console.log('💾 [DEBUG] Saving image URLs:', files.length, 'files');
+		converterPersistence
+			.saveImageUrls(files)
+			.then((success) => {
+				console.log('💾 [DEBUG] Image URLs save result:', success);
+			})
+			.catch((error) => {
+				console.error('❌ [DEBUG] Failed to save image URLs:', error);
+			});
+	});
+
+	// Save results when they change
+	$effect(() => {
+		if (!pageLoaded || results.length === 0) return;
+		console.log('💾 [DEBUG] Saving results:', results.length, 'results');
+		converterPersistence.saveResults(results);
+	});
+
+	// Handle pending files metadata restoration
+	$effect(() => {
+		if (pendingFilesMetadata !== null) {
+			filesMetadata.splice(0);
+			filesMetadata.push(...pendingFilesMetadata);
+			pendingFilesMetadata = null;
+			console.log('✅ [DEBUG] Files metadata restored from pending state');
+		}
+	});
+
 	// Cleanup on page unload
 	$effect(() => {
 		return () => {
-			// Cleanup resources
+			// Update last visited timestamp
+			if (converterPersistence.isAutoSaveEnabled()) {
+				localStorage.setItem('vec2art_last_visited', Date.now().toString());
+			}
+			// Cleanup preview URLs
+			previewSvgUrls.forEach((url) => {
+				if (url) URL.revokeObjectURL(url);
+			});
+			// Cleanup original image URLs
+			originalImageUrls.forEach((url) => {
+				if (url) URL.revokeObjectURL(url);
+			});
 		};
 	});
 
@@ -416,11 +706,14 @@
 				uiState,
 				pageLoaded,
 				filesCount: files.length,
+				originalImageUrlsCount: originalImageUrls.length,
+				resultsCount: results.length,
 				currentImageIndex,
 				hasFiles,
 				canConvert,
 				canDownload,
-				isProcessing
+				isProcessing,
+				hasRecoveredState
 			});
 		});
 	}
@@ -480,6 +773,25 @@
 			{/if}
 		</header>
 
+		<!-- Dev Tools - Clear Persistence Button (TOP RIGHT) -->
+		{#if import.meta.env.DEV}
+			<div class="fixed top-20 right-4 z-50">
+				<button
+					class="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg transition-all hover:bg-red-700 hover:shadow-xl"
+					onclick={() => {
+						converterPersistence.clearAll();
+						handleReset();
+						toastStore.info('🧹 Cleared all cached data and persistence');
+						location.reload();
+					}}
+					title="Clear all cached data and reload page"
+				>
+					<RefreshCw class="h-4 w-4" />
+					Clear Cache
+				</button>
+			</div>
+		{/if}
+
 		<!-- Main Content - Layered State UI -->
 		{#if pageLoaded && !initError}
 			{#if uiState === 'EMPTY'}
@@ -496,6 +808,8 @@
 					<div class="space-y-6">
 						<ConverterInterface
 							{files}
+							{originalImageUrls}
+							{filesMetadata}
 							{currentImageIndex}
 							currentProgress={currentProgress ?? undefined}
 							{results}

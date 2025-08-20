@@ -10,10 +10,13 @@
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type { ProcessingProgress } from '$lib/types/vectorizer';
+	import type { FileMetadata } from '$lib/stores/converter-persistence';
 	import ConverterHeader from './ConverterHeader.svelte';
 
 	interface Props {
 		files: File[];
+		originalImageUrls: (string | null)[];
+		filesMetadata: FileMetadata[];
 		currentImageIndex: number;
 		currentProgress?: ProcessingProgress;
 		previewSvgUrls: (string | null)[];
@@ -31,6 +34,8 @@
 
 	let {
 		files,
+		originalImageUrls,
+		filesMetadata,
 		currentImageIndex,
 		currentProgress,
 		previewSvgUrls,
@@ -65,9 +70,11 @@
 	let isVerticalSplit = $state(false);
 
 	// Derived states
-	const hasMultipleFiles = $derived(files.length > 1);
+	const hasMultipleFiles = $derived(Math.max(files.length, originalImageUrls.length) > 1);
 	const currentFile = $derived(files[currentImageIndex]);
-	const currentImageUrl = $derived(currentFile ? URL.createObjectURL(currentFile) : null);
+	const currentImageUrl = $derived(
+		originalImageUrls[currentImageIndex] || (currentFile ? URL.createObjectURL(currentFile) : null)
+	);
 	const currentSvgUrl = $derived(previewSvgUrls[currentImageIndex]);
 	const hasResult = $derived(Boolean(currentSvgUrl));
 
@@ -228,6 +235,8 @@
 	<!-- New Unified Header -->
 	<ConverterHeader
 		{files}
+		{originalImageUrls}
+		{filesMetadata}
 		{currentImageIndex}
 		{currentProgress}
 		{viewMode}

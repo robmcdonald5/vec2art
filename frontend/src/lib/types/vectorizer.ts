@@ -122,6 +122,7 @@ export interface ProcessingProgress {
 	progress: number; // 0-100
 	elapsed_ms: number;
 	estimated_remaining_ms?: number;
+	message?: string; // Optional message for current processing stage
 }
 
 export interface ProcessingResult {

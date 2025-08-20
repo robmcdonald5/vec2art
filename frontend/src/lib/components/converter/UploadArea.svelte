@@ -116,7 +116,7 @@
 
 	<!-- Upload Dropzone -->
 	<div
-		class="card-ferrari-static min-h-[600px] cursor-pointer rounded-3xl border-2 border-dashed p-12 transition-all duration-300 hover:shadow-2xl
+		class="card-ferrari-static flex min-h-[600px] cursor-pointer rounded-3xl border-2 border-dashed p-12 transition-all duration-300 hover:shadow-2xl
 		{dragOver
 			? 'border-ferrari-500 bg-ferrari-50/20 dark:bg-ferrari-950/20'
 			: 'border-ferrari-200 dark:border-ferrari-800'}
@@ -135,7 +135,7 @@
 		tabindex={disabled ? -1 : 0}
 		aria-label="Upload image files. Drag and drop or press Enter to browse."
 	>
-		<div class="flex h-full flex-col items-center justify-center space-y-6 text-center">
+		<div class="flex w-full flex-col items-center justify-center space-y-6 text-center">
 			<!-- Icon -->
 			<div class="icon-ferrari-bg rounded-full p-6">
 				<Upload class="h-12 w-12 text-white" aria-hidden="true" />

@@ -74,7 +74,7 @@
 							<a
 								href="/converter"
 								use:preload
-								class="btn-ferrari-primary group transform px-10 py-3 text-xl shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:shadow-2xl inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium focus:outline-none"
+								class="btn-ferrari-primary group inline-flex transform items-center justify-center gap-2 rounded-md px-10 py-3 text-xl font-medium whitespace-nowrap shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:shadow-2xl focus:outline-none"
 							>
 								Start Converting
 								<ArrowRight
@@ -84,7 +84,7 @@
 							<a
 								href="/gallery"
 								use:preload
-								class="transform px-10 py-3 text-xl transition-all duration-300 hover:-translate-y-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium focus:outline-none bg-white border-2 border-ferrari-500 text-ferrari-600 shadow-md hover:bg-ferrari-50 hover:text-ferrari-700 hover:shadow-lg"
+								class="border-ferrari-500 text-ferrari-600 hover:bg-ferrari-50 hover:text-ferrari-700 inline-flex transform items-center justify-center gap-2 rounded-md border-2 bg-white px-10 py-3 text-xl font-medium whitespace-nowrap shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg focus:outline-none"
 							>
 								View Gallery
 							</a>

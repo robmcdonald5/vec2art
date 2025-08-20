@@ -40,8 +40,7 @@
 			// Set initial theme based on system preference
 			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 			const savedTheme = localStorage.getItem('theme');
-			// TEMPORARY FIX: Force light mode to test settings panel backgrounds
-			const theme = 'light'; // savedTheme || (prefersDark ? 'dark' : 'light');
+			const theme = savedTheme || (prefersDark ? 'dark' : 'light');
 
 			if (theme === 'dark') {
 				document.documentElement.classList.add('dark');
@@ -133,7 +132,7 @@
 				<a
 					href="/converter"
 					use:preload
-					class="btn-ferrari-primary shadow-ferrari-500/25 hover:animate-quick-lift hidden h-10 px-6 shadow-lg md:inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus:outline-none"
+					class="btn-ferrari-primary shadow-ferrari-500/25 hover:animate-quick-lift hidden h-10 items-center justify-center gap-2 rounded-md px-6 text-sm font-medium whitespace-nowrap shadow-lg transition-colors focus:outline-none md:inline-flex"
 				>
 					Get Started
 				</a>

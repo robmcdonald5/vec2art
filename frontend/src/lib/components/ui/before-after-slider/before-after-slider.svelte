@@ -24,7 +24,6 @@
 	let sliderPosition = $state(startPosition);
 	let containerRect: DOMRect | null = null;
 
-
 	function handleStart(e: MouseEvent | TouchEvent) {
 		isDragging = true;
 		containerRect = container.getBoundingClientRect();
@@ -80,11 +79,13 @@
 
 	<!-- Before Label (Left Side) - Clipped with before image area -->
 	<div
-		class="absolute inset-0 z-10 pointer-events-none"
+		class="pointer-events-none absolute inset-0 z-10"
 		style="clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%)"
 	>
-		<div class="absolute left-4 top-1/2 -translate-y-1/2">
-			<div class="rounded-lg bg-black/50 px-3 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm">
+		<div class="absolute top-1/2 left-4 -translate-y-1/2">
+			<div
+				class="rounded-lg bg-black/50 px-3 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm"
+			>
 				Before
 			</div>
 		</div>
@@ -92,11 +93,13 @@
 
 	<!-- After Label (Right Side) - Clipped with after image area -->
 	<div
-		class="absolute inset-0 z-10 pointer-events-none"
+		class="pointer-events-none absolute inset-0 z-10"
 		style="clip-path: polygon({sliderPosition}% 0, 100% 0, 100% 100%, {sliderPosition}% 100%)"
 	>
-		<div class="absolute right-4 top-1/2 -translate-y-1/2">
-			<div class="rounded-lg bg-black/50 px-3 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm">
+		<div class="absolute top-1/2 right-4 -translate-y-1/2">
+			<div
+				class="rounded-lg bg-black/50 px-3 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm"
+			>
 				After
 			</div>
 		</div>
@@ -104,7 +107,7 @@
 
 	<!-- Slider Handle -->
 	<div
-		class="absolute top-0 bottom-0 w-1 cursor-ew-resize border-r border-l border-gray-400 bg-white shadow-lg z-20"
+		class="absolute top-0 bottom-0 z-20 w-1 cursor-ew-resize border-r border-l border-gray-400 bg-white shadow-lg"
 		style="left: {sliderPosition}%"
 		onmousedown={handleStart}
 		ontouchstart={handleStart}

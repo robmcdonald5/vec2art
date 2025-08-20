@@ -11,17 +11,22 @@ class ParameterHistory {
 	private currentIndex = $state(-1);
 	private maxHistorySize = 50;
 
-	// Derived states
-	canUndo = $derived(this.currentIndex > 0);
-	canRedo = $derived(this.currentIndex < this.history.length - 1);
+	// Derived states - using getter methods for better access patterns
+	get canUndo() {
+		return this.currentIndex > 0;
+	}
+	
+	get canRedo() {
+		return this.currentIndex < this.history.length - 1;
+	}
 
 	// Get current entry
-	current = $derived(() => {
+	get current() {
 		if (this.currentIndex >= 0 && this.currentIndex < this.history.length) {
 			return this.history[this.currentIndex];
 		}
 		return null;
-	});
+	}
 
 	// Add new entry to history
 	push(config: VectorizerConfig, description: string = 'Parameter change') {

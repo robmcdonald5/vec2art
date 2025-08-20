@@ -69,13 +69,13 @@
 	let dragOffset = $derived(() => {
 		if (!isDragging) return 0;
 		const raw = currentX - startX;
-		
+
 		// Add resistance at edges (can't swipe right from first panel or left from last panel)
 		if ((currentPanel === 0 && raw > 0) || (currentPanel === 1 && raw < 0)) {
 			// Apply resistance factor (like pulling a rubber band)
 			return raw * 0.3;
 		}
-		
+
 		return raw;
 	});
 
@@ -83,17 +83,19 @@
 	function handleStart(e: MouseEvent | TouchEvent) {
 		// Don't capture events from interactive elements
 		const target = e.target as HTMLElement;
-		if (target.closest('.before-after-slider') || 
-		    target.closest('button') || 
-		    target.closest('a') ||
-		    target.closest('[data-no-hero-drag]')) {
+		if (
+			target.closest('.before-after-slider') ||
+			target.closest('button') ||
+			target.closest('a') ||
+			target.closest('[data-no-hero-drag]')
+		) {
 			return;
 		}
 
 		isDragging = true;
 		startX = 'touches' in e ? e.touches[0].clientX : e.clientX;
 		currentX = startX;
-		
+
 		// Pause autoplay during interaction
 		if (autoPlayInterval) {
 			clearInterval(autoPlayInterval);
@@ -102,16 +104,18 @@
 
 	function handleMove(e: MouseEvent | TouchEvent) {
 		if (!isDragging) return;
-		
+
 		// Don't prevent default on interactive elements
 		const target = e.target as HTMLElement;
-		if (!target.closest('.before-after-slider') && 
-		    !target.closest('button') && 
-		    !target.closest('a') &&
-		    !target.closest('[data-no-hero-drag]')) {
+		if (
+			!target.closest('.before-after-slider') &&
+			!target.closest('button') &&
+			!target.closest('a') &&
+			!target.closest('[data-no-hero-drag]')
+		) {
 			e.preventDefault();
 		}
-		
+
 		currentX = 'touches' in e ? e.touches[0].clientX : e.clientX;
 	}
 
@@ -142,7 +146,7 @@
 		// Reset drag state
 		currentX = startX;
 		startX = 0;
-		
+
 		// Resume autoplay
 		if (autoPlay && currentPanel === 1) {
 			startAutoPlay();
@@ -189,7 +193,7 @@
 			document.removeEventListener('mouseup', handleEnd);
 			document.removeEventListener('touchmove', handleMove as EventListener);
 			document.removeEventListener('touchend', handleEnd);
-			
+
 			if (autoPlayInterval) {
 				clearInterval(autoPlayInterval);
 			}
@@ -233,28 +237,36 @@
 			<div class="w-full flex-shrink-0">
 				<div class="relative min-h-[90vh] overflow-hidden">
 					<!-- Matching gradient background -->
-					<div class="absolute inset-0 bg-gradient-to-br from-indigo-100 via-white to-cyan-100"></div>
-					<div class="absolute inset-0 bg-gradient-to-tr from-rose-100/50 via-transparent to-blue-100/50"></div>
+					<div
+						class="absolute inset-0 bg-gradient-to-br from-indigo-100 via-white to-cyan-100"
+					></div>
+					<div
+						class="absolute inset-0 bg-gradient-to-tr from-rose-100/50 via-transparent to-blue-100/50"
+					></div>
 
 					<!-- Showcase Content -->
-					<div class="relative z-10 flex min-h-[90vh] items-center justify-center px-4 sm:px-6 lg:px-8">
+					<div
+						class="relative z-10 flex min-h-[90vh] items-center justify-center px-4 sm:px-6 lg:px-8"
+					>
 						<div class="mx-auto max-w-screen-xl">
 							<div class="text-center">
 								<!-- Showcase Header -->
 								<div class="mb-8 flex items-center justify-center gap-3">
-									<Sparkles class="h-8 w-8 text-ferrari-600" />
+									<Sparkles class="text-ferrari-600 h-8 w-8" />
 									<h2 class="text-4xl font-bold text-gray-900">See vec2art in Action</h2>
-									<Sparkles class="h-8 w-8 text-ferrari-600" />
+									<Sparkles class="text-ferrari-600 h-8 w-8" />
 								</div>
 
 								<!-- Showcase Card -->
 								<div class="relative mx-auto max-w-4xl">
-									<div class="relative overflow-hidden rounded-3xl border border-white/50 bg-white/80 p-8 shadow-2xl backdrop-blur-md">
+									<div
+										class="relative overflow-hidden rounded-3xl border border-white/50 bg-white/80 p-8 shadow-2xl backdrop-blur-md"
+									>
 										<!-- Try It Button - Top Right of Card -->
 										<a
 											href="/converter"
 											use:preload
-											class="absolute right-4 top-4 z-10 btn-ferrari-primary inline-flex items-center gap-2 px-4 py-2 text-sm"
+											class="btn-ferrari-primary absolute top-4 right-4 z-10 inline-flex items-center gap-2 px-4 py-2 text-sm"
 										>
 											Try It Yourself
 											<ChevronRight class="h-3 w-3" />
@@ -264,24 +276,29 @@
 											<h3 class="mb-2 text-2xl font-semibold text-gray-900">
 												{showcaseItems[showcaseIndex].title}
 											</h3>
-											<span class="inline-block rounded-full bg-gradient-to-r from-ferrari-500 to-ferrari-600 px-4 py-1 text-sm font-medium text-white shadow-md">
+											<span
+												class="from-ferrari-500 to-ferrari-600 inline-block rounded-full bg-gradient-to-r px-4 py-1 text-sm font-medium text-white shadow-md"
+											>
 												{showcaseItems[showcaseIndex].algorithm}
 											</span>
 										</div>
 
 										<!-- Before/After Display with Navigation -->
-										<div class="relative aspect-video overflow-hidden rounded-xl bg-gray-50" data-no-hero-drag>
+										<div
+											class="relative aspect-video overflow-hidden rounded-xl bg-gray-50"
+											data-no-hero-drag
+										>
 											<BeforeAfterSlider
 												beforeImage={showcaseItems[showcaseIndex].beforeImage}
 												afterImage={showcaseItems[showcaseIndex].afterImage}
-												class="h-full w-full before-after-slider"
+												class="before-after-slider h-full w-full"
 											/>
 
 											<!-- Showcase Navigation - Top corners -->
 											<!-- Left Arrow -->
 											<button
 												onclick={prevShowcase}
-												class="absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg transition-all hover:bg-ferrari-600 hover:scale-110 backdrop-blur-sm"
+												class="hover:bg-ferrari-600 absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
 												aria-label="Previous example"
 											>
 												<ChevronLeft class="h-4 w-4 text-gray-700" />
@@ -290,14 +307,12 @@
 											<!-- Right Arrow -->
 											<button
 												onclick={nextShowcase}
-												class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg transition-all hover:bg-ferrari-600 hover:scale-110 backdrop-blur-sm"
+												class="hover:bg-ferrari-600 absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
 												aria-label="Next example"
 											>
 												<ChevronRight class="h-4 w-4 text-gray-700" />
 											</button>
-
 										</div>
-
 									</div>
 								</div>
 							</div>
@@ -310,14 +325,18 @@
 
 	<!-- Panel Indicators/Navigation -->
 	<div class="absolute bottom-8 left-1/2 z-20 -translate-x-1/2">
-		<div class="flex items-center gap-4 rounded-full bg-white/90 px-6 py-3 shadow-lg backdrop-blur-sm">
+		<div
+			class="flex items-center gap-4 rounded-full bg-white/90 px-6 py-3 shadow-lg backdrop-blur-sm"
+		>
 			<button
 				onclick={() => goToPanel(0)}
 				class="flex items-center gap-2 transition-all {currentPanel === 0
 					? 'text-ferrari-600 font-medium'
 					: 'text-gray-500 hover:text-gray-700'}"
 			>
-				<span class="h-2 w-2 rounded-full {currentPanel === 0 ? 'bg-gray-300' : 'bg-ferrari-600'}" />
+				<span
+					class="h-2 w-2 rounded-full {currentPanel === 0 ? 'bg-gray-300' : 'bg-ferrari-600'}"
+				/>
 				Overview
 			</button>
 			<div class="h-4 w-px bg-gray-300" />
@@ -327,7 +346,9 @@
 					? 'text-ferrari-600 font-medium'
 					: 'text-gray-500 hover:text-gray-700'}"
 			>
-				<span class="h-2 w-2 rounded-full {currentPanel === 1 ? 'bg-gray-300' : 'bg-ferrari-600'}" />
+				<span
+					class="h-2 w-2 rounded-full {currentPanel === 1 ? 'bg-gray-300' : 'bg-ferrari-600'}"
+				/>
 				Examples
 			</button>
 		</div>
@@ -338,19 +359,23 @@
 		<!-- Right arrow to go to showcase -->
 		<button
 			onclick={() => goToPanel(1)}
-			class="absolute right-4 top-1/2 z-20 -translate-y-1/2 focus:outline-none"
+			class="absolute top-1/2 right-4 z-20 -translate-y-1/2 focus:outline-none"
 			aria-label="View examples"
 		>
-			<ChevronLeft class="h-8 w-8 text-ferrari-600 transition-all duration-300 hover:scale-125 hover:drop-shadow-lg active:scale-110 animate-pulse hover:animate-none" />
+			<ChevronLeft
+				class="text-ferrari-600 h-8 w-8 animate-pulse transition-all duration-300 hover:scale-125 hover:animate-none hover:drop-shadow-lg active:scale-110"
+			/>
 		</button>
 	{:else if currentPanel === 1}
 		<!-- Left arrow to go back to hero -->
 		<button
 			onclick={() => goToPanel(0)}
-			class="absolute left-4 top-1/2 z-20 -translate-y-1/2 focus:outline-none"
+			class="absolute top-1/2 left-4 z-20 -translate-y-1/2 focus:outline-none"
 			aria-label="Back to overview"
 		>
-			<ChevronRight class="h-8 w-8 text-ferrari-600 transition-all duration-300 hover:scale-125 hover:drop-shadow-lg active:scale-110 animate-pulse hover:animate-none" />
+			<ChevronRight
+				class="text-ferrari-600 h-8 w-8 animate-pulse transition-all duration-300 hover:scale-125 hover:animate-none hover:drop-shadow-lg active:scale-110"
+			/>
 		</button>
 	{/if}
 </div>
