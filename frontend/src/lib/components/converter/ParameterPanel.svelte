@@ -199,7 +199,7 @@
 				</label>
 				<span
 					class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-					aria-live="polite">{config.stroke_width.toFixed(1)}px</span
+					aria-live="polite">{(config.line_width || 0).toFixed(1)}px</span
 				>
 			</div>
 			<input

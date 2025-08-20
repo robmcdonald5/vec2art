@@ -93,7 +93,7 @@
 		};
 	});
 
-	// Static classes for trigger button with consistent Ferrari theme
+	// Dynamic classes for trigger button with seamless dropdown connection
 	const triggerClasses = $derived(
 		[
 			'w-full px-3 py-2.5 text-sm font-medium text-left',
@@ -103,7 +103,8 @@
 			'focus:outline-none',
 			'disabled:cursor-not-allowed disabled:opacity-50',
 			'transition-all duration-200',
-			'rounded-md'
+			// Dynamic rounding and border: top corners when open, all corners when closed
+			isOpen ? 'rounded-t-md border-b-ferrari-200/30' : 'rounded-md'
 		]
 			.filter(Boolean)
 			.join(' ')
@@ -116,6 +117,7 @@
 		bind:this={triggerElement}
 		type="button"
 		class={triggerClasses}
+		style="z-index: 10; position: relative;"
 		onclick={toggleDropdown}
 		onkeydown={handleKeydown}
 		{disabled}
@@ -129,11 +131,7 @@
 				{selectedOption?.label || placeholder}
 			</span>
 			<span class="text-ferrari-600 ml-2 flex items-center">
-				{#if isOpen}
-					<ChevronUp class="h-4 w-4 transition-transform duration-200" />
-				{:else}
-					<ChevronDown class="h-4 w-4 transition-transform duration-200" />
-				{/if}
+				<ChevronDown class="h-4 w-4 transition-transform duration-300 {isOpen ? 'rotate-180' : 'rotate-0'}" />
 			</span>
 		</div>
 	</button>
@@ -144,8 +142,8 @@
 			class="
 			dropdown-animate-in border-ferrari-200/30 absolute top-full right-0
 			left-0 z-50 max-h-60
-			overflow-y-auto rounded-b-md border-r border-b
-			border-l bg-white shadow-lg
+			overflow-y-auto overflow-x-hidden rounded-b-md border-r border-b
+			border-l border-t-0 bg-white shadow-lg
 		"
 		>
 			<div role="listbox" id="dropdown-listbox">
@@ -156,10 +154,11 @@
 						'focus:outline-none',
 						'border-b border-ferrari-100/20 last:border-b-0',
 						'disabled:opacity-50 disabled:cursor-not-allowed',
-						'transition-all duration-150',
+						'transition-all duration-200',
+						'transform',
 						isSelected
-							? 'bg-ferrari-600 text-white font-semibold'
-							: 'text-converter-primary hover:bg-ferrari-50/30 hover:text-ferrari-700 focus:bg-ferrari-50/40 focus:text-ferrari-700'
+							? 'bg-ferrari-50/60 text-ferrari-900 font-semibold border-l-4 border-l-ferrari-500 shadow-sm'
+							: 'text-converter-primary hover:bg-ferrari-50/40 hover:text-ferrari-700 hover:shadow-sm hover:scale-[1.02] focus:bg-ferrari-50/50 focus:text-ferrari-700 focus:shadow-md active:scale-[0.98]'
 					]
 						.filter(Boolean)
 						.join(' ')}
@@ -175,11 +174,20 @@
 						<div class="flex items-center justify-between">
 							<span class="block truncate">{option.label}</span>
 							{#if isSelected}
-								<span
-									class="h-2 w-2 flex-shrink-0 rounded-full"
-									style="background-color: white;"
+								<svg
+									class="h-4 w-4 flex-shrink-0 text-ferrari-600"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
 									aria-label="Selected"
-								></span>
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="3"
+										d="M5 13l4 4L19 7"
+									/>
+								</svg>
 							{/if}
 						</div>
 					</button>
@@ -191,18 +199,18 @@
 
 <style>
 	.dropdown-animate-in {
-		animation: dropdownIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
+		animation: dropdownIn 250ms cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	@keyframes dropdownIn {
 		from {
 			opacity: 0;
-			transform: scaleY(0.95);
+			transform: scaleY(0.95) translateY(-4px);
 			transform-origin: top;
 		}
 		to {
 			opacity: 1;
-			transform: scaleY(1);
+			transform: scaleY(1) translateY(0px);
 			transform-origin: top;
 		}
 	}

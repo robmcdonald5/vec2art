@@ -241,7 +241,7 @@
 	}
 
 	function handleImageIndexChange(index: number) {
-		const maxLength = Math.max(files.length, originalImageUrls.length);
+		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata.length, results.length);
 		if (index >= 0 && index < maxLength) {
 			currentImageIndex = index;
 		}
@@ -271,7 +271,10 @@
 	}
 
 	function handleRemoveFile(index: number) {
-		if (index < 0 || index >= files.length || isProcessing) {
+		// Bounds checking - ensure index is valid for all arrays that will be accessed
+		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata.length, results.length, previewSvgUrls.length);
+		if (index < 0 || index >= maxLength || isProcessing) {
+			console.warn('Cannot remove file - invalid index or processing:', { index, maxLength, isProcessing });
 			return;
 		}
 
@@ -283,6 +286,7 @@
 		const newResults = results.filter((_, i) => i !== index);
 		const newPreviewUrls = previewSvgUrls.filter((_, i) => i !== index);
 		const newOriginalUrls = originalImageUrls.filter((_, i) => i !== index);
+		const newFilesMetadata = filesMetadata.filter((_, i) => i !== index);
 
 		// Clean up the removed preview URL
 		const removedUrl = previewSvgUrls[index];
@@ -311,6 +315,7 @@
 		results = newResults;
 		previewSvgUrls = newPreviewUrls;
 		originalImageUrls = newOriginalUrls;
+		filesMetadata = newFilesMetadata;
 		currentImageIndex = Math.min(newCurrentIndex, newFiles.length - 1);
 
 		// If no files left, reset everything
@@ -480,14 +485,22 @@
 			return;
 		}
 
+		// Bounds checking for array access
+		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata.length, results.length);
+		if (currentImageIndex < 0 || currentImageIndex >= maxLength) {
+			console.error('Current image index out of bounds:', currentImageIndex, 'max:', maxLength);
+			toastStore.error('Cannot download - invalid image selection');
+			return;
+		}
+
 		try {
 			const result = results[currentImageIndex];
 			
 			// Get filename from either file object or metadata
 			let filename = 'converted_image';
-			if (files[currentImageIndex]) {
+			if (currentImageIndex < files.length && files[currentImageIndex]) {
 				filename = files[currentImageIndex].name.replace(/\.[^/.]+$/, '');
-			} else if (filesMetadata[currentImageIndex]) {
+			} else if (currentImageIndex < filesMetadata.length && filesMetadata[currentImageIndex]) {
 				filename = filesMetadata[currentImageIndex].name.replace(/\.[^/.]+$/, '');
 			}
 
@@ -536,6 +549,7 @@
 
 		files = [];
 		originalImageUrls = [];
+		filesMetadata = [];
 		currentImageIndex = 0;
 		results = [];
 		previewSvgUrls = [];
@@ -577,11 +591,30 @@
 		threadCount = threads;
 	}
 
+	async function handleRetryInitialization() {
+		try {
+			console.log('🔄 Retrying WASM initialization...');
+			toastStore.info('🔄 Retrying WASM initialization...', 3000);
+			
+			// Reset the vectorizer store and reinitialize
+			await vectorizerStore.reset();
+			await vectorizerStore.initialize({ autoInitThreads: false });
+			
+			toastStore.success('✅ WASM initialization successful!', 3000);
+		} catch (error) {
+			console.error('❌ Retry initialization failed:', error);
+			toastStore.error('❌ Retry failed. Please refresh the page.', 5000);
+		}
+	}
+
 	// Initialize page
 	onMount(async () => {
 		try {
 			// Initialize WASM module
 			await vectorizerStore.initialize({ autoInitThreads: false });
+
+			// Show success toast notification
+			toastStore.success('🚀 Converter ready! Upload images to get started.', 4000);
 
 			// Always auto-recover state seamlessly
 			await recoverSavedState();
@@ -760,7 +793,7 @@
 		}
 
 		// Validate and adjust currentIndex after restoration
-		const maxLength = Math.max(originalImageUrls.length, results.length);
+		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata.length, results.length);
 		if (currentImageIndex >= maxLength) {
 			currentImageIndex = Math.max(0, maxLength - 1);
 			console.log('⚠️ [DEBUG] Adjusted currentIndex to fit restored arrays:', currentImageIndex);
@@ -928,15 +961,6 @@
 					<AlertCircle class="h-4 w-4" aria-hidden="true" />
 					<span>{initError}</span>
 				</div>
-			{:else}
-				<div
-					class="mt-4 flex items-center justify-center gap-2 text-sm"
-					role="status"
-					aria-label="Converter status"
-				>
-					<CheckCircle class="text-ferrari-600 h-4 w-4" aria-hidden="true" />
-					<span class="status-indicator-success">Converter ready</span>
-				</div>
 			{/if}
 		</header>
 
@@ -1002,12 +1026,14 @@
 							{performanceMode}
 							{threadCount}
 							{threadsInitialized}
+							hasError={vectorizerStore.hasError}
 							disabled={isProcessing}
 							onConfigChange={handleConfigChange}
 							onPresetChange={handlePresetChange}
 							onBackendChange={handleBackendChange}
 							onParameterChange={handleParameterChange}
 							onPerformanceModeChange={handlePerformanceModeChange}
+							onRetryInitialization={handleRetryInitialization}
 						/>
 					</div>
 				</main>

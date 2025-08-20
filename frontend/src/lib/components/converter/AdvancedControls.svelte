@@ -8,7 +8,8 @@
 		Brush,
 		Grid,
 		Sparkles,
-		Target
+		Target,
+		Check
 	} from 'lucide-svelte';
 	import type { VectorizerConfig } from '$lib/types/vectorizer';
 
@@ -112,11 +113,7 @@
 					</div>
 					<span class="text-converter-primary font-medium">Multi-pass Processing</span>
 					{#if config.multipass}
-						<span
-							class="bg-ferrari-600 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-white"
-						>
-							Active
-						</span>
+						<Check class="h-4 w-4 text-green-600" />
 					{/if}
 				</div>
 				<div class="flex-shrink-0">
@@ -160,7 +157,7 @@
 									>Conservative Detail</label
 								>
 								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-									{config.conservative_detail?.toFixed(2) ?? 'Auto'}
+									{(config.conservative_detail ?? config.detail ?? 0).toFixed(2)}
 								</span>
 							</div>
 							<input
@@ -197,11 +194,7 @@
 						<Target class="text-ferrari-600 h-4 w-4" />
 						<span class="text-converter-primary font-medium">Directional Processing</span>
 						{#if config.reverse_pass || config.diagonal_pass}
-							<span
-								class="inline-flex items-center rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800"
-							>
-								Active
-							</span>
+							<Check class="h-4 w-4 text-green-600" />
 						{/if}
 					</div>
 					<div class="flex-shrink-0">
@@ -265,7 +258,7 @@
 										>Strength Threshold</label
 									>
 									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-										{config.directional_strength_threshold?.toFixed(2) ?? '0.30'}
+										{(config.directional_strength_threshold ?? 0.3).toFixed(2)}
 									</span>
 								</div>
 								<input
@@ -321,7 +314,7 @@
 									>Variable Line Weights</label
 								>
 								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-									{config.variable_weights.toFixed(1)}
+									{(config.variable_weights ?? 0).toFixed(1)}
 								</span>
 							</div>
 							<input
@@ -330,7 +323,7 @@
 								min="0"
 								max="1"
 								step="0.1"
-								value={config.variable_weights}
+								value={config.variable_weights ?? 0}
 								oninput={handleRangeChange('variable_weights')}
 								{disabled}
 								class="slider-ferrari w-full"
@@ -348,7 +341,7 @@
 									>Tremor Strength</label
 								>
 								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-									{config.tremor_strength.toFixed(1)}
+									{(config.tremor_strength ?? 0).toFixed(1)}
 								</span>
 							</div>
 							<input
@@ -357,7 +350,7 @@
 								min="0"
 								max="0.5"
 								step="0.1"
-								value={config.tremor_strength}
+								value={config.tremor_strength ?? 0}
 								oninput={handleRangeChange('tremor_strength')}
 								{disabled}
 								class="slider-ferrari w-full"
@@ -373,7 +366,7 @@
 							<div class="flex items-center justify-between">
 								<label for="tapering" class="text-converter-primary text-sm">Line Tapering</label>
 								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-									{config.tapering.toFixed(1)}
+									{(config.tapering ?? 0).toFixed(1)}
 								</span>
 							</div>
 							<input
@@ -382,7 +375,7 @@
 								min="0"
 								max="1"
 								step="0.1"
-								value={config.tapering}
+								value={config.tapering ?? 0}
 								oninput={handleRangeChange('tapering')}
 								{disabled}
 								class="slider-ferrari w-full"
@@ -410,11 +403,7 @@
 						<Zap class="text-ferrari-600 h-4 w-4" />
 						<span class="text-converter-primary font-medium">Advanced Edge Detection</span>
 						{#if config.enable_etf_fdog || config.enable_flow_tracing}
-							<span
-								class="inline-flex items-center rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800"
-							>
-								Active
-							</span>
+							<Check class="h-4 w-4 text-green-600" />
 						{/if}
 					</div>
 					<div class="flex-shrink-0">
@@ -494,11 +483,7 @@
 						<Sparkles class="text-ferrari-600 h-4 w-4" />
 						<span class="text-converter-primary font-medium">Advanced Stippling</span>
 						{#if config.adaptive_sizing !== false || config.poisson_disk_sampling}
-							<span
-								class="inline-flex items-center rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800"
-							>
-								Active
-							</span>
+							<Check class="h-4 w-4 text-green-600" />
 						{/if}
 					</div>
 					<div class="flex-shrink-0">
@@ -571,11 +556,7 @@
 						<Grid class="text-ferrari-600 h-4 w-4" />
 						<span class="text-converter-primary font-medium">Advanced Regions</span>
 						{#if (config.compactness && config.compactness !== 20) || config.simplify_boundaries !== true}
-							<span
-								class="inline-flex items-center rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800"
-							>
-								Active
-							</span>
+							<Check class="h-4 w-4 text-green-600" />
 						{/if}
 					</div>
 					<div class="flex-shrink-0">

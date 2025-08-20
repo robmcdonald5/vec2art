@@ -377,27 +377,23 @@
 							class="text-converter-primary mr-2 flex-1 text-sm font-medium"
 							title={currentFile?.name}
 						>
-							<div class="filename-display">
-								{currentFile?.name || 'Original'}
+							<div class="filename-display flex items-center gap-2">
+								<span class="flex-1">{currentFile?.name || 'Original'}</span>
+								{#if currentFile}
+									<button
+										class="text-gray-400 hover:text-red-500 transition-colors duration-200 text-sm font-medium"
+										onclick={() => onRemoveFile(currentImageIndex)}
+										disabled={isProcessing}
+										aria-label="Remove current image"
+										title="Remove this image"
+									>
+										×
+									</button>
+								{/if}
 							</div>
 						</div>
 						<!-- Zoom Controls for Original -->
 						<div class="flex gap-1">
-							<!-- Remove current image button -->
-							<Button
-								variant="outline"
-								size="icon"
-								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:border-red-400 hover:bg-red-50 hover:shadow-md active:scale-95 dark:hover:border-red-500 dark:hover:bg-red-900/20"
-								onclick={() => onRemoveFile(currentImageIndex)}
-								disabled={isProcessing}
-								aria-label="Remove current image"
-								title="Remove this image"
-							>
-								<X
-									class="h-4 w-4 text-red-600 transition-transform group-hover:scale-110 dark:text-red-400"
-								/>
-							</Button>
-
 							<Button
 								variant="outline"
 								size="icon"
@@ -411,19 +407,19 @@
 								variant="outline"
 								size="icon"
 								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={originalResetView}
-								aria-label="Reset original image view"
+								onclick={originalZoomIn}
+								aria-label="Zoom in original image"
 							>
-								<Maximize2 class="h-4 w-4 transition-transform group-hover:scale-110" />
+								<ZoomIn class="h-4 w-4 transition-transform group-hover:scale-110" />
 							</Button>
 							<Button
 								variant="outline"
 								size="icon"
 								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={originalZoomIn}
-								aria-label="Zoom in original image"
+								onclick={originalResetView}
+								aria-label="Reset original image view"
 							>
-								<ZoomIn class="h-4 w-4 transition-transform group-hover:scale-110" />
+								<Maximize2 class="h-4 w-4 transition-transform group-hover:scale-110" />
 							</Button>
 						</div>
 					</div>
@@ -484,19 +480,19 @@
 									variant="outline"
 									size="icon"
 									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-									onclick={convertedResetView}
-									aria-label="Reset converted SVG view"
+									onclick={convertedZoomIn}
+									aria-label="Zoom in converted SVG"
 								>
-									<Maximize2 class="h-4 w-4 transition-transform group-hover:scale-110" />
+									<ZoomIn class="h-4 w-4 transition-transform group-hover:scale-110" />
 								</Button>
 								<Button
 									variant="outline"
 									size="icon"
 									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-									onclick={convertedZoomIn}
-									aria-label="Zoom in converted SVG"
+									onclick={convertedResetView}
+									aria-label="Reset converted SVG view"
 								>
-									<ZoomIn class="h-4 w-4 transition-transform group-hover:scale-110" />
+									<Maximize2 class="h-4 w-4 transition-transform group-hover:scale-110" />
 								</Button>
 							</div>
 						</div>

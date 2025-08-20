@@ -372,8 +372,8 @@
 									<label class="text-sm font-medium text-gray-700 dark:text-gray-300"
 										>Thread Count</label
 									>
-									<span class="rounded bg-gray-100 px-2 py-1 font-mono text-xs dark:bg-gray-800"
-										>{currentThreadCount}</span
+									<span class="rounded bg-gray-100 px-2 py-1 font-mono text-xs text-left dark:bg-gray-800"
+										>{currentThreadCount} of {systemCapabilities.cores}</span
 									>
 								</div>
 								<input
