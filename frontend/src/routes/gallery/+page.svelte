@@ -340,10 +340,7 @@
 							{item.title}
 						</h3>
 						<div class="flex items-center gap-2">
-							<span
-								class="rounded-full px-4 py-1.5 text-sm font-semibold text-white shadow-md"
-								style="background: linear-gradient(135deg, #ff6b6b 0%, #dc143c 50%, #b91c2e 100%); box-shadow: 0 4px 15px -3px rgba(220, 20, 60, 0.3);"
-							>
+							<span class="algorithm-badge">
 								{item.algorithm}
 							</span>
 						</div>
@@ -387,10 +384,7 @@
 			<div class="mb-8">
 				<h2 class="text-speed-gray-900 mb-3 text-3xl font-bold">{selectedItem.title}</h2>
 				<div class="flex items-center gap-4">
-					<span
-						class="rounded-full px-4 py-2 text-sm font-semibold text-white shadow-md"
-						style="background: linear-gradient(135deg, #ff6b6b 0%, #dc143c 50%, #b91c2e 100%); box-shadow: 0 4px 15px -3px rgba(220, 20, 60, 0.3);"
-					>
+					<span class="algorithm-badge py-2">
 						{selectedItem.algorithm}
 					</span>
 					<span class="text-speed-gray-600 text-sm font-medium">

@@ -298,19 +298,19 @@
 											<!-- Left Arrow -->
 											<button
 												onclick={prevShowcase}
-												class="hover:bg-ferrari-600 absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
+												class="group hover:bg-ferrari-600 hover:text-white absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
 												aria-label="Previous example"
 											>
-												<ChevronLeft class="h-4 w-4 text-gray-700" />
+												<ChevronLeft class="h-4 w-4 text-gray-700 group-hover:text-white transition-colors" />
 											</button>
 
 											<!-- Right Arrow -->
 											<button
 												onclick={nextShowcase}
-												class="hover:bg-ferrari-600 absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
+												class="group hover:bg-ferrari-600 hover:text-white absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
 												aria-label="Next example"
 											>
-												<ChevronRight class="h-4 w-4 text-gray-700" />
+												<ChevronRight class="h-4 w-4 text-gray-700 group-hover:text-white transition-colors" />
 											</button>
 										</div>
 									</div>

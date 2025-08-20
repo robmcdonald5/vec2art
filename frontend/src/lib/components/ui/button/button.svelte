@@ -14,7 +14,8 @@
 						'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
 					secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
 					ghost: 'hover:bg-accent hover:text-accent-foreground',
-					link: 'text-primary underline-offset-4 hover:underline'
+					link: 'text-primary underline-offset-4 hover:underline',
+					ferrari: 'btn-ferrari-primary text-white font-semibold shadow hover:bg-primary/90'
 				},
 				size: {
 					default: 'h-9 px-4 py-2',
@@ -111,13 +112,12 @@
 
 <svelte:element
 	this={as}
-	class={cn(buttonVariants({ variant, size }), className)}
+	class={cn(buttonVariants({ variant, size }), "btn-clickable", className)}
 	{disabled}
 	{type}
 	onclick={handleClick}
 	{onmouseenter}
 	{onmouseleave}
-	style="pointer-events: auto !important;"
 	{...restProps}
 >
 	{#if children}

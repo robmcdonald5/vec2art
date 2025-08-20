@@ -49,6 +49,7 @@
 	let pageLoaded = $state(false);
 	let initError = $state<string | null>(null);
 	let hasRecoveredState = $state(false);
+	let isRecoveringState = $state(false);
 
 	// Converter configuration state
 	let config = $state<VectorizerConfig>({
@@ -97,12 +98,47 @@
 	}
 
 	// File management functions
-	async function handleFilesSelect(selectedFiles: File[], preserveCurrentIndex: boolean = false) {
+	async function handleFilesSelect(selectedFiles: File[], preserveCurrentIndex: boolean = false, retryCount: number = 0) {
+		console.log('🔍 [DEBUG] handleFilesSelect called:', {
+			selectedFilesCount: selectedFiles.length,
+			selectedFileNames: selectedFiles.map(f => f.name),
+			currentFilesCount: files.length,
+			currentOriginalUrlsCount: originalImageUrls.length,
+			preserveCurrentIndex,
+			isRecoveringState,
+			pageLoaded
+		});
+
+		// CRITICAL: Don't process uploads during state recovery to prevent race conditions
+		if (isRecoveringState) {
+			console.log('⚠️ [DEBUG] Blocking file upload during state recovery, retry count:', retryCount);
+			
+			// Prevent infinite retry loops
+			if (retryCount >= 50) { // Max 5 seconds of retries (50 * 100ms)
+				console.error('❌ [DEBUG] Max retry attempts reached, forcing state recovery to complete');
+				isRecoveringState = false; // Force recovery to complete
+			} else {
+				// Queue the upload to retry after state recovery completes
+				setTimeout(() => handleFilesSelect(selectedFiles, preserveCurrentIndex, retryCount + 1), 100);
+				return;
+			}
+		}
+
 		const previousFileCount = files.length;
 		const previousRestoredCount = Math.max(originalImageUrls.length, filesMetadata.length);
-		const hasExistingData = previousFileCount > 0 || previousRestoredCount > 0;
+		
+		// FIXED: Don't consider restored state as "existing data" for fresh uploads
+		// Only consider actual File objects as existing data
+		const hasExistingFiles = previousFileCount > 0;
 
-		if (preserveCurrentIndex && hasExistingData) {
+		console.log('🔍 [DEBUG] File selection state:', {
+			previousFileCount,
+			previousRestoredCount,
+			hasExistingFiles,
+			preserveCurrentIndex
+		});
+
+		if (preserveCurrentIndex && hasExistingFiles) {
 			// Adding files - append to existing arrays
 			files = selectedFiles; // selectedFiles already contains existing + new files from handleAddMore
 
@@ -176,16 +212,14 @@
 		}
 
 		// Only reset index if we're replacing all files, not adding to existing ones
-		if (!preserveCurrentIndex || (!hasExistingData)) {
+		if (!preserveCurrentIndex || (!hasExistingFiles)) {
 			currentImageIndex = 0;
 			// Clear previous results when replacing
 			results = [];
 			previewSvgUrls = [];
 		} else {
 			// When adding files, switch to the first newly added file
-			// For restored state, switch to the newly added file after restored data
-			const indexToSwitchTo = Math.max(previousFileCount, previousRestoredCount);
-			currentImageIndex = indexToSwitchTo;
+			currentImageIndex = previousFileCount;
 		}
 
 		if (selectedFiles.length > 0) {
@@ -197,6 +231,13 @@
 			}
 		}
 		announceToScreenReader(`${selectedFiles.length} file(s) selected`);
+
+		console.log('🔍 [DEBUG] handleFilesSelect completed:', {
+			finalFilesCount: files.length,
+			finalFileNames: files.map(f => f.name),
+			finalOriginalUrlsCount: originalImageUrls.length,
+			finalCurrentIndex: currentImageIndex
+		});
 	}
 
 	function handleImageIndexChange(index: number) {
@@ -284,6 +325,16 @@
 
 	// Conversion functions
 	async function handleConvert() {
+		console.log('🔍 [DEBUG] handleConvert called with state:', {
+			canConvert,
+			filesCount: files.length,
+			originalImageUrlsCount: originalImageUrls.length,
+			resultsCount: results.length,
+			currentImageIndex,
+			isProcessing,
+			hasFiles
+		});
+
 		if (!canConvert) {
 			console.warn('Cannot convert - no files or already processing');
 			return;
@@ -307,6 +358,17 @@
 				await vectorizerStore.initializeThreads(threadCount || 4);
 			}
 
+			// Check if we have any actual files to process
+			if (files.length === 0) {
+				console.log('🔍 [DEBUG] No files available for conversion');
+				if (originalImageUrls.length > 0) {
+					toastStore.error('Files from previous session could not be restored. Please upload your images again.');
+				} else {
+					toastStore.error('No files available for conversion. Please upload some images first.');
+				}
+				return;
+			}
+
 			// Smart conversion logic:
 			// 1. Always convert current image (even if already converted)
 			// 2. Convert any images that don't have results yet
@@ -316,8 +378,10 @@
 			const indexMapping: number[] = []; // Maps processed file index to original file index
 
 			// Always include current image first (gets re-converted)
-			filesToProcess.push(files[currentImageIndex]);
-			indexMapping.push(currentImageIndex);
+			if (files[currentImageIndex]) {
+				filesToProcess.push(files[currentImageIndex]);
+				indexMapping.push(currentImageIndex);
+			}
 
 			// Add any files that haven't been converted yet
 			for (let i = 0; i < files.length; i++) {
@@ -328,7 +392,7 @@
 			}
 
 			if (filesToProcess.length === 0) {
-				toastStore.info('All images are already converted');
+				toastStore.info('No files available for conversion');
 				return;
 			}
 
@@ -403,6 +467,14 @@
 	}
 
 	function handleDownload() {
+		console.log('🔍 [DEBUG] handleDownload called:', {
+			canDownload,
+			currentImageIndex,
+			resultsLength: results.length,
+			filesLength: files.length,
+			filesMetadataLength: filesMetadata.length
+		});
+
 		if (!canDownload) {
 			console.warn('Cannot download - no results available');
 			return;
@@ -410,25 +482,37 @@
 
 		try {
 			const result = results[currentImageIndex];
-			const file = files[currentImageIndex];
+			
+			// Get filename from either file object or metadata
+			let filename = 'converted_image';
+			if (files[currentImageIndex]) {
+				filename = files[currentImageIndex].name.replace(/\.[^/.]+$/, '');
+			} else if (filesMetadata[currentImageIndex]) {
+				filename = filesMetadata[currentImageIndex].name.replace(/\.[^/.]+$/, '');
+			}
 
-			if (result && file) {
+			if (result && result.svg) {
 				const blob = new Blob([result.svg], { type: 'image/svg+xml' });
 				const url = URL.createObjectURL(blob);
 				const a = document.createElement('a');
 
 				a.href = url;
-				a.download = `${file.name.replace(/\.[^/.]+$/, '')}.svg`;
+				a.download = `${filename}.svg`;
 
 				document.body.appendChild(a);
 				a.click();
 				document.body.removeChild(a);
 				URL.revokeObjectURL(url);
 
-				announceToScreenReader(`Downloaded ${file.name}.svg`);
+				announceToScreenReader(`Downloaded ${filename}.svg`);
+				console.log('✅ [DEBUG] Successfully downloaded:', `${filename}.svg`);
+			} else {
+				console.warn('🔍 [DEBUG] No result available for download:', { result });
+				toastStore.error('No conversion result available for download');
 			}
 		} catch (error) {
 			console.error('Download failed:', error);
+			toastStore.error('Download failed');
 			announceToScreenReader('Download failed', 'assertive');
 		}
 	}
@@ -500,7 +584,7 @@
 			await vectorizerStore.initialize({ autoInitThreads: false });
 
 			// Always auto-recover state seamlessly
-			recoverSavedState();
+			await recoverSavedState();
 
 			// Initialize parameter history with config
 			parameterHistory.initialize(config);
@@ -514,44 +598,84 @@
 		}
 	});
 
-	// Recover saved state function - completely seamless
-	function recoverSavedState() {
-		console.log('🔄 [DEBUG] Starting state recovery...');
-
-		// Debug localStorage contents
-		const allVec2artKeys = Object.keys(localStorage).filter((k) => k.startsWith('vec2art_'));
-		console.log('🔍 [DEBUG] localStorage vec2art keys found:', allVec2artKeys);
-		allVec2artKeys.forEach((key) => {
-			console.log(`📄 [DEBUG] ${key}:`, localStorage.getItem(key));
-		});
-
-		const state = converterPersistence.loadCompleteState();
-		console.log('📋 [DEBUG] loadCompleteState result:', state);
-
-		if (!state) {
-			console.log('⚠️ [DEBUG] No complete state found, trying individual preferences...');
-			// Even if no complete state, try to load individual preferences
-			const savedConfig = converterPersistence.loadConfig();
-			console.log('⚙️ [DEBUG] savedConfig:', savedConfig);
-			if (savedConfig) {
-				config = savedConfig;
-				console.log('✅ [DEBUG] Config restored');
+	// Helper function to convert data URL to File object
+	function dataUrlToFile(dataUrl: string, metadata: FileMetadata): File {
+		try {
+			// Parse the data URL
+			const parts = dataUrl.split(',');
+			if (parts.length !== 2) {
+				throw new Error('Invalid data URL format');
 			}
-			const savedPreset = converterPersistence.loadPreset();
-			console.log('🎨 [DEBUG] savedPreset:', savedPreset);
-			if (savedPreset) {
-				selectedPreset = savedPreset as VectorizerPreset | 'custom';
-				console.log('✅ [DEBUG] Preset restored');
+
+			const header = parts[0];
+			const data = parts[1];
+			
+			// Extract MIME type
+			const mimeMatch = header.match(/data:([^;]+)/);
+			const mimeType = mimeMatch ? mimeMatch[1] : metadata.type;
+			
+			// Decode base64 data
+			const byteString = atob(data);
+			const arrayBuffer = new ArrayBuffer(byteString.length);
+			const uint8Array = new Uint8Array(arrayBuffer);
+			
+			for (let i = 0; i < byteString.length; i++) {
+				uint8Array[i] = byteString.charCodeAt(i);
 			}
-			const perfSettings = converterPersistence.loadPerformanceSettings();
-			console.log('⚡ [DEBUG] perfSettings:', perfSettings);
-			if (perfSettings.mode) {
-				performanceMode = perfSettings.mode as PerformanceMode;
-				threadCount = perfSettings.threadCount;
-				console.log('✅ [DEBUG] Performance settings restored');
-			}
-			return;
+			
+			return new File([arrayBuffer], metadata.name, {
+				type: mimeType,
+				lastModified: metadata.lastModified
+			});
+		} catch (error) {
+			console.error('Error converting data URL to File:', error);
+			throw new Error(`Failed to recreate file ${metadata.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		}
+	}
+
+	// Recover saved state function - completely seamless
+	async function recoverSavedState() {
+		try {
+			isRecoveringState = true;
+			console.log('🔄 [DEBUG] Starting state recovery...');
+
+			// Debug localStorage contents
+			const allVec2artKeys = Object.keys(localStorage).filter((k) => k.startsWith('vec2art_'));
+			console.log('🔍 [DEBUG] localStorage vec2art keys found:', allVec2artKeys);
+			allVec2artKeys.forEach((key) => {
+				console.log(`📄 [DEBUG] ${key}:`, localStorage.getItem(key));
+			});
+
+			const state = converterPersistence.loadCompleteState();
+			console.log('📋 [DEBUG] loadCompleteState result:', state);
+
+			if (!state) {
+				console.log('⚠️ [DEBUG] No complete state found, trying individual preferences...');
+				// Even if no complete state, try to load individual preferences
+				const savedConfig = converterPersistence.loadConfig();
+				console.log('⚙️ [DEBUG] savedConfig:', savedConfig);
+				if (savedConfig) {
+					config = savedConfig;
+					console.log('✅ [DEBUG] Config restored');
+				}
+				const savedPreset = converterPersistence.loadPreset();
+				console.log('🎨 [DEBUG] savedPreset:', savedPreset);
+				if (savedPreset) {
+					selectedPreset = savedPreset as VectorizerPreset | 'custom';
+					console.log('✅ [DEBUG] Preset restored');
+				}
+				const perfSettings = converterPersistence.loadPerformanceSettings();
+				console.log('⚡ [DEBUG] perfSettings:', perfSettings);
+				if (perfSettings.mode) {
+					performanceMode = perfSettings.mode as PerformanceMode;
+					threadCount = perfSettings.threadCount;
+					console.log('✅ [DEBUG] Performance settings restored');
+				}
+				// CRITICAL: Set recovery as complete even when no state found
+				isRecoveringState = false;
+				console.log('✅ [DEBUG] State recovery completed (no state found)');
+				return;
+			}
 
 		console.log('✨ [DEBUG] Complete state found, restoring...');
 		// Restore configuration seamlessly
@@ -576,15 +700,49 @@
 			console.log('✅ [DEBUG] Current index restored from complete state');
 		}
 
-		// Restore original image URLs and file metadata
-		if (state.imageUrls && state.imageUrls.length > 0) {
-			originalImageUrls = state.imageUrls;
-			console.log('✅ [DEBUG] Original image URLs restored from complete state');
-		}
-		if (state.filesMetadata && state.filesMetadata.length > 0) {
+		// Restore original image URLs and recreate File objects
+		if (state.imageUrls && state.imageUrls.length > 0 && state.filesMetadata && state.filesMetadata.length > 0) {
+			console.log('🔄 [DEBUG] Recreating File objects from stored data URLs...');
+			
+			const restoredFiles: File[] = [];
+			const restoredImageUrls: (string | null)[] = [];
+			
+			for (let i = 0; i < state.imageUrls.length; i++) {
+				const dataUrl = state.imageUrls[i];
+				const metadata = state.filesMetadata[i];
+				
+				if (dataUrl && metadata) {
+					try {
+						// Convert data URL back to File object
+						const file = dataUrlToFile(dataUrl, metadata);
+						restoredFiles.push(file);
+						
+						// Create new blob URL for display
+						const displayUrl = URL.createObjectURL(file);
+						restoredImageUrls.push(displayUrl);
+						
+						console.log(`✅ [DEBUG] Recreated file: ${metadata.name}`);
+					} catch (error) {
+						console.error(`❌ [DEBUG] Failed to recreate file ${metadata.name}:`, error);
+						// Keep the data URL as fallback for display
+						restoredImageUrls.push(dataUrl);
+					}
+				} else {
+					restoredImageUrls.push(null);
+				}
+			}
+			
+			// Set the recreated files and URLs
+			files = restoredFiles;
+			originalImageUrls = restoredImageUrls;
+			
 			// Store metadata for restoration after function completes
 			pendingFilesMetadata = [...state.filesMetadata];
-			console.log('✅ [DEBUG] Files metadata scheduled for restoration');
+			console.log(`✅ [DEBUG] Recreated ${restoredFiles.length} files from stored state`);
+		} else if (state.filesMetadata && state.filesMetadata.length > 0) {
+			// Fallback: just metadata without data URLs (older format)
+			pendingFilesMetadata = [...state.filesMetadata];
+			console.log('✅ [DEBUG] Files metadata scheduled for restoration (no data URLs)');
 		}
 
 		// Restore results (but not files - user needs to re-upload)
@@ -614,6 +772,15 @@
 			// Subtle notification - not intrusive
 			console.log(`Restored ${filesMetadata.length} previous results`);
 			hasRecoveredState = true;
+		}
+
+			// CRITICAL: Mark state recovery as complete
+			isRecoveringState = false;
+			console.log('✅ [DEBUG] State recovery completed');
+		} catch (error) {
+			console.error('❌ [DEBUG] Error during state recovery:', error);
+			// CRITICAL: Always clear the recovery flag, even on error
+			isRecoveringState = false;
 		}
 	}
 
@@ -645,14 +812,14 @@
 
 	// Save files metadata when files change
 	$effect(() => {
-		if (!pageLoaded || files.length === 0) return;
+		if (!pageLoaded || files.length === 0 || isRecoveringState) return;
 		console.log('💾 [DEBUG] Saving files metadata:', files.length, 'files');
 		converterPersistence.saveFilesMetadata(files);
 	});
 
 	// Save image URLs when files change (async) - only save when we have actual files
 	$effect(() => {
-		if (!pageLoaded || files.length === 0) return;
+		if (!pageLoaded || files.length === 0 || isRecoveringState) return;
 		console.log('💾 [DEBUG] Saving image URLs:', files.length, 'files');
 		converterPersistence
 			.saveImageUrls(files)
@@ -666,7 +833,7 @@
 
 	// Save results when they change
 	$effect(() => {
-		if (!pageLoaded || results.length === 0) return;
+		if (!pageLoaded || results.length === 0 || isRecoveringState) return;
 		console.log('💾 [DEBUG] Saving results:', results.length, 'results');
 		converterPersistence.saveResults(results);
 	});

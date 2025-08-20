@@ -158,7 +158,7 @@
 						'disabled:opacity-50 disabled:cursor-not-allowed',
 						'transition-all duration-150',
 						isSelected
-							? 'text-white font-semibold'
+							? 'bg-ferrari-600 text-white font-semibold'
 							: 'text-converter-primary hover:bg-ferrari-50/30 hover:text-ferrari-700 focus:bg-ferrari-50/40 focus:text-ferrari-700'
 					]
 						.filter(Boolean)
@@ -167,7 +167,6 @@
 					<button
 						type="button"
 						class={optionClasses}
-						style={isSelected ? 'background-color: #b91c2e !important;' : ''}
 						onclick={() => selectOption(option)}
 						disabled={option.disabled}
 						role="option"

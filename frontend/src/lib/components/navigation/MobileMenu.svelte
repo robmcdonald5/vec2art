@@ -35,7 +35,7 @@
 <!-- Mobile Menu Button (visible on small screens) -->
 <button
 	onclick={onToggle}
-	class="relative z-50 rounded-lg border border-gray-200 bg-white/80 p-2 backdrop-blur-sm transition-colors hover:bg-gray-50 md:hidden dark:border-gray-700 dark:bg-gray-900/80 dark:hover:bg-gray-800"
+	class="relative z-50 rounded-lg border border-gray-200 bg-white/80 p-2 backdrop-blur-sm transition-all duration-200 hover:bg-gray-50 hover:shadow-sm hover:scale-105 active:scale-95 md:hidden dark:border-gray-700 dark:bg-gray-900/80 dark:hover:bg-gray-800"
 	aria-label={isOpen ? 'Close menu' : 'Open menu'}
 	aria-expanded={isOpen}
 >
@@ -85,8 +85,8 @@
 							onclick={handleNavClick}
 							class="flex items-center justify-between rounded-lg px-4 py-3 transition-all duration-200
 								{isActive(item.href)
-								? 'from-ferrari-50 dark:from-ferrari-900/20 text-ferrari-600 dark:text-ferrari-400 bg-gradient-to-r to-red-50 font-medium dark:to-red-900/20'
-								: 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}"
+								? 'from-ferrari-600 dark:from-ferrari-600 text-white dark:text-white bg-gradient-to-r to-ferrari-700 font-medium dark:to-ferrari-700 shadow-sm'
+								: 'text-gray-700 hover:bg-gray-100 hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] dark:text-gray-300 dark:hover:bg-gray-800'}"
 							aria-current={isActive(item.href) ? 'page' : undefined}
 						>
 							<div class="flex items-center gap-3">
@@ -109,7 +109,7 @@
 				href="/converter"
 				use:preload
 				onclick={handleNavClick}
-				class="from-ferrari-500 hover:from-ferrari-600 block w-full rounded-lg bg-gradient-to-r to-red-600 px-4 py-3 text-center font-medium text-white shadow-lg transition-all duration-200 hover:to-red-700 hover:shadow-xl"
+				class="from-ferrari-500 hover:from-ferrari-600 block w-full rounded-lg bg-gradient-to-r to-red-600 px-4 py-3 text-center font-medium text-white shadow-lg transition-all duration-200 hover:to-red-700 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
 			>
 				Start Converting
 			</a>

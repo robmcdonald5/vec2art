@@ -276,9 +276,8 @@
 				</Button>
 			{:else if canConvert}
 				<Button
-					variant="default"
+					variant="ferrari"
 					size="sm"
-					style="background-color: #FF2800 !important; color: white !important; border-color: #FF2800 !important;"
 					class="transition-all duration-200 hover:-translate-y-0.5 hover:scale-105 hover:shadow-lg active:translate-y-0 active:scale-95"
 					onclick={onConvert}
 					disabled={!canConvert}

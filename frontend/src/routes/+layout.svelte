@@ -85,8 +85,8 @@
 						use:preload
 						class="focus:ring-ferrari-500 relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:outline-none md:text-base {$page
 							.url.pathname === '/converter'
-							? 'border-ferrari-500/30 bg-ferrari-50 text-ferrari-600 border'
-							: 'text-speed-gray-600 hover:bg-speed-gray-50 hover:text-speed-gray-900 border border-transparent'}"
+							? 'border-ferrari-500/30 bg-ferrari-100 text-gray-900 font-medium border shadow-sm'
+							: 'text-speed-gray-600 hover:bg-speed-gray-50 hover:text-speed-gray-900 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] border border-transparent'}"
 						aria-current={$page.url.pathname === '/converter' ? 'page' : undefined}
 					>
 						Converter
@@ -101,8 +101,8 @@
 						use:preload
 						class="focus:ring-ferrari-500 relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:outline-none md:text-base {$page
 							.url.pathname === '/gallery'
-							? 'border-ferrari-500/30 bg-ferrari-50 text-ferrari-600 border'
-							: 'text-speed-gray-600 hover:bg-speed-gray-50 hover:text-speed-gray-900 border border-transparent'}"
+							? 'border-ferrari-500/30 bg-ferrari-100 text-gray-900 font-medium border shadow-sm'
+							: 'text-speed-gray-600 hover:bg-speed-gray-50 hover:text-speed-gray-900 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] border border-transparent'}"
 						aria-current={$page.url.pathname === '/gallery' ? 'page' : undefined}
 					>
 						Gallery
@@ -116,8 +116,8 @@
 						href="/about"
 						class="focus:ring-ferrari-500 relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:outline-none md:text-base {$page
 							.url.pathname === '/about'
-							? 'border-ferrari-500/30 bg-ferrari-50 text-ferrari-600 border'
-							: 'text-speed-gray-600 hover:bg-speed-gray-50 hover:text-speed-gray-900 border border-transparent'}"
+							? 'border-ferrari-500/30 bg-ferrari-100 text-gray-900 font-medium border shadow-sm'
+							: 'text-speed-gray-600 hover:bg-speed-gray-50 hover:text-speed-gray-900 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] border border-transparent'}"
 						aria-current={$page.url.pathname === '/about' ? 'page' : undefined}
 					>
 						About
@@ -132,7 +132,7 @@
 				<a
 					href="/converter"
 					use:preload
-					class="btn-ferrari-primary shadow-ferrari-500/25 hover:animate-quick-lift hidden h-10 items-center justify-center gap-2 rounded-md px-6 text-sm font-medium whitespace-nowrap shadow-lg transition-colors focus:outline-none md:inline-flex"
+					class="btn-ferrari-primary shadow-ferrari-500/25 hover:animate-quick-lift hidden h-10 items-center justify-center gap-2 rounded-md px-6 text-sm font-semibold text-white whitespace-nowrap shadow-lg transition-colors focus:outline-none md:inline-flex"
 				>
 					Get Started
 				</a>

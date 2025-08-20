@@ -211,7 +211,7 @@
 								disabled={isProcessing}
 								class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 dark:bg-gray-700"
 							/>
-							<div class="mt-1 flex justify-between text-xs" style="color: #6b7280 !important;">
+							<div class="slider-labels">
 								<span>Simple</span>
 								<span>{Math.round(config.detail * 10)}/10</span>
 								<span>Detailed</span>
@@ -233,7 +233,7 @@
 								disabled={isProcessing}
 								class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 dark:bg-gray-700"
 							/>
-							<div class="mt-1 flex justify-between text-xs" style="color: #6b7280 !important;">
+							<div class="slider-labels">
 								<span>Thin</span>
 								<span>{config.stroke_width.toFixed(1)}px</span>
 								<span>Thick</span>

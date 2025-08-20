@@ -379,11 +379,11 @@
 
 		<div class="card-ferrari-contact animate-on-scroll rounded-3xl p-8 text-center">
 			<div class="flex flex-col gap-6 sm:flex-row sm:justify-center">
-				<Button class="btn-ferrari-primary flex items-center gap-2">
+				<Button variant="ferrari" class="flex items-center gap-2">
 					<Github class="h-5 w-5" />
 					Report an Issue
 				</Button>
-				<Button class="btn-ferrari-primary flex items-center gap-2">
+				<Button variant="ferrari" class="flex items-center gap-2">
 					<ExternalLink class="h-5 w-5" />
 					Join Discussions
 				</Button>
