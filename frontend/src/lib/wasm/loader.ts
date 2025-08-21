@@ -69,14 +69,14 @@ export async function loadVectorizer(options?: {
 			});
 
 			// Only initialize thread pool if explicitly requested
-			if (shouldInitThreads && isIsolated && hasSharedArrayBuffer && wasmJs.init_thread_pool) {
+			if (shouldInitThreads && isIsolated && hasSharedArrayBuffer && wasmJs.initThreadPool) {
 				try {
 					console.log('[WASM Loader] Initializing thread pool (explicitly requested)...');
 					const threadCount =
 						options?.threadCount ?? Math.min(navigator.hardwareConcurrency - 1 || 4, 8); // Default: leave 1 core free, max 8
 
 					const startTime = performance.now();
-					const promise = wasmJs.init_thread_pool(threadCount);
+					const promise = wasmJs.initThreadPool(threadCount);
 					await promise;
 
 					// Use our fixed state management functions
@@ -134,7 +134,6 @@ export async function loadVectorizer(options?: {
 				WasmBackend: !!wasmJs.WasmBackend,
 				WasmPreset: !!wasmJs.WasmPreset,
 				initThreadPool: typeof wasmJs.initThreadPool === 'function',
-				init_thread_pool: typeof wasmJs.init_thread_pool === 'function',
 				is_threading_supported: typeof wasmJs.is_threading_supported === 'function',
 				check_threading_requirements: typeof wasmJs.check_threading_requirements === 'function',
 				confirm_threading_success: typeof wasmJs.confirm_threading_success === 'function',
@@ -150,29 +149,9 @@ export async function loadVectorizer(options?: {
 
 			wasmModule = wasmJs;
 			
-			// Initialize thread pool for multithreading support
-			if (typeof wasmJs.initThreadPool === 'function') {
-				try {
-					console.log('[WASM Loader] Initializing thread pool...');
-					const threadCount = navigator.hardwareConcurrency || 4;
-					const promise = wasmJs.initThreadPool(threadCount);
-					await promise;
-					
-					// Confirm threading success after promise resolves
-					if (typeof wasmJs.confirm_threading_success === 'function') {
-						wasmJs.confirm_threading_success();
-						console.log(`[WASM Loader] ✅ Thread pool initialized with ${threadCount} threads`);
-					}
-				} catch (threadError) {
-					console.warn('[WASM Loader] Thread pool initialization failed:', threadError);
-					// Mark threading as failed for fallback to single-threaded mode
-					if (typeof wasmJs.mark_threading_failed === 'function') {
-						wasmJs.mark_threading_failed();
-					}
-				}
-			} else {
-				console.warn('[WASM Loader] initThreadPool not available, running in single-threaded mode');
-			}
+			// DISABLED: Thread pool auto-initialization to prevent CPU spinning
+			// Thread pool will be initialized only when explicitly requested
+			console.log('[WASM Loader] Thread pool initialization deferred (lazy loading mode)');
 			
 			console.log('[WASM Loader] ✅ Initialization complete');
 
@@ -284,7 +263,7 @@ export async function initializeThreadPool(threadCount?: number): Promise<boolea
 	const isIsolated = typeof window !== 'undefined' && window.crossOriginIsolated;
 	const hasSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
 
-	if (!isIsolated || !hasSharedArrayBuffer || !wasmModule.init_thread_pool) {
+	if (!isIsolated || !hasSharedArrayBuffer || !wasmModule.initThreadPool) {
 		console.warn('[WASM Loader] Threading not available in current environment');
 		return false;
 	}
@@ -314,7 +293,7 @@ export async function initializeThreadPool(threadCount?: number): Promise<boolea
 		const startTime = performance.now();
 
 		// Use the correct function name based on the WASM exports
-		const initFunction = wasmModule.init_thread_pool || wasmModule.initThreadPool;
+		const initFunction = wasmModule.initThreadPool;
 		if (!initFunction) {
 			throw new Error('Thread pool initialization function not found');
 		}
@@ -436,7 +415,7 @@ export async function resizeThreadPool(newThreadCount: number): Promise<boolean>
 				await wasmModule.destroy_thread_pool();
 			}
 
-			const initFunction = wasmModule.init_thread_pool || wasmModule.initThreadPool;
+			const initFunction = wasmModule.initThreadPool;
 			await initFunction(safeThreadCount);
 			wasmModule.confirm_threading_success();
 

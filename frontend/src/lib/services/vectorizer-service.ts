@@ -36,6 +36,9 @@ import {
 	shouldUseProgressiveProcessing
 } from '$lib/utils/performance-monitor';
 
+// Import Web Worker service for safe WASM execution
+import { wasmWorkerService } from './wasm-worker-service';
+
 // Dynamic import type for WASM module
 type WasmModule = any; // We'll type this properly after loading
 type WasmVectorizer = any;
@@ -49,6 +52,12 @@ export class VectorizerService {
 	private isProcessing = false;
 	private abortController: AbortController | null = null;
 	private currentPerformanceMode: PerformanceMode = 'balanced';
+	
+	// Failure detection and recovery
+	private failureCount = 0;
+	private lastFailureTime = 0;
+	private maxFailureCount = 3;
+	private failureResetTime = 60000; // Reset failure count after 1 minute
 
 	private constructor() {}
 
@@ -144,6 +153,72 @@ export class VectorizerService {
 		} catch (error) {
 			console.error(`[VectorizerService] Error calling ${functionName}:`, error);
 			return false;
+		}
+	}
+
+	/**
+	 * Check if an error is critical and requires WASM reinitialization
+	 */
+	private isCriticalError(error: any): boolean {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		const criticalErrors = [
+			'unreachable executed',
+			'RuntimeError',
+			'wasm is not instantiated',
+			'WebAssembly.instantiate',
+			'memory out of bounds',
+			'recursive use of an object',
+			'already borrowed',
+			'index out of bounds'
+		];
+		
+		return criticalErrors.some(criticalError => 
+			errorMessage.toLowerCase().includes(criticalError.toLowerCase())
+		);
+	}
+
+	/**
+	 * Handle failure and attempt recovery if needed
+	 */
+	private async handleFailure(error: any): Promise<void> {
+		const now = Date.now();
+		
+		// Reset failure count if enough time has passed
+		if (now - this.lastFailureTime > this.failureResetTime) {
+			this.failureCount = 0;
+		}
+		
+		this.failureCount++;
+		this.lastFailureTime = now;
+		
+		console.warn(`[VectorizerService] Failure ${this.failureCount}/${this.maxFailureCount}:`, error);
+		
+		// If this is a critical error and we haven't exceeded max failures, try to recover
+		if (this.isCriticalError(error) && this.failureCount <= this.maxFailureCount) {
+			console.log('[VectorizerService] Attempting automatic recovery...');
+			
+			try {
+				// Mark as uninitialized
+				this.isInitialized = false;
+				this.initializationPromise = null;
+				this.vectorizer = null;
+				this.wasmModule = null;
+				
+				// Wait a bit before reinitializing
+				await new Promise(resolve => setTimeout(resolve, 1000));
+				
+				// Reinitialize WASM module
+				await this.initialize();
+				
+				console.log('[VectorizerService] ✅ Automatic recovery successful');
+				
+				// Reset failure count on successful recovery
+				this.failureCount = 0;
+				
+			} catch (recoveryError) {
+				console.error('[VectorizerService] ❌ Automatic recovery failed:', recoveryError);
+				// Don't throw here, let the original error be handled normally
+			}
 		}
 	}
 
@@ -524,8 +599,17 @@ export class VectorizerService {
 			throw new Error('Vectorizer not initialized');
 		}
 
-		// Create a working copy of the config to apply auto-fixes
-		const workingConfig = { ...config };
+		// Force cleanup of any previous state to prevent object aliasing
+		try {
+			if (typeof this.vectorizer.cleanup_state === 'function') {
+				this.vectorizer.cleanup_state();
+			}
+		} catch (e) {
+			// Ignore cleanup errors as function may not exist
+		}
+
+		// Create a deep copy of the config to prevent object reuse issues
+		const workingConfig = JSON.parse(JSON.stringify(config));
 
 		// Auto-fix: Set hand-drawn preset if custom effects are used
 		const hasHandDrawnEffects =
@@ -574,7 +658,10 @@ export class VectorizerService {
 			}
 
 			// Configure core settings
-			this.vectorizer.set_detail(workingConfig.detail);
+			// Invert detail level: UI shows 0.1=Simple, 1.0=Detailed, but backend expects inverse
+			// (higher backend values = more blur = less detail, so we invert for intuitive UI)
+			const invertedDetail = 1.0 - workingConfig.detail;
+			this.vectorizer.set_detail(invertedDetail);
 			this.vectorizer.set_stroke_width(workingConfig.stroke_width);
 
 			// Configure multi-pass processing
@@ -583,12 +670,12 @@ export class VectorizerService {
 			this.vectorizer.set_reverse_pass(workingConfig.reverse_pass);
 			this.vectorizer.set_diagonal_pass(workingConfig.diagonal_pass);
 
-			// Configure multipass detail levels if specified
+			// Configure multipass detail levels if specified (also invert these)
 			if (workingConfig.conservative_detail !== undefined) {
-				this.safeCall('set_conservative_detail', workingConfig.conservative_detail);
+				this.safeCall('set_conservative_detail', 1.0 - workingConfig.conservative_detail);
 			}
 			if (workingConfig.aggressive_detail !== undefined) {
-				this.safeCall('set_aggressive_detail', workingConfig.aggressive_detail);
+				this.safeCall('set_aggressive_detail', 1.0 - workingConfig.aggressive_detail);
 			}
 
 			// Configure directional strength threshold
@@ -755,6 +842,11 @@ export class VectorizerService {
 			// Validate configuration
 			this.vectorizer.validate_config();
 		} catch (error) {
+			// Handle critical configuration errors with recovery
+			if (this.isCriticalError(error)) {
+				await this.handleFailure(error);
+			}
+
 			const configError: VectorizerError = {
 				type: 'config',
 				message: 'Failed to configure vectorizer',
@@ -772,13 +864,10 @@ export class VectorizerService {
 		config: VectorizerConfig,
 		onProgress?: (progress: ProcessingProgress) => void
 	): Promise<ProcessingResult> {
-		await this.initialize();
-		await this.configure(config);
-
-		if (!this.vectorizer) {
-			throw new Error('Vectorizer not initialized');
-		}
-
+		// Use Web Worker service for processing to prevent main thread blocking
+		// This runs WASM in a separate thread, preventing browser freezing
+		console.log('[VectorizerService] Processing via Web Worker for thread safety');
+		
 		if (this.isProcessing) {
 			throw new Error('Another processing operation is already in progress');
 		}
@@ -792,69 +881,13 @@ export class VectorizerService {
 			// Record processing start for performance monitoring
 			performanceMonitor.recordProcessingTime(0);
 
-			// Check if we should use progressive processing
-			const useProgressiveProcessing = shouldUseProgressiveProcessing();
-			const yieldFunction = performanceMonitor.createYieldingFunction(this.currentPerformanceMode);
-
-			// Optimize thread count based on current system performance
-			if (isThreadPoolInitialized()) {
-				await optimizeThreadCount();
-			}
-
-			let svg: string;
-
-			if (onProgress) {
-				// Enhanced progress callback with yielding
-				const progressCallback = async (stage: string, progress: number, elapsed: number) => {
-					// Check for abort signal
-					if (this.abortController?.signal.aborted) {
-						throw new Error('Processing aborted');
-					}
-
-					const progressData: ProcessingProgress = {
-						stage,
-						progress: Math.round(progress * 100),
-						elapsed_ms: elapsed,
-						estimated_remaining_ms: elapsed > 0 ? (elapsed / progress) * (1 - progress) : undefined
-					};
-
-					// Call original progress callback
-					onProgress(progressData);
-
-					// Yield to browser UI if using progressive processing
-					if (useProgressiveProcessing) {
-						await yieldFunction();
-					}
-
-					// Monitor system stress and adjust if needed
-					if (performanceMonitor.isSystemStressed()) {
-						console.warn('[VectorizerService] System stress detected during processing');
-						await new Promise((resolve) => setTimeout(resolve, 50)); // Extra yield time
-					}
-				};
-
-				if (this.vectorizer.vectorize_with_progress) {
-					svg = await this._processWithProgressiveCallback(
-						imageData,
-						progressCallback,
-						useProgressiveProcessing
-					);
-				} else {
-					// Fallback for WASM without progress support
-					svg = await this._processWithSimulatedProgress(
-						imageData,
-						progressCallback,
-						useProgressiveProcessing
-					);
-				}
-			} else {
-				// Standard vectorization with yielding if needed
-				if (useProgressiveProcessing) {
-					svg = await this._processWithYielding(imageData, yieldFunction);
-				} else {
-					svg = this.vectorizer.vectorize(imageData);
-				}
-			}
+			// Process via Web Worker (runs WASM off main thread)
+			// Pass the complete ImageData object to maintain structure
+			const result = await wasmWorkerService.processImage(
+				imageData,
+				config,
+				onProgress
+			);
 
 			const endTime = performance.now();
 			const processingTime = endTime - startTime;
@@ -862,20 +895,21 @@ export class VectorizerService {
 			// Record processing time for performance monitoring
 			performanceMonitor.recordProcessingTime(processingTime);
 
-			const result: ProcessingResult = {
-				svg,
-				processing_time_ms: processingTime,
-				config_used: config,
-				statistics: {
-					input_dimensions: [imageData.width, imageData.height],
-					paths_generated: this._countSvgPaths(svg),
-					compression_ratio: this._calculateCompressionRatio(imageData, svg)
-				}
-			};
+			// Enhance result with additional statistics
+			result.processing_time_ms = processingTime;
+			result.config_used = config;
+			
+			if (!result.statistics) {
+				result.statistics = {
+					input_dimensions: [imageData.width, imageData.height] as [number, number],
+					paths_generated: this._countSvgPaths(result.svg),
+					compression_ratio: this._calculateCompressionRatio(imageData, result.svg)
+				};
+			}
 
 			// Add dots count for dots backend
 			if (config.backend === 'dots') {
-				result.statistics!.dots_generated = this._countSvgDots(svg);
+				result.statistics.dots_generated = this._countSvgDots(result.svg);
 			}
 
 			return result;
@@ -888,6 +922,9 @@ export class VectorizerService {
 				};
 				throw abortError;
 			}
+
+			// Handle failure and attempt recovery if critical error
+			await this.handleFailure(error);
 
 			const processingError: VectorizerError = {
 				type: 'processing',
