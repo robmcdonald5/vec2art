@@ -564,13 +564,14 @@ export class VectorizerService {
 		}
 
 		try {
+			// CRITICAL: Set backend FIRST before any other configuration
+			// This ensures backend-specific validation happens correctly
+			this.vectorizer.set_backend(workingConfig.backend);
+
 			// Apply preset if specified
 			if (workingConfig.preset) {
 				this.vectorizer.use_preset(workingConfig.preset);
 			}
-
-			// Configure backend
-			this.vectorizer.set_backend(workingConfig.backend);
 
 			// Configure core settings
 			this.vectorizer.set_detail(workingConfig.detail);
@@ -581,6 +582,19 @@ export class VectorizerService {
 			this.vectorizer.set_noise_filtering(workingConfig.noise_filtering);
 			this.vectorizer.set_reverse_pass(workingConfig.reverse_pass);
 			this.vectorizer.set_diagonal_pass(workingConfig.diagonal_pass);
+
+			// Configure multipass detail levels if specified
+			if (workingConfig.conservative_detail !== undefined) {
+				this.safeCall('set_conservative_detail', workingConfig.conservative_detail);
+			}
+			if (workingConfig.aggressive_detail !== undefined) {
+				this.safeCall('set_aggressive_detail', workingConfig.aggressive_detail);
+			}
+
+			// Configure directional strength threshold
+			if (workingConfig.directional_strength_threshold !== undefined) {
+				this.safeCall('set_directional_strength_threshold', workingConfig.directional_strength_threshold);
+			}
 
 			// Configure artistic effects (hand-drawn aesthetics)
 			// Always set hand-drawn preset (required by WASM)
@@ -601,15 +615,38 @@ export class VectorizerService {
 
 				// Set tapering using actual config value (if function exists and config specifies it)
 				if (workingConfig.tapering !== undefined) {
-					this.safeCall('set_tapering', workingConfig.tapering);
+					this.safeCall('set_custom_tapering', workingConfig.tapering);
 				}
 			}
 
 			// Configure advanced features (only for edge backend)
 			if (workingConfig.backend === 'edge') {
-				this.vectorizer.set_enable_etf_fdog(workingConfig.enable_etf_fdog);
-				this.vectorizer.set_enable_flow_tracing(workingConfig.enable_flow_tracing);
-				this.vectorizer.set_enable_bezier_fitting(workingConfig.enable_bezier_fitting);
+				// Handle dependency chain: Bezier -> Flow -> ETF/FDoG
+				// If Bezier is enabled, it requires flow tracing
+				// If flow tracing is enabled, it requires ETF/FDoG
+				let etfFdog = workingConfig.enable_etf_fdog;
+				let flowTracing = workingConfig.enable_flow_tracing;
+				let bezierFitting = workingConfig.enable_bezier_fitting;
+				
+				// Auto-enable dependencies
+				if (bezierFitting && !flowTracing) {
+					console.log('[VectorizerService] Auto-enabling flow tracing for Bezier fitting');
+					flowTracing = true;
+				}
+				if (flowTracing && !etfFdog) {
+					console.log('[VectorizerService] Auto-enabling ETF/FDoG for flow tracing');
+					etfFdog = true;
+				}
+				
+				// Apply in correct order
+				this.vectorizer.set_enable_etf_fdog(etfFdog);
+				this.vectorizer.set_enable_flow_tracing(flowTracing);
+				this.vectorizer.set_enable_bezier_fitting(bezierFitting);
+			} else {
+				// Explicitly disable edge-only features for other backends
+				this.vectorizer.set_enable_etf_fdog(false);
+				this.vectorizer.set_enable_flow_tracing(false);
+				this.vectorizer.set_enable_bezier_fitting(false);
 			}
 
 			// Configure backend-specific settings
@@ -696,9 +733,11 @@ export class VectorizerService {
 				this.safeCall('set_svg_precision', workingConfig.svg_precision);
 			}
 			if (workingConfig.optimize_svg !== undefined) {
+				// Use safeCall since this function might not exist in WASM
 				this.safeCall('set_optimize_svg', workingConfig.optimize_svg);
 			}
 			if (workingConfig.include_metadata !== undefined) {
+				// Use safeCall since this function might not exist in WASM
 				this.safeCall('set_include_metadata', workingConfig.include_metadata);
 			}
 

@@ -407,6 +407,9 @@
 
 			// Set up vectorizer with files to process
 			await vectorizerStore.setInputFiles(filesToProcess);
+			
+			// Sync current config to vectorizer store before processing
+			vectorizerStore.updateConfig(config);
 
 			// Process files
 			const processedResults = await vectorizerStore.processBatch(
@@ -579,7 +582,30 @@
 	}
 
 	function handleBackendChange(backend: VectorizerBackend) {
-		config = { ...config, backend };
+		// Clean up backend-specific settings when switching
+		let cleanedConfig = { ...config, backend };
+		
+		// If switching away from edge backend, disable edge-specific features
+		if (backend !== 'edge') {
+			cleanedConfig.enable_flow_tracing = false;
+			cleanedConfig.enable_bezier_fitting = false;
+			cleanedConfig.enable_etf_fdog = false;
+		}
+		
+		// If switching away from dots backend, reset dots-specific settings
+		if (backend !== 'dots') {
+			cleanedConfig.preserve_colors = false;
+			cleanedConfig.adaptive_sizing = true;
+			cleanedConfig.poisson_disk_sampling = false;
+			cleanedConfig.gradient_based_sizing = false;
+		}
+		
+		// If switching away from centerline backend, reset centerline-specific settings
+		if (backend !== 'centerline') {
+			cleanedConfig.enable_adaptive_threshold = false;
+		}
+		
+		config = cleanedConfig;
 	}
 
 	function handleParameterChange() {
@@ -670,72 +696,72 @@
 	async function recoverSavedState() {
 		try {
 			isRecoveringState = true;
-			console.log('🔄 [DEBUG] Starting state recovery...');
+			// console.log('🔄 [DEBUG] Starting state recovery...');
 
 			// Debug localStorage contents
-			const allVec2artKeys = Object.keys(localStorage).filter((k) => k.startsWith('vec2art_'));
-			console.log('🔍 [DEBUG] localStorage vec2art keys found:', allVec2artKeys);
-			allVec2artKeys.forEach((key) => {
-				console.log(`📄 [DEBUG] ${key}:`, localStorage.getItem(key));
-			});
+			// const allVec2artKeys = Object.keys(localStorage).filter((k) => k.startsWith('vec2art_'));
+			// console.log('🔍 [DEBUG] localStorage vec2art keys found:', allVec2artKeys);
+			// allVec2artKeys.forEach((key) => {
+			// 	console.log(`📄 [DEBUG] ${key}:`, localStorage.getItem(key));
+			// });
 
 			const state = converterPersistence.loadCompleteState();
-			console.log('📋 [DEBUG] loadCompleteState result:', state);
+			// console.log('📋 [DEBUG] loadCompleteState result:', state);
 
 			if (!state) {
-				console.log('⚠️ [DEBUG] No complete state found, trying individual preferences...');
+				// console.log('⚠️ [DEBUG] No complete state found, trying individual preferences...');
 				// Even if no complete state, try to load individual preferences
 				const savedConfig = converterPersistence.loadConfig();
-				console.log('⚙️ [DEBUG] savedConfig:', savedConfig);
+				// console.log('⚙️ [DEBUG] savedConfig:', savedConfig);
 				if (savedConfig) {
 					config = savedConfig;
-					console.log('✅ [DEBUG] Config restored');
+					// console.log('✅ [DEBUG] Config restored');
 				}
 				const savedPreset = converterPersistence.loadPreset();
-				console.log('🎨 [DEBUG] savedPreset:', savedPreset);
+				// console.log('🎨 [DEBUG] savedPreset:', savedPreset);
 				if (savedPreset) {
 					selectedPreset = savedPreset as VectorizerPreset | 'custom';
-					console.log('✅ [DEBUG] Preset restored');
+					// console.log('✅ [DEBUG] Preset restored');
 				}
 				const perfSettings = converterPersistence.loadPerformanceSettings();
-				console.log('⚡ [DEBUG] perfSettings:', perfSettings);
+				// console.log('⚡ [DEBUG] perfSettings:', perfSettings);
 				if (perfSettings.mode) {
 					performanceMode = perfSettings.mode as PerformanceMode;
 					threadCount = perfSettings.threadCount;
-					console.log('✅ [DEBUG] Performance settings restored');
+					// console.log('✅ [DEBUG] Performance settings restored');
 				}
 				// CRITICAL: Set recovery as complete even when no state found
 				isRecoveringState = false;
-				console.log('✅ [DEBUG] State recovery completed (no state found)');
+				// console.log('✅ [DEBUG] State recovery completed (no state found)');
 				return;
 			}
 
-		console.log('✨ [DEBUG] Complete state found, restoring...');
+		// console.log('✨ [DEBUG] Complete state found, restoring...');
 		// Restore configuration seamlessly
 		if (state.config) {
 			config = state.config;
-			console.log('✅ [DEBUG] Config restored from complete state');
+			// console.log('✅ [DEBUG] Config restored from complete state');
 		}
 		if (state.preset) {
 			selectedPreset = state.preset as VectorizerPreset | 'custom';
-			console.log('✅ [DEBUG] Preset restored from complete state');
+			// console.log('✅ [DEBUG] Preset restored from complete state');
 		}
 		if (state.performanceMode) {
 			performanceMode = state.performanceMode as PerformanceMode;
-			console.log('✅ [DEBUG] Performance mode restored from complete state');
+			// console.log('✅ [DEBUG] Performance mode restored from complete state');
 		}
 		if (state.threadCount) {
 			threadCount = state.threadCount;
-			console.log('✅ [DEBUG] Thread count restored from complete state');
+			// console.log('✅ [DEBUG] Thread count restored from complete state');
 		}
 		if (state.currentIndex !== undefined) {
 			currentImageIndex = state.currentIndex;
-			console.log('✅ [DEBUG] Current index restored from complete state');
+			// console.log('✅ [DEBUG] Current index restored from complete state');
 		}
 
 		// Restore original image URLs and recreate File objects
 		if (state.imageUrls && state.imageUrls.length > 0 && state.filesMetadata && state.filesMetadata.length > 0) {
-			console.log('🔄 [DEBUG] Recreating File objects from stored data URLs...');
+			// console.log('🔄 [DEBUG] Recreating File objects from stored data URLs...');
 			
 			const restoredFiles: File[] = [];
 			const restoredImageUrls: (string | null)[] = [];
@@ -754,7 +780,7 @@
 						const displayUrl = URL.createObjectURL(file);
 						restoredImageUrls.push(displayUrl);
 						
-						console.log(`✅ [DEBUG] Recreated file: ${metadata.name}`);
+						// console.log(`✅ [DEBUG] Recreated file: ${metadata.name}`);
 					} catch (error) {
 						console.error(`❌ [DEBUG] Failed to recreate file ${metadata.name}:`, error);
 						// Keep the data URL as fallback for display
@@ -771,11 +797,11 @@
 			
 			// Store metadata for restoration after function completes
 			pendingFilesMetadata = [...state.filesMetadata];
-			console.log(`✅ [DEBUG] Recreated ${restoredFiles.length} files from stored state`);
+			// console.log(`✅ [DEBUG] Recreated ${restoredFiles.length} files from stored state`);
 		} else if (state.filesMetadata && state.filesMetadata.length > 0) {
 			// Fallback: just metadata without data URLs (older format)
 			pendingFilesMetadata = [...state.filesMetadata];
-			console.log('✅ [DEBUG] Files metadata scheduled for restoration (no data URLs)');
+			// console.log('✅ [DEBUG] Files metadata scheduled for restoration (no data URLs)');
 		}
 
 		// Restore results (but not files - user needs to re-upload)
@@ -792,15 +818,17 @@
 			});
 		}
 
+		// Get filesMetadata from state first
+		const filesMetadata = state.filesMetadata;
+
 		// Validate and adjust currentIndex after restoration
-		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata.length, results.length);
+		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata?.length || 0, results.length);
 		if (currentImageIndex >= maxLength) {
 			currentImageIndex = Math.max(0, maxLength - 1);
-			console.log('⚠️ [DEBUG] Adjusted currentIndex to fit restored arrays:', currentImageIndex);
+			// console.log('⚠️ [DEBUG] Adjusted currentIndex to fit restored arrays:', currentImageIndex);
 		}
 
 		// Only show a subtle notification if we recovered actual results
-		const filesMetadata = state.filesMetadata;
 		if (filesMetadata && filesMetadata.length > 0 && state.results && state.results.length > 0) {
 			// Subtle notification - not intrusive
 			console.log(`Restored ${filesMetadata.length} previous results`);
@@ -809,7 +837,7 @@
 
 			// CRITICAL: Mark state recovery as complete
 			isRecoveringState = false;
-			console.log('✅ [DEBUG] State recovery completed');
+			// console.log('✅ [DEBUG] State recovery completed');
 		} catch (error) {
 			console.error('❌ [DEBUG] Error during state recovery:', error);
 			// CRITICAL: Always clear the recovery flag, even on error
@@ -820,44 +848,44 @@
 	// Auto-save individual settings when they change
 	$effect(() => {
 		if (!pageLoaded) return;
-		console.log('💾 [DEBUG] Saving config:', config);
+		// console.log('💾 [DEBUG] Saving config:', config);
 		const saved = converterPersistence.saveConfig(config);
-		console.log('💾 [DEBUG] Config save result:', saved);
+		// console.log('💾 [DEBUG] Config save result:', saved);
 	});
 
 	$effect(() => {
 		if (!pageLoaded) return;
-		console.log('💾 [DEBUG] Saving preset:', selectedPreset);
+		// console.log('💾 [DEBUG] Saving preset:', selectedPreset);
 		converterPersistence.savePreset(selectedPreset);
 	});
 
 	$effect(() => {
 		if (!pageLoaded) return;
-		console.log('💾 [DEBUG] Saving performance settings:', performanceMode, threadCount);
+		// console.log('💾 [DEBUG] Saving performance settings:', performanceMode, threadCount);
 		converterPersistence.savePerformanceSettings(performanceMode, threadCount);
 	});
 
 	$effect(() => {
 		if (!pageLoaded) return;
-		console.log('💾 [DEBUG] Saving current index:', currentImageIndex);
+		// console.log('💾 [DEBUG] Saving current index:', currentImageIndex);
 		converterPersistence.saveCurrentIndex(currentImageIndex);
 	});
 
 	// Save files metadata when files change
 	$effect(() => {
 		if (!pageLoaded || files.length === 0 || isRecoveringState) return;
-		console.log('💾 [DEBUG] Saving files metadata:', files.length, 'files');
+		// console.log('💾 [DEBUG] Saving files metadata:', files.length, 'files');
 		converterPersistence.saveFilesMetadata(files);
 	});
 
 	// Save image URLs when files change (async) - only save when we have actual files
 	$effect(() => {
 		if (!pageLoaded || files.length === 0 || isRecoveringState) return;
-		console.log('💾 [DEBUG] Saving image URLs:', files.length, 'files');
+		// console.log('💾 [DEBUG] Saving image URLs:', files.length, 'files');
 		converterPersistence
 			.saveImageUrls(files)
 			.then((success) => {
-				console.log('💾 [DEBUG] Image URLs save result:', success);
+				// console.log('💾 [DEBUG] Image URLs save result:', success);
 			})
 			.catch((error) => {
 				console.error('❌ [DEBUG] Failed to save image URLs:', error);
@@ -867,7 +895,7 @@
 	// Save results when they change
 	$effect(() => {
 		if (!pageLoaded || results.length === 0 || isRecoveringState) return;
-		console.log('💾 [DEBUG] Saving results:', results.length, 'results');
+		// console.log('💾 [DEBUG] Saving results:', results.length, 'results');
 		converterPersistence.saveResults(results);
 	});
 
@@ -899,7 +927,9 @@
 		};
 	});
 
-	// Debug logging in development
+	// Debug logging in development - DISABLED due to performance issues
+	// Uncomment only when specifically debugging state issues
+	/*
 	if (import.meta.env.DEV) {
 		$effect(() => {
 			console.log('🔍 Converter Page State:', {
@@ -917,6 +947,7 @@
 			});
 		});
 	}
+	*/
 </script>
 
 <svelte:head>

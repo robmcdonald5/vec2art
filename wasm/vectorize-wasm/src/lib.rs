@@ -398,6 +398,39 @@ impl WasmVectorizer {
         self.builder = self.builder.clone().diagonal_pass(enabled);
     }
 
+    /// Set conservative detail level for first pass in multipass processing
+    #[wasm_bindgen]
+    pub fn set_conservative_detail(&mut self, detail: f32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .conservative_detail(Some(detail))
+            .map_err(|e| JsValue::from_str(&format!("Conservative detail error: {e}")))?;
+        Ok(())
+    }
+
+    /// Set aggressive detail level for second pass in multipass processing
+    #[wasm_bindgen]
+    pub fn set_aggressive_detail(&mut self, detail: f32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .aggressive_detail(Some(detail))
+            .map_err(|e| JsValue::from_str(&format!("Aggressive detail error: {e}")))?;
+        Ok(())
+    }
+
+    /// Set directional strength threshold for directional passes
+    #[wasm_bindgen]
+    pub fn set_directional_strength_threshold(&mut self, threshold: f32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .directional_threshold(threshold)
+            .map_err(|e| JsValue::from_str(&format!("Directional threshold error: {e}")))?;
+        Ok(())
+    }
+
     // Dot-specific parameters
 
     /// Set dot density (0.0 = very sparse, 1.0 = very dense)
@@ -696,6 +729,26 @@ impl WasmVectorizer {
             .build()
             .unwrap_or_default()
             .svg_precision
+    }
+
+    // Output optimization settings (placeholders for future implementation)
+
+    /// Enable or disable SVG output optimization (NOT YET IMPLEMENTED)
+    /// This is a placeholder for future implementation
+    #[wasm_bindgen]
+    pub fn set_optimize_svg(&mut self, _enabled: bool) -> Result<(), JsValue> {
+        log::warn!("SVG optimization is not yet implemented - this setting has no effect");
+        // TODO: Implement SVG optimization in core library
+        Ok(())
+    }
+
+    /// Enable or disable metadata inclusion in SVG output (NOT YET IMPLEMENTED)
+    /// This is a placeholder for future implementation
+    #[wasm_bindgen]
+    pub fn set_include_metadata(&mut self, _enabled: bool) -> Result<(), JsValue> {
+        log::warn!("Metadata inclusion is not yet implemented - this setting has no effect");
+        // TODO: Implement metadata inclusion in core library
+        Ok(())
     }
 
     // Threading configuration

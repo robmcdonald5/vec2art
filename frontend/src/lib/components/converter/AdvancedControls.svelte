@@ -643,46 +643,50 @@
 
 			{#if expandedSections.performance}
 				<div class="border-ferrari-200/20 space-y-4 border-t p-4">
-					<!-- SVG Optimization -->
-					<div class="flex items-center space-x-3">
-						<input
-							type="checkbox"
-							id="optimize-svg"
-							checked={config.optimize_svg ?? true}
-							onchange={handleCheckboxChange('optimize_svg')}
-							{disabled}
-							class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-						/>
-						<label
-							for="optimize-svg"
-							class="text-converter-primary cursor-pointer text-sm font-medium"
-						>
-							Optimize SVG Output
-						</label>
-					</div>
-					<div class="text-converter-secondary ml-7 text-xs">
-						Apply output optimization and cleanup for smaller file sizes.
+					<!-- SVG Optimization (NOT YET IMPLEMENTED) -->
+					<div class="opacity-50 cursor-not-allowed" title="This feature is coming soon">
+						<div class="flex items-center space-x-3">
+							<input
+								type="checkbox"
+								id="optimize-svg"
+								checked={config.optimize_svg ?? true}
+								onchange={handleCheckboxChange('optimize_svg')}
+								disabled={true}
+								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded cursor-not-allowed"
+							/>
+							<label
+								for="optimize-svg"
+								class="text-converter-primary text-sm font-medium cursor-not-allowed"
+							>
+								Optimize SVG Output <span class="text-xs text-ferrari-400">(Coming Soon)</span>
+							</label>
+						</div>
+						<div class="text-converter-secondary ml-7 text-xs">
+							Apply output optimization and cleanup for smaller file sizes.
+						</div>
 					</div>
 
-					<!-- Include Metadata -->
-					<div class="flex items-center space-x-3">
-						<input
-							type="checkbox"
-							id="include-metadata"
-							checked={config.include_metadata ?? false}
-							onchange={handleCheckboxChange('include_metadata')}
-							{disabled}
-							class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-						/>
-						<label
-							for="include-metadata"
-							class="text-converter-primary cursor-pointer text-sm font-medium"
-						>
-							Include Processing Metadata
-						</label>
-					</div>
-					<div class="text-converter-secondary ml-7 text-xs">
-						Embed processing information and settings in the SVG file.
+					<!-- Include Metadata (NOT YET IMPLEMENTED) -->
+					<div class="opacity-50 cursor-not-allowed" title="This feature is coming soon">
+						<div class="flex items-center space-x-3">
+							<input
+								type="checkbox"
+								id="include-metadata"
+								checked={config.include_metadata ?? false}
+								onchange={handleCheckboxChange('include_metadata')}
+								disabled={true}
+								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded cursor-not-allowed"
+							/>
+							<label
+								for="include-metadata"
+								class="text-converter-primary text-sm font-medium cursor-not-allowed"
+							>
+								Include Processing Metadata <span class="text-xs text-ferrari-400">(Coming Soon)</span>
+							</label>
+						</div>
+						<div class="text-converter-secondary ml-7 text-xs">
+							Embed processing information and settings in the SVG file.
+						</div>
 					</div>
 
 					<!-- Max Processing Time -->

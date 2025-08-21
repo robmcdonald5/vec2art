@@ -133,6 +133,7 @@ export async function loadVectorizer(options?: {
 				WasmVectorizer: !!wasmJs.WasmVectorizer,
 				WasmBackend: !!wasmJs.WasmBackend,
 				WasmPreset: !!wasmJs.WasmPreset,
+				initThreadPool: typeof wasmJs.initThreadPool === 'function',
 				init_thread_pool: typeof wasmJs.init_thread_pool === 'function',
 				is_threading_supported: typeof wasmJs.is_threading_supported === 'function',
 				check_threading_requirements: typeof wasmJs.check_threading_requirements === 'function',
@@ -148,6 +149,31 @@ export async function loadVectorizer(options?: {
 			}
 
 			wasmModule = wasmJs;
+			
+			// Initialize thread pool for multithreading support
+			if (typeof wasmJs.initThreadPool === 'function') {
+				try {
+					console.log('[WASM Loader] Initializing thread pool...');
+					const threadCount = navigator.hardwareConcurrency || 4;
+					const promise = wasmJs.initThreadPool(threadCount);
+					await promise;
+					
+					// Confirm threading success after promise resolves
+					if (typeof wasmJs.confirm_threading_success === 'function') {
+						wasmJs.confirm_threading_success();
+						console.log(`[WASM Loader] ✅ Thread pool initialized with ${threadCount} threads`);
+					}
+				} catch (threadError) {
+					console.warn('[WASM Loader] Thread pool initialization failed:', threadError);
+					// Mark threading as failed for fallback to single-threaded mode
+					if (typeof wasmJs.mark_threading_failed === 'function') {
+						wasmJs.mark_threading_failed();
+					}
+				}
+			} else {
+				console.warn('[WASM Loader] initThreadPool not available, running in single-threaded mode');
+			}
+			
 			console.log('[WASM Loader] ✅ Initialization complete');
 
 			return wasmModule;

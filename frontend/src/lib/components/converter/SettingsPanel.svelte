@@ -223,15 +223,15 @@
 							min="0.5"
 							max="5"
 							step="0.1"
-							value={config.line_width || 2.0}
-							oninput={updateConfig('line_width')}
+							value={config.stroke_width || 2.0}
+							oninput={updateConfig('stroke_width')}
 							{disabled}
 							class="slider-ferrari w-full"
 							use:initializeSliderFill
 						/>
 						<div class="text-converter-secondary mt-1 flex justify-between text-xs">
 							<span>Thin</span>
-							<span class="font-medium">{(config.line_width || 0).toFixed(1)}px</span>
+							<span class="font-medium">{(config.stroke_width || 0).toFixed(1)}px</span>
 							<span>Thick</span>
 						</div>
 					</div>
