@@ -98,7 +98,7 @@ export function generatePerformanceRecommendations(
 		cpuUsageEstimate: 25
 	});
 
-	// Balanced Mode (Recommended)
+	// Balanced Mode (Recommended) - Dynamic based on user's hardware
 	const balancedThreads = capabilities.recommendedThreads;
 	const balancedReasons = [
 		`Uses ${balancedThreads}/${capabilities.cores} cores`,
@@ -278,12 +278,22 @@ function calculateThreadRecommendations(
 		};
 	}
 
-	// Desktop/laptop
-	const recommended = performance === 'extreme' ? Math.min(cores - 2, 12) : Math.min(cores - 2, 8);
+	// Desktop/laptop - Dynamic recommendations based on hardware
+	// Balanced mode uses ~50% of cores but with intelligent scaling
+	let recommended;
+	if (cores <= 4) {
+		recommended = Math.max(1, cores - 1); // Leave 1 core free on low-end systems
+	} else if (cores <= 8) {
+		recommended = Math.floor(cores * 0.5); // Use ~50% on mid-range systems  
+	} else {
+		recommended = Math.floor(cores * 0.4); // Use ~40% on high-end systems to leave more headroom
+	}
+	
+	const maxSafe = Math.min(cores - 1, 12); // Always leave at least 1 core free, cap at 12 for stability
 
 	return {
 		recommendedThreads: Math.max(1, recommended),
-		maxSafeThreads: Math.min(cores, 12)
+		maxSafeThreads: maxSafe
 	};
 }
 

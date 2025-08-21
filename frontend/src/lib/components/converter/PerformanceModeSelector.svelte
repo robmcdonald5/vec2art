@@ -10,14 +10,22 @@
 		CheckCircle,
 		Cpu,
 		Activity,
-		Info
+		Info,
+		Loader2
 	} from 'lucide-svelte';
 	import type { PerformanceMode } from '$lib/utils/performance-monitor';
 	import {
 		performanceMonitor,
-		getOptimalThreadCount,
+		getOptimalThreadCount as getOptimalThreadCountOld,
 		isLowEndDevice
 	} from '$lib/utils/performance-monitor';
+	import {
+		detectCPUCapabilities,
+		generatePerformanceRecommendations,
+		getDefaultRecommendation,
+		type CPUCapabilities,
+		type PerformanceRecommendation
+	} from '$lib/utils/cpu-detection';
 
 	interface Props {
 		currentMode: PerformanceMode;
@@ -42,9 +50,25 @@
 	let currentMetrics = $state(performanceMonitor.getCurrentMetrics());
 	let monitoringInterval: ReturnType<typeof setInterval> | undefined;
 	let isStressed = $state(false);
+	
+	// New dynamic CPU detection state
+	let cpuCapabilities = $state<CPUCapabilities | null>(null);
+	let performanceRecommendations = $state<PerformanceRecommendation[]>([]);
+	let isDetectingCPU = $state(true);
 
 	// Load saved preferences
-	onMount(() => {
+	onMount(async () => {
+		// Initialize new CPU detection system
+		try {
+			cpuCapabilities = await detectCPUCapabilities();
+			performanceRecommendations = generatePerformanceRecommendations(cpuCapabilities);
+			isDetectingCPU = false;
+			console.log('🖥️ CPU capabilities detected:', cpuCapabilities);
+		} catch (error) {
+			console.error('Failed to detect CPU capabilities:', error);
+			isDetectingCPU = false;
+		}
+
 		const savedMode = localStorage.getItem('vec2art-performance-mode') as PerformanceMode;
 		const savedThreadCount = localStorage.getItem('vec2art-custom-threads');
 
@@ -58,17 +82,19 @@
 		if (savedThreadCount) {
 			customThreadCount = parseInt(savedThreadCount, 10) || 4;
 		} else {
-			customThreadCount = getOptimalThreadCount('balanced');
+			customThreadCount = getOptimalThreadCountOld('balanced');
 		}
 
 		// Start performance monitoring
 		performanceMonitor.startMonitoring();
 
-		// Update metrics periodically
-		monitoringInterval = setInterval(() => {
-			currentMetrics = performanceMonitor.getCurrentMetrics();
-			isStressed = performanceMonitor.isSystemStressed();
-		}, 1000);
+		// Update metrics periodically (reduced frequency in development to save CPU)
+		if (!import.meta.env.DEV) {
+			monitoringInterval = setInterval(() => {
+				currentMetrics = performanceMonitor.getCurrentMetrics();
+				isStressed = performanceMonitor.isSystemStressed();
+			}, 5000); // Reduced from 1s to 5s, disabled in dev
+		}
 
 		// Apply initial mode
 		handleModeChange(currentMode);
@@ -117,6 +143,27 @@
 		}
 	};
 
+	// Helper function to get dynamic thread count based on new CPU detection
+	function getDynamicThreadCount(mode: PerformanceMode): number {
+		if (!cpuCapabilities || isDetectingCPU) {
+			// Fallback to old system while detecting
+			return getOptimalThreadCountOld(mode);
+		}
+
+		// Map old performance modes to new system
+		const modeMapping = {
+			'economy': 'battery',
+			'balanced': 'balanced', 
+			'performance': 'performance',
+			'custom': 'balanced' // fallback for custom
+		} as const;
+
+		const newMode = modeMapping[mode];
+		const recommendation = performanceRecommendations.find(r => r.mode === newMode);
+		
+		return recommendation ? recommendation.threadCount : getOptimalThreadCountOld(mode);
+	}
+
 	function handleModeChange(mode: PerformanceMode) {
 		currentMode = mode;
 		let threadCount: number;
@@ -124,7 +171,7 @@
 		if (mode === 'custom') {
 			threadCount = customThreadCount;
 		} else {
-			threadCount = getOptimalThreadCount(mode);
+			threadCount = getDynamicThreadCount(mode);
 		}
 
 		// Save preferences
@@ -151,9 +198,9 @@
 	// Reactive computed values
 	const recommendedMode = $derived(performanceMonitor.getRecommendedPerformanceMode());
 	const optimalThreads = $derived({
-		economy: getOptimalThreadCount('economy'),
-		balanced: getOptimalThreadCount('balanced'),
-		performance: getOptimalThreadCount('performance'),
+		economy: getDynamicThreadCount('economy'),
+		balanced: getDynamicThreadCount('balanced'),
+		performance: getDynamicThreadCount('performance'),
 		custom: customThreadCount
 	});
 	const currentConfig = $derived(modeConfigs[currentMode]);
@@ -274,21 +321,58 @@
 			<h4 class="text-xs font-medium text-gray-900 dark:text-gray-100">System Information</h4>
 
 			<!-- System Capabilities -->
-			<div class="grid grid-cols-2 gap-3 text-xs">
-				<div class="space-y-1">
-					<div class="flex items-center gap-1">
-						<Cpu class="h-3 w-3" />
-						<span class="text-gray-600 dark:text-gray-400">CPU Cores:</span>
-						<span class="font-medium">{systemCapabilities.cores}</span>
+			{#if cpuCapabilities && !isDetectingCPU}
+				<div class="grid grid-cols-2 gap-3 text-xs">
+					<div class="space-y-1">
+						<div class="flex items-center gap-1">
+							<Cpu class="h-3 w-3" />
+							<span class="text-gray-600 dark:text-gray-400">CPU Cores:</span>
+							<span class="font-medium">{cpuCapabilities.cores}</span>
+						</div>
+						<div class="flex items-center gap-1">
+							<span class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
+								>📱</span
+							>
+							<span class="text-gray-600 dark:text-gray-400">Device:</span>
+							<span class="font-medium capitalize">{cpuCapabilities.deviceType}</span>
+						</div>
 					</div>
-					<div class="flex items-center gap-1">
-						<span class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
-							>📱</span
-						>
-						<span class="text-gray-600 dark:text-gray-400">Device:</span>
-						<span class="font-medium capitalize">{systemCapabilities.deviceType}</span>
+					<div class="space-y-1">
+						<div class="flex items-center gap-1">
+							<Activity class="h-3 w-3" />
+							<span class="text-gray-600 dark:text-gray-400">Performance:</span>
+							<span class="font-medium capitalize">{cpuCapabilities.estimatedPerformance}</span>
+						</div>
+						<div class="flex items-center gap-1">
+							<span class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
+								>💾</span
+							>
+							<span class="text-gray-600 dark:text-gray-400">Memory:</span>
+							<span class="font-medium">{cpuCapabilities.memoryGB}GB</span>
+						</div>
 					</div>
 				</div>
+			{:else if isDetectingCPU}
+				<div class="flex items-center gap-2 text-xs text-gray-500">
+					<Loader2 class="h-3 w-3 animate-spin" />
+					Detecting system capabilities...
+				</div>
+			{:else}
+				<div class="grid grid-cols-2 gap-3 text-xs">
+					<div class="space-y-1">
+						<div class="flex items-center gap-1">
+							<Cpu class="h-3 w-3" />
+							<span class="text-gray-600 dark:text-gray-400">CPU Cores:</span>
+							<span class="font-medium">{systemCapabilities.cores}</span>
+						</div>
+						<div class="flex items-center gap-1">
+							<span class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
+								>📱</span
+							>
+							<span class="text-gray-600 dark:text-gray-400">Device:</span>
+							<span class="font-medium capitalize">{systemCapabilities.deviceType}</span>
+						</div>
+					</div>
 
 				<div class="space-y-1">
 					<div class="flex items-center gap-1">

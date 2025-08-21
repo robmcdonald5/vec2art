@@ -171,16 +171,16 @@
 				},
 				{
 					mode: 'balanced',
-					threadCount: Math.max(1, cores - 2),
-					reasoning: ['Balanced performance'],
+					threadCount: Math.floor(cores * 0.5),
+					reasoning: [`Balanced performance, uses ${Math.floor(cores * 0.5)}/${cores} cores`],
 					warnings: [],
 					estimatedProcessingTime: '2-3 seconds',
 					cpuUsageEstimate: 60
 				},
 				{
 					mode: 'performance',
-					threadCount: cores,
-					reasoning: ['Maximum speed'],
+					threadCount: Math.max(1, cores - 1),
+					reasoning: [`High performance, uses ${Math.max(1, cores - 1)}/${cores} cores`],
 					warnings: ['High CPU usage'],
 					estimatedProcessingTime: '1-2 seconds',
 					cpuUsageEstimate: 85

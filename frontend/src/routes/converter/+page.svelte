@@ -12,7 +12,6 @@
 	import UploadArea from '$lib/components/converter/UploadArea.svelte';
 	import ConverterInterface from '$lib/components/converter/ConverterInterface.svelte';
 	import SettingsPanel from '$lib/components/converter/SettingsPanel.svelte';
-	import ConversionProgress from '$lib/components/ui/progress/ConversionProgress.svelte';
 	import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
 	import { toastStore } from '$lib/stores/toast.svelte';
 	import { parameterHistory } from '$lib/stores/parameter-history.svelte';
@@ -28,7 +27,9 @@
 		VectorizerPreset
 	} from '$lib/types/vectorizer';
 	import type { PerformanceMode } from '$lib/utils/performance-monitor';
+	import { getOptimalThreadCount } from '$lib/utils/performance-monitor';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte.js';
+	import { wasmWorkerService } from '$lib/services/wasm-worker-service';
 
 	// UI State Management - Using Svelte 5 runes
 	let files = $state<File[]>([]);
@@ -62,7 +63,7 @@
 		diagonal_pass: false,
 		enable_etf_fdog: false,
 		enable_flow_tracing: false,
-		enable_bezier_fitting: true,
+		enable_bezier_fitting: false,
 		hand_drawn_preset: 'medium',
 		variable_weights: 0.3,
 		tremor_strength: 0.3,
@@ -73,7 +74,7 @@
 
 	let selectedPreset = $state<VectorizerPreset | 'custom'>('artistic');
 	let performanceMode = $state<PerformanceMode>('balanced');
-	let threadCount = $state(4);
+	let threadCount = $state(4); // Default to balanced mode thread count, will be updated by performance mode calculation
 	let threadsInitialized = $state(false);
 
 	// Derived states for UI logic - account for restored results
@@ -351,16 +352,26 @@
 			batchStartTime = new Date();
 			announceToScreenReader('Starting image conversion');
 
-			// Initialize WASM if needed
-			if (!vectorizerStore.isInitialized) {
-				await vectorizerStore.initialize({ autoInitThreads: true });
-			}
-
-			// CRITICAL: Ensure threads are initialized before processing
-			// This fixes the "first click fails" issue where WASM loads but threads don't
-			if (!vectorizerStore.threadsInitialized) {
-				console.log('🔧 Initializing threads for first-time processing...');
-				await vectorizerStore.initializeThreads(threadCount || 4);
+			// Initialize WASM using Web Worker (prevents main thread blocking)
+			try {
+				if (!wasmWorkerService.initialized) {
+					console.log('🔧 Initializing WASM in Web Worker...');
+					
+					// Initialize with requested thread count (safe in Worker context)
+					await wasmWorkerService.initialize({ 
+						threadCount: threadCount || 1 
+					});
+					
+					console.log('✅ WASM Web Worker initialized successfully');
+					
+					if (threadCount > 1) {
+						toastStore.success(`Multi-threading enabled with ${threadCount} threads`, 3000);
+					}
+				}
+			} catch (error) {
+				console.error('❌ Web Worker initialization failed:', error);
+				toastStore.error('Failed to initialize image processor - please refresh', 5000);
+				throw error;
 			}
 
 			// Check if we have any actual files to process
@@ -727,8 +738,18 @@
 				// console.log('⚡ [DEBUG] perfSettings:', perfSettings);
 				if (perfSettings.mode) {
 					performanceMode = perfSettings.mode as PerformanceMode;
-					threadCount = perfSettings.threadCount;
+					// Use proper performance mode thread calculation
+					if (perfSettings.threadCount) {
+						threadCount = perfSettings.threadCount;
+					} else {
+						// Calculate proper thread count based on performance mode
+						threadCount = getOptimalThreadCount(perfSettings.mode as PerformanceMode);
+					}
 					// console.log('✅ [DEBUG] Performance settings restored');
+				} else {
+					// No saved performance settings - use optimal default for balanced mode
+					threadCount = getOptimalThreadCount('balanced');
+					// console.log('🎯 [DEBUG] Set default optimal thread count for balanced mode:', threadCount);
 				}
 				// CRITICAL: Set recovery as complete even when no state found
 				isRecoveringState = false;
@@ -751,6 +772,7 @@
 			// console.log('✅ [DEBUG] Performance mode restored from complete state');
 		}
 		if (state.threadCount) {
+			// Use saved thread count as-is, respecting user's choice
 			threadCount = state.threadCount;
 			// console.log('✅ [DEBUG] Thread count restored from complete state');
 		}
@@ -1069,9 +1091,6 @@
 					</div>
 				</main>
 			{/if}
-
-			<!-- Conversion Progress Overlay -->
-			<ConversionProgress {isProcessing} progress={currentProgress} />
 
 			<!-- Keyboard Shortcuts -->
 			<KeyboardShortcuts

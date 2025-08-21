@@ -375,8 +375,8 @@ export class PerformanceMonitor {
 	}
 
 	private initializeResourceMonitoring(): void {
-		if ('memory' in performance) {
-			// Monitor memory usage periodically
+		if ('memory' in performance && !import.meta.env.DEV) {
+			// Monitor memory usage periodically (disabled in development to prevent high CPU usage)
 			setInterval(() => {
 				this.trackResourceUsage();
 			}, 5000);
