@@ -425,45 +425,45 @@
 						</div>
 
 						<!-- ETF/FDoG -->
-						<div class="flex items-center space-x-3">
+						<div class="flex items-center space-x-3 opacity-50">
 							<input
 								type="checkbox"
 								id="etf-fdog"
 								checked={config.enable_etf_fdog}
 								onchange={handleCheckboxChange('enable_etf_fdog')}
-								{disabled}
+								disabled
 								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
 							/>
 							<label
 								for="etf-fdog"
-								class="text-converter-primary cursor-pointer text-sm font-medium"
+								class="text-converter-primary cursor-not-allowed text-sm font-medium"
 							>
 								Enable ETF/FDoG Processing
 							</label>
 						</div>
-						<div class="text-converter-secondary ml-7 text-xs">
-							Advanced edge tangent flow processing for coherent edge detection.
+						<div class="text-converter-secondary ml-7 text-xs opacity-50">
+							Advanced edge tangent flow processing (temporarily disabled due to performance issues).
 						</div>
 
 						<!-- Flow Tracing -->
-						<div class="flex items-center space-x-3">
+						<div class="flex items-center space-x-3 opacity-50">
 							<input
 								type="checkbox"
 								id="flow-tracing"
 								checked={config.enable_flow_tracing}
 								onchange={handleCheckboxChange('enable_flow_tracing')}
-								{disabled}
+								disabled
 								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
 							/>
 							<label
 								for="flow-tracing"
-								class="text-converter-primary cursor-pointer text-sm font-medium"
+								class="text-converter-primary cursor-not-allowed text-sm font-medium"
 							>
 								Enable Flow-Guided Tracing
 							</label>
 						</div>
-						<div class="text-converter-secondary ml-7 text-xs">
-							Flow-guided polyline tracing for smoother, more coherent paths.
+						<div class="text-converter-secondary ml-7 text-xs opacity-50">
+							Flow-guided polyline tracing (temporarily disabled due to performance issues).
 						</div>
 					</div>
 				{/if}

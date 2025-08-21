@@ -291,21 +291,6 @@
 		</div>
 	</div>
 
-	<!-- Progress Bar -->
-	{#if currentProgress}
-		<div class="border-ferrari-200 dark:border-ferrari-800 border-t px-6 py-3">
-			<div class="mb-2 flex justify-between text-sm">
-				<span class="text-converter-primary">{currentProgress.stage}</span>
-				<span class="text-converter-secondary">{Math.round(currentProgress.progress)}%</span>
-			</div>
-			<div class="bg-ferrari-100 dark:bg-ferrari-900 h-2 w-full rounded-full">
-				<div
-					class="bg-ferrari-600 h-2 rounded-full transition-all duration-300"
-					style="width: {currentProgress.progress}%"
-				></div>
-			</div>
-		</div>
-	{/if}
 </div>
 
 <!-- Click outside to close dropdown -->

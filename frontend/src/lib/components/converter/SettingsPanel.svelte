@@ -208,12 +208,16 @@
 						</div>
 					</div>
 
-					<!-- Line Width -->
+					<!-- Line Width / Dot Size -->
 					<div>
 						<div class="mb-2 flex items-center gap-2">
-							<label class="text-converter-primary block text-sm font-medium"> Line Width </label>
+							<label class="text-converter-primary block text-sm font-medium">
+								{config.backend === 'dots' ? 'Dot Size' : 'Line Width'}
+							</label>
 							<Tooltip
-								content="Adjusts the thickness of traced lines in the SVG output. Thinner lines work better for detailed images, while thicker lines are good for bold, graphic styles."
+								content={config.backend === 'dots'
+									? 'Controls the size of dots in stippling output. Smaller dots create finer detail, while larger dots create bold effects.'
+									: 'Adjusts the thickness of traced lines in the SVG output. Thinner lines work better for detailed images, while thicker lines are good for bold, graphic styles.'}
 								position="top"
 								size="md"
 							/>
@@ -230,9 +234,9 @@
 							use:initializeSliderFill
 						/>
 						<div class="text-converter-secondary mt-1 flex justify-between text-xs">
-							<span>Thin</span>
+							<span>{config.backend === 'dots' ? 'Small' : 'Thin'}</span>
 							<span class="font-medium">{(config.stroke_width || 0).toFixed(1)}px</span>
-							<span>Thick</span>
+							<span>{config.backend === 'dots' ? 'Large' : 'Thick'}</span>
 						</div>
 					</div>
 				</div>

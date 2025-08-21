@@ -480,7 +480,9 @@ class VectorizerStore {
 
 			// Set up batch processing timeout (longer than single image)
 			const singleImageTimeoutMs = this._state.config.max_processing_time_ms || 30000;
-			const batchTimeoutMs = singleImageTimeoutMs * images.length + 10000; // Extra buffer
+			// Use much longer timeout for complex backends (dots, superpixel) that may need more time
+			const backendMultiplier = this._state.config.backend === 'dots' || this._state.config.backend === 'superpixel' ? 10 : 3;
+			const batchTimeoutMs = Math.max(singleImageTimeoutMs * images.length * backendMultiplier, 300000); // At least 5 minutes
 			batchTimeoutId = setTimeout(() => {
 				isAborted = true;
 				console.log(
