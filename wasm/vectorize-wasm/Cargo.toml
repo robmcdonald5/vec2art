@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # Core vectorization library with conditional parallel features
-vectorize-core = { path = "../vectorize-core", default-features = false, features = ["wasm", "single-threaded"] }
+vectorize-core = { path = "../vectorize-core", default-features = false, features = ["wasm"] }
 
 # Multi-threading support for WASM
 # Using RReverser fork since GoogleChromeLabs archived their version in July 2024
@@ -60,7 +60,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 rand = { version = "0.8", features = ["std_rng"] }
 
 [features]
-default = ["console_error_panic_hook", "wee_alloc"]
+default = ["console_error_panic_hook", "wee_alloc", "single-threaded"]
 console_error_panic_hook = []
 wee_alloc = []
 # Single-threaded mode for compatibility (default)

@@ -262,7 +262,7 @@ impl Default for TraceLowConfig {
             enable_reverse_pass: false,
             enable_diagonal_pass: false,
             directional_strength_threshold: 0.3,
-            max_processing_time_ms: 1500, // 1.5 second budget
+            max_processing_time_ms: 300000, // 5 minute safety timeout (will be overridden by frontend)
             // ETF/FDoG parameters (disabled by default for compatibility)
             enable_etf_fdog: false,
             etf_radius: 4,
