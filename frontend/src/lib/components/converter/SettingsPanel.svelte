@@ -109,6 +109,24 @@
 		updateSliderFill(slider);
 		slider.addEventListener('input', () => updateSliderFill(slider));
 	}
+
+	// Reactive effects to update slider fills when config changes externally
+	let detailSliderRef = $state<HTMLInputElement>();
+	let strokeWidthSliderRef = $state<HTMLInputElement>();
+
+	$effect(() => {
+		// Update detail slider fill when config.detail changes
+		if (detailSliderRef && config.detail !== undefined) {
+			updateSliderFill(detailSliderRef);
+		}
+	});
+
+	$effect(() => {
+		// Update stroke width slider fill when config.stroke_width changes
+		if (strokeWidthSliderRef && config.stroke_width !== undefined) {
+			updateSliderFill(strokeWidthSliderRef);
+		}
+	});
 </script>
 
 <div class="w-full max-w-sm space-y-4">
@@ -191,6 +209,7 @@
 							/>
 						</div>
 						<input
+							bind:this={detailSliderRef}
 							type="range"
 							min="0.1"
 							max="1"
@@ -208,11 +227,11 @@
 						</div>
 					</div>
 
-					<!-- Line Width / Dot Size -->
+					<!-- Line Width / Dot Width -->
 					<div>
 						<div class="mb-2 flex items-center gap-2">
 							<label class="text-converter-primary block text-sm font-medium">
-								{config.backend === 'dots' ? 'Dot Size' : 'Line Width'}
+								{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
 							</label>
 							<Tooltip
 								content={config.backend === 'dots'
@@ -223,6 +242,7 @@
 							/>
 						</div>
 						<input
+							bind:this={strokeWidthSliderRef}
 							type="range"
 							min="0.5"
 							max="5"

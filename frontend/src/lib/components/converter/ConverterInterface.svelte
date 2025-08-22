@@ -21,6 +21,8 @@
 		onReset: () => void;
 		onAddMore: () => void;
 		onRemoveFile: (index: number) => void;
+		isPanicked?: boolean;
+		onEmergencyRecovery?: () => void;
 	}
 
 	let {
@@ -40,7 +42,9 @@
 		onAbort,
 		onReset,
 		onAddMore,
-		onRemoveFile
+		onRemoveFile,
+		isPanicked = false,
+		onEmergencyRecovery
 	}: Props = $props();
 </script>
 
@@ -62,4 +66,6 @@
 	{onReset}
 	{onAddMore}
 	{onRemoveFile}
+	{isPanicked}
+	{onEmergencyRecovery}
 />

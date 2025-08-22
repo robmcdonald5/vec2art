@@ -25,13 +25,31 @@
 
 	// Convert internal tremor_strength and variable_weights to UI smoothness (inverted)
 	const smoothnessToUI = (config: VectorizerConfig) => {
-		const roughness = (config.tremor_strength + config.variable_weights) / 2;
-		return Math.round((1 - roughness) * 9 + 1); // Invert: high smoothness = low roughness
+		// Handle undefined values with sensible defaults
+		const tremor = config.tremor_strength ?? 0.1;
+		const weights = config.variable_weights ?? 0.3;
+		
+		// Normalize to same scale: tremor is 0.0-0.5, weights is 0.0-1.0
+		const normalizedTremor = tremor / 0.5; // Scale 0.0-0.5 to 0.0-1.0
+		const normalizedWeights = weights; // Already 0.0-1.0
+		const combinedRoughness = (normalizedTremor + normalizedWeights) / 2;
+		
+		// Reverse the exponential curve applied in smoothnessFromUI
+		const linearRoughness = Math.pow(combinedRoughness, 1 / 1.5);
+		
+		return Math.round((1 - linearRoughness) * 9 + 1); // Invert: high smoothness = low roughness
 	};
 
 	const smoothnessFromUI = (uiValue: number) => {
-		const roughness = (10 - uiValue) / 9;
-		return roughness * 0.5; // Scale to reasonable range
+		// Create a more dramatic curve for better visual impact
+		// UI scale: 1 (rough) -> 10 (smooth)
+		// Roughness: 1.0 (maximum effect) -> 0.0 (no effect)
+		const normalizedInput = (10 - uiValue) / 9; // 0.0 to 1.0
+		
+		// Apply exponential curve for more dramatic effect at extremes
+		const roughness = Math.pow(normalizedInput, 1.5);
+		
+		return roughness;
 	};
 
 	function handleDetailChange(event: Event) {
@@ -64,15 +82,37 @@
 		// Update progressive fill
 		updateSliderFill(target);
 
+		// FIXED: Smoothness slider modifies parameters while respecting the preset
+		// The slider provides fine-tuning WITHIN the chosen preset's style
 		onConfigChange({
-			tremor_strength: Math.min(0.5, roughnessValue),
-			variable_weights: Math.min(1.0, roughnessValue * 2)
+			// Keep tremor within WASM limits (0.0-0.5) but make it more dramatic
+			tremor_strength: Math.min(0.5, roughnessValue * 0.5),
+			// Make variable weights more dramatic  
+			variable_weights: Math.min(1.0, roughnessValue * 1.5)
 		});
 		onParameterChange?.();
 	}
 
 	function handleHandDrawnChange(value: string) {
-		onConfigChange({ hand_drawn_preset: value as HandDrawnPreset });
+		const preset = value as HandDrawnPreset;
+		
+		// PROPER FIX: Hand-drawn preset sets base values, smoothness modifies them
+		// Each preset defines a style foundation that smoothness can fine-tune
+		const presetValues = {
+			none: { tremor_strength: 0.0, variable_weights: 0.0, tapering: 0.0 },
+			subtle: { tremor_strength: 0.05, variable_weights: 0.1, tapering: 0.2 },
+			medium: { tremor_strength: 0.15, variable_weights: 0.3, tapering: 0.4 },
+			strong: { tremor_strength: 0.3, variable_weights: 0.5, tapering: 0.6 },
+			sketchy: { tremor_strength: 0.4, variable_weights: 0.7, tapering: 0.8 }
+		};
+		
+		console.log(`[ParameterPanel] Hand-drawn preset "${preset}" - setting base values:`, presetValues[preset]);
+		
+		onConfigChange({
+			hand_drawn_preset: preset,
+			...presetValues[preset]
+		});
+		
 		onParameterChange?.();
 	}
 
@@ -82,11 +122,25 @@
 		onParameterChange?.();
 	}
 
+	function handleSpatialSigmaChange(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const value = parseFloat(target.value);
+		onConfigChange({ noise_filter_spatial_sigma: value });
+		onParameterChange?.();
+	}
+
+	function handleRangeSigmaChange(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const value = parseFloat(target.value);
+		onConfigChange({ noise_filter_range_sigma: value });
+		onParameterChange?.();
+	}
+
 	// Backend-specific parameter handlers
 	function handleDotDensityChange(event: Event) {
 		const target = event.target as HTMLInputElement;
 		const uiValue = parseInt(target.value);
-		const density = (10 - uiValue) / 90 + 0.05; // Map 1-10 to 0.15-0.05 (inverted)
+		const density = (10 - uiValue) / 9 * 0.1 + 0.05; // Map 1-10 to 0.15-0.05 (inverted)
 
 		// Update progressive fill
 		updateSliderFill(target);
@@ -129,7 +183,7 @@
 	let detailUI = $derived(detailToUI(config.detail));
 	let smoothnessUI = $derived(smoothnessToUI(config));
 	let dotDensityUI = $derived(
-		config.dot_density_threshold ? Math.round((0.15 - config.dot_density_threshold) * 90 + 1) : 5
+		config.dot_density_threshold ? Math.round((0.15 - config.dot_density_threshold) / 0.1 * 9 + 1) : 5
 	);
 	let regionCountUI = $derived(
 		config.num_superpixels ? Math.round((config.num_superpixels - 50) / 45) : 3
@@ -148,6 +202,40 @@
 		updateSliderFill(slider);
 		slider.addEventListener('input', () => updateSliderFill(slider));
 	}
+
+	// Reactive effects to update slider fills when config changes externally
+	let detailSliderRef = $state<HTMLInputElement>();
+	let strokeWidthSliderRef = $state<HTMLInputElement>();
+	let spatialSigmaSliderRef = $state<HTMLInputElement>();
+	let rangeSigmaSliderRef = $state<HTMLInputElement>();
+
+	$effect(() => {
+		// Update detail slider fill when config.detail changes
+		if (detailSliderRef && config.detail !== undefined) {
+			updateSliderFill(detailSliderRef);
+		}
+	});
+
+	$effect(() => {
+		// Update stroke width slider fill when config.stroke_width changes
+		if (strokeWidthSliderRef && config.stroke_width !== undefined) {
+			updateSliderFill(strokeWidthSliderRef);
+		}
+	});
+
+	$effect(() => {
+		// Update spatial sigma slider fill when config.noise_filter_spatial_sigma changes
+		if (spatialSigmaSliderRef && config.noise_filter_spatial_sigma !== undefined) {
+			updateSliderFill(spatialSigmaSliderRef);
+		}
+	});
+
+	$effect(() => {
+		// Update range sigma slider fill when config.noise_filter_range_sigma changes
+		if (rangeSigmaSliderRef && config.noise_filter_range_sigma !== undefined) {
+			updateSliderFill(rangeSigmaSliderRef);
+		}
+	});
 </script>
 
 <section class="space-y-6">
@@ -169,6 +257,7 @@
 				>
 			</div>
 			<input
+				bind:this={detailSliderRef}
 				id="detail-level"
 				type="range"
 				min="1"
@@ -187,7 +276,7 @@
 			</div>
 		</div>
 
-		<!-- Stroke Width -->
+		<!-- Line Width / Dot Width -->
 		<div class="space-y-2">
 			<div class="flex items-center justify-between">
 				<label
@@ -195,7 +284,7 @@
 					class="text-converter-primary flex items-center gap-2 text-sm font-medium"
 				>
 					<PenTool class="text-converter-secondary h-4 w-4" aria-hidden="true" />
-					Stroke Width
+					{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
 				</label>
 				<span
 					class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
@@ -203,6 +292,7 @@
 				>
 			</div>
 			<input
+				bind:this={strokeWidthSliderRef}
 				id="stroke-width"
 				type="range"
 				min="0.5"
@@ -217,12 +307,14 @@
 				use:initializeSliderFill
 			/>
 			<div id="stroke-width-desc" class="text-converter-muted text-xs">
-				Base thickness of generated lines at standard resolution.
+				{config.backend === 'dots' 
+					? 'Controls the size of dots in stippling output. Smaller dots create finer detail.'
+					: 'Base thickness of generated lines at standard resolution.'}
 			</div>
 		</div>
 
-		<!-- Smoothness (only for edge backend) -->
-		{#if config.backend === 'edge'}
+		<!-- Smoothness (fine-tuning for hand-drawn effects) -->
+		{#if config.backend === 'edge' && config.hand_drawn_preset !== 'none'}
 			<div class="space-y-2">
 				<div class="flex items-center justify-between">
 					<label
@@ -251,7 +343,7 @@
 					use:initializeSliderFill
 				/>
 				<div id="smoothness-desc" class="text-converter-muted text-xs">
-					Controls line character from smooth and clean to rough and textured.
+					Fine-tune the roughness within the "{config.hand_drawn_preset}" style.
 				</div>
 			</div>
 		{/if}
@@ -431,8 +523,83 @@
 			</label>
 		</div>
 		<div class="text-converter-muted ml-7 text-xs">
-			Apply content-aware noise reduction to clean up the output.
+			Apply edge-preserving bilateral filtering to reduce noise while preserving important edges.
 		</div>
+		
+		<!-- Advanced Noise Filtering Controls (shown when noise filtering is enabled) -->
+		{#if config.noise_filtering}
+			<div class="ml-7 space-y-3 pt-2">
+				<!-- Spatial Sigma (Smoothing Strength) -->
+				<div class="space-y-2">
+					<div class="flex items-center justify-between">
+						<label
+							for="spatial-sigma"
+							class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+						>
+							<Filter class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+							Smoothing Strength
+						</label>
+						<span
+							class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+							aria-live="polite">{config.noise_filter_spatial_sigma?.toFixed(1) ?? '1.2'}</span
+						>
+					</div>
+					<input
+						bind:this={spatialSigmaSliderRef}
+						id="spatial-sigma"
+						type="range"
+						min="0.5"
+						max="1.5"
+						step="0.1"
+						value={config.noise_filter_spatial_sigma ?? 1.2}
+						onchange={handleSpatialSigmaChange}
+						oninput={handleSpatialSigmaChange}
+						{disabled}
+						class="slider-ferrari w-full"
+						aria-describedby="spatial-sigma-desc"
+						use:initializeSliderFill
+					/>
+					<div id="spatial-sigma-desc" class="text-converter-muted text-xs">
+						Higher values provide more smoothing but may blur fine details.
+					</div>
+				</div>
+				
+				<!-- Range Sigma (Edge Preservation) -->
+				<div class="space-y-2">
+					<div class="flex items-center justify-between">
+						<label
+							for="range-sigma"
+							class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+						>
+							<Eye class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+							Edge Preservation
+						</label>
+						<span
+							class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+							aria-live="polite">{config.noise_filter_range_sigma?.toFixed(0) ?? '50'}</span
+						>
+					</div>
+					<input
+						bind:this={rangeSigmaSliderRef}
+						id="range-sigma"
+						type="range"
+						min="10"
+						max="100"
+						step="5"
+						value={config.noise_filter_range_sigma ?? 50.0}
+						onchange={handleRangeSigmaChange}
+						oninput={handleRangeSigmaChange}
+						{disabled}
+						class="slider-ferrari w-full"
+						aria-describedby="range-sigma-desc"
+						use:initializeSliderFill
+					/>
+					<div id="range-sigma-desc" class="text-converter-muted text-xs">
+						Higher values preserve fewer edges (less selective filtering).
+					</div>
+				</div>
+			</div>
+		{/if}
 	</div>
 </section>
 

@@ -216,6 +216,7 @@ pub struct ConfigData {
     detail: f32,
     stroke_width: f32,
     multipass: bool,
+    pass_count: u32,
     conservative_detail: Option<f32>,
     aggressive_detail: Option<f32>,
     noise_filtering: bool,
@@ -378,6 +379,24 @@ impl WasmVectorizer {
             .build()
             .unwrap_or_default()
             .enable_multipass
+    }
+
+    /// Set number of processing passes (1-10)
+    #[wasm_bindgen]
+    pub fn set_pass_count(&mut self, count: u32) -> Result<(), String> {
+        self.builder = self.builder.clone().pass_count(count)
+            .map_err(|e| format!("Invalid pass count: {}", e))?;
+        Ok(())
+    }
+
+    /// Get number of processing passes
+    #[wasm_bindgen]
+    pub fn get_pass_count(&self) -> u32 {
+        self.builder
+            .clone()
+            .build()
+            .unwrap_or_default()
+            .pass_count
     }
 
     /// Enable or disable noise filtering
@@ -560,6 +579,28 @@ impl WasmVectorizer {
     #[wasm_bindgen]
     pub fn set_max_processing_time_ms(&mut self, time_ms: u64) {
         self.builder = self.builder.clone().max_processing_time_ms(time_ms);
+    }
+
+    // Noise filtering configuration
+
+    /// Set spatial sigma for bilateral noise filtering (0.5-5.0, higher = more smoothing)
+    #[wasm_bindgen]
+    pub fn set_noise_filter_spatial_sigma(&mut self, sigma: f32) -> Result<(), JsValue> {
+        if sigma < 0.5 || sigma > 5.0 {
+            return Err(JsValue::from_str(&format!("Spatial sigma {} out of range [0.5, 5.0]", sigma)));
+        }
+        self.builder = self.builder.clone().noise_filter_spatial_sigma(sigma);
+        Ok(())
+    }
+
+    /// Set range sigma for bilateral noise filtering (10.0-100.0, higher = less edge preservation)
+    #[wasm_bindgen]
+    pub fn set_noise_filter_range_sigma(&mut self, sigma: f32) -> Result<(), JsValue> {
+        if sigma < 10.0 || sigma > 100.0 {
+            return Err(JsValue::from_str(&format!("Range sigma {} out of range [10.0, 100.0]", sigma)));
+        }
+        self.builder = self.builder.clone().noise_filter_range_sigma(sigma);
+        Ok(())
     }
 
     // Centerline-specific configuration
@@ -935,6 +976,7 @@ impl WasmVectorizer {
             detail: config.detail,
             stroke_width: config.stroke_px_at_1080p,
             multipass: config.enable_multipass,
+            pass_count: config.pass_count,
             conservative_detail: config.conservative_detail,
             aggressive_detail: config.aggressive_detail,
             noise_filtering: config.noise_filtering,
@@ -989,6 +1031,8 @@ impl WasmVectorizer {
             .stroke_width(config_data.stroke_width)
             .map_err(|e| JsValue::from_str(&format!("Stroke width error: {e}")))?
             .multipass(config_data.multipass)
+            .pass_count(config_data.pass_count)
+            .map_err(|e| JsValue::from_str(&format!("Pass count error: {e}")))?
             .noise_filtering(config_data.noise_filtering)
             .reverse_pass(config_data.reverse_pass)
             .diagonal_pass(config_data.diagonal_pass)

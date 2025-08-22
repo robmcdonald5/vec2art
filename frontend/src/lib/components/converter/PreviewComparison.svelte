@@ -30,6 +30,8 @@
 		onReset: () => void;
 		onAddMore: () => void;
 		onRemoveFile: (index: number) => void;
+		isPanicked?: boolean;
+		onEmergencyRecovery?: () => void;
 	}
 
 	let {
@@ -48,7 +50,9 @@
 		onAbort,
 		onReset,
 		onAddMore,
-		onRemoveFile
+		onRemoveFile,
+		isPanicked = false,
+		onEmergencyRecovery
 	}: Props = $props();
 
 	// Preview state - separate for original and converted
@@ -250,6 +254,8 @@
 		{onReset}
 		{onAddMore}
 		{onRemoveFile}
+		{isPanicked}
+		{onEmergencyRecovery}
 	/>
 
 	<!-- Image Comparison Content -->

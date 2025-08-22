@@ -574,6 +574,28 @@
 		announceToScreenReader('Converter reset');
 	}
 
+	async function handleEmergencyRecovery() {
+		try {
+			isProcessing = true;
+			toastStore.info('🚨 Starting emergency recovery...');
+			
+			// Perform emergency recovery
+			await vectorizerStore.emergencyRecovery();
+			
+			// Reset UI state but keep files
+			currentProgress = null;
+			isProcessing = false;
+			
+			toastStore.success('✅ Emergency recovery completed successfully');
+			announceToScreenReader('Emergency recovery completed. Converter is ready to use again');
+		} catch (error) {
+			console.error('Emergency recovery failed:', error);
+			isProcessing = false;
+			toastStore.error('❌ Emergency recovery failed. Try refreshing the page');
+			announceToScreenReader('Emergency recovery failed', 'assertive');
+		}
+	}
+
 	// Configuration functions
 	function handleConfigChange(updates: Partial<VectorizerConfig>) {
 		const newConfig = { ...config, ...updates };
@@ -1068,6 +1090,8 @@
 							onReset={handleReset}
 							onAddMore={handleAddMore}
 							onRemoveFile={handleRemoveFile}
+							isPanicked={vectorizerStore.isPanicked}
+							onEmergencyRecovery={handleEmergencyRecovery}
 						/>
 					</div>
 

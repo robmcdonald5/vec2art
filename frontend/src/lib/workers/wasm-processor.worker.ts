@@ -10,6 +10,7 @@
 
 // Import the WASM module
 import init, * as wasmModule from '../wasm/vectorize_wasm.js';
+import { calculateMultipassConfig } from '../types/vectorizer.js';
 
 // Worker state
 let wasmInitialized = false;
@@ -160,6 +161,16 @@ function configureVectorizer(config: any) {
 		throw new Error('Vectorizer not initialized');
 	}
 	
+	// Calculate multipass configuration from pass_count and multipass_mode
+	if (config.pass_count !== undefined || config.multipass_mode !== undefined) {
+		const multipassConfig = calculateMultipassConfig(config);
+		config = {
+			...config,
+			...multipassConfig
+		};
+		console.log('[Worker] Calculated multipass config:', multipassConfig);
+	}
+	
 	console.log('[Worker] Configuring vectorizer with:', JSON.stringify(config, null, 2));
 	
 	// Apply configuration
@@ -190,21 +201,216 @@ function configureVectorizer(config: any) {
 		vectorizer.set_stroke_width(config.stroke_width);
 	}
 	
-	// Apply other configuration options
-	const configMethods = {
+	// Apply core boolean configuration options
+	const booleanConfigMethods = {
 		noise_filtering: 'set_noise_filtering',
 		multipass: 'set_multipass',
 		reverse_pass: 'set_reverse_pass',
 		diagonal_pass: 'set_diagonal_pass',
-		optimize_svg: 'set_optimize_svg',
-		svg_precision: 'set_svg_precision'
+		enable_etf_fdog: 'set_enable_etf_fdog',
+		enable_flow_tracing: 'set_enable_flow_tracing',
+		enable_bezier_fitting: 'set_enable_bezier_fitting',
+		enable_adaptive_threshold: 'set_enable_adaptive_threshold',
+		enable_width_modulation: 'set_enable_width_modulation',
+		optimize_svg: 'set_optimize_svg'
 	};
 	
-	for (const [key, method] of Object.entries(configMethods)) {
+	for (const [key, method] of Object.entries(booleanConfigMethods)) {
 		if (key in config && typeof vectorizer[method] === 'function') {
+			console.log(`[Worker] Setting ${key}:`, config[key]);
 			vectorizer[method](config[key]);
 		}
 	}
+	
+	// Apply numeric configuration options
+	const numericConfigMethods = {
+		svg_precision: 'set_svg_precision',
+		pass_count: 'set_pass_count',
+		conservative_detail: 'set_conservative_detail',
+		aggressive_detail: 'set_aggressive_detail',
+		directional_strength_threshold: 'set_directional_strength_threshold',
+		window_size: 'set_window_size',
+		sensitivity_k: 'set_sensitivity_k',
+		min_branch_length: 'set_min_branch_length',
+		douglas_peucker_epsilon: 'set_douglas_peucker_epsilon',
+		max_image_size: 'set_max_image_size',
+		background_tolerance: 'set_background_tolerance'
+	};
+	
+	for (const [key, method] of Object.entries(numericConfigMethods)) {
+		if (key in config && typeof config[key] === 'number' && typeof vectorizer[method] === 'function') {
+			console.log(`[Worker] Setting ${key}:`, config[key]);
+			vectorizer[method](config[key]);
+		}
+	}
+	
+	// Apply hand-drawn preset first (required before custom parameters)
+	if (typeof config.hand_drawn_preset === 'string' && typeof vectorizer.set_hand_drawn_preset === 'function') {
+		console.log('[Worker] Setting hand-drawn preset:', config.hand_drawn_preset);
+		vectorizer.set_hand_drawn_preset(config.hand_drawn_preset);
+	} else {
+		console.warn('[Worker] ⚠️ Hand-drawn preset not provided or WASM method unavailable');
+	}
+	
+	// Apply noise filtering parameters (if enabled)
+	if (config.noise_filtering) {
+		if (typeof config.noise_filter_spatial_sigma === 'number' && typeof vectorizer.set_noise_filter_spatial_sigma === 'function') {
+			console.log('[Worker] Setting noise filter spatial sigma:', config.noise_filter_spatial_sigma);
+			vectorizer.set_noise_filter_spatial_sigma(config.noise_filter_spatial_sigma);
+		}
+		
+		if (typeof config.noise_filter_range_sigma === 'number' && typeof vectorizer.set_noise_filter_range_sigma === 'function') {
+			console.log('[Worker] Setting noise filter range sigma:', config.noise_filter_range_sigma);
+			vectorizer.set_noise_filter_range_sigma(config.noise_filter_range_sigma);
+		}
+	}
+
+	// Apply hand-drawn parameters (only after preset is set)
+	// CRITICAL FIX: Only apply custom parameters if preset is NOT 'none'
+	// This matches the service layer logic and prevents WASM validation errors
+	if (config.hand_drawn_preset !== 'none') {
+		if (typeof config.tremor_strength === 'number' && typeof vectorizer.set_custom_tremor === 'function') {
+			console.log('[Worker] Setting tremor strength:', config.tremor_strength);
+			vectorizer.set_custom_tremor(config.tremor_strength);
+		}
+		
+		if (typeof config.variable_weights === 'number' && typeof vectorizer.set_custom_variable_weights === 'function') {
+			console.log('[Worker] Setting variable weights:', config.variable_weights);
+			vectorizer.set_custom_variable_weights(config.variable_weights);
+		}
+		
+		if (typeof config.tapering === 'number' && typeof vectorizer.set_custom_tapering === 'function') {
+			console.log('[Worker] Setting tapering:', config.tapering);
+			vectorizer.set_custom_tapering(config.tapering);
+		}
+	} else {
+		console.log('[Worker] Hand-drawn preset is "none" - skipping custom artistic parameters for clean, precise lines');
+	}
+	
+	// Apply backend-specific parameters
+	if (config.backend === 'dots') {
+		// Dots backend parameters
+		if (typeof config.dot_density_threshold === 'number' && typeof vectorizer.set_dot_density === 'function') {
+			console.log('[Worker] Setting dot density:', config.dot_density_threshold);
+			vectorizer.set_dot_density(config.dot_density_threshold);
+		} else if (typeof config.dot_density === 'number' && typeof vectorizer.set_dot_density === 'function') {
+			// Legacy support
+			console.log('[Worker] Setting dot density (legacy):', config.dot_density);
+			vectorizer.set_dot_density(config.dot_density);
+		}
+		
+		if (typeof config.min_radius === 'number' && typeof config.max_radius === 'number' && typeof vectorizer.set_dot_size_range === 'function') {
+			console.log('[Worker] Setting dot size range:', config.min_radius, config.max_radius);
+			vectorizer.set_dot_size_range(config.min_radius, config.max_radius);
+		}
+		
+		const dotsBooleanMethods = {
+			preserve_colors: 'set_preserve_colors',
+			adaptive_sizing: 'set_adaptive_sizing',
+			poisson_disk_sampling: 'set_poisson_disk_sampling',
+			gradient_based_sizing: 'set_gradient_based_sizing'
+		};
+		
+		for (const [key, method] of Object.entries(dotsBooleanMethods)) {
+			if (key in config && typeof vectorizer[method] === 'function') {
+				console.log(`[Worker] Setting ${key}:`, config[key]);
+				vectorizer[method](config[key]);
+			}
+		}
+	}
+	
+	if (config.backend === 'superpixel') {
+		// Superpixel backend parameters
+		const superpixelNumericMethods = {
+			num_superpixels: 'set_num_superpixels',
+			compactness: 'set_compactness',
+			slic_iterations: 'set_slic_iterations',
+			boundary_epsilon: 'set_boundary_epsilon'
+		};
+		
+		for (const [key, method] of Object.entries(superpixelNumericMethods)) {
+			if (key in config && typeof config[key] === 'number' && typeof vectorizer[method] === 'function') {
+				console.log(`[Worker] Setting ${key}:`, config[key]);
+				vectorizer[method](config[key]);
+			}
+		}
+		
+		const superpixelBooleanMethods = {
+			fill_regions: 'set_fill_regions',
+			stroke_regions: 'set_stroke_regions',
+			simplify_boundaries: 'set_simplify_boundaries'
+		};
+		
+		for (const [key, method] of Object.entries(superpixelBooleanMethods)) {
+			if (key in config && typeof vectorizer[method] === 'function') {
+				console.log(`[Worker] Setting ${key}:`, config[key]);
+				vectorizer[method](config[key]);
+			}
+		}
+	}
+	
+	// Apply performance settings
+	if (typeof config.max_processing_time_ms === 'number' && typeof vectorizer.set_max_processing_time_ms === 'function') {
+		console.log('[Worker] Setting max processing time:', config.max_processing_time_ms);
+		vectorizer.set_max_processing_time_ms(BigInt(config.max_processing_time_ms));
+	}
+	
+	// Apply any missing centerline backend parameters
+	if (config.backend === 'centerline') {
+		console.log('[Worker] Applying centerline backend specific parameters...');
+		
+		// Centerline-specific parameters with validation
+		if (typeof config.window_size === 'number' && typeof vectorizer.set_window_size === 'function') {
+			const clampedWindow = Math.max(15, Math.min(50, config.window_size));
+			if (clampedWindow !== config.window_size) {
+				console.warn(`[Worker] ⚠️ Window size clamped from ${config.window_size} to ${clampedWindow}`);
+			}
+			console.log('[Worker] Setting window_size:', clampedWindow);
+			vectorizer.set_window_size(clampedWindow);
+		}
+		
+		if (typeof config.sensitivity_k === 'number' && typeof vectorizer.set_sensitivity_k === 'function') {
+			const clampedK = Math.max(0.1, Math.min(1, config.sensitivity_k));
+			if (clampedK !== config.sensitivity_k) {
+				console.warn(`[Worker] ⚠️ Sensitivity K clamped from ${config.sensitivity_k} to ${clampedK}`);
+			}
+			console.log('[Worker] Setting sensitivity_k:', clampedK);
+			vectorizer.set_sensitivity_k(clampedK);
+		}
+		
+		if (typeof config.min_branch_length === 'number' && typeof vectorizer.set_min_branch_length === 'function') {
+			const clampedLength = Math.max(4, Math.min(24, config.min_branch_length));
+			if (clampedLength !== config.min_branch_length) {
+				console.warn(`[Worker] ⚠️ Min branch length clamped from ${config.min_branch_length} to ${clampedLength}`);
+			}
+			console.log('[Worker] Setting min_branch_length:', clampedLength);
+			vectorizer.set_min_branch_length(clampedLength);
+		}
+		
+		if (typeof config.douglas_peucker_epsilon === 'number' && typeof vectorizer.set_douglas_peucker_epsilon === 'function') {
+			const clampedEpsilon = Math.max(0.5, Math.min(3, config.douglas_peucker_epsilon));
+			if (clampedEpsilon !== config.douglas_peucker_epsilon) {
+				console.warn(`[Worker] ⚠️ Douglas-Peucker epsilon clamped from ${config.douglas_peucker_epsilon} to ${clampedEpsilon}`);
+			}
+			console.log('[Worker] Setting douglas_peucker_epsilon:', clampedEpsilon);
+			vectorizer.set_douglas_peucker_epsilon(clampedEpsilon);
+		}
+		
+		// Boolean parameters
+		if (typeof config.enable_adaptive_threshold === 'boolean' && typeof vectorizer.set_enable_adaptive_threshold === 'function') {
+			console.log('[Worker] Setting enable_adaptive_threshold:', config.enable_adaptive_threshold);
+			vectorizer.set_enable_adaptive_threshold(config.enable_adaptive_threshold);
+		}
+		
+		if (typeof config.enable_width_modulation === 'boolean' && typeof vectorizer.set_enable_width_modulation === 'function') {
+			console.log('[Worker] Setting enable_width_modulation:', config.enable_width_modulation);
+			vectorizer.set_enable_width_modulation(config.enable_width_modulation);
+		}
+		
+		console.log('[Worker] ✅ Centerline backend parameters configured');
+	}
+	
+	console.log('[Worker] ✅ All configuration parameters applied successfully with strict validation');
 	
 	return true;
 }
@@ -226,7 +432,10 @@ async function processImage() {
 	try {
 		console.log('[Worker] Starting vectorization...');
 		console.log('[Worker] Current image dimensions:', currentImageData?.width, 'x', currentImageData?.height);
-		console.log('[Worker] Current config details:', { backend: 'dots', detail: 0.5 });
+		console.log('[Worker] Current config details:', { 
+			backend: vectorizer.get_backend?.() || 'unknown', 
+			detail: vectorizer.get_detail?.() || 'unknown' 
+		});
 		
 		// Process with progress callback
 		const svg = await new Promise<string>((resolve, reject) => {

@@ -29,6 +29,7 @@
 		"test:e2e:wasm": "playwright test tests/e2e/wasm-integration.spec.ts",
 		"test:e2e:accessibility": "playwright test tests/e2e/accessibility.spec.ts",
 		"test:e2e:performance": "playwright test tests/e2e/performance.spec.ts",
+		"rebuild-wasm": "cd .. && (./rebuild-wasm.sh || rebuild-wasm.bat)",
 		"test:e2e:errors": "playwright test tests/e2e/error-handling.spec.ts",
 		"test:e2e:cross-platform": "playwright test tests/e2e/cross-platform.spec.ts",
 		"test:accessibility": "playwright test tests/e2e/accessibility.spec.ts",

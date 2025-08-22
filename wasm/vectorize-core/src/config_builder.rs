@@ -113,6 +113,21 @@ impl ConfigBuilder {
         self
     }
 
+    /// Set number of processing passes (1-10)
+    pub fn pass_count(mut self, count: u32) -> ConfigBuilderResult<Self> {
+        if count < 1 || count > 10 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                format!("pass_count must be between 1 and 10, got {}", count)
+            ));
+        }
+        self.config.pass_count = count;
+        // Automatically enable multipass if more than 1 pass
+        if count > 1 {
+            self.config.enable_multipass = true;
+        }
+        Ok(self)
+    }
+
     /// Set conservative detail level for first pass
     pub fn conservative_detail(mut self, detail: Option<f32>) -> ConfigBuilderResult<Self> {
         if let Some(d) = detail {
@@ -306,6 +321,22 @@ impl ConfigBuilder {
         self.validate_douglas_peucker_epsilon(epsilon)?;
         self.config.douglas_peucker_epsilon = epsilon;
         Ok(self)
+    }
+
+    // Noise filtering parameters
+
+    /// Set spatial sigma for bilateral noise filtering (0.5-5.0)
+    /// Higher values provide more spatial smoothing but may blur fine details
+    pub fn noise_filter_spatial_sigma(mut self, sigma: f32) -> Self {
+        self.config.noise_filter_spatial_sigma = sigma.clamp(0.5, 5.0);
+        self
+    }
+
+    /// Set range sigma for bilateral noise filtering (10.0-100.0)
+    /// Higher values preserve fewer edges (less selective filtering)
+    pub fn noise_filter_range_sigma(mut self, sigma: f32) -> Self {
+        self.config.noise_filter_range_sigma = sigma.clamp(10.0, 100.0);
+        self
     }
 
     // Superpixel-specific parameters

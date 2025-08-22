@@ -15,11 +15,15 @@ export interface VectorizerConfig {
 	detail: number; // 0.0-1.0 (internally mapped from 1-10 UI)
 	stroke_width: number; // 0.5-5.0 px
 	noise_filtering: boolean;
+	noise_filter_spatial_sigma?: number; // 0.5-1.5 for UI slider (higher = more smoothing, default: 1.2)
+	noise_filter_range_sigma?: number; // 10.0-100.0 (higher = less edge preservation, default: 50.0)
 
 	// Multi-pass processing
-	multipass: boolean;
-	conservative_detail?: number; // 0.0-1.0
-	aggressive_detail?: number; // 0.0-1.0
+	multipass: boolean; // Legacy support - will be computed from pass_count
+	pass_count: number; // 1-4 passes (1 = single pass, 2+ = multipass)
+	multipass_mode: 'auto' | 'manual'; // Auto uses calculated thresholds, manual uses custom values
+	conservative_detail?: number; // 0.0-1.0 (for manual mode)
+	aggressive_detail?: number; // 0.0-1.0 (for manual mode)
 
 	// Directional processing
 	reverse_pass: boolean;
@@ -227,7 +231,11 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	detail: 0.4, // Medium detail (equivalent to old 4)
 	stroke_width: 1.0,
 	noise_filtering: true,
-	multipass: true,
+	noise_filter_spatial_sigma: 1.2,
+	noise_filter_range_sigma: 50.0,
+	multipass: false, // Legacy - computed from pass_count
+	pass_count: 1, // Default to 1 pass for optimal performance
+	multipass_mode: 'auto', // Auto-calculate thresholds by default
 	reverse_pass: false,
 	diagonal_pass: false,
 	enable_etf_fdog: false,
@@ -357,9 +365,28 @@ export const PRESET_DESCRIPTIONS: Record<VectorizerPreset, string> = {
 };
 
 export const HAND_DRAWN_DESCRIPTIONS: Record<HandDrawnPreset, string> = {
-	none: 'Clean, precise lines with no artistic effects',
-	subtle: 'Barely noticeable organic feel with minimal irregularities',
-	medium: 'Noticeable hand-drawn character with moderate artistic styling',
-	strong: 'Obvious artistic style with pronounced hand-drawn effects',
-	sketchy: 'Loose, sketchy appearance with maximum artistic character'
+	none: 'Clean, precise lines with no artistic effects (smoothness control hidden)',
+	subtle: 'Minimal line variation and organic feel - smoothness fine-tunes within this style',
+	medium: 'Moderate thickness variation and natural tapering - smoothness adjusts intensity',
+	strong: 'Pronounced line weight changes and artistic styling - smoothness controls roughness',
+	sketchy: 'Maximum artistic character with loose, sketchy appearance - smoothness varies effect strength'
+};
+
+// Utility functions for multipass processing  
+export function calculateMultipassConfig(
+	config: VectorizerConfig
+): { multipass: boolean } {
+	const { pass_count } = config;
+	
+	// Enable multipass for 2+ passes
+	return { 
+		multipass: pass_count > 1 
+	};
+}
+
+export const PASS_COUNT_DESCRIPTIONS: Record<number, string> = {
+	1: 'Single pass - fastest processing, good for simple images',
+	2: 'Dual pass - multi-scale processing, slower processing',
+	3: 'Triple pass - extended multi-scale processing, slower processing',
+	4: 'Quad pass - maximum scale coverage, significantly slower processing'
 };

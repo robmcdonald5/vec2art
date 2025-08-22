@@ -51,6 +51,17 @@ class VectorizerStore {
 		requestedThreadCount: 0
 	});
 
+	// Track auto-recovery state to prevent infinite loops
+	private _recoveryState = $state<{
+		isRecovering: boolean;
+		recoveryAttempts: number;
+		lastRecoveryTime: number;
+	}>({
+		isRecovering: false,
+		recoveryAttempts: 0,
+		lastRecoveryTime: 0
+	});
+
 	// Getters for reactive access
 	get state(): VectorizerState {
 		return this._state;
@@ -70,6 +81,15 @@ class VectorizerStore {
 
 	get error(): VectorizerError | undefined {
 		return this._state.error;
+	}
+
+	get isPanicked(): boolean {
+		return this._state.has_error && (
+			this._state.error?.details?.includes('unreachable executed') ||
+			this._state.error?.details?.includes('panic') ||
+			this._state.error?.message?.toLowerCase().includes('panic') ||
+			this._state.error?.type === 'unknown'
+		);
 	}
 
 	get config(): VectorizerConfig {
@@ -245,10 +265,12 @@ class VectorizerStore {
 	}
 
 	/**
-	 * Update configuration
+	 * Update configuration with normalization
 	 */
 	updateConfig(updates: Partial<VectorizerConfig>): void {
-		this._state.config = { ...this._state.config, ...updates };
+		// Apply parameter normalization before updating config
+		const normalizedUpdates = this.normalizeConfig(updates);
+		this._state.config = { ...this._state.config, ...normalizedUpdates };
 		this.clearError(); // Clear any previous config errors
 	}
 
@@ -606,6 +628,16 @@ class VectorizerStore {
 		// Log error for debugging
 		console.error('Vectorizer error:', error);
 
+		// Check if this is a panic condition that needs automatic recovery
+		const isPanicError = error.details?.includes('unreachable executed') ||
+			error.details?.includes('panic') ||
+			error.message?.toLowerCase().includes('panic') ||
+			error.type === 'unknown';
+
+		if (isPanicError && !this._recoveryState.isRecovering) {
+			this.attemptAutoRecovery(error);
+		}
+
 		// Auto-clear certain types of errors after a delay
 		if (error.type === 'config') {
 			setTimeout(() => {
@@ -764,6 +796,101 @@ class VectorizerStore {
 		}
 
 		return stats;
+	}
+
+	/**
+	 * Normalize configuration parameters to ensure they're within valid ranges
+	 * This prevents WASM parameter validation failures
+	 */
+	normalizeConfig(config: Partial<VectorizerConfig>): Partial<VectorizerConfig> {
+		const normalized = { ...config };
+
+		// Universal parameter normalization
+		if (typeof normalized.detail === 'number') {
+			normalized.detail = Math.max(0, Math.min(1, normalized.detail));
+		}
+		if (typeof normalized.stroke_width === 'number') {
+			normalized.stroke_width = Math.max(0.1, Math.min(10, normalized.stroke_width));
+		}
+
+		// Hand-drawn aesthetics normalization
+		if (typeof normalized.variable_weights === 'number') {
+			normalized.variable_weights = Math.max(0, Math.min(1, normalized.variable_weights));
+		}
+		if (typeof normalized.tremor_strength === 'number') {
+			// CRITICAL: WASM validation limits tremor_strength to 0.0-0.5
+			normalized.tremor_strength = Math.max(0, Math.min(0.5, normalized.tremor_strength));
+		}
+		if (typeof normalized.tapering === 'number') {
+			normalized.tapering = Math.max(0, Math.min(1, normalized.tapering));
+		}
+
+		// Dots backend normalization
+		if (normalized.backend === 'dots' || this._state.config.backend === 'dots') {
+			if (typeof normalized.dot_density_threshold === 'number') {
+				normalized.dot_density_threshold = Math.max(0, Math.min(1, normalized.dot_density_threshold));
+			}
+			if (typeof normalized.background_tolerance === 'number') {
+				normalized.background_tolerance = Math.max(0, Math.min(1, normalized.background_tolerance));
+			}
+			if (typeof normalized.min_radius === 'number') {
+				normalized.min_radius = Math.max(0.2, Math.min(3, normalized.min_radius));
+			}
+			if (typeof normalized.max_radius === 'number') {
+				normalized.max_radius = Math.max(0.5, Math.min(10, normalized.max_radius));
+			}
+			// Ensure min_radius < max_radius
+			if (normalized.min_radius && normalized.max_radius && normalized.min_radius >= normalized.max_radius) {
+				normalized.max_radius = normalized.min_radius + 0.5;
+			}
+		}
+
+		// Centerline backend normalization
+		if (normalized.backend === 'centerline' || this._state.config.backend === 'centerline') {
+			if (typeof normalized.window_size === 'number') {
+				normalized.window_size = Math.max(15, Math.min(50, normalized.window_size));
+			}
+			if (typeof normalized.sensitivity_k === 'number') {
+				normalized.sensitivity_k = Math.max(0.1, Math.min(1, normalized.sensitivity_k));
+			}
+			if (typeof normalized.min_branch_length === 'number') {
+				normalized.min_branch_length = Math.max(4, Math.min(24, normalized.min_branch_length));
+			}
+			if (typeof normalized.douglas_peucker_epsilon === 'number') {
+				normalized.douglas_peucker_epsilon = Math.max(0.5, Math.min(3, normalized.douglas_peucker_epsilon));
+			}
+		}
+
+		// Superpixel backend normalization
+		if (normalized.backend === 'superpixel' || this._state.config.backend === 'superpixel') {
+			if (typeof normalized.num_superpixels === 'number') {
+				normalized.num_superpixels = Math.max(20, Math.min(1000, Math.round(normalized.num_superpixels)));
+			}
+			if (typeof normalized.compactness === 'number') {
+				normalized.compactness = Math.max(1, Math.min(50, normalized.compactness));
+			}
+			if (typeof normalized.slic_iterations === 'number') {
+				normalized.slic_iterations = Math.max(5, Math.min(15, Math.round(normalized.slic_iterations)));
+			}
+			if (typeof normalized.boundary_epsilon === 'number') {
+				normalized.boundary_epsilon = Math.max(0.5, Math.min(3, normalized.boundary_epsilon));
+			}
+		}
+
+		// Performance settings normalization
+		if (typeof normalized.max_processing_time_ms === 'number') {
+			normalized.max_processing_time_ms = Math.max(1000, normalized.max_processing_time_ms);
+		}
+		if (typeof normalized.svg_precision === 'number') {
+			normalized.svg_precision = Math.max(0, Math.min(4, Math.round(normalized.svg_precision)));
+		}
+
+		console.log('[VectorizerStore] Parameter normalization applied:', {
+			original: config,
+			normalized: normalized
+		});
+
+		return normalized;
 	}
 
 	/**
@@ -1032,6 +1159,107 @@ class VectorizerStore {
 		const sizes = ['B', 'KB', 'MB', 'GB'];
 		const i = Math.floor(Math.log(bytes) / Math.log(k));
 		return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+	}
+
+	/**
+	 * Emergency recovery from WASM panic state
+	 * Completely reinitializes the WASM module and thread pool
+	 */
+	/**
+	 * Attempt automatic recovery from panic conditions
+	 */
+	private async attemptAutoRecovery(originalError: VectorizerError): Promise<void> {
+		const now = Date.now();
+		const timeSinceLastRecovery = now - this._recoveryState.lastRecoveryTime;
+		const maxRecoveryAttempts = 3;
+		const recoveryThrottleMs = 30000; // 30 seconds between attempts
+
+		// Prevent recovery spam - limit attempts and add time-based throttling
+		if (this._recoveryState.recoveryAttempts >= maxRecoveryAttempts) {
+			console.warn('[VectorizerStore] Max auto-recovery attempts reached, manual intervention required');
+			return;
+		}
+
+		if (timeSinceLastRecovery < recoveryThrottleMs) {
+			console.warn('[VectorizerStore] Auto-recovery throttled, waiting before next attempt');
+			return;
+		}
+
+		console.log(`[VectorizerStore] 🚨 Panic detected: "${originalError.details}", attempting auto-recovery (attempt ${this._recoveryState.recoveryAttempts + 1}/${maxRecoveryAttempts})`);
+
+		this._recoveryState.isRecovering = true;
+		this._recoveryState.recoveryAttempts++;
+		this._recoveryState.lastRecoveryTime = now;
+
+		try {
+			// Use the existing emergency recovery logic
+			await this.emergencyRecovery();
+			
+			// Reset recovery counter on successful recovery
+			this._recoveryState.recoveryAttempts = 0;
+			console.log('[VectorizerStore] ✅ Auto-recovery completed successfully');
+		} catch (error) {
+			console.error('[VectorizerStore] ❌ Auto-recovery failed:', error);
+			
+			// If we've reached max attempts, provide guidance
+			if (this._recoveryState.recoveryAttempts >= maxRecoveryAttempts) {
+				this.setError({
+					type: 'unknown',
+					message: 'System requires manual restart',
+					details: `Auto-recovery failed after ${maxRecoveryAttempts} attempts. Please refresh the page to reset the converter.`
+				});
+			}
+		} finally {
+			this._recoveryState.isRecovering = false;
+		}
+	}
+
+	/**
+	 * Manual emergency recovery (called by user action or auto-recovery)
+	 */
+	async emergencyRecovery(): Promise<void> {
+		console.log('[VectorizerStore] Starting emergency recovery from panic state...');
+		
+		// Prevent setError from triggering auto-recovery during manual recovery
+		const wasRecovering = this._recoveryState.isRecovering;
+		this._recoveryState.isRecovering = true;
+		
+		try {
+			// Force cleanup of current service
+			vectorizerService.cleanup();
+			
+			// Reset all state
+			this._state.is_initialized = false;
+			this._state.is_processing = false;
+			this._initState.wasmLoaded = false;
+			this._initState.threadsInitialized = false;
+			this.clearError();
+			
+			// Wait a bit for cleanup to complete
+			await new Promise(resolve => setTimeout(resolve, 500));
+			
+			// Reinitialize everything from scratch
+			await this.initialize({
+				threadCount: this._initState.requestedThreadCount || 4,
+				autoInitThreads: true
+			});
+			
+			console.log('[VectorizerStore] Emergency recovery completed successfully');
+		} catch (error) {
+			console.error('[VectorizerStore] Emergency recovery failed:', error);
+			
+			// Temporarily disable auto-recovery to prevent recursion
+			this._recoveryState.isRecovering = true;
+			this.setError({
+				type: 'unknown',
+				message: 'Recovery failed',
+				details: error instanceof Error ? error.message : 'Unknown recovery error'
+			});
+			this._recoveryState.isRecovering = wasRecovering;
+			throw error;
+		} finally {
+			this._recoveryState.isRecovering = wasRecovering;
+		}
 	}
 }
 

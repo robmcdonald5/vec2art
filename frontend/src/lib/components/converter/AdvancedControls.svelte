@@ -12,6 +12,7 @@
 		Check
 	} from 'lucide-svelte';
 	import type { VectorizerConfig } from '$lib/types/vectorizer';
+	import { calculateMultipassConfig, PASS_COUNT_DESCRIPTIONS } from '$lib/types/vectorizer';
 
 	interface AdvancedControlsProps {
 		config: VectorizerConfig;
@@ -70,6 +71,7 @@
 		};
 	}
 
+
 	// Progressive slider functionality
 	function updateSliderFill(slider: HTMLInputElement) {
 		const min = parseFloat(slider.min);
@@ -83,6 +85,49 @@
 		updateSliderFill(slider);
 		slider.addEventListener('input', () => updateSliderFill(slider));
 	}
+
+	// Slider refs for multipass controls  
+	let passCountSliderRef = $state<HTMLInputElement>();
+
+	// Pass count slider handler
+	function handlePassCountSliderChange(event: Event) {
+		const slider = event.target as HTMLInputElement;
+		const passCount = parseInt(slider.value);
+		
+		// Update progressive fill
+		updateSliderFill(slider);
+		
+		console.log(`🟡 Advanced Controls - Pass count change: ${passCount}`);
+		
+		// Calculate the new multipass configuration
+		const tempConfig = { ...config, pass_count: passCount };
+		const multipassConfig = calculateMultipassConfig(tempConfig);
+		
+		// Update configuration with new pass count and computed multipass settings
+		onConfigChange({
+			pass_count: passCount,
+			multipass: multipassConfig.multipass
+		});
+		onParameterChange?.();
+	}
+
+	// Get description for pass count
+	function getPassCountDescription(passCount: number): string {
+		if (passCount === 1) {
+			return 'Single pass - fastest processing, good for simple images';
+		} else if (passCount === 2) {
+			return '2 passes - multi-scale processing, slower processing';
+		} else if (passCount === 3) {
+			return '3 passes - extended multi-scale processing, slower processing';
+		} else if (passCount === 4) {
+			return '4 passes - maximum scale coverage, significantly slower processing';
+		} else if (passCount <= 6) {
+			return `${passCount} passes - experimental scale range, slower processing`;
+		} else {
+			return `${passCount} passes - extended experimental processing, significantly slower`;
+		}
+	}
+
 </script>
 
 <section class="space-y-4">
@@ -112,7 +157,7 @@
 						<Layers class="text-ferrari-600 h-4 w-4" />
 					</div>
 					<span class="text-converter-primary font-medium">Multi-pass Processing</span>
-					{#if config.multipass}
+					{#if (config.pass_count || 1) > 1}
 						<Check class="h-4 w-4 text-green-600" />
 					{/if}
 				</div>
@@ -127,56 +172,37 @@
 
 			{#if expandedSections.multipass}
 				<div class="border-ferrari-200/20 space-y-4 border-t p-4">
-					<!-- Enable Multi-pass -->
-					<div class="flex items-center space-x-3">
+					<!-- Pass Count Slider -->
+					<div class="space-y-2">
+						<div class="flex items-center justify-between">
+							<label for="pass-count" class="text-converter-primary text-sm font-medium">
+								Processing Passes
+							</label>
+							<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+								{config.pass_count || 1}/10
+							</span>
+						</div>
 						<input
-							type="checkbox"
-							id="multipass"
-							checked={config.multipass}
-							onchange={handleCheckboxChange('multipass')}
+							bind:this={passCountSliderRef}
+							type="range"
+							id="pass-count"
+							min="1"
+							max="10"
+							step="1"
+							value={config.pass_count || 1}
+							oninput={handlePassCountSliderChange}
+							onchange={handlePassCountSliderChange}
 							{disabled}
-							class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+							class="slider-ferrari w-full"
+							aria-describedby="pass-count-desc"
+							use:initializeSliderFill
 						/>
-						<label
-							for="multipass"
-							class="text-converter-primary cursor-pointer text-sm font-medium"
-						>
-							Enable Multi-pass Processing
-						</label>
-					</div>
-					<div class="text-converter-secondary ml-7 text-xs">
-						Dual-pass processing for enhanced quality. Roughly doubles processing time but
-						significantly improves results.
+						<div id="pass-count-desc" class="text-converter-secondary text-xs">
+							{getPassCountDescription(config.pass_count || 1)}
+						</div>
 					</div>
 
-					<!-- Conservative Detail -->
-					{#if config.multipass}
-						<div class="ml-7 space-y-2">
-							<div class="flex items-center justify-between">
-								<label for="conservative-detail" class="text-converter-primary text-sm"
-									>Conservative Detail</label
-								>
-								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-									{(config.conservative_detail ?? config.detail ?? 0).toFixed(2)}
-								</span>
-							</div>
-							<input
-								type="range"
-								id="conservative-detail"
-								min="0"
-								max="1"
-								step="0.01"
-								value={config.conservative_detail ?? config.detail}
-								oninput={handleRangeChange('conservative_detail')}
-								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
-							/>
-							<div class="text-converter-secondary text-xs">
-								First pass threshold. Leave at auto to use main detail level.
-							</div>
-						</div>
-					{/if}
+
 				</div>
 			{/if}
 		</div>

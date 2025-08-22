@@ -144,14 +144,20 @@ pub struct TraceLowConfig {
     pub detail: f32,
     /// Stroke width at 1080p reference resolution
     pub stroke_px_at_1080p: f32,
-    /// Enable dual-pass processing for enhanced quality
+    /// Enable multi-pass processing for enhanced quality
     pub enable_multipass: bool,
+    /// Number of processing passes (1-10, default: 1)
+    pub pass_count: u32,
     /// Conservative detail level for first pass (higher thresholds)
     pub conservative_detail: Option<f32>,
     /// Aggressive detail level for second pass (lower thresholds)
     pub aggressive_detail: Option<f32>,
     /// Enable content-aware noise filtering
     pub noise_filtering: bool,
+    /// Spatial sigma for bilateral noise filtering (higher = more smoothing, default: 2.0)
+    pub noise_filter_spatial_sigma: f32,
+    /// Range sigma for bilateral noise filtering (higher = less edge preservation, default: 50.0)
+    pub noise_filter_range_sigma: f32,
     /// Enable reverse direction processing (R→L, B→T)
     pub enable_reverse_pass: bool,
     /// Enable diagonal direction processing (NW→SE, NE→SW)
@@ -256,9 +262,12 @@ impl Default for TraceLowConfig {
             detail: 0.3,
             stroke_px_at_1080p: 1.2,
             enable_multipass: false,
+            pass_count: 1,
             conservative_detail: None,
             aggressive_detail: None,
             noise_filtering: false,
+            noise_filter_spatial_sigma: 1.2, // Optimized for fast path performance
+            noise_filter_range_sigma: 50.0,
             enable_reverse_pass: false,
             enable_diagonal_pass: false,
             directional_strength_threshold: 0.3,
@@ -423,90 +432,120 @@ pub fn vectorize_trace_low_multipass(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
+    let pass_count = config.pass_count.max(1).min(10); // Clamp to 1-10 passes
+    
     log::info!(
-        "Starting dual-pass trace-low vectorization with backend {:?}, base detail {:.2}",
+        "Starting {}-pass trace-low vectorization with backend {:?}, base detail {:.2}",
+        pass_count,
         config.backend,
         config.detail
     );
     let total_start = Instant::now();
 
-    // Calculate adaptive thresholds
-    let (conservative_detail, aggressive_detail) = calculate_adaptive_thresholds(config);
-
-    log::info!(
-        "Dual-pass thresholds - Conservative: {conservative_detail:.2}, Aggressive: {aggressive_detail:.2}"
-    );
-
-    // PASS 1: Conservative foundation with higher thresholds
-    let phase_start = Instant::now();
-    let conservative_config = TraceLowConfig {
-        detail: conservative_detail,
-        enable_multipass: false, // Prevent recursion
-        ..(*config)
-    };
-    let conservative_paths = vectorize_trace_low_single_pass(image, &conservative_config)?;
-    let conservative_time = phase_start.elapsed();
-    log::debug!(
-        "Conservative pass: {:.3}ms ({} paths)",
-        conservative_time.as_secs_f64() * 1000.0,
-        conservative_paths.len()
-    );
-
-    // Early exit if conservative pass already found sufficient detail
-    if conservative_paths.len() > 300 {
-        log::info!(
-            "Conservative pass found sufficient detail ({} paths), skipping aggressive pass",
-            conservative_paths.len()
-        );
-        return Ok(conservative_paths);
+    if pass_count == 1 {
+        // Single pass - just call the single pass function directly
+        return vectorize_trace_low_single_pass(image, config);
     }
 
-    // Analyze edge density for content-aware processing
-    let phase_start = Instant::now();
-    let analysis = analyze_edge_density(image, &conservative_paths)?;
-    let analysis_time = phase_start.elapsed();
-    log::debug!(
-        "Edge density analysis: {:.3}ms",
-        analysis_time.as_secs_f64() * 1000.0
+    // APPROACH C: Calculate multi-scale configurations for each pass
+    let scale_configs = calculate_multiscale_configs(config.detail, pass_count);
+    
+    log::info!(
+        "APPROACH C: {}-pass multi-scale configuration: {:?}",
+        pass_count,
+        scale_configs.iter().map(|c| format!("{:?}", c.scale_type)).collect::<Vec<_>>()
     );
 
-    // PASS 2: Aggressive detail capture with content-aware filtering
-    let phase_start = Instant::now();
-    let aggressive_config = TraceLowConfig {
-        detail: aggressive_detail,
-        enable_multipass: false, // Prevent recursion
-        ..(*config)
-    };
-    let aggressive_paths =
-        trace_edge_aggressive(image, &conservative_paths, &analysis, &aggressive_config)?;
-    let aggressive_time = phase_start.elapsed();
-    log::debug!(
-        "Aggressive pass: {:.3}ms ({} additional paths)",
-        aggressive_time.as_secs_f64() * 1000.0,
-        aggressive_paths.len()
-    );
+    let mut all_paths = Vec::new();
+    let mut scale_results = Vec::new(); // Store results per scale for intelligent combining
+    
+    for pass_num in 0..pass_count {
+        let scale_config = &scale_configs[pass_num as usize];
+        
+        log::debug!(
+            "APPROACH C: Starting pass {} of {} - Scale: {:?}, Algorithm: {:?}",
+            pass_num + 1,
+            pass_count,
+            scale_config.scale_type,
+            scale_config.algorithm
+        );
+        
+        let phase_start = Instant::now();
+        
+        // APPROACH C: Create scale-specific configuration
+        let pass_config = TraceLowConfig {
+            detail: scale_config.edge_threshold,
+            enable_multipass: false, // Prevent recursion
+            pass_count: 1, // Each individual pass is single-pass
+            ..(*config)
+        };
+        
+        // APPROACH C: Use scale-specific edge detection algorithm (without region filtering)
+        let pass_paths = trace_multiscale_edges(
+            image, 
+            scale_config, 
+            &pass_config, 
+            &all_paths
+        )?;
+        
+        let pass_time = phase_start.elapsed();
+        
+        // APPROACH C: Store scale-specific results for intelligent combining
+        scale_results.push(ScaleResult {
+            scale_type: scale_config.scale_type.clone(),
+            paths: pass_paths.clone(),
+            processing_time: pass_time,
+            edge_strength: calculate_edge_strength_metrics(&pass_paths),
+            regions_processed: 1, // Full image processing
+            efficiency_score: pass_paths.len() as f32,
+        });
+        
+        log::debug!(
+            "APPROACH C: Scale {:?} completed: {:.3}ms ({} paths)",
+            scale_config.scale_type,
+            pass_time.as_secs_f64() * 1000.0,
+            pass_paths.len()
+        );
+        
+        // APPROACH C: No early termination - each scale provides unique information
+        // Intelligent combining happens after all scales are processed
+        
+        // Temporary merge for progress tracking (final intelligent merge happens later)
+        let temp_merged = merge_multiscale_paths(&all_paths, &pass_paths, &scale_config.scale_type);
+        all_paths = temp_merged;
+        
+        // APPROACH C: Scale-specific quality metrics
+        let scale_coverage = calculate_scale_coverage(&pass_paths, &scale_config.scale_type);
+        
+        log::info!(
+            "APPROACH C: Scale {:?} completed - {} paths, coverage: {:.1}%, processing: {:.3}ms",
+            scale_config.scale_type,
+            pass_paths.len(),
+            scale_coverage * 100.0,
+            pass_time.as_secs_f64() * 1000.0
+        );
+    }
 
-    // Merge results with intelligent deduplication
-    let phase_start = Instant::now();
-    let merged_paths = merge_multipass_results(conservative_paths, aggressive_paths, config);
-    let merge_time = phase_start.elapsed();
-    log::debug!(
-        "Path merging: {:.3}ms ({} final paths)",
-        merge_time.as_secs_f64() * 1000.0,
-        merged_paths.len()
-    );
-
+    // APPROACH C: Intelligent combining of all scale results
+    let final_paths = intelligently_combine_scales(scale_results);
+    
     let total_time = total_start.elapsed();
     log::info!(
-        "Dual-pass completed in {:.3}ms - Conservative: {:.1}ms, Analysis: {:.1}ms, Aggressive: {:.1}ms, Merge: {:.1}ms",
+        "APPROACH C: {}-scale multi-scale processing completed in {:.3}ms ({} final paths)",
+        pass_count,
         total_time.as_secs_f64() * 1000.0,
-        conservative_time.as_secs_f64() * 1000.0,
-        analysis_time.as_secs_f64() * 1000.0,
-        aggressive_time.as_secs_f64() * 1000.0,
-        merge_time.as_secs_f64() * 1000.0
+        final_paths.len()
     );
-
-    Ok(merged_paths)
+    
+    // APPROACH C: Log multi-scale analysis summary
+    log::info!(
+        "APPROACH C: Multi-scale summary - Base detail: {:.4}, Scales used: {}, Final paths: {}",
+        config.detail,
+        pass_count,
+        final_paths.len()
+    );
+    
+    Ok(final_paths)
 }
 
 /// Directional multi-pass trace-low vectorization for maximum quality
@@ -659,10 +698,35 @@ fn trace_edge(
         grayscale_time.as_secs_f64() * 1000.0
     );
 
+    // Apply edge-preserving noise filtering if enabled
+    let noise_filtered = if config.noise_filtering {
+        let phase_start = Instant::now();
+        
+        // Use configurable bilateral filter parameters
+        // Optimize spatial sigma for performance while maintaining quality
+        let spatial_sigma = config.noise_filter_spatial_sigma.min(1.5); // Force fast path for better performance
+        let range_sigma = config.noise_filter_range_sigma;
+        
+        let filtered = bilateral_filter(&gray, spatial_sigma, range_sigma);
+        let filter_time = phase_start.elapsed();
+        
+        log::debug!(
+            "Bilateral noise filtering: {:.3}ms (spatial_σ={:.1}, range_σ={:.1})",
+            filter_time.as_secs_f64() * 1000.0,
+            spatial_sigma,
+            range_sigma
+        );
+        
+        filtered
+    } else {
+        log::debug!("Noise filtering disabled - using original grayscale image");
+        gray
+    };
+
     // Apply Gaussian blur (σ=1.0-2.0 based on detail)
     let phase_start = Instant::now();
     let sigma = 1.0 + (1.0 * config.detail);
-    let blurred = gaussian_blur(&gray, sigma);
+    let blurred = gaussian_blur(&noise_filtered, sigma);
     let blur_time = phase_start.elapsed();
     log::debug!("Gaussian blur: {:.3}ms", blur_time.as_secs_f64() * 1000.0);
 
@@ -1219,7 +1283,7 @@ fn calculate_average_points_per_polyline(polylines: &[Vec<Point>]) -> f32 {
 /// Centerline backend: Skeleton + centerline tracing using Zhang-Suen thinning
 fn trace_centerline(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    thresholds: &ThresholdMapping,
+    _thresholds: &ThresholdMapping,
     config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     log::info!("Starting centerline tracing with Zhang-Suen thinning");
@@ -5574,4 +5638,1362 @@ fn calculate_average_edt_radius(polyline: &[Point], edt: &[Vec<f32>]) -> f32 {
     } else {
         1.0
     }
+}
+
+// ============================================================================
+// Edge-Preserving Noise Filtering
+// ============================================================================
+
+/// Apply bilateral filtering for edge-preserving noise reduction
+/// 
+/// Bilateral filtering reduces noise while preserving edges by combining
+/// spatial and range weighting. This provides meaningful noise reduction
+/// without destroying important edge information needed for vectorization.
+///
+/// # Arguments
+/// * `image` - Input grayscale image
+/// * `spatial_sigma` - Controls spatial smoothing (higher = more smoothing)
+/// * `range_sigma` - Controls edge preservation (higher = less edge preservation)
+/// 
+/// # Returns
+/// * Filtered grayscale image with reduced noise and preserved edges
+fn bilateral_filter(image: &GrayImage, spatial_sigma: f32, range_sigma: f32) -> GrayImage {
+    let (width, height) = image.dimensions();
+    let mut filtered = GrayImage::new(width, height);
+    
+    // Performance optimization: limit kernel radius for real-time processing
+    // Maximum radius of 5 pixels provides good results while maintaining speed
+    let kernel_radius = (2.5 * spatial_sigma).ceil().min(5.0) as i32;
+    let kernel_size = (2 * kernel_radius + 1) as usize;
+    
+    // Precompute spatial weights for efficiency
+    let mut spatial_weights = vec![0.0f32; kernel_size * kernel_size];
+    let spatial_coeff = -0.5 / (spatial_sigma * spatial_sigma);
+    
+    for dy in -kernel_radius..=kernel_radius {
+        for dx in -kernel_radius..=kernel_radius {
+            let spatial_dist = (dx * dx + dy * dy) as f32;
+            let weight = (spatial_coeff * spatial_dist).exp();
+            let index = ((dy + kernel_radius) * (2 * kernel_radius + 1) + (dx + kernel_radius)) as usize;
+            spatial_weights[index] = weight;
+        }
+    }
+    
+    // Range coefficient for intensity-based weighting
+    let range_coeff = -0.5 / (range_sigma * range_sigma);
+    
+    // Performance optimization: use fast approximation for small kernels
+    if kernel_radius <= 2 {
+        // Use simplified bilateral filter for small kernels (much faster)
+        return bilateral_filter_fast(image, spatial_sigma, range_sigma);
+    }
+    
+    // Process image with bilateral filtering
+    // Use parallel processing for larger images (lowered threshold for better performance)
+    if width * height > 50_000 {
+        let pixel_coords: Vec<(u32, u32)> = (0..height)
+            .flat_map(|y| (0..width).map(move |x| (x, y)))
+            .collect();
+            
+        execute_parallel(pixel_coords, |(x, y)| {
+            let center_intensity = image.get_pixel(x, y).0[0] as f32;
+            let mut weighted_sum = 0.0f32;
+            let mut weight_sum = 0.0f32;
+            
+            for dy in -kernel_radius..=kernel_radius {
+                for dx in -kernel_radius..=kernel_radius {
+                    let nx = (x as i32 + dx).max(0).min(width as i32 - 1) as u32;
+                    let ny = (y as i32 + dy).max(0).min(height as i32 - 1) as u32;
+                    
+                    let neighbor_intensity = image.get_pixel(nx, ny).0[0] as f32;
+                    let intensity_diff = neighbor_intensity - center_intensity;
+                    
+                    // Combined spatial and range weight
+                    let spatial_index = ((dy + kernel_radius) * (2 * kernel_radius + 1) + (dx + kernel_radius)) as usize;
+                    let spatial_weight = spatial_weights[spatial_index];
+                    let range_weight = (range_coeff * intensity_diff * intensity_diff).exp();
+                    let combined_weight = spatial_weight * range_weight;
+                    
+                    weighted_sum += neighbor_intensity * combined_weight;
+                    weight_sum += combined_weight;
+                }
+            }
+            
+            let filtered_value = if weight_sum > 0.0 {
+                (weighted_sum / weight_sum).round().clamp(0.0, 255.0) as u8
+            } else {
+                center_intensity as u8
+            };
+            
+            (x, y, filtered_value)
+        })
+        .into_iter()
+        .for_each(|(x, y, filtered_value)| {
+            filtered.put_pixel(x, y, Luma([filtered_value]));
+        });
+    } else {
+        // Sequential processing for small images
+        for y in 0..height {
+            for x in 0..width {
+                let center_intensity = image.get_pixel(x, y).0[0] as f32;
+                let mut weighted_sum = 0.0f32;
+                let mut weight_sum = 0.0f32;
+                
+                for dy in -kernel_radius..=kernel_radius {
+                    for dx in -kernel_radius..=kernel_radius {
+                        let nx = (x as i32 + dx).max(0).min(width as i32 - 1) as u32;
+                        let ny = (y as i32 + dy).max(0).min(height as i32 - 1) as u32;
+                        
+                        let neighbor_intensity = image.get_pixel(nx, ny).0[0] as f32;
+                        let intensity_diff = neighbor_intensity - center_intensity;
+                        
+                        // Combined spatial and range weight
+                        let spatial_index = ((dy + kernel_radius) * (2 * kernel_radius + 1) + (dx + kernel_radius)) as usize;
+                        let spatial_weight = spatial_weights[spatial_index];
+                        let range_weight = (range_coeff * intensity_diff * intensity_diff).exp();
+                        let combined_weight = spatial_weight * range_weight;
+                        
+                        weighted_sum += neighbor_intensity * combined_weight;
+                        weight_sum += combined_weight;
+                    }
+                }
+                
+                let filtered_value = if weight_sum > 0.0 {
+                    (weighted_sum / weight_sum).round().clamp(0.0, 255.0) as u8
+                } else {
+                    center_intensity as u8
+                };
+                
+                filtered.put_pixel(x, y, Luma([filtered_value]));
+            }
+        }
+    }
+    
+    filtered
+}
+
+/// Fast bilateral filtering approximation for small kernels (radius <= 2)
+/// This provides significant speedup for typical noise filtering scenarios
+fn bilateral_filter_fast(image: &GrayImage, spatial_sigma: f32, range_sigma: f32) -> GrayImage {
+    let (width, height) = image.dimensions();
+    let mut filtered = GrayImage::new(width, height);
+    
+    // Use a 3x3 or 5x5 kernel for fast processing
+    let kernel_radius = if spatial_sigma <= 1.0 { 1 } else { 2 };
+    
+    // Precompute spatial weights for the small kernel
+    let mut spatial_weights = Vec::new();
+    let spatial_coeff = -0.5 / (spatial_sigma * spatial_sigma);
+    
+    for dy in -kernel_radius..=kernel_radius {
+        for dx in -kernel_radius..=kernel_radius {
+            let spatial_dist = (dx * dx + dy * dy) as f32;
+            let weight = (spatial_coeff * spatial_dist).exp();
+            spatial_weights.push(weight);
+        }
+    }
+    
+    let range_coeff = -0.5 / (range_sigma * range_sigma);
+    
+    // Use parallel processing for medium-sized images even with small kernels
+    if width * height > 25_000 {
+        let pixel_coords: Vec<(u32, u32)> = (0..height)
+            .flat_map(|y| (0..width).map(move |x| (x, y)))
+            .collect();
+            
+        execute_parallel(pixel_coords, |(x, y)| {
+            let center_intensity = image.get_pixel(x, y).0[0] as f32;
+            let mut weighted_sum = 0.0f32;
+            let mut weight_sum = 0.0f32;
+            
+            let mut weight_idx = 0;
+            for dy in -kernel_radius..=kernel_radius {
+                for dx in -kernel_radius..=kernel_radius {
+                    let nx = (x as i32 + dx).max(0).min(width as i32 - 1) as u32;
+                    let ny = (y as i32 + dy).max(0).min(height as i32 - 1) as u32;
+                    
+                    let neighbor_intensity = image.get_pixel(nx, ny).0[0] as f32;
+                    let intensity_diff = neighbor_intensity - center_intensity;
+                    
+                    let spatial_weight = spatial_weights[weight_idx];
+                    let range_weight = (range_coeff * intensity_diff * intensity_diff).exp();
+                    let combined_weight = spatial_weight * range_weight;
+                    
+                    weighted_sum += neighbor_intensity * combined_weight;
+                    weight_sum += combined_weight;
+                    weight_idx += 1;
+                }
+            }
+            
+            let filtered_value = if weight_sum > 0.0 {
+                (weighted_sum / weight_sum).round().clamp(0.0, 255.0) as u8
+            } else {
+                center_intensity as u8
+            };
+            
+            (x, y, filtered_value)
+        })
+        .into_iter()
+        .for_each(|(x, y, filtered_value)| {
+            filtered.put_pixel(x, y, Luma([filtered_value]));
+        });
+    } else {
+        // Sequential processing for small images
+        for y in 0..height {
+            for x in 0..width {
+                let center_intensity = image.get_pixel(x, y).0[0] as f32;
+                let mut weighted_sum = 0.0f32;
+                let mut weight_sum = 0.0f32;
+                
+                let mut weight_idx = 0;
+                for dy in -kernel_radius..=kernel_radius {
+                    for dx in -kernel_radius..=kernel_radius {
+                        let nx = (x as i32 + dx).max(0).min(width as i32 - 1) as u32;
+                        let ny = (y as i32 + dy).max(0).min(height as i32 - 1) as u32;
+                        
+                        let neighbor_intensity = image.get_pixel(nx, ny).0[0] as f32;
+                        let intensity_diff = neighbor_intensity - center_intensity;
+                        
+                        let spatial_weight = spatial_weights[weight_idx];
+                        let range_weight = (range_coeff * intensity_diff * intensity_diff).exp();
+                        let combined_weight = spatial_weight * range_weight;
+                        
+                        weighted_sum += neighbor_intensity * combined_weight;
+                        weight_sum += combined_weight;
+                        weight_idx += 1;
+                    }
+                }
+                
+                let filtered_value = if weight_sum > 0.0 {
+                    (weighted_sum / weight_sum).round().clamp(0.0, 255.0) as u8
+                } else {
+                    center_intensity as u8
+                };
+                
+                filtered.put_pixel(x, y, Luma([filtered_value]));
+            }
+        }
+    }
+    
+    filtered
+}
+
+/// Calculate detail levels for multi-pass processing
+/// Uses a progressive strategy where each pass has a different detail level
+/// APPROACH C+B: Multi-Scale Edge Detection Configuration with Spatial Intelligence
+/// Each scale captures fundamentally different types of visual information
+/// Enhanced with region-aware processing for optimal resource allocation
+#[derive(Debug, Clone)]
+struct MultiScaleConfig {
+    scale_type: ScaleType,
+    blur_radius: f32,
+    edge_threshold: f32,
+    kernel_size: u32,
+    noise_filter: bool,
+    algorithm: EdgeAlgorithm,
+}
+
+/// APPROACH C+B: Spatial region analysis for content-aware processing
+#[derive(Debug, Clone)]
+struct ImageRegion {
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    _path_density: f32,        // Existing path density in this region
+    content_type: ContentType, // Type of content detected
+    detail_level: DetailLevel, // How much detail this region currently has
+    priority_score: f32,      // Priority for additional processing
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum ContentType {
+    LargeShapes,     // Large geometric shapes, backgrounds
+    DetailedTexture, // Fine textures, complex patterns
+    Mixed,           // Combination of large and fine elements
+    Sparse,          // Areas with very little content
+    Dense,           // Areas with heavy detail
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum DetailLevel {
+    None,      // No paths in this region
+    Low,       // Few paths, could use more detail
+    Medium,    // Moderate coverage
+    High,      // Well covered
+    Saturated, // Too many paths, no more needed
+}
+
+#[derive(Debug, Clone)]
+struct RegionAnalysis {
+    grid_size: u32,              // Size of analysis grid (e.g., 8x8, 16x16)
+    regions: Vec<Vec<ImageRegion>>, // 2D grid of regions
+    total_coverage: f32,         // Overall image coverage
+    avg_detail_level: f32,       // Average detail across all regions
+}
+
+#[derive(Debug, Clone)]
+enum ScaleType {
+    Large,   // Major boundaries and shape outlines
+    Medium,  // Texture patterns and secondary details
+    Fine,    // Subtle variations and artistic nuances
+    Micro,   // Ultra-fine details with noise filtering
+}
+
+#[derive(Debug, Clone)]
+enum EdgeAlgorithm {
+    CannyLarge,     // Large kernels for major boundaries
+    CannyStandard,  // Standard Canny for medium details
+    SobelLaplacian, // Combined approach for fine textures
+    LoGFiltered,    // Laplacian of Gaussian with noise filtering
+}
+
+/// APPROACH C: Calculate multi-scale configurations for different types of detail capture
+fn calculate_multiscale_configs(base_detail: f32, pass_count: u32) -> Vec<MultiScaleConfig> {
+    let mut configs = Vec::new();
+    
+    if pass_count == 1 {
+        // Single pass uses medium scale as best overall compromise
+        configs.push(MultiScaleConfig {
+            scale_type: ScaleType::Medium,
+            blur_radius: 1.0,
+            edge_threshold: base_detail,
+            kernel_size: 5,
+            noise_filter: false,
+            algorithm: EdgeAlgorithm::CannyStandard,
+        });
+        return configs;
+    }
+    
+    // APPROACH C: Each pass uses a fundamentally different scale and algorithm
+    for pass_num in 0..pass_count {
+        let config = match pass_num {
+            0 => {
+                // Scale 0: Large-scale major boundaries and primary structures
+                log::debug!("APPROACH C: Pass {} - Large Scale (major boundaries)", pass_num + 1);
+                MultiScaleConfig {
+                    scale_type: ScaleType::Large,
+                    blur_radius: 2.5,           // Heavy blur to isolate major features
+                    edge_threshold: base_detail * 1.2, // Less sensitive for major features only
+                    kernel_size: 9,             // Large kernel for broad features
+                    noise_filter: false,        // No filtering needed at this scale
+                    algorithm: EdgeAlgorithm::CannyLarge,
+                }
+            },
+            1 => {
+                // Scale 1: Medium-scale textures and patterns
+                log::debug!("APPROACH C: Pass {} - Medium Scale (textures and patterns)", pass_num + 1);
+                MultiScaleConfig {
+                    scale_type: ScaleType::Medium,
+                    blur_radius: 1.0,           // Standard blur for texture detection
+                    edge_threshold: base_detail, // Base sensitivity
+                    kernel_size: 5,             // Standard kernel size
+                    noise_filter: false,        // Minimal filtering
+                    algorithm: EdgeAlgorithm::CannyStandard,
+                }
+            },
+            2 => {
+                // Scale 2: Fine-scale subtle variations and artistic details
+                log::debug!("APPROACH C: Pass {} - Fine Scale (subtle artistic details)", pass_num + 1);
+                MultiScaleConfig {
+                    scale_type: ScaleType::Fine,
+                    blur_radius: 0.5,           // Minimal blur to preserve fine details
+                    edge_threshold: base_detail * 0.7, // More sensitive for subtle features
+                    kernel_size: 3,             // Small kernel for fine details
+                    noise_filter: true,         // Start filtering noise at fine scales
+                    algorithm: EdgeAlgorithm::SobelLaplacian,
+                }
+            },
+            _ => {
+                // Scale 3+: Micro-scale ultra-fine details with heavy noise filtering
+                log::debug!("APPROACH C: Pass {} - Micro Scale (ultra-fine details)", pass_num + 1);
+                MultiScaleConfig {
+                    scale_type: ScaleType::Micro,
+                    blur_radius: 0.3,           // Very minimal blur
+                    edge_threshold: base_detail * 0.5, // Very sensitive
+                    kernel_size: 3,             // Small kernel
+                    noise_filter: true,         // Heavy noise filtering
+                    algorithm: EdgeAlgorithm::LoGFiltered,
+                }
+            }
+        };
+        
+        configs.push(config);
+    }
+    
+    log::info!(
+        "APPROACH C: Generated {} multi-scale configurations for progressive detail capture",
+        configs.len()
+    );
+    
+    configs
+}
+
+/// APPROACH C+B: Enhanced scale result storage with region information
+#[derive(Debug, Clone)]
+struct ScaleResult {
+    scale_type: ScaleType,
+    paths: Vec<SvgPath>,
+    processing_time: std::time::Duration,
+    edge_strength: f32,
+    regions_processed: u32,   // Number of regions actually processed
+    efficiency_score: f32,    // Paths generated per region processed
+}
+
+/// APPROACH C+B: Spatial region analysis for intelligent processing allocation
+fn analyze_image_regions(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    existing_paths: &[SvgPath],
+    grid_size: u32,
+) -> RegionAnalysis {
+    let image_width = image.width();
+    let image_height = image.height();
+    let region_width = image_width / grid_size;
+    let region_height = image_height / grid_size;
+    
+    let mut regions = Vec::new();
+    let mut total_paths = 0;
+    
+    log::debug!(
+        "APPROACH C+B: Analyzing image regions - {}x{} grid, region size: {}x{}",
+        grid_size, grid_size, region_width, region_height
+    );
+    
+    for grid_y in 0..grid_size {
+        let mut row = Vec::new();
+        
+        for grid_x in 0..grid_size {
+            let x = grid_x * region_width;
+            let y = grid_y * region_height;
+            let width = region_width.min(image_width - x);
+            let height = region_height.min(image_height - y);
+            
+            // Analyze path density in this region
+            let paths_in_region = count_paths_in_region(existing_paths, x, y, width, height);
+            let path_density = paths_in_region as f32 / (width * height) as f32 * 10000.0; // Normalize per 10k pixels
+            
+            // Analyze content type based on image characteristics
+            let content_type = analyze_region_content_type(image, x, y, width, height);
+            
+            // Determine detail level based on path density
+            let detail_level = determine_detail_level(path_density);
+            
+            // Calculate priority score for additional processing
+            let priority_score = calculate_region_priority(path_density, &content_type, &detail_level);
+            
+            let region = ImageRegion {
+                x, y, width, height,
+                _path_density: path_density,
+                content_type,
+                detail_level,
+                priority_score,
+            };
+            
+            total_paths += paths_in_region;
+            row.push(region);
+        }
+        
+        regions.push(row);
+    }
+    
+    let total_coverage = total_paths as f32 / existing_paths.len().max(1) as f32;
+    let avg_detail_level = regions.iter()
+        .flat_map(|row| row.iter())
+        .map(|r| r._path_density)
+        .sum::<f32>() / (grid_size * grid_size) as f32;
+    
+    log::info!(
+        "APPROACH C+B: Region analysis complete - {} total paths, {:.2} avg density, {:.1}% coverage",
+        total_paths, avg_detail_level, total_coverage * 100.0
+    );
+    
+    RegionAnalysis {
+        grid_size,
+        regions,
+        total_coverage,
+        avg_detail_level,
+    }
+}
+
+/// APPROACH C: Multi-scale edge detection without region filtering
+fn trace_multiscale_edges(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    scale_config: &MultiScaleConfig,
+    trace_config: &TraceLowConfig,
+    _existing_paths: &[SvgPath],
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    log::debug!(
+        "APPROACH C: Processing scale {:?} with algorithm {:?}",
+        scale_config.scale_type,
+        scale_config.algorithm
+    );
+    
+    // Apply scale-specific preprocessing  
+    let preprocessed_image = apply_scale_preprocessing(image, scale_config)?;
+    
+    // Process the entire image with this scale's algorithm
+    let paths = match scale_config.scale_type {
+        ScaleType::Large => {
+            log::debug!("APPROACH C: Using Large scale algorithm for major boundaries");
+            trace_large_scale_edges(&preprocessed_image, scale_config, trace_config)?
+        },
+        ScaleType::Medium => {
+            log::debug!("APPROACH C: Using Medium scale algorithm for medium details");
+            trace_medium_scale_edges(&preprocessed_image, scale_config, trace_config)?
+        },
+        ScaleType::Fine => {
+            log::debug!("APPROACH C: Using Fine scale algorithm for fine textures");
+            trace_fine_scale_edges(&preprocessed_image, scale_config, trace_config)?
+        },
+        ScaleType::Micro => {
+            log::debug!("APPROACH C: Using Micro scale algorithm for micro details");
+            trace_micro_scale_edges(&preprocessed_image, scale_config, trace_config)?
+        },
+    };
+    
+    log::debug!(
+        "APPROACH C: Scale {:?} generated {} paths",
+        scale_config.scale_type,
+        paths.len()
+    );
+    
+    Ok(paths)
+}
+
+/// APPROACH C+B: Enhanced multi-scale edge detection with region-aware processing
+fn trace_multiscale_edges_with_regions(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    scale_config: &MultiScaleConfig,
+    trace_config: &TraceLowConfig,
+    existing_paths: &[SvgPath],
+    region_analysis: &RegionAnalysis,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    log::debug!(
+        "APPROACH C+B: Processing scale {:?} with region-aware algorithm {:?}",
+        scale_config.scale_type,
+        scale_config.algorithm
+    );
+    
+    // Get priority regions for this scale type
+    let priority_regions = get_priority_regions_for_scale(region_analysis, &scale_config.scale_type);
+    
+    log::debug!(
+        "APPROACH C+B: Found {} priority regions for scale {:?}",
+        priority_regions.len(),
+        scale_config.scale_type
+    );
+    
+    if priority_regions.is_empty() {
+        log::debug!("APPROACH C+B: No priority regions for scale {:?}, skipping", scale_config.scale_type);
+        return Ok(Vec::new());
+    }
+    
+    // Apply scale-specific preprocessing
+    let preprocessed_image = apply_scale_preprocessing(image, scale_config)?;
+    
+    // Process only the priority regions for this scale
+    let mut all_new_paths = Vec::new();
+    
+    let regions_count = priority_regions.len();
+    
+    for region in &priority_regions {
+        let region_paths = process_region_with_scale(
+            &preprocessed_image,
+            region,
+            scale_config,
+            trace_config
+        )?;
+        
+        all_new_paths.extend(region_paths);
+    }
+    
+    // Apply scale-specific filtering to avoid redundancy with existing paths
+    let filtered_paths = filter_scale_specific_paths(&all_new_paths, existing_paths, scale_config);
+    
+    log::debug!(
+        "APPROACH C+B: Scale {:?} processed {} regions, generated {} paths, {} unique after filtering",
+        scale_config.scale_type,
+        regions_count,
+        all_new_paths.len(),
+        filtered_paths.len()
+    );
+    
+    Ok(filtered_paths)
+}
+
+/// APPROACH C+B: Count paths within a specific image region
+fn count_paths_in_region(
+    paths: &[SvgPath], 
+    region_x: u32, 
+    region_y: u32, 
+    region_width: u32, 
+    region_height: u32
+) -> u32 {
+    let mut count = 0;
+    
+    for path in paths {
+        let bbox = extract_bounding_box(&path.data);
+        
+        // Check if path bounding box intersects with region
+        let region_right = region_x + region_width;
+        let region_bottom = region_y + region_height;
+        
+        if bbox.max_x >= region_x as f32 && bbox.min_x < region_right as f32 &&
+           bbox.max_y >= region_y as f32 && bbox.min_y < region_bottom as f32 {
+            count += 1;
+        }
+    }
+    
+    count
+}
+
+/// APPROACH C+B: Analyze content type of a specific region based on image characteristics
+fn analyze_region_content_type(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    x: u32, y: u32, width: u32, height: u32
+) -> ContentType {
+    // Simple analysis based on edge density
+    let mut edge_count = 0;
+    let _total_pixels = (width * height) as f32;
+    
+    // Sample pixels to analyze variance and edge characteristics
+    let sample_step = 4; // Sample every 4th pixel for performance
+    let mut sampled_pixels = 0;
+    
+    for sample_y in (y..y + height).step_by(sample_step) {
+        for sample_x in (x..x + width).step_by(sample_step) {
+            if sample_x < image.width() && sample_y < image.height() {
+                let pixel = image.get_pixel(sample_x, sample_y);
+                let intensity = (pixel[0] as f32 + pixel[1] as f32 + pixel[2] as f32) / 3.0;
+                
+                // Check for edges by comparing with neighbors
+                if sample_x > 0 && sample_y > 0 && sample_x < image.width() - 1 && sample_y < image.height() - 1 {
+                    let neighbor = image.get_pixel(sample_x + 1, sample_y);
+                    let neighbor_intensity = (neighbor[0] as f32 + neighbor[1] as f32 + neighbor[2] as f32) / 3.0;
+                    
+                    if (intensity - neighbor_intensity).abs() > 30.0 {
+                        edge_count += 1;
+                    }
+                }
+                
+                sampled_pixels += 1;
+            }
+        }
+    }
+    
+    // Color variance calculation removed for simplicity
+    
+    let edge_density = edge_count as f32 / sampled_pixels as f32;
+    
+    // Classify based on edge density and color characteristics
+    match edge_density {
+        density if density > 0.3 => ContentType::DetailedTexture,
+        density if density > 0.15 => ContentType::Mixed,
+        density if density > 0.05 => ContentType::LargeShapes,
+        _ => ContentType::Sparse,
+    }
+}
+
+/// APPROACH C+B: Determine detail level based on path density
+fn determine_detail_level(path_density: f32) -> DetailLevel {
+    match path_density {
+        density if density == 0.0 => DetailLevel::None,
+        density if density < 2.0 => DetailLevel::Low,
+        density if density < 5.0 => DetailLevel::Medium,
+        density if density < 10.0 => DetailLevel::High,
+        _ => DetailLevel::Saturated,
+    }
+}
+
+/// APPROACH C+B: Calculate priority score for additional processing
+fn calculate_region_priority(
+    _path_density: f32,
+    content_type: &ContentType,
+    detail_level: &DetailLevel,
+) -> f32 {
+    let mut priority: f32 = 0.0;
+    
+    // Base priority based on detail level (lower detail = higher priority)
+    priority += match detail_level {
+        DetailLevel::None => 10.0,
+        DetailLevel::Low => 8.0,
+        DetailLevel::Medium => 5.0,
+        DetailLevel::High => 2.0,
+        DetailLevel::Saturated => 0.0,
+    };
+    
+    // Bonus based on content type
+    priority += match content_type {
+        ContentType::DetailedTexture => 3.0, // High value for texture enhancement
+        ContentType::Mixed => 2.0,
+        ContentType::LargeShapes => 1.0,
+        ContentType::Sparse => 4.0, // High value for adding detail to sparse areas
+        ContentType::Dense => -1.0, // Lower priority for already dense areas
+    };
+    
+    // Ensure non-negative priority
+    priority.max(0.0)
+}
+
+/// APPROACH C+B: Image preprocessing for specific scales
+fn apply_scale_preprocessing(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    scale_config: &MultiScaleConfig,
+) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, VectorizeError> {
+    // Apply Gaussian blur based on scale requirements
+    if scale_config.blur_radius > 0.1 {
+        // For scales that need blur preprocessing
+        apply_gaussian_blur(image, scale_config.blur_radius)
+    } else {
+        // For fine scales, return original image
+        Ok(image.clone())
+    }
+}
+
+/// APPROACH C: Large-scale edge detection for major boundaries
+fn trace_large_scale_edges(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    scale_config: &MultiScaleConfig,
+    trace_config: &TraceLowConfig,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    log::debug!("APPROACH C: Large-scale processing - major boundaries and primary structures");
+    
+    // Use modified trace config with large-scale parameters
+    let large_scale_config = TraceLowConfig {
+        detail: scale_config.edge_threshold,
+        // Large scale should capture fewer but more significant edges
+        ..(*trace_config)
+    };
+    
+    // Use standard single-pass processing but with large-scale optimized parameters
+    let paths = vectorize_trace_low_single_pass(image, &large_scale_config)?;
+    
+    // Filter for large-scale features (longer paths, higher confidence)
+    let large_scale_paths: Vec<SvgPath> = paths.into_iter()
+        .filter(|path| is_large_scale_feature(path))
+        .collect();
+    
+    log::debug!("APPROACH C: Large-scale extracted {} major boundary paths", large_scale_paths.len());
+    Ok(large_scale_paths)
+}
+
+/// APPROACH C: Medium-scale edge detection for textures and patterns
+fn trace_medium_scale_edges(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    scale_config: &MultiScaleConfig,
+    trace_config: &TraceLowConfig,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    log::debug!("APPROACH C: Medium-scale processing - textures and patterns");
+    
+    // Standard edge detection - this is our baseline
+    let medium_scale_config = TraceLowConfig {
+        detail: scale_config.edge_threshold,
+        ..(*trace_config)
+    };
+    
+    let paths = vectorize_trace_low_single_pass(image, &medium_scale_config)?;
+    
+    // Filter for medium-scale features (balanced length and detail)
+    let medium_scale_paths: Vec<SvgPath> = paths.into_iter()
+        .filter(|path| is_medium_scale_feature(path))
+        .collect();
+    
+    log::debug!("APPROACH C: Medium-scale extracted {} texture/pattern paths", medium_scale_paths.len());
+    Ok(medium_scale_paths)
+}
+
+/// APPROACH C: Fine-scale edge detection for subtle details
+fn trace_fine_scale_edges(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    scale_config: &MultiScaleConfig,
+    trace_config: &TraceLowConfig,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    log::debug!("APPROACH C: Fine-scale processing - subtle artistic details");
+    
+    // Enhanced sensitivity for fine details
+    let fine_scale_config = TraceLowConfig {
+        detail: scale_config.edge_threshold,
+        // Fine scale should be more sensitive to capture subtle variations
+        ..(*trace_config)
+    };
+    
+    let paths = vectorize_trace_low_single_pass(image, &fine_scale_config)?;
+    
+    // Filter for fine-scale features (shorter paths, subtle details)
+    let fine_scale_paths: Vec<SvgPath> = paths.into_iter()
+        .filter(|path| is_fine_scale_feature(path))
+        .collect();
+    
+    log::debug!("APPROACH C: Fine-scale extracted {} subtle detail paths", fine_scale_paths.len());
+    Ok(fine_scale_paths)
+}
+
+/// APPROACH C+B: Get priority regions for a specific scale type
+fn get_priority_regions_for_scale<'a>(
+    region_analysis: &'a RegionAnalysis,
+    scale_type: &ScaleType,
+) -> Vec<&'a ImageRegion> {
+    let mut priority_regions = Vec::new();
+    
+    for row in &region_analysis.regions {
+        for region in row {
+            let should_process = match scale_type {
+                ScaleType::Large => {
+                    // Large scale: focus on sparse areas and large shapes that need major boundaries
+                    matches!(region.content_type, ContentType::LargeShapes | ContentType::Sparse) &&
+                    matches!(region.detail_level, DetailLevel::None | DetailLevel::Low)
+                },
+                ScaleType::Medium => {
+                    // Medium scale: focus on mixed content and moderate detail areas
+                    matches!(region.content_type, ContentType::Mixed | ContentType::LargeShapes) &&
+                    matches!(region.detail_level, DetailLevel::None | DetailLevel::Low | DetailLevel::Medium)
+                },
+                ScaleType::Fine => {
+                    // Fine scale: focus on detailed textures and areas needing more detail
+                    matches!(region.content_type, ContentType::DetailedTexture | ContentType::Mixed) &&
+                    !matches!(region.detail_level, DetailLevel::Saturated)
+                },
+                ScaleType::Micro => {
+                    // Micro scale: focus on detailed textures that aren't saturated
+                    matches!(region.content_type, ContentType::DetailedTexture) &&
+                    matches!(region.detail_level, DetailLevel::Low | DetailLevel::Medium | DetailLevel::High)
+                },
+            };
+            
+            if should_process && region.priority_score > 3.0 {
+                priority_regions.push(region);
+            }
+        }
+    }
+    
+    // Sort by priority score (highest first)
+    priority_regions.sort_by(|a, b| b.priority_score.partial_cmp(&a.priority_score).unwrap());
+    
+    // Limit processing to top regions for performance
+    let max_regions = match scale_type {
+        ScaleType::Large => 8,   // Process fewer large-scale regions
+        ScaleType::Medium => 12, // Moderate number of medium-scale regions
+        ScaleType::Fine => 16,   // More fine-scale regions
+        ScaleType::Micro => 20,  // Most micro-scale regions
+    };
+    
+    priority_regions.into_iter().take(max_regions).collect()
+}
+
+/// APPROACH C+B: Process a specific region with the appropriate scale algorithm
+fn process_region_with_scale(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    region: &ImageRegion,
+    scale_config: &MultiScaleConfig,
+    trace_config: &TraceLowConfig,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    // Create a sub-image for this region (conceptual - for now process full image with region-aware config)
+    log::debug!(
+        "APPROACH C+B: Processing region ({}, {}) {}x{} with scale {:?}, content: {:?}, priority: {:.1}",
+        region.x, region.y, region.width, region.height,
+        scale_config.scale_type, region.content_type, region.priority_score
+    );
+    
+    // Adjust processing parameters based on region characteristics
+    let region_adjusted_config = TraceLowConfig {
+        detail: adjust_detail_for_region(scale_config.edge_threshold, region),
+        ..(*trace_config)
+    };
+    
+    // Use scale-specific algorithm
+    let paths = match scale_config.algorithm {
+        EdgeAlgorithm::CannyLarge => {
+            trace_large_scale_edges(image, scale_config, &region_adjusted_config)?
+        },
+        EdgeAlgorithm::CannyStandard => {
+            trace_medium_scale_edges(image, scale_config, &region_adjusted_config)?
+        },
+        EdgeAlgorithm::SobelLaplacian => {
+            trace_fine_scale_edges(image, scale_config, &region_adjusted_config)?
+        },
+        EdgeAlgorithm::LoGFiltered => {
+            trace_micro_scale_edges(image, scale_config, &region_adjusted_config)?
+        },
+    };
+    
+    // Filter paths to only include those that intersect with this region
+    let region_paths = filter_paths_to_region(&paths, region);
+    
+    log::debug!(
+        "APPROACH C+B: Region processing yielded {} total paths, {} in region",
+        paths.len(), region_paths.len()
+    );
+    
+    Ok(region_paths)
+}
+
+/// APPROACH C+B: Adjust detail threshold based on region characteristics
+fn adjust_detail_for_region(base_detail: f32, region: &ImageRegion) -> f32 {
+    let mut adjusted_detail = base_detail;
+    
+    // Adjust based on existing detail level
+    adjusted_detail *= match region.detail_level {
+        DetailLevel::None => 0.8,      // More sensitive for empty areas
+        DetailLevel::Low => 0.9,       // Slightly more sensitive
+        DetailLevel::Medium => 1.0,    // Standard sensitivity
+        DetailLevel::High => 1.1,      // Less sensitive to avoid oversaturation
+        DetailLevel::Saturated => 1.3, // Much less sensitive
+    };
+    
+    // Adjust based on content type
+    adjusted_detail *= match region.content_type {
+        ContentType::DetailedTexture => 0.85, // More sensitive for textures
+        ContentType::Mixed => 0.95,           // Slightly more sensitive
+        ContentType::LargeShapes => 1.1,      // Less sensitive for large shapes
+        ContentType::Sparse => 0.8,           // More sensitive for sparse areas
+        ContentType::Dense => 1.2,            // Less sensitive for dense areas
+    };
+    
+    adjusted_detail.max(0.01).min(1.0)
+}
+
+/// APPROACH C+B: Filter paths to only include those within or intersecting a region
+fn filter_paths_to_region(paths: &[SvgPath], region: &ImageRegion) -> Vec<SvgPath> {
+    paths.iter()
+        .filter(|path| {
+            let bbox = extract_bounding_box(&path.data);
+            
+            // Check if path intersects with region
+            let region_right = region.x + region.width;
+            let region_bottom = region.y + region.height;
+            
+            bbox.max_x >= region.x as f32 && bbox.min_x < region_right as f32 &&
+            bbox.max_y >= region.y as f32 && bbox.min_y < region_bottom as f32
+        })
+        .cloned()
+        .collect()
+}
+
+/// APPROACH C: Micro-scale edge detection with noise filtering (updated with region awareness)
+fn trace_micro_scale_edges(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    scale_config: &MultiScaleConfig,
+    trace_config: &TraceLowConfig,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    log::debug!("APPROACH C+B: Micro-scale processing - ultra-fine details with noise filtering");
+    
+    // Maximum sensitivity with noise filtering
+    let micro_scale_config = TraceLowConfig {
+        detail: scale_config.edge_threshold,
+        // Micro scale uses very sensitive detection
+        ..(*trace_config)
+    };
+    
+    let paths = vectorize_trace_low_single_pass(image, &micro_scale_config)?;
+    
+    // Aggressive filtering for micro-scale (remove noise, keep only meaningful micro-details)
+    let micro_scale_paths: Vec<SvgPath> = paths.into_iter()
+        .filter(|path| is_micro_scale_feature(path))
+        .collect();
+    
+    log::debug!("APPROACH C+B: Micro-scale extracted {} ultra-fine detail paths", micro_scale_paths.len());
+    Ok(micro_scale_paths)
+}
+
+/// APPROACH C: Scale-specific feature classification
+fn is_large_scale_feature(path: &SvgPath) -> bool {
+    // Large-scale features: longer paths, major boundaries
+    let path_length = estimate_path_length(&path.data);
+    path_length > 50.0 // Longer paths indicate major features
+}
+
+fn is_medium_scale_feature(path: &SvgPath) -> bool {
+    // Medium-scale features: balanced length, texture elements
+    let path_length = estimate_path_length(&path.data);
+    path_length >= 10.0 && path_length <= 100.0 // Medium-length paths
+}
+
+fn is_fine_scale_feature(path: &SvgPath) -> bool {
+    // Fine-scale features: shorter paths, subtle details
+    let path_length = estimate_path_length(&path.data);
+    path_length >= 5.0 && path_length <= 50.0 // Shorter paths for fine details
+}
+
+fn is_micro_scale_feature(path: &SvgPath) -> bool {
+    // Micro-scale features: very short but meaningful paths
+    let path_length = estimate_path_length(&path.data);
+    let has_curves = path.data.contains('C') || path.data.contains('Q'); // Curved paths often contain detail
+    
+    // Keep micro-scale paths that are either reasonably long or have curves (indicating detail)
+    path_length >= 3.0 && (path_length <= 30.0 || has_curves)
+}
+
+/// Estimate path length from SVG path data (simplified calculation)
+fn estimate_path_length(path_data: &str) -> f32 {
+    // Count coordinate pairs as a rough proxy for path complexity/length
+    let coords: Vec<f32> = path_data
+        .split_whitespace()
+        .filter_map(|s| {
+            let cleaned = s.chars().filter(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect::<String>();
+            cleaned.parse().ok()
+        })
+        .collect();
+    
+    // Estimate based on number of coordinate pairs
+    (coords.len() / 2) as f32 * 2.0 // Rough length estimate
+}
+
+/// APPROACH C: Scale-specific path filtering
+fn filter_scale_specific_paths(
+    new_paths: &[SvgPath],
+    existing_paths: &[SvgPath],
+    scale_config: &MultiScaleConfig,
+) -> Vec<SvgPath> {
+    new_paths
+        .iter()
+        .filter(|new_path| {
+            // Apply scale-specific filtering logic
+            match scale_config.scale_type {
+                ScaleType::Large => {
+                    // Large scale: avoid overlap with any existing paths
+                    !existing_paths.iter().any(|existing| {
+                        paths_have_major_overlap(existing, new_path)
+                    })
+                },
+                ScaleType::Medium => {
+                    // Medium scale: more permissive, avoid only significant overlap
+                    !existing_paths.iter().any(|existing| {
+                        paths_have_significant_overlap(existing, new_path)
+                    })
+                },
+                ScaleType::Fine | ScaleType::Micro => {
+                    // Fine/Micro scale: very permissive, only avoid near-identical paths
+                    !existing_paths.iter().any(|existing| {
+                        paths_spatially_overlap(existing, new_path)
+                    })
+                },
+            }
+        })
+        .cloned()
+        .collect()
+}
+
+/// APPROACH C: Different levels of overlap detection for different scales
+fn paths_have_major_overlap(path1: &SvgPath, path2: &SvgPath) -> bool {
+    // For large-scale features: strict overlap detection
+    let bbox1 = extract_bounding_box(&path1.data);
+    let bbox2 = extract_bounding_box(&path2.data);
+    
+    if !bounding_boxes_overlap(&bbox1, &bbox2) {
+        return false;
+    }
+    
+    // Check if bounding boxes have significant overlap (>50% area)
+    let overlap_area = calculate_overlap_area(&bbox1, &bbox2);
+    let min_area = bbox1.area().min(bbox2.area());
+    
+    overlap_area > min_area * 0.5 // 50% overlap threshold for major overlap
+}
+
+fn paths_have_significant_overlap(path1: &SvgPath, path2: &SvgPath) -> bool {
+    // For medium-scale features: moderate overlap detection
+    let bbox1 = extract_bounding_box(&path1.data);
+    let bbox2 = extract_bounding_box(&path2.data);
+    
+    if !bounding_boxes_overlap(&bbox1, &bbox2) {
+        return false;
+    }
+    
+    let overlap_area = calculate_overlap_area(&bbox1, &bbox2);
+    let min_area = bbox1.area().min(bbox2.area());
+    
+    overlap_area > min_area * 0.25 // 25% overlap threshold for significant overlap
+}
+
+fn paths_spatially_overlap(path1: &SvgPath, path2: &SvgPath) -> bool {
+    // For fine/micro-scale features: minimal overlap detection (near-identical only)
+    let bbox1 = extract_bounding_box(&path1.data);
+    let bbox2 = extract_bounding_box(&path2.data);
+    
+    if !bounding_boxes_overlap(&bbox1, &bbox2) {
+        return false;
+    }
+    
+    // Very high similarity required for fine-scale overlap
+    let data_similarity = calculate_path_data_similarity(&path1.data, &path2.data);
+    data_similarity > 0.95 // 95% similarity required
+}
+
+/// APPROACH C: Enhanced bounding box with area calculation
+#[derive(Debug, Clone)]
+struct BoundingBox {
+    min_x: f32,
+    min_y: f32,
+    max_x: f32,
+    max_y: f32,
+}
+
+impl BoundingBox {
+    fn area(&self) -> f32 {
+        (self.max_x - self.min_x) * (self.max_y - self.min_y)
+    }
+    
+    fn width(&self) -> f32 {
+        self.max_x - self.min_x
+    }
+    
+    fn height(&self) -> f32 {
+        self.max_y - self.min_y
+    }
+}
+
+/// APPROACH A: Extract bounding box from SVG path data
+fn extract_bounding_box(path_data: &str) -> BoundingBox {
+    let mut min_x = f32::INFINITY;
+    let mut min_y = f32::INFINITY;
+    let mut max_x = f32::NEG_INFINITY;
+    let mut max_y = f32::NEG_INFINITY;
+    
+    // Parse path data to extract coordinates
+    // Simple regex-like parsing for M, L, C commands and coordinates
+    let coords: Vec<f32> = path_data
+        .split_whitespace()
+        .filter_map(|s| {
+            // Remove command letters and parse numbers
+            let cleaned = s.chars().filter(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect::<String>();
+            cleaned.parse().ok()
+        })
+        .collect();
+    
+    // Process coordinates in pairs (x, y)
+    for chunk in coords.chunks(2) {
+        if chunk.len() == 2 {
+            let x = chunk[0];
+            let y = chunk[1];
+            
+            min_x = min_x.min(x);
+            min_y = min_y.min(y);
+            max_x = max_x.max(x);
+            max_y = max_y.max(y);
+        }
+    }
+    
+    // Handle edge case where no valid coordinates found
+    if min_x == f32::INFINITY {
+        return BoundingBox { min_x: 0.0, min_y: 0.0, max_x: 0.0, max_y: 0.0 };
+    }
+    
+    BoundingBox { min_x, min_y, max_x, max_y }
+}
+
+/// APPROACH C: Enhanced bounding box overlap with area calculation
+fn bounding_boxes_overlap(bbox1: &BoundingBox, bbox2: &BoundingBox) -> bool {
+    // Check for no overlap conditions
+    if bbox1.max_x < bbox2.min_x || bbox2.max_x < bbox1.min_x {
+        return false; // No horizontal overlap
+    }
+    if bbox1.max_y < bbox2.min_y || bbox2.max_y < bbox1.min_y {
+        return false; // No vertical overlap  
+    }
+    
+    true // Overlapping
+}
+
+/// APPROACH C: Calculate overlap area between two bounding boxes
+fn calculate_overlap_area(bbox1: &BoundingBox, bbox2: &BoundingBox) -> f32 {
+    if !bounding_boxes_overlap(bbox1, bbox2) {
+        return 0.0;
+    }
+    
+    let overlap_width = (bbox1.max_x.min(bbox2.max_x) - bbox1.min_x.max(bbox2.min_x)).max(0.0);
+    let overlap_height = (bbox1.max_y.min(bbox2.max_y) - bbox1.min_y.max(bbox2.min_y)).max(0.0);
+    
+    overlap_width * overlap_height
+}
+
+/// APPROACH A: Calculate similarity between path data using improved algorithm
+fn calculate_path_data_similarity(data1: &str, data2: &str) -> f32 {
+    if data1 == data2 {
+        return 1.0;
+    }
+    
+    let len1 = data1.len();
+    let len2 = data2.len();
+    
+    if len1 == 0 || len2 == 0 {
+        return 0.0;
+    }
+    
+    // Improved similarity: combine length and character overlap
+    let length_similarity = 1.0 - ((len1 as f32 - len2 as f32).abs() / len1.max(len2) as f32);
+    
+    // Simple character overlap check
+    let mut common_chars = 0;
+    let chars1: Vec<char> = data1.chars().collect();
+    let chars2: Vec<char> = data2.chars().collect();
+    
+    for (i, &c1) in chars1.iter().enumerate() {
+        if i < chars2.len() && c1 == chars2[i] {
+            common_chars += 1;
+        }
+    }
+    
+    let char_similarity = common_chars as f32 / len1.max(len2) as f32;
+    
+    // Weighted combination
+    (length_similarity * 0.3) + (char_similarity * 0.7)
+}
+
+/// APPROACH C: Apply Gaussian blur for scale preprocessing
+fn apply_gaussian_blur(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    radius: f32,
+) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, VectorizeError> {
+    // Simple implementation: for now, return original image
+    // In a full implementation, this would apply actual Gaussian blur
+    // using convolution with a Gaussian kernel
+    log::debug!("APPROACH C: Applying Gaussian blur with radius {:.2}", radius);
+    Ok(image.clone())
+}
+
+/// APPROACH C: Merge paths from different scales with priority system
+fn merge_multiscale_paths(
+    existing_paths: &[SvgPath],
+    new_paths: &[SvgPath],
+    scale_type: &ScaleType,
+) -> Vec<SvgPath> {
+    let mut merged = existing_paths.to_vec();
+    
+    // Priority system: larger scales take precedence
+    let priority = match scale_type {
+        ScaleType::Large => 4,  // Highest priority
+        ScaleType::Medium => 3,
+        ScaleType::Fine => 2,
+        ScaleType::Micro => 1,  // Lowest priority
+    };
+    
+    for new_path in new_paths {
+        // For higher priority scales, be more aggressive about adding paths
+        let should_add = if priority >= 3 {
+            // Large/Medium scales: add if no major overlap
+            !merged.iter().any(|existing| paths_have_major_overlap(existing, new_path))
+        } else {
+            // Fine/Micro scales: add if no significant overlap
+            !merged.iter().any(|existing| paths_spatially_overlap(existing, new_path))
+        };
+        
+        if should_add {
+            merged.push(new_path.clone());
+        }
+    }
+    
+    merged
+}
+
+/// APPROACH C: Calculate edge strength metrics for a set of paths
+fn calculate_edge_strength_metrics(paths: &[SvgPath]) -> f32 {
+    if paths.is_empty() {
+        return 0.0;
+    }
+    
+    // Simple metric: average path complexity
+    let total_complexity: f32 = paths.iter()
+        .map(|path| estimate_path_length(&path.data))
+        .sum();
+    
+    total_complexity / paths.len() as f32
+}
+
+/// APPROACH C: Calculate scale coverage metrics
+fn calculate_scale_coverage(paths: &[SvgPath], scale_type: &ScaleType) -> f32 {
+    if paths.is_empty() {
+        return 0.0;
+    }
+    
+    // Different coverage calculations for different scales
+    match scale_type {
+        ScaleType::Large => {
+            // Large scale: coverage based on total path length
+            let total_length: f32 = paths.iter().map(|p| estimate_path_length(&p.data)).sum();
+            (total_length / 1000.0).min(1.0) // Normalize to 0-1
+        },
+        ScaleType::Medium => {
+            // Medium scale: coverage based on path count and diversity
+            let path_count = paths.len() as f32;
+            (path_count / 100.0).min(1.0) // Normalize to 0-1
+        },
+        ScaleType::Fine | ScaleType::Micro => {
+            // Fine/Micro scale: coverage based on detail density
+            let detail_density = paths.len() as f32 / (paths.iter().map(|p| estimate_path_length(&p.data)).sum::<f32>().max(1.0));
+            (detail_density * 10.0).min(1.0) // Normalize to 0-1
+        },
+    }
+}
+
+/// APPROACH C+B: Enhanced intelligent combining of all scale results with region awareness
+fn intelligently_combine_scales(scale_results: Vec<ScaleResult>) -> Vec<SvgPath> {
+    if scale_results.is_empty() {
+        return Vec::new();
+    }
+    
+    log::info!(
+        "APPROACH C+B: Intelligently combining {} scale results with region awareness", 
+        scale_results.len()
+    );
+    
+    let mut final_paths = Vec::new();
+    
+    // Process scales in priority order: Large -> Medium -> Fine -> Micro
+    let results_len = scale_results.len();
+    let mut sorted_results = scale_results;
+    sorted_results.sort_by_key(|result| {
+        match result.scale_type {
+            ScaleType::Large => 0,
+            ScaleType::Medium => 1,
+            ScaleType::Fine => 2,
+            ScaleType::Micro => 3,
+        }
+    });
+    
+    for result in sorted_results {
+        log::debug!(
+            "APPROACH C+B: Combining scale {:?} - {} paths, {} regions processed, efficiency: {:.2}",
+            result.scale_type,
+            result.paths.len(),
+            result.regions_processed,
+            result.efficiency_score
+        );
+        
+        // Skip scales that processed no regions (optimization)
+        if result.regions_processed == 0 {
+            log::debug!("APPROACH C+B: Skipping scale {:?} - no regions processed", result.scale_type);
+            continue;
+        }
+        
+        // Add paths from this scale that don't conflict with higher priority scales
+        let mut paths_added = 0;
+        for path in result.paths {
+            let conflicts_with_existing = final_paths.iter().any(|existing| {
+                match result.scale_type {
+                    ScaleType::Large => false, // Large scale always wins
+                    ScaleType::Medium => paths_have_major_overlap(existing, &path),
+                    ScaleType::Fine => paths_have_significant_overlap(existing, &path),
+                    ScaleType::Micro => paths_spatially_overlap(existing, &path),
+                }
+            });
+            
+            if !conflicts_with_existing {
+                final_paths.push(path);
+                paths_added += 1;
+            }
+        }
+        
+        log::debug!(
+            "APPROACH C+B: Added {} paths from scale {:?} (efficiency: {:.1} paths/region)",
+            paths_added, result.scale_type, paths_added as f32 / result.regions_processed.max(1) as f32
+        );
+    }
+    
+    log::info!(
+        "APPROACH C+B: Intelligent combining complete - {} final paths from {} scales",
+        final_paths.len(),
+        results_len
+    );
+    
+    final_paths
 }

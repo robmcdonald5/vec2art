@@ -10,7 +10,8 @@
 		Zap,
 		Cpu,
 		Menu,
-		X
+		X,
+		RefreshCw
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type {
@@ -44,6 +45,8 @@
 		onReset: () => void;
 		onAbort: () => void;
 		onPerformanceModeChange?: (mode: PerformanceMode, threadCount: number) => void;
+		isPanicked?: boolean;
+		onEmergencyRecovery?: () => void;
 	}
 
 	let {
@@ -64,7 +67,9 @@
 		onDownload,
 		onReset,
 		onAbort,
-		onPerformanceModeChange
+		onPerformanceModeChange,
+		isPanicked = false,
+		onEmergencyRecovery
 	}: Props = $props();
 
 	// Simple UI state management
@@ -218,10 +223,10 @@
 							</div>
 						</div>
 
-						<!-- Line Width -->
+						<!-- Line Width / Dot Width -->
 						<div>
 							<label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-								Line Width
+								{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
 							</label>
 							<input
 								type="range"
@@ -429,6 +434,16 @@
 			{#if canDownload}
 				<Button variant="outline" onclick={onDownload} class="border-gray-300 dark:border-gray-600">
 					<Download class="h-4 w-4" />
+				</Button>
+			{/if}
+			{#if isPanicked && onEmergencyRecovery}
+				<Button 
+					variant="destructive" 
+					onclick={onEmergencyRecovery} 
+					class="bg-red-600 text-white hover:bg-red-700 animate-pulse"
+					title="Emergency Recovery: Reset WASM module to fix panic state"
+				>
+					<RefreshCw class="h-4 w-4" />
 				</Button>
 			{/if}
 

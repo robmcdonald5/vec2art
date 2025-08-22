@@ -9,7 +9,8 @@
 		Play,
 		Square,
 		ChevronDown,
-		X
+		X,
+		RefreshCw
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type { ProcessingProgress } from '$lib/types/vectorizer';
@@ -32,6 +33,8 @@
 		onReset: () => void;
 		onAddMore: () => void;
 		onRemoveFile: (index: number) => void;
+		isPanicked?: boolean;
+		onEmergencyRecovery?: () => void;
 	}
 
 	let {
@@ -50,7 +53,9 @@
 		onAbort,
 		onReset,
 		onAddMore,
-		onRemoveFile
+		onRemoveFile,
+		isPanicked = false,
+		onEmergencyRecovery
 	}: Props = $props();
 
 	// Derived states - account for files, restored originalImageUrls, and filesMetadata
@@ -286,6 +291,20 @@
 						class="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:scale-110"
 					/>
 					Convert
+				</Button>
+			{/if}
+			
+			<!-- Emergency Recovery Button (only show when panicked) -->
+			{#if isPanicked && onEmergencyRecovery}
+				<Button
+					variant="destructive"
+					size="sm"
+					class="bg-red-600 text-white hover:bg-red-700 animate-pulse transition-all duration-200 hover:scale-105 hover:shadow-lg active:scale-95"
+					onclick={onEmergencyRecovery}
+					title="Emergency Recovery: Reset WASM module to fix panic state"
+				>
+					<RefreshCw class="h-4 w-4" />
+					Fix Panic
 				</Button>
 			{/if}
 		</div>
