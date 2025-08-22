@@ -12,11 +12,13 @@ pub mod execution;
 pub mod performance;
 pub mod preprocessing;
 pub mod svg;
+pub mod svg_gradients;
 pub mod telemetry;
 pub mod utils;
 
 // Re-export main types for convenience
-pub use algorithms::{vectorize_trace_low, TraceBackend, TraceLowConfig};
+pub use algorithms::{vectorize_trace_low, vectorize_trace_low_with_gradients, EnhancedSvgResult, TraceBackend, TraceLowConfig};
+pub use svg_gradients::{GradientDefinition, ColorStop, generate_svg_document_with_gradients, generate_optimized_svg_document_with_gradients};
 pub use config::SvgConfig;
 pub use config_builder::{ConfigBuilder, ConfigBuilderError, ConfigBuilderResult};
 pub use error::*;
@@ -238,6 +240,12 @@ mod input_validation {
 // Re-export validation functions for use in main entry points
 use input_validation::*;
 
+// Re-export SVG optimization functions
+pub use svg::{optimize_colored_svg, calculate_compression_ratio};
+
+// Re-export SIMD color functions
+pub use algorithms::{simd_k_means_palette_reduction, simd_analyze_gradient_strength, is_simd_available, get_simd_info};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -259,7 +267,7 @@ mod tests {
         }
 
         let config = TraceLowConfig::default();
-        let result = vectorize_trace_low_rgba(&img, &config);
+        let result = vectorize_trace_low_rgba(&img, &config, None);
 
         assert!(
             result.is_ok(),
@@ -276,7 +284,7 @@ mod tests {
         // Test 0x0 image
         let img = ImageBuffer::new(0, 0);
         let config = TraceLowConfig::default();
-        let result = vectorize_trace_low_rgba(&img, &config);
+        let result = vectorize_trace_low_rgba(&img, &config, None);
 
         assert!(result.is_err());
         if let Err(e) = result {
@@ -290,7 +298,7 @@ mod tests {
         let mut img = ImageBuffer::new(1, 1);
         img.put_pixel(0, 0, Rgba([255, 0, 0, 255]));
         let config = TraceLowConfig::default();
-        let result = vectorize_trace_low_rgba(&img, &config);
+        let result = vectorize_trace_low_rgba(&img, &config, None);
 
         // Should succeed but generate minimal SVG
         assert!(result.is_ok());
@@ -303,7 +311,7 @@ mod tests {
         // Test image with extreme aspect ratio
         let img = ImageBuffer::new(1000, 1);
         let config = TraceLowConfig::default();
-        let result = vectorize_trace_low_rgba(&img, &config);
+        let result = vectorize_trace_low_rgba(&img, &config, None);
 
         assert!(result.is_err());
         if let Err(e) = result {
@@ -319,7 +327,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = vectorize_trace_low_rgba(&img, &config);
+        let result = vectorize_trace_low_rgba(&img, &config, None);
         assert!(result.is_err());
     }
 }

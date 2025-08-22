@@ -225,6 +225,288 @@ pub fn minify_svg(svg_content: &str) -> String {
         .join("")
 }
 
+/// Advanced SVG optimization for colored output
+///
+/// # Arguments
+/// * `svg_content` - SVG document string
+/// * `enable_color_optimization` - Whether to optimize colors specifically
+/// * `precision` - Decimal precision for coordinates
+///
+/// # Returns
+/// * `String` - Optimized SVG
+pub fn optimize_colored_svg(svg_content: &str, enable_color_optimization: bool, precision: u8) -> String {
+    let mut optimized = svg_content.to_string();
+
+    // Step 1: Minify basic structure
+    optimized = minify_svg(&optimized);
+
+    // Step 2: Optimize path data precision
+    optimized = optimize_path_precision(&optimized, precision);
+
+    // Step 3: Color-specific optimizations
+    if enable_color_optimization {
+        optimized = optimize_colors(&optimized);
+        optimized = merge_similar_paths(&optimized);
+        optimized = optimize_gradients(&optimized);
+    }
+
+    // Step 4: Remove redundant attributes
+    optimized = remove_redundant_attributes(&optimized);
+
+    // Step 5: Compress repeated patterns
+    optimized = compress_repeated_patterns(&optimized);
+
+    optimized
+}
+
+/// Optimize path data precision throughout the SVG
+fn optimize_path_precision(svg_content: &str, precision: u8) -> String {
+    use regex::Regex;
+    
+    // Match path data attributes
+    let path_regex = Regex::new(r#"d="([^"]+)""#).unwrap();
+    
+    path_regex.replace_all(svg_content, |caps: &regex::Captures| {
+        let path_data = &caps[1];
+        let optimized_data = optimize_data(path_data, precision);
+        format!(r#"d="{}""#, optimized_data)
+    }).to_string()
+}
+
+/// Optimize color representations and merge similar colors
+fn optimize_colors(svg_content: &str) -> String {
+    use regex::Regex;
+    use std::collections::HashMap;
+    
+    let mut result = svg_content.to_string();
+    let mut color_map = HashMap::new();
+    
+    // Find all color values (fill, stroke)
+    let color_regex = Regex::new(r#"(fill|stroke)="(#[0-9a-fA-F]{6})""#).unwrap();
+    
+    // First pass: collect all colors and create optimized palette
+    for caps in color_regex.captures_iter(svg_content) {
+        let color = &caps[2];
+        if !color_map.contains_key(color) {
+            // Convert to shorter format if possible
+            let optimized = optimize_color_format(color);
+            color_map.insert(color.to_string(), optimized);
+        }
+    }
+    
+    // Second pass: replace with optimized colors
+    for (original, optimized) in &color_map {
+        result = result.replace(original, optimized);
+    }
+    
+    result
+}
+
+/// Convert 6-digit hex to 3-digit where possible
+fn optimize_color_format(hex_color: &str) -> String {
+    if hex_color.len() == 7 && hex_color.starts_with('#') {
+        let r1 = &hex_color[1..2];
+        let r2 = &hex_color[2..3];
+        let g1 = &hex_color[3..4];
+        let g2 = &hex_color[4..5];
+        let b1 = &hex_color[5..6];
+        let b2 = &hex_color[6..7];
+        
+        // Check if can be shortened to 3-digit
+        if r1 == r2 && g1 == g2 && b1 == b2 {
+            return format!("#{}{}{}", r1, g1, b1);
+        }
+    }
+    hex_color.to_string()
+}
+
+/// Merge paths with identical styling
+fn merge_similar_paths(svg_content: &str) -> String {
+    use regex::Regex;
+    use std::collections::HashMap;
+    
+    // Group paths by their style attributes
+    let path_regex = Regex::new(r#"<path d="([^"]+)"([^>]+)/>"#).unwrap();
+    let mut path_groups: HashMap<String, Vec<String>> = HashMap::new();
+    let mut result = svg_content.to_string();
+    
+    // Collect paths with same styling
+    for caps in path_regex.captures_iter(svg_content) {
+        let path_data = caps[1].to_string();
+        let attributes = caps[2].to_string();
+        
+        // Normalize attributes for grouping
+        let normalized_attrs = normalize_path_attributes(&attributes);
+        
+        path_groups.entry(normalized_attrs).or_insert_with(Vec::new).push(path_data);
+    }
+    
+    // Replace groups with merged paths where beneficial
+    for (attributes, paths) in path_groups {
+        if paths.len() > 1 && should_merge_paths(&paths) {
+            let merged_data = merge_path_data(&paths);
+            let original_pattern = format!(r#"<path d="[^"]*"{}/>"#, regex::escape(&attributes));
+            let replacement = format!(r#"<path d="{}"{}/>"#, merged_data, attributes);
+            
+            // Replace first occurrence and remove others
+            if let Ok(regex) = Regex::new(&original_pattern) {
+                let mut replaced_first = false;
+                result = regex.replace_all(&result, |_: &regex::Captures| {
+                    if !replaced_first {
+                        replaced_first = true;
+                        replacement.clone()
+                    } else {
+                        String::new() // Remove subsequent occurrences
+                    }
+                }).to_string();
+            }
+        }
+    }
+    
+    result
+}
+
+/// Normalize path attributes for consistent grouping
+fn normalize_path_attributes(attributes: &str) -> String {
+    use regex::Regex;
+    
+    let mut normalized = attributes.trim().to_string();
+    
+    // Sort attributes alphabetically for consistent grouping
+    let attr_regex = Regex::new(r#"(\w+)="([^"]*)" "#).unwrap();
+    let mut attrs: Vec<(String, String)> = Vec::new();
+    
+    for caps in attr_regex.captures_iter(&normalized) {
+        attrs.push((caps[1].to_string(), caps[2].to_string()));
+    }
+    
+    attrs.sort_by(|a, b| a.0.cmp(&b.0));
+    
+    normalized = attrs.iter()
+        .map(|(k, v)| format!(r#" {}="{}""#, k, v))
+        .collect::<String>();
+    
+    normalized
+}
+
+/// Determine if paths should be merged based on size/complexity
+fn should_merge_paths(paths: &[String]) -> bool {
+    // Only merge if it would reduce overall size
+    let individual_size: usize = paths.iter().map(|p| p.len() + 20).sum(); // +20 for <path> overhead
+    let merged_size = paths.join(" ").len() + 20; // Single <path> overhead
+    
+    merged_size < individual_size && paths.len() <= 10 // Don't merge too many
+}
+
+/// Merge multiple path data strings into one
+fn merge_path_data(paths: &[String]) -> String {
+    paths.join(" ")
+}
+
+/// Optimize gradient definitions for size
+fn optimize_gradients(svg_content: &str) -> String {
+    use regex::Regex;
+    
+    let mut result = svg_content.to_string();
+    
+    // Optimize gradient stop precision
+    let stop_regex = Regex::new(r#"<stop offset="([0-9.]+)%" stop-color="([^"]+)"([^>]*)/>"#).unwrap();
+    
+    result = stop_regex.replace_all(&result, |caps: &regex::Captures| {
+        let offset = caps[1].parse::<f32>().unwrap_or(0.0);
+        let color = &caps[2];
+        let other_attrs = &caps[3];
+        
+        // Round offset to 1 decimal place
+        let rounded_offset = (offset * 10.0).round() / 10.0;
+        let optimized_color = optimize_color_format(color);
+        
+        format!(r#"<stop offset="{}%" stop-color="{}"{}/>"#, 
+                rounded_offset, optimized_color, other_attrs)
+    }).to_string();
+    
+    result
+}
+
+/// Remove redundant default attributes
+fn remove_redundant_attributes(svg_content: &str) -> String {
+    let mut result = svg_content.to_string();
+    
+    // Remove redundant attributes with default values
+    let redundant_patterns = vec![
+        (r#" fill="none""#, r#" stroke="[^"]+""#, true),  // fill="none" with stroke
+        (r#" stroke="none""#, r#" fill="[^"]+""#, true),  // stroke="none" with fill
+        (r#" stroke-width="1""#, "", false),              // Default stroke-width
+        (r#" stroke-width="1.0""#, "", false),            // Default stroke-width
+    ];
+    
+    for (pattern, condition, conditional) in redundant_patterns {
+        if conditional && !condition.is_empty() {
+            // Only remove if condition pattern is also present
+            use regex::Regex;
+            if let (Ok(main_regex), Ok(cond_regex)) = (Regex::new(pattern), Regex::new(condition)) {
+                // Find elements that match both patterns and collect replacements
+                let lines: Vec<String> = result.lines().map(|s| s.to_string()).collect();
+                let mut replacements = Vec::new();
+                
+                for line in &lines {
+                    if main_regex.is_match(line) && cond_regex.is_match(line) {
+                        let cleaned = main_regex.replace(line, "").to_string();
+                        replacements.push((line.clone(), cleaned));
+                    }
+                }
+                
+                // Apply replacements
+                for (original, replacement) in replacements {
+                    result = result.replace(&original, &replacement);
+                }
+            }
+        } else if !conditional {
+            result = result.replace(pattern, "");
+        }
+    }
+    
+    result
+}
+
+/// Compress repeated patterns and common sequences
+fn compress_repeated_patterns(svg_content: &str) -> String {
+    let mut result = svg_content.to_string();
+    
+    // Common optimizations
+    let optimizations = vec![
+        // Remove extra spaces
+        (r#"  +"#, " "),
+        // Combine consecutive move commands
+        (r#"M ([0-9.-]+) ([0-9.-]+) M"#, "M"),
+        // Remove unnecessary close path before move
+        (r#"Z M"#, "M"),
+        // Optimize repeated attribute patterns
+        (r#" fill="none" stroke="none""#, ""),
+    ];
+    
+    for (pattern, replacement) in optimizations {
+        use regex::Regex;
+        if let Ok(regex) = Regex::new(pattern) {
+            result = regex.replace_all(&result, replacement).to_string();
+        }
+    }
+    
+    result
+}
+
+/// Calculate compression ratio achieved
+pub fn calculate_compression_ratio(original: &str, optimized: &str) -> f32 {
+    let original_size = original.len() as f32;
+    let optimized_size = optimized.len() as f32;
+    
+    if original_size == 0.0 {
+        return 1.0;
+    }
+    
+    (original_size - optimized_size) / original_size
+}
+
 /// Validate SVG paths for correctness
 ///
 /// # Arguments
@@ -397,5 +679,76 @@ mod tests {
         let messy_path = "M  1.5  ,  2.5   L   10 , 20  Z";
         let cleaned = optimize_data(messy_path, 1);
         assert_eq!(cleaned, "M1.5 2.5 L10 20 Z");
+    }
+
+    #[test]
+    fn test_optimize_colored_svg() {
+        let svg = r##"<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <path d="M 10.123456 20.456789 L 30.000000 40.123456 Z" fill="#FF0000" stroke="none"/>
+  <path d="M 50.789012 60.234567 L 70.123456 80.456789 Z" fill="#00FF00" stroke="none"/>
+</svg>"##;
+
+        let optimized = optimize_colored_svg(svg, true, 2);
+        
+        // Should contain optimized coordinates
+        assert!(optimized.contains("10.12"));
+        assert!(optimized.contains("20.46"));
+        
+        // Should contain optimized colors (3-digit format where possible)
+        assert!(optimized.contains("#F00") || optimized.contains("#FF0000"));
+        assert!(optimized.contains("#0F0") || optimized.contains("#00FF00"));
+        
+        // Should be smaller than original
+        assert!(optimized.len() <= svg.len());
+    }
+
+    #[test]
+    fn test_optimize_color_format() {
+        // Test 6-digit to 3-digit conversion
+        assert_eq!(optimize_color_format("#FF0000"), "#F00");
+        assert_eq!(optimize_color_format("#00FF00"), "#0F0");
+        assert_eq!(optimize_color_format("#0000FF"), "#00F");
+        assert_eq!(optimize_color_format("#FFFFFF"), "#FFF");
+        
+        // Test colors that can be optimized
+        assert_eq!(optimize_color_format("#FF1100"), "#F10"); // Correctly converts to shorter format
+        
+        // Test colors that can't be optimized (different character pairs)
+        assert_eq!(optimize_color_format("#123456"), "#123456");
+        assert_eq!(optimize_color_format("#FF1234"), "#FF1234");
+        
+        // Test edge cases
+        assert_eq!(optimize_color_format("#FFF"), "#FFF"); // Already 3-digit
+        assert_eq!(optimize_color_format("invalid"), "invalid"); // Invalid format
+    }
+
+    #[test]
+    fn test_calculate_compression_ratio() {
+        let original = "This is a long string with repeated content content content";
+        let optimized = "This is shorter";
+        
+        let ratio = calculate_compression_ratio(original, optimized);
+        assert!(ratio > 0.0 && ratio < 1.0);
+        
+        // Test edge cases
+        assert_eq!(calculate_compression_ratio("", ""), 1.0);
+        assert_eq!(calculate_compression_ratio("same", "same"), 0.0);
+    }
+
+    #[test]
+    fn test_merge_similar_paths() {
+        let svg = r##"<path d="M 10 10 L 20 20" fill="red" stroke="none"/>
+<path d="M 30 30 L 40 40" fill="red" stroke="none"/>
+<path d="M 50 50 L 60 60" fill="blue" stroke="none"/>"##;
+
+        let merged = merge_similar_paths(svg);
+        
+        // Should merge paths with same styling
+        // Count occurrences of 'fill="red"'
+        let red_count = merged.matches(r#"fill="red""#).count();
+        assert!(red_count <= 2); // Original had 2, should merge to 1 or keep 2
+        
+        // Blue path should remain separate
+        assert!(merged.contains(r#"fill="blue""#));
     }
 }

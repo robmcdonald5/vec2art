@@ -213,6 +213,68 @@ impl ConfigBuilder {
         self
     }
 
+    /// Enable or disable color preservation in line tracing (edge/centerline backends)
+    pub fn line_preserve_colors(mut self, enabled: bool) -> Self {
+        self.config.line_preserve_colors = enabled;
+        self
+    }
+
+    /// Set color sampling method for line tracing
+    pub fn line_color_sampling(mut self, method: crate::algorithms::ColorSamplingMethod) -> Self {
+        self.config.line_color_sampling = method;
+        self
+    }
+
+    /// Set color accuracy for line tracing (0.0 = fast, 1.0 = accurate)
+    pub fn line_color_accuracy(mut self, accuracy: f32) -> ConfigBuilderResult<Self> {
+        if accuracy < 0.0 || accuracy > 1.0 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                format!("line_color_accuracy must be 0.0-1.0, got {}", accuracy)
+            ));
+        }
+        self.config.line_color_accuracy = accuracy;
+        Ok(self)
+    }
+
+    /// Set maximum colors per path segment for line tracing
+    pub fn max_colors_per_path(mut self, max_colors: u32) -> ConfigBuilderResult<Self> {
+        if max_colors < 1 || max_colors > 10 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                format!("max_colors_per_path must be 1-10, got {}", max_colors)
+            ));
+        }
+        self.config.max_colors_per_path = max_colors;
+        Ok(self)
+    }
+
+    /// Set color tolerance for clustering (0.0-1.0)
+    pub fn color_tolerance(mut self, tolerance: f32) -> ConfigBuilderResult<Self> {
+        if tolerance < 0.0 || tolerance > 1.0 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                format!("color_tolerance must be 0.0-1.0, got {}", tolerance)
+            ));
+        }
+        self.config.color_tolerance = tolerance;
+        Ok(self)
+    }
+
+    /// Enable or disable color palette reduction
+    pub fn enable_palette_reduction(mut self, enable: bool) -> Self {
+        self.config.enable_palette_reduction = enable;
+        self
+    }
+
+    /// Set target number of colors for palette reduction (2-50)
+    pub fn palette_target_colors(mut self, target_colors: u32) -> ConfigBuilderResult<Self> {
+        if target_colors < 2 || target_colors > 50 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                format!("palette_target_colors must be 2-50, got {}", target_colors)
+            ));
+        }
+        self.config.palette_target_colors = target_colors;
+        Ok(self)
+    }
+
     /// Enable or disable adaptive dot sizing
     pub fn adaptive_sizing(mut self, enabled: bool) -> Self {
         self.config.dot_adaptive_sizing = enabled;

@@ -21,6 +21,7 @@ use crate::algorithms::path_utils::calculate_douglas_peucker_epsilon;
 use crate::algorithms::svg_dots::dots_to_svg_paths;
 use crate::algorithms::trace::{trace_polylines, TraceConfig};
 use crate::algorithms::{Point, SvgElementType, SvgPath};
+use crate::svg_gradients::{GradientDefinition, ColorStop};
 use crate::error::VectorizeError;
 use crate::execution::{execute_parallel, execute_parallel_filter_map, par_iter_mut, reduce};
 use image::{GrayImage, ImageBuffer, Luma, Rgba};
@@ -34,6 +35,17 @@ struct Rect {
     y: u32,
     width: u32,
     height: u32,
+}
+
+/// Enhanced SVG result that includes gradient definitions
+#[derive(Debug, Clone)]
+pub struct EnhancedSvgResult {
+    /// SVG paths (same as standard result)
+    pub paths: Vec<SvgPath>,
+    /// Gradient definitions for advanced rendering
+    pub gradients: Vec<GradientDefinition>,
+    /// Whether gradients are enabled in this result
+    pub has_gradients: bool,
 }
 
 /// Edge density analysis for content-aware processing
@@ -134,7 +146,7 @@ pub enum ProcessingDirection {
 }
 
 /// Configuration for trace-low algorithms
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TraceLowConfig {
     /// Selected tracing backend
     pub backend: TraceBackend,
@@ -246,6 +258,21 @@ pub struct TraceLowConfig {
     pub superpixel_simplify_boundaries: bool,
     /// Boundary simplification tolerance (0.5-3.0, default: 1.0)
     pub superpixel_boundary_epsilon: f32,
+    // Line tracing color configuration fields
+    /// Whether to preserve original pixel colors in line tracing output (edge/centerline backends)
+    pub line_preserve_colors: bool,
+    /// Color sampling method for line tracing
+    pub line_color_sampling: crate::algorithms::ColorSamplingMethod,
+    /// Color sampling accuracy (0.0 = fast, 1.0 = accurate, default: 0.7)
+    pub line_color_accuracy: f32,
+    /// Maximum number of colors per path segment (1-10, default: 3)
+    pub max_colors_per_path: u32,
+    /// Color similarity tolerance for clustering (0.0-1.0, default: 0.15)
+    pub color_tolerance: f32,
+    /// Enable color palette reduction/clustering (default: false)
+    pub enable_palette_reduction: bool,
+    /// Target number of colors for palette reduction (2-50, default: 16)
+    pub palette_target_colors: u32,
     // Safety and optimization parameters
     /// Maximum image size (width or height) before automatic resizing (512-8192, default: 4096)
     pub max_image_size: u32,
@@ -317,6 +344,14 @@ impl Default for TraceLowConfig {
             superpixel_stroke_regions: true, // Include boundaries for definition
             superpixel_simplify_boundaries: true, // Simplified paths for cleaner output
             superpixel_boundary_epsilon: 1.0, // Moderate simplification
+            // Line tracing color defaults
+            line_preserve_colors: false,     // Default to monochrome for backward compatibility
+            line_color_sampling: crate::algorithms::ColorSamplingMethod::DominantColor, // Default to simple method
+            line_color_accuracy: 0.7,        // Good balance of speed vs accuracy
+            max_colors_per_path: 3,          // Reasonable color complexity limit
+            color_tolerance: 0.15,           // Moderate color similarity threshold
+            enable_palette_reduction: false, // Default disabled for backward compatibility
+            palette_target_colors: 16,       // Balanced color count for palette reduction
             // Safety and optimization defaults
             max_image_size: 4096,    // 4K maximum dimension before resizing
             svg_precision: 2,        // 2 decimal places for balanced file size/quality
@@ -381,6 +416,37 @@ impl ThresholdMapping {
             image_diagonal_px: diag,
         }
     }
+}
+
+/// Enhanced vectorization with gradient support
+pub fn vectorize_trace_low_with_gradients(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    config: &TraceLowConfig,
+    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
+) -> Result<EnhancedSvgResult, VectorizeError> {
+    // Call standard vectorization first
+    let paths = vectorize_trace_low(image, config, hand_drawn_config)?;
+    
+    // If gradients are enabled and we have color data, analyze for gradients
+    let (enhanced_paths, gradients) = if config.line_preserve_colors
+        && matches!(
+            config.line_color_sampling,
+            crate::algorithms::ColorSamplingMethod::GradientMapping
+                | crate::algorithms::ColorSamplingMethod::ContentAware
+                | crate::algorithms::ColorSamplingMethod::Adaptive
+        )
+    {
+        enhance_paths_with_gradients(&paths, image, config)
+    } else {
+        (paths, Vec::new())
+    };
+    
+    let has_gradients = !gradients.is_empty();
+    Ok(EnhancedSvgResult {
+        paths: enhanced_paths,
+        gradients,
+        has_gradients,
+    })
 }
 
 /// Main entry point for trace-low vectorization
@@ -481,12 +547,10 @@ pub fn vectorize_trace_low_multipass(
         let phase_start = Instant::now();
         
         // APPROACH C: Create scale-specific configuration
-        let pass_config = TraceLowConfig {
-            detail: scale_config.edge_threshold,
-            enable_multipass: false, // Prevent recursion
-            pass_count: 1, // Each individual pass is single-pass
-            ..(*config)
-        };
+        let mut pass_config = config.clone();
+        pass_config.detail = scale_config.edge_threshold;
+        pass_config.enable_multipass = false; // Prevent recursion
+        pass_config.pass_count = 1; // Each individual pass is single-pass
         
         // APPROACH C: Use scale-specific edge detection algorithm (without region filtering)
         let pass_paths = trace_multiscale_edges(
@@ -711,9 +775,9 @@ fn trace_edge(
     log::info!("Running edge backend");
     let total_start = Instant::now();
 
-    // Convert to grayscale
+    // Convert to grayscale with optional color preservation
     let phase_start = Instant::now();
-    let gray = rgba_to_gray(image);
+    let (gray, color_map) = rgba_to_gray_with_colors(image, config.line_preserve_colors);
     let grayscale_time = phase_start.elapsed();
     log::debug!(
         "Grayscale conversion: {:.3}ms",
@@ -929,7 +993,14 @@ fn trace_edge(
             let clamped_width = clamp_stroke_width(stroke_width, config);
 
             let path_data = bezier.to_svg_path_data();
-            let svg_path = SvgPath::new_stroke(path_data, "#000000", clamped_width);
+            // For Bézier curves, we'll use default black color for now (can be enhanced later)
+            let stroke_color = if config.line_preserve_colors {
+                // TODO: Sample color from Bézier curve path - using black as placeholder
+                "#000000".to_string()
+            } else {
+                "#000000".to_string()
+            };
+            let svg_path = SvgPath::new_stroke(path_data, &stroke_color, clamped_width);
             svg_paths.push(svg_path);
         }
 
@@ -975,7 +1046,16 @@ fn trace_edge(
 
         let svg_paths: Vec<SvgPath> = simplified_polylines
             .into_iter()
-            .map(|polyline| create_stroke_path(polyline, clamped_width))
+            .map(|polyline| {
+                create_stroke_path_with_color(
+                    polyline, 
+                    clamped_width,
+                    color_map.as_ref(),
+                    image.width(),
+                    image.height(),
+                    config,
+                )
+            })
             .collect();
         let svg_generation_time = svg_start.elapsed();
 
@@ -1435,20 +1515,31 @@ fn trace_centerline(
     let (polylines_after_reconnection, _total_length_after_reconnection, _median_length_after_reconnection) = 
         calculate_polyline_statistics(&reconnected_polylines);
 
-    // Phase 8: Generate SVG paths with optional EDT-based width modulation
+    // Phase 8: Generate SVG paths with optional EDT-based width modulation and color support
     let phase_start = Instant::now();
+    let (img_width, img_height) = image.dimensions();
+    let color_map: Vec<Rgba<u8>> = image.pixels().cloned().collect();
+    
     let svg_paths: Vec<SvgPath> = reconnected_polylines
         .into_iter()
         .map(|polyline| {
             let stroke_width = calculate_stroke_width(image, config.stroke_px_at_1080p);
             let clamped_width = clamp_stroke_width(stroke_width, config);
 
-            // Optional: Apply EDT-based width modulation for more natural appearance
-            if config.enable_width_modulation {
-                polyline_to_svg_path_with_edt_width(polyline, clamped_width, &edt)
+            // Create base SVG path with width modulation
+            let mut svg_path = if config.enable_width_modulation {
+                polyline_to_svg_path_with_edt_width(polyline.clone(), clamped_width, &edt)
             } else {
-                polyline_to_svg_path(polyline, clamped_width)
+                polyline_to_svg_path(polyline.clone(), clamped_width)
+            };
+
+            // Add color sampling if enabled
+            if config.line_preserve_colors {
+                let color = sample_polyline_color(&polyline, &color_map, img_width, img_height, config);
+                svg_path.stroke = color;
             }
+
+            svg_path
         })
         .collect();
     let svg_generation_time = phase_start.elapsed();
@@ -2290,10 +2381,23 @@ fn calculate_image_bounds(cached_data: &[CachedPathData]) -> (f32, f32, f32, f32
 // Helper Functions
 // ============================================================================
 
-/// Convert RGBA image to grayscale with optimized parallel processing
-fn rgba_to_gray(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> GrayImage {
+/// Convert RGBA color to hex string
+fn rgba_to_hex(rgba: &Rgba<u8>) -> String {
+    format!("#{:02x}{:02x}{:02x}", rgba.0[0], rgba.0[1], rgba.0[2])
+}
+
+/// Convert RGBA image to grayscale with optional color map preservation
+fn rgba_to_gray_with_colors(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    preserve_colors: bool,
+) -> (GrayImage, Option<Vec<Rgba<u8>>>) {
     let (width, height) = image.dimensions();
     let mut gray = GrayImage::new(width, height);
+    let mut color_map = if preserve_colors {
+        Some(Vec::with_capacity((width * height) as usize))
+    } else {
+        None
+    };
 
     // Use parallel processing for larger images
     if width * height > 100_000 {
@@ -2303,17 +2407,30 @@ fn rgba_to_gray(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> GrayImage {
             .collect();
 
         // Process pixels in parallel
-        execute_parallel(pixel_coords, |(x, y)| {
+        let results: Vec<(u32, u32, u8, Option<Rgba<u8>>)> = execute_parallel(pixel_coords, |(x, y)| {
             let rgba_pixel = image.get_pixel(x, y);
             let [r, g, b, _a] = rgba_pixel.0;
             // Optimized integer luminance calculation (avoids floating point)
             let gray_value = ((77 * r as u32 + 150 * g as u32 + 29 * b as u32) >> 8) as u8;
-            (x, y, gray_value)
-        })
-        .into_iter()
-        .for_each(|(x, y, gray_value)| {
-            gray.put_pixel(x, y, Luma([gray_value]));
+            let color = if preserve_colors { Some(*rgba_pixel) } else { None };
+            (x, y, gray_value, color)
         });
+        
+        // Build results
+        if preserve_colors {
+            let mut color_vec = vec![Rgba([0, 0, 0, 0]); (width * height) as usize];
+            for (x, y, gray_value, color) in results {
+                gray.put_pixel(x, y, Luma([gray_value]));
+                if let Some(rgba) = color {
+                    color_vec[(y * width + x) as usize] = rgba;
+                }
+            }
+            color_map = Some(color_vec);
+        } else {
+            for (x, y, gray_value, _) in results {
+                gray.put_pixel(x, y, Luma([gray_value]));
+            }
+        }
     } else {
         // Use sequential processing for small images to avoid thread overhead
         for (x, y, pixel) in image.enumerate_pixels() {
@@ -2321,10 +2438,19 @@ fn rgba_to_gray(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> GrayImage {
             // Optimized integer luminance calculation
             let gray_value = ((77 * r as u32 + 150 * g as u32 + 29 * b as u32) >> 8) as u8;
             gray.put_pixel(x, y, Luma([gray_value]));
+            
+            if let Some(ref mut colors) = color_map {
+                colors.push(*pixel);
+            }
         }
     }
 
-    gray
+    (gray, color_map)
+}
+
+/// Convert RGBA image to grayscale with optimized parallel processing
+fn rgba_to_gray(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> GrayImage {
+    rgba_to_gray_with_colors(image, false).0
 }
 
 /// Apply optimized Gaussian blur with separable convolution and parallel processing
@@ -3077,7 +3203,392 @@ fn clamp_stroke_width(width: f32, _config: &TraceLowConfig) -> f32 {
 }
 
 /// Create SVG stroke path from polyline
-fn create_stroke_path(polyline: Vec<Point>, stroke_width: f32) -> SvgPath {
+/// Sample colors from a polyline using advanced color processing
+fn sample_polyline_color(
+    polyline: &[Point],
+    color_map: &[Rgba<u8>],
+    image_width: u32,
+    image_height: u32,
+    config: &TraceLowConfig,
+) -> String {
+    if polyline.is_empty() || color_map.is_empty() {
+        return "#000000".to_string();
+    }
+    
+    // Use advanced color processing
+    let color_info = crate::algorithms::extract_path_colors(
+        polyline,
+        color_map,
+        image_width,
+        image_height,
+        config.line_color_sampling.clone(),
+        config.line_color_accuracy,
+        config.color_tolerance,
+    );
+    
+    color_info.primary_color
+}
+
+/// Enhanced polyline color sampling with gradient detection
+fn sample_polyline_color_with_gradient(
+    polyline: &[Point],
+    color_map: &[Rgba<u8>],
+    image_width: u32,
+    image_height: u32,
+    config: &TraceLowConfig,
+    path_id: usize,
+) -> (String, Option<crate::algorithms::GradientDetectionAnalysis>) {
+    if polyline.is_empty() || color_map.is_empty() {
+        return ("#000000".to_string(), None);
+    }
+    
+    // Use advanced color processing to extract color samples
+    let color_info = crate::algorithms::extract_path_colors(
+        polyline,
+        color_map,
+        image_width,
+        image_height,
+        config.line_color_sampling.clone(),
+        config.line_color_accuracy,
+        config.color_tolerance,
+    );
+    
+    // Check if gradient sampling is enabled and we have enough color variation
+    let use_gradients = matches!(config.line_color_sampling, 
+        crate::algorithms::ColorSamplingMethod::GradientMapping |
+        crate::algorithms::ColorSamplingMethod::ContentAware |
+        crate::algorithms::ColorSamplingMethod::Adaptive) 
+        && color_info.sample_points.len() >= 3;
+    
+    if use_gradients {
+        // Create gradient detection config
+        let gradient_config = crate::algorithms::GradientDetectionConfig {
+            min_quality_threshold: 0.3, // Lower threshold for line art
+            max_complexity_threshold: 0.9,
+            min_samples_for_gradient: 3,
+            enable_linear_gradients: true,
+            enable_radial_gradients: false, // Keep it simple for lines
+        };
+        
+        // Try to detect gradients in this path
+        if let Some(gradient_analysis) = crate::algorithms::analyze_path_for_gradients(
+            polyline,
+            &color_info.sample_points,
+            &gradient_config,
+        ) {
+            return (format!("url(#gradient_linear__{})", path_id), Some(gradient_analysis));
+        }
+    }
+    
+    // Fallback to primary color
+    (color_info.primary_color, None)
+}
+
+/// Enhance existing SVG paths with gradient information
+fn enhance_paths_with_gradients(
+    paths: &[SvgPath],
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    config: &TraceLowConfig,
+) -> (Vec<SvgPath>, Vec<GradientDefinition>) {
+    let mut enhanced_paths = Vec::new();
+    let mut gradient_definitions = Vec::new();
+    
+    // Extract color map from image
+    let color_map: Vec<Rgba<u8>> = image.pixels().cloned().collect();
+    let width = image.width();
+    let height = image.height();
+    
+    for (path_id, path) in paths.iter().enumerate() {
+        // Try to parse path coordinates to detect gradients or create segments
+        if let Some(polyline) = parse_svg_path_to_polyline(&path.data) {
+            
+            // Check if we should use multi-segment paths based on color complexity
+            let use_multi_segment = config.line_color_sampling == crate::algorithms::ColorSamplingMethod::ContentAware
+                && polyline.len() > 10; // Only for longer paths
+            
+            if use_multi_segment {
+                // Segment the path by color changes
+                let segments = segment_path_by_color_changes(
+                    &polyline, 
+                    &color_map, 
+                    width, 
+                    height, 
+                    config
+                );
+                
+                // Create a separate SVG path for each segment
+                for (_segment_id, (segment_polyline, segment_color)) in segments.into_iter().enumerate() {
+                    if segment_polyline.len() >= 2 {
+                        // Generate path data for this segment
+                        let segment_path_data = create_path_data_from_points(&segment_polyline);
+                        
+                        // Create SVG path for this segment
+                        let mut segment_path = path.clone();
+                        segment_path.data = segment_path_data;
+                        segment_path.stroke = segment_color;
+                        enhanced_paths.push(segment_path);
+                    }
+                }
+            } else {
+                // Use gradient-based processing for single paths
+                let (stroke_color, gradient_analysis) = sample_polyline_color_with_gradient(
+                    &polyline,
+                    &color_map,
+                    width,
+                    height,
+                    config,
+                    path_id,
+                );
+                
+                // Create enhanced path
+                let mut enhanced_path = path.clone();
+                enhanced_path.stroke = stroke_color;
+                enhanced_paths.push(enhanced_path);
+                
+                // Add gradient definition if detected
+                if let Some(analysis) = gradient_analysis {
+                    if let Some(gradient_def) = convert_gradient_analysis_to_definition(
+                        path_id,
+                        &analysis,
+                    ) {
+                        gradient_definitions.push(gradient_def);
+                    }
+                }
+            }
+        } else {
+            // Keep original path if we can't parse it
+            enhanced_paths.push(path.clone());
+        }
+    }
+    
+    (enhanced_paths, gradient_definitions)
+}
+
+/// Create SVG path data from a sequence of points
+fn create_path_data_from_points(points: &[Point]) -> String {
+    if points.is_empty() {
+        return String::new();
+    }
+    
+    let mut path_data = format!("M {} {}", points[0].x, points[0].y);
+    
+    for point in points.iter().skip(1) {
+        path_data.push_str(&format!(" L {} {}", point.x, point.y));
+    }
+    
+    path_data
+}
+
+/// Parse SVG path data into polyline coordinates (simplified parser)
+fn parse_svg_path_to_polyline(path_data: &str) -> Option<Vec<Point>> {
+    let mut points = Vec::new();
+    let mut tokens = path_data.split_whitespace();
+    
+    while let Some(token) = tokens.next() {
+        match token {
+            "M" | "L" => {
+                // Move to or line to - expect x, y coordinates
+                if let (Some(x_str), Some(y_str)) = (tokens.next(), tokens.next()) {
+                    if let (Ok(x), Ok(y)) = (x_str.parse::<f32>(), y_str.parse::<f32>()) {
+                        points.push(Point::new(x, y));
+                    }
+                }
+            }
+            _ => {
+                // Skip other commands for simplicity
+                continue;
+            }
+        }
+    }
+    
+    if points.len() >= 2 {
+        Some(points)
+    } else {
+        None
+    }
+}
+
+/// Convert gradient analysis to SVG gradient definition
+fn convert_gradient_analysis_to_definition(
+    path_id: usize,
+    analysis: &crate::algorithms::GradientDetectionAnalysis,
+) -> Option<GradientDefinition> {
+    use crate::algorithms::GradientType;
+    
+    match &analysis.gradient_type {
+        GradientType::Linear { start, end, stops, .. } => {
+            let svg_stops: Vec<ColorStop> = stops
+                .iter()
+                .map(|stop| {
+                    // Convert ColorSample to hex string
+                    let rgba = stop.color.color;
+                    let hex_color = format!("#{:02x}{:02x}{:02x}", rgba[0], rgba[1], rgba[2]);
+                    
+                    ColorStop {
+                        offset: stop.offset * 100.0, // Convert to percentage
+                        color: hex_color,
+                        opacity: Some(rgba[3] as f32 / 255.0),
+                    }
+                })
+                .collect();
+            
+            Some(GradientDefinition::Linear {
+                id: format!("gradient_linear__{}", path_id),
+                x1: start.x,
+                y1: start.y,
+                x2: end.x,
+                y2: end.y,
+                stops: svg_stops,
+            })
+        }
+        GradientType::Radial { center, radius, stops, .. } => {
+            let svg_stops: Vec<ColorStop> = stops
+                .iter()
+                .map(|stop| {
+                    let rgba = stop.color.color;
+                    let hex_color = format!("#{:02x}{:02x}{:02x}", rgba[0], rgba[1], rgba[2]);
+                    
+                    ColorStop {
+                        offset: stop.offset * 100.0,
+                        color: hex_color,
+                        opacity: Some(rgba[3] as f32 / 255.0),
+                    }
+                })
+                .collect();
+            
+            Some(GradientDefinition::Radial {
+                id: format!("gradient_radial__{}", path_id),
+                cx: center.x,
+                cy: center.y,
+                r: *radius,
+                stops: svg_stops,
+            })
+        }
+    }
+}
+
+/// Segment a path based on color changes to create multi-segment colored paths
+fn segment_path_by_color_changes(
+    polyline: &[Point],
+    color_map: &[Rgba<u8>],
+    image_width: u32,
+    image_height: u32,
+    _config: &TraceLowConfig,
+) -> Vec<(Vec<Point>, String)> {
+    if polyline.len() < 2 {
+        return vec![(polyline.to_vec(), "#000000".to_string())];
+    }
+
+    let mut segments = Vec::new();
+    let mut current_segment = Vec::new();
+    let mut current_color: Option<String> = None;
+    
+    // Color change threshold - colors must differ by at least this much to create a new segment
+    let color_change_threshold = 30.0; // RGB distance threshold
+    
+    for (i, point) in polyline.iter().enumerate() {
+        // Sample color at current point
+        let point_color = sample_point_color(point, color_map, image_width, image_height);
+        let point_color_hex = rgba_to_hex_string(&point_color);
+        
+        // Check if we need to start a new segment
+        let should_start_new_segment = if let Some(ref prev_color) = current_color {
+            let color_distance = calculate_rgb_distance(&hex_to_rgba(prev_color), &point_color);
+            color_distance > color_change_threshold
+        } else {
+            false
+        };
+        
+        if should_start_new_segment && !current_segment.is_empty() {
+            // End current segment with the previous point for continuity
+            if let Some(prev_point) = polyline.get(i.saturating_sub(1)) {
+                current_segment.push(*prev_point);
+            }
+            
+            // Save current segment
+            segments.push((current_segment.clone(), current_color.clone().unwrap_or("#000000".to_string())));
+            
+            // Start new segment with the previous point for continuity
+            current_segment.clear();
+            if let Some(prev_point) = polyline.get(i.saturating_sub(1)) {
+                current_segment.push(*prev_point);
+            }
+        }
+        
+        // Add current point to segment
+        current_segment.push(*point);
+        current_color = Some(point_color_hex);
+    }
+    
+    // Add final segment
+    if !current_segment.is_empty() {
+        segments.push((current_segment, current_color.unwrap_or("#000000".to_string())));
+    }
+    
+    // Filter out segments that are too short to be meaningful
+    segments.retain(|(segment, _)| segment.len() >= 2);
+    
+    // If no valid segments, return the full path with a default color
+    if segments.is_empty() {
+        vec![(polyline.to_vec(), "#000000".to_string())]
+    } else {
+        segments
+    }
+}
+
+/// Sample color at a specific point in the image
+fn sample_point_color(
+    point: &Point,
+    color_map: &[Rgba<u8>],
+    image_width: u32,
+    image_height: u32,
+) -> Rgba<u8> {
+    let x = (point.x.round() as u32).min(image_width - 1);
+    let y = (point.y.round() as u32).min(image_height - 1);
+    let index = (y * image_width + x) as usize;
+    
+    if index < color_map.len() {
+        color_map[index]
+    } else {
+        Rgba([0, 0, 0, 255]) // Default black
+    }
+}
+
+/// Convert RGBA to hex string
+fn rgba_to_hex_string(rgba: &Rgba<u8>) -> String {
+    format!("#{:02x}{:02x}{:02x}", rgba[0], rgba[1], rgba[2])
+}
+
+/// Convert hex string to RGBA
+fn hex_to_rgba(hex: &str) -> Rgba<u8> {
+    let hex = hex.trim_start_matches('#');
+    if hex.len() == 6 {
+        let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
+        let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
+        let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+        Rgba([r, g, b, 255])
+    } else {
+        Rgba([0, 0, 0, 255])
+    }
+}
+
+/// Calculate RGB distance between two colors
+fn calculate_rgb_distance(color1: &Rgba<u8>, color2: &Rgba<u8>) -> f32 {
+    let dr = color1[0] as f32 - color2[0] as f32;
+    let dg = color1[1] as f32 - color2[1] as f32;
+    let db = color1[2] as f32 - color2[2] as f32;
+    (dr * dr + dg * dg + db * db).sqrt()
+}
+
+/// Create stroke path with optional color sampling
+fn create_stroke_path_with_color(
+    polyline: Vec<Point>, 
+    stroke_width: f32,
+    color_map: Option<&Vec<Rgba<u8>>>,
+    image_width: u32,
+    image_height: u32,
+    config: &TraceLowConfig,
+) -> SvgPath {
     // Create path data string
     let mut path_data = String::new();
 
@@ -3089,13 +3600,27 @@ fn create_stroke_path(polyline: Vec<Point>, stroke_width: f32) -> SvgPath {
         }
     }
 
+    // Determine stroke color
+    let stroke_color = if let Some(colors) = color_map {
+        sample_polyline_color(&polyline, colors, image_width, image_height, config)
+    } else {
+        "#000000".to_string()
+    };
+
     SvgPath {
         element_type: SvgElementType::Path,
         data: path_data,
         fill: "none".to_string(),
-        stroke: "black".to_string(),
+        stroke: stroke_color,
         stroke_width,
     }
+}
+
+/// Legacy function for backward compatibility
+fn create_stroke_path(polyline: Vec<Point>, stroke_width: f32) -> SvgPath {
+    // Create a minimal config for legacy compatibility
+    let default_config = TraceLowConfig::default();
+    create_stroke_path_with_color(polyline, stroke_width, None, 0, 0, &default_config)
 }
 
 /// Calculate adaptive thresholds for dual-pass processing
@@ -3843,7 +4368,7 @@ fn is_diagonal_oriented(polyline: &[Point]) -> bool {
 fn merge_directional_results(
     base_paths: Vec<SvgPath>,
     directional_paths: Vec<Vec<SvgPath>>,
-    config: &TraceLowConfig,
+    _config: &TraceLowConfig,
     hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
 ) -> Vec<SvgPath> {
     log::debug!(
@@ -4016,11 +4541,9 @@ fn profile_multipass_performance(
 
     // Conservative pass
     let pass_start = Instant::now();
-    let conservative_config = TraceLowConfig {
-        detail: config.conservative_detail.unwrap_or(config.detail * 1.3),
-        enable_multipass: false,
-        ..*config
-    };
+    let mut conservative_config = config.clone();
+    conservative_config.detail = config.conservative_detail.unwrap_or(config.detail * 1.3);
+    conservative_config.enable_multipass = false;
     let conservative_paths = vectorize_trace_low_single_pass(image, &conservative_config, None)?;
     profile.conservative_pass = pass_start.elapsed();
     profile.path_counts.conservative_paths = conservative_paths.len();
@@ -4030,11 +4553,9 @@ fn profile_multipass_performance(
 
     // Aggressive pass
     let pass_start = Instant::now();
-    let aggressive_config = TraceLowConfig {
-        detail: config.aggressive_detail.unwrap_or(config.detail * 0.7),
-        enable_multipass: false,
-        ..*config
-    };
+    let mut aggressive_config = config.clone();
+    aggressive_config.detail = config.aggressive_detail.unwrap_or(config.detail * 0.7);
+    aggressive_config.enable_multipass = false;
     let aggressive_paths =
         trace_edge_aggressive(image, &conservative_paths, &analysis, &aggressive_config)?;
     profile.aggressive_pass = pass_start.elapsed();
@@ -5102,7 +5623,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = vectorize_trace_low(&image, &config);
+        let result = vectorize_trace_low(&image, &config, None);
         assert!(result.is_ok());
 
         let paths = result.unwrap();
@@ -5280,14 +5801,14 @@ mod tests {
         };
 
         // This should call through vectorize_trace_low_single_pass -> trace_dots
-        let result = vectorize_trace_low_single_pass(&img, &config);
+        let result = vectorize_trace_low_single_pass(&img, &config, None);
         assert!(
             result.is_ok(),
             "Main pipeline should work with dots backend"
         );
 
         // Also test with the main entry point
-        let result = vectorize_trace_low(&img, &config);
+        let result = vectorize_trace_low(&img, &config, None);
         assert!(
             result.is_ok(),
             "Main vectorize_trace_low should work with dots backend"
@@ -6316,11 +6837,8 @@ fn trace_large_scale_edges(
     log::debug!("APPROACH C: Large-scale processing - major boundaries and primary structures");
     
     // Use modified trace config with large-scale parameters
-    let large_scale_config = TraceLowConfig {
-        detail: scale_config.edge_threshold,
-        // Large scale should capture fewer but more significant edges
-        ..(*trace_config)
-    };
+    let mut large_scale_config = trace_config.clone();
+    large_scale_config.detail = scale_config.edge_threshold;
     
     // Use standard single-pass processing but with large-scale optimized parameters
     let paths = vectorize_trace_low_single_pass(image, &large_scale_config, None)?;
@@ -6343,10 +6861,8 @@ fn trace_medium_scale_edges(
     log::debug!("APPROACH C: Medium-scale processing - textures and patterns");
     
     // Standard edge detection - this is our baseline
-    let medium_scale_config = TraceLowConfig {
-        detail: scale_config.edge_threshold,
-        ..(*trace_config)
-    };
+    let mut medium_scale_config = trace_config.clone();
+    medium_scale_config.detail = scale_config.edge_threshold;
     
     let paths = vectorize_trace_low_single_pass(image, &medium_scale_config, None)?;
     
@@ -6368,11 +6884,8 @@ fn trace_fine_scale_edges(
     log::debug!("APPROACH C: Fine-scale processing - subtle artistic details");
     
     // Enhanced sensitivity for fine details
-    let fine_scale_config = TraceLowConfig {
-        detail: scale_config.edge_threshold,
-        // Fine scale should be more sensitive to capture subtle variations
-        ..(*trace_config)
-    };
+    let mut fine_scale_config = trace_config.clone();
+    fine_scale_config.detail = scale_config.edge_threshold;
     
     let paths = vectorize_trace_low_single_pass(image, &fine_scale_config, None)?;
     
@@ -6452,10 +6965,8 @@ fn process_region_with_scale(
     );
     
     // Adjust processing parameters based on region characteristics
-    let region_adjusted_config = TraceLowConfig {
-        detail: adjust_detail_for_region(scale_config.edge_threshold, region),
-        ..(*trace_config)
-    };
+    let mut region_adjusted_config = trace_config.clone();
+    region_adjusted_config.detail = adjust_detail_for_region(scale_config.edge_threshold, region);
     
     // Use scale-specific algorithm
     let paths = match scale_config.algorithm {
@@ -6535,11 +7046,8 @@ fn trace_micro_scale_edges(
     log::debug!("APPROACH C+B: Micro-scale processing - ultra-fine details with noise filtering");
     
     // Maximum sensitivity with noise filtering
-    let micro_scale_config = TraceLowConfig {
-        detail: scale_config.edge_threshold,
-        // Micro scale uses very sensitive detection
-        ..(*trace_config)
-    };
+    let mut micro_scale_config = trace_config.clone();
+    micro_scale_config.detail = scale_config.edge_threshold;
     
     let paths = vectorize_trace_low_single_pass(image, &micro_scale_config, None)?;
     

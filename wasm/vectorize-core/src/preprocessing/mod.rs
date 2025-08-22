@@ -95,7 +95,7 @@ pub fn adjust_trace_low_config(
     config: &TraceLowConfig,
     _adjustments: &ParameterAdjustments,
 ) -> TraceLowConfig {
-    *config
+    config.clone()
 }
 
 /// Simplified SVG coordinate scaling (no scaling needed)

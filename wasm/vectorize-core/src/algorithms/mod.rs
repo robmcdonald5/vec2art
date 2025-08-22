@@ -4,15 +4,18 @@
 
 pub mod adaptive_dots;
 pub mod background;
+pub mod color_processing;
 pub mod dot_styles;
 pub mod dots;
 pub mod dots_optimized;
 pub mod edges;
 pub mod etf;
 pub mod fit;
+pub mod gradient_detection;
 pub mod gradients;
 pub mod hand_drawn;
 pub mod path_utils;
+pub mod simd_color;
 pub mod svg_dots;
 pub mod trace;
 pub mod trace_low;
@@ -26,6 +29,10 @@ pub use adaptive_dots::{
 pub use background::{
     calculate_color_similarity, detect_background_advanced, detect_background_mask, rgba_to_lab,
     BackgroundConfig, LabColor,
+};
+pub use color_processing::{
+    extract_path_colors, reduce_color_palette, rgba_to_hex, ColorSample, ColorSamplingMethod,
+    PathColorInfo,
 };
 pub use dot_styles::{
     add_artistic_jitter, add_opacity_variation, add_size_variation, apply_artistic_effects,
@@ -45,17 +52,26 @@ pub use edges::{
 };
 pub use etf::{compute_etf, EtfConfig, EtfField};
 pub use fit::{fit_beziers, CubicBezier, FitConfig};
+pub use gradient_detection::{
+    analyze_path_for_gradients, analyze_paths_for_gradients, generate_gradient_id,
+    GradientAnalysis as GradientDetectionAnalysis, GradientDetectionConfig, GradientPoint,
+    GradientStop, GradientType,
+};
 pub use gradients::{
     analyze_image_gradients, analyze_image_gradients_with_config, calculate_gradient_magnitude,
     calculate_local_variance, GradientAnalysis, GradientConfig,
 };
 pub use hand_drawn::{apply_hand_drawn_aesthetics, HandDrawnConfig, HandDrawnPresets};
+pub use simd_color::{
+    simd_k_means_palette_reduction, simd_analyze_gradient_strength, 
+    is_simd_available, get_simd_info,
+};
 pub use svg_dots::{
     dots_to_svg_elements, dots_to_svg_paths, dots_to_svg_with_config, generate_dot_svg_document,
     optimize_dot_svg, SvgDotConfig, SvgElement,
 };
 pub use trace::{trace_polylines, Point2F, Polyline, TraceConfig};
-pub use trace_low::{vectorize_trace_low, TraceBackend, TraceLowConfig};
+pub use trace_low::{vectorize_trace_low, vectorize_trace_low_with_gradients, EnhancedSvgResult, TraceBackend, TraceLowConfig};
 
 /// 2D point representation
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
