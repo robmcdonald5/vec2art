@@ -686,8 +686,8 @@ pub fn generate_dots_from_image(
     let mut sample_strengths = Vec::new();
     let width = rgba.width();
     let height = rgba.height();
-    for y in (0..height).step_by(height as usize / 10) {
-        for x in (0..width).step_by(width as usize / 10) {
+    for y in (0..height).step_by(std::cmp::max(1, height as usize / 10)) {
+        for x in (0..width).step_by(std::cmp::max(1, width as usize / 10)) {
             let strength = calculate_gradient_strength(
                 &gradient_analysis,
                 x,
