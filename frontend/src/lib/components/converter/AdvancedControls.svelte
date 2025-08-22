@@ -32,6 +32,7 @@
 		multipass: false,
 		directional: false,
 		edgeDetection: false,
+		colorControls: false,
 		centerlineAdvanced: false,
 		dotsAdvanced: false,
 		superpixelAdvanced: false,
@@ -334,6 +335,166 @@
 			</div>
 		{/if}
 
+		<!-- Color Controls (Edge/Centerline backends only) -->
+		{#if config.backend === 'edge' || config.backend === 'centerline'}
+			<div class="border-ferrari-200/30 rounded-lg border bg-white">
+				<button
+					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+					onclick={() => toggleSection('colorControls')}
+					{disabled}
+					type="button"
+				>
+					<div class="flex items-center gap-2">
+						<!-- Color Palette Icon -->
+						<svg class="text-ferrari-600 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+							<circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+							<circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+							<circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+							<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+						</svg>
+						<span class="text-converter-primary font-medium">Color Controls</span>
+					</div>
+					<div class="flex-shrink-0">
+						{#if expandedSections.colorControls}
+							<ChevronUp class="text-ferrari-600 h-4 w-4" />
+						{:else}
+							<ChevronDown class="text-ferrari-600 h-4 w-4" />
+						{/if}
+					</div>
+				</button>
+
+				{#if expandedSections.colorControls}
+					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+						<!-- Color Mode Toggle -->
+						<div class="space-y-2">
+							<div class="flex items-center justify-between">
+								<label class="text-converter-primary text-sm font-medium">Color Mode</label>
+								<span class="bg-ferrari-50 rounded px-2 py-1 text-xs">
+									{config.line_preserve_colors ? 'Color' : 'Mono'}
+								</span>
+							</div>
+							
+							<div class="grid grid-cols-2 gap-2">
+								<button
+									class="group flex items-center justify-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {!config.line_preserve_colors ? 'border-gray-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}"
+									onclick={() => {
+										onConfigChange({ line_preserve_colors: false });
+										onParameterChange?.();
+									}}
+									{disabled}
+									type="button"
+								>
+									{#if !config.line_preserve_colors}
+										<div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0"></div>
+									{/if}
+									<span>Monochrome</span>
+								</button>
+								<button
+									class="group flex items-center justify-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {config.line_preserve_colors ? 'border-ferrari-500 bg-ferrari-50 text-ferrari-700' : 'border-gray-200 bg-white text-gray-700 hover:border-ferrari-300'}"
+									onclick={() => {
+										onConfigChange({ line_preserve_colors: true });
+										onParameterChange?.();
+									}}
+									{disabled}
+									type="button"
+								>
+									{#if config.line_preserve_colors}
+										<div class="w-3 h-3 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 flex-shrink-0"></div>
+									{/if}
+									<span>Preserve Colors</span>
+								</button>
+							</div>
+							
+							<div class="text-xs text-converter-secondary">
+								{#if config.line_preserve_colors}
+									Colors will be sampled from the original image and applied to line paths
+								{:else}
+									Traditional black line art output (fastest processing)
+								{/if}
+							</div>
+						</div>
+
+						{#if config.line_preserve_colors}
+							<!-- Color Accuracy Slider -->
+							<div class="space-y-2">
+								<div class="flex items-center justify-between">
+									<label for="line-color-accuracy" class="text-converter-primary text-sm">Color Accuracy</label>
+									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+										{Math.round((config.line_color_accuracy ?? 0.7) * 100)}%
+									</span>
+								</div>
+								<input
+									type="range"
+									id="line-color-accuracy"
+									min="0.3"
+									max="1.0"
+									step="0.1"
+									value={config.line_color_accuracy ?? 0.7}
+									oninput={handleRangeChange('line_color_accuracy')}
+									{disabled}
+									class="slider-ferrari w-full"
+									use:initializeSliderFill
+								/>
+								<div class="text-converter-secondary text-xs">
+									Higher accuracy preserves more colors but increases processing time
+								</div>
+							</div>
+
+							<!-- Max Colors Per Path -->
+							<div class="space-y-2">
+								<div class="flex items-center justify-between">
+									<label for="max-colors-path" class="text-converter-primary text-sm">Max Colors per Path</label>
+									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+										{config.max_colors_per_path ?? 3}
+									</span>
+								</div>
+								<input
+									type="range"
+									id="max-colors-path"
+									min="1"
+									max="10"
+									step="1"
+									value={config.max_colors_per_path ?? 3}
+									oninput={handleRangeChange('max_colors_per_path')}
+									{disabled}
+									class="slider-ferrari w-full"
+									use:initializeSliderFill
+								/>
+								<div class="text-converter-secondary text-xs">
+									Limits color complexity per path segment (1 = single dominant color, 10 = maximum variation)
+								</div>
+							</div>
+
+							<!-- Color Tolerance -->
+							<div class="space-y-2">
+								<div class="flex items-center justify-between">
+									<label for="color-tolerance" class="text-converter-primary text-sm">Color Tolerance</label>
+									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+										{Math.round((config.color_tolerance ?? 0.15) * 100)}%
+									</span>
+								</div>
+								<input
+									type="range"
+									id="color-tolerance"
+									min="0.05"
+									max="0.5"
+									step="0.05"
+									value={config.color_tolerance ?? 0.15}
+									oninput={handleRangeChange('color_tolerance')}
+									{disabled}
+									class="slider-ferrari w-full"
+									use:initializeSliderFill
+								/>
+								<div class="text-converter-secondary text-xs">
+									Controls color clustering sensitivity (lower = more distinct colors, higher = more grouping)
+								</div>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Advanced Edge Detection (Edge backend only) -->
 		{#if config.backend === 'edge'}

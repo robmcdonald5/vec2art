@@ -259,6 +259,40 @@
 							<span>{config.backend === 'dots' ? 'Large' : 'Thick'}</span>
 						</div>
 					</div>
+
+					<!-- Color Toggle (Edge/Centerline backends only) -->
+					{#if config.backend === 'edge' || config.backend === 'centerline'}
+						<div>
+							<div class="mb-2 flex items-center gap-2">
+								<label class="text-converter-primary block text-sm font-medium">Color Mode</label>
+								<Tooltip
+									content="Enable to preserve original image colors in line strokes. Disable for traditional black line art."
+									position="top"
+									size="md"
+								/>
+							</div>
+							<div class="flex items-center space-x-3">
+								<input
+									type="checkbox"
+									id="preserve-colors-quick"
+									checked={config.line_preserve_colors ?? false}
+									onchange={(event) => {
+										const target = event.target as HTMLInputElement;
+										onConfigChange({ line_preserve_colors: target.checked });
+										onParameterChange();
+									}}
+									{disabled}
+									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+								/>
+								<label
+									for="preserve-colors-quick"
+									class="text-converter-primary cursor-pointer text-sm font-medium"
+								>
+									Enable Color
+								</label>
+							</div>
+						</div>
+					{/if}
 				</div>
 			</div>
 		{/if}
@@ -361,7 +395,7 @@
 						<div class="grid grid-cols-2 gap-3">
 							<!-- Economy Mode -->
 							<button
-								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 {currentPerformanceMode === 'economy' ? 'border-green-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-green-300'}"
+								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode === 'economy' ? 'border-green-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-green-300'}"
 								onclick={() => clickPerformanceMode('economy')}
 								{disabled}
 								type="button"
@@ -372,7 +406,7 @@
 							
 							<!-- Balanced Mode -->
 							<button
-								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {currentPerformanceMode === 'balanced' ? 'border-blue-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'}"
+								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode === 'balanced' ? 'border-blue-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'}"
 								onclick={() => clickPerformanceMode('balanced')}
 								{disabled}
 								type="button"
@@ -383,7 +417,7 @@
 							
 							<!-- Performance Mode -->
 							<button
-								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 {currentPerformanceMode === 'performance' ? 'border-yellow-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-yellow-300'}"
+								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode === 'performance' ? 'border-yellow-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-yellow-300'}"
 								onclick={() => clickPerformanceMode('performance')}
 								{disabled}
 								type="button"
@@ -394,7 +428,7 @@
 							
 							<!-- Custom Mode -->
 							<button
-								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 {currentPerformanceMode === 'custom' ? 'border-purple-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300'}"
+								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode === 'custom' ? 'border-purple-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300'}"
 								onclick={() => clickPerformanceMode('custom')}
 								{disabled}
 								type="button"
@@ -537,6 +571,7 @@
 
 				<!-- Advanced Controls -->
 				<AdvancedControls {config} {onConfigChange} {disabled} {onParameterChange} />
+
 			</div>
 		{/if}
 	</div>
