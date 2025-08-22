@@ -108,6 +108,15 @@ export interface VectorizerConfig {
 	simplify_boundaries?: boolean;
 	boundary_epsilon?: number; // 0.5-3.0 px
 
+	// Line tracing color options
+	line_preserve_colors?: boolean; // Whether to preserve original colors in line tracing
+	line_color_sampling?: 'dominant' | 'gradient' | 'content-aware' | 'adaptive'; // Color sampling method
+	line_color_accuracy?: number; // 0.0-1.0 (0.0 = fast, 1.0 = accurate)
+	max_colors_per_path?: number; // 1-10 maximum colors per path segment
+	color_tolerance?: number; // 0.0-1.0 color similarity tolerance
+	enable_palette_reduction?: boolean; // Whether to enable color palette reduction
+	palette_target_colors?: number; // 2-50 target number of colors for palette reduction
+
 	// Global output control
 	svg_precision?: number; // 0-4 decimal places
 	optimize_svg?: boolean;
@@ -245,6 +254,14 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	variable_weights: 0.0,
 	tremor_strength: 0.0,
 	tapering: 0.0,
+	// Line tracing color defaults
+	line_preserve_colors: false, // Default to monochrome for backward compatibility
+	line_color_sampling: 'dominant', // Default to simple dominant color sampling
+	line_color_accuracy: 0.7, // Good balance of speed vs accuracy
+	max_colors_per_path: 3, // Reasonable color complexity limit
+	color_tolerance: 0.15, // Moderate color similarity threshold
+	enable_palette_reduction: false, // Default disabled for backward compatibility
+	palette_target_colors: 16, // Balanced color count for palette reduction
 	max_processing_time_ms: 60000 // 60 seconds for comprehensive processing
 };
 
@@ -305,7 +322,11 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		max_radius: 3.0,
 		background_tolerance: 0.1,
 		poisson_disk_sampling: true,
-		gradient_based_sizing: true
+		gradient_based_sizing: true,
+		// Line color settings (for when user switches to edge/centerline)
+		line_preserve_colors: true,
+		line_color_sampling: 'adaptive',
+		line_color_accuracy: 0.8
 	},
 	poster: {
 		// Superpixel backend - bold regions and clean shapes
@@ -344,7 +365,11 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		// Disable advanced features that cause panics
 		enable_flow_tracing: false,
 		enable_bezier_fitting: false,
-		enable_etf_fdog: false
+		enable_etf_fdog: false,
+		// Line color settings for comic book style
+		line_preserve_colors: true,
+		line_color_sampling: 'gradient',
+		line_color_accuracy: 0.6
 	}
 };
 

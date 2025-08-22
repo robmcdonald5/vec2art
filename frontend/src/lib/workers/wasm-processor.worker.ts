@@ -466,6 +466,43 @@ function configureVectorizer(config: any) {
 		console.log('[Worker] ✅ Centerline backend parameters configured');
 	}
 	
+	// Line color configuration (applies to edge and centerline backends)
+	if (config.backend === 'edge' || config.backend === 'centerline') {
+		if (typeof config.line_preserve_colors === 'boolean' && typeof vectorizer.set_line_preserve_colors === 'function') {
+			console.log('[Worker] Setting line_preserve_colors:', config.line_preserve_colors);
+			vectorizer.set_line_preserve_colors(config.line_preserve_colors);
+		}
+		
+		if (typeof config.line_color_accuracy === 'number' && typeof vectorizer.set_line_color_accuracy === 'function') {
+			const clampedAccuracy = Math.max(0.3, Math.min(1.0, config.line_color_accuracy));
+			if (clampedAccuracy !== config.line_color_accuracy) {
+				console.warn(`[Worker] ⚠️ Line color accuracy clamped from ${config.line_color_accuracy} to ${clampedAccuracy}`);
+			}
+			console.log('[Worker] Setting line_color_accuracy:', clampedAccuracy);
+			vectorizer.set_line_color_accuracy(clampedAccuracy);
+		}
+		
+		if (typeof config.max_colors_per_path === 'number' && typeof vectorizer.set_max_colors_per_path === 'function') {
+			const clampedMaxColors = Math.max(1, Math.min(10, config.max_colors_per_path));
+			if (clampedMaxColors !== config.max_colors_per_path) {
+				console.warn(`[Worker] ⚠️ Max colors per path clamped from ${config.max_colors_per_path} to ${clampedMaxColors}`);
+			}
+			console.log('[Worker] Setting max_colors_per_path:', clampedMaxColors);
+			vectorizer.set_max_colors_per_path(clampedMaxColors);
+		}
+		
+		if (typeof config.color_tolerance === 'number' && typeof vectorizer.set_color_tolerance === 'function') {
+			const clampedTolerance = Math.max(0.05, Math.min(0.5, config.color_tolerance));
+			if (clampedTolerance !== config.color_tolerance) {
+				console.warn(`[Worker] ⚠️ Color tolerance clamped from ${config.color_tolerance} to ${clampedTolerance}`);
+			}
+			console.log('[Worker] Setting color_tolerance:', clampedTolerance);
+			vectorizer.set_color_tolerance(clampedTolerance);
+		}
+		
+		console.log('[Worker] ✅ Line color parameters configured');
+	}
+	
 	console.log('[Worker] ✅ All configuration parameters applied successfully with strict validation');
 	
 	return true;
