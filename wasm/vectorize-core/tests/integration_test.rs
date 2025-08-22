@@ -15,7 +15,7 @@ fn test_end_to_end_pipeline() {
 
     // Test default configuration
     let config = TraceLowConfig::default();
-    let result = vectorize_trace_low_rgba(&img, &config);
+    let result = vectorize_trace_low_rgba(&img, &config, None);
     assert!(result.is_ok(), "Default vectorization should succeed");
     let svg = result.unwrap();
     assert!(!svg.is_empty(), "SVG output should not be empty");
@@ -27,7 +27,7 @@ fn test_end_to_end_pipeline() {
         enable_multipass: true,
         ..TraceLowConfig::default()
     };
-    let result = vectorize_trace_low_rgba(&img, &config_multipass);
+    let result = vectorize_trace_low_rgba(&img, &config_multipass, None);
     assert!(result.is_ok(), "Multipass vectorization should succeed");
 
     // Test with Edge backend (the only fully implemented one)
@@ -35,7 +35,7 @@ fn test_end_to_end_pipeline() {
         backend: TraceBackend::Edge,
         ..TraceLowConfig::default()
     };
-    let result = vectorize_trace_low_rgba(&img, &config_edge);
+    let result = vectorize_trace_low_rgba(&img, &config_edge, None);
     assert!(result.is_ok(), "Edge backend should work");
 
     // Note: Centerline and Superpixel backends are placeholders for future implementation
@@ -56,7 +56,7 @@ fn test_hand_drawn_pipeline() {
 
     // Get paths from vectorization
     let config = TraceLowConfig::default();
-    let paths = vectorize_trace_low(&img, &config);
+    let paths = vectorize_trace_low(&img, &config, None);
     assert!(paths.is_ok(), "Path extraction should succeed");
     let paths = paths.unwrap();
     assert!(!paths.is_empty(), "Should find some paths");
@@ -85,7 +85,7 @@ fn test_high_performance_requirement() {
 
     // Measure processing time
     let start = Instant::now();
-    let result = vectorize_trace_low_rgba(&img, &config);
+    let result = vectorize_trace_low_rgba(&img, &config, None);
     let elapsed = start.elapsed();
 
     assert!(

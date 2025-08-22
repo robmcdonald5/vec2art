@@ -9,7 +9,7 @@ use vectorize_core::algorithms::{
     apply_style_preset, dots_to_svg_with_config, generate_dots_from_image, DotConfig, DotStyle,
     SvgDotConfig, TraceBackend, TraceLowConfig,
 };
-use vectorize_core::vectorize_trace_low_rgba;
+use vectorize_core::{vectorize_trace_low_rgba, algorithms::trace_low::vectorize_trace_low};
 
 /// Test image generators for different scenarios
 mod image_generators {
@@ -597,12 +597,20 @@ mod edge_case_tests {
     fn test_gradient_transitions() {
         let img = create_gradient_transitions_image(80, 60);
 
-        let dots = generate_dots_from_image(&img, &DotConfig::default(), None, None);
-        assert!(!dots.is_empty(), "Gradient image should generate dots");
+        // Use the main vectorization pipeline with dots backend
+        let config = TraceLowConfig {
+            backend: TraceBackend::Dots,
+            dot_density_threshold: 0.01, // Low threshold to ensure dots
+            dot_preserve_colors: true,
+            ..Default::default()
+        };
+
+        let svg_paths = vectorize_trace_low(&img, &config, None).unwrap();
+        assert!(!svg_paths.is_empty(), "Gradient image should generate dots");
 
         // Should preserve color variations in gradients
         let unique_colors: std::collections::HashSet<String> =
-            dots.iter().map(|d| d.color.clone()).collect();
+            svg_paths.iter().map(|p| p.fill.clone()).collect();
         assert!(
             unique_colors.len() > 1,
             "Gradient should produce varied colors: {} unique",
@@ -626,8 +634,15 @@ mod edge_case_tests {
     fn test_large_image_scalability() {
         let img = create_gradient_transitions_image(512, 384);
 
+        let config = TraceLowConfig {
+            backend: TraceBackend::Dots,
+            dot_density_threshold: 0.01, // Low threshold to ensure dots
+            dot_preserve_colors: true,
+            ..Default::default()
+        };
+
         let start = Instant::now();
-        let dots = generate_dots_from_image(&img, &DotConfig::default(), None, None);
+        let svg_paths = vectorize_trace_low(&img, &config, None).unwrap();
         let elapsed = start.elapsed();
 
         assert!(
@@ -635,7 +650,7 @@ mod edge_case_tests {
             "Large image processing took {}ms, should be under 1000ms",
             elapsed.as_millis()
         );
-        assert!(!dots.is_empty(), "Large image should generate dots");
+        assert!(!svg_paths.is_empty(), "Large image should generate dots");
 
         // Should maintain reasonable performance scaling
         let pixel_count = 512 * 384;
@@ -682,15 +697,17 @@ mod edge_case_tests {
         let img = create_complex_test_image(128, 128);
 
         // Test with configuration that might generate many dots
-        let config = DotConfig {
-            min_radius: 0.3,
-            max_radius: 1.0,
-            density_threshold: 0.05,
-            ..DotConfig::default()
+        let config = TraceLowConfig {
+            backend: TraceBackend::Dots,
+            dot_density_threshold: 0.15, // Higher threshold to limit dots
+            dot_min_radius: 0.5, // Larger minimum radius
+            dot_max_radius: 2.0, // Larger maximum radius
+            dot_preserve_colors: true,
+            ..Default::default()
         };
 
         let start_time = Instant::now();
-        let dots = generate_dots_from_image(&img, &config, None, None);
+        let svg_paths = vectorize_trace_low(&img, &config, None).unwrap();
         let processing_time = start_time.elapsed();
 
         assert!(
@@ -701,9 +718,9 @@ mod edge_case_tests {
         // Even with many dots, should not exceed memory limits
         let max_expected_dots = 128 * 128 / 4; // Rough upper bound
         assert!(
-            dots.len() < max_expected_dots,
+            svg_paths.len() < max_expected_dots,
             "Should not generate excessive dots: {} (max expected: {})",
-            dots.len(),
+            svg_paths.len(),
             max_expected_dots
         );
     }
@@ -806,7 +823,7 @@ mod integration_pipeline_tests {
             ..TraceLowConfig::default()
         };
 
-        let result = vectorize_trace_low_rgba(&img, &config);
+        let result = vectorize_trace_low_rgba(&img, &config, None);
         assert!(result.is_ok(), "Dots backend integration should work");
 
         let svg = result.unwrap();

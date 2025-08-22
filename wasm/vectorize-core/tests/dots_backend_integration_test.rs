@@ -33,7 +33,7 @@ fn test_dots_backend_end_to_end_integration() {
     };
 
     // Test the full pipeline
-    let result = vectorize_trace_low(&img, &config);
+    let result = vectorize_trace_low(&img, &config, None);
     assert!(
         result.is_ok(),
         "Full pipeline should work with dots backend"
@@ -111,7 +111,7 @@ fn test_dots_backend_svg_generation() {
     };
 
     // Generate SVG paths
-    let result = vectorize_trace_low(&img, &config);
+    let result = vectorize_trace_low(&img, &config, None);
     assert!(result.is_ok());
 
     let svg_paths = result.unwrap();
@@ -160,7 +160,7 @@ fn test_dots_backend_error_resilience() {
         ..Default::default()
     };
 
-    let result = vectorize_trace_low(&empty_img, &config);
+    let result = vectorize_trace_low(&empty_img, &config, None);
     assert!(result.is_ok(), "Should handle empty images gracefully");
     assert!(
         result.unwrap().is_empty(),
@@ -169,7 +169,7 @@ fn test_dots_backend_error_resilience() {
 
     // Single pixel image
     let single_pixel = RgbaImage::from_pixel(1, 1, Rgba([128, 128, 128, 255]));
-    let result = vectorize_trace_low(&single_pixel, &config);
+    let result = vectorize_trace_low(&single_pixel, &config, None);
     assert!(
         result.is_ok(),
         "Should handle single pixel images gracefully"
@@ -183,6 +183,6 @@ fn test_dots_backend_error_resilience() {
         ..Default::default()
     };
 
-    let result = vectorize_trace_low(&img, &config_high_threshold);
+    let result = vectorize_trace_low(&img, &config_high_threshold, None);
     assert!(result.is_ok(), "Should handle high thresholds gracefully");
 }

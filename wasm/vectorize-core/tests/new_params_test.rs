@@ -69,7 +69,7 @@ fn test_image_resizing_functionality() {
         ..Default::default()
     };
 
-    let result = vectorize_trace_low_rgba(&large_img, &config);
+    let result = vectorize_trace_low_rgba(&large_img, &config, None);
     assert!(result.is_ok(), "Should handle large image resizing without error");
 
     let svg = result.unwrap();
@@ -96,7 +96,7 @@ fn test_svg_precision_in_output() {
         ..Default::default()
     };
 
-    let result_int = vectorize_trace_low_rgba(&img, &config_int);
+    let result_int = vectorize_trace_low_rgba(&img, &config_int, None);
     assert!(result_int.is_ok(), "Should work with precision 0");
 
     // Test with precision 3 (3 decimal places)
@@ -107,7 +107,7 @@ fn test_svg_precision_in_output() {
         ..Default::default()
     };
 
-    let result_precise = vectorize_trace_low_rgba(&img, &config_precise);
+    let result_precise = vectorize_trace_low_rgba(&img, &config_precise, None);
     assert!(result_precise.is_ok(), "Should work with precision 3");
 
     // Both should produce valid SVG

@@ -29,7 +29,7 @@ fn test_etf_fdog_integration() {
         ..Default::default()
     };
 
-    let result_canny = vectorize_trace_low_rgba(&img, &config_canny);
+    let result_canny = vectorize_trace_low_rgba(&img, &config_canny, None);
     assert!(result_canny.is_ok(), "Canny edge detection should work");
     let paths_canny = result_canny.unwrap();
 
@@ -41,7 +41,7 @@ fn test_etf_fdog_integration() {
         ..Default::default()
     };
 
-    let result_etf = vectorize_trace_low_rgba(&img, &config_etf);
+    let result_etf = vectorize_trace_low_rgba(&img, &config_etf, None);
     assert!(result_etf.is_ok(), "ETF/FDoG edge detection should work");
     let paths_etf = result_etf.unwrap();
 
@@ -87,7 +87,7 @@ fn test_etf_fdog_performance() {
     };
 
     let start = Instant::now();
-    let result = vectorize_trace_low_rgba(&img, &config);
+    let result = vectorize_trace_low_rgba(&img, &config, None);
     let duration = start.elapsed();
 
     assert!(result.is_ok(), "ETF/FDoG processing should succeed");
@@ -148,7 +148,7 @@ fn test_etf_parameter_variations() {
             ..Default::default()
         };
 
-        let result = vectorize_trace_low_rgba(&img, &config);
+        let result = vectorize_trace_low_rgba(&img, &config, None);
         assert!(
             result.is_ok(),
             "ETF/FDoG config {} should work (radius={}, iters={}, tau={})",
