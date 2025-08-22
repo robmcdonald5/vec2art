@@ -228,24 +228,24 @@ export type WorkerMessageType =
 // Default configurations
 export const DEFAULT_CONFIG: VectorizerConfig = {
 	backend: 'edge',
-	detail: 0.4, // Medium detail (equivalent to old 4)
-	stroke_width: 1.0,
-	noise_filtering: true,
+	detail: 0.8, // High detail (8/10) for better edge detection
+	stroke_width: 1.5,
+	noise_filtering: false, // Off by default for cleaner raw processing
 	noise_filter_spatial_sigma: 1.2,
 	noise_filter_range_sigma: 50.0,
 	multipass: false, // Legacy - computed from pass_count
-	pass_count: 1, // Default to 1 pass for optimal performance
+	pass_count: 1, // Default to single pass for optimal performance
 	multipass_mode: 'auto', // Auto-calculate thresholds by default
 	reverse_pass: false,
 	diagonal_pass: false,
 	enable_etf_fdog: false,
 	enable_flow_tracing: false,
 	enable_bezier_fitting: false, // Disabled by default to avoid flow_tracing dependency
-	hand_drawn_preset: 'medium',
-	variable_weights: 0.3,
-	tremor_strength: 0.2,
-	tapering: 0.5,
-	max_processing_time_ms: 30000 // 30 seconds
+	hand_drawn_preset: 'none',
+	variable_weights: 0.0,
+	tremor_strength: 0.0,
+	tapering: 0.0,
+	max_processing_time_ms: 60000 // 60 seconds for comprehensive processing
 };
 
 // Preset configurations
@@ -253,17 +253,18 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 	sketch: {
 		// Edge backend - perfect for sketch-like line art
 		backend: 'edge',
-		detail: 0.4,
-		stroke_width: 1.2,
-		hand_drawn_preset: 'medium',
+		detail: 0.6, // Higher detail for quality
+		stroke_width: 1.5, // Consistent with defaults
+		hand_drawn_preset: 'subtle', // Light artistic effect
+		pass_count: 2, // Enable multipass for better sketch quality
 		multipass: true,
 		noise_filtering: true,
-		variable_weights: 0.5,
-		tremor_strength: 0.15,
-		tapering: 0.4,
-		// Enable smooth curves for natural sketch appearance
-		enable_flow_tracing: true,
-		enable_bezier_fitting: true,
+		variable_weights: 0.3,
+		tremor_strength: 0.1,
+		tapering: 0.2,
+		// Safe settings - no advanced features that cause panics
+		enable_flow_tracing: false,
+		enable_bezier_fitting: false,
 		reverse_pass: false,
 		diagonal_pass: false
 	},
@@ -273,6 +274,7 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		detail: 0.3,
 		stroke_width: 0.8,
 		hand_drawn_preset: 'none',
+		pass_count: 1, // Single pass for precise technical drawings
 		multipass: false,
 		noise_filtering: true,
 		variable_weights: 0.0,
@@ -290,6 +292,7 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		// Dots backend - stippling and pointillism
 		backend: 'dots',
 		detail: 0.3, // Less detail for cleaner stippling
+		pass_count: 1, // Single pass for dots algorithm
 		hand_drawn_preset: 'none', // Hand-drawn effects don't apply to dots
 		variable_weights: 0.0,
 		tremor_strength: 0.0,
@@ -309,6 +312,7 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		backend: 'superpixel',
 		detail: 0.2, // Low detail for clean regions
 		stroke_width: 1.5,
+		pass_count: 1, // Single pass for clean superpixel processing
 		hand_drawn_preset: 'subtle', // Slight artistic touch for style
 		variable_weights: 0.1,
 		tremor_strength: 0.0,
@@ -325,20 +329,22 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 	comic: {
 		// Edge backend - high-quality comic book style
 		backend: 'edge',
-		detail: 0.5,
-		stroke_width: 1.3,
-		hand_drawn_preset: 'strong',
+		detail: 0.7, // High detail for comic quality
+		stroke_width: 1.5, // Consistent with defaults
+		hand_drawn_preset: 'medium', // Moderate artistic effect
+		pass_count: 2, // Enable multipass for high-quality comic style
 		multipass: true,
 		noise_filtering: true,
-		reverse_pass: true,
-		diagonal_pass: true,
-		variable_weights: 0.8,
-		tremor_strength: 0.4,
-		tapering: 0.4,
-		// Advanced edge features for complex artwork
-		enable_flow_tracing: true,
-		enable_bezier_fitting: true,
-		enable_etf_fdog: true
+		// SAFE SETTINGS: Disable panic-prone features
+		reverse_pass: false,
+		diagonal_pass: false,
+		variable_weights: 0.4,
+		tremor_strength: 0.2,
+		tapering: 0.3,
+		// Disable advanced features that cause panics
+		enable_flow_tracing: false,
+		enable_bezier_fitting: false,
+		enable_etf_fdog: false
 	}
 };
 

@@ -16,6 +16,7 @@ import { calculateMultipassConfig } from '../types/vectorizer.js';
 let wasmInitialized = false;
 let vectorizer: any = null;
 let currentImageData: ImageData | null = null;
+let currentConfig: any = null;
 let isProcessing = false;
 
 // Message types for type safety
@@ -160,6 +161,9 @@ function configureVectorizer(config: any) {
 	if (!vectorizer) {
 		throw new Error('Vectorizer not initialized');
 	}
+	
+	// Store config globally for timeout handling
+	currentConfig = config;
 	
 	// Calculate multipass configuration from pass_count and multipass_mode
 	if (config.pass_count !== undefined || config.multipass_mode !== undefined) {
@@ -400,9 +404,11 @@ function configureVectorizer(config: any) {
 	}
 	
 	// Apply performance settings
-	if (typeof config.max_processing_time_ms === 'number' && typeof vectorizer.set_max_processing_time_ms === 'function') {
-		console.log('[Worker] Setting max processing time:', config.max_processing_time_ms);
-		vectorizer.set_max_processing_time_ms(BigInt(config.max_processing_time_ms));
+	// NOTE: We use JavaScript-based timeout instead of Rust-based timing to avoid WASM std::time issues
+	if (typeof config.max_processing_time_ms === 'number') {
+		console.log('[Worker] Max processing time will be handled by JavaScript timeout:', config.max_processing_time_ms, 'ms');
+		// We don't call vectorizer.set_max_processing_time_ms() as it uses incompatible Rust timing
+		// Instead, we implement timeout in JavaScript using setTimeout (see processImage function)
 	}
 	
 	// Apply any missing centerline backend parameters
@@ -487,8 +493,31 @@ async function processImage() {
 			detail: vectorizer.get_detail?.() || 'unknown' 
 		});
 		
-		// Process with progress callback
+		// Process with progress callback and JavaScript-based timeout
+		const timeoutMs = currentConfig.max_processing_time_ms || 30000;
+		const isUnlimited = timeoutMs >= 999999; // 999999ms+ considered unlimited
+		
+		if (isUnlimited) {
+			console.log('[Worker] 🚨 Processing with UNLIMITED timeout - no time limit');
+		} else {
+			console.log('[Worker] Processing with JavaScript timeout:', timeoutMs, 'ms');
+		}
+		
 		const svg = await new Promise<string>((resolve, reject) => {
+			let timeoutHandle: number | undefined;
+			let isCompleted = false;
+			
+			// Set up JavaScript-based timeout (WASM-compatible) - skip if unlimited
+			if (!isUnlimited) {
+				timeoutHandle = self.setTimeout(() => {
+					if (!isCompleted) {
+						isCompleted = true;
+						console.warn('[Worker] ⏰ Processing timeout reached:', timeoutMs, 'ms');
+						reject(new Error(`Processing timeout after ${timeoutMs / 1000}s`));
+					}
+				}, timeoutMs);
+			}
+			
 			try {
 				console.log('[Worker] About to call vectorize_with_progress...');
 				
@@ -507,11 +536,25 @@ async function processImage() {
 					} as WorkerResponse);
 				});
 				
-				console.log('[Worker] vectorize_with_progress returned:', typeof result, result?.length || 'no length');
-				resolve(result);
+				// Clear timeout on successful completion
+				if (!isCompleted) {
+					isCompleted = true;
+					if (timeoutHandle !== undefined) {
+						self.clearTimeout(timeoutHandle);
+					}
+					console.log('[Worker] vectorize_with_progress returned:', typeof result, result?.length || 'no length');
+					resolve(result);
+				}
 			} catch (error) {
-				console.error('[Worker] Error in vectorize_with_progress:', error);
-				reject(error);
+				// Clear timeout on error
+				if (!isCompleted) {
+					isCompleted = true;
+					if (timeoutHandle !== undefined) {
+						self.clearTimeout(timeoutHandle);
+					}
+					console.error('[Worker] Error in vectorize_with_progress:', error);
+					reject(error);
+				}
 			}
 		});
 		

@@ -1145,7 +1145,6 @@ export interface InitOutput {
   readonly _ZN4core3f3221_$LT$impl$u20$f32$GT$5clamp8do_panic7runtime17h71191308ac4b2e93E: (a: number, b: number, c: number) => void;
   readonly _ZN4core5slice5index29slice_end_index_overflow_fail17h6b3c204b38da1968E: (a: number) => void;
   readonly _ZN57_$LT$core..time..Duration$u20$as$u20$core..fmt..Debug$GT$3fmt17hcd79a1695152afc4E: (a: number, b: number) => number;
-  readonly _ZN3std4time7Instant7elapsed17h2b0210b981c8cfceE: (a: number, b: number) => void;
   readonly _ZN5alloc3str21_$LT$impl$u20$str$GT$12to_lowercase17he80a280017d8abb7E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder26dot_size_range_from_string17hef4a543e7d164475E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder18available_backends17h07ce91be556e15e5E: (a: number) => void;
@@ -4874,6 +4873,7 @@ export interface InitOutput {
   readonly _ZN3std4sync9lazy_lock14panic_poisoned17h70c8f1d922bf9b76E: () => void;
   readonly _ZN3std4time7Instant14duration_since17he9bbf30d122b8f2dE: (a: number, b: number, c: bigint, d: number) => void;
   readonly _ZN3std4time7Instant22checked_duration_since17h8e7fb3a94554d3b1E: (a: number, b: number, c: bigint, d: number) => void;
+  readonly _ZN3std4time7Instant7elapsed17h2b0210b981c8cfceE: (a: number, b: number) => void;
   readonly _ZN94_$LT$std..time..Instant$u20$as$u20$core..ops..arith..AddAssign$LT$core..time..Duration$GT$$GT$10add_assign17hfbc4c93cca7158c5E: (a: number, b: bigint, c: number) => void;
   readonly _ZN88_$LT$std..time..Instant$u20$as$u20$core..ops..arith..Sub$LT$core..time..Duration$GT$$GT$3sub17h690353efd5d1cc3bE: (a: number, b: bigint, c: number, d: bigint, e: number) => void;
   readonly _ZN94_$LT$std..time..Instant$u20$as$u20$core..ops..arith..SubAssign$LT$core..time..Duration$GT$$GT$10sub_assign17h258c93f085ad7825E: (a: number, b: bigint, c: number) => void;

@@ -1297,21 +1297,17 @@ class VectorizerStore {
 				...defaultConfig,
 				// Force safe settings to prevent repeat panics
 				backend: 'edge' as const,
-				pass_count: 1, // Single pass only
+				pass_count: 1, // Single pass only for safety
 				multipass: false,
 				reverse_pass: false, // Disable directional passes that caused panic
 				diagonal_pass: false,
 				enable_etf_fdog: false,
 				enable_flow_tracing: false,
 				enable_bezier_fitting: false,
-				hand_drawn_preset: 'medium' as const,
-				variable_weights: 0.3,
-				tremor_strength: 0.2,
-				tapering: 0.5,
-				detail: 0.4,
-				stroke_width: 1.0,
-				noise_filtering: true,
-				max_processing_time_ms: 30000
+				hand_drawn_preset: 'none' as const, // Safe default - no artistic effects
+				variable_weights: 0.0,
+				tremor_strength: 0.0,
+				tapering: 0.0
 			};
 			this._state.config = safeConfig;
 			

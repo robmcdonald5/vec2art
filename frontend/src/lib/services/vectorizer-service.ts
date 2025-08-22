@@ -11,6 +11,7 @@ import type {
 	ProcessingResult,
 	ProcessingProgress
 } from '$lib/types/vectorizer';
+import { DEFAULT_CONFIG } from '$lib/types/vectorizer';
 
 // Import WASM initialization utilities
 import {
@@ -302,13 +303,13 @@ export class VectorizerService {
 		}
 
 		try {
-			// Reset to basic clean configuration
-			this.vectorizer.set_backend('edge');
-			this.vectorizer.set_detail(0.4);
-			this.vectorizer.set_stroke_width(1.0);
-			this.vectorizer.set_noise_filtering(true);
-			this.vectorizer.set_multipass(true);
-			this.vectorizer.set_hand_drawn_preset('none');
+			// Reset to proper default configuration
+			this.vectorizer.set_backend(DEFAULT_CONFIG.backend);
+			this.vectorizer.set_detail(DEFAULT_CONFIG.detail);
+			this.vectorizer.set_stroke_width(DEFAULT_CONFIG.stroke_width);
+			this.vectorizer.set_noise_filtering(DEFAULT_CONFIG.noise_filtering);
+			this.vectorizer.set_multipass(DEFAULT_CONFIG.multipass);
+			this.vectorizer.set_hand_drawn_preset(DEFAULT_CONFIG.hand_drawn_preset);
 			// Don't set any custom hand-drawn parameters when preset is 'none'
 			console.log('[VectorizerService] Configuration reset to clean state');
 		} catch (error) {
@@ -329,14 +330,14 @@ export class VectorizerService {
 
 		// Base configuration that should always work
 		const config: VectorizerConfig = {
+			...DEFAULT_CONFIG,
 			backend: backend as any,
-			detail: preset === 'minimal' ? 0.4 : 0.5,
-			stroke_width: preset === 'minimal' ? 1.0 : 1.5,
-			noise_filtering: true,
+			detail: preset === 'minimal' ? DEFAULT_CONFIG.detail * 0.5 : DEFAULT_CONFIG.detail,
+			stroke_width: preset === 'minimal' ? DEFAULT_CONFIG.stroke_width * 0.67 : DEFAULT_CONFIG.stroke_width,
 			multipass: backend === 'edge', // Only edge backend uses multipass
 			pass_count: 1,
 			multipass_mode: 'auto',
-			hand_drawn_preset: preset === 'minimal' ? 'none' : 'medium',
+			hand_drawn_preset: preset === 'minimal' ? 'none' : DEFAULT_CONFIG.hand_drawn_preset,
 			// Required boolean fields
 			reverse_pass: false,
 			diagonal_pass: false,

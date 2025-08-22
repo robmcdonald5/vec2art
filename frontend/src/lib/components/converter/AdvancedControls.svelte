@@ -605,7 +605,7 @@
 							<input
 								type="checkbox"
 								id="optimize-svg"
-								checked={config.optimize_svg ?? true}
+								checked={false}
 								onchange={handleCheckboxChange('optimize_svg')}
 								disabled={true}
 								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded cursor-not-allowed"
@@ -652,14 +652,18 @@
 								>Max Processing Time</label
 							>
 							<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-								{Math.round((config.max_processing_time_ms ?? 30000) / 1000)}s
+								{#if (config.max_processing_time_ms ?? 30000) >= 999999}
+									Unlimited
+								{:else}
+									{Math.round((config.max_processing_time_ms ?? 30000) / 1000)}s
+								{/if}
 							</span>
 						</div>
 						<input
 							type="range"
 							id="max-time"
 							min="5000"
-							max="120000"
+							max="999999"
 							step="5000"
 							value={config.max_processing_time_ms ?? 30000}
 							oninput={handleRangeChange('max_processing_time_ms')}
@@ -668,8 +672,33 @@
 							use:initializeSliderFill
 						/>
 						<div class="text-converter-secondary text-xs">
-							Maximum time budget before processing is interrupted (5-120 seconds).
+							{#if (config.max_processing_time_ms ?? 30000) >= 999999}
+								<span class="text-amber-600 font-medium">⚠️ UNLIMITED PROCESSING:</span> No time limit - processing may run indefinitely. Use for complex images only.
+							{:else}
+								Maximum time budget before processing is interrupted (5-{Math.round(999999 / 1000)}+ seconds). Uses JavaScript-based timeout.
+							{/if}
 						</div>
+						
+						{#if (config.max_processing_time_ms ?? 30000) >= 999999}
+							<div class="rounded-lg bg-amber-50 border border-amber-200 p-3">
+								<div class="flex items-start gap-2">
+									<div class="flex-shrink-0 mt-0.5">
+										<svg class="h-4 w-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+											<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+										</svg>
+									</div>
+									<div class="space-y-1">
+										<div class="text-sm font-medium text-amber-800">Unlimited Processing Enabled</div>
+										<div class="text-xs text-amber-700 space-y-1">
+											<div>• Processing will run without time limits</div>
+											<div>• May cause browser to appear unresponsive</div>
+											<div>• Use only for complex images requiring extended processing</div>
+											<div>• You can still abort manually if needed</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						{/if}
 					</div>
 				</div>
 			{/if}

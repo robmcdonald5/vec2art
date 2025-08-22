@@ -6,10 +6,12 @@
 
 import { browser } from '$app/environment';
 import type { VectorizerConfig, ProcessingResult } from '$lib/types/vectorizer';
+import { DEFAULT_CONFIG } from '$lib/types/vectorizer';
 
 // Storage keys
 const STORAGE_KEYS = {
 	CONFIG: 'vec2art_converter_config',
+	CONFIG_VERSION: 'vec2art_config_version',
 	PRESET: 'vec2art_converter_preset',
 	PERFORMANCE: 'vec2art_performance_mode',
 	THREAD_COUNT: 'vec2art_thread_count',
@@ -20,6 +22,24 @@ const STORAGE_KEYS = {
 	AUTO_SAVE: 'vec2art_auto_save_enabled',
 	LAST_VISITED: 'vec2art_last_visited'
 } as const;
+
+// Configuration version for migration
+const CURRENT_CONFIG_VERSION = 4; // Increment when breaking changes occur
+
+// List of panic-prone config combinations to detect and migrate
+const PANIC_PRONE_CONFIGS = [
+	// Combinations that cause panics
+	(config: VectorizerConfig) => config.reverse_pass === true,
+	(config: VectorizerConfig) => config.diagonal_pass === true, 
+	(config: VectorizerConfig) => config.enable_etf_fdog === true,
+	(config: VectorizerConfig) => config.enable_flow_tracing === true,
+	(config: VectorizerConfig) => config.enable_bezier_fitting === true,
+	// Old hand-drawn presets that may be problematic
+	(config: VectorizerConfig) => config.hand_drawn_preset === 'strong',
+	// Extreme parameter values
+	(config: VectorizerConfig) => (config.variable_weights || 0) > 0.8,
+	(config: VectorizerConfig) => (config.tremor_strength || 0) > 0.4
+];
 
 // Simplified file metadata (no actual file content)
 export interface FileMetadata {
@@ -53,7 +73,7 @@ class ConverterPersistence {
 	}
 
 	/**
-	 * Save converter configuration
+	 * Save converter configuration with version tracking
 	 */
 	saveConfig(config: VectorizerConfig): boolean {
 		if (!browser) {
@@ -64,8 +84,12 @@ class ConverterPersistence {
 		try {
 			const configStr = JSON.stringify(config);
 			console.log('💾 [DEBUG] saveConfig: Saving config to', STORAGE_KEYS.CONFIG, ':', configStr);
+			
+			// Save config and version
 			localStorage.setItem(STORAGE_KEYS.CONFIG, configStr);
-			console.log('✅ [DEBUG] saveConfig: Successfully saved');
+			localStorage.setItem(STORAGE_KEYS.CONFIG_VERSION, CURRENT_CONFIG_VERSION.toString());
+			
+			console.log('✅ [DEBUG] saveConfig: Successfully saved with version', CURRENT_CONFIG_VERSION);
 			return true;
 		} catch (error) {
 			console.error('❌ [DEBUG] saveConfig: Failed to save config:', error);
@@ -74,7 +98,7 @@ class ConverterPersistence {
 	}
 
 	/**
-	 * Load converter configuration
+	 * Load converter configuration with migration and safety checks
 	 */
 	loadConfig(): VectorizerConfig | null {
 		if (!browser) {
@@ -85,14 +109,113 @@ class ConverterPersistence {
 		try {
 			console.log('🔍 [DEBUG] loadConfig: Loading from', STORAGE_KEYS.CONFIG);
 			const stored = localStorage.getItem(STORAGE_KEYS.CONFIG);
-			console.log('📄 [DEBUG] loadConfig: Raw stored value:', stored);
-			const result = stored ? JSON.parse(stored) : null;
-			console.log('📋 [DEBUG] loadConfig: Parsed result:', result);
-			return result;
+			const storedVersion = localStorage.getItem(STORAGE_KEYS.CONFIG_VERSION);
+			
+			if (!stored) {
+				console.log('📋 [DEBUG] loadConfig: No stored config found');
+				return null;
+			}
+
+			const config = JSON.parse(stored) as VectorizerConfig;
+			const configVersion = storedVersion ? parseInt(storedVersion) : 1;
+
+			// Check if migration is needed
+			if (configVersion < CURRENT_CONFIG_VERSION) {
+				console.log(`🔄 [DEBUG] loadConfig: Migrating config from v${configVersion} to v${CURRENT_CONFIG_VERSION}`);
+				const migratedConfig = this.migrateConfig(config, configVersion);
+				
+				// Save migrated config
+				this.saveConfig(migratedConfig);
+				localStorage.setItem(STORAGE_KEYS.CONFIG_VERSION, CURRENT_CONFIG_VERSION.toString());
+				
+				return migratedConfig;
+			}
+
+			// Check for panic-prone configuration
+			if (this.isPanicProneConfig(config)) {
+				console.warn('⚠️ [DEBUG] loadConfig: Panic-prone config detected, applying safety migration');
+				const safeConfig = this.applySafetyMigration(config);
+				
+				// Save safe config
+				this.saveConfig(safeConfig);
+				
+				return safeConfig;
+			}
+
+			console.log('📋 [DEBUG] loadConfig: Loaded config successfully');
+			return config;
 		} catch (error) {
 			console.error('❌ [DEBUG] loadConfig: Failed to load config:', error);
+			// On error, clear potentially corrupted config
+			localStorage.removeItem(STORAGE_KEYS.CONFIG);
+			localStorage.removeItem(STORAGE_KEYS.CONFIG_VERSION);
 			return null;
 		}
+	}
+
+	/**
+	 * Check if configuration has panic-prone settings
+	 */
+	private isPanicProneConfig(config: VectorizerConfig): boolean {
+		return PANIC_PRONE_CONFIGS.some(check => check(config));
+	}
+
+	/**
+	 * Apply safety migration to remove panic-prone settings
+	 */
+	private applySafetyMigration(config: VectorizerConfig): VectorizerConfig {
+		const safeConfig: VectorizerConfig = {
+			...DEFAULT_CONFIG,
+			...config,
+			// Force safe settings
+			reverse_pass: false,
+			diagonal_pass: false,
+			enable_etf_fdog: false,
+			enable_flow_tracing: false,
+			enable_bezier_fitting: false,
+			// Clamp dangerous values
+			variable_weights: Math.min(config.variable_weights || 0, 0.5),
+			tremor_strength: Math.min(config.tremor_strength || 0, 0.3),
+			// Replace dangerous presets
+			hand_drawn_preset: config.hand_drawn_preset === 'strong' ? 'medium' : config.hand_drawn_preset
+		};
+		
+		console.log('🛡️ [DEBUG] Applied safety migration to config');
+		return safeConfig;
+	}
+
+	/**
+	 * Migrate configuration between versions
+	 */
+	private migrateConfig(config: VectorizerConfig, fromVersion: number): VectorizerConfig {
+		let migratedConfig = { ...config };
+
+		// Migration from v1 to v2: Add new defaults
+		if (fromVersion < 2) {
+			migratedConfig = {
+				...DEFAULT_CONFIG,
+				...migratedConfig,
+				// Preserve user preferences but ensure new defaults are included
+			};
+		}
+
+		// Migration from v2 to v3: Apply panic safety measures
+		if (fromVersion < 3) {
+			migratedConfig = this.applySafetyMigration(migratedConfig);
+		}
+
+		// Migration from v3 to v4: Update defaults (pass_count=1, noise_filtering=false)
+		if (fromVersion < 4) {
+			migratedConfig = {
+				...DEFAULT_CONFIG,
+				...migratedConfig,
+				// Preserve user customizations while applying new defaults
+				pass_count: migratedConfig.pass_count || DEFAULT_CONFIG.pass_count,
+				noise_filtering: migratedConfig.noise_filtering ?? DEFAULT_CONFIG.noise_filtering
+			};
+		}
+
+		return migratedConfig;
 	}
 
 	/**

@@ -3941,7 +3941,7 @@ fn apply_artistic_enhancements(
     };
 
     log::debug!("Applying artistic enhancements to {} paths", paths.len());
-    let enhancement_start = std::time::Instant::now();
+    let enhancement_start = crate::utils::Instant::now();
 
     // Use the proper configurable hand_drawn system instead of hard-coded effects
     let enhanced_paths = crate::algorithms::hand_drawn::apply_hand_drawn_aesthetics(paths, config);

@@ -26,6 +26,7 @@
 		VectorizerBackend,
 		VectorizerPreset
 	} from '$lib/types/vectorizer';
+	import { DEFAULT_CONFIG } from '$lib/types/vectorizer';
 	import type { PerformanceMode } from '$lib/utils/performance-monitor';
 	import { getOptimalThreadCount } from '$lib/utils/performance-monitor';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte.js';
@@ -52,24 +53,9 @@
 	let hasRecoveredState = $state(false);
 	let isRecoveringState = $state(false);
 
-	// Converter configuration state
+	// Converter configuration state - use proper defaults
 	let config = $state<VectorizerConfig>({
-		backend: 'edge',
-		detail: 0.5,
-		stroke_width: 1.5,
-		noise_filtering: true,
-		multipass: false,
-		pass_count: 1,
-		multipass_mode: 'auto',
-		reverse_pass: false,
-		diagonal_pass: false,
-		enable_etf_fdog: false,
-		enable_flow_tracing: false,
-		enable_bezier_fitting: false,
-		hand_drawn_preset: 'medium',
-		variable_weights: 0.3,
-		tremor_strength: 0.3,
-		tapering: 0.7,
+		...DEFAULT_CONFIG,
 		optimize_svg: true,
 		svg_precision: 2
 	});
