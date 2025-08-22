@@ -865,11 +865,11 @@ impl WasmVectorizer {
             let _ = cb.call1(&JsValue::NULL, &js_progress);
         }
 
-        // Build configuration
-        let config = self
+        // Build configuration with hand-drawn settings
+        let (config, hand_drawn_config) = self
             .builder
             .clone()
-            .build()
+            .build_with_hand_drawn()
             .map_err(|e| JsValue::from_str(&format!("Configuration build failed: {e}")))?;
 
         // Report progress: Configuration built
@@ -924,7 +924,7 @@ impl WasmVectorizer {
         }
 
         // Run vectorization
-        let result = vectorize_trace_low_rgba(&img_buffer, &config)
+        let result = vectorize_trace_low_rgba(&img_buffer, &config, hand_drawn_config.as_ref())
             .map_err(|e| JsValue::from_str(&format!("Vectorization failed: {e}")))?;
 
         // Report progress: Complete

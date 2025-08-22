@@ -23,34 +23,7 @@
 	const detailToUI = (detail: number) => Math.round(detail * 9 + 1);
 	const detailFromUI = (uiValue: number) => (uiValue - 1) / 9;
 
-	// Convert internal tremor_strength and variable_weights to UI smoothness (inverted)
-	const smoothnessToUI = (config: VectorizerConfig) => {
-		// Handle undefined values with sensible defaults
-		const tremor = config.tremor_strength ?? 0.1;
-		const weights = config.variable_weights ?? 0.3;
-		
-		// Normalize to same scale: tremor is 0.0-0.5, weights is 0.0-1.0
-		const normalizedTremor = tremor / 0.5; // Scale 0.0-0.5 to 0.0-1.0
-		const normalizedWeights = weights; // Already 0.0-1.0
-		const combinedRoughness = (normalizedTremor + normalizedWeights) / 2;
-		
-		// Reverse the exponential curve applied in smoothnessFromUI
-		const linearRoughness = Math.pow(combinedRoughness, 1 / 1.5);
-		
-		return Math.round((1 - linearRoughness) * 9 + 1); // Invert: high smoothness = low roughness
-	};
 
-	const smoothnessFromUI = (uiValue: number) => {
-		// Create a more dramatic curve for better visual impact
-		// UI scale: 1 (rough) -> 10 (smooth)
-		// Roughness: 1.0 (maximum effect) -> 0.0 (no effect)
-		const normalizedInput = (10 - uiValue) / 9; // 0.0 to 1.0
-		
-		// Apply exponential curve for more dramatic effect at extremes
-		const roughness = Math.pow(normalizedInput, 1.5);
-		
-		return roughness;
-	};
 
 	function handleDetailChange(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -74,30 +47,20 @@
 		onParameterChange?.();
 	}
 
-	function handleSmoothnessChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const uiValue = parseInt(target.value);
-		const roughnessValue = smoothnessFromUI(uiValue);
-
-		// Update progressive fill
-		updateSliderFill(target);
-
-		// FIXED: Smoothness slider modifies parameters while respecting the preset
-		// The slider provides fine-tuning WITHIN the chosen preset's style
-		onConfigChange({
-			// Keep tremor within WASM limits (0.0-0.5) but make it more dramatic
-			tremor_strength: Math.min(0.5, roughnessValue * 0.5),
-			// Make variable weights more dramatic  
-			variable_weights: Math.min(1.0, roughnessValue * 1.5)
-		});
-		onParameterChange?.();
-	}
 
 	function handleHandDrawnChange(value: string) {
 		const preset = value as HandDrawnPreset;
 		
-		// PROPER FIX: Hand-drawn preset sets base values, smoothness modifies them
-		// Each preset defines a style foundation that smoothness can fine-tune
+		// If custom is selected, just update the preset without changing the values
+		if (preset === 'custom') {
+			console.log(`[ParameterPanel] Hand-drawn preset "${preset}" - keeping current custom values`);
+			onConfigChange({ hand_drawn_preset: preset });
+			onParameterChange?.();
+			return;
+		}
+		
+		// PROPER FIX: Hand-drawn preset sets base values, hand-drawn intensity modifies them
+		// Each preset defines a style foundation that hand-drawn intensity can fine-tune
 		const presetValues = {
 			none: { tremor_strength: 0.0, variable_weights: 0.0, tapering: 0.0 },
 			subtle: { tremor_strength: 0.05, variable_weights: 0.1, tapering: 0.2 },
@@ -179,15 +142,85 @@
 		onParameterChange?.();
 	}
 
+	// Check if current artistic effect values match a preset
+	function checkForCustomPreset(newConfig: Partial<VectorizerConfig>): HandDrawnPreset {
+		const currentConfig = { ...config, ...newConfig };
+		const currentValues = {
+			tremor_strength: currentConfig.tremor_strength ?? 0,
+			variable_weights: currentConfig.variable_weights ?? 0,
+			tapering: currentConfig.tapering ?? 0
+		};
+		
+		// Check against all presets (except custom)
+		const presetValues = {
+			none: { tremor_strength: 0.0, variable_weights: 0.0, tapering: 0.0 },
+			subtle: { tremor_strength: 0.05, variable_weights: 0.1, tapering: 0.2 },
+			medium: { tremor_strength: 0.15, variable_weights: 0.3, tapering: 0.4 },
+			strong: { tremor_strength: 0.3, variable_weights: 0.5, tapering: 0.6 },
+			sketchy: { tremor_strength: 0.4, variable_weights: 0.7, tapering: 0.8 }
+		};
+		
+		// Check if current values match any preset (with small tolerance for floating point)
+		for (const [preset, values] of Object.entries(presetValues)) {
+			const tolerance = 0.01;
+			if (
+				Math.abs(currentValues.tremor_strength - values.tremor_strength) < tolerance &&
+				Math.abs(currentValues.variable_weights - values.variable_weights) < tolerance &&
+				Math.abs(currentValues.tapering - values.tapering) < tolerance
+			) {
+				return preset as HandDrawnPreset;
+			}
+		}
+		
+		return 'custom';
+	}
+
+	// Generic range input handler for artistic effects
+	function handleRangeChange(configKey: keyof VectorizerConfig) {
+		return (event: Event) => {
+			const input = event.target as HTMLInputElement;
+			const value = parseFloat(input.value);
+
+			// Update progressive fill
+			updateSliderFill(input);
+
+			console.log(`🟡 Parameter Panel - Range change: ${configKey} = ${value}`);
+			
+			// Update the config with the new value
+			const newConfig = { [configKey]: value } as Partial<VectorizerConfig>;
+			
+			// Check if this change makes it a custom preset
+			if (['variable_weights', 'tremor_strength', 'tapering'].includes(configKey)) {
+				const detectedPreset = checkForCustomPreset(newConfig);
+				newConfig.hand_drawn_preset = detectedPreset;
+				console.log(`🟡 Parameter Panel - Detected preset: ${detectedPreset}`);
+			}
+			
+			onConfigChange(newConfig);
+			onParameterChange?.();
+		};
+	}
+
 	// Derived values for UI display
 	let detailUI = $derived(detailToUI(config.detail));
-	let smoothnessUI = $derived(smoothnessToUI(config));
 	let dotDensityUI = $derived(
 		config.dot_density_threshold ? Math.round((0.15 - config.dot_density_threshold) / 0.1 * 9 + 1) : 5
 	);
 	let regionCountUI = $derived(
 		config.num_superpixels ? Math.round((config.num_superpixels - 50) / 45) : 3
 	);
+	
+	// Hand-drawn preset options (with custom at the bottom)
+	const handDrawnOptions = (() => {
+		const allKeys = Object.keys(HAND_DRAWN_DESCRIPTIONS) as HandDrawnPreset[];
+		const nonCustomKeys = allKeys.filter(key => key !== 'custom');
+		const orderedKeys = [...nonCustomKeys, 'custom'];
+		
+		return orderedKeys.map((preset) => ({
+			value: preset,
+			label: preset.charAt(0).toUpperCase() + preset.slice(1)
+		}));
+	})();
 
 	// Progressive slider functionality
 	function updateSliderFill(slider: HTMLInputElement) {
@@ -208,6 +241,9 @@
 	let strokeWidthSliderRef = $state<HTMLInputElement>();
 	let spatialSigmaSliderRef = $state<HTMLInputElement>();
 	let rangeSigmaSliderRef = $state<HTMLInputElement>();
+	let variableWeightsSliderRef = $state<HTMLInputElement>();
+	let tremorStrengthSliderRef = $state<HTMLInputElement>();
+	let taperingSliderRef = $state<HTMLInputElement>();
 
 	$effect(() => {
 		// Update detail slider fill when config.detail changes
@@ -234,6 +270,27 @@
 		// Update range sigma slider fill when config.noise_filter_range_sigma changes
 		if (rangeSigmaSliderRef && config.noise_filter_range_sigma !== undefined) {
 			updateSliderFill(rangeSigmaSliderRef);
+		}
+	});
+
+	$effect(() => {
+		// Update variable weights slider fill when config.variable_weights changes
+		if (variableWeightsSliderRef && config.variable_weights !== undefined) {
+			updateSliderFill(variableWeightsSliderRef);
+		}
+	});
+
+	$effect(() => {
+		// Update tremor strength slider fill when config.tremor_strength changes
+		if (tremorStrengthSliderRef && config.tremor_strength !== undefined) {
+			updateSliderFill(tremorStrengthSliderRef);
+		}
+	});
+
+	$effect(() => {
+		// Update tapering slider fill when config.tapering changes
+		if (taperingSliderRef && config.tapering !== undefined) {
+			updateSliderFill(taperingSliderRef);
 		}
 	});
 </script>
@@ -313,37 +370,90 @@
 			</div>
 		</div>
 
-		<!-- Smoothness (fine-tuning for hand-drawn effects) -->
+		<!-- Artistic Effects (independent controls for hand-drawn effects) -->
 		{#if config.backend === 'edge' && config.hand_drawn_preset !== 'none'}
-			<div class="space-y-2">
-				<div class="flex items-center justify-between">
-					<label
-						for="smoothness"
-						class="text-converter-primary flex items-center gap-2 text-sm font-medium"
-					>
-						<Filter class="text-converter-secondary h-4 w-4" aria-hidden="true" />
-						Smoothness
-					</label>
-					<span
-						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-						aria-live="polite">{smoothnessUI}/10</span
-					>
+			<div class="space-y-4">
+				<div class="text-converter-primary flex items-center gap-2 text-sm font-medium">
+					<Filter class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+					Artistic Effects
 				</div>
-				<input
-					id="smoothness"
-					type="range"
-					min="1"
-					max="10"
-					value={smoothnessUI}
-					onchange={handleSmoothnessChange}
-					oninput={handleSmoothnessChange}
-					{disabled}
-					class="slider-ferrari w-full"
-					aria-describedby="smoothness-desc"
-					use:initializeSliderFill
-				/>
-				<div id="smoothness-desc" class="text-converter-muted text-xs">
-					Fine-tune the roughness within the "{config.hand_drawn_preset}" style.
+
+				<!-- Variable Line Weights -->
+				<div class="space-y-2">
+					<div class="flex items-center justify-between">
+						<label for="variable-weights" class="text-converter-primary text-sm">Variable Line Weights</label>
+						<span class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-xs">
+							{(config.variable_weights ?? 0).toFixed(1)}
+						</span>
+					</div>
+					<input
+						bind:this={variableWeightsSliderRef}
+						type="range"
+						id="variable-weights"
+						min="0"
+						max="1"
+						step="0.1"
+						value={config.variable_weights ?? 0}
+						oninput={handleRangeChange('variable_weights')}
+						{disabled}
+						class="slider-ferrari w-full"
+						use:initializeSliderFill
+					/>
+					<div class="text-converter-muted text-xs">
+						Line thickness variation based on image features and curvature.
+					</div>
+				</div>
+
+				<!-- Tremor Strength -->
+				<div class="space-y-2">
+					<div class="flex items-center justify-between">
+						<label for="tremor-strength" class="text-converter-primary text-sm">Tremor Strength</label>
+						<span class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-xs">
+							{(config.tremor_strength ?? 0).toFixed(1)}
+						</span>
+					</div>
+					<input
+						bind:this={tremorStrengthSliderRef}
+						type="range"
+						id="tremor-strength"
+						min="0"
+						max="0.5"
+						step="0.1"
+						value={config.tremor_strength ?? 0}
+						oninput={handleRangeChange('tremor_strength')}
+						{disabled}
+						class="slider-ferrari w-full"
+						use:initializeSliderFill
+					/>
+					<div class="text-converter-muted text-xs">
+						Subtle hand-drawn irregularities for organic line appearance.
+					</div>
+				</div>
+
+				<!-- Line Tapering -->
+				<div class="space-y-2">
+					<div class="flex items-center justify-between">
+						<label for="tapering" class="text-converter-primary text-sm">Line Tapering</label>
+						<span class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-xs">
+							{(config.tapering ?? 0).toFixed(1)}
+						</span>
+					</div>
+					<input
+						bind:this={taperingSliderRef}
+						type="range"
+						id="tapering"
+						min="0"
+						max="1"
+						step="0.1"
+						value={config.tapering ?? 0}
+						oninput={handleRangeChange('tapering')}
+						{disabled}
+						class="slider-ferrari w-full"
+						use:initializeSliderFill
+					/>
+					<div class="text-converter-muted text-xs">
+						Natural line endpoint tapering for smoother line endings.
+					</div>
 				</div>
 			</div>
 		{/if}
@@ -356,10 +466,7 @@
 				>
 				<CustomSelect
 					value={config.hand_drawn_preset}
-					options={Object.keys(HAND_DRAWN_DESCRIPTIONS).map((preset) => ({
-						value: preset,
-						label: preset.charAt(0).toUpperCase() + preset.slice(1)
-					}))}
+					options={handDrawnOptions}
 					onchange={handleHandDrawnChange}
 					{disabled}
 					placeholder="Select hand-drawn style"

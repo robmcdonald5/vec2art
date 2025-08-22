@@ -72,10 +72,12 @@ fn apply_path_aesthetics(
         path = apply_organic_tremor(path, config, rng);
     }
 
+    // RESEARCH FIX: Skip tapering for now to preserve stroke-based effects
+    // TODO: Implement tapering that preserves stroke properties
     // Apply line tapering (requires SVG 2.0 or custom implementation)
-    if config.tapering > 0.0 {
-        path = apply_line_tapering(path, config, rng);
-    }
+    // if config.tapering > 0.0 {
+    //     path = apply_line_tapering(path, config, rng);
+    // }
 
     path
 }
@@ -89,15 +91,15 @@ fn apply_variable_weight(
     // Estimate "confidence" from path length and complexity
     let path_confidence = estimate_path_confidence(&path.data);
 
-    // Vary stroke width based on confidence and randomization
-    let weight_variation = config.variable_weights * (rng.gen::<f32>() - 0.5) * 2.0; // -1.0 to 1.0
-    let confidence_factor = 0.7 + 0.6 * path_confidence; // 0.7 to 1.3
+    // Vary stroke width based on confidence and randomization - ENHANCED: Use 6x larger variations for maximum visibility
+    let weight_variation = config.variable_weights * (rng.gen::<f32>() - 0.5) * 6.0; // -3.0 to 3.0 (dramatic range)
+    let confidence_factor = 0.3 + 1.4 * path_confidence; // 0.3 to 1.7 (wider range)
 
     path.stroke_width *=
-        config.base_width_multiplier * confidence_factor * (1.0 + weight_variation);
+        config.base_width_multiplier * confidence_factor * (1.0 + weight_variation * 5.0); // Extremely dramatic variation
 
-    // Clamp to reasonable bounds
-    path.stroke_width = path.stroke_width.clamp(0.3, 4.0);
+    // Clamp to reasonable bounds - allow extreme widths for maximum visual impact
+    path.stroke_width = path.stroke_width.clamp(0.05, 20.0);
 
     path
 }
@@ -158,14 +160,15 @@ fn add_coordinate_jitter(path_data: &str, tremor_strength: f32, rng: &mut ChaCha
 
         // Check if this token is a coordinate (number)
         if let Ok(coord) = token.parse::<f32>() {
-            // Add subtle tremor (typically 0.5-2.0 pixels)
-            let jitter = tremor_strength * 5.0 * (rng.gen::<f32>() - 0.5) * 2.0; // -tremor to +tremor
+            // Add highly visible tremor - ENHANCED: Use 50x multiplier for 25px max jitter (dramatic visibility)
+            let jitter = tremor_strength * 50.0 * (rng.gen::<f32>() - 0.5) * 2.0; // -tremor to +tremor
             let jittered = coord + jitter;
 
             if i > 0 {
                 result.push(' ');
             }
-            result.push_str(&format!("{jittered:.2}"));
+            // RESEARCH FIX: Use 3 decimal precision to preserve subtle effects
+            result.push_str(&format!("{jittered:.3}"));
         } else {
             // Command letter or other token - keep as is
             if i > 0 && !result.ends_with(' ') {
@@ -188,8 +191,8 @@ fn apply_geometric_tapering(path_data: &str, stroke_width: f32, tapering_strengt
         return path_data.to_string(); // Can't taper single point or empty path
     }
 
-    // Calculate taper zones (20% of path length on each end by default)
-    let taper_zone_length = (path_points.len() as f32 * 0.2).max(2.0) as usize;
+    // Calculate taper zones (35% of path length on each end for more noticeable tapering)
+    let taper_zone_length = (path_points.len() as f32 * 0.35).max(2.0) as usize;
     
     // Generate variable width stroke outlines
     let left_outline = generate_stroke_outline(&path_points, stroke_width, tapering_strength, true, taper_zone_length);
@@ -467,26 +470,26 @@ impl HandDrawnPresets {
         }
     }
 
-    /// Strong hand-drawn effect - obvious artistic style
+    /// Strong hand-drawn effect - obvious artistic style  
     pub fn strong() -> HandDrawnConfig {
         HandDrawnConfig {
-            variable_weights: 0.5,
-            tremor_strength: 0.2,
-            tapering: 0.4,
-            pressure_variation: 0.6,
-            base_width_multiplier: 1.1,
+            variable_weights: 0.8,
+            tremor_strength: 0.35,
+            tapering: 0.6,
+            pressure_variation: 0.8,
+            base_width_multiplier: 1.3,
             ..Default::default()
         }
     }
 
-    /// Sketch-like effect - loose, sketchy appearance
+    /// Sketch-like effect - ENHANCED for maximum visibility with dramatic effects
     pub fn sketchy() -> HandDrawnConfig {
         HandDrawnConfig {
-            variable_weights: 0.6,
-            tremor_strength: 0.3,
-            tapering: 0.3,
-            pressure_variation: 0.7,
-            base_width_multiplier: 1.2,
+            variable_weights: 1.0,    // Maximum variable weights (was 0.8)
+            tremor_strength: 0.5,     // Maximum tremor strength (was 0.4) = 25px max jitter
+            tapering: 0.7,            // Strong tapering (was 0.4)
+            pressure_variation: 1.0,  // Maximum pressure variation (was 0.7)
+            base_width_multiplier: 1.5, // Higher base width for visibility (was 1.2)
             ..Default::default()
         }
     }

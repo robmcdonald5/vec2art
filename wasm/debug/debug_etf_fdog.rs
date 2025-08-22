@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let baseline_paths = vectorize_trace_low(&rgba_img, &baseline_config)?;
+    let baseline_paths = vectorize_trace_low(&rgba_img, &baseline_config, None)?;
     println!(
         "Traditional baseline generated {} paths",
         baseline_paths.len()
@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     println!("Running ETF/FDoG with debug logging...");
-    let etf_paths = vectorize_trace_low(&rgba_img, &etf_config)?;
+    let etf_paths = vectorize_trace_low(&rgba_img, &etf_config, None)?;
     println!("ETF/FDoG generated {} paths", etf_paths.len());
 
     if etf_paths.is_empty() {

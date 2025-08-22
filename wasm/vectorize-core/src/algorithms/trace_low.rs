@@ -24,8 +24,6 @@ use crate::algorithms::{Point, SvgElementType, SvgPath};
 use crate::error::VectorizeError;
 use crate::execution::{execute_parallel, execute_parallel_filter_map, par_iter_mut, reduce};
 use image::{GrayImage, ImageBuffer, Luma, Rgba};
-use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
 use std::collections::{HashMap, VecDeque};
 use crate::utils::Instant;
 
@@ -389,19 +387,22 @@ impl ThresholdMapping {
 pub fn vectorize_trace_low(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
+    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
-    if config.enable_multipass && config.backend == TraceBackend::Edge {
-        // Check if directional passes are enabled
-        if config.enable_reverse_pass || config.enable_diagonal_pass {
-            // Use directional multi-pass processing for maximum quality
-            vectorize_trace_low_directional(image, config)
-        } else {
-            // Use dual-pass processing for enhanced quality
-            vectorize_trace_low_multipass(image, config)
-        }
+    // Check if directional passes are enabled (independent of multipass setting)
+    if config.backend == TraceBackend::Edge && (config.enable_reverse_pass || config.enable_diagonal_pass) {
+        log::info!("🎯 Using directional processing (reverse={}, diagonal={})", 
+                   config.enable_reverse_pass, config.enable_diagonal_pass);
+        // Use directional processing for enhanced directional quality
+        vectorize_trace_low_directional(image, config, hand_drawn_config)
+    } else if config.enable_multipass && config.backend == TraceBackend::Edge {
+        log::info!("🔄 Using standard multipass processing");
+        // Use standard multipass processing for enhanced quality
+        vectorize_trace_low_multipass(image, config, hand_drawn_config)
     } else {
+        log::info!("⚡ Using single-pass processing");
         // Use single-pass processing (original implementation)
-        vectorize_trace_low_single_pass(image, config)
+        vectorize_trace_low_single_pass(image, config, hand_drawn_config)
     }
 }
 
@@ -409,6 +410,7 @@ pub fn vectorize_trace_low(
 pub fn vectorize_trace_low_single_pass(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
+    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     let thresholds = ThresholdMapping::new(config.detail, image.width(), image.height());
 
@@ -419,18 +421,24 @@ pub fn vectorize_trace_low_single_pass(
     );
     log::debug!("Threshold mapping: {thresholds:?}");
 
-    match config.backend {
+    let paths = match config.backend {
         TraceBackend::Edge => trace_edge(image, &thresholds, config),
         TraceBackend::Centerline => trace_centerline(image, &thresholds, config),
         TraceBackend::Superpixel => trace_superpixel(image, &thresholds, config),
         TraceBackend::Dots => trace_dots(image, &thresholds, config),
-    }
+    }?;
+
+    // Apply artistic enhancements if hand-drawn effects are configured
+    let final_paths = apply_artistic_enhancements(paths, hand_drawn_config);
+
+    Ok(final_paths)
 }
 
 /// Dual-pass trace-low vectorization for enhanced quality
 pub fn vectorize_trace_low_multipass(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
+    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     let pass_count = config.pass_count.max(1).min(10); // Clamp to 1-10 passes
     
@@ -444,7 +452,7 @@ pub fn vectorize_trace_low_multipass(
 
     if pass_count == 1 {
         // Single pass - just call the single pass function directly
-        return vectorize_trace_low_single_pass(image, config);
+        return vectorize_trace_low_single_pass(image, config, hand_drawn_config);
     }
 
     // APPROACH C: Calculate multi-scale configurations for each pass
@@ -552,6 +560,7 @@ pub fn vectorize_trace_low_multipass(
 pub fn vectorize_trace_low_directional(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
+    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     log::info!(
         "Starting directional multi-pass trace-low vectorization with backend {:?}, base detail {:.2}",
@@ -567,30 +576,43 @@ pub fn vectorize_trace_low_directional(
         _early_termination_enabled: true,
     };
 
-    // PHASE 1: Standard dual-pass foundation (existing implementation)
-    log::info!("Phase 1: Running standard dual-pass foundation");
+    // PHASE 1: Base processing foundation (adapt to multipass setting)
     let phase_start = Instant::now();
-    let base_paths = vectorize_trace_low_multipass(image, config)?;
+    let base_paths = if config.enable_multipass {
+        log::info!("Phase 1: Running multipass foundation");
+        vectorize_trace_low_multipass(image, config, hand_drawn_config)?
+    } else {
+        log::info!("Phase 1: Running single-pass foundation");
+        vectorize_trace_low_single_pass(image, config, hand_drawn_config)?
+    };
     let base_time = phase_start.elapsed();
     budget.consumed_ms += base_time.as_millis() as u64;
 
     let remaining_budget = budget.total_budget_ms.saturating_sub(budget.consumed_ms);
+    let pass_type = if config.enable_multipass { "multipass" } else { "single-pass" };
     log::info!(
-        "Base dual-pass completed in {:.1}ms ({} paths), budget remaining: {}ms",
+        "Base {} completed in {:.1}ms ({} paths), budget remaining: {}ms",
+        pass_type,
         base_time.as_secs_f64() * 1000.0,
         base_paths.len(),
         remaining_budget
     );
 
-    // Early exit if we're running out of time (but be more permissive with quality threshold)
-    if budget.consumed_ms >= budget.total_budget_ms * 8 / 10 || base_paths.len() > 800 {
+    // Early exit if we're running out of time (more permissive - allow 90% time usage)
+    if budget.consumed_ms >= budget.total_budget_ms * 9 / 10 {
         log::info!(
-            "Skipping directional passes due to time/quality constraints: time={}ms, paths={}",
+            "Skipping directional passes due to time budget: consumed={}ms, total_budget={}ms",
             budget.consumed_ms,
-            base_paths.len()
+            budget.total_budget_ms
         );
         return Ok(base_paths);
     }
+    
+    log::info!(
+        "✓ Proceeding with directional analysis - {} paths generated, {}ms remaining", 
+        base_paths.len(),
+        budget.total_budget_ms.saturating_sub(budget.consumed_ms)
+    );
 
     // PHASE 2: Analyze directional characteristics
     log::info!("Phase 2: Analyzing directional characteristics");
@@ -659,7 +681,7 @@ pub fn vectorize_trace_low_directional(
     log::info!("Phase 4: Merging directional results");
     let phase_start = Instant::now();
     let base_path_count = base_paths.len();
-    let final_paths = merge_directional_results(base_paths, all_directional_paths, config);
+    let final_paths = merge_directional_results(base_paths, all_directional_paths, config, hand_drawn_config);
     let merge_time = phase_start.elapsed();
 
     let total_time = total_start.elapsed();
@@ -3280,7 +3302,7 @@ fn merge_multipass_results(
 ) -> Vec<SvgPath> {
     // Use the same optimized approach as directional merging
     let directional_paths = vec![aggressive_paths];
-    merge_directional_results(conservative_paths, directional_paths, config)
+    merge_directional_results(conservative_paths, directional_paths, config, None)
 }
 
 /// Check if a path is a duplicate of existing paths (simple implementation)
@@ -3415,16 +3437,16 @@ fn analyze_directional_characteristics(
     // Detect dominant lighting direction by analyzing brightness gradients
     let dominant_lighting_direction = detect_lighting_direction(&gray);
 
-    // Calculate benefit scores for each direction
+    // Calculate benefit scores for each direction (more permissive than before)
     let mut direction_benefits = [0.0f32; 4];
     direction_benefits[0] = 1.0; // Standard always has full benefit
     direction_benefits[1] = if dominant_lighting_direction.is_some() {
-        0.7
+        0.8  // Higher benefit when lighting detected
     } else {
-        0.3
+        0.4  // Higher baseline - reverse can help most images
     }; // Reverse
-    direction_benefits[2] = if has_diagonal_content { 0.8 } else { 0.2 }; // DiagonalNW
-    direction_benefits[3] = if has_diagonal_content { 0.8 } else { 0.2 }; // DiagonalNE
+    direction_benefits[2] = if has_diagonal_content { 0.9 } else { 0.3 }; // DiagonalNW - higher baseline
+    direction_benefits[3] = if has_diagonal_content { 0.9 } else { 0.3 }; // DiagonalNE - higher baseline
 
     // Boost benefits for architectural content
     if has_architectural_elements {
@@ -3607,26 +3629,48 @@ fn schedule_directional_passes(
 ) -> Vec<ProcessingDirection> {
     let mut candidates = Vec::new();
 
-    // Add reverse pass if beneficial
-    if config.enable_reverse_pass
-        && analysis.direction_benefits[1] >= config.directional_strength_threshold
-    {
-        candidates.push((ProcessingDirection::Reverse, analysis.direction_benefits[1]));
+    // Add reverse pass if enabled and beneficial
+    if config.enable_reverse_pass {
+        if analysis.direction_benefits[1] >= config.directional_strength_threshold {
+            log::info!(
+                "✓ Reverse pass scheduled (benefit: {:.2} >= threshold: {:.2})",
+                analysis.direction_benefits[1], config.directional_strength_threshold
+            );
+            candidates.push((ProcessingDirection::Reverse, analysis.direction_benefits[1]));
+        } else {
+            log::info!(
+                "⏭ Reverse pass skipped (benefit: {:.2} < threshold: {:.2})",
+                analysis.direction_benefits[1], config.directional_strength_threshold
+            );
+        }
     }
 
-    // Add diagonal passes if beneficial
+    // Add diagonal passes if enabled and beneficial
     if config.enable_diagonal_pass {
         if analysis.direction_benefits[2] >= config.directional_strength_threshold {
-            candidates.push((
-                ProcessingDirection::DiagonalNW,
-                analysis.direction_benefits[2],
-            ));
+            log::info!(
+                "✓ Diagonal NW pass scheduled (benefit: {:.2} >= threshold: {:.2})",
+                analysis.direction_benefits[2], config.directional_strength_threshold
+            );
+            candidates.push((ProcessingDirection::DiagonalNW, analysis.direction_benefits[2]));
+        } else {
+            log::info!(
+                "⏭ Diagonal NW pass skipped (benefit: {:.2} < threshold: {:.2})",
+                analysis.direction_benefits[2], config.directional_strength_threshold
+            );
         }
+        
         if analysis.direction_benefits[3] >= config.directional_strength_threshold {
-            candidates.push((
-                ProcessingDirection::DiagonalNE,
-                analysis.direction_benefits[3],
-            ));
+            log::info!(
+                "✓ Diagonal NE pass scheduled (benefit: {:.2} >= threshold: {:.2})",
+                analysis.direction_benefits[3], config.directional_strength_threshold
+            );
+            candidates.push((ProcessingDirection::DiagonalNE, analysis.direction_benefits[3]));
+        } else {
+            log::info!(
+                "⏭ Diagonal NE pass skipped (benefit: {:.2} < threshold: {:.2})",
+                analysis.direction_benefits[3], config.directional_strength_threshold
+            );
         }
     }
 
@@ -3800,6 +3844,7 @@ fn merge_directional_results(
     base_paths: Vec<SvgPath>,
     directional_paths: Vec<Vec<SvgPath>>,
     config: &TraceLowConfig,
+    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
 ) -> Vec<SvgPath> {
     log::debug!(
         "Starting optimized merge of {} base paths + {} directional path sets",
@@ -3874,130 +3919,42 @@ fn merge_directional_results(
         (1.0 - final_paths.len() as f64 / all_paths_len as f64) * 100.0
     );
 
-    // Apply artistic enhancements if we have time budget remaining
-    if merge_time.as_millis() < 150 {
-        apply_artistic_enhancements(&mut final_paths, &final_cached_data, config);
-    }
+    // Always apply artistic enhancements if hand-drawn effects are configured
+    // The user specifically requested artistic effects, so we should apply them regardless of timing
+    let final_paths = apply_artistic_enhancements(final_paths, hand_drawn_config);
 
     final_paths
 }
 
 /// Apply artistic enhancements for hand-drawn aesthetic
 fn apply_artistic_enhancements(
-    paths: &mut [SvgPath],
-    cached_data: &[CachedPathData],
-    _config: &TraceLowConfig,
-) {
+    paths: Vec<SvgPath>,
+    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
+) -> Vec<SvgPath> {
     if paths.is_empty() {
-        return;
+        return paths;
     }
+
+    // If no hand-drawn config provided, return paths unchanged
+    let Some(config) = hand_drawn_config else {
+        return paths;
+    };
 
     log::debug!("Applying artistic enhancements to {} paths", paths.len());
-    let enhancement_start = Instant::now();
+    let enhancement_start = std::time::Instant::now();
 
-    // Calculate edge strengths based on path characteristics
-    let edge_strengths: Vec<f32> = cached_data
-        .iter()
-        .map(|cached| {
-            // Use path length and complexity as strength indicators
-            let length_factor = (cached.approx_length / 100.0).min(1.0);
-            let bbox_area = (cached.bbox.2 - cached.bbox.0) * (cached.bbox.3 - cached.bbox.1);
-            let complexity_factor = (bbox_area / 10000.0).min(1.0);
-
-            0.5 + 0.3 * length_factor + 0.2 * complexity_factor
-        })
-        .collect();
-
-    // Apply enhancements in parallel for performance using execution abstraction
-    let enhancement_indices: Vec<usize> = (0..paths.len()).collect();
-
-    let enhancement_data = execute_parallel(enhancement_indices, |i| {
-        let edge_strength = edge_strengths[i];
-        let cached = &cached_data[i];
-
-        // Collect enhancement parameters for later application
-        (i, edge_strength, cached.clone())
-    });
-
-    // Apply the enhancements sequentially to avoid mutable borrowing issues
-    for (i, edge_strength, cached) in enhancement_data {
-        // 1. Variable line weights based on edge strength
-        apply_variable_line_weight(&mut paths[i], edge_strength);
-
-        // 2. Subtle tremor for organic feel (deterministic based on path data)
-        apply_organic_tremor(&mut paths[i], &cached, 0.3);
-
-        // 3. Natural path tapering
-        apply_natural_tapering(&mut paths[i], &cached);
-    }
+    // Use the proper configurable hand_drawn system instead of hard-coded effects
+    let enhanced_paths = crate::algorithms::hand_drawn::apply_hand_drawn_aesthetics(paths, config);
 
     let enhancement_time = enhancement_start.elapsed();
     log::debug!(
         "Artistic enhancements completed in {:.1}ms",
         enhancement_time.as_secs_f64() * 1000.0
     );
+
+    enhanced_paths
 }
 
-/// Apply variable line weight based on edge strength
-fn apply_variable_line_weight(path: &mut SvgPath, edge_strength: f32) {
-    // Map edge strength to stroke width multiplier (0.6 to 1.8)
-    let weight_multiplier = 0.6 + (edge_strength * 1.2);
-    path.stroke_width *= weight_multiplier;
-}
-
-/// Apply subtle organic tremor for hand-drawn feel
-fn apply_organic_tremor(path: &mut SvgPath, cached: &CachedPathData, tremor_strength: f32) {
-    if cached.coords.len() < 4 {
-        return;
-    }
-
-    // Use path characteristics as deterministic seed for consistent results
-    let seed = ((cached.start_point.0 + cached.start_point.1) * 1000.0) as u64;
-    let mut rng = SmallRng::seed_from_u64(seed);
-
-    // Parse and modify path data
-    let mut new_path_data = String::new();
-    let coords = &cached.coords;
-
-    if !coords.is_empty() {
-        // Start point with slight tremor
-        let tremor_x = (rng.gen::<f32>() - 0.5) * tremor_strength;
-        let tremor_y = (rng.gen::<f32>() - 0.5) * tremor_strength;
-        new_path_data.push_str(&format!(
-            "M {:.2} {:.2}",
-            coords[0] + tremor_x,
-            coords[1] + tremor_y
-        ));
-
-        // Subsequent points with tremor
-        for chunk in coords.chunks(2).skip(1) {
-            if chunk.len() == 2 {
-                let tremor_x = (rng.gen::<f32>() - 0.5) * tremor_strength;
-                let tremor_y = (rng.gen::<f32>() - 0.5) * tremor_strength;
-                new_path_data.push_str(&format!(
-                    " L {:.2} {:.2}",
-                    chunk[0] + tremor_x,
-                    chunk[1] + tremor_y
-                ));
-            }
-        }
-
-        path.data = new_path_data;
-    }
-}
-
-/// Apply natural path tapering at start and end
-fn apply_natural_tapering(path: &mut SvgPath, cached: &CachedPathData) {
-    if cached.approx_length < 20.0 {
-        return; // Skip tapering for very short paths
-    }
-
-    // For now, subtle width adjustment based on path length
-    // In a full implementation, this would require more sophisticated path manipulation
-    let length_factor = (cached.approx_length / 100.0).min(1.0);
-    let taper_factor = 0.9 + (length_factor * 0.1);
-    path.stroke_width *= taper_factor;
-}
 
 /// Comprehensive performance profiling for multipass processing
 #[derive(Debug)]
@@ -4064,7 +4021,7 @@ fn profile_multipass_performance(
         enable_multipass: false,
         ..*config
     };
-    let conservative_paths = vectorize_trace_low_single_pass(image, &conservative_config)?;
+    let conservative_paths = vectorize_trace_low_single_pass(image, &conservative_config, None)?;
     profile.conservative_pass = pass_start.elapsed();
     profile.path_counts.conservative_paths = conservative_paths.len();
 
@@ -4130,7 +4087,7 @@ fn profile_multipass_performance(
 
     // Merge phase
     let merge_start = Instant::now();
-    let final_paths = merge_directional_results(conservative_paths, directional_paths, config);
+    let final_paths = merge_directional_results(conservative_paths, directional_paths, config, None);
     profile.merge_phase = merge_start.elapsed();
     profile.path_counts.final_paths = final_paths.len();
 
@@ -6366,7 +6323,7 @@ fn trace_large_scale_edges(
     };
     
     // Use standard single-pass processing but with large-scale optimized parameters
-    let paths = vectorize_trace_low_single_pass(image, &large_scale_config)?;
+    let paths = vectorize_trace_low_single_pass(image, &large_scale_config, None)?;
     
     // Filter for large-scale features (longer paths, higher confidence)
     let large_scale_paths: Vec<SvgPath> = paths.into_iter()
@@ -6391,7 +6348,7 @@ fn trace_medium_scale_edges(
         ..(*trace_config)
     };
     
-    let paths = vectorize_trace_low_single_pass(image, &medium_scale_config)?;
+    let paths = vectorize_trace_low_single_pass(image, &medium_scale_config, None)?;
     
     // Filter for medium-scale features (balanced length and detail)
     let medium_scale_paths: Vec<SvgPath> = paths.into_iter()
@@ -6417,7 +6374,7 @@ fn trace_fine_scale_edges(
         ..(*trace_config)
     };
     
-    let paths = vectorize_trace_low_single_pass(image, &fine_scale_config)?;
+    let paths = vectorize_trace_low_single_pass(image, &fine_scale_config, None)?;
     
     // Filter for fine-scale features (shorter paths, subtle details)
     let fine_scale_paths: Vec<SvgPath> = paths.into_iter()
@@ -6584,7 +6541,7 @@ fn trace_micro_scale_edges(
         ..(*trace_config)
     };
     
-    let paths = vectorize_trace_low_single_pass(image, &micro_scale_config)?;
+    let paths = vectorize_trace_low_single_pass(image, &micro_scale_config, None)?;
     
     // Aggressive filtering for micro-scale (remove noise, keep only meaningful micro-details)
     let micro_scale_paths: Vec<SvgPath> = paths.into_iter()

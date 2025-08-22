@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 ..TraceLowConfig::default()
                             };
 
-                            match vectorize_trace_low_rgba(&rgba_img, &config) {
+                            match vectorize_trace_low_rgba(&rgba_img, &config, None) {
                                 Ok(svg) => {
                                     let path_count = svg.matches("<circle").count();
                                     println!("  Density {density:.2}: {path_count} dots generated");

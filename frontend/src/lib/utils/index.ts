@@ -5,3 +5,4 @@ export * from './performance-monitor';
 export * from './performance';
 export * from './accessibility';
 export * from './cpu-detection';
+export * from './config-validation';

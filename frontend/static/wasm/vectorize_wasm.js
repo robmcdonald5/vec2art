@@ -1,5 +1,5 @@
 import { startWorkers } from './snippets/wasm-bindgen-rayon-38edf6e439f6d70d/src/workerHelpers.js';
-import * as __wbg_star0 from './__wbindgen_placeholder__.js';
+import * as __wbg_star0 from '__wbindgen_placeholder__';
 
 let wasm;
 
@@ -682,82 +682,82 @@ function __wbg_adapter_96(arg0, arg1, arg2) {
 }
 
 function __wbg_adapter_1748(arg0, arg1, arg2, arg3, arg4) {
-    const ret = wasm.closure1197_externref_shim(arg0, arg1, arg2, arg3, arg4);
+    const ret = wasm.closure1193_externref_shim(arg0, arg1, arg2, arg3, arg4);
     return ret !== 0;
 }
 
 function __wbg_adapter_1765(arg0, arg1, arg2, arg3, arg4) {
-    const ret = wasm.closure1198_externref_shim_multivalue_shim(arg0, arg1, arg2, arg3, arg4);
+    const ret = wasm.closure1194_externref_shim_multivalue_shim(arg0, arg1, arg2, arg3, arg4);
     var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
     return v1;
 }
 
 function __wbg_adapter_1768(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1199_externref_shim(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1195_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_1785(arg0, arg1, arg2, arg3, arg4) {
-    const ret = wasm.closure1200_externref_shim(arg0, arg1, arg2, arg3, arg4);
+    const ret = wasm.closure1196_externref_shim(arg0, arg1, arg2, arg3, arg4);
     return ret;
 }
 
 function __wbg_adapter_1802(arg0, arg1, arg2, arg3, arg4, arg5) {
-    const ret = wasm.closure1201_externref_shim(arg0, arg1, arg2, arg3, arg4, arg5);
+    const ret = wasm.closure1197_externref_shim(arg0, arg1, arg2, arg3, arg4, arg5);
     return ret;
 }
 
 function __wbg_adapter_1813(arg0, arg1, arg2) {
-    const ret = wasm.closure1202_externref_shim(arg0, arg1, arg2);
+    const ret = wasm.closure1198_externref_shim(arg0, arg1, arg2);
     return ret !== 0;
 }
 
 function __wbg_adapter_2074(arg0, arg1, arg2, arg3) {
-    wasm.closure1203_externref_shim(arg0, arg1, arg2, arg3);
+    wasm.closure1199_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 function __wbg_adapter_2515(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1199_externref_shim19(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1195_externref_shim19(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_2932(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1204_externref_shim(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1200_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_2969(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1205_externref_shim(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1201_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_3006(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1199_externref_shim22(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1195_externref_shim22(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_3043(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1204_externref_shim23(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1200_externref_shim23(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_3116(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1205_externref_shim24(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1201_externref_shim24(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_3153(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1199_externref_shim25(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1195_externref_shim25(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_3190(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1206_externref_shim(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1202_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_3227(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1207_externref_shim(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1203_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_3264(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1208_externref_shim(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1204_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_3301(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure1208_externref_shim29(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure1204_externref_shim29(arg0, arg1, arg2, arg3, arg4);
 }
 
 /**

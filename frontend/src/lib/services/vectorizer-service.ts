@@ -334,6 +334,8 @@ export class VectorizerService {
 			stroke_width: preset === 'minimal' ? 1.0 : 1.5,
 			noise_filtering: true,
 			multipass: backend === 'edge', // Only edge backend uses multipass
+			pass_count: 1,
+			multipass_mode: 'auto',
 			hand_drawn_preset: preset === 'minimal' ? 'none' : 'medium',
 			// Required boolean fields
 			reverse_pass: false,

@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         flow_tracing_config.enable_bezier_fitting
     );
 
-    let flow_tracing_paths = vectorize_trace_low(&rgba_img, &flow_tracing_config)?;
+    let flow_tracing_paths = vectorize_trace_low(&rgba_img, &flow_tracing_config, None)?;
     println!("✗ Generated {} paths (PROBLEM!)", flow_tracing_paths.len());
 
     // Test 4: Complete pipeline (produces 15 paths)
@@ -119,7 +119,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         full_pipeline_config.fit_max_err
     );
 
-    let full_pipeline_paths = vectorize_trace_low(&rgba_img, &full_pipeline_config)?;
+    let full_pipeline_paths = vectorize_trace_low(&rgba_img, &full_pipeline_config, None)?;
     println!("✓ Generated {} paths (WORKS!)", full_pipeline_paths.len());
 
     // Test 5: Try looser flow tracing parameters
@@ -153,7 +153,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  trace_min_coherency: 0.05 (was 0.15)");
     println!("  trace_max_gap: 8 (was 4)");
 
-    let loose_flow_paths = vectorize_trace_low(&rgba_img, &loose_flow_config)?;
+    let loose_flow_paths = vectorize_trace_low(&rgba_img, &loose_flow_config, None)?;
     println!("Result: {} paths", loose_flow_paths.len());
 
     println!("\n=== ANALYSIS ===");

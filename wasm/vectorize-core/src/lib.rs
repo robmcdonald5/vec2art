@@ -52,6 +52,7 @@ use image::{ImageBuffer, Rgba};
 pub fn vectorize_trace_low_rgba(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
+    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
 ) -> Result<String, VectorizeError> {
     use input_validation::validate_image_input;
     use preprocessing::{
@@ -105,7 +106,7 @@ pub fn vectorize_trace_low_rgba(
     );
 
     // Use the trace-low algorithm with optimized config
-    let svg_paths = vectorize_trace_low(&processing_image, &adjusted_config)?;
+    let svg_paths = vectorize_trace_low(&processing_image, &adjusted_config, hand_drawn_config)?;
 
     // Handle case where no paths were generated
     if svg_paths.is_empty() {

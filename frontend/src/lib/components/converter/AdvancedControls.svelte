@@ -5,7 +5,6 @@
 		Settings2,
 		Layers,
 		Zap,
-		Brush,
 		Grid,
 		Sparkles,
 		Target,
@@ -32,7 +31,6 @@
 	let expandedSections = $state({
 		multipass: false,
 		directional: false,
-		artistic: false,
 		edgeDetection: false,
 		centerlineAdvanced: false,
 		dotsAdvanced: false,
@@ -252,7 +250,10 @@
 							</label>
 						</div>
 						<div class="text-converter-secondary ml-7 text-xs">
-							Right-to-left, bottom-to-top processing for missed details.
+							Right-to-left, bottom-to-top scan for shadows and lighting effects.
+						</div>
+						<div class="text-blue-600 ml-7 text-xs font-medium">
+							Best for: portraits, objects with directional lighting
 						</div>
 
 						<!-- Diagonal Pass -->
@@ -273,34 +274,58 @@
 							</label>
 						</div>
 						<div class="text-converter-secondary ml-7 text-xs">
-							Diagonal direction processing for complex geometries.
+							Diagonal scan (NW→SE, NE→SW) for architectural and angled features.
+						</div>
+						<div class="text-blue-600 ml-7 text-xs font-medium">
+							Best for: buildings, geometric shapes, technical drawings
 						</div>
 
-						<!-- Directional Strength Threshold -->
+						<!-- Directional Sensitivity -->
 						{#if config.reverse_pass || config.diagonal_pass}
-							<div class="ml-7 space-y-2">
+							<div class="ml-7 space-y-3 border-t border-ferrari-200/20 pt-4">
 								<div class="flex items-center justify-between">
-									<label for="directional-threshold" class="text-converter-primary text-sm"
-										>Strength Threshold</label
+									<label for="directional-threshold" class="text-converter-primary text-sm font-medium"
+										>Directional Sensitivity</label
 									>
 									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-										{(config.directional_strength_threshold ?? 0.3).toFixed(2)}
+										{(config.directional_strength_threshold ?? 0.3).toFixed(1)}
 									</span>
 								</div>
 								<input
 									type="range"
 									id="directional-threshold"
-									min="0"
-									max="1"
-									step="0.01"
+									min="0.1"
+									max="0.8"
+									step="0.1"
 									value={config.directional_strength_threshold ?? 0.3}
 									oninput={handleRangeChange('directional_strength_threshold')}
 									{disabled}
 									class="slider-ferrari w-full"
 									use:initializeSliderFill
 								/>
-								<div class="text-converter-secondary text-xs">
-									Skip directional passes if not beneficial (0.0 = always run, 1.0 = never run).
+								<div class="space-y-1 text-xs">
+									<div class="text-converter-secondary">
+										Controls how selective the algorithm is about running directional passes:
+									</div>
+									<div class="grid grid-cols-3 gap-2 text-xs">
+										<div class="text-center">
+											<span class="font-medium text-green-600">Low (0.1-0.3)</span>
+											<div class="text-converter-secondary">Run on most images</div>
+										</div>
+										<div class="text-center">
+											<span class="font-medium text-yellow-600">Med (0.4-0.6)</span>
+											<div class="text-converter-secondary">Run when beneficial</div>
+										</div>
+										<div class="text-center">
+											<span class="font-medium text-red-600">High (0.7-0.8)</span>
+											<div class="text-converter-secondary">Only when clearly beneficial</div>
+										</div>
+									</div>
+								</div>
+								<div class="rounded-lg bg-amber-50 p-2">
+									<div class="text-xs text-amber-700">
+										⏱️ Each enabled pass adds ~30% processing time
+									</div>
 								</div>
 							</div>
 						{/if}
@@ -309,112 +334,6 @@
 			</div>
 		{/if}
 
-		<!-- Artistic Effects (Edge backend only) -->
-		{#if config.backend === 'edge'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
-				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
-					onclick={() => toggleSection('artistic')}
-					{disabled}
-					type="button"
-				>
-					<div class="flex items-center gap-2">
-						<Brush class="text-ferrari-600 h-4 w-4" />
-						<span class="text-converter-primary font-medium">Artistic Effects</span>
-					</div>
-					<div class="flex-shrink-0">
-						{#if expandedSections.artistic}
-							<ChevronUp class="text-ferrari-600 h-4 w-4" />
-						{:else}
-							<ChevronDown class="text-ferrari-600 h-4 w-4" />
-						{/if}
-					</div>
-				</button>
-
-				{#if expandedSections.artistic}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
-						<!-- Variable Weights -->
-						<div class="space-y-2">
-							<div class="flex items-center justify-between">
-								<label for="variable-weights" class="text-converter-primary text-sm"
-									>Variable Line Weights</label
-								>
-								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-									{(config.variable_weights ?? 0).toFixed(1)}
-								</span>
-							</div>
-							<input
-								type="range"
-								id="variable-weights"
-								min="0"
-								max="1"
-								step="0.1"
-								value={config.variable_weights ?? 0}
-								oninput={handleRangeChange('variable_weights')}
-								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
-							/>
-							<div class="text-converter-secondary text-xs">
-								Line weight variation based on confidence for more expressive results.
-							</div>
-						</div>
-
-						<!-- Tremor Strength -->
-						<div class="space-y-2">
-							<div class="flex items-center justify-between">
-								<label for="tremor-strength" class="text-converter-primary text-sm"
-									>Tremor Strength</label
-								>
-								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-									{(config.tremor_strength ?? 0).toFixed(1)}
-								</span>
-							</div>
-							<input
-								type="range"
-								id="tremor-strength"
-								min="0"
-								max="0.5"
-								step="0.1"
-								value={config.tremor_strength ?? 0}
-								oninput={handleRangeChange('tremor_strength')}
-								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
-							/>
-							<div class="text-converter-secondary text-xs">
-								Organic line jitter and imperfection for natural hand-drawn feel.
-							</div>
-						</div>
-
-						<!-- Tapering -->
-						<div class="space-y-2">
-							<div class="flex items-center justify-between">
-								<label for="tapering" class="text-converter-primary text-sm">Line Tapering</label>
-								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-									{(config.tapering ?? 0).toFixed(1)}
-								</span>
-							</div>
-							<input
-								type="range"
-								id="tapering"
-								min="0"
-								max="1"
-								step="0.1"
-								value={config.tapering ?? 0}
-								oninput={handleRangeChange('tapering')}
-								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
-							/>
-							<div class="text-converter-secondary text-xs">
-								Natural line endpoint tapering for smoother line endings.
-							</div>
-						</div>
-					</div>
-				{/if}
-			</div>
-		{/if}
 
 		<!-- Advanced Edge Detection (Edge backend only) -->
 		{#if config.backend === 'edge'}
@@ -426,7 +345,18 @@
 					type="button"
 				>
 					<div class="flex items-center gap-2">
-						<Zap class="text-ferrari-600 h-4 w-4" />
+						<!-- Edge Detection Icon - Simple square with detected edges -->
+						<svg class="text-ferrari-600 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<!-- Original filled shape (representing image content) -->
+							<rect x="6" y="6" width="12" height="12" fill="currentColor" fill-opacity="0.1"/>
+							<!-- Detected edges as bold outlines -->
+							<rect x="6" y="6" width="12" height="12" stroke-width="2.5"/>
+							<!-- Corner detection points -->
+							<circle cx="6" cy="6" r="1.5" fill="currentColor"/>
+							<circle cx="18" cy="6" r="1.5" fill="currentColor"/>
+							<circle cx="18" cy="18" r="1.5" fill="currentColor"/>
+							<circle cx="6" cy="18" r="1.5" fill="currentColor"/>
+						</svg>
 						<span class="text-converter-primary font-medium">Advanced Edge Detection</span>
 						{#if config.enable_etf_fdog || config.enable_flow_tracing}
 							<Check class="h-4 w-4 text-green-600" />

@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         enable_etf_fdog: false,
         ..Default::default()
     };
-    let traditional_paths = vectorize_trace_low(&rgba_img, &traditional_config)?;
+    let traditional_paths = vectorize_trace_low(&rgba_img, &traditional_config, None)?;
     println!("Traditional result: {} paths", traditional_paths.len());
 
     // Test 2: ETF/FDoG analysis - step by step
@@ -169,7 +169,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         nms_high: 0.08,
         ..Default::default()
     };
-    let optimized_paths = vectorize_trace_low(&rgba_img, &optimized_config)?;
+    let optimized_paths = vectorize_trace_low(&rgba_img, &optimized_config, None)?;
     println!(
         "Optimized ETF/FDoG: {} paths (vs {} traditional)",
         optimized_paths.len(),
@@ -197,7 +197,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         trace_max_len: 50_000,      // Much longer paths
         ..Default::default()
     };
-    let flow_paths = vectorize_trace_low(&rgba_img, &flow_config)?;
+    let flow_paths = vectorize_trace_low(&rgba_img, &flow_config, None)?;
     println!("Lenient flow tracing: {} paths", flow_paths.len());
 
     // Test 5: Complete pipeline with all optimizations
@@ -208,7 +208,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fit_max_err: 2.0,      // Allow more error
         ..flow_config
     };
-    let complete_paths = vectorize_trace_low(&rgba_img, &complete_config)?;
+    let complete_paths = vectorize_trace_low(&rgba_img, &complete_config, None)?;
     println!("Complete optimized: {} paths", complete_paths.len());
 
     println!("\n=== SUMMARY COMPARISON ===");

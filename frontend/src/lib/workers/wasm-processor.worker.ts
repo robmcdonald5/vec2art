@@ -201,6 +201,18 @@ function configureVectorizer(config: any) {
 		vectorizer.set_stroke_width(config.stroke_width);
 	}
 	
+	// CRITICAL FIX: Auto-enable dependency chain for advanced features (WASM validation requirements)
+	if (config.enable_bezier_fitting && !config.enable_flow_tracing) {
+		console.log('[Worker] 🔧 Auto-enabling flow tracing for Bézier fitting (WASM requirement)');
+		config.enable_flow_tracing = true;
+	}
+	
+	// Flow tracing requires ETF/FDoG edge detection
+	if (config.enable_flow_tracing && !config.enable_etf_fdog) {
+		console.log('[Worker] 🔧 Auto-enabling ETF/FDoG for flow tracing (WASM requirement)');
+		config.enable_etf_fdog = true;
+	}
+
 	// Apply core boolean configuration options
 	const booleanConfigMethods = {
 		noise_filtering: 'set_noise_filtering',
@@ -246,8 +258,18 @@ function configureVectorizer(config: any) {
 	
 	// Apply hand-drawn preset first (required before custom parameters)
 	if (typeof config.hand_drawn_preset === 'string' && typeof vectorizer.set_hand_drawn_preset === 'function') {
-		console.log('[Worker] Setting hand-drawn preset:', config.hand_drawn_preset);
-		vectorizer.set_hand_drawn_preset(config.hand_drawn_preset);
+		// Handle 'custom' preset - map to 'medium' to satisfy validation, then override with custom params
+		const wasmPreset = config.hand_drawn_preset === 'custom' ? 'medium' : config.hand_drawn_preset;
+		console.log('[Worker] Setting hand-drawn preset:', config.hand_drawn_preset, 
+			config.hand_drawn_preset === 'custom' ? '(mapped to "medium" for WASM validation, will override with custom values)' : '');
+		try {
+			vectorizer.set_hand_drawn_preset(wasmPreset);
+		} catch (error) {
+			console.error('[Worker] Error: Hand-drawn preset error:', error);
+			// Fallback to 'medium' preset for any invalid preset (not 'none' to avoid validation errors)
+			console.log('[Worker] Falling back to "medium" preset due to error');
+			vectorizer.set_hand_drawn_preset('medium');
+		}
 	} else {
 		console.warn('[Worker] ⚠️ Hand-drawn preset not provided or WASM method unavailable');
 	}
@@ -266,25 +288,53 @@ function configureVectorizer(config: any) {
 	}
 
 	// Apply hand-drawn parameters (only after preset is set)
-	// CRITICAL FIX: Only apply custom parameters if preset is NOT 'none'
-	// This matches the service layer logic and prevents WASM validation errors
-	if (config.hand_drawn_preset !== 'none') {
+	// PHASE 5 FIX: Allow independent artistic effects even when preset is 'none'
+	// If any custom artistic values are provided (non-zero), apply them regardless of preset
+	const hasCustomEffects = (
+		(typeof config.tremor_strength === 'number' && config.tremor_strength > 0) ||
+		(typeof config.variable_weights === 'number' && config.variable_weights > 0) ||
+		(typeof config.tapering === 'number' && config.tapering > 0)
+	);
+	
+	// Always apply artistic effects when custom effects are specified or when using any preset
+	const applyArtisticEffects = hasCustomEffects || config.hand_drawn_preset !== 'none';
+	
+	if (applyArtisticEffects) {
 		if (typeof config.tremor_strength === 'number' && typeof vectorizer.set_custom_tremor === 'function') {
-			console.log('[Worker] Setting tremor strength:', config.tremor_strength);
-			vectorizer.set_custom_tremor(config.tremor_strength);
+			try {
+				console.log('[Worker] Setting tremor strength:', config.tremor_strength);
+				vectorizer.set_custom_tremor(config.tremor_strength);
+			} catch (error) {
+				console.error('[Worker] Error setting tremor strength:', error);
+				console.log('[Worker] Continuing with default tremor settings');
+			}
 		}
 		
 		if (typeof config.variable_weights === 'number' && typeof vectorizer.set_custom_variable_weights === 'function') {
-			console.log('[Worker] Setting variable weights:', config.variable_weights);
-			vectorizer.set_custom_variable_weights(config.variable_weights);
+			try {
+				console.log('[Worker] Setting variable weights:', config.variable_weights);
+				vectorizer.set_custom_variable_weights(config.variable_weights);
+			} catch (error) {
+				console.error('[Worker] Error setting variable weights:', error);
+				console.log('[Worker] Continuing with default variable weights');
+			}
 		}
 		
 		if (typeof config.tapering === 'number' && typeof vectorizer.set_custom_tapering === 'function') {
-			console.log('[Worker] Setting tapering:', config.tapering);
-			vectorizer.set_custom_tapering(config.tapering);
+			try {
+				console.log('[Worker] Setting tapering:', config.tapering);
+				vectorizer.set_custom_tapering(config.tapering);
+			} catch (error) {
+				console.error('[Worker] Error setting tapering:', error);
+				console.log('[Worker] Continuing with default tapering settings');
+			}
+		}
+		
+		if ((config.hand_drawn_preset === 'none' || config.hand_drawn_preset === 'custom') && hasCustomEffects) {
+			console.log('[Worker] ✅ Applying independent artistic effects with custom control');
 		}
 	} else {
-		console.log('[Worker] Hand-drawn preset is "none" - skipping custom artistic parameters for clean, precise lines');
+		console.log('[Worker] No hand-drawn effects requested (preset: "none", all custom values zero)');
 	}
 	
 	// Apply backend-specific parameters

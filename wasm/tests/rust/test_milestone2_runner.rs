@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let baseline_paths = vectorize_trace_low(&rgba_img, &baseline_config)?;
+    let baseline_paths = vectorize_trace_low(&rgba_img, &baseline_config, None)?;
     let baseline_output = format!("{output_dir}/test1-5-milestone2-baseline.svg");
     let svg_config = SvgConfig::default();
     let svg_content = generate_svg_document(
@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let etf_fdog_paths = vectorize_trace_low(&rgba_img, &etf_fdog_config)?;
+    let etf_fdog_paths = vectorize_trace_low(&rgba_img, &etf_fdog_config, None)?;
     let etf_fdog_output = format!("{output_dir}/test1-6-milestone2-etf-fdog.svg");
     let svg_content = generate_svg_document(
         &etf_fdog_paths,
@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let flow_tracing_paths = vectorize_trace_low(&rgba_img, &flow_tracing_config)?;
+    let flow_tracing_paths = vectorize_trace_low(&rgba_img, &flow_tracing_config, None)?;
     let flow_tracing_output = format!("{output_dir}/test1-7-milestone2-flow-tracing.svg");
     let svg_content = generate_svg_document(
         &flow_tracing_paths,
@@ -136,7 +136,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let full_pipeline_paths = vectorize_trace_low(&rgba_img, &full_pipeline_config)?;
+    let full_pipeline_paths = vectorize_trace_low(&rgba_img, &full_pipeline_config, None)?;
     let full_pipeline_output = format!("{output_dir}/test1-8-milestone2-full-pipeline.svg");
     let svg_content = generate_svg_document(
         &full_pipeline_paths,

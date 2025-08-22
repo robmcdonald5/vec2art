@@ -59,6 +59,8 @@
 		stroke_width: 1.5,
 		noise_filtering: true,
 		multipass: false,
+		pass_count: 1,
+		multipass_mode: 'auto',
 		reverse_pass: false,
 		diagonal_pass: false,
 		enable_etf_fdog: false,

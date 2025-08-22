@@ -15,5 +15,11 @@
 # Frontend-specific temporary files
 .turbo
 
+# Testing artifacts
+test-results/
+playwright-report/
+tests/e2e/fixtures/images/
+tests/e2e/fixtures/outputs/
+
 *storybook.log
 storybook-static

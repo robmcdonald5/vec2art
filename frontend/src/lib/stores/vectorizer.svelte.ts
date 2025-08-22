@@ -84,12 +84,15 @@ class VectorizerStore {
 	}
 
 	get isPanicked(): boolean {
-		return this._state.has_error && (
-			this._state.error?.details?.includes('unreachable executed') ||
-			this._state.error?.details?.includes('panic') ||
-			this._state.error?.message?.toLowerCase().includes('panic') ||
-			this._state.error?.type === 'unknown'
-		);
+		return this._state.has_error && this.isPanicCondition(this._state.error!);
+	}
+
+	get isRecovering(): boolean {
+		return this._recoveryState.isRecovering;
+	}
+
+	get recoveryAttempts(): number {
+		return this._recoveryState.recoveryAttempts;
 	}
 
 	get config(): VectorizerConfig {
@@ -431,6 +434,13 @@ class VectorizerStore {
 
 			// Clear any previous errors on successful processing
 			this.clearError();
+			
+			// Reset recovery attempts on successful processing (system is stable)
+			if (this._recoveryState.recoveryAttempts > 0) {
+				console.log('[VectorizerStore] ✅ Successful processing - resetting recovery attempt counter');
+				this._recoveryState.recoveryAttempts = 0;
+				this._recoveryState.lastRecoveryTime = 0;
+			}
 
 			this._state.last_result = result;
 
@@ -619,7 +629,7 @@ class VectorizerStore {
 	}
 
 	/**
-	 * Set error state
+	 * Set error state with enhanced panic detection and recovery
 	 */
 	private setError(error: VectorizerError): void {
 		this._state.error = error;
@@ -628,13 +638,11 @@ class VectorizerStore {
 		// Log error for debugging
 		console.error('Vectorizer error:', error);
 
-		// Check if this is a panic condition that needs automatic recovery
-		const isPanicError = error.details?.includes('unreachable executed') ||
-			error.details?.includes('panic') ||
-			error.message?.toLowerCase().includes('panic') ||
-			error.type === 'unknown';
+		// Enhanced panic detection for more error patterns
+		const isPanicError = this.isPanicCondition(error);
 
 		if (isPanicError && !this._recoveryState.isRecovering) {
+			console.log(`[VectorizerStore] 🚨 Panic condition detected: ${error.type} - ${error.message}`);
 			this.attemptAutoRecovery(error);
 		}
 
@@ -646,6 +654,37 @@ class VectorizerStore {
 				}
 			}, 3000); // Clear config errors after 3 seconds (shorter for better UX)
 		}
+	}
+
+	/**
+	 * Enhanced panic condition detection
+	 */
+	private isPanicCondition(error: VectorizerError): boolean {
+		const errorText = (error.message + ' ' + (error.details || '')).toLowerCase();
+		
+		// Critical WASM runtime errors that indicate system corruption
+		const panicPatterns = [
+			'unreachable executed',
+			'panic',
+			'memory access out of bounds',
+			'call stack exhausted', 
+			'invalid memory access',
+			'segmentation fault',
+			'abort called',
+			'assertion failed',
+			'stack overflow',
+			'called option::unwrap() on a none value',
+			'index out of bounds',
+			'attempted to divide by zero',
+			'crossbeam-epoch',
+			'wasm execution failed',
+			'worker thread panicked'
+		];
+		
+		return error.type === 'unknown' || 
+			   panicPatterns.some(pattern => errorText.includes(pattern)) ||
+			   // Threading-related failures that often indicate WASM state corruption
+			   (error.type === 'threading' && errorText.includes('failed'));
 	}
 
 	/**
@@ -1166,48 +1205,64 @@ class VectorizerStore {
 	 * Completely reinitializes the WASM module and thread pool
 	 */
 	/**
-	 * Attempt automatic recovery from panic conditions
+	 * Attempt automatic recovery from panic conditions with improved logic
 	 */
 	private async attemptAutoRecovery(originalError: VectorizerError): Promise<void> {
 		const now = Date.now();
 		const timeSinceLastRecovery = now - this._recoveryState.lastRecoveryTime;
-		const maxRecoveryAttempts = 3;
-		const recoveryThrottleMs = 30000; // 30 seconds between attempts
+		const maxConsecutiveAttempts = 2; // Reduced for faster user feedback
+		const recoveryThrottleMs = 5000; // 5 seconds between attempts (much shorter)
 
-		// Prevent recovery spam - limit attempts and add time-based throttling
-		if (this._recoveryState.recoveryAttempts >= maxRecoveryAttempts) {
-			console.warn('[VectorizerStore] Max auto-recovery attempts reached, manual intervention required');
+		// More lenient throttling - allow immediate recovery if enough time has passed
+		if (this._recoveryState.recoveryAttempts >= maxConsecutiveAttempts && 
+		    timeSinceLastRecovery < recoveryThrottleMs) {
+			console.warn(`[VectorizerStore] Auto-recovery throttled (${this._recoveryState.recoveryAttempts}/${maxConsecutiveAttempts}), waiting ${Math.ceil((recoveryThrottleMs - timeSinceLastRecovery) / 1000)}s`);
 			return;
 		}
 
-		if (timeSinceLastRecovery < recoveryThrottleMs) {
-			console.warn('[VectorizerStore] Auto-recovery throttled, waiting before next attempt');
-			return;
+		// Reset attempts if enough time has passed since last recovery
+		if (timeSinceLastRecovery > 60000) { // 1 minute timeout resets the counter
+			this._recoveryState.recoveryAttempts = 0;
 		}
 
-		console.log(`[VectorizerStore] 🚨 Panic detected: "${originalError.details}", attempting auto-recovery (attempt ${this._recoveryState.recoveryAttempts + 1}/${maxRecoveryAttempts})`);
+		console.log(`[VectorizerStore] 🚨 Panic detected: "${originalError.details}", attempting auto-recovery (attempt ${this._recoveryState.recoveryAttempts + 1}/${maxConsecutiveAttempts})`);
 
 		this._recoveryState.isRecovering = true;
 		this._recoveryState.recoveryAttempts++;
 		this._recoveryState.lastRecoveryTime = now;
 
+		// Show user feedback during recovery
+		this._state.error = {
+			type: 'unknown',
+			message: 'System recovering...',
+			details: 'Automatically fixing the issue, please wait...'
+		};
+
 		try {
-			// Use the existing emergency recovery logic
-			await this.emergencyRecovery();
+			// Enhanced recovery with configuration reset
+			await this.enhancedEmergencyRecovery(originalError);
 			
 			// Reset recovery counter on successful recovery
 			this._recoveryState.recoveryAttempts = 0;
 			console.log('[VectorizerStore] ✅ Auto-recovery completed successfully');
+			
+			// Clear the recovery message
+			this.clearError();
 		} catch (error) {
 			console.error('[VectorizerStore] ❌ Auto-recovery failed:', error);
 			
-			// If we've reached max attempts, provide guidance
-			if (this._recoveryState.recoveryAttempts >= maxRecoveryAttempts) {
-				this.setError({
+			// If we've reached max attempts, provide clearer guidance
+			if (this._recoveryState.recoveryAttempts >= maxConsecutiveAttempts) {
+				this._state.error = {
 					type: 'unknown',
-					message: 'System requires manual restart',
-					details: `Auto-recovery failed after ${maxRecoveryAttempts} attempts. Please refresh the page to reset the converter.`
-				});
+					message: 'System requires page refresh',
+					details: `Auto-recovery failed after ${maxConsecutiveAttempts} attempts. The WASM module may be corrupted. Please refresh the page (Ctrl+R or Cmd+R) to fully reset the converter.`
+				};
+				this._state.has_error = true; // Ensure error state is set
+			} else {
+				// Still have attempts left, keep the original error
+				this._state.error = originalError;
+				this._state.has_error = true;
 			}
 		} finally {
 			this._recoveryState.isRecovering = false;
@@ -1215,51 +1270,104 @@ class VectorizerStore {
 	}
 
 	/**
-	 * Manual emergency recovery (called by user action or auto-recovery)
+	 * Enhanced emergency recovery with configuration reset and validation
 	 */
-	async emergencyRecovery(): Promise<void> {
-		console.log('[VectorizerStore] Starting emergency recovery from panic state...');
+	async enhancedEmergencyRecovery(originalError: VectorizerError): Promise<void> {
+		console.log('[VectorizerStore] Starting enhanced emergency recovery...');
 		
-		// Prevent setError from triggering auto-recovery during manual recovery
+		// Prevent setError from triggering auto-recovery during recovery
 		const wasRecovering = this._recoveryState.isRecovering;
 		this._recoveryState.isRecovering = true;
 		
 		try {
-			// Force cleanup of current service
+			// Step 1: Force cleanup of current service
+			console.log('[VectorizerStore] 🧹 Cleaning up corrupted WASM state...');
 			vectorizerService.cleanup();
 			
-			// Reset all state
+			// Step 2: Reset all state completely
 			this._state.is_initialized = false;
 			this._state.is_processing = false;
 			this._initState.wasmLoaded = false;
 			this._initState.threadsInitialized = false;
 			this.clearError();
 			
-			// Wait a bit for cleanup to complete
-			await new Promise(resolve => setTimeout(resolve, 500));
+			// Step 3: Reset configuration to safe defaults to prevent repeat panics
+			console.log('[VectorizerStore] ⚙️ Resetting configuration to safe defaults...');
+			const safeConfig = { 
+				...defaultConfig,
+				// Force safe settings to prevent repeat panics
+				backend: 'edge' as const,
+				pass_count: 1, // Single pass only
+				multipass: false,
+				reverse_pass: false, // Disable directional passes that caused panic
+				diagonal_pass: false,
+				enable_etf_fdog: false,
+				enable_flow_tracing: false,
+				enable_bezier_fitting: false,
+				hand_drawn_preset: 'medium' as const,
+				variable_weights: 0.3,
+				tremor_strength: 0.2,
+				tapering: 0.5,
+				detail: 0.4,
+				stroke_width: 1.0,
+				noise_filtering: true,
+				max_processing_time_ms: 30000
+			};
+			this._state.config = safeConfig;
 			
-			// Reinitialize everything from scratch
+			// Step 4: Wait longer for complete cleanup (WASM needs time)
+			console.log('[VectorizerStore] ⏳ Waiting for WASM cleanup to complete...');
+			await new Promise(resolve => setTimeout(resolve, 1500)); // Longer wait
+			
+			// Step 5: Force garbage collection if available
+			if ('gc' in window && typeof window.gc === 'function') {
+				try {
+					window.gc();
+					console.log('[VectorizerStore] 🗑️ Forced garbage collection');
+				} catch (e) {
+					// Ignore GC errors
+				}
+			}
+			
+			// Step 6: Reinitialize with conservative thread count
+			console.log('[VectorizerStore] 🔄 Reinitializing WASM module...');
+			const threadCount = Math.min(this._initState.requestedThreadCount || 4, 4); // Max 4 threads for stability
 			await this.initialize({
-				threadCount: this._initState.requestedThreadCount || 4,
+				threadCount,
 				autoInitThreads: true
 			});
 			
-			console.log('[VectorizerStore] Emergency recovery completed successfully');
+			console.log('[VectorizerStore] ✅ Enhanced recovery completed successfully - safe configuration restored');
 		} catch (error) {
-			console.error('[VectorizerStore] Emergency recovery failed:', error);
+			console.error('[VectorizerStore] ❌ Enhanced recovery failed:', error);
 			
-			// Temporarily disable auto-recovery to prevent recursion
-			this._recoveryState.isRecovering = true;
-			this.setError({
+			// Don't recurse - just fail cleanly
+			this._state.error = {
 				type: 'unknown',
-				message: 'Recovery failed',
-				details: error instanceof Error ? error.message : 'Unknown recovery error'
-			});
-			this._recoveryState.isRecovering = wasRecovering;
+				message: 'Critical system failure',
+				details: `Recovery completely failed: ${error instanceof Error ? error.message : 'Unknown error'}. Page refresh required.`
+			};
+			this._state.has_error = true;
 			throw error;
 		} finally {
 			this._recoveryState.isRecovering = wasRecovering;
 		}
+	}
+
+	/**
+	 * Manual emergency recovery (called by user action) - wrapper for enhanced recovery
+	 */
+	async emergencyRecovery(): Promise<void> {
+		console.log('[VectorizerStore] Manual emergency recovery requested...');
+		
+		// Create a synthetic error for the enhanced recovery
+		const manualError: VectorizerError = {
+			type: 'unknown',
+			message: 'Manual recovery initiated',
+			details: 'User requested emergency recovery'
+		};
+		
+		await this.enhancedEmergencyRecovery(manualError);
 	}
 }
 

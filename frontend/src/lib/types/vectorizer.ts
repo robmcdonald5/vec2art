@@ -6,7 +6,7 @@ export type VectorizerBackend = 'edge' | 'centerline' | 'superpixel' | 'dots';
 
 export type VectorizerPreset = 'sketch' | 'technical' | 'artistic' | 'poster' | 'comic';
 
-export type HandDrawnPreset = 'none' | 'subtle' | 'medium' | 'strong' | 'sketchy';
+export type HandDrawnPreset = 'none' | 'subtle' | 'medium' | 'strong' | 'sketchy' | 'custom';
 
 export interface VectorizerConfig {
 	// Core settings
@@ -258,9 +258,9 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		hand_drawn_preset: 'medium',
 		multipass: true,
 		noise_filtering: true,
-		variable_weights: 0.4,
-		tremor_strength: 0.3,
-		tapering: 0.6,
+		variable_weights: 0.5,
+		tremor_strength: 0.15,
+		tapering: 0.4,
 		// Enable smooth curves for natural sketch appearance
 		enable_flow_tracing: true,
 		enable_bezier_fitting: true,
@@ -332,9 +332,9 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		noise_filtering: true,
 		reverse_pass: true,
 		diagonal_pass: true,
-		variable_weights: 0.6,
+		variable_weights: 0.8,
 		tremor_strength: 0.4,
-		tapering: 0.7,
+		tapering: 0.4,
 		// Advanced edge features for complex artwork
 		enable_flow_tracing: true,
 		enable_bezier_fitting: true,
@@ -365,11 +365,12 @@ export const PRESET_DESCRIPTIONS: Record<VectorizerPreset, string> = {
 };
 
 export const HAND_DRAWN_DESCRIPTIONS: Record<HandDrawnPreset, string> = {
-	none: 'Clean, precise lines with no artistic effects (smoothness control hidden)',
-	subtle: 'Minimal line variation and organic feel - smoothness fine-tunes within this style',
-	medium: 'Moderate thickness variation and natural tapering - smoothness adjusts intensity',
-	strong: 'Pronounced line weight changes and artistic styling - smoothness controls roughness',
-	sketchy: 'Maximum artistic character with loose, sketchy appearance - smoothness varies effect strength'
+	none: 'Clean, precise lines with no artistic effects',
+	subtle: 'Minimal line variation and organic feel - fine-tune with individual controls',
+	medium: 'Moderate thickness variation and natural tapering - adjustable independently',
+	strong: 'Pronounced line weight changes and artistic styling - customizable effects',
+	sketchy: 'Maximum artistic character with loose, sketchy appearance - full control available',
+	custom: 'Custom artistic effects - manually adjusted using individual sliders'
 };
 
 // Utility functions for multipass processing  

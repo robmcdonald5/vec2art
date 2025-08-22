@@ -104,17 +104,30 @@ export class ConverterPage {
 		await this.page.fill('[data-testid="detail-level"]', level.toString());
 	}
 
+	/** @deprecated Use setArtisticEffect with specific effect names */
 	async setSmoothness(smoothness: number) {
-		await this.page.fill('[data-testid="smoothness"]', smoothness.toString());
+		console.warn('setSmoothness is deprecated. Use setArtisticEffect instead.');
+		// Backward compatibility - convert old smoothness to new artistic effects
+		await this.setArtisticEffect('variable_weights', smoothness * 0.1);
+		await this.setArtisticEffect('tremor_strength', smoothness * 0.05);
+		await this.setArtisticEffect('tapering', smoothness * 0.1);
 	}
 
-	async enableArtisticEffect(effect: string, enabled: boolean = true) {
-		const checkbox = this.page.locator(`input[type="checkbox"][data-effect="${effect}"]`);
-		if (enabled) {
-			await checkbox.check();
-		} else {
-			await checkbox.uncheck();
-		}
+	/**
+	 * Set individual artistic effect values
+	 */
+	async setArtisticEffect(effect: 'variable_weights' | 'tremor_strength' | 'tapering', value: number) {
+		const slider = this.page.locator(`input[id="${effect}"]`);
+		await expect(slider).toBeVisible();
+		await slider.fill(value.toString());
+	}
+
+	/**
+	 * Set hand-drawn style preset
+	 */
+	async setHandDrawnPreset(preset: 'none' | 'subtle' | 'medium' | 'strong' | 'sketchy') {
+		const select = this.page.locator('select, [role="combobox"]').filter({ hasText: /hand.*drawn.*style/i }).first();
+		await select.selectOption(preset);
 	}
 
 	async convertImage() {

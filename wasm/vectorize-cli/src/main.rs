@@ -9,7 +9,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use vectorize_core::algorithms::apply_hand_drawn_aesthetics;
 use vectorize_core::config::SvgConfig;
 use vectorize_core::svg::generate_svg_document;
 use vectorize_core::{vectorize_trace_low, vectorize_trace_low_rgba, ConfigBuilder};
@@ -422,13 +421,10 @@ fn vectorize_trace_low_command(
     let vectorize_start = Instant::now();
     let svg_content = if hand_drawn_config.is_some() {
         // Use path-based vectorization for hand-drawn effects
-        let paths = vectorize_trace_low(&rgba_image, &config).context("Vectorization failed")?;
+        let paths = vectorize_trace_low(&rgba_image, &config, hand_drawn_config.as_ref()).context("Vectorization failed")?;
 
-        let processed_paths = if let Some(hd_config) = hand_drawn_config {
-            apply_hand_drawn_aesthetics(paths, &hd_config)
-        } else {
-            paths
-        };
+        // Note: artistic effects are now applied automatically in the pipeline
+        let processed_paths = paths;
 
         let svg_config = SvgConfig::default();
         generate_svg_document(
@@ -439,7 +435,7 @@ fn vectorize_trace_low_command(
         )
     } else {
         // Use optimized direct SVG generation for speed
-        vectorize_trace_low_rgba(&rgba_image, &config).context("Vectorization failed")?
+        vectorize_trace_low_rgba(&rgba_image, &config, None).context("Vectorization failed")?
     };
     let vectorize_time = vectorize_start.elapsed();
 
