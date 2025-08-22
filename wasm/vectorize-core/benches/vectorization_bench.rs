@@ -37,7 +37,7 @@ fn benchmark_line_tracing(c: &mut Criterion) {
                 ..TraceLowConfig::default()
             };
             b.iter(|| {
-                black_box(vectorize_trace_low_rgba(&checkerboard, &config).unwrap());
+                black_box(vectorize_trace_low_rgba(&checkerboard, &config, None).unwrap());
             });
         });
 
@@ -50,7 +50,7 @@ fn benchmark_line_tracing(c: &mut Criterion) {
                 ..TraceLowConfig::default()
             };
             b.iter(|| {
-                black_box(vectorize_trace_low_rgba(&checkerboard, &config).unwrap());
+                black_box(vectorize_trace_low_rgba(&checkerboard, &config, None).unwrap());
             });
         });
     }

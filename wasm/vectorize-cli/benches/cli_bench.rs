@@ -24,7 +24,7 @@ fn benchmark_trace_low_vectorization(c: &mut Criterion) {
         let img = create_test_image(size);
         group.bench_with_input(BenchmarkId::new("trace_low", size), &size, |b, _| {
             b.iter(|| {
-                black_box(vectorize_trace_low_rgba(&img, &config).unwrap());
+                black_box(vectorize_trace_low_rgba(&img, &config, None).unwrap());
             })
         });
     }
@@ -45,7 +45,7 @@ fn benchmark_multipass_vectorization(c: &mut Criterion) {
         let img = create_test_image(size);
         group.bench_with_input(BenchmarkId::new("multipass", size), &size, |b, _| {
             b.iter(|| {
-                black_box(vectorize_trace_low_rgba(&img, &config).unwrap());
+                black_box(vectorize_trace_low_rgba(&img, &config, None).unwrap());
             })
         });
     }
@@ -87,7 +87,7 @@ fn benchmark_different_configs(c: &mut Criterion) {
     for (name, config) in trace_configs {
         group.bench_with_input(BenchmarkId::new("trace_low", name), &config, |b, config| {
             b.iter(|| {
-                black_box(vectorize_trace_low_rgba(&img, config).unwrap());
+                black_box(vectorize_trace_low_rgba(&img, config, None).unwrap());
             })
         });
     }

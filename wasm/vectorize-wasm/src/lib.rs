@@ -480,6 +480,48 @@ impl WasmVectorizer {
         self.builder = self.builder.clone().preserve_colors(enabled);
     }
 
+    /// Enable or disable color preservation in line tracing (edge/centerline backends)
+    #[wasm_bindgen]
+    pub fn set_line_preserve_colors(&mut self, enabled: bool) {
+        self.builder = self.builder.clone().line_preserve_colors(enabled);
+    }
+
+    /// Set color accuracy for line tracing (0.0 = fast, 1.0 = accurate)
+    #[wasm_bindgen]
+    pub fn set_line_color_accuracy(&mut self, accuracy: f32) -> Result<(), JsValue> {
+        match self.builder.clone().line_color_accuracy(accuracy) {
+            Ok(builder) => {
+                self.builder = builder;
+                Ok(())
+            }
+            Err(e) => Err(JsValue::from_str(&e.to_string())),
+        }
+    }
+
+    /// Set maximum colors per path segment for line tracing
+    #[wasm_bindgen]
+    pub fn set_max_colors_per_path(&mut self, max_colors: u32) -> Result<(), JsValue> {
+        match self.builder.clone().max_colors_per_path(max_colors) {
+            Ok(builder) => {
+                self.builder = builder;
+                Ok(())
+            }
+            Err(e) => Err(JsValue::from_str(&e.to_string())),
+        }
+    }
+
+    /// Set color tolerance for clustering (0.0-1.0)
+    #[wasm_bindgen]
+    pub fn set_color_tolerance(&mut self, tolerance: f32) -> Result<(), JsValue> {
+        match self.builder.clone().color_tolerance(tolerance) {
+            Ok(builder) => {
+                self.builder = builder;
+                Ok(())
+            }
+            Err(e) => Err(JsValue::from_str(&e.to_string())),
+        }
+    }
+
     /// Enable or disable adaptive dot sizing
     #[wasm_bindgen]
     pub fn set_adaptive_sizing(&mut self, enabled: bool) {
