@@ -343,7 +343,7 @@ impl Default for TraceLowConfig {
             douglas_peucker_epsilon: 1.5,   // Will be adjusted based on detail level
             enable_distance_transform_centerline: false, // Default to traditional skeleton approach
             // Superpixel defaults
-            num_superpixels: 100,            // Reasonable default for moderate segmentation
+            num_superpixels: 150,            // Default region complexity for balanced detail
             superpixel_compactness: 10.0,    // Balanced shape vs color similarity
             superpixel_slic_iterations: 10,  // Standard convergence iterations
             superpixel_fill_regions: true,   // Default to filled poster-style look
@@ -1643,7 +1643,33 @@ fn trace_superpixel(
     } else {
         (50.0 + 150.0 * config.detail) as usize
     };
-    let superpixel_compactness = config.superpixel_compactness;
+    
+    // Apply bounds checking to prevent memory allocation failure
+    let total_pixels = width * height;
+    let max_reasonable_superpixels = (total_pixels / 1000).max(20).min(500); // At least 1000 pixels per superpixel
+    
+    let superpixel_count = if superpixel_count > max_reasonable_superpixels {
+        log::warn!(
+            "Superpixel count {} too high for {}×{} image ({}px), clamping to {}",
+            superpixel_count, width, height, total_pixels, max_reasonable_superpixels
+        );
+        max_reasonable_superpixels
+    } else {
+        superpixel_count
+    };
+    
+    // Use adaptive compactness to prevent grid artifacts at high superpixel counts
+    // Research shows: high compactness + high K = rectangular grid patterns
+    // Solution: decrease compactness as superpixel density increases
+    let base_compactness = config.superpixel_compactness;
+    let superpixel_density = superpixel_count as f32 / (total_pixels as f32 / 10000.0); // superpixels per 10k pixels
+    let compactness_reduction = (superpixel_density - 1.0).max(0.0) * 0.1; // Reduce by 0.1 for each unit above 1.0
+    let superpixel_compactness = (base_compactness - compactness_reduction).max(0.1); // Never go below 0.1
+    
+    if superpixel_compactness != base_compactness {
+        log::info!("Adaptive compactness: {:.2} → {:.2} (density: {:.2})", 
+                   base_compactness, superpixel_compactness, superpixel_density);
+    }
 
     log::info!(
         "Starting SLIC superpixel segmentation: {}×{} → {} superpixels (detail: {:.2})",
@@ -1779,9 +1805,12 @@ fn slic_segmentation(
     let s = ((total_pixels as f32 / num_superpixels as f32).sqrt()) as usize;
     let s = s.max(1); // Ensure minimum spacing of 1
 
-    // Initialize cluster centers on a regular grid
+    // Initialize cluster centers with jitter to prevent grid artifacts
     let mut clusters = Vec::new();
     let mut cluster_id = 0;
+    
+    // Use simple deterministic jitter based on position to avoid diagonal patterns
+    let jitter_amount = (s as f32 * 0.25).min(8.0); // Max 25% jitter, capped at 8 pixels
 
     for y in (s / 2..height).step_by(s) {
         for x in (s / 2..width).step_by(s) {
@@ -1789,9 +1818,16 @@ fn slic_segmentation(
                 break;
             }
 
-            let idx = y * width + x;
+            // Apply deterministic jitter to break up grid pattern
+            let jitter_x = ((x * 73 + y * 37) % 256) as f32 / 256.0 * jitter_amount - jitter_amount / 2.0;
+            let jitter_y = ((x * 37 + y * 73) % 256) as f32 / 256.0 * jitter_amount - jitter_amount / 2.0;
+            
+            let jittered_x = ((x as f32 + jitter_x).max(0.0).min((width - 1) as f32)) as usize;
+            let jittered_y = ((y as f32 + jitter_y).max(0.0).min((height - 1) as f32)) as usize;
+
+            let idx = jittered_y * width + jittered_x;
             if idx < lab_image.len() {
-                clusters.push(SlicCluster::new(lab_image[idx], x as f32, y as f32));
+                clusters.push(SlicCluster::new(lab_image[idx], jittered_x as f32, jittered_y as f32));
                 cluster_id += 1;
             }
         }
@@ -1841,17 +1877,26 @@ fn slic_segmentation(
             vec![(LabColor::new(0.0, 0.0, 0.0), 0.0, 0.0, 0); clusters.len()];
 
         for (idx, &label) in labels.iter().enumerate() {
-            if label < cluster_sums.len() {
+            // Safe access with comprehensive bounds checking
+            if let Some(cluster_sum) = cluster_sums.get_mut(label) {
                 let x = (idx % width) as f32;
                 let y = (idx / width) as f32;
-                let lab = lab_image[idx];
-
-                cluster_sums[label].0.l += lab.l;
-                cluster_sums[label].0.a += lab.a;
-                cluster_sums[label].0.b += lab.b;
-                cluster_sums[label].1 += x;
-                cluster_sums[label].2 += y;
-                cluster_sums[label].3 += 1;
+                
+                // Safe access to lab_image with bounds check
+                if let Some(lab) = lab_image.get(idx) {
+                    cluster_sum.0.l += lab.l;
+                    cluster_sum.0.a += lab.a;
+                    cluster_sum.0.b += lab.b;
+                    cluster_sum.1 += x;
+                    cluster_sum.2 += y;
+                    cluster_sum.3 += 1;
+                } else {
+                    // This should not happen with proper initialization, but handle gracefully
+                    log::warn!("Lab image index {} out of bounds (max: {})", idx, lab_image.len());
+                }
+            } else {
+                // Invalid cluster label - this indicates a deeper issue but handle gracefully
+                log::warn!("Invalid cluster label {} (max clusters: {})", label, cluster_sums.len());
             }
         }
 
@@ -2019,16 +2064,104 @@ fn extract_region_boundary(
         .map(|(x, y)| Point::new(x as f32, y as f32))
         .collect();
 
-    // Sort by angle from centroid for better path ordering
-    boundary_points.sort_by(|a, b| {
-        let angle_a = (a.y - centroid_y).atan2(a.x - centroid_x);
-        let angle_b = (b.y - centroid_y).atan2(b.x - centroid_x);
-        angle_a
-            .partial_cmp(&angle_b)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    // Use proper contour tracing instead of angle sorting to prevent zigzag artifacts
+    if boundary_points.len() < 3 {
+        return boundary_points;
+    }
+    
+    // Trace the boundary contour using a proper path following algorithm
+    let traced_boundary = trace_boundary_contour(&boundary_points);
+    
+    traced_boundary
+}
 
-    boundary_points
+/// Trace boundary contour using nearest-neighbor path following to prevent zigzag artifacts
+fn trace_boundary_contour(boundary_points: &[Point]) -> Vec<Point> {
+    if boundary_points.len() < 3 {
+        return boundary_points.to_vec();
+    }
+    
+    let mut traced_path = Vec::new();
+    let mut visited = vec![false; boundary_points.len()];
+    
+    // Start from the topmost point (or leftmost if tie)
+    let mut current_idx = 0;
+    for (i, point) in boundary_points.iter().enumerate() {
+        let current_best = &boundary_points[current_idx];
+        if point.y < current_best.y || (point.y == current_best.y && point.x < current_best.x) {
+            current_idx = i;
+        }
+    }
+    
+    // Trace the contour by following nearest unvisited neighbors
+    let start_idx = current_idx;
+    loop {
+        traced_path.push(boundary_points[current_idx]);
+        visited[current_idx] = true;
+        
+        // Find nearest unvisited neighbor with more generous distance threshold
+        let mut next_idx = None;
+        let mut min_distance = f32::INFINITY;
+        
+        for (i, point) in boundary_points.iter().enumerate() {
+            if visited[i] {
+                continue;
+            }
+            
+            let dx = point.x - boundary_points[current_idx].x;
+            let dy = point.y - boundary_points[current_idx].y;
+            let distance = dx * dx + dy * dy;
+            
+            if distance < min_distance {
+                min_distance = distance;
+                next_idx = Some(i);
+            }
+        }
+        
+        match next_idx {
+            Some(idx) => {
+                current_idx = idx;
+                
+                // Use much more generous distance threshold to prevent gaps
+                // Stop only if we've made a full loop or distance is extremely far
+                if idx == start_idx || min_distance > 50.0 {
+                    break;
+                }
+            }
+            None => break, // No more unvisited neighbors
+        }
+        
+        // Safety limit to prevent infinite loops
+        if traced_path.len() >= boundary_points.len() {
+            break;
+        }
+    }
+    
+    // Always include all remaining unvisited points to ensure complete coverage
+    for (i, point) in boundary_points.iter().enumerate() {
+        if !visited[i] {
+            traced_path.push(*point);
+        }
+    }
+    
+    // Ensure we have at least 3 points for a valid polygon
+    if traced_path.len() < 3 {
+        return boundary_points.to_vec();
+    }
+    
+    // Close the polygon by ensuring the path returns to near the start
+    if let (Some(first), Some(last)) = (traced_path.first(), traced_path.last()) {
+        let dx = last.x - first.x;
+        let dy = last.y - first.y;
+        let distance = dx * dx + dy * dy;
+        
+        // If path isn't naturally closed, ensure it forms a proper closed polygon
+        if distance > 4.0 {
+            traced_path.push(*first);
+        }
+    }
+    
+    traced_path
 }
 
 /// Generate SVG paths for superpixel regions with different artistic modes

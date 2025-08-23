@@ -113,6 +113,7 @@
 	// Reactive effects to update slider fills when config changes externally
 	let detailSliderRef = $state<HTMLInputElement>();
 	let strokeWidthSliderRef = $state<HTMLInputElement>();
+	let regionComplexitySliderRef = $state<HTMLInputElement>();
 
 	$effect(() => {
 		// Update detail slider fill when config.detail changes
@@ -125,6 +126,13 @@
 		// Update stroke width slider fill when config.stroke_width changes
 		if (strokeWidthSliderRef && config.stroke_width !== undefined) {
 			updateSliderFill(strokeWidthSliderRef);
+		}
+	});
+
+	$effect(() => {
+		// Update region complexity slider fill when config.num_superpixels changes
+		if (regionComplexitySliderRef && config.num_superpixels !== undefined) {
+			updateSliderFill(regionComplexitySliderRef);
 		}
 	});
 </script>
@@ -198,34 +206,67 @@
 
 				<!-- Essential Parameters -->
 				<div class="grid grid-cols-1 gap-6">
-					<!-- Detail Level -->
-					<div>
-						<div class="mb-2 flex items-center gap-2">
-							<label class="text-converter-primary block text-sm font-medium"> Detail Level </label>
-							<Tooltip
-								content="Controls how much detail is captured in the conversion. Lower values create simpler, cleaner lines. Higher values preserve more fine details and texture."
-								position="top"
-								size="md"
+					<!-- Detail Level (Edge/Centerline/Dots backends only) -->
+					{#if config.backend !== 'superpixel'}
+						<div>
+							<div class="mb-2 flex items-center gap-2">
+								<label class="text-converter-primary block text-sm font-medium"> Detail Level </label>
+								<Tooltip
+									content="Controls how much detail is captured in the conversion. Lower values create simpler, cleaner lines. Higher values preserve more fine details and texture."
+									position="top"
+									size="md"
+								/>
+							</div>
+							<input
+								bind:this={detailSliderRef}
+								type="range"
+								min="0.1"
+								max="1"
+								step="0.1"
+								value={config.detail || 0.6}
+								oninput={updateConfig('detail')}
+								{disabled}
+								class="slider-ferrari w-full"
+								use:initializeSliderFill
 							/>
+							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
+								<span>Simple</span>
+								<span class="font-medium">{Math.round((config.detail || 0) * 10)}/10</span>
+								<span>Detailed</span>
+							</div>
 						</div>
-						<input
-							bind:this={detailSliderRef}
-							type="range"
-							min="0.1"
-							max="1"
-							step="0.1"
-							value={config.detail || 0.6}
-							oninput={updateConfig('detail')}
-							{disabled}
-							class="slider-ferrari w-full"
-							use:initializeSliderFill
-						/>
-						<div class="text-converter-secondary mt-1 flex justify-between text-xs">
-							<span>Simple</span>
-							<span class="font-medium">{Math.round((config.detail || 0) * 10)}/10</span>
-							<span>Detailed</span>
+					{/if}
+
+					<!-- Region Complexity (Superpixel backend only) -->
+					{#if config.backend === 'superpixel'}
+						<div>
+							<div class="mb-2 flex items-center gap-2">
+								<label class="text-converter-primary block text-sm font-medium"> Region Complexity </label>
+								<Tooltip
+									content="Controls the number of regions in the superpixel segmentation. Lower values create fewer, larger regions. Higher values create more detailed segmentation with smaller regions."
+									position="top"
+									size="md"
+								/>
+							</div>
+							<input
+								bind:this={regionComplexitySliderRef}
+								type="range"
+								min="50"
+								max="500"
+								step="25"
+								value={config.num_superpixels || 150}
+								oninput={updateConfig('num_superpixels')}
+								{disabled}
+								class="slider-ferrari w-full"
+								use:initializeSliderFill
+							/>
+							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
+								<span>Simple</span>
+								<span class="font-medium">{config.num_superpixels || 150}</span>
+								<span>Complex</span>
+							</div>
 						</div>
-					</div>
+					{/if}
 
 					<!-- Line Width / Dot Width -->
 					<div>
@@ -260,7 +301,7 @@
 						</div>
 					</div>
 
-					<!-- Color Toggle (Edge/Centerline backends only) -->
+					<!-- Color Toggle (Edge/Centerline/Superpixel backends) -->
 					{#if config.backend === 'edge' || config.backend === 'centerline'}
 						<div>
 							<div class="mb-2 flex items-center gap-2">
@@ -286,6 +327,40 @@
 								/>
 								<label
 									for="preserve-colors-quick"
+									class="text-converter-primary cursor-pointer text-sm font-medium"
+								>
+									Enable Color
+								</label>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Color Toggle (Superpixel backend only) -->
+					{#if config.backend === 'superpixel'}
+						<div>
+							<div class="mb-2 flex items-center gap-2">
+								<label class="text-converter-primary block text-sm font-medium">Color Mode</label>
+								<Tooltip
+									content="Enable to preserve original image colors in superpixel regions. Disable for monochrome grayscale output with enhanced contrast."
+									position="top"
+									size="md"
+								/>
+							</div>
+							<div class="flex items-center space-x-3">
+								<input
+									type="checkbox"
+									id="superpixel-preserve-colors-quick"
+									checked={config.superpixel_preserve_colors ?? true}
+									onchange={(event) => {
+										const target = event.target as HTMLInputElement;
+										onConfigChange({ superpixel_preserve_colors: target.checked });
+										onParameterChange();
+									}}
+									{disabled}
+									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+								/>
+								<label
+									for="superpixel-preserve-colors-quick"
 									class="text-converter-primary cursor-pointer text-sm font-medium"
 								>
 									Enable Color

@@ -26,12 +26,23 @@ const pendingRequests = new Map<string, {
 	reject: (reason: any) => void;
 }>();
 
+// Worker state management to prevent race conditions
+enum WorkerState {
+	IDLE = 'idle',
+	INITIALIZING = 'initializing',
+	PROCESSING = 'processing',
+	RESTARTING = 'restarting'
+}
+
 export class WasmWorkerService {
 	private static instance: WasmWorkerService | null = null;
 	private worker: Worker | null = null;
 	private isInitialized = false;
 	private initPromise: Promise<void> | null = null;
 	private progressCallback: ((progress: ProcessingProgress) => void) | null = null;
+	private workerState: WorkerState = WorkerState.IDLE;
+	private processingQueue: Array<() => Promise<any>> = [];
+	private isProcessingQueue = false;
 	
 	private constructor() {}
 	
@@ -155,6 +166,50 @@ export class WasmWorkerService {
 	}
 	
 	/**
+	 * Add a task to the processing queue to prevent race conditions
+	 */
+	private async addToQueue<T>(task: () => Promise<T>): Promise<T> {
+		return new Promise((resolve, reject) => {
+			this.processingQueue.push(async () => {
+				try {
+					const result = await task();
+					resolve(result);
+				} catch (error) {
+					reject(error);
+				}
+			});
+			this.processQueue();
+		});
+	}
+	
+	/**
+	 * Process the request queue serially to prevent race conditions
+	 */
+	private async processQueue(): Promise<void> {
+		if (this.isProcessingQueue || this.processingQueue.length === 0) {
+			return;
+		}
+		
+		this.isProcessingQueue = true;
+		
+		while (this.processingQueue.length > 0) {
+			const task = this.processingQueue.shift()!;
+			
+			try {
+				this.workerState = WorkerState.PROCESSING;
+				await task();
+			} catch (error) {
+				console.error('[WasmWorkerService] Queue task failed:', error);
+				// Continue processing other tasks even if one fails
+			} finally {
+				this.workerState = WorkerState.IDLE;
+			}
+		}
+		
+		this.isProcessingQueue = false;
+	}
+	
+	/**
 	 * Process an image using WASM in Web Worker
 	 */
 	async processImage(
@@ -162,12 +217,27 @@ export class WasmWorkerService {
 		config: VectorizerConfig,
 		onProgress?: (progress: ProcessingProgress) => void
 	): Promise<ProcessingResult> {
-		if (!this.isInitialized) {
-			await this.initialize({ 
-				threadCount: config.thread_count || 1,
-				backend: config.backend 
-			});
-		}
+		// Use queue to prevent race conditions when spamming converter
+		return this.addToQueue(async () => {
+			if (!this.isInitialized) {
+				await this.initialize({ 
+					threadCount: config.thread_count || 1,
+					backend: config.backend 
+				});
+			}
+			
+			return this.processImageInternal(imageData, config, onProgress);
+		});
+	}
+	
+	/**
+	 * Internal image processing method (called through queue)
+	 */
+	private async processImageInternal(
+		imageData: ImageData,
+		config: VectorizerConfig,
+		onProgress?: (progress: ProcessingProgress) => void
+	): Promise<ProcessingResult> {
 		
 		try {
 			// Set progress callback
@@ -210,10 +280,7 @@ export class WasmWorkerService {
 			// Check if this is a critical WASM error that requires worker restart
 			if (this.isCriticalWasmError(error)) {
 				console.warn('[WasmWorkerService] Critical WASM error detected, restarting worker...');
-				this.cleanup();
-				// Mark as uninitialized so it will reinitialize on next use
-				this.isInitialized = false;
-				this.initPromise = null;
+				await this.handleCriticalError(error);
 			}
 			
 			const processingError: VectorizerError = {
@@ -225,6 +292,57 @@ export class WasmWorkerService {
 			throw processingError;
 		} finally {
 			this.progressCallback = null;
+		}
+	}
+	
+	/**
+	 * Handle critical WASM errors with robust restart mechanism
+	 */
+	private async handleCriticalError(error: any): Promise<void> {
+		try {
+			this.workerState = WorkerState.RESTARTING;
+			
+			// 1. Reject all pending requests immediately
+			const pendingCount = pendingRequests.size;
+			for (const [id, pending] of pendingRequests) {
+				pending.reject(new Error('Worker restarting due to critical error'));
+			}
+			pendingRequests.clear();
+			
+			// 2. Clear processing queue
+			this.processingQueue = [];
+			this.isProcessingQueue = false;
+			
+			// 3. Terminate worker forcefully
+			if (this.worker) {
+				this.worker.terminate();
+				this.worker = null;
+			}
+			
+			// 4. Reset all state
+			this.isInitialized = false;
+			this.initPromise = null;
+			this.progressCallback = null;
+			
+			// 5. Wait for cleanup to propagate
+			await new Promise(resolve => setTimeout(resolve, 500));
+			
+			// 6. Reset to idle state
+			this.workerState = WorkerState.IDLE;
+			
+			console.log(`[WasmWorkerService] Critical error recovery complete, dropped ${pendingCount} pending requests`);
+			
+		} catch (restartError) {
+			console.error('[WasmWorkerService] Error during critical error handling:', restartError);
+			// Force reset everything even if cleanup fails
+			this.worker = null;
+			this.isInitialized = false;
+			this.initPromise = null;
+			this.progressCallback = null;
+			this.workerState = WorkerState.IDLE;
+			this.processingQueue = [];
+			this.isProcessingQueue = false;
+			pendingRequests.clear();
 		}
 	}
 	

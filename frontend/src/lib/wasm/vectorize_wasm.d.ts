@@ -988,7 +988,6 @@ export interface InitOutput {
   readonly _ZN4core5slice4sort6stable14driftsort_main17h8d388b6537d476afE: (a: number, b: number, c: number) => void;
   readonly _ZN4core5slice4sort6stable14driftsort_main17hb0f6806af21a3f61E: (a: number, b: number, c: number) => void;
   readonly _ZN4core5slice4sort6stable14driftsort_main17hba49442f00fc9690E: (a: number, b: number, c: number) => void;
-  readonly _ZN4core5slice4sort6stable14driftsort_main17hfbb0fa20cfb82783E: (a: number, b: number, c: number) => void;
   readonly _ZN4core5slice4sort6stable9quicksort9quicksort17h0ad3eab2f6e65e91E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
   readonly _ZN4core5slice4sort6stable9quicksort9quicksort17h5042cacf5a12c966E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
   readonly _ZN4core5slice4sort6stable9quicksort9quicksort17h51355c0bfa325462E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
@@ -1001,7 +1000,6 @@ export interface InitOutput {
   readonly _ZN4core5slice4sort6stable9quicksort9quicksort17hbca2271cb367eee2E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
   readonly _ZN4core5slice4sort6stable9quicksort9quicksort17he9151f76386434d5E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
   readonly _ZN4core5slice4sort6stable9quicksort9quicksort17hc4f03db1cec5907eE: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
-  readonly _ZN4core5slice4sort6stable9quicksort9quicksort17h1b2680961c92e332E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
   readonly _ZN4core5slice4sort8unstable7ipnsort17h62eee69c612a20c2E: (a: number, b: number, c: number) => void;
   readonly _ZN4core5slice4sort8unstable8heapsort8heapsort17hb5599b96809b4751E: (a: number, b: number, c: number) => void;
   readonly _ZN5alloc11collections9vec_deque21VecDeque$LT$T$C$A$GT$4grow17h24cb6ea3294190e4E: (a: number, b: number) => void;

@@ -143,7 +143,8 @@
 	</p>
 
 	<div class="space-y-3">
-		<!-- Multi-pass Processing -->
+		<!-- Multi-pass Processing (Edge backend only) -->
+		{#if config.backend === 'edge'}
 		<div class="border-ferrari-200/30 rounded-lg border bg-white">
 			<button
 				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors duration-200 focus:outline-none"
@@ -205,6 +206,7 @@
 				</div>
 			{/if}
 		</div>
+		{/if}
 
 		<!-- Directional Processing (Edge backend only) -->
 		{#if config.backend === 'edge'}
@@ -755,9 +757,6 @@
 					<div class="flex items-center gap-2">
 						<Grid class="text-ferrari-600 h-4 w-4" />
 						<span class="text-converter-primary font-medium">Advanced Regions</span>
-						{#if (config.compactness && config.compactness !== 20) || config.simplify_boundaries !== true}
-							<Check class="h-4 w-4 text-green-600" />
-						{/if}
 					</div>
 					<div class="flex-shrink-0">
 						{#if expandedSections.superpixelAdvanced}
@@ -814,6 +813,27 @@
 						</div>
 						<div class="text-converter-secondary ml-7 text-xs">
 							Smooth region edges for cleaner, more stylized look.
+						</div>
+
+						<!-- Fill Regions -->
+						<div class="flex items-center space-x-3">
+							<input
+								type="checkbox"
+								id="fill-regions-advanced"
+								checked={config.fill_regions ?? true}
+								onchange={handleCheckboxChange('fill_regions')}
+								{disabled}
+								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+							/>
+							<label
+								for="fill-regions-advanced"
+								class="text-converter-primary cursor-pointer text-sm font-medium"
+							>
+								Fill Regions
+							</label>
+						</div>
+						<div class="text-converter-secondary ml-7 text-xs">
+							Fill color regions instead of showing only outlines for bolder poster-style effects.
 						</div>
 					</div>
 				{/if}

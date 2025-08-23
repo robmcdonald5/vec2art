@@ -118,21 +118,14 @@
 		onParameterChange?.();
 	}
 
-	function handleRegionCountChange(event: Event) {
+	function handleRegionComplexityChange(event: Event) {
 		const target = event.target as HTMLInputElement;
-		const uiValue = parseInt(target.value);
-		const regions = Math.round(uiValue * 45 + 50); // Map 1-10 to 50-500
+		const regions = parseInt(target.value);
 
 		// Update progressive fill
 		updateSliderFill(target);
 
 		onConfigChange({ num_superpixels: regions });
-		onParameterChange?.();
-	}
-
-	function handleFillRegionsChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		onConfigChange({ fill_regions: target.checked });
 		onParameterChange?.();
 	}
 
@@ -206,9 +199,6 @@
 	let dotDensityUI = $derived(
 		config.dot_density_threshold ? Math.round((0.15 - config.dot_density_threshold) / 0.1 * 9 + 1) : 5
 	);
-	let regionCountUI = $derived(
-		config.num_superpixels ? Math.round((config.num_superpixels - 50) / 45) : 3
-	);
 	
 	// Hand-drawn preset options (with custom at the bottom)
 	const handDrawnOptions = (() => {
@@ -239,6 +229,7 @@
 	// Reactive effects to update slider fills when config changes externally
 	let detailSliderRef = $state<HTMLInputElement>();
 	let strokeWidthSliderRef = $state<HTMLInputElement>();
+	let regionComplexitySliderRef = $state<HTMLInputElement>();
 	let spatialSigmaSliderRef = $state<HTMLInputElement>();
 	let rangeSigmaSliderRef = $state<HTMLInputElement>();
 	let variableWeightsSliderRef = $state<HTMLInputElement>();
@@ -256,6 +247,13 @@
 		// Update stroke width slider fill when config.stroke_width changes
 		if (strokeWidthSliderRef && config.stroke_width !== undefined) {
 			updateSliderFill(strokeWidthSliderRef);
+		}
+	});
+
+	$effect(() => {
+		// Update region complexity slider fill when config.num_superpixels changes
+		if (regionComplexitySliderRef && config.num_superpixels !== undefined) {
+			updateSliderFill(regionComplexitySliderRef);
 		}
 	});
 
@@ -298,40 +296,79 @@
 <section class="space-y-6">
 	<!-- Core Parameters (Always Visible) -->
 	<div class="space-y-4">
-		<!-- Detail Level -->
-		<div class="space-y-2">
-			<div class="flex items-center justify-between">
-				<label
-					for="detail-level"
-					class="text-converter-primary flex items-center gap-2 text-sm font-medium"
-				>
-					<Eye class="text-converter-secondary h-4 w-4" aria-hidden="true" />
-					Detail Level
-				</label>
-				<span
-					class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-					aria-live="polite">{detailUI}/10</span
-				>
+		<!-- Detail Level (Edge/Centerline/Dots backends only) -->
+		{#if config.backend !== 'superpixel'}
+			<div class="space-y-2">
+				<div class="flex items-center justify-between">
+					<label
+						for="detail-level"
+						class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+					>
+						<Eye class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+						Detail Level
+					</label>
+					<span
+						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+						aria-live="polite">{detailUI}/10</span
+					>
+				</div>
+				<input
+					bind:this={detailSliderRef}
+					id="detail-level"
+					type="range"
+					min="1"
+					max="10"
+					value={detailUI}
+					onchange={handleDetailChange}
+					oninput={handleDetailChange}
+					{disabled}
+					class="slider-ferrari w-full"
+					aria-describedby="detail-level-desc"
+					use:initializeSliderFill
+				/>
+				<div id="detail-level-desc" class="text-converter-muted text-xs">
+					Controls line density and sensitivity. Higher values capture more details but may include
+					noise.
+				</div>
 			</div>
-			<input
-				bind:this={detailSliderRef}
-				id="detail-level"
-				type="range"
-				min="1"
-				max="10"
-				value={detailUI}
-				onchange={handleDetailChange}
-				oninput={handleDetailChange}
-				{disabled}
-				class="slider-ferrari w-full"
-				aria-describedby="detail-level-desc"
-				use:initializeSliderFill
-			/>
-			<div id="detail-level-desc" class="text-converter-muted text-xs">
-				Controls line density and sensitivity. Higher values capture more details but may include
-				noise.
+		{/if}
+
+		<!-- Region Complexity (Superpixel backend only) -->
+		{#if config.backend === 'superpixel'}
+			<div class="space-y-2">
+				<div class="flex items-center justify-between">
+					<label
+						for="region-complexity"
+						class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+					>
+						<Sliders class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+						Region Complexity
+					</label>
+					<span
+						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+						aria-live="polite">{config.num_superpixels || 150}</span
+					>
+				</div>
+				<input
+					bind:this={regionComplexitySliderRef}
+					id="region-complexity"
+					type="range"
+					min="50"
+					max="500"
+					step="25"
+					value={config.num_superpixels || 150}
+					onchange={handleRegionComplexityChange}
+					oninput={handleRegionComplexityChange}
+					{disabled}
+					class="slider-ferrari w-full"
+					aria-describedby="region-complexity-desc"
+					use:initializeSliderFill
+				/>
+				<div id="region-complexity-desc" class="text-converter-muted text-xs">
+					Controls the number of regions in the superpixel segmentation. Higher values create more detailed segmentation.
+				</div>
 			</div>
-		</div>
+		{/if}
 
 		<!-- Line Width / Dot Width -->
 		<div class="space-y-2">
@@ -533,57 +570,6 @@
 				Keep original image colors in the stippling effect instead of monochrome dots.
 			</div>
 		</div>
-	{:else if config.backend === 'superpixel'}
-		<div class="space-y-4 border-t pt-4">
-			<h4 class="text-converter-secondary text-sm font-medium">Region Controls</h4>
-
-			<!-- Region Count -->
-			<div class="space-y-2">
-				<div class="flex items-center justify-between">
-					<label for="region-count" class="text-converter-primary text-sm font-medium"
-						>Region Complexity</label
-					>
-					<span
-						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-						aria-live="polite">{regionCountUI}/10</span
-					>
-				</div>
-				<input
-					id="region-count"
-					type="range"
-					min="1"
-					max="10"
-					value={regionCountUI}
-					onchange={handleRegionCountChange}
-					oninput={handleRegionCountChange}
-					{disabled}
-					class="slider-ferrari w-full"
-					aria-describedby="region-count-desc"
-					use:initializeSliderFill
-				/>
-				<div id="region-count-desc" class="text-converter-muted text-xs">
-					Controls number of color regions. Higher values create more detailed segmentation.
-				</div>
-			</div>
-
-			<!-- Fill Regions -->
-			<div class="flex items-center space-x-3">
-				<input
-					id="fill-regions"
-					type="checkbox"
-					checked={config.fill_regions ?? true}
-					onchange={handleFillRegionsChange}
-					{disabled}
-					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
-				/>
-				<label for="fill-regions" class="text-converter-primary cursor-pointer text-sm font-medium">
-					Fill Regions
-				</label>
-			</div>
-			<div class="text-converter-muted ml-7 text-xs">
-				Fill color regions instead of showing only outlines for bolder poster-style effects.
-			</div>
-		</div>
 	{:else if config.backend === 'centerline'}
 		<div class="space-y-4 border-t pt-4">
 			<h4 class="text-converter-secondary text-sm font-medium">Precision Controls</h4>
@@ -611,30 +597,31 @@
 		</div>
 	{/if}
 
-	<!-- Noise Filtering (All Backends) -->
-	<div class="space-y-2 border-t pt-4">
-		<div class="flex items-center space-x-3">
-			<input
-				id="noise-filtering"
-				type="checkbox"
-				checked={config.noise_filtering}
-				onchange={handleNoiseFilteringChange}
-				{disabled}
-				class="border-border text-primary h-4 w-4 rounded focus:outline-none"
-			/>
-			<label
-				for="noise-filtering"
-				class="text-converter-primary cursor-pointer text-sm font-medium"
-			>
-				Noise Filtering
-			</label>
-		</div>
-		<div class="text-converter-muted ml-7 text-xs">
-			Apply edge-preserving bilateral filtering to reduce noise while preserving important edges.
-		</div>
-		
-		<!-- Advanced Noise Filtering Controls (shown when noise filtering is enabled) -->
-		{#if config.noise_filtering}
+	<!-- Noise Filtering (Edge/Centerline/Dots backends only - Superpixel has natural noise reduction) -->
+	{#if config.backend !== 'superpixel'}
+		<div class="space-y-2 border-t pt-4">
+			<div class="flex items-center space-x-3">
+				<input
+					id="noise-filtering"
+					type="checkbox"
+					checked={config.noise_filtering}
+					onchange={handleNoiseFilteringChange}
+					{disabled}
+					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
+				/>
+				<label
+					for="noise-filtering"
+					class="text-converter-primary cursor-pointer text-sm font-medium"
+				>
+					Noise Filtering
+				</label>
+			</div>
+			<div class="text-converter-muted ml-7 text-xs">
+				Apply edge-preserving bilateral filtering to reduce noise while preserving important edges.
+			</div>
+			
+			<!-- Advanced Noise Filtering Controls (shown when noise filtering is enabled) -->
+			{#if config.noise_filtering}
 			<div class="ml-7 space-y-3 pt-2">
 				<!-- Spatial Sigma (Smoothing Strength) -->
 				<div class="space-y-2">
@@ -707,7 +694,8 @@
 				</div>
 			</div>
 		{/if}
-	</div>
+		</div>
+	{/if}
 </section>
 
 <style>

@@ -399,7 +399,7 @@ export class VectorizerService {
 			if (preset === 'enhanced') {
 				// Try to add superpixel-specific features if available (currently missing)
 				if (typeof this.vectorizer.set_num_superpixels === 'function') {
-					config.num_superpixels = 100;
+					config.num_superpixels = 150;
 				}
 			}
 		}

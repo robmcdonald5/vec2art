@@ -412,11 +412,11 @@ export const HAND_DRAWN_DESCRIPTIONS: Record<HandDrawnPreset, string> = {
 export function calculateMultipassConfig(
 	config: VectorizerConfig
 ): { multipass: boolean } {
-	const { pass_count } = config;
+	const { pass_count, backend } = config;
 	
-	// Enable multipass for 2+ passes
+	// Enable multipass only for edge backend with 2+ passes
 	return { 
-		multipass: pass_count > 1 
+		multipass: backend === 'edge' && pass_count > 1 
 	};
 }
 

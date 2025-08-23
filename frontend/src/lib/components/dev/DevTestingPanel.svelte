@@ -251,7 +251,7 @@
 			} else if (backend === 'superpixel') {
 				enhancedConfig.multipass = false;
 				if (availableFunctions.has('set_num_superpixels')) {
-					enhancedConfig.num_superpixels = 100;
+					enhancedConfig.num_superpixels = 150;
 				}
 			}
 
