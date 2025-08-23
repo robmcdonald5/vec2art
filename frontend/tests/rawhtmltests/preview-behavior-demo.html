@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Preview Behavior Update Demo</title>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+				background: #f8fafc;
+				padding: 2rem;
+				margin: 0;
+			}
+
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+			}
+
+			.demo-section {
+				background: white;
+				border: 2px solid #e2e8f0;
+				border-radius: 12px;
+				padding: 2rem;
+				margin-bottom: 2rem;
+				box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+			}
+
+			.problem-demo {
+				border-color: #fca5a5;
+				background: #fef2f2;
+			}
+
+			.solution-demo {
+				border-color: #86efac;
+				background: #f0fdf4;
+			}
+
+			h1,
+			h2,
+			h3 {
+				color: #1f2937;
+				margin-bottom: 1rem;
+			}
+
+			.preview-container {
+				background: #f1f5f9;
+				border-radius: 8px;
+				aspect-ratio: 16/9;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				position: relative;
+				overflow: hidden;
+				margin: 1rem 0;
+			}
+
+			.preview-content {
+				text-align: center;
+				color: #6b7280;
+			}
+
+			.svg-preview {
+				background: white;
+				border-radius: 6px;
+				padding: 1rem;
+				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+				border: 1px solid #e2e8f0;
+				max-width: 300px;
+				max-height: 200px;
+			}
+
+			.svg-placeholder {
+				width: 200px;
+				height: 150px;
+				background:
+					linear-gradient(45deg, #f3f4f6 25%, transparent 25%),
+					linear-gradient(-45deg, #f3f4f6 25%, transparent 25%),
+					linear-gradient(45deg, transparent 75%, #f3f4f6 75%),
+					linear-gradient(-45deg, transparent 75%, #f3f4f6 75%);
+				background-size: 20px 20px;
+				background-position:
+					0 0,
+					0 10px,
+					10px -10px,
+					-10px 0px;
+				border: 2px dashed #9ca3af;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #374151;
+				font-weight: 500;
+				border-radius: 4px;
+			}
+
+			.file-icon {
+				width: 3rem;
+				height: 3rem;
+				margin-bottom: 0.5rem;
+				stroke: currentColor;
+				fill: none;
+				stroke-width: 2;
+			}
+
+			.comparison-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 2rem;
+				margin: 2rem 0;
+			}
+
+			.state-label {
+				position: absolute;
+				top: 0.5rem;
+				left: 0.5rem;
+				background: rgba(0, 0, 0, 0.7);
+				color: white;
+				padding: 0.25rem 0.5rem;
+				border-radius: 4px;
+				font-size: 0.75rem;
+				font-weight: 500;
+			}
+
+			.benefits-list {
+				margin: 1rem 0;
+				padding-left: 2rem;
+				line-height: 1.6;
+			}
+
+			.benefits-list li {
+				margin: 0.5rem 0;
+			}
+
+			.code-block {
+				background: #1f2937;
+				color: #f9fafb;
+				padding: 1rem;
+				border-radius: 6px;
+				font-family: 'Courier New', monospace;
+				font-size: 0.875rem;
+				margin: 1rem 0;
+				overflow-x: auto;
+			}
+
+			@media (max-width: 768px) {
+				.comparison-grid {
+					grid-template-columns: 1fr;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>🖼️ Preview Area Behavior Update</h1>
+			<p>
+				The preview area now only displays SVG content after conversion is executed, with a proper
+				white background for optimal SVG viewing.
+			</p>
+
+			<!-- Before/After Comparison -->
+			<div class="demo-section">
+				<h2>📊 Before vs After Behavior</h2>
+				<div class="comparison-grid">
+					<div>
+						<h3>❌ Before: Always Shows Original Image</h3>
+						<div class="preview-container">
+							<div class="state-label">Files Uploaded - No Conversion</div>
+							<img
+								src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTUwIiBmaWxsPSIjZjNmNGY2Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9Ijc1IiByPSI0MCIgZmlsbD0iIzM3NDE1MSIvPgo8dGV4dCB4PSIxMDAiIHk9IjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIxMiI+T3JpZ2luYWwgSW1hZ2U8L3RleHQ+Cjwvc3ZnPg=="
+								alt="Original image preview"
+								style="max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 6px"
+							/>
+						</div>
+						<p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem">
+							⚠️ Shows original image immediately, even without conversion
+						</p>
+					</div>
+
+					<div>
+						<h3>✅ After: Only Shows Preview After Conversion</h3>
+						<div class="preview-container">
+							<div class="state-label">Files Uploaded - No Conversion</div>
+							<div class="preview-content">
+								<svg class="file-icon" viewBox="0 0 24 24">
+									<path
+										d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"
+									/>
+								</svg>
+								<p style="font-size: 0.875rem">Click "Convert" to generate SVG preview</p>
+							</div>
+						</div>
+						<p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem">
+							✅ Clear call-to-action, only shows content after conversion
+						</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- SVG Preview with White Background -->
+			<div class="demo-section solution-demo">
+				<h2>🎨 SVG Preview with White Background</h2>
+				<p>
+					When conversion is completed, SVGs are displayed with a solid white background for optimal
+					viewing.
+				</p>
+
+				<div class="comparison-grid">
+					<div>
+						<h3>❌ Before: Gray Background</h3>
+						<div class="preview-container">
+							<div class="state-label">After Conversion</div>
+							<div style="background: #f1f5f9; padding: 1rem; border-radius: 6px">
+								<svg
+									width="200"
+									height="150"
+									viewBox="0 0 200 150"
+									xmlns="http://www.w3.org/2000/svg"
+								>
+									<path
+										d="M20 75 Q 50 25, 100 75 T 180 75"
+										stroke="#2563eb"
+										stroke-width="3"
+										fill="none"
+									/>
+									<path
+										d="M30 85 Q 60 35, 110 85 T 190 85"
+										stroke="#dc2626"
+										stroke-width="2"
+										fill="none"
+									/>
+									<circle cx="100" cy="75" r="5" fill="#059669" />
+									<text x="100" y="130" text-anchor="middle" fill="#374151" font-size="12">
+										SVG Line Art
+									</text>
+								</svg>
+							</div>
+						</div>
+					</div>
+
+					<div>
+						<h3>✅ After: White Background</h3>
+						<div class="preview-container">
+							<div class="state-label">After Conversion</div>
+							<div class="svg-preview">
+								<svg
+									width="200"
+									height="150"
+									viewBox="0 0 200 150"
+									xmlns="http://www.w3.org/2000/svg"
+								>
+									<path
+										d="M20 75 Q 50 25, 100 75 T 180 75"
+										stroke="#2563eb"
+										stroke-width="3"
+										fill="none"
+									/>
+									<path
+										d="M30 85 Q 60 35, 110 85 T 190 85"
+										stroke="#dc2626"
+										stroke-width="2"
+										fill="none"
+									/>
+									<circle cx="100" cy="75" r="5" fill="#059669" />
+									<text x="100" y="130" text-anchor="middle" fill="#374151" font-size="12">
+										SVG Line Art
+									</text>
+								</svg>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Technical Implementation -->
+			<div class="demo-section">
+				<h2>🔧 Technical Implementation</h2>
+
+				<h3>1. Conditional Preview Display</h3>
+				<div class="code-block">
+					// Updated preview logic {#if currentPreviewUrl && !showOriginal}
+					<!-- SVG Preview with solid white background -->
+					&lt;div class="bg-white rounded shadow-sm border"&gt; &lt;img src={currentPreviewUrl}
+					alt="Converted SVG" /&gt; &lt;/div&gt; {:else if currentFile && results.length === 0}
+					<!-- Show message to convert when files uploaded but no conversion done -->
+					&lt;div class="text-center"&gt; &lt;FileImage class="mx-auto h-12 w-12 mb-2" /&gt;
+					&lt;p&gt;Click "Convert" to generate SVG preview&lt;/p&gt; &lt;/div&gt; {:else}
+					<!-- Empty State - no files uploaded -->
+					&lt;div class="text-center"&gt; &lt;FileImage class="mx-auto h-12 w-12 mb-2" /&gt;
+					&lt;p&gt;Upload images to see preview&lt;/p&gt; &lt;/div&gt; {/if}
+				</div>
+
+				<h3>2. White Background for SVGs</h3>
+				<div class="code-block">
+					// White background container for SVG preview &lt;div class="bg-white rounded shadow-sm
+					border"&gt; &lt;img src={currentPreviewUrl} class="object-contain rounded" /&gt;
+					&lt;/div&gt;
+				</div>
+
+				<h3>3. Smart State Management</h3>
+				<div class="code-block">
+					// Three distinct states: 1. No files uploaded → "Upload images to see preview" 2. Files
+					uploaded, no conversion → "Click 'Convert' to generate SVG preview" 3. Conversion
+					completed → Show SVG with white background
+				</div>
+			</div>
+
+			<!-- Benefits -->
+			<div class="demo-section">
+				<h2>🎯 Benefits of the Update</h2>
+				<ul class="benefits-list">
+					<li>
+						<strong>Clearer User Flow:</strong> Users understand they need to convert before seeing
+						results
+					</li>
+					<li>
+						<strong>Optimal SVG Viewing:</strong> White background provides best contrast for line
+						art and vector graphics
+					</li>
+					<li>
+						<strong>Reduced Confusion:</strong> No more showing original images when users expect
+						converted output
+					</li>
+					<li>
+						<strong>Better Visual Hierarchy:</strong> Clear distinction between upload, convert, and
+						preview states
+					</li>
+					<li>
+						<strong>Professional Appearance:</strong> Clean white background mimics standard design
+						tools
+					</li>
+					<li>
+						<strong>Improved Accessibility:</strong> Clear call-to-action messages guide user
+						workflow
+					</li>
+				</ul>
+			</div>
+
+			<!-- Implementation Notes -->
+			<div class="demo-section">
+				<h2>📝 Implementation Notes</h2>
+				<ul class="benefits-list">
+					<li>
+						<strong>State Detection:</strong> Uses <code>results.length === 0</code> to detect if
+						conversion has been run
+					</li>
+					<li>
+						<strong>White Background:</strong> Applied with <code>bg-white</code> Tailwind class
+						with subtle shadow and border
+					</li>
+					<li>
+						<strong>Responsive Design:</strong> Preview container maintains aspect ratio and scales
+						properly
+					</li>
+					<li>
+						<strong>Accessibility:</strong> Proper alt text and descriptive messages for screen
+						readers
+					</li>
+					<li>
+						<strong>Performance:</strong> No additional overhead, just improved conditional
+						rendering
+					</li>
+				</ul>
+			</div>
+		</div>
+	</body>
+</html>

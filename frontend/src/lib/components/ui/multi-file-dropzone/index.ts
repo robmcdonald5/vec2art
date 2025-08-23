@@ -1,0 +1,1 @@
+export { default as MultiFileDropzone } from './multi-file-dropzone.svelte';

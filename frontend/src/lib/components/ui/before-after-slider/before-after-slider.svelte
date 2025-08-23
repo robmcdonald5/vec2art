@@ -1,0 +1,135 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+
+	interface Props {
+		beforeImage: string;
+		afterImage: string;
+		beforeAlt?: string;
+		afterAlt?: string;
+		startPosition?: number;
+		class?: string;
+	}
+
+	let {
+		beforeImage,
+		afterImage,
+		beforeAlt = 'Before',
+		afterAlt = 'After',
+		startPosition = 50,
+		class: className = ''
+	}: Props = $props();
+
+	let container: HTMLDivElement;
+	let isDragging = $state(false);
+	let sliderPosition = $state(startPosition);
+	let containerRect: DOMRect | null = null;
+
+	function handleStart(e: MouseEvent | TouchEvent) {
+		isDragging = true;
+		containerRect = container.getBoundingClientRect();
+		handleMove(e);
+	}
+
+	function handleMove(e: MouseEvent | TouchEvent) {
+		if (!isDragging || !containerRect) return;
+
+		e.preventDefault();
+		const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+		const position = ((clientX - containerRect.left) / containerRect.width) * 100;
+		sliderPosition = Math.max(0, Math.min(100, position));
+	}
+
+	function handleEnd() {
+		isDragging = false;
+	}
+
+	onMount(() => {
+		document.addEventListener('mousemove', handleMove as EventListener);
+		document.addEventListener('mouseup', handleEnd);
+		document.addEventListener('touchmove', handleMove as EventListener);
+		document.addEventListener('touchend', handleEnd);
+
+		return () => {
+			document.removeEventListener('mousemove', handleMove as EventListener);
+			document.removeEventListener('mouseup', handleEnd);
+			document.removeEventListener('touchmove', handleMove as EventListener);
+			document.removeEventListener('touchend', handleEnd);
+		};
+	});
+</script>
+
+<div
+	bind:this={container}
+	class="relative overflow-hidden select-none {className}"
+	role="application"
+	aria-label="Before and after comparison slider"
+>
+	<!-- After Image (Bottom Layer) -->
+	<div class="relative h-full w-full">
+		<img src={afterImage} alt={afterAlt} class="h-full w-full object-contain" draggable="false" />
+	</div>
+
+	<!-- Before Image (Top Layer with Clip) -->
+	<div
+		class="absolute inset-0"
+		style="clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%)"
+	>
+		<img src={beforeImage} alt={beforeAlt} class="h-full w-full object-contain" draggable="false" />
+	</div>
+
+	<!-- Before Label (Left Side) - Clipped with before image area -->
+	<div
+		class="pointer-events-none absolute inset-0 z-10"
+		style="clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%)"
+	>
+		<div class="absolute top-1/2 left-4 -translate-y-1/2">
+			<div
+				class="rounded-lg bg-black/50 px-3 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm"
+			>
+				Before
+			</div>
+		</div>
+	</div>
+
+	<!-- After Label (Right Side) - Clipped with after image area -->
+	<div
+		class="pointer-events-none absolute inset-0 z-10"
+		style="clip-path: polygon({sliderPosition}% 0, 100% 0, 100% 100%, {sliderPosition}% 100%)"
+	>
+		<div class="absolute top-1/2 right-4 -translate-y-1/2">
+			<div
+				class="rounded-lg bg-black/50 px-3 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm"
+			>
+				After
+			</div>
+		</div>
+	</div>
+
+	<!-- Slider Handle -->
+	<div
+		class="absolute top-0 bottom-0 z-20 w-1 cursor-ew-resize border-r border-l border-gray-400 bg-white shadow-lg"
+		style="left: {sliderPosition}%"
+		onmousedown={handleStart}
+		ontouchstart={handleStart}
+		role="slider"
+		aria-valuenow={sliderPosition}
+		aria-valuemin={0}
+		aria-valuemax={100}
+		aria-label="Comparison slider position"
+		tabindex="0"
+	>
+		<!-- Handle Rectangle and Arrows -->
+		<div
+			class="absolute top-1/2 left-1/2 flex h-12 w-3 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded border border-gray-200 bg-white shadow-lg"
+		>
+			<!-- Left Arrow -->
+			<svg class="absolute -left-3 h-3 w-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+				<path d="M8 2L4 6l4 4V2z" stroke="#374151" stroke-width="0.5" />
+			</svg>
+			<!-- Right Arrow -->
+			<svg class="absolute -right-3 h-3 w-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+				<path d="M4 2l4 4-4 4V2z" stroke="#374151" stroke-width="0.5" />
+			</svg>
+		</div>
+	</div>
+</div>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🔧 Bare Specifier Fix Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #e0e0e0; }
+        .pass { color: #4caf50; } .fail { color: #f44336; } .info { color: #2196f3; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Bare Specifier Fix Test</h1>
+    <div id="results"></div>
+    
+    <script type="module">
+        function log(msg, type = 'info') {
+            document.getElementById('results').innerHTML += `<div class="${type}">${msg}</div>`;
+            console.log(msg);
+        }
+
+        async function testFix() {
+            try {
+                log('🔧 Testing bare specifier fix...', 'info');
+                
+                // This should now work without the bare specifier error
+                const wasm = await import('/wasm/vectorize_wasm.js');
+                log('✅ SUCCESS: WASM module imported without bare specifier error!', 'pass');
+                
+                // Test initialization  
+                await wasm.default('/wasm/vectorize_wasm_bg.wasm');
+                log('✅ SUCCESS: WASM initialized without LinkError!', 'pass');
+                
+                // Test threading if available
+                if (typeof wasm.start === 'function') {
+                    try {
+                        await wasm.start();
+                        log('✅ SUCCESS: Threading initialized!', 'pass');
+                    } catch (e) {
+                        if (self.crossOriginIsolated) {
+                            log(`⚠️ Threading failed: ${e.message}`, 'info');
+                        } else {
+                            log('ℹ️ Threading not available (single-threaded mode)', 'info');
+                        }
+                    }
+                }
+                
+                log('🎉 ALL FIXES WORKING! Ready for full testing.', 'pass');
+                
+            } catch (error) {
+                if (error.message.includes('__wbindgen_placeholder__')) {
+                    log('❌ FAILED: Bare specifier issue still present', 'fail');
+                } else if (error.message.includes('__wbindgen_describe')) {
+                    log('❌ FAILED: LinkError still present', 'fail');
+                } else {
+                    log(`❌ FAILED: ${error.message}`, 'fail');
+                }
+                console.error(error);
+            }
+        }
+
+        window.addEventListener('load', testFix);
+    </script>
+</body>
+</html>

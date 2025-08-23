@@ -1,639 +1,441 @@
-//! Gradient detection and analysis for color regions
+//! Gradient detection and analysis for SVG gradient generation
 //!
-//! This module implements gradient detection using Principal Component Analysis (PCA)
-//! to identify smooth color transitions that can be represented as SVG gradients.
-//! 
-//! Key features:
-//! - PCA-based linear gradient detection with R² ≥ 0.85 threshold
-//! - Radial gradient detection for radially symmetric patterns  
-//! - Direction stability analysis for linear gradients
-//! - Color stop optimization to minimize gradient complexity
+//! This module analyzes color patterns in paths to detect and generate SVG gradients
+//! for enhanced color rendering in vector output.
 
-use crate::algorithms::logo::Point;
-use crate::algorithms::regions::Color;
-use crate::error::VectorizeResult;
+use crate::algorithms::{Point, ColorSample};
 use std::collections::HashMap;
+use image::Rgba;
 
-/// Configuration for gradient detection
-#[derive(Debug, Clone)]
-pub struct GradientConfig {
-    /// Enable/disable gradient detection
-    pub enabled: bool,
-    /// R² threshold for accepting gradients (default 0.85)
-    pub r_squared_threshold: f64,
-    /// Maximum number of gradient stops to generate
-    pub max_gradient_stops: usize,
-    /// Minimum region area required for gradient analysis
-    pub min_region_area: usize,
-    /// Radial symmetry detection threshold
-    pub radial_symmetry_threshold: f64,
+/// Point structure for gradient coordinates
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GradientPoint {
+    pub x: f32,
+    pub y: f32,
 }
 
-impl Default for GradientConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            r_squared_threshold: 0.85,
-            max_gradient_stops: 8,
-            min_region_area: 100,
-            radial_symmetry_threshold: 0.8,
-        }
+impl GradientPoint {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self { x, y }
+    }
+}
+
+/// Color stop for gradient definitions
+#[derive(Debug, Clone, PartialEq)]
+pub struct GradientStop {
+    /// Position along gradient (0.0-1.0)
+    pub offset: f32,
+    /// Color sample at this position
+    pub color: ColorSample,
+}
+
+impl GradientStop {
+    pub fn new(offset: f32, color: ColorSample) -> Self {
+        Self { offset, color }
     }
 }
 
 /// Types of gradients that can be detected
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GradientType {
-    /// Linear gradient with direction vector and color stops
+    /// Linear gradient from start to end point
     Linear {
-        /// Start point of the gradient line
-        start: Point,
-        /// End point of the gradient line
-        end: Point,
-        /// Color stops along the gradient
+        start: GradientPoint,
+        end: GradientPoint,
         stops: Vec<GradientStop>,
-        /// Goodness of fit (R²)
-        r_squared: f64,
+        angle: f32,
     },
-    /// Radial gradient with center and color stops
+    /// Radial gradient centered at a point
     Radial {
-        /// Center point of the radial gradient
-        center: Point,
-        /// Radius of the gradient
+        center: GradientPoint,
         radius: f32,
-        /// Color stops from center to edge
         stops: Vec<GradientStop>,
-        /// Goodness of fit for radial symmetry
-        r_squared: f64,
+        focal_point: Option<GradientPoint>,
     },
-    /// No gradient detected - use solid fill
-    None,
 }
 
-/// A color stop in a gradient
-#[derive(Debug, Clone)]
-pub struct GradientStop {
-    /// Position along gradient (0.0 to 1.0)
-    pub offset: f32,
-    /// Color at this position in LAB space
-    pub color: (f32, f32, f32),
-}
-
-/// Result of gradient analysis for a region
+/// Gradient analysis results for a path or region
 #[derive(Debug, Clone)]
 pub struct GradientAnalysis {
+    /// Whether this region should use gradients
+    pub use_gradient: bool,
     /// Type of gradient detected
     pub gradient_type: GradientType,
-    /// Whether gradient should be used over solid fill
-    pub use_gradient: bool,
-    /// Estimated file size reduction (bytes saved)
-    pub size_benefit: i32,
+    /// Quality score of gradient detection (0.0-1.0)
+    pub quality_score: f32,
+    /// Complexity score (lower = simpler gradients)
+    pub complexity_score: f32,
+    /// Whether the gradient significantly improves visual quality
+    pub improves_quality: bool,
 }
 
-/// Analyze a region for gradient patterns
-///
-/// This function performs comprehensive gradient analysis:
-/// 1. Collects pixel positions and colors within the region
-/// 2. Applies PCA to find principal direction of color variation
-/// 3. Fits linear color model and calculates R²
-/// 4. Tests for radial symmetry patterns
-/// 5. Generates optimized gradient stops
-///
-/// # Arguments
-/// * `pixels` - Pixel coordinates belonging to this region
-/// * `colors` - Color values for all pixels in the image
-/// * `dimensions` - Image dimensions (width, height)
-/// * `config` - Gradient detection configuration
-///
-/// # Returns
-/// * `VectorizeResult<GradientAnalysis>` - Analysis result or error
-pub fn analyze_region_gradient(
-    pixels: &[(u32, u32)],
-    colors: &[Color],
-    dimensions: (u32, u32),
-    config: &GradientConfig,
-) -> VectorizeResult<GradientAnalysis> {
-    if !config.enabled || pixels.len() < config.min_region_area {
-        return Ok(GradientAnalysis {
-            gradient_type: GradientType::None,
-            use_gradient: false,
-            size_benefit: 0,
-        });
-    }
-
-    let (width, _height) = dimensions;
-    
-    // Collect pixel positions and LAB colors
-    let mut pixel_data = Vec::new();
-    for &(x, y) in pixels {
-        let pixel_idx = (y * width + x) as usize;
-        if pixel_idx < colors.len() {
-            let lab = colors[pixel_idx].to_lab();
-            pixel_data.push(PixelData {
-                x: x as f32,
-                y: y as f32,
-                l: lab.0,
-                a: lab.1,
-                b: lab.2,
-            });
-        }
-    }
-
-    if pixel_data.is_empty() {
-        return Ok(GradientAnalysis {
-            gradient_type: GradientType::None,
-            use_gradient: false,
-            size_benefit: 0,
-        });
-    }
-
-    // Try linear gradient detection first
-    let linear_result = detect_linear_gradient(&pixel_data, config)?;
-    
-    // Try radial gradient detection
-    let radial_result = detect_radial_gradient(&pixel_data, config)?;
-    
-    // Choose the best gradient based on R² values
-    let best_gradient = match (&linear_result.gradient_type, &radial_result.gradient_type) {
-        (GradientType::Linear { r_squared: linear_r2, .. }, GradientType::Radial { r_squared: radial_r2, .. }) => {
-            if linear_r2 > radial_r2 {
-                linear_result
-            } else {
-                radial_result
-            }
-        },
-        (GradientType::Linear { .. }, _) => linear_result,
-        (_, GradientType::Radial { .. }) => radial_result,
-        _ => GradientAnalysis {
-            gradient_type: GradientType::None,
-            use_gradient: false,
-            size_benefit: 0,
-        },
-    };
-
-    Ok(best_gradient)
-}
-
-/// Pixel data for gradient analysis
+/// Configuration for gradient detection
 #[derive(Debug, Clone)]
-struct PixelData {
-    x: f32,
-    y: f32,
-    l: f32,
-    a: f32,
-    b: f32,
+pub struct GradientDetectionConfig {
+    /// Minimum quality score to use gradients (0.0-1.0)
+    pub min_quality_threshold: f32,
+    /// Maximum complexity score to allow (0.0-1.0)
+    pub max_complexity_threshold: f32,
+    /// Minimum number of color samples to detect gradients
+    pub min_samples_for_gradient: usize,
+    /// Enable linear gradient detection
+    pub enable_linear_gradients: bool,
+    /// Enable radial gradient detection
+    pub enable_radial_gradients: bool,
 }
 
-/// Detect linear gradient using PCA on spatial coordinates and color values
-fn detect_linear_gradient(
-    pixels: &[PixelData],
-    config: &GradientConfig,
-) -> VectorizeResult<GradientAnalysis> {
-    if pixels.len() < 3 {
-        return Ok(GradientAnalysis {
-            gradient_type: GradientType::None,
-            use_gradient: false,
-            size_benefit: 0,
-        });
-    }
-
-    // Calculate centroids
-    let n = pixels.len() as f32;
-    let x_mean = pixels.iter().map(|p| p.x).sum::<f32>() / n;
-    let y_mean = pixels.iter().map(|p| p.y).sum::<f32>() / n;
-    let _l_mean = pixels.iter().map(|p| p.l).sum::<f32>() / n;
-    let _a_mean = pixels.iter().map(|p| p.a).sum::<f32>() / n;
-    let _b_mean = pixels.iter().map(|p| p.b).sum::<f32>() / n;
-
-    // Perform PCA on spatial coordinates to find principal direction
-    let mut xx = 0.0f32;
-    let mut xy = 0.0f32;
-    let mut yy = 0.0f32;
-
-    for pixel in pixels {
-        let dx = pixel.x - x_mean;
-        let dy = pixel.y - y_mean;
-        
-        xx += dx * dx;
-        xy += dx * dy;
-        yy += dy * dy;
-    }
-
-    xx /= n;
-    xy /= n;
-    yy /= n;
-
-    // Find eigenvalues and eigenvectors of the covariance matrix
-    let trace = xx + yy;
-    let det = xx * yy - xy * xy;
-    let discriminant = trace * trace - 4.0 * det;
-
-    if discriminant < 0.0 {
-        return Ok(GradientAnalysis {
-            gradient_type: GradientType::None,
-            use_gradient: false,
-            size_benefit: 0,
-        });
-    }
-
-    let sqrt_discriminant = discriminant.sqrt();
-    let eigenvalue1 = (trace + sqrt_discriminant) / 2.0;
-    let _eigenvalue2 = (trace - sqrt_discriminant) / 2.0;
-
-    // Principal direction (eigenvector for largest eigenvalue)
-    let (principal_x, principal_y) = if xy.abs() > 1e-6 {
-        let vx = eigenvalue1 - yy;
-        let vy = xy;
-        let norm = (vx * vx + vy * vy).sqrt();
-        if norm > 1e-6 {
-            (vx / norm, vy / norm)
-        } else {
-            (1.0, 0.0)
+impl Default for GradientDetectionConfig {
+    fn default() -> Self {
+        Self {
+            min_quality_threshold: 0.6,
+            max_complexity_threshold: 0.8,
+            min_samples_for_gradient: 3,
+            enable_linear_gradients: true,
+            enable_radial_gradients: true,
         }
-    } else if xx > yy {
-        (1.0, 0.0)
+    }
+}
+
+/// Analyze a path for gradient potential
+pub fn analyze_path_for_gradients(
+    path: &[Point],
+    color_samples: &[ColorSample],
+    config: &GradientDetectionConfig,
+) -> Option<GradientAnalysis> {
+    if color_samples.len() < config.min_samples_for_gradient {
+        return None;
+    }
+
+    // Try linear gradient first
+    if config.enable_linear_gradients {
+        if let Some(analysis) = detect_linear_gradient(path, color_samples, config) {
+            if analysis.quality_score >= config.min_quality_threshold 
+                && analysis.complexity_score <= config.max_complexity_threshold {
+                return Some(analysis);
+            }
+        }
+    }
+
+    // Try radial gradient if linear failed or was disabled
+    if config.enable_radial_gradients {
+        if let Some(analysis) = detect_radial_gradient(path, color_samples, config) {
+            if analysis.quality_score >= config.min_quality_threshold 
+                && analysis.complexity_score <= config.max_complexity_threshold {
+                return Some(analysis);
+            }
+        }
+    }
+
+    None
+}
+
+/// Detect linear gradient patterns in a path
+fn detect_linear_gradient(
+    path: &[Point],
+    color_samples: &[ColorSample],
+    _config: &GradientDetectionConfig,
+) -> Option<GradientAnalysis> {
+    if path.len() < 2 || color_samples.len() < 2 {
+        return None;
+    }
+
+    // Calculate path bounds
+    let mut min_x = f32::MAX;
+    let mut max_x = f32::MIN;
+    let mut min_y = f32::MAX;
+    let mut max_y = f32::MIN;
+
+    for point in path {
+        min_x = min_x.min(point.x);
+        max_x = max_x.max(point.x);
+        min_y = min_y.min(point.y);
+        max_y = max_y.max(point.y);
+    }
+
+    // Determine primary gradient direction
+    let width = max_x - min_x;
+    let height = max_y - min_y;
+    
+    let (start, end, angle) = if width > height {
+        // Horizontal gradient
+        (
+            GradientPoint::new(min_x, (min_y + max_y) * 0.5),
+            GradientPoint::new(max_x, (min_y + max_y) * 0.5),
+            0.0
+        )
     } else {
-        (0.0, 1.0)
+        // Vertical gradient
+        (
+            GradientPoint::new((min_x + max_x) * 0.5, min_y),
+            GradientPoint::new((min_x + max_x) * 0.5, max_y),
+            90.0
+        )
     };
 
-    // Project pixels onto principal axis
-    let mut projections = Vec::new();
-    let mut min_proj = f32::INFINITY;
-    let mut max_proj = f32::NEG_INFINITY;
-
-    for pixel in pixels {
-        let dx = pixel.x - x_mean;
-        let dy = pixel.y - y_mean;
-        let projection = dx * principal_x + dy * principal_y;
-        
-        projections.push((projection, (pixel.l, pixel.a, pixel.b)));
-        min_proj = min_proj.min(projection);
-        max_proj = max_proj.max(projection);
+    // Create gradient stops from color samples
+    let mut stops = Vec::new();
+    for (i, sample) in color_samples.iter().enumerate() {
+        let offset = i as f32 / (color_samples.len() - 1) as f32;
+        stops.push(GradientStop::new(offset, sample.clone()));
     }
 
-    if (max_proj - min_proj).abs() < 1e-6 {
-        return Ok(GradientAnalysis {
-            gradient_type: GradientType::None,
-            use_gradient: false,
-            size_benefit: 0,
-        });
-    }
+    // Calculate quality and complexity scores
+    let quality_score = calculate_linear_gradient_quality(color_samples);
+    let complexity_score = calculate_gradient_complexity(&stops);
 
-    // Fit linear models for L, A, B channels along principal axis
-    let (l_slope, l_intercept, l_r2) = linear_regression(&projections.iter().map(|(proj, (l, _, _))| (*proj, *l)).collect::<Vec<_>>());
-    let (a_slope, a_intercept, a_r2) = linear_regression(&projections.iter().map(|(proj, (_, a, _))| (*proj, *a)).collect::<Vec<_>>());
-    let (b_slope, b_intercept, b_r2) = linear_regression(&projections.iter().map(|(proj, (_, _, b))| (*proj, *b)).collect::<Vec<_>>());
-
-    // Combined R² (average of individual channel R²)
-    let combined_r2 = (l_r2 + a_r2 + b_r2) / 3.0;
-
-    if combined_r2 < config.r_squared_threshold {
-        return Ok(GradientAnalysis {
-            gradient_type: GradientType::None,
-            use_gradient: false,
-            size_benefit: 0,
-        });
-    }
-
-    // Generate gradient stops
-    let stops = generate_linear_gradient_stops(
-        min_proj, max_proj,
-        l_slope, l_intercept,
-        a_slope, a_intercept,
-        b_slope, b_intercept,
-        config.max_gradient_stops,
-    );
-
-    // Calculate start and end points in image coordinates
-    let start = Point {
-        x: x_mean + min_proj * principal_x,
-        y: y_mean + min_proj * principal_y,
-    };
-    let end = Point {
-        x: x_mean + max_proj * principal_x,
-        y: y_mean + max_proj * principal_y,
-    };
-
-    // Estimate size benefit (rough calculation)
-    let solid_fill_size = 20; // Approximate bytes for solid fill
-    let gradient_size = 50 + stops.len() * 25; // Base + stops
-    let size_benefit = solid_fill_size as i32 - gradient_size as i32;
-
-    Ok(GradientAnalysis {
+    Some(GradientAnalysis {
+        use_gradient: true,
         gradient_type: GradientType::Linear {
             start,
             end,
             stops,
-            r_squared: combined_r2,
+            angle,
         },
-        use_gradient: combined_r2 >= config.r_squared_threshold,
-        size_benefit,
+        quality_score,
+        complexity_score,
+        improves_quality: quality_score > 0.5,
     })
 }
 
-/// Detect radial gradient by analyzing color variation from center
+/// Detect radial gradient patterns in a path
 fn detect_radial_gradient(
-    pixels: &[PixelData],
-    config: &GradientConfig,
-) -> VectorizeResult<GradientAnalysis> {
-    if pixels.len() < 5 {
-        return Ok(GradientAnalysis {
-            gradient_type: GradientType::None,
-            use_gradient: false,
-            size_benefit: 0,
-        });
+    path: &[Point],
+    color_samples: &[ColorSample],
+    _config: &GradientDetectionConfig,
+) -> Option<GradientAnalysis> {
+    if path.len() < 3 || color_samples.len() < 2 {
+        return None;
     }
 
-    // Find geometric center
-    let n = pixels.len() as f32;
-    let center_x = pixels.iter().map(|p| p.x).sum::<f32>() / n;
-    let center_y = pixels.iter().map(|p| p.y).sum::<f32>() / n;
+    // Calculate path centroid
+    let mut center_x = 0.0;
+    let mut center_y = 0.0;
+    for point in path {
+        center_x += point.x;
+        center_y += point.y;
+    }
+    center_x /= path.len() as f32;
+    center_y /= path.len() as f32;
 
-    // Calculate distances from center and colors
-    let mut distance_colors = Vec::new();
-    let mut max_distance = 0.0f32;
-
-    for pixel in pixels {
-        let dx = pixel.x - center_x;
-        let dy = pixel.y - center_y;
-        let distance = (dx * dx + dy * dy).sqrt();
-        
-        distance_colors.push((distance, (pixel.l, pixel.a, pixel.b)));
-        max_distance = max_distance.max(distance);
+    // Calculate maximum radius
+    let mut max_radius: f32 = 0.0;
+    for point in path {
+        let dx = point.x - center_x;
+        let dy = point.y - center_y;
+        let radius = (dx * dx + dy * dy).sqrt();
+        max_radius = max_radius.max(radius);
     }
 
-    if max_distance < 1e-6 {
-        return Ok(GradientAnalysis {
-            gradient_type: GradientType::None,
-            use_gradient: false,
-            size_benefit: 0,
-        });
+    let center = GradientPoint::new(center_x, center_y);
+
+    // Create gradient stops from color samples
+    let mut stops = Vec::new();
+    for (i, sample) in color_samples.iter().enumerate() {
+        let offset = i as f32 / (color_samples.len() - 1) as f32;
+        stops.push(GradientStop::new(offset, sample.clone()));
     }
 
-    // Normalize distances to [0, 1]
-    for (distance, _) in &mut distance_colors {
-        *distance /= max_distance;
-    }
+    // Calculate quality and complexity scores
+    let quality_score = calculate_radial_gradient_quality(color_samples, max_radius);
+    let complexity_score = calculate_gradient_complexity(&stops);
 
-    // Fit linear models for L, A, B channels along radial distance
-    let (l_slope, l_intercept, l_r2) = linear_regression(&distance_colors.iter().map(|(d, (l, _, _))| (*d, *l)).collect::<Vec<_>>());
-    let (a_slope, a_intercept, a_r2) = linear_regression(&distance_colors.iter().map(|(d, (_, a, _))| (*d, *a)).collect::<Vec<_>>());
-    let (b_slope, b_intercept, b_r2) = linear_regression(&distance_colors.iter().map(|(d, (_, _, b))| (*d, *b)).collect::<Vec<_>>());
-
-    // Combined R² for radial symmetry
-    let combined_r2 = (l_r2 + a_r2 + b_r2) / 3.0;
-
-    if combined_r2 < config.radial_symmetry_threshold.min(config.r_squared_threshold) {
-        return Ok(GradientAnalysis {
-            gradient_type: GradientType::None,
-            use_gradient: false,
-            size_benefit: 0,
-        });
-    }
-
-    // Generate radial gradient stops
-    let stops = generate_radial_gradient_stops(
-        l_slope, l_intercept,
-        a_slope, a_intercept,
-        b_slope, b_intercept,
-        config.max_gradient_stops,
-    );
-
-    // Estimate size benefit
-    let solid_fill_size = 20;
-    let gradient_size = 60 + stops.len() * 25; // Radial gradients are slightly larger
-    let size_benefit = solid_fill_size as i32 - gradient_size as i32;
-
-    Ok(GradientAnalysis {
+    Some(GradientAnalysis {
+        use_gradient: true,
         gradient_type: GradientType::Radial {
-            center: Point { x: center_x, y: center_y },
-            radius: max_distance,
+            center,
+            radius: max_radius,
             stops,
-            r_squared: combined_r2,
+            focal_point: None,
         },
-        use_gradient: combined_r2 >= config.r_squared_threshold,
-        size_benefit,
+        quality_score,
+        complexity_score,
+        improves_quality: quality_score > 0.5,
     })
 }
 
-/// Perform linear regression and return slope, intercept, and R²
-fn linear_regression(data: &[(f32, f32)]) -> (f32, f32, f64) {
-    let n = data.len() as f32;
-    if n < 2.0 {
-        return (0.0, 0.0, 0.0);
+/// Calculate quality score for linear gradients
+fn calculate_linear_gradient_quality(color_samples: &[ColorSample]) -> f32 {
+    if color_samples.len() < 2 {
+        return 0.0;
     }
 
-    let sum_x = data.iter().map(|(x, _)| *x).sum::<f32>();
-    let sum_y = data.iter().map(|(_, y)| *y).sum::<f32>();
-    let sum_xx = data.iter().map(|(x, _)| x * x).sum::<f32>();
-    let sum_xy = data.iter().map(|(x, y)| x * y).sum::<f32>();
-    let sum_yy = data.iter().map(|(_, y)| y * y).sum::<f32>();
-
-    let mean_x = sum_x / n;
-    let mean_y = sum_y / n;
-
-    let numerator = sum_xy - n * mean_x * mean_y;
-    let denominator = sum_xx - n * mean_x * mean_x;
-
-    if denominator.abs() < 1e-6 {
-        return (0.0, mean_y, 0.0);
+    // Check color variation - more variation = better gradient candidate
+    let mut total_distance = 0.0;
+    for i in 1..color_samples.len() {
+        let prev = &color_samples[i - 1];
+        let curr = &color_samples[i];
+        total_distance += calculate_color_distance_perceptual(prev, curr);
     }
 
-    let slope = numerator / denominator;
-    let intercept = mean_y - slope * mean_x;
-
-    // Calculate R²
-    let ss_tot = sum_yy - n * mean_y * mean_y;
-    if ss_tot < 1e-6 {
-        return (slope, intercept, 1.0); // Perfect fit if no variation
-    }
-
-    let mut ss_res = 0.0f32;
-    for (x, y) in data {
-        let predicted = slope * x + intercept;
-        let residual = y - predicted;
-        ss_res += residual * residual;
-    }
-
-    let r_squared = ((ss_tot - ss_res) / ss_tot).max(0.0) as f64;
-    (slope, intercept, r_squared)
+    // Normalize based on number of samples
+    let avg_distance = total_distance / (color_samples.len() - 1) as f32;
+    
+    // Quality is higher with more color variation but not too chaotic
+    (avg_distance / 100.0).clamp(0.0, 1.0)
 }
 
-/// Generate optimized gradient stops for linear gradients
-fn generate_linear_gradient_stops(
-    min_proj: f32,
-    max_proj: f32,
-    l_slope: f32, l_intercept: f32,
-    a_slope: f32, a_intercept: f32,
-    b_slope: f32, b_intercept: f32,
-    max_stops: usize,
-) -> Vec<GradientStop> {
-    let mut stops = Vec::new();
-    let range = max_proj - min_proj;
-
-    if range < 1e-6 {
-        // Single color
-        stops.push(GradientStop {
-            offset: 0.0,
-            color: (l_intercept, a_intercept, b_intercept),
-        });
-        return stops;
+/// Calculate quality score for radial gradients
+fn calculate_radial_gradient_quality(color_samples: &[ColorSample], radius: f32) -> f32 {
+    if color_samples.len() < 2 {
+        return 0.0;
     }
 
-    // Generate evenly spaced stops
-    let num_stops = max_stops.min(8).max(2);
-    for i in 0..num_stops {
-        let t = i as f32 / (num_stops - 1) as f32;
-        let proj_value = min_proj + t * range;
-        
-        let l = l_slope * proj_value + l_intercept;
-        let a = a_slope * proj_value + a_intercept;
-        let b = b_slope * proj_value + b_intercept;
-        
-        stops.push(GradientStop {
-            offset: t,
-            color: (l, a, b),
-        });
-    }
-
-    stops
+    let linear_quality = calculate_linear_gradient_quality(color_samples);
+    
+    // Radial gradients work better with larger areas
+    let size_bonus = (radius / 100.0).clamp(0.0, 0.3);
+    
+    (linear_quality + size_bonus).clamp(0.0, 1.0)
 }
 
-/// Generate optimized gradient stops for radial gradients
-fn generate_radial_gradient_stops(
-    l_slope: f32, l_intercept: f32,
-    a_slope: f32, a_intercept: f32,
-    b_slope: f32, b_intercept: f32,
-    max_stops: usize,
-) -> Vec<GradientStop> {
-    let mut stops = Vec::new();
-    let num_stops = max_stops.min(8).max(2);
-
-    for i in 0..num_stops {
-        let t = i as f32 / (num_stops - 1) as f32;
-        
-        let l = l_slope * t + l_intercept;
-        let a = a_slope * t + a_intercept;
-        let b = b_slope * t + b_intercept;
-        
-        stops.push(GradientStop {
-            offset: t,
-            color: (l, a, b),
-        });
+/// Calculate complexity score for gradient (lower = simpler)
+fn calculate_gradient_complexity(stops: &[GradientStop]) -> f32 {
+    // Complexity based on number of stops and color variation
+    let stop_complexity = (stops.len() as f32 / 10.0).clamp(0.0, 1.0);
+    
+    // Add variation complexity
+    let mut variation_complexity = 0.0;
+    if stops.len() > 1 {
+        for i in 1..stops.len() {
+            let distance = calculate_color_distance_perceptual(&stops[i-1].color, &stops[i].color);
+            variation_complexity += distance;
+        }
+        variation_complexity = (variation_complexity / (stops.len() - 1) as f32 / 100.0).clamp(0.0, 1.0);
     }
+    
+    (stop_complexity + variation_complexity) * 0.5
+}
 
-    stops
+/// Calculate perceptual color distance between two color samples
+fn calculate_color_distance_perceptual(color1: &ColorSample, color2: &ColorSample) -> f32 {
+    // Extract RGBA values
+    let rgba1 = color1.color;
+    let rgba2 = color2.color;
+    
+    // Simple Euclidean distance in RGB space (could be improved with LAB color space)
+    let dr = rgba1[0] as f32 - rgba2[0] as f32;
+    let dg = rgba1[1] as f32 - rgba2[1] as f32;
+    let db = rgba1[2] as f32 - rgba2[2] as f32;
+    
+    (dr * dr + dg * dg + db * db).sqrt()
+}
+
+/// Convert hex color to RGB tuple
+fn hex_to_rgb(hex: &str) -> (u8, u8, u8) {
+    let hex = hex.trim_start_matches('#');
+    if hex.len() != 6 {
+        return (0, 0, 0);
+    }
+    
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+    
+    (r, g, b)
 }
 
 /// Generate unique gradient ID for SVG
 pub fn generate_gradient_id(region_id: usize, gradient_type: &str) -> String {
-    format!("gradient-{}-{}", gradient_type, region_id)
+    format!("gradient_{}__{}", gradient_type, region_id)
 }
 
-/// Analyze multiple regions for gradient patterns
-pub fn analyze_regions_gradients(
-    regions: &HashMap<usize, Vec<(u32, u32)>>,
-    colors: &[Color],
-    dimensions: (u32, u32),
-    config: &GradientConfig,
-) -> VectorizeResult<HashMap<usize, GradientAnalysis>> {
+/// Batch analyze multiple paths for gradients
+pub fn analyze_paths_for_gradients(
+    paths_and_colors: &[(Vec<Point>, Vec<ColorSample>)],
+    config: &GradientDetectionConfig,
+) -> HashMap<usize, GradientAnalysis> {
     let mut results = HashMap::new();
-
-    for (&region_id, pixels) in regions {
-        let analysis = analyze_region_gradient(pixels, colors, dimensions, config)?;
-        results.insert(region_id, analysis);
+    
+    for (i, (path, colors)) in paths_and_colors.iter().enumerate() {
+        if let Some(analysis) = analyze_path_for_gradients(path, colors, config) {
+            results.insert(i, analysis);
+        }
     }
-
-    Ok(results)
+    
+    results
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn create_test_color_sample(r: u8, g: u8, b: u8) -> ColorSample {
+        ColorSample {
+            position: 0.0,
+            color: Rgba([r, g, b, 255]),
+            weight: 1.0,
+        }
+    }
+
     #[test]
-    fn test_linear_regression() {
-        // Perfect linear relationship: y = 2x + 1
-        let data = vec![(0.0, 1.0), (1.0, 3.0), (2.0, 5.0), (3.0, 7.0)];
-        let (slope, intercept, r2) = linear_regression(&data);
+    fn test_linear_gradient_detection() {
+        let path = vec![
+            Point::new(0.0, 50.0),
+            Point::new(100.0, 50.0),
+        ];
         
-        assert!((slope - 2.0).abs() < 0.01, "Slope should be ~2.0, got {}", slope);
-        assert!((intercept - 1.0).abs() < 0.01, "Intercept should be ~1.0, got {}", intercept);
-        assert!(r2 > 0.99, "R² should be near 1.0 for perfect fit, got {}", r2);
+        let colors = vec![
+            create_test_color_sample(255, 0, 0),
+            create_test_color_sample(0, 255, 0),
+            create_test_color_sample(0, 0, 255),
+        ];
+        
+        let config = GradientDetectionConfig::default();
+        let analysis = detect_linear_gradient(&path, &colors, &config);
+        
+        assert!(analysis.is_some());
+        let analysis = analysis.unwrap();
+        
+        match analysis.gradient_type {
+            GradientType::Linear { stops, angle, .. } => {
+                assert_eq!(stops.len(), 3);
+                assert_eq!(angle, 0.0); // Horizontal gradient
+            }
+            _ => panic!("Expected linear gradient"),
+        }
     }
 
     #[test]
-    fn test_gradient_config_default() {
-        let config = GradientConfig::default();
-        assert!(config.enabled);
-        assert_eq!(config.r_squared_threshold, 0.85);
-        assert_eq!(config.max_gradient_stops, 8);
+    fn test_radial_gradient_detection() {
+        let path = vec![
+            Point::new(50.0, 50.0),
+            Point::new(100.0, 50.0),
+            Point::new(75.0, 100.0),
+        ];
+        
+        let colors = vec![
+            create_test_color_sample(255, 255, 255),
+            create_test_color_sample(128, 128, 128),
+            create_test_color_sample(0, 0, 0),
+        ];
+        
+        let config = GradientDetectionConfig::default();
+        let analysis = detect_radial_gradient(&path, &colors, &config);
+        
+        assert!(analysis.is_some());
+        let analysis = analysis.unwrap();
+        
+        match analysis.gradient_type {
+            GradientType::Radial { stops, .. } => {
+                assert_eq!(stops.len(), 3);
+            }
+            _ => panic!("Expected radial gradient"),
+        }
     }
 
     #[test]
-    fn test_generate_gradient_id() {
+    fn test_color_distance_calculation() {
+        let red = create_test_color_sample(255, 0, 0);
+        let blue = create_test_color_sample(0, 0, 255);
+        let distance = calculate_color_distance_perceptual(&red, &blue);
+        
+        assert!(distance > 0.0);
+        assert!(distance > 200.0); // Red to blue should have significant distance
+    }
+
+    #[test]
+    fn test_gradient_id_generation() {
         let id = generate_gradient_id(42, "linear");
-        assert_eq!(id, "gradient-linear-42");
-        
-        let id = generate_gradient_id(123, "radial");
-        assert_eq!(id, "gradient-radial-123");
-    }
-
-    #[test]
-    fn test_gradient_stop_generation() {
-        let stops = generate_linear_gradient_stops(
-            0.0, 10.0,  // min_proj, max_proj
-            1.0, 50.0,  // L: slope, intercept
-            0.5, 0.0,   // A: slope, intercept
-            -0.2, 10.0, // B: slope, intercept
-            4,          // max_stops
-        );
-        
-        assert_eq!(stops.len(), 4);
-        assert!((stops[0].offset - 0.0).abs() < 0.01);
-        assert!((stops[3].offset - 1.0).abs() < 0.01);
-        
-        // Check first stop color (at min_proj = 0.0)
-        assert!((stops[0].color.0 - 50.0).abs() < 0.01); // L = 1.0 * 0.0 + 50.0
-        
-        // Check last stop color (at max_proj = 10.0)
-        assert!((stops[3].color.0 - 60.0).abs() < 0.01); // L = 1.0 * 10.0 + 50.0
-    }
-
-    #[test]
-    fn test_analyze_region_gradient_disabled() {
-        let pixels = vec![(0, 0), (1, 1), (2, 2)];
-        let colors = vec![
-            Color::Lab(50.0, 0.0, 0.0),
-            Color::Lab(60.0, 0.0, 0.0),
-            Color::Lab(70.0, 0.0, 0.0),
-        ];
-        let dimensions = (3, 3);
-        
-        let mut config = GradientConfig::default();
-        config.enabled = false;
-        
-        let result = analyze_region_gradient(&pixels, &colors, dimensions, &config).unwrap();
-        
-        assert!(matches!(result.gradient_type, GradientType::None));
-        assert!(!result.use_gradient);
-    }
-
-    #[test]
-    fn test_analyze_region_gradient_too_small() {
-        let pixels = vec![(0, 0), (1, 1)]; // Only 2 pixels
-        let colors = vec![
-            Color::Lab(50.0, 0.0, 0.0),
-            Color::Lab(60.0, 0.0, 0.0),
-        ];
-        let dimensions = (2, 2);
-        
-        let mut config = GradientConfig::default();
-        config.min_region_area = 10; // Require at least 10 pixels
-        
-        let result = analyze_region_gradient(&pixels, &colors, dimensions, &config).unwrap();
-        
-        assert!(matches!(result.gradient_type, GradientType::None));
-        assert!(!result.use_gradient);
+        assert_eq!(id, "gradient_linear__42");
     }
 }

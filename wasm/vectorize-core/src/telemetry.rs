@@ -11,8 +11,12 @@
 
 use chrono::Utc;
 use serde::Serialize;
+
+#[cfg(feature = "file-output")]
 use std::fs::{self, File, OpenOptions};
+#[cfg(feature = "file-output")]
 use std::io::{self, Write};
+#[cfg(feature = "file-output")]
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize)]
@@ -23,18 +27,18 @@ pub struct RunInput {
     pub diag_px: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct Resolved {
     // Geometry / simplification
     pub dp_eps_px: f64,
     pub min_stroke_px: Option<f32>,
 
     // Segmentation & color (regions pipeline)
-    pub slic_step_px: Option<u32>,      // actual step/side length, not "area"
+    pub slic_step_px: Option<u32>, // actual step/side length, not "area"
     pub slic_iters: Option<u32>,
     pub slic_compactness: Option<f32>,
-    pub de_merge: Option<f64>,          // LAB ΔE
-    pub de_split: Option<f64>,          // LAB ΔE
+    pub de_merge: Option<f64>, // LAB ΔE
+    pub de_split: Option<f64>, // LAB ΔE
     pub palette_k: Option<u32>,
 
     // Logo / binarization
@@ -46,14 +50,14 @@ pub struct Resolved {
     pub min_region_area_px: Option<u32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct Guards {
     pub retries: u32,
     pub edge_barrier_thresh: Option<u32>, // e.g., Sobel magnitude 0..255
     pub area_floor_px: Option<u32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct Stats {
     pub paths: u32,
     pub median_vertices: f32,
@@ -74,9 +78,9 @@ pub struct Build {
 #[derive(Debug, Serialize)]
 pub struct Dump {
     pub image: RunInput,
-    pub mode: String,              // "logo" | "regions" | "poster" | "trace-low"
-    pub backend: Option<String>,   // e.g., "superpixel" | "edge" | "centerline"
-    pub cli: serde_json::Value,    // raw CLI args you passed in (optional)
+    pub mode: String,            // "logo" | "regions" | "poster" | "trace-low"
+    pub backend: Option<String>, // e.g., "superpixel" | "edge" | "centerline"
+    pub cli: serde_json::Value,  // raw CLI args you passed in (optional)
     pub resolved: Resolved,
     pub guards: Guards,
     pub stats: Stats,
@@ -86,7 +90,7 @@ pub struct Dump {
 fn git_info() -> (String, String) {
     let sha = option_env!("VERGEN_GIT_SHA")
         .or_else(|| option_env!("GIT_COMMIT"))
-        .or_else(|| option_env!("GITHUB_SHA"))
+        .or(option_env!("GITHUB_SHA"))
         .unwrap_or("unknown")
         .to_string();
     let branch = option_env!("VERGEN_GIT_BRANCH")
@@ -103,6 +107,7 @@ fn exe_version() -> String {
 }
 
 /// Write <basename>.config.json next to <svg_path>.
+#[cfg(feature = "file-output")]
 pub fn write_json_dump(svg_path: &Path, dump: &Dump) -> io::Result<PathBuf> {
     let json_path = replace_extension(svg_path, "config.json");
     if let Some(parent) = json_path.parent() {
@@ -113,7 +118,14 @@ pub fn write_json_dump(svg_path: &Path, dump: &Dump) -> io::Result<PathBuf> {
     Ok(json_path)
 }
 
+/// WASM-compatible version that returns JSON as string instead of writing to file
+#[cfg(not(feature = "file-output"))]
+pub fn write_json_dump(_svg_path: &str, dump: &Dump) -> Result<String, serde_json::Error> {
+    serde_json::to_string_pretty(dump)
+}
+
 /// Append a one-line CSV to runs.csv in the same directory as <svg_path>.
+#[cfg(feature = "file-output")]
 pub fn append_runs_csv(svg_path: &Path, dump: &Dump) -> io::Result<PathBuf> {
     let dir = svg_path.parent().unwrap_or_else(|| Path::new("."));
     let csv_path = dir.join("runs.csv");
@@ -135,7 +147,7 @@ pub fn append_runs_csv(svg_path: &Path, dump: &Dump) -> io::Result<PathBuf> {
     let slic = dump.resolved.slic_step_px.unwrap_or(0);
     let de_m = dump.resolved.de_merge.unwrap_or(-1.0);
     let de_s = dump.resolved.de_split.unwrap_or(-1.0);
-    let pal  = dump.resolved.palette_k.unwrap_or(0);
+    let pal = dump.resolved.palette_k.unwrap_or(0);
 
     writeln!(
         f,
@@ -161,7 +173,44 @@ pub fn append_runs_csv(svg_path: &Path, dump: &Dump) -> io::Result<PathBuf> {
     Ok(csv_path)
 }
 
+/// WASM-compatible version that returns CSV data as string instead of writing to file
+#[cfg(not(feature = "file-output"))]
+pub fn append_runs_csv(_svg_path: &str, dump: &Dump) -> String {
+    let ts = Utc::now().to_rfc3339();
+    let slic = dump.resolved.slic_step_px.unwrap_or(0);
+    let de_m = dump.resolved.de_merge.unwrap_or(-1.0);
+    let de_s = dump.resolved.de_split.unwrap_or(-1.0);
+    let pal = dump.resolved.palette_k.unwrap_or(0);
+
+    format!(
+        "{ts},{img},{mode},{be},{paths},{medv:.2},{pq:.3},{kc},{mrp:.3},{ret},{eps:.3},{slic},{dem:.3},{des:.3},{pal},{bytes}",
+        ts = ts,
+        img = dump.image.path,
+        mode = dump.mode,
+        be = dump.backend.clone().unwrap_or_default(),
+        paths = dump.stats.paths,
+        medv = dump.stats.median_vertices,
+        pq = dump.stats.pct_quads,
+        kc = dump.stats.k_colors,
+        mrp = dump.stats.max_region_pct,
+        ret = dump.guards.retries,
+        eps = dump.resolved.dp_eps_px,
+        slic = slic,
+        dem = de_m,
+        des = de_s,
+        pal = pal,
+        bytes = dump.stats.svg_bytes
+    )
+}
+
+/// Get CSV header for WASM environment
+#[cfg(not(feature = "file-output"))]
+pub fn get_csv_header() -> &'static str {
+    "ts,image,mode,backend,paths,median_vertices,pct_quads,k_colors,max_region_pct,retries,dp_eps_px,slic_step_px,de_merge,de_split,palette_k,svg_bytes"
+}
+
 /// Helper to build a Dump with build metadata filled in.
+#[allow(clippy::too_many_arguments)]
 pub fn make_dump(
     image_path: &str,
     w: u32,
@@ -200,6 +249,7 @@ pub fn make_dump(
 
 // ----------------- internal helpers -----------------
 
+#[cfg(feature = "file-output")]
 fn replace_extension(path: &Path, new_ext: &str) -> PathBuf {
     let p = path.to_path_buf();
     if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {

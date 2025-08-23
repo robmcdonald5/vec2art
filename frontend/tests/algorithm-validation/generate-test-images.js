@@ -1,0 +1,442 @@
+/**
+ * Test Image Generator
+ *
+ * Generates simple test images for algorithm validation
+ */
+
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import fs from 'fs/promises';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+async function generateTestImages() {
+	console.log('🎨 Generating test images...');
+
+	const testImagesDir = join(__dirname, 'test-images');
+	await fs.mkdir(testImagesDir, { recursive: true });
+
+	// Generate HTML5 Canvas-based test images
+	const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Image Generator</title>
+    <style>
+        body { 
+            font-family: monospace; 
+            margin: 20px; 
+            background: #1a1a1a; 
+            color: #fff; 
+        }
+        canvas { 
+            border: 1px solid #444; 
+            margin: 10px; 
+            background: white; 
+        }
+        button { 
+            padding: 10px 20px; 
+            background: #3b82f6; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            margin: 5px;
+        }
+        button:hover { background: #2563eb; }
+        .section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            background: #2a2a2a; 
+            border-radius: 5px; 
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .image-card {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .image-card h3 {
+            margin: 0 0 10px 0;
+            color: #60a5fa;
+        }
+        .image-card p {
+            font-size: 12px;
+            color: #aaa;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Test Image Generator</h1>
+    
+    <div class="section">
+        <h2>Generate Test Images</h2>
+        <p>Click the buttons below to generate different types of test images for algorithm validation.</p>
+        <button onclick="generateAllImages()">🚀 Generate All Images</button>
+        <button onclick="downloadAllImages()">📥 Download All Images</button>
+    </div>
+
+    <div class="gallery" id="gallery">
+        <!-- Generated images will appear here -->
+    </div>
+
+    <script>
+        const imageConfigs = [
+            {
+                name: 'simple-line',
+                title: 'Simple Line Art',
+                description: 'Basic geometric lines and shapes',
+                size: [400, 400],
+                generator: drawSimpleLines
+            },
+            {
+                name: 'complex-drawing',
+                title: 'Complex Drawing',
+                description: 'Detailed line art with curves',
+                size: [400, 400],
+                generator: drawComplexDrawing
+            },
+            {
+                name: 'logo-test',
+                title: 'Logo Test',
+                description: 'Simple logo-like shapes',
+                size: [300, 200],
+                generator: drawLogoTest
+            },
+            {
+                name: 'geometric-shapes',
+                title: 'Geometric Shapes',
+                description: 'Various geometric patterns',
+                size: [400, 400],
+                generator: drawGeometricShapes
+            },
+            {
+                name: 'text-sample',
+                title: 'Text Sample',
+                description: 'Text for centerline algorithm',
+                size: [500, 200],
+                generator: drawTextSample
+            },
+            {
+                name: 'photo-like',
+                title: 'Photo-like Image',
+                description: 'Complex gradients and shapes',
+                size: [400, 400],
+                generator: drawPhotoLike
+            }
+        ];
+
+        function generateAllImages() {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            imageConfigs.forEach(config => {
+                generateSingleImage(config);
+            });
+        }
+
+        function generateSingleImage(config) {
+            const gallery = document.getElementById('gallery');
+            
+            // Create image card
+            const card = document.createElement('div');
+            card.className = 'image-card';
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = config.size[0];
+            canvas.height = config.size[1];
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Generate the image
+            config.generator(ctx, config.size[0], config.size[1]);
+            
+            card.innerHTML = \`
+                <h3>\${config.title}</h3>
+                <p>\${config.description}</p>
+                <p>Size: \${config.size[0]}x\${config.size[1]}</p>
+            \`;
+            
+            card.appendChild(canvas);
+            
+            const downloadBtn = document.createElement('button');
+            downloadBtn.textContent = 'Download';
+            downloadBtn.onclick = () => downloadImage(canvas, config.name);
+            card.appendChild(downloadBtn);
+            
+            gallery.appendChild(card);
+        }
+
+        function downloadImage(canvas, name) {
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = \`\${name}.png\`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        function downloadAllImages() {
+            const canvases = document.querySelectorAll('canvas');
+            canvases.forEach((canvas, index) => {
+                const config = imageConfigs[index];
+                if (config) {
+                    setTimeout(() => downloadImage(canvas, config.name), index * 500);
+                }
+            });
+        }
+
+        // Image generation functions
+        function drawSimpleLines(ctx, width, height) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            
+            // Horizontal lines
+            ctx.beginPath();
+            ctx.moveTo(50, 100);
+            ctx.lineTo(350, 100);
+            ctx.stroke();
+            
+            // Vertical lines
+            ctx.beginPath();
+            ctx.moveTo(200, 50);
+            ctx.lineTo(200, 350);
+            ctx.stroke();
+            
+            // Diagonal lines
+            ctx.beginPath();
+            ctx.moveTo(50, 50);
+            ctx.lineTo(350, 350);
+            ctx.stroke();
+            
+            // Rectangle
+            ctx.beginPath();
+            ctx.rect(100, 150, 200, 100);
+            ctx.stroke();
+            
+            // Circle
+            ctx.beginPath();
+            ctx.arc(200, 300, 50, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+
+        function drawComplexDrawing(ctx, width, height) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1.5;
+            
+            // Draw a simple house
+            // Base
+            ctx.beginPath();
+            ctx.rect(150, 200, 100, 80);
+            ctx.stroke();
+            
+            // Roof
+            ctx.beginPath();
+            ctx.moveTo(140, 200);
+            ctx.lineTo(200, 150);
+            ctx.lineTo(260, 200);
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Door
+            ctx.beginPath();
+            ctx.rect(180, 230, 20, 50);
+            ctx.stroke();
+            
+            // Windows
+            ctx.beginPath();
+            ctx.rect(160, 210, 15, 15);
+            ctx.rect(225, 210, 15, 15);
+            ctx.stroke();
+            
+            // Curves and organic shapes
+            ctx.beginPath();
+            ctx.moveTo(50, 350);
+            ctx.bezierCurveTo(100, 320, 150, 380, 200, 350);
+            ctx.bezierCurveTo(250, 320, 300, 380, 350, 350);
+            ctx.stroke();
+            
+            // Some decorative elements
+            for (let i = 0; i < 10; i++) {
+                const x = 50 + i * 30;
+                const y = 50 + Math.sin(i) * 20;
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+        }
+
+        function drawLogoTest(ctx, width, height) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 3;
+            
+            // Simple logo design
+            ctx.beginPath();
+            ctx.arc(150, 100, 60, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(150, 100, 30, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Text
+            ctx.font = 'bold 24px Arial';
+            ctx.fillStyle = 'black';
+            ctx.textAlign = 'center';
+            ctx.fillText('LOGO', 150, 160);
+        }
+
+        function drawGeometricShapes(ctx, width, height) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            
+            // Triangle
+            ctx.beginPath();
+            ctx.moveTo(100, 50);
+            ctx.lineTo(50, 150);
+            ctx.lineTo(150, 150);
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Hexagon
+            const centerX = 300, centerY = 100, radius = 50;
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Star
+            ctx.beginPath();
+            const starX = 100, starY = 300, starRadius = 50;
+            for (let i = 0; i < 10; i++) {
+                const angle = (i * Math.PI) / 5;
+                const radius = i % 2 === 0 ? starRadius : starRadius / 2;
+                const x = starX + radius * Math.cos(angle - Math.PI / 2);
+                const y = starY + radius * Math.sin(angle - Math.PI / 2);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Grid pattern
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 5; j++) {
+                    ctx.beginPath();
+                    ctx.rect(220 + i * 20, 220 + j * 20, 15, 15);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function drawTextSample(ctx, width, height) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.fillStyle = 'black';
+            ctx.font = 'bold 36px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('VECTOR', 250, 80);
+            
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText('Algorithm Test', 250, 120);
+            
+            ctx.font = '16px Arial';
+            ctx.fillText('Centerline Backend Validation', 250, 150);
+        }
+
+        function drawPhotoLike(ctx, width, height) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Create gradients and complex shapes
+            const gradient = ctx.createRadialGradient(200, 200, 0, 200, 200, 150);
+            gradient.addColorStop(0, '#333');
+            gradient.addColorStop(0.5, '#666');
+            gradient.addColorStop(1, '#999');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(200, 200, 150, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Add some noise-like details
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            for (let i = 0; i < 200; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                ctx.beginPath();
+                ctx.arc(x, y, Math.random() * 3, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            
+            // Overlay some lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 20; i++) {
+                ctx.beginPath();
+                ctx.moveTo(Math.random() * width, Math.random() * height);
+                ctx.lineTo(Math.random() * width, Math.random() * height);
+                ctx.stroke();
+            }
+        }
+
+        // Generate images on page load
+        document.addEventListener('DOMContentLoaded', generateAllImages);
+    </script>
+</body>
+</html>`;
+
+	const generatorPath = join(testImagesDir, 'image-generator.html');
+	await fs.writeFile(generatorPath, htmlContent);
+
+	console.log(`🎨 Test image generator saved to: ${generatorPath}`);
+	console.log('🌐 Open this file in a browser to generate test images');
+}
+
+const currentFilePath = fileURLToPath(import.meta.url);
+if (currentFilePath === process.argv[1]) {
+	generateTestImages()
+		.then(() => {
+			console.log('\n✅ Test image generator created!');
+			console.log('📖 Next steps:');
+			console.log('   1. Open test-images/image-generator.html');
+			console.log('   2. Click "Generate All Images"');
+			console.log('   3. Download the generated test images');
+		})
+		.catch((error) => {
+			console.error('\n❌ Failed to create test image generator:', error);
+			process.exit(1);
+		});
+}
+
+export { generateTestImages };

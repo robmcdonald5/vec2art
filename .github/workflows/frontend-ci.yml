@@ -1,0 +1,309 @@
+name: Frontend CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+
+env:
+  # Ensure CI environment for npm
+  CI: true
+  # Node.js options for performance
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
+jobs:
+  frontend-ci:
+    name: Frontend CI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: [18.x, 20.x]
+        # Reduce matrix for faster feedback - focus on primary combinations
+        exclude:
+          - os: windows-latest
+            node-version: 18.x
+      fail-fast: false # Don't cancel other jobs if one fails
+    
+    defaults:
+      run:
+        working-directory: frontend
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Shallow clone for faster checkout
+          fetch-depth: 1
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Verify Node.js and npm versions
+        run: |
+          node --version
+          npm --version
+      
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: Check for security vulnerabilities
+        run: npm audit --audit-level=moderate
+        continue-on-error: true # Don't fail CI for low-severity issues
+      
+      - name: Cache SvelteKit files
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/.svelte-kit
+            frontend/build
+          key: svelte-kit-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/src/**/*') }}
+          restore-keys: |
+            svelte-kit-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
+            svelte-kit-${{ runner.os }}-
+      
+      - name: Run Prettier format check
+        run: npx prettier --check . --ignore-unknown
+      
+      - name: Run SvelteKit sync
+        run: npx svelte-kit sync
+      
+      - name: Run TypeScript type check
+        run: npx svelte-check --tsconfig ./tsconfig.json --fail-on-warnings --fail-on-hints
+      
+      - name: Run ESLint
+        run: npx eslint . --max-warnings=0
+      
+      - name: Run unit tests with coverage
+        run: |
+          echo "🧪 Running comprehensive test suite with coverage analysis..."
+          
+          # Ensure coverage provider is available
+          if ! npm list @vitest/coverage-v8 >/dev/null 2>&1; then
+            echo "❌ Coverage provider @vitest/coverage-v8 not found"
+            echo "Installing coverage provider..."
+            npm install --save-dev @vitest/coverage-v8
+          fi
+          
+          # Run tests with coverage and fail on low coverage
+          npx vitest run --coverage --reporter=verbose --reporter=json --outputFile=test-results.json
+          
+          echo "📊 Coverage thresholds enforced:"
+          echo "  - Global coverage: 80%+ (statements, functions, lines)"
+          echo "  - Critical components: 90%+ coverage" 
+          echo "  - Utilities: 95%+ coverage"
+          echo "  - Business logic: 100% coverage"
+        env:
+          # Ensure tests run in headless mode
+          CI: true
+      
+      - name: Generate coverage summary
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+        run: |
+          echo "📈 Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "========================" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Extract coverage from JSON if available
+          if [ -f "test-results.json" ]; then
+            echo "Test Results:" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat test-results.json | jq '.testResults | length' >> $GITHUB_STEP_SUMMARY || echo "JSON parsing failed" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Display coverage directory contents if available
+          if [ -d "coverage" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Coverage files generated:" >> $GITHUB_STEP_SUMMARY
+            ls -la coverage/ >> $GITHUB_STEP_SUMMARY || true
+            
+            # Try to extract coverage percentage from lcov or text report
+            if [ -f "coverage/lcov.info" ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Coverage report: See artifacts for detailed HTML report" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All tests passed with required coverage thresholds!" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload test coverage reports
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            frontend/coverage/
+            frontend/test-results.json
+          retention-days: 30
+
+      - name: Quality Gate - Coverage Check
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+        run: |
+          echo "🚪 Checking quality gates..."
+          
+          # Check if coverage files exist
+          if [ ! -d "coverage" ]; then
+            echo "❌ No coverage directory found"
+            exit 1
+          fi
+          
+          # Validate that coverage was generated
+          if [ ! -f "coverage/lcov.info" ] && [ ! -f "coverage/clover.xml" ]; then
+            echo "❌ No coverage files found (lcov.info or clover.xml)"
+            exit 1
+          fi
+          
+          echo "✅ Coverage files generated successfully"
+          echo "✅ Quality gates passed - coverage thresholds enforced by Vitest configuration"
+
+      - name: Run accessibility tests
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+        run: |
+          echo "♿ Running accessibility tests..."
+          
+          # Install Playwright if not already installed
+          if ! npx playwright --version >/dev/null 2>&1; then
+            echo "Installing Playwright..."
+            npx playwright install --with-deps chromium
+          fi
+          
+          # Run accessibility-specific tests
+          npx playwright test tests/accessibility.spec.ts --reporter=html
+          
+          echo "✅ Accessibility tests completed"
+        continue-on-error: false # Fail CI if accessibility tests fail
+      
+      - name: Build SvelteKit application
+        run: npm run build
+        env:
+          # Optimize build for production
+          NODE_ENV: production
+      
+      - name: Verify build output
+        shell: bash
+        run: |
+          echo "Checking build output..."
+          if [ -d "build" ]; then
+            echo "✅ Build directory created successfully"
+            echo "📊 Build size:"
+            du -sh build/ || echo "Could not calculate build size"
+            
+            # Check for critical files
+            if [ -f "build/index.html" ]; then
+              echo "✅ index.html found"
+            else
+              echo "❌ index.html missing"
+              exit 1
+            fi
+            
+            # Count generated files
+            file_count=$(find build -type f | wc -l)
+            echo "📁 Generated files: $file_count"
+            
+            # Check for WASM files (should be present)
+            wasm_files=$(find build -name "*.wasm" | wc -l)
+            echo "🦀 WASM files: $wasm_files"
+            
+          else
+            echo "❌ Build directory not found"
+            ls -la
+            exit 1
+          fi
+      
+      - name: Upload build artifacts
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: |
+            frontend/build/
+            !frontend/build/**/*.map
+          retention-days: 7
+
+  # Separate job for E2E tests (optional, can be added later)
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: frontend-ci
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    
+    defaults:
+      run:
+        working-directory: frontend
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build/
+      
+      - name: Run Playwright E2E tests
+        run: npx playwright test
+        env:
+          CI: true
+      
+      - name: Upload E2E test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 7
+
+  # Summary job for PR status checks
+  frontend-ci-summary:
+    name: Frontend CI Summary
+    runs-on: ubuntu-latest
+    needs: [frontend-ci, e2e-tests]
+    if: always()
+    
+    steps:
+      - name: Check CI results
+        run: |
+          echo "Frontend CI Status: ${{ needs.frontend-ci.result }}"
+          echo "E2E Tests Status: ${{ needs.e2e-tests.result }}"
+          
+          if [[ "${{ needs.frontend-ci.result }}" != "success" ]]; then
+            echo "❌ Frontend CI failed"
+            exit 1
+          fi
+          
+          if [[ "${{ needs.e2e-tests.result }}" == "failure" ]]; then
+            echo "❌ E2E tests failed"
+            exit 1
+          fi
+          
+          echo "✅ All checks passed!"

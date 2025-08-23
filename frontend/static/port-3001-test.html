@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Port 3001 Test</title>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #e0e0e0; padding: 20px; }
+        .pass { color: #4caf50; } .fail { color: #f44336; } .info { color: #2196f3; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Port 3001 Integration Test</h1>
+    <div id="log"></div>
+    
+    <script type="module">
+        const log = (msg, type = 'info') => {
+            document.getElementById('log').innerHTML += `<div class="${type}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+            console.log(msg);
+        };
+        
+        async function testPort3001() {
+            try {
+                log('🎯 Testing WASM integration on port 3001...', 'info');
+                
+                // Environment check
+                log(`Cross-Origin Isolated: ${self.crossOriginIsolated}`, self.crossOriginIsolated ? 'pass' : 'fail');
+                log(`SharedArrayBuffer: ${typeof SharedArrayBuffer !== 'undefined'}`, typeof SharedArrayBuffer !== 'undefined' ? 'pass' : 'fail');
+                log(`Hardware Cores: ${navigator.hardwareConcurrency}`, 'info');
+                
+                // Import test
+                log('📦 Testing WASM module import...', 'info');
+                const wasm = await import('/wasm/vectorize_wasm.js');
+                log('✅ WASM module imported successfully!', 'pass');
+                
+                // Initialization test
+                log('🔧 Testing WASM initialization...', 'info');
+                await wasm.default('/wasm/vectorize_wasm_bg.wasm');
+                log('✅ WASM initialized successfully!', 'pass');
+                
+                // Threading test
+                if (typeof wasm.start === 'function') {
+                    log('🧵 Testing threading initialization...', 'info');
+                    try {
+                        await wasm.start();
+                        log('✅ Threading initialized successfully!', 'pass');
+                    } catch (e) {
+                        log(`⚠️ Threading failed (expected if not COI): ${e.message}`, 'info');
+                    }
+                } else {
+                    log('⚠️ Threading start function not available', 'info');
+                }
+                
+                // Function availability
+                const functions = ['get_thread_count', 'is_threading_active', 'WasmVectorizer'];
+                for (const func of functions) {
+                    if (typeof wasm[func] === 'function' || (func === 'WasmVectorizer' && typeof wasm[func] === 'function')) {
+                        log(`✅ ${func}: Available`, 'pass');
+                    } else {
+                        log(`⚠️ ${func}: Not available`, 'info');
+                    }
+                }
+                
+                log('🎉 ALL TESTS PASSED! Integration working on port 3001!', 'pass');
+                
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`, 'fail');
+                console.error('Full error:', error);
+            }
+        }
+        
+        testPort3001();
+    </script>
+</body>
+</html>

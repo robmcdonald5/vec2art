@@ -1,0 +1,133 @@
+<!--?xml version="1.0" encoding="UTF-8" standalone="yes"?-->
+<!--
+  vec2art Logo — Dark BG Optimized
+  - Brighter gradient + white outline/halo for strong contrast
+  - Transparent icon backing (no dark chip fill)
+  - Works on very dark backgrounds similar to the sample you sent
+-->
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc" viewBox="0 0 960 240" width="960" height="240">
+
+  <title id="title">vec2art — pixels to vector art</title>
+  <desc id="desc">High-contrast logo tuned for dark backgrounds: bright neon gradient, white outlines, transparent icon backing.</desc>
+
+  <!-- ===== Theming via CSS variables ===== -->
+  <style>
+    :root {
+      /* High-contrast bright colors for maximum visibility */
+      --v2a-stop-1: #ff6b35; /* bright orange */
+      --v2a-stop-2: #f7931e; /* golden yellow */
+      --v2a-stop-3: #ffff00; /* pure yellow */
+
+      /* Strong outline for separation */
+      --v2a-outline: #ffffff;     /* white outline */
+      --v2a-outline-soft: #ffffff; /* used in glow filter */
+
+      /* Light color for guides/handles */
+      --v2a-ink-2: #e2e8f0; /* slate-200 */
+    }
+
+    /* Subtle hover polish if inlined */
+    #logo-horizontal:hover .pix { opacity: 0.96; transform: translateX(.5px) translateY(-.5px); }
+    #logo-horizontal:hover .curve { filter: drop-shadow(0 0 1px rgba(255,255,255,0.3)); }
+  </style>
+
+  <defs>
+    <!-- Bright multi-stop gradient -->
+    <linearGradient id="v2a-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="var(--v2a-stop-1)"></stop>
+      <stop offset="50%" stop-color="var(--v2a-stop-2)"></stop>
+      <stop offset="100%" stop-color="var(--v2a-stop-3)"></stop>
+    </linearGradient>
+
+    <!-- Strong white glow for maximum contrast on dark backgrounds -->
+    <filter id="halo" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="var(--v2a-outline-soft)" flood-opacity="0.6"></feDropShadow>
+    </filter>
+
+    <!-- ===== Icon-only symbol: 200×200 viewBox ===== -->
+    <symbol id="logo-mark" viewBox="0 0 200 200">
+      <!-- Transparent backing with white outline for separation -->
+      <rect x="10" y="10" width="180" height="180" rx="28" fill="none" stroke="var(--v2a-outline)" stroke-width="2" opacity="0.9"></rect>
+
+      <!-- Pixel squares (left → mid), each with a thin white stroke -->
+      <g class="pix" transform="translate(16,22)" filter="url(#halo)">
+        <!-- Column 1 -->
+        <rect x="0" y="20" width="16" height="16" rx="2" fill="url(#v2a-grad)" opacity="0.95" stroke="var(--v2a-outline)" stroke-width="1.2"></rect>
+        <rect x="0" y="44" width="12" height="12" rx="2" fill="url(#v2a-grad)" opacity="0.9" stroke="var(--v2a-outline)" stroke-width="1.1"></rect>
+        <rect x="0" y="66" width="8" height="8" rx="2" fill="url(#v2a-grad)" opacity="0.85" stroke="var(--v2a-outline)" stroke-width="1"></rect>
+
+        <!-- Column 2 -->
+        <rect x="24" y="34" width="14" height="14" rx="2" fill="url(#v2a-grad)" opacity="0.92" stroke="var(--v2a-outline)" stroke-width="1.1"></rect>
+        <rect x="24" y="58" width="10" height="10" rx="2" fill="url(#v2a-grad)" opacity="0.88" stroke="var(--v2a-outline)" stroke-width="1"></rect>
+
+        <!-- Column 3 -->
+        <rect x="46" y="48" width="12" height="12" rx="2" fill="url(#v2a-grad)" opacity="0.92" stroke="var(--v2a-outline)" stroke-width="1.1"></rect>
+        <rect x="46" y="70" width="8" height="8" rx="2" fill="url(#v2a-grad)" opacity="0.86" stroke="var(--v2a-outline)" stroke-width="1"></rect>
+
+        <!-- Drift pixels -->
+        <rect x="18" y="86" width="6" height="6" rx="2" fill="url(#v2a-grad)" opacity="0.84" stroke="var(--v2a-outline)" stroke-width="0.9"></rect>
+        <rect x="52" y="90" width="5" height="5" rx="1.5" fill="url(#v2a-grad)" opacity="0.82" stroke="var(--v2a-outline)" stroke-width="0.9"></rect>
+      </g>
+
+      <!-- Bézier curve (with white under-stroke for contrast) -->
+      <g transform="translate(0,0)">
+        <!-- Guide lines to handles -->
+        <line x1="46" y1="140" x2="96" y2="30" stroke="var(--v2a-ink-2)" stroke-width="1" opacity="0.5"></line>
+        <line x1="170" y1="86" x2="126" y2="170" stroke="var(--v2a-ink-2)" stroke-width="1" opacity="0.5"></line>
+
+        <!-- Contrast under-stroke -->
+        <path d="M46,140 C96,30 126,170 170,86" fill="none" stroke="var(--v2a-outline)" stroke-width="11" stroke-linecap="round" opacity="0.98"></path>
+
+        <!-- Colored curve -->
+        <path class="curve" d="M46,140 C96,30 126,170 170,86" fill="none" stroke="url(#v2a-grad)" stroke-width="7" stroke-linecap="round" filter="url(#halo)"></path>
+
+        <!-- Handles + anchors -->
+        <circle cx="96" cy="30" r="4.5" fill="#ffffff" stroke="var(--v2a-ink-2)" stroke-width="1" opacity="0.95"></circle>
+        <circle cx="126" cy="170" r="4.5" fill="#ffffff" stroke="var(--v2a-ink-2)" stroke-width="1" opacity="0.95"></circle>
+        <circle cx="46" cy="140" r="6" fill="#ffffff" stroke="#0f172a" stroke-width="1.25"></circle>
+      </g>
+
+      <!-- Pen nib at the curve end -->
+      <g transform="translate(170,86)" filter="url(#halo)">
+        <!-- White under-outline for contrast -->
+        <rect x="-12" y="-12" width="24" height="24" transform="rotate(45)" fill="none" stroke="var(--v2a-outline)" stroke-width="3" opacity="0.95"></rect>
+        <!-- Gradient nib fill -->
+        <rect x="-11" y="-11" width="22" height="22" transform="rotate(45)" fill="url(#v2a-grad)"></rect>
+        <!-- Nib hole + split -->
+        <circle r="5" fill="#ffffff"></circle>
+        <path d="M 0 -8 L 0 8" stroke="#0f172a" stroke-width="1" opacity="0.85"></path>
+      </g>
+    </symbol>
+
+    <!-- ===== Wordmark symbol ===== -->
+    <symbol id="logo-wordmark" viewBox="0 0 720 200">
+      <g transform="translate(0,18)" filter="url(#halo)">
+        <!-- Strong white under-stroke for maximum separation -->
+        <text x="0" y="120" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif" font-size="120" font-weight="900" letter-spacing="1" fill="url(#v2a-grad)" stroke="var(--v2a-outline)" stroke-width="12" paint-order="stroke fill">
+          vec2art
+        </text>
+
+        <!-- Accent underline dots/line -->
+        <circle cx="320" cy="142" r="5" fill="var(--v2a-outline)" opacity="0.95"></circle>
+        <circle cx="320" cy="142" r="3.5" fill="url(#v2a-grad)"></circle>
+        <circle cx="405" cy="142" r="4" fill="var(--v2a-outline)" opacity="0.95"></circle>
+        <circle cx="405" cy="142" r="2.8" fill="url(#v2a-grad)"></circle>
+        <rect x="322" y="140" width="80" height="4" rx="2" fill="var(--v2a-outline)" opacity="0.9"></rect>
+        <rect x="322" y="140" width="80" height="3" rx="1.5" fill="url(#v2a-grad)"></rect>
+      </g>
+    </symbol>
+  </defs>
+
+  <!-- ===== Compositions ===== -->
+  <!-- Horizontal lockup (default) -->
+  <g id="logo-horizontal">
+    <use href="#logo-mark" x="20" y="20" width="200" height="200"></use>
+    <use href="#logo-wordmark" x="250" y="20" width="680" height="200"></use>
+  </g>
+
+  <!-- Icon-only (toggle display if desired) -->
+  <g id="logo-icon-only" style="display:none">
+    <use href="#logo-mark" x="380" y="20" width="200" height="200"></use>
+  </g>
+
+</svg>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal Thread Debug</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>Minimal Thread Debug</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        const output = document.getElementById('output');
+        
+        function log(message, isError = false) {
+            const p = document.createElement('p');
+            p.style.color = isError ? 'red' : 'black';
+            p.textContent = message;
+            output.appendChild(p);
+            console.log(message);
+        }
+
+        (async () => {
+            try {
+                log('Loading WASM...');
+                const wasm = await import('/wasm/vectorize_wasm.js');
+                await wasm.default();
+                log('✅ WASM loaded');
+
+                log('Calling initThreadPool(2)...');
+                const promise = wasm.initThreadPool(2);
+                log(`Promise type: ${typeof promise}`);
+                
+                if (promise && typeof promise.then === 'function') {
+                    log('Awaiting promise...');
+                    try {
+                        const result = await promise;
+                        log(`✅ Promise resolved: ${result}`);
+                    } catch (err) {
+                        log(`❌ Promise rejected: ${err.name}: ${err.message}`, true);
+                        log(`❌ Stack: ${err.stack}`, true);
+                    }
+                } else {
+                    log(`⚠️ Not a promise: ${promise}`);
+                }
+                
+                log(`Final thread count: ${wasm.get_thread_count()}`);
+                log(`Threading supported: ${wasm.is_threading_supported()}`);
+                
+            } catch (err) {
+                log(`💥 Critical error: ${err.message}`, true);
+            }
+        })();
+    </script>
+</body>
+</html>

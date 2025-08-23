@@ -67,16 +67,13 @@ pub fn rgba_to_grayscale(image: &RgbaImage) -> Vec<u8> {
 pub fn standardize_image_size(image: &RgbaImage, max_dimension: u32) -> VectorizeResult<RgbaImage> {
     let (width, height) = image.dimensions();
     let max_current = width.max(height);
-    
+
     if max_current <= max_dimension {
         return Ok(image.clone());
     }
-    
-    log::debug!(
-        "Standardizing image size from {}x{} to max dimension {}",
-        width, height, max_dimension
-    );
-    
+
+    log::debug!("Standardizing image size from {width}x{height} to max dimension {max_dimension}");
+
     resize_image(image, max_dimension)
 }
 
@@ -93,22 +90,20 @@ pub fn standardize_image_size(image: &RgbaImage, max_dimension: u32) -> Vectoriz
 pub fn fast_denoise(image: &RgbaImage, sigma: f32) -> VectorizeResult<RgbaImage> {
     let (width, height) = image.dimensions();
     let mut result = image.clone();
-    
+
     // Apply Gaussian blur to each channel separately
-    for channel in 0..3 { // Skip alpha channel
-        let mut channel_data: Vec<u8> = image
-            .pixels()
-            .map(|pixel| pixel[channel])
-            .collect();
-            
+    for channel in 0..3 {
+        // Skip alpha channel
+        let mut channel_data: Vec<u8> = image.pixels().map(|pixel| pixel[channel]).collect();
+
         channel_data = gaussian_blur(&channel_data, (width, height), sigma);
-        
+
         // Copy back to result image
         for (i, pixel) in result.pixels_mut().enumerate() {
             pixel[channel] = channel_data[i];
         }
     }
-    
+
     Ok(result)
 }
 
@@ -124,14 +119,14 @@ pub fn fast_denoise(image: &RgbaImage, sigma: f32) -> VectorizeResult<RgbaImage>
 /// * `VectorizeResult<RgbaImage>` - Preprocessed image optimized for logo algorithm
 pub fn preprocess_for_logo(image: &RgbaImage, max_dimension: u32) -> VectorizeResult<RgbaImage> {
     log::debug!("Preprocessing image for logo vectorization");
-    
+
     // Step 1: Standardize size for consistent performance
     let standardized = standardize_image_size(image, max_dimension)?;
-    
+
     // Step 2: Light denoising to reduce morphological artifacts
     // Use small sigma to preserve sharp edges
     let denoised = fast_denoise(&standardized, 0.3)?;
-    
+
     Ok(denoised)
 }
 
@@ -147,14 +142,14 @@ pub fn preprocess_for_logo(image: &RgbaImage, max_dimension: u32) -> VectorizeRe
 /// * `VectorizeResult<RgbaImage>` - Preprocessed image optimized for regions algorithm
 pub fn preprocess_for_regions(image: &RgbaImage, max_dimension: u32) -> VectorizeResult<RgbaImage> {
     log::debug!("Preprocessing image for regions vectorization");
-    
+
     // Step 1: Standardize size for consistent performance
     let standardized = standardize_image_size(image, max_dimension)?;
-    
+
     // Step 2: Moderate denoising to smooth color variations
     // Use moderate sigma to reduce noise while preserving color regions
     let denoised = fast_denoise(&standardized, 0.8)?;
-    
+
     Ok(denoised)
 }
 
@@ -187,8 +182,8 @@ pub fn calculate_otsu_threshold(grayscale: &[u8]) -> u8 {
     let total_pixels = grayscale.len() as f64;
     let mut sum = 0.0;
 
-    for i in 0..256 {
-        sum += i as f64 * histogram[i] as f64;
+    for (i, &count) in histogram.iter().enumerate() {
+        sum += i as f64 * count as f64;
     }
 
     let mut sum_b = 0.0;
@@ -196,8 +191,8 @@ pub fn calculate_otsu_threshold(grayscale: &[u8]) -> u8 {
     let mut max_variance = 0.0;
     let mut threshold = 0u8;
 
-    for i in 0..256 {
-        weight_b += histogram[i] as f64;
+    for (i, &count) in histogram.iter().enumerate() {
+        weight_b += count as f64;
         if weight_b == 0.0 {
             continue;
         }
@@ -207,7 +202,7 @@ pub fn calculate_otsu_threshold(grayscale: &[u8]) -> u8 {
             break;
         }
 
-        sum_b += i as f64 * histogram[i] as f64;
+        sum_b += i as f64 * count as f64;
 
         let mean_b = sum_b / weight_b;
         let mean_f = (sum - sum_b) / weight_f;
@@ -245,7 +240,7 @@ pub fn rgb_to_lab(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
 
     // Observer = 2°, Illuminant = D65
     let xyz_matrix = Matrix3::new(
-        0.4124564, 0.3575761, 0.1804375, 0.2126729, 0.7151522, 0.0721750, 0.0193339, 0.1191920,
+        0.4124564, 0.3575761, 0.1804375, 0.2126729, 0.7151522, 0.0721750, 0.0193339, 0.119_192,
         0.9503041,
     );
 
@@ -315,7 +310,7 @@ pub fn lab_to_rgb(l: f32, a: f32, b: f32) -> (u8, u8, u8) {
 
     // Convert XYZ to RGB (sRGB)
     let xyz_to_rgb_matrix = Matrix3::new(
-        3.2404542, -1.5371385, -0.4985314, -0.9692660, 1.8760108, 0.0415560, 0.0556434, -0.2040259,
+        3.2404542, -1.5371385, -0.4985314, -0.969_266, 1.8760108, 0.0415560, 0.0556434, -0.2040259,
         1.0572252,
     );
 
@@ -332,7 +327,7 @@ pub fn lab_to_rgb(l: f32, a: f32, b: f32) -> (u8, u8, u8) {
         };
 
         // Clamp to valid range
-        *component = component.max(0.0).min(1.0);
+        *component = component.clamp(0.0, 1.0);
     }
 
     // Convert to 0-255 range
@@ -446,10 +441,10 @@ pub fn gaussian_blur(grayscale: &[u8], dimensions: (u32, u32), sigma: f32) -> Ve
     let coeff = -0.5 / (sigma * sigma);
     let mut kernel_sum = 0.0;
 
-    for i in 0..kernel.len() {
+    for (i, k) in kernel.iter_mut().enumerate() {
         let x = i as f32 - kernel_size as f32;
-        kernel[i] = (coeff * x * x).exp();
-        kernel_sum += kernel[i];
+        *k = (coeff * x * x).exp();
+        kernel_sum += *k;
     }
 
     // Normalize kernel
@@ -466,12 +461,12 @@ pub fn gaussian_blur(grayscale: &[u8], dimensions: (u32, u32), sigma: f32) -> Ve
             let mut sum = 0.0;
             let mut weight_sum = 0.0;
 
-            for i in 0..kernel.len() {
+            for (i, &kernel_val) in kernel.iter().enumerate() {
                 let kx = x as i32 + i as i32 - kernel_size as i32;
                 if kx >= 0 && kx < width as i32 {
                     let idx = (y * width + kx as u32) as usize;
-                    sum += grayscale[idx] as f32 * kernel[i];
-                    weight_sum += kernel[i];
+                    sum += grayscale[idx] as f32 * kernel_val;
+                    weight_sum += kernel_val;
                 }
             }
 
@@ -490,12 +485,12 @@ pub fn gaussian_blur(grayscale: &[u8], dimensions: (u32, u32), sigma: f32) -> Ve
             let mut sum = 0.0;
             let mut weight_sum = 0.0;
 
-            for i in 0..kernel.len() {
+            for (i, &kernel_val) in kernel.iter().enumerate() {
                 let ky = y as i32 + i as i32 - kernel_size as i32;
                 if ky >= 0 && ky < height as i32 {
                     let idx = (ky as u32 * width + x) as usize;
-                    sum += temp[idx] * kernel[i];
-                    weight_sum += kernel[i];
+                    sum += temp[idx] * kernel_val;
+                    weight_sum += kernel_val;
                 }
             }
 
@@ -616,12 +611,12 @@ mod tests {
         let large_img = ImageBuffer::from_fn(1000, 800, |_, _| Rgba([255, 0, 0, 255]));
         let result = standardize_image_size(&large_img, 512).unwrap();
         let (width, height) = result.dimensions();
-        
+
         // Should be resized to fit within 512x512 while preserving aspect ratio
         assert!(width <= 512);
         assert!(height <= 512);
         assert_eq!(width.max(height), 512); // One dimension should be exactly 512
-        
+
         // Test image that doesn't need resizing
         let small_img = ImageBuffer::from_fn(200, 150, |_, _| Rgba([0, 255, 0, 255]));
         let result = standardize_image_size(&small_img, 512).unwrap();
@@ -640,10 +635,10 @@ mod tests {
         });
 
         let denoised = fast_denoise(&img, 0.5).unwrap();
-        
+
         // Should have same dimensions
         assert_eq!(denoised.dimensions(), img.dimensions());
-        
+
         // Should maintain alpha channel
         assert_eq!(denoised.get_pixel(0, 0)[3], 255);
     }
@@ -660,7 +655,7 @@ mod tests {
 
         let processed = preprocess_for_logo(&img, 512).unwrap();
         let (width, height) = processed.dimensions();
-        
+
         // Should be standardized to max 512
         assert!(width <= 512 && height <= 512);
         assert_eq!(width.max(height), 512);
@@ -676,7 +671,7 @@ mod tests {
 
         let processed = preprocess_for_regions(&img, 512).unwrap();
         let (width, height) = processed.dimensions();
-        
+
         // Should be standardized to max 512
         assert!(width <= 512 && height <= 512);
         assert_eq!(width.max(height), 512);

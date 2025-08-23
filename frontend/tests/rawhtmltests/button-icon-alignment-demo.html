@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Button Icon Alignment Fix Demo</title>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+				background: #f8fafc;
+				padding: 2rem;
+				margin: 0;
+			}
+
+			.container {
+				max-width: 900px;
+				margin: 0 auto;
+			}
+
+			.demo-section {
+				background: white;
+				border: 2px solid #e2e8f0;
+				border-radius: 12px;
+				padding: 2rem;
+				margin-bottom: 2rem;
+				box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+			}
+
+			.problem-demo {
+				border-color: #fca5a5;
+				background: #fef2f2;
+			}
+
+			.solution-demo {
+				border-color: #86efac;
+				background: #f0fdf4;
+			}
+
+			h1,
+			h2,
+			h3 {
+				color: #1f2937;
+				margin-bottom: 1rem;
+			}
+
+			.button-row {
+				display: flex;
+				gap: 1rem;
+				margin: 1rem 0;
+				flex-wrap: wrap;
+			}
+
+			/* Base button styles */
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				padding: 0.5rem 1rem;
+				border-radius: 6px;
+				font-size: 0.875rem;
+				font-weight: 500;
+				cursor: pointer;
+				border: none;
+				position: relative;
+				overflow: hidden;
+				text-decoration: none;
+				transition: all 0.2s ease-in-out;
+			}
+
+			/* Button variants */
+			.btn-primary {
+				background: linear-gradient(to right, #ea580c, #dc2626);
+				color: white;
+			}
+
+			.btn-outline {
+				background: white;
+				color: #374151;
+				border: 1px solid #d1d5db;
+			}
+
+			.btn-destructive {
+				background: #ef4444;
+				color: white;
+			}
+
+			/* Enhanced hover states */
+			.btn:hover {
+				transform: scale(1.05);
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+			}
+
+			.btn-primary:hover {
+				background: linear-gradient(to right, #c2410c, #b91c1c);
+				box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+			}
+
+			.btn-outline:hover {
+				background: #f9fafb;
+				border-color: #9ca3af;
+			}
+
+			.btn-destructive:hover {
+				background: #dc2626;
+				box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+			}
+
+			.btn:active {
+				transform: scale(0.95);
+			}
+
+			/* PROBLEM: Stacked layout (flex-direction: column) */
+			.btn-problem {
+				flex-direction: column !important;
+				gap: 0.25rem;
+				text-align: center;
+			}
+
+			.btn-problem .icon {
+				margin-right: 0 !important;
+			}
+
+			/* SOLUTION: Proper horizontal layout */
+			.btn-solution {
+				flex-direction: row;
+				gap: 0.25rem;
+				align-items: center;
+			}
+
+			.btn-solution .icon {
+				margin-right: 0; /* No manual margins needed */
+			}
+
+			/* Icon styles */
+			.icon {
+				width: 0.75rem;
+				height: 0.75rem;
+				fill: currentColor;
+				flex-shrink: 0;
+			}
+
+			/* Spinning animation for loading */
+			.spinner {
+				animation: spin 1s linear infinite;
+				border: 2px solid transparent;
+				border-top: 2px solid currentColor;
+				border-radius: 50%;
+			}
+
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+
+			/* Code blocks */
+			.code-block {
+				background: #1f2937;
+				color: #f9fafb;
+				padding: 1rem;
+				border-radius: 6px;
+				font-family: 'Courier New', monospace;
+				font-size: 0.875rem;
+				margin: 1rem 0;
+				overflow-x: auto;
+			}
+
+			.before-after {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 2rem;
+				margin: 2rem 0;
+			}
+
+			.comparison-side h4 {
+				text-align: center;
+				margin-bottom: 1rem;
+				padding: 0.5rem;
+				border-radius: 6px;
+			}
+
+			.before h4 {
+				background: #fecaca;
+				color: #b91c1c;
+			}
+
+			.after h4 {
+				background: #bbf7d0;
+				color: #15803d;
+			}
+
+			@media (max-width: 768px) {
+				.before-after {
+					grid-template-columns: 1fr;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>🔧 Button Icon Alignment Fix Demo</h1>
+			<p>
+				This demo shows the fix for button icons stacking on top of text instead of appearing to the
+				left.
+			</p>
+
+			<!-- Before/After Comparison -->
+			<div class="demo-section">
+				<h2>📊 Before vs After Comparison</h2>
+				<div class="before-after">
+					<div class="comparison-side before">
+						<h4>❌ Before: Icons Stack on Text</h4>
+						<div class="button-row">
+							<button class="btn btn-primary btn-problem">
+								<svg class="icon" viewBox="0 0 24 24">
+									<polygon points="5,3 19,12 5,21" />
+								</svg>
+								Convert
+							</button>
+							<button class="btn btn-outline btn-problem">
+								<svg class="icon" viewBox="0 0 24 24">
+									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+									<polyline points="7,10 12,15 17,10" />
+									<line x1="12" y1="15" x2="12" y2="3" />
+								</svg>
+								Download
+							</button>
+							<button class="btn btn-outline btn-problem">
+								<svg class="icon" viewBox="0 0 24 24">
+									<path
+										d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"
+									/>
+								</svg>
+								Add More
+							</button>
+							<button class="btn btn-outline btn-problem">
+								<svg class="icon" viewBox="0 0 24 24">
+									<line x1="18" y1="6" x2="6" y2="18" />
+									<line x1="6" y1="6" x2="18" y2="18" />
+								</svg>
+								Clear All
+							</button>
+						</div>
+						<p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem">
+							⚠️ Icons appear above text, creating a stacked layout
+						</p>
+					</div>
+
+					<div class="comparison-side after">
+						<h4>✅ After: Icons Left-Aligned</h4>
+						<div class="button-row">
+							<button class="btn btn-primary btn-solution">
+								<svg class="icon" viewBox="0 0 24 24">
+									<polygon points="5,3 19,12 5,21" />
+								</svg>
+								Convert
+							</button>
+							<button class="btn btn-outline btn-solution">
+								<svg class="icon" viewBox="0 0 24 24">
+									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+									<polyline points="7,10 12,15 17,10" />
+									<line x1="12" y1="15" x2="12" y2="3" />
+								</svg>
+								Download
+							</button>
+							<button class="btn btn-outline btn-solution">
+								<svg class="icon" viewBox="0 0 24 24">
+									<path
+										d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"
+									/>
+								</svg>
+								Add More
+							</button>
+							<button class="btn btn-outline btn-solution">
+								<svg class="icon" viewBox="0 0 24 24">
+									<line x1="18" y1="6" x2="6" y2="18" />
+									<line x1="6" y1="6" x2="18" y2="18" />
+								</svg>
+								Clear All
+							</button>
+						</div>
+						<p style="font-size: 0.875rem; color: #6b7280; margin-top: 1rem">
+							✅ Icons properly aligned to the left of text
+						</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Technical Fix Details -->
+			<div class="demo-section solution-demo">
+				<h2>🔧 Technical Fix Applied</h2>
+
+				<h3>1. Button Component Structure Fix</h3>
+				<div class="code-block">
+					// Before: Using span wrapper (caused stacking) &lt;span class="relative z-10"&gt;{@render
+					children?.()}&lt;/span&gt; // After: Using flex container (proper alignment) &lt;div
+					class="relative z-10 flex items-center gap-1"&gt; {@render children?.()} &lt;/div&gt;
+				</div>
+
+				<h3>2. Icon Margin Removal</h3>
+				<div class="code-block">
+					// Before: Manual margins on each icon &lt;Play class="h-3 w-3 mr-1" aria-hidden="true"
+					/&gt; &lt;Download class="h-3 w-3 mr-1" aria-hidden="true" /&gt; &lt;Upload class="h-3 w-3
+					mr-1" aria-hidden="true" /&gt; // After: Let flex gap handle spacing &lt;Play class="h-3
+					w-3" aria-hidden="true" /&gt; &lt;Download class="h-3 w-3" aria-hidden="true" /&gt;
+					&lt;Upload class="h-3 w-3" aria-hidden="true" /&gt;
+				</div>
+
+				<h3>3. CSS Classes Updated</h3>
+				<div class="code-block">
+					// Button component base classes include: inline-flex items-center justify-center ... //
+					Button content wrapper: .relative.z-10.flex.items-center.gap-1 // Result: Perfect
+					horizontal alignment with consistent spacing
+				</div>
+			</div>
+
+			<!-- Interactive Demo -->
+			<div class="demo-section">
+				<h2>🎮 Interactive Demo</h2>
+				<p>Try hovering over these properly aligned buttons with enhanced animations:</p>
+
+				<div class="button-row">
+					<button class="btn btn-primary btn-solution">
+						<div class="icon spinner"></div>
+						Processing...
+					</button>
+					<button class="btn btn-primary btn-solution">
+						<svg class="icon" viewBox="0 0 24 24">
+							<polygon points="5,3 19,12 5,21" />
+						</svg>
+						Convert to SVG
+					</button>
+					<button class="btn btn-outline btn-solution">
+						<svg class="icon" viewBox="0 0 24 24">
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+							<polyline points="7,10 12,15 17,10" />
+							<line x1="12" y1="15" x2="12" y2="3" />
+						</svg>
+						Download Result
+					</button>
+					<button class="btn btn-outline btn-solution">
+						<svg class="icon" viewBox="0 0 24 24">
+							<path
+								d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"
+							/>
+						</svg>
+						Add More Files
+					</button>
+					<button class="btn btn-destructive btn-solution">
+						<svg class="icon" viewBox="0 0 24 24">
+							<line x1="18" y1="6" x2="6" y2="18" />
+							<line x1="6" y1="6" x2="18" y2="18" />
+						</svg>
+						Clear All Files
+					</button>
+				</div>
+			</div>
+
+			<!-- Benefits -->
+			<div class="demo-section">
+				<h2>🎯 Benefits of the Fix</h2>
+				<ul style="margin: 1rem 0; padding-left: 2rem; line-height: 1.6">
+					<li>
+						<strong>Proper Visual Hierarchy:</strong> Icons are positioned to the left as visual
+						cues
+					</li>
+					<li>
+						<strong>Consistent Spacing:</strong> Flex gap provides uniform spacing between icons and
+						text
+					</li>
+					<li><strong>Better Readability:</strong> Text flows horizontally for natural reading</li>
+					<li><strong>Professional Appearance:</strong> Buttons look polished and intentional</li>
+					<li>
+						<strong>Responsive Design:</strong> Layout remains stable across different screen sizes
+					</li>
+					<li>
+						<strong>Accessibility:</strong> Screen readers can properly interpret the content flow
+					</li>
+					<li>
+						<strong>Maintainable Code:</strong> No need for manual margin adjustments on each icon
+					</li>
+				</ul>
+			</div>
+
+			<!-- Files Changed -->
+			<div class="demo-section">
+				<h2>📁 Files Modified</h2>
+				<ol style="margin: 1rem 0; padding-left: 2rem; line-height: 1.6">
+					<li><strong>Button.svelte:</strong> Updated component structure with flex container</li>
+					<li>
+						<strong>multi-file-dropzone.svelte:</strong> Removed manual margins from icon classes
+					</li>
+					<li>
+						<strong>Result:</strong> All buttons throughout the app now have proper icon alignment
+					</li>
+				</ol>
+			</div>
+		</div>
+	</body>
+</html>

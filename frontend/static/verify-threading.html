@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Threading Verification</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #e0e0e0; }
+        .pass { color: #4caf50; }
+        .fail { color: #f44336; }
+        .info { color: #2196f3; }
+    </style>
+</head>
+<body>
+    <h1>Quick Threading Verification</h1>
+    <div id="results"></div>
+    
+    <script type="module">
+        const log = (msg, type = 'info') => {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = msg;
+            document.getElementById('results').appendChild(div);
+        };
+        
+        // Check environment
+        log(`crossOriginIsolated: ${window.crossOriginIsolated}`, window.crossOriginIsolated ? 'pass' : 'fail');
+        log(`SharedArrayBuffer: ${typeof SharedArrayBuffer !== 'undefined'}`, typeof SharedArrayBuffer !== 'undefined' ? 'pass' : 'fail');
+        log(`CPU cores: ${navigator.hardwareConcurrency}`, 'info');
+        
+        // Test WASM loading
+        try {
+            // Import with absolute URL to ensure relative imports work
+            const wasmModule = await import(new URL('/wasm/vectorize_wasm.js', window.location.origin).href);
+            log('✓ WASM module imported', 'pass');
+            
+            // Initialize with proper URL
+            const wasmUrl = new URL('/wasm/vectorize_wasm_bg.wasm', window.location.origin);
+            await wasmModule.default(wasmUrl);
+            log('✓ WASM initialized', 'pass');
+            
+            // Check threading support
+            if (wasmModule.is_threading_supported) {
+                const supported = wasmModule.is_threading_supported();
+                log(`Threading supported: ${supported}`, supported ? 'pass' : 'fail');
+            }
+            
+            // Initialize thread pool if possible
+            if (window.crossOriginIsolated && wasmModule.initThreadPool) {
+                const threads = navigator.hardwareConcurrency || 4;
+                await wasmModule.initThreadPool(threads);
+                log(`✓ Thread pool initialized with ${threads} threads`, 'pass');
+                
+                // Test thread count
+                if (wasmModule.get_thread_count) {
+                    const count = wasmModule.get_thread_count();
+                    log(`Active threads: ${count}`, 'pass');
+                }
+            } else if (!window.crossOriginIsolated) {
+                log('Not cross-origin isolated, running single-threaded', 'fail');
+            } else {
+                log('initThreadPool not available', 'fail');
+            }
+            
+            // Quick vectorization test
+            if (wasmModule.WasmVectorizer) {
+                const pixels = new Uint8ClampedArray(16);
+                pixels.fill(255);
+                const imageData = new ImageData(pixels, 2, 2);
+                
+                const vectorizer = new wasmModule.WasmVectorizer();
+                const svg = vectorizer.vectorize(imageData);
+                vectorizer.free();
+                
+                log(`✓ Vectorization works, output: ${svg.length} chars`, 'pass');
+            }
+            
+            log('✅ All tests complete!', 'pass');
+            
+        } catch (error) {
+            log(`❌ Error: ${error.message}`, 'fail');
+            console.error(error);
+        }
+    </script>
+</body>
+</html>

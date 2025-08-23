@@ -1,0 +1,407 @@
+import { Meta } from '@storybook/addon-docs';
+
+<Meta title="Introduction/Quick Start" />
+
+# Quick Start Guide
+
+Get up and running with the vec2art component library in minutes.
+
+## Installation & Setup
+
+### 1. Install Dependencies
+
+The vec2art component library uses SvelteKit 5 with TypeScript and Tailwind CSS 4:
+
+```bash
+# Install core dependencies
+npm install svelte @sveltejs/kit typescript tailwindcss
+
+# Install component library dependencies
+npm install class-variance-authority clsx tailwind-merge tailwind-variants
+npm install bits-ui lucide-svelte zod
+
+# Install development dependencies
+npm install -D @tailwindcss/vite @tailwindcss/postcss
+npm install -D prettier prettier-plugin-svelte prettier-plugin-tailwindcss
+```
+
+### 2. Configure Tailwind CSS
+
+Create or update your `tailwind.config.ts`:
+
+```typescript
+import type { Config } from 'tailwindcss';
+
+const config: Config = {
+	darkMode: 'class',
+	content: ['./src/**/*.{html,js,svelte,ts}'],
+	theme: {
+		extend: {
+			colors: {
+				border: 'hsl(var(--border))',
+				input: 'hsl(var(--input))',
+				ring: 'hsl(var(--ring))',
+				background: 'hsl(var(--background))',
+				foreground: 'hsl(var(--foreground))',
+				primary: {
+					DEFAULT: 'hsl(var(--primary))',
+					foreground: 'hsl(var(--primary-foreground))'
+				},
+				secondary: {
+					DEFAULT: 'hsl(var(--secondary))',
+					foreground: 'hsl(var(--secondary-foreground))'
+				}
+				// ... other colors from design system
+			},
+			fontFamily: {
+				sans: ['Inter', 'system-ui', 'sans-serif']
+			}
+		}
+	},
+	plugins: []
+};
+
+export default config;
+```
+
+### 3. Add CSS Variables
+
+Add the design system CSS variables to your `app.css`:
+
+```css
+@import 'tailwindcss';
+
+@layer base {
+	:root {
+		--background: 0 0% 100%;
+		--foreground: 222.2 84% 4.9%;
+		--primary: 222.2 47.4% 11.2%;
+		--primary-foreground: 210 40% 98%;
+		--secondary: 210 40% 96.1%;
+		--secondary-foreground: 222.2 47.4% 11.2%;
+		/* ... other CSS variables */
+	}
+
+	.dark {
+		--background: 222.2 84% 4.9%;
+		--foreground: 210 40% 98%;
+		/* ... dark mode variables */
+	}
+}
+```
+
+## Basic Component Usage
+
+### Button Component
+
+```svelte
+<script lang="ts">
+	import Button from '$lib/components/ui/button.svelte';
+</script>
+
+<!-- Basic usage -->
+<Button>Click me</Button>
+
+<!-- With variants -->
+<Button variant="outline">Outline Button</Button>
+<Button variant="destructive" size="lg">Large Destructive</Button>
+
+<!-- As a link -->
+<Button href="/somewhere">Link Button</Button>
+
+<!-- With click handler -->
+<Button onclick={() => console.log('Clicked!')}>Interactive Button</Button>
+```
+
+### Modal Component
+
+```svelte
+<script lang="ts">
+	import Modal from '$lib/components/ui/modal.svelte';
+	import Button from '$lib/components/ui/button.svelte';
+
+	let showModal = false;
+</script>
+
+<Button onclick={() => (showModal = true)}>Open Modal</Button>
+
+<Modal
+	open={showModal}
+	onClose={() => (showModal = false)}
+	title="Example Modal"
+	description="This is a modal description"
+>
+	<div class="p-6">
+		<p>Modal content goes here.</p>
+		<Button onclick={() => (showModal = false)}>Close</Button>
+	</div>
+</Modal>
+```
+
+### Progress Bar Component
+
+```svelte
+<script lang="ts">
+	import ProgressBar from '$lib/components/ui/progress-bar.svelte';
+
+	let progress = 65;
+</script>
+
+<ProgressBar value={progress} label="Upload Progress" variant="default" showValue={true} />
+```
+
+### File Dropzone Component
+
+```svelte
+<script lang="ts">
+	import FileDropzone from '$lib/components/ui/file-dropzone.svelte';
+
+	let selectedFile = null;
+
+	function handleFileSelect(file) {
+		selectedFile = file;
+		console.log('File selected:', file);
+	}
+</script>
+
+<FileDropzone
+	accept="image/*"
+	maxSize={10 * 1024 * 1024}
+	currentFile={selectedFile}
+	onFileSelect={handleFileSelect}
+/>
+```
+
+## SvelteKit 5 Patterns
+
+### Using Runes
+
+The component library uses SvelteKit 5 runes syntax:
+
+```svelte
+<script lang="ts">
+	import Button from '$lib/components/ui/button.svelte';
+
+	// Reactive state with $state
+	let count = $state(0);
+
+	// Derived values with $derived
+	let doubled = $derived(count * 2);
+
+	// Side effects with $effect
+	$effect(() => {
+		console.log('Count changed to:', count);
+	});
+
+	// Props with $props()
+	interface Props {
+		initialValue?: number;
+	}
+
+	let { initialValue = 0 }: Props = $props();
+</script>
+
+<div>
+	<p>Count: {count}</p>
+	<p>Doubled: {doubled}</p>
+	<Button onclick={() => count++}>Increment</Button>
+</div>
+```
+
+### Component Props Pattern
+
+```svelte
+<script lang="ts">
+	import type { VariantProps } from 'class-variance-authority';
+	import { buttonVariants } from './button-variants.js';
+
+	interface Props {
+		variant?: VariantProps<typeof buttonVariants>['variant'];
+		size?: VariantProps<typeof buttonVariants>['size'];
+		disabled?: boolean;
+		children?: any;
+		onclick?: (event: MouseEvent) => void;
+	}
+
+	let {
+		variant = 'default',
+		size = 'default',
+		disabled = false,
+		children,
+		onclick,
+		...restProps
+	}: Props = $props();
+</script>
+
+<button class={buttonVariants({ variant, size })} {disabled} {onclick} {...restProps}>
+	{@render children?.()}
+</button>
+```
+
+## Design System Usage
+
+### Color System
+
+```svelte
+<!-- Using semantic colors -->
+<div class="bg-primary text-primary-foreground">Primary content</div>
+<div class="bg-secondary text-secondary-foreground">Secondary content</div>
+<div class="bg-muted text-muted-foreground">Muted content</div>
+
+<!-- State colors -->
+<div class="bg-destructive text-destructive-foreground">Error message</div>
+<div class="text-green-600">Success message</div>
+```
+
+### Typography Scale
+
+```svelte
+<!-- Headings -->
+<h1 class="text-4xl font-bold">Page Title</h1>
+<h2 class="text-3xl font-bold">Section Heading</h2>
+<h3 class="text-2xl font-semibold">Subsection</h3>
+
+<!-- Body text -->
+<p class="text-base leading-7">Regular paragraph text</p>
+<p class="text-muted-foreground text-sm">Supporting text</p>
+```
+
+### Spacing System
+
+```svelte
+<!-- Padding -->
+<div class="p-4">Regular padding</div>
+<div class="p-6">Generous padding</div>
+
+<!-- Margins -->
+<div class="mb-4">Bottom margin</div>
+<div class="space-y-6">Vertical spacing between children</div>
+
+<!-- Gaps -->
+<div class="flex gap-4">Flexbox with gap</div>
+<div class="grid grid-cols-2 gap-6">Grid with gap</div>
+```
+
+## Accessibility Best Practices
+
+### Always Include Labels
+
+```svelte
+<!-- Form inputs -->
+<label for="email" class="mb-1 block text-sm font-medium"> Email Address </label>
+<input
+	id="email"
+	type="email"
+	class="w-full rounded border px-3 py-2"
+	aria-describedby="email-help"
+/>
+<p id="email-help" class="text-muted-foreground text-xs">We'll never share your email</p>
+```
+
+### Keyboard Navigation
+
+```svelte
+<script>
+	function handleKeydown(event) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			handleClick();
+		}
+	}
+</script>
+
+<div
+	role="button"
+	tabindex="0"
+	onkeydown={handleKeydown}
+	onclick={handleClick}
+	aria-label="Custom interactive element"
+>
+	Click me or press Enter/Space
+</div>
+```
+
+### Screen Reader Support
+
+```svelte
+<!-- Live regions for dynamic content -->
+<div aria-live="polite" aria-atomic="true" class="sr-only">
+	{statusMessage}
+</div>
+
+<!-- Descriptive labels -->
+<button aria-describedby="action-description"> Perform Action </button>
+<div id="action-description" class="sr-only">This will process your image and create line art</div>
+```
+
+## Common Patterns
+
+### Loading States
+
+```svelte
+<script>
+	let isLoading = $state(false);
+
+	async function handleSubmit() {
+		isLoading = true;
+		try {
+			await someAsyncOperation();
+		} finally {
+			isLoading = false;
+		}
+	}
+</script>
+
+<Button onclick={handleSubmit} disabled={isLoading}>
+	{#if isLoading}
+		<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+		Processing...
+	{:else}
+		Submit
+	{/if}
+</Button>
+```
+
+### Form Validation
+
+```svelte
+<script>
+	import { z } from 'zod';
+
+	const schema = z.object({
+		email: z.string().email('Invalid email address'),
+		name: z.string().min(2, 'Name must be at least 2 characters')
+	});
+
+	let formData = $state({ email: '', name: '' });
+	let errors = $state({});
+
+	function validateForm() {
+		try {
+			schema.parse(formData);
+			errors = {};
+			return true;
+		} catch (error) {
+			errors = error.flatten().fieldErrors;
+			return false;
+		}
+	}
+</script>
+```
+
+## Next Steps
+
+1. **Explore Components** - Browse the UI Components and Form Components sections
+2. **Study Design System** - Review colors, typography, and spacing guidelines
+3. **Check Accessibility** - Use the accessibility addon in each story
+4. **Build Something** - Start with a simple form or card layout
+5. **Customize** - Extend components with your own variants and styles
+
+## Resources
+
+- **Component API** - Check each component's story for props and usage
+- **Design Tokens** - Reference the Design System section for values
+- **Accessibility** - Each component includes accessibility examples
+- **TypeScript** - All components include full TypeScript definitions
+
+Happy building! 🚀

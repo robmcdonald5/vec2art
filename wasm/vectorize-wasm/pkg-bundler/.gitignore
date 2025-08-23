@@ -1,0 +1,7 @@
+# Bundler-specific WASM package files
+*.wasm
+*.js
+*.d.ts
+/snippets/
+README.md
+package.json

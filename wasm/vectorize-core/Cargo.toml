@@ -2,16 +2,26 @@
 name = "vectorize-core"
 version = "0.1.0"
 edition = "2021"
-description = "Core image vectorization algorithms for vec2art"
+description = "Core trace-low vectorization algorithms for vec2art"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/your-org/vec2art"
+
+[features]
+default = ["parallel", "telemetry"]
+wasm = ["single-threaded", "wasm-bindgen", "web-sys", "js-sys"]
+parallel = ["rayon"]
+telemetry = ["file-output"] 
+single-threaded = []
+file-output = []
+# Multi-threading support for WASM with atomics
+wasm-parallel = ["parallel", "wasm-bindgen", "web-sys", "js-sys"]
 
 [dependencies]
 # Core image processing
 image = { workspace = true }
-imageproc = { workspace = true }  # Suzuki-Abe contour tracing
-rayon = { workspace = true }
-nalgebra = { workspace = true }
+imageproc = { workspace = true }  # Canny edge detection for trace-low
+rayon = { workspace = true, optional = true }
+nalgebra = { workspace = true }  # Linear algebra for color space conversions
 
 # Error handling
 thiserror = { workspace = true }
@@ -24,11 +34,21 @@ chrono = { version = "0.4", features = ["clock"] }
 
 # Utilities
 log = { workspace = true }
-fastrand = "2.0"
+regex = { workspace = true }
+once_cell = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+rand_distr = "0.4"
+
+# WebAssembly support (optional)
+wasm-bindgen = { workspace = true, optional = true }
+web-sys = { workspace = true, optional = true, features = ["Window", "Performance"] }
+js-sys = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
 env_logger = { workspace = true }
+tokio = { version = "1", features = ["rt", "macros"] }
 
 [[bench]]
 name = "vectorization_bench"

@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Upload Box Fixes Demo</title>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+				background: #f8fafc;
+				padding: 2rem;
+				margin: 0;
+			}
+
+			.container {
+				max-width: 800px;
+				margin: 0 auto;
+			}
+
+			.demo-section {
+				background: white;
+				border: 2px solid #e2e8f0;
+				border-radius: 12px;
+				padding: 2rem;
+				margin-bottom: 2rem;
+				box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+			}
+
+			h1,
+			h2 {
+				color: #1f2937;
+				margin-bottom: 1rem;
+			}
+
+			.problem-demo {
+				border-color: #fca5a5;
+				background: #fef2f2;
+			}
+
+			.solution-demo {
+				border-color: #86efac;
+				background: #f0fdf4;
+			}
+
+			/* Mock upload container for demonstration */
+			.upload-container {
+				border: 2px dashed #d1d5db;
+				border-radius: 8px;
+				padding: 2rem;
+				text-align: center;
+				cursor: pointer;
+				transition: all 0.2s ease;
+				background: white;
+				position: relative;
+			}
+
+			.upload-container:hover {
+				border-color: #3b82f6;
+				background: rgba(59, 130, 246, 0.05);
+			}
+
+			.file-actions {
+				display: flex;
+				gap: 0.5rem;
+				justify-content: center;
+				margin-top: 1rem;
+			}
+
+			/* Enhanced button styles */
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				padding: 0.5rem 1rem;
+				border-radius: 6px;
+				font-size: 0.875rem;
+				font-weight: 500;
+				transition: all 0.2s ease-in-out;
+				cursor: pointer;
+				border: none;
+				position: relative;
+				overflow: hidden;
+				text-decoration: none;
+			}
+
+			.btn-primary {
+				background: #3b82f6;
+				color: white;
+			}
+
+			.btn-outline {
+				background: white;
+				color: #374151;
+				border: 1px solid #d1d5db;
+			}
+
+			.btn-destructive {
+				background: #ef4444;
+				color: white;
+			}
+
+			/* Enhanced hover states */
+			.btn:hover {
+				transform: scale(1.05);
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+			}
+
+			.btn-primary:hover {
+				background: #2563eb;
+				box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+			}
+
+			.btn-outline:hover {
+				background: #f9fafb;
+				border-color: #9ca3af;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+			}
+
+			.btn-destructive:hover {
+				background: #dc2626;
+				box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+			}
+
+			.btn:active {
+				transform: scale(0.95);
+			}
+
+			/* Shimmer effect */
+			.btn::before {
+				content: '';
+				position: absolute;
+				top: 0;
+				left: -100%;
+				width: 200%;
+				height: 100%;
+				background: linear-gradient(
+					90deg,
+					transparent 0%,
+					rgba(255, 255, 255, 0.1) 40%,
+					rgba(255, 255, 255, 0.2) 50%,
+					rgba(255, 255, 255, 0.1) 60%,
+					transparent 100%
+				);
+				opacity: 0;
+				transition: opacity 0.2s ease;
+				pointer-events: none;
+			}
+
+			.btn:hover::before {
+				opacity: 1;
+				animation: shimmer 0.8s ease-out;
+			}
+
+			@keyframes shimmer {
+				0% {
+					transform: translateX(-100%);
+				}
+				100% {
+					transform: translateX(100%);
+				}
+			}
+
+			.icon {
+				width: 1rem;
+				height: 1rem;
+				margin-right: 0.25rem;
+			}
+
+			.issue-indicator {
+				display: inline-block;
+				padding: 0.25rem 0.5rem;
+				border-radius: 4px;
+				font-size: 0.75rem;
+				font-weight: 600;
+				margin-left: 0.5rem;
+			}
+
+			.issue-bad {
+				background: #fecaca;
+				color: #b91c1c;
+			}
+
+			.issue-good {
+				background: #bbf7d0;
+				color: #15803d;
+			}
+
+			.code-block {
+				background: #1f2937;
+				color: #f9fafb;
+				padding: 1rem;
+				border-radius: 6px;
+				font-family: 'Courier New', monospace;
+				font-size: 0.875rem;
+				margin: 1rem 0;
+				overflow-x: auto;
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				* {
+					animation: none !important;
+					transition: none !important;
+				}
+
+				.btn:hover {
+					transform: none !important;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>Upload Box Fixes Demo</h1>
+			<p>
+				This demo shows the fixes applied to the upload component's overlapping logic and enhanced
+				button hover states.
+			</p>
+
+			<!-- Problem Demo -->
+			<div class="demo-section problem-demo">
+				<h2>❌ Before: Overlapping Click Logic</h2>
+				<div
+					class="upload-container"
+					onclick="handleContainerClick(event, 'problem')"
+					id="problem-container"
+				>
+					<p><strong>Files Uploaded (2/5)</strong></p>
+					<div class="file-actions">
+						<button class="btn btn-primary" onclick="handleConvert(event, 'problem')">
+							▶️ Convert
+						</button>
+						<button class="btn btn-outline" onclick="handleAddMore(event, 'problem')">
+							📁 Add More
+						</button>
+						<button class="btn btn-outline" onclick="handleClearAll(event, 'problem')">
+							❌ Clear All
+							<span class="issue-indicator issue-bad">ISSUE</span>
+						</button>
+					</div>
+					<p style="margin-top: 1rem; font-size: 0.875rem; color: #6b7280">
+						⚠️ Clicking "Clear All" also triggers file upload dialog!
+					</p>
+				</div>
+			</div>
+
+			<!-- Solution Demo -->
+			<div class="demo-section solution-demo">
+				<h2>✅ After: Fixed Click Logic + Enhanced Buttons</h2>
+				<div
+					class="upload-container"
+					onclick="handleContainerClick(event, 'solution')"
+					id="solution-container"
+				>
+					<p><strong>Files Uploaded (2/5)</strong></p>
+					<div class="file-actions">
+						<button class="btn btn-primary" onclick="handleConvert(event, 'solution')">
+							▶️ Convert
+						</button>
+						<button class="btn btn-outline" onclick="handleAddMore(event, 'solution')">
+							📁 Add More
+						</button>
+						<button class="btn btn-outline" onclick="handleClearAllFixed(event, 'solution')">
+							❌ Clear All
+							<span class="issue-indicator issue-good">FIXED</span>
+						</button>
+					</div>
+					<p style="margin-top: 1rem; font-size: 0.875rem; color: #6b7280">
+						✅ Buttons have proper event prevention and enhanced hover animations!
+					</p>
+				</div>
+			</div>
+
+			<!-- Code Changes Demo -->
+			<div class="demo-section">
+				<h2>🔧 Key Fixes Applied</h2>
+
+				<h3>1. Event Bubbling Prevention</h3>
+				<div class="code-block">
+					// Before: No event prevention function clearAllFiles() { // Clear files logic... } //
+					After: Proper event prevention function clearAllFiles(event?: Event) {
+					event?.stopPropagation(); // ← PREVENTS BUBBLING // Clear files logic... } // Helper
+					function for consistent event handling function withEventPrevention&lt;T&gt;(fn: (...args:
+					T[]) => void) { return (event: Event, ...args: T[]) => { event.stopPropagation();
+					fn(...args); }; }
+				</div>
+
+				<h3>2. Enhanced Button Hover States</h3>
+				<div class="code-block">
+					// Enhanced button variants with animations const buttonVariants = cva( 'transition-all
+					duration-200 ease-in-out ... group', { variants: { variant: { default: 'hover:scale-105
+					hover:shadow-lg active:scale-95', outline: 'hover:scale-105 hover:shadow-md
+					active:scale-95', // ... shimmer effects and GPU-accelerated transforms } } } );
+				</div>
+
+				<h3>3. Interactive Features Added</h3>
+				<ul style="margin: 1rem 0; padding-left: 2rem">
+					<li><strong>Smooth scaling:</strong> Buttons lift and scale on hover (scale-105)</li>
+					<li><strong>Dynamic shadows:</strong> Context-aware shadow colors and intensities</li>
+					<li><strong>Shimmer effects:</strong> Subtle light sweep animation on hover</li>
+					<li><strong>Active states:</strong> Satisfying press feedback (scale-95)</li>
+					<li><strong>Accessibility:</strong> Respects prefers-reduced-motion</li>
+					<li><strong>Performance:</strong> GPU-accelerated transforms and transitions</li>
+				</ul>
+			</div>
+
+			<div class="demo-section">
+				<h2>🎯 Benefits</h2>
+				<ul style="margin: 1rem 0; padding-left: 2rem">
+					<li>
+						<strong>No more accidental uploads:</strong> Clear All button won't trigger file dialog
+					</li>
+					<li><strong>Better UX:</strong> All buttons provide immediate visual feedback</li>
+					<li>
+						<strong>Professional feel:</strong> Smooth animations make the interface feel polished
+					</li>
+					<li><strong>Consistent behavior:</strong> All interactive elements work predictably</li>
+					<li><strong>Accessibility friendly:</strong> Respects user motion preferences</li>
+				</ul>
+			</div>
+		</div>
+
+		<script>
+			let problemClicks = 0;
+			let solutionClicks = 0;
+
+			function handleContainerClick(event, type) {
+				if (type === 'problem') {
+					problemClicks++;
+					updateClickCount('problem-container', problemClicks);
+					alert('Container clicked! This would open file dialog.');
+				} else {
+					solutionClicks++;
+					updateClickCount('solution-container', solutionClicks);
+					alert('Container clicked! This would open file dialog.');
+				}
+			}
+
+			function handleConvert(event, type) {
+				if (type === 'solution') {
+					event.stopPropagation();
+				}
+				alert('Convert clicked!');
+			}
+
+			function handleAddMore(event, type) {
+				if (type === 'solution') {
+					event.stopPropagation();
+				}
+				alert('Add More clicked!');
+			}
+
+			function handleClearAll(event, type) {
+				// This is the BROKEN version - no event prevention
+				alert('Clear All clicked! But container will also be clicked...');
+			}
+
+			function handleClearAllFixed(event, type) {
+				// This is the FIXED version - with event prevention
+				event.stopPropagation();
+				alert('Clear All clicked! Container click prevented ✅');
+			}
+
+			function updateClickCount(containerId, count) {
+				const container = document.getElementById(containerId);
+				const existing = container.querySelector('.click-counter');
+				if (existing) {
+					existing.remove();
+				}
+
+				const counter = document.createElement('div');
+				counter.className = 'click-counter';
+				counter.style.cssText =
+					'position: absolute; top: 10px; right: 10px; background: #ef4444; color: white; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;';
+				counter.textContent = `Container clicks: ${count}`;
+				container.appendChild(counter);
+			}
+		</script>
+	</body>
+</html>
