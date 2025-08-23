@@ -392,7 +392,8 @@ function configureVectorizer(config: any) {
 		const superpixelBooleanMethods = {
 			fill_regions: 'set_fill_regions',
 			stroke_regions: 'set_stroke_regions',
-			simplify_boundaries: 'set_simplify_boundaries'
+			simplify_boundaries: 'set_simplify_boundaries',
+			superpixel_preserve_colors: 'set_superpixel_preserve_colors'
 		};
 		
 		for (const [key, method] of Object.entries(superpixelBooleanMethods)) {

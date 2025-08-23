@@ -10,6 +10,7 @@
 //! to appropriate thresholds for each backend.
 
 use crate::algorithms::background::{rgba_to_lab, BackgroundConfig, LabColor};
+use crate::algorithms::centerline::{CenterlineAlgorithm, DistanceTransformCenterlineAlgorithm};
 use crate::algorithms::dots::{generate_dots_from_image, DotConfig};
 use crate::algorithms::edges::{
     apply_nms, compute_fdog, hysteresis_threshold, FdogConfig, NmsConfig,
@@ -243,6 +244,8 @@ pub struct TraceLowConfig {
     pub min_branch_length: f32,
     /// Douglas-Peucker epsilon for path simplification (0.5-3.0, default: computed from detail level)
     pub douglas_peucker_epsilon: f32,
+    /// Enable high-performance Distance Transform-based centerline algorithm (default: false)
+    pub enable_distance_transform_centerline: bool,
     // Superpixel-specific configuration fields
     /// Number of superpixels to generate (20-1000, default: computed from detail level)
     pub num_superpixels: u32,
@@ -258,6 +261,8 @@ pub struct TraceLowConfig {
     pub superpixel_simplify_boundaries: bool,
     /// Boundary simplification tolerance (0.5-3.0, default: 1.0)
     pub superpixel_boundary_epsilon: f32,
+    /// Whether to preserve original colors in superpixel regions (default: true)
+    pub superpixel_preserve_colors: bool,
     // Line tracing color configuration fields
     /// Whether to preserve original pixel colors in line tracing output (edge/centerline backends)
     pub line_preserve_colors: bool,
@@ -336,6 +341,7 @@ impl Default for TraceLowConfig {
             // Centerline processing defaults
             min_branch_length: 12.0,        // Will be adjusted based on detail level
             douglas_peucker_epsilon: 1.5,   // Will be adjusted based on detail level
+            enable_distance_transform_centerline: false, // Default to traditional skeleton approach
             // Superpixel defaults
             num_superpixels: 100,            // Reasonable default for moderate segmentation
             superpixel_compactness: 10.0,    // Balanced shape vs color similarity
@@ -344,6 +350,7 @@ impl Default for TraceLowConfig {
             superpixel_stroke_regions: true, // Include boundaries for definition
             superpixel_simplify_boundaries: true, // Simplified paths for cleaner output
             superpixel_boundary_epsilon: 1.0, // Moderate simplification
+            superpixel_preserve_colors: true, // Default to color for interesting output
             // Line tracing color defaults
             line_preserve_colors: false,     // Default to monochrome for backward compatibility
             line_color_sampling: crate::algorithms::ColorSamplingMethod::DominantColor, // Default to simple method
@@ -1382,10 +1389,40 @@ fn calculate_average_points_per_polyline(polylines: &[Vec<Point>]) -> f32 {
 }
 
 
-/// Centerline backend: Skeleton + centerline tracing using Zhang-Suen thinning
+/// Centerline backend: Skeleton + centerline tracing with optional Distance Transform algorithm
 fn trace_centerline(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     _thresholds: &ThresholdMapping,
+    config: &TraceLowConfig,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    // Check if distance transform algorithm is enabled
+    if config.enable_distance_transform_centerline {
+        return trace_centerline_distance_transform(image, config);
+    }
+    
+    // Fall back to traditional skeleton-based approach
+    trace_centerline_skeleton_based(image, config)
+}
+
+/// High-performance Distance Transform-based centerline tracing
+fn trace_centerline_distance_transform(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    config: &TraceLowConfig,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    let algorithm = if config.detail < 0.3 {
+        // High performance for low detail
+        DistanceTransformCenterlineAlgorithm::with_high_performance_settings()
+    } else {
+        // Balanced performance for higher detail
+        DistanceTransformCenterlineAlgorithm::new()
+    };
+    
+    algorithm.extract_centerlines(image, config)
+}
+
+/// Traditional skeleton-based centerline tracing (original implementation)
+fn trace_centerline_skeleton_based(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     log::info!("Starting centerline tracing with Zhang-Suen thinning");
@@ -1656,6 +1693,7 @@ fn trace_superpixel(
         config.detail,
         config.superpixel_fill_regions,
         config.superpixel_stroke_regions,
+        config.superpixel_preserve_colors,
     )?;
     log::debug!("SVG generation: {:?}", phase_start.elapsed());
 
@@ -2004,6 +2042,7 @@ fn generate_superpixel_svg_paths(
     detail: f32,
     fill_regions: bool,
     stroke_regions: bool,
+    preserve_colors: bool,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     let mut svg_paths = Vec::new();
 
@@ -2017,6 +2056,8 @@ fn generate_superpixel_svg_paths(
             if detail < 0.5 { "filled_only" } else { "strokes_only" }
         }
     };
+    log::debug!("Superpixel mode determination: fill_regions={}, stroke_regions={}, detail={:.6}, mode='{}'", 
+                fill_regions, stroke_regions, detail, mode);
 
     log::debug!("Using superpixel artistic mode: {mode} (fill: {fill_regions}, stroke: {stroke_regions}, detail: {detail:.2})");
 
@@ -2044,28 +2085,45 @@ fn generate_superpixel_svg_paths(
         }
         path_data.push_str(" Z"); // Close the path
 
+        // Determine colors based on preserve_colors setting
+        let (fill_color_str, stroke_color_str) = if preserve_colors {
+            // Use original colors
+            (region.avg_rgb_hex.clone(), region.avg_rgb_hex.clone())
+        } else {
+            // Convert to luminance-based grayscale for monochrome mode
+            let grayscale_hex = hex_to_grayscale_hex(&region.avg_rgb_hex);
+            (grayscale_hex.clone(), grayscale_hex)
+        };
+        
+        let fill_color = &fill_color_str;
+        let stroke_color = &stroke_color_str;
+
         match mode {
             "filled_only" => {
                 // Stained glass effect - filled regions only
-                let svg_path = SvgPath::new_fill(path_data, &region.avg_rgb_hex);
+                let svg_path = SvgPath::new_fill(path_data, fill_color);
                 svg_paths.push(svg_path);
             }
             "filled_with_borders" => {
                 // Comic book style - filled regions with black borders
-                let filled_path = SvgPath::new_fill(path_data.clone(), &region.avg_rgb_hex);
+                let filled_path = SvgPath::new_fill(path_data.clone(), fill_color);
                 svg_paths.push(filled_path);
 
-                // Add border stroke
+                // Add border stroke (always black for contrast)
                 let stroke_path = SvgPath::new_stroke(path_data, "#000000", stroke_width);
                 svg_paths.push(stroke_path);
             }
             "strokes_only" => {
                 // Cell animation style - strokes only with region color
                 let stroke_path =
-                    SvgPath::new_stroke(path_data, &region.avg_rgb_hex, stroke_width * 1.5);
+                    SvgPath::new_stroke(path_data, stroke_color, stroke_width * 1.5);
                 svg_paths.push(stroke_path);
             }
-            _ => unreachable!(),
+            _ => {
+                log::error!("Unknown superpixel mode: '{}', falling back to filled_only", mode);
+                let svg_path = SvgPath::new_fill(path_data, fill_color);
+                svg_paths.push(svg_path);
+            }
         }
     }
 
@@ -2384,6 +2442,67 @@ fn calculate_image_bounds(cached_data: &[CachedPathData]) -> (f32, f32, f32, f32
 /// Convert RGBA color to hex string
 fn rgba_to_hex(rgba: &Rgba<u8>) -> String {
     format!("#{:02x}{:02x}{:02x}", rgba.0[0], rgba.0[1], rgba.0[2])
+}
+
+/// Convert RGB color to grayscale using ITU-R BT.709 luminance formula
+/// This provides perceptually accurate luminance conversion with gamma correction
+fn rgb_to_luminance_grayscale(r: u8, g: u8, b: u8) -> u8 {
+    // ITU-R BT.709 standard weights for HDTV (most accurate for modern displays)
+    // Apply gamma correction for linear RGB processing
+    let r_linear = (r as f32 / 255.0).powf(2.2);
+    let g_linear = (g as f32 / 255.0).powf(2.2);
+    let b_linear = (b as f32 / 255.0).powf(2.2);
+    
+    // Apply ITU-R BT.709 luminance weights
+    let luminance = 0.2126 * r_linear + 0.7152 * g_linear + 0.0722 * b_linear;
+    
+    // Convert back to gamma-corrected space and clamp to u8 range
+    let gamma_corrected = luminance.powf(1.0 / 2.2);
+    (gamma_corrected * 255.0).round().clamp(0.0, 255.0) as u8
+}
+
+/// Apply contrast enhancement to grayscale value
+/// This prevents flat, low-contrast monochrome output by stretching the dynamic range
+fn enhance_grayscale_contrast(gray: u8, contrast_factor: f32) -> u8 {
+    // Convert to 0.0-1.0 range
+    let normalized = gray as f32 / 255.0;
+    
+    // Apply contrast enhancement: expand around midpoint (0.5)
+    // Formula: result = (value - 0.5) * contrast + 0.5
+    let enhanced = (normalized - 0.5) * contrast_factor + 0.5;
+    
+    // Clamp and convert back to u8
+    (enhanced * 255.0).round().clamp(0.0, 255.0) as u8
+}
+
+/// Convert RGB hex color to enhanced grayscale hex with contrast adjustment
+fn hex_to_grayscale_hex(hex: &str) -> String {
+    // Parse hex color (remove # prefix if present)
+    let hex_clean = hex.trim_start_matches('#');
+    
+    // Handle both 3 and 6 character hex formats
+    let (r, g, b) = if hex_clean.len() == 3 {
+        // Short format: #RGB -> #RRGGBB
+        let r = u8::from_str_radix(&hex_clean[0..1].repeat(2), 16).unwrap_or(0);
+        let g = u8::from_str_radix(&hex_clean[1..2].repeat(2), 16).unwrap_or(0);
+        let b = u8::from_str_radix(&hex_clean[2..3].repeat(2), 16).unwrap_or(0);
+        (r, g, b)
+    } else {
+        // Full format: #RRGGBB
+        let r = u8::from_str_radix(&hex_clean[0..2], 16).unwrap_or(0);
+        let g = u8::from_str_radix(&hex_clean[2..4], 16).unwrap_or(0);
+        let b = u8::from_str_radix(&hex_clean[4..6], 16).unwrap_or(0);
+        (r, g, b)
+    };
+    
+    // Convert to luminance-based grayscale
+    let gray = rgb_to_luminance_grayscale(r, g, b);
+    
+    // Apply contrast enhancement (1.5 provides good balance)
+    let enhanced_gray = enhance_grayscale_contrast(gray, 1.5);
+    
+    // Return as hex
+    format!("#{:02x}{:02x}{:02x}", enhanced_gray, enhanced_gray, enhanced_gray)
 }
 
 /// Convert RGBA image to grayscale with optional color map preservation

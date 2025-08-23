@@ -4,6 +4,7 @@
 
 pub mod adaptive_dots;
 pub mod background;
+pub mod centerline;
 pub mod color_processing;
 pub mod dot_styles;
 pub mod dots;
@@ -69,6 +70,11 @@ pub use simd_color::{
 pub use svg_dots::{
     dots_to_svg_elements, dots_to_svg_paths, dots_to_svg_with_config, generate_dot_svg_document,
     optimize_dot_svg, SvgDotConfig, SvgElement,
+};
+pub use centerline::{
+    CenterlineAlgorithm, CompositeCenterlineAlgorithm, ThresholdingStrategy, ThinningStrategy,
+    DistanceTransformStrategy, ExtractionStrategy, SimplificationStrategy, PreprocessingStrategy,
+    PerformanceProfile, Complexity, MemoryUsage,
 };
 pub use trace::{trace_polylines, Point2F, Polyline, TraceConfig};
 pub use trace_low::{vectorize_trace_low, vectorize_trace_low_with_gradients, EnhancedSvgResult, TraceBackend, TraceLowConfig};

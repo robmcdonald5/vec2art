@@ -107,6 +107,7 @@ export interface VectorizerConfig {
 	stroke_regions?: boolean;
 	simplify_boundaries?: boolean;
 	boundary_epsilon?: number; // 0.5-3.0 px
+	superpixel_preserve_colors?: boolean; // Whether to preserve original colors vs monochrome
 
 	// Line tracing color options
 	line_preserve_colors?: boolean; // Whether to preserve original colors in line tracing
@@ -262,6 +263,8 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	color_tolerance: 0.15, // Moderate color similarity threshold
 	enable_palette_reduction: false, // Default disabled for backward compatibility
 	palette_target_colors: 16, // Balanced color count for palette reduction
+	// Superpixel color defaults
+	superpixel_preserve_colors: true, // Default to color for more interesting output
 	max_processing_time_ms: 60000 // 60 seconds for comprehensive processing
 };
 
@@ -345,7 +348,8 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		fill_regions: true,
 		stroke_regions: true,
 		simplify_boundaries: true,
-		boundary_epsilon: 1.0
+		boundary_epsilon: 1.0,
+		superpixel_preserve_colors: true
 	},
 	comic: {
 		// Edge backend - high-quality comic book style

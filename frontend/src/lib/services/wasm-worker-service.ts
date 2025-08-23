@@ -207,6 +207,15 @@ export class WasmWorkerService {
 		} catch (error) {
 			console.error('[WasmWorkerService] Processing failed:', error);
 			
+			// Check if this is a critical WASM error that requires worker restart
+			if (this.isCriticalWasmError(error)) {
+				console.warn('[WasmWorkerService] Critical WASM error detected, restarting worker...');
+				this.cleanup();
+				// Mark as uninitialized so it will reinitialize on next use
+				this.isInitialized = false;
+				this.initPromise = null;
+			}
+			
 			const processingError: VectorizerError = {
 				type: 'processing',
 				message: 'Failed to process image',
@@ -217,6 +226,28 @@ export class WasmWorkerService {
 		} finally {
 			this.progressCallback = null;
 		}
+	}
+	
+	/**
+	 * Check if an error is a critical WASM error that requires worker restart
+	 */
+	private isCriticalWasmError(error: any): boolean {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		const criticalErrors = [
+			'unreachable executed',
+			'RuntimeError',
+			'wasm is not instantiated',
+			'WebAssembly.instantiate',
+			'memory out of bounds',
+			'recursive use of an object',
+			'already borrowed',
+			'index out of bounds',
+			'wasm function signature contains illegal type'
+		];
+		
+		return criticalErrors.some(criticalError => 
+			errorMessage.toLowerCase().includes(criticalError.toLowerCase())
+		);
 	}
 	
 	/**

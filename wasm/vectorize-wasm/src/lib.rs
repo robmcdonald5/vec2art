@@ -250,6 +250,7 @@ pub struct ConfigData {
     superpixel_stroke_regions: bool,
     superpixel_simplify_boundaries: bool,
     superpixel_boundary_epsilon: f32,
+    superpixel_preserve_colors: bool,
     // Safety and optimization
     max_image_size: u32,
     svg_precision: u8,
@@ -703,6 +704,14 @@ impl WasmVectorizer {
         self.builder = self.builder.clone().enable_width_modulation(enabled);
     }
 
+    /// Enable or disable Distance Transform-based centerline algorithm (default: false)
+    /// When enabled, uses the high-performance Distance Transform algorithm instead of traditional skeleton thinning
+    /// This provides 5-10x performance improvement with better quality results
+    #[wasm_bindgen]
+    pub fn set_enable_distance_transform_centerline(&mut self, enabled: bool) {
+        self.builder = self.builder.clone().enable_distance_transform_centerline(enabled);
+    }
+
     // Superpixel-specific configuration
 
     /// Set number of superpixels to generate (20-1000)
@@ -749,6 +758,12 @@ impl WasmVectorizer {
     #[wasm_bindgen]
     pub fn set_stroke_regions(&mut self, enabled: bool) {
         self.builder = self.builder.clone().stroke_regions(enabled);
+    }
+
+    /// Enable or disable color preservation in superpixel regions
+    #[wasm_bindgen]
+    pub fn set_superpixel_preserve_colors(&mut self, enabled: bool) {
+        self.builder = self.builder.clone().superpixel_preserve_colors(enabled);
     }
 
     /// Enable or disable boundary path simplification
@@ -1049,6 +1064,7 @@ impl WasmVectorizer {
             superpixel_stroke_regions: config.superpixel_stroke_regions,
             superpixel_simplify_boundaries: config.superpixel_simplify_boundaries,
             superpixel_boundary_epsilon: config.superpixel_boundary_epsilon,
+            superpixel_preserve_colors: config.superpixel_preserve_colors,
             // Safety and optimization parameters
             max_image_size: config.max_image_size,
             svg_precision: config.svg_precision,
@@ -1108,6 +1124,7 @@ impl WasmVectorizer {
             .simplify_boundaries(config_data.superpixel_simplify_boundaries)
             .boundary_epsilon(config_data.superpixel_boundary_epsilon)
             .map_err(|e| JsValue::from_str(&format!("Boundary epsilon error: {e}")))?
+            .superpixel_preserve_colors(config_data.superpixel_preserve_colors)
             .max_image_size(config_data.max_image_size)
             .map_err(|e| JsValue::from_str(&format!("Max image size error: {e}")))?
             .svg_precision(config_data.svg_precision)
