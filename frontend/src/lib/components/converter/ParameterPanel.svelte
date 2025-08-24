@@ -1,8 +1,12 @@
 <script lang="ts">
-	import { Sliders, Eye, PenTool, Filter } from 'lucide-svelte';
+	import { Sliders, Eye, PenTool, Filter, AlertTriangle } from 'lucide-svelte';
 	import type { VectorizerConfig, HandDrawnPreset } from '$lib/types/vectorizer';
 	import { HAND_DRAWN_DESCRIPTIONS } from '$lib/types/vectorizer';
 	import { CustomSelect } from '$lib/components/ui/custom-select';
+	
+	// Import dots backend architecture
+	import { mapUIConfigToDotsConfig, validateDotsConfig, describeDotsConfig } from '$lib/utils/dots-mapping.js';
+	import type { UISliderConfig } from '$lib/types/dots-backend.js';
 
 	interface ParameterPanelProps {
 		config: VectorizerConfig;
@@ -22,6 +26,24 @@
 	// Convert internal 0.0-1.0 detail to 1-10 UI range
 	const detailToUI = (detail: number) => Math.round(detail * 9 + 1);
 	const detailFromUI = (uiValue: number) => (uiValue - 1) / 9;
+	
+	// Validation state for dots backend
+	let dotsValidation = $state({ isValid: true, errors: [], warnings: [] });
+	
+	// Update dots validation when config changes
+	$effect(() => {
+		if (config.backend === 'dots') {
+			const uiConfig: UISliderConfig = {
+				detail_level: config.detail || 0.5,
+				dot_width: config.stroke_width || 2.0,
+				color_mode: config.preserve_colors || true
+			};
+			
+			// Note: We don't have image dimensions in the UI panel, but the WASM worker will handle size-aware adjustment
+			const dotsConfig = mapUIConfigToDotsConfig(uiConfig);
+			dotsValidation = validateDotsConfig(dotsConfig);
+		}
+	});
 
 
 
@@ -33,17 +55,22 @@
 		// Update progressive fill
 		updateSliderFill(target);
 
+		// PROPER ARCHITECTURE: Always use generic parameters
+		// The WASM worker will handle backend-specific mapping using the architectural system
 		onConfigChange({ detail: internalValue });
 		onParameterChange?.();
 	}
 
 	function handleStrokeWidthChange(event: Event) {
 		const target = event.target as HTMLInputElement;
+		const value = parseFloat(target.value);
 
 		// Update progressive fill
 		updateSliderFill(target);
 
-		onConfigChange({ stroke_width: parseFloat(target.value) });
+		// PROPER ARCHITECTURE: Always use generic parameters
+		// The WASM worker will handle backend-specific mapping using the architectural system
+		onConfigChange({ stroke_width: value });
 		onParameterChange?.();
 	}
 
@@ -99,24 +126,9 @@
 		onParameterChange?.();
 	}
 
-	// Backend-specific parameter handlers
-	function handleDotDensityChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const uiValue = parseInt(target.value);
-		const density = (10 - uiValue) / 9 * 0.1 + 0.05; // Map 1-10 to 0.15-0.05 (inverted)
+	// REMOVED: Backend-specific parameter handlers are no longer needed
+	// The architectural system handles all parameter mapping in the WASM worker
 
-		// Update progressive fill
-		updateSliderFill(target);
-
-		onConfigChange({ dot_density_threshold: density });
-		onParameterChange?.();
-	}
-
-	function handlePreserveColorsChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		onConfigChange({ preserve_colors: target.checked });
-		onParameterChange?.();
-	}
 
 	function handleRegionComplexityChange(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -390,7 +402,7 @@
 				id="stroke-width"
 				type="range"
 				min="0.5"
-				max="5.0"
+				max="10.0"
 				step="0.1"
 				value={config.stroke_width}
 				onchange={handleStrokeWidthChange}
@@ -515,62 +527,8 @@
 		{/if}
 	</div>
 
-	<!-- Backend-Specific Controls -->
-	{#if config.backend === 'dots'}
-		<div class="space-y-4 border-t pt-4">
-			<h4 class="text-converter-secondary text-sm font-medium">Stippling Controls</h4>
-
-			<!-- Dot Density -->
-			<div class="space-y-2">
-				<div class="flex items-center justify-between">
-					<label for="dot-density" class="text-converter-primary text-sm font-medium"
-						>Dot Density</label
-					>
-					<span
-						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-						aria-live="polite">{dotDensityUI}/10</span
-					>
-				</div>
-				<input
-					id="dot-density"
-					type="range"
-					min="1"
-					max="10"
-					value={dotDensityUI}
-					onchange={handleDotDensityChange}
-					oninput={handleDotDensityChange}
-					{disabled}
-					class="slider-ferrari w-full"
-					aria-describedby="dot-density-desc"
-					use:initializeSliderFill
-				/>
-				<div id="dot-density-desc" class="text-converter-muted text-xs">
-					Controls dot placement density. Higher values create denser stippling patterns.
-				</div>
-			</div>
-
-			<!-- Preserve Colors -->
-			<div class="flex items-center space-x-3">
-				<input
-					id="preserve-colors"
-					type="checkbox"
-					checked={config.preserve_colors ?? true}
-					onchange={handlePreserveColorsChange}
-					{disabled}
-					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
-				/>
-				<label
-					for="preserve-colors"
-					class="text-converter-primary cursor-pointer text-sm font-medium"
-				>
-					Preserve Colors
-				</label>
-			</div>
-			<div class="text-converter-muted ml-7 text-xs">
-				Keep original image colors in the stippling effect instead of monochrome dots.
-			</div>
-		</div>
-	{:else if config.backend === 'centerline'}
+	<!-- Backend-Specific Configuration and Validation -->
+	{#if config.backend === 'centerline'}
 		<div class="space-y-4 border-t pt-4">
 			<h4 class="text-converter-secondary text-sm font-medium">Precision Controls</h4>
 

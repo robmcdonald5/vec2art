@@ -25,7 +25,7 @@ use crate::algorithms::{Point, SvgElementType, SvgPath};
 use crate::svg_gradients::{GradientDefinition, ColorStop};
 use crate::error::VectorizeError;
 use crate::execution::{execute_parallel, execute_parallel_filter_map, par_iter_mut, reduce};
-use image::{GrayImage, ImageBuffer, Luma, Rgba};
+use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba};
 use std::collections::{HashMap, VecDeque};
 use crate::utils::Instant;
 
@@ -2317,10 +2317,52 @@ fn trace_dots(
         background_config.tolerance
     );
 
+    // Apply noise filtering if enabled (optional preprocessing for dots)
+    let processed_image = if config.noise_filtering {
+        let filter_start = Instant::now();
+        
+        // Convert to grayscale for noise filtering
+        let gray = DynamicImage::ImageRgba8(image.clone()).to_luma8();
+        
+        // Use configurable bilateral filter parameters
+        let spatial_sigma = config.noise_filter_spatial_sigma.min(1.5); // Force fast path for better performance
+        let range_sigma = config.noise_filter_range_sigma;
+        
+        let filtered_gray = bilateral_filter(&gray, spatial_sigma, range_sigma);
+        let filter_time = filter_start.elapsed();
+        
+        log::debug!(
+            "Dots bilateral noise filtering: {:.3}ms (spatial_σ={:.1}, range_σ={:.1})",
+            filter_time.as_secs_f64() * 1000.0,
+            spatial_sigma,
+            range_sigma
+        );
+        
+        // Convert filtered grayscale back to RGBA (preserving original colors where applicable)
+        let mut filtered_rgba = image.clone();
+        for (x, y, rgba_pixel) in filtered_rgba.enumerate_pixels_mut() {
+            let filtered_luma = filtered_gray.get_pixel(x, y).0[0];
+            let original_luma = (0.299 * rgba_pixel.0[0] as f32 + 0.587 * rgba_pixel.0[1] as f32 + 0.114 * rgba_pixel.0[2] as f32) as u8;
+            
+            if original_luma > 0 {
+                // Preserve color ratios while applying luminance filtering
+                let scale = filtered_luma as f32 / original_luma as f32;
+                rgba_pixel.0[0] = (rgba_pixel.0[0] as f32 * scale).min(255.0) as u8;
+                rgba_pixel.0[1] = (rgba_pixel.0[1] as f32 * scale).min(255.0) as u8;
+                rgba_pixel.0[2] = (rgba_pixel.0[2] as f32 * scale).min(255.0) as u8;
+            }
+        }
+        
+        filtered_rgba
+    } else {
+        log::debug!("Noise filtering disabled for dots - using original image");
+        image.clone()
+    };
+
     // Generate dots using the complete pipeline
     let phase_start = Instant::now();
     let dots = generate_dots_from_image(
-        image,
+        &processed_image,
         &dot_config,
         Some(&gradient_config),
         Some(&background_config),

@@ -8,10 +8,16 @@
 		Grid,
 		Sparkles,
 		Target,
-		Check
+		Check,
+		AlertTriangle
 	} from 'lucide-svelte';
 	import type { VectorizerConfig } from '$lib/types/vectorizer';
 	import { calculateMultipassConfig, PASS_COUNT_DESCRIPTIONS } from '$lib/types/vectorizer';
+	
+	// Import dots backend architecture
+	import { mapUIConfigToDotsConfig, validateDotsConfig } from '$lib/utils/dots-mapping';
+	import type { UISliderConfig } from '$lib/types/dots-backend';
+	import { DOTS_PARAMETER_RANGES } from '$lib/types/dots-backend';
 
 	interface AdvancedControlsProps {
 		config: VectorizerConfig;
@@ -37,6 +43,44 @@
 		dotsAdvanced: false,
 		superpixelAdvanced: false,
 		performance: false
+	});
+	
+	// Dots validation state
+	let dotsValidation = $state<{ isValid: boolean; errors: any[]; warnings: string[] }>({ isValid: true, errors: [], warnings: [] });
+	
+	// Update dots validation when config changes
+	$effect(() => {
+		if (config.backend === 'dots') {
+			const uiConfig: UISliderConfig = {
+				detail_level: config.detail || 0.5,
+				dot_width: config.stroke_width || 2.0,
+				color_mode: config.preserve_colors || true
+			};
+			
+			const dotsConfig = mapUIConfigToDotsConfig(uiConfig);
+			dotsValidation = validateDotsConfig(dotsConfig);
+		}
+	});
+
+	// Update slider visual fills when radius values change reactively
+	$effect(() => {
+		if (config.backend === 'dots') {
+			// Update min radius slider fill when config changes
+			if (minRadiusSliderRef && config.min_radius !== undefined) {
+				if (minRadiusSliderRef.value !== config.min_radius.toString()) {
+					minRadiusSliderRef.value = config.min_radius.toString();
+					updateSliderFill(minRadiusSliderRef);
+				}
+			}
+			
+			// Update max radius slider fill when config changes
+			if (maxRadiusSliderRef && config.max_radius !== undefined) {
+				if (maxRadiusSliderRef.value !== config.max_radius.toString()) {
+					maxRadiusSliderRef.value = config.max_radius.toString();
+					updateSliderFill(maxRadiusSliderRef);
+				}
+			}
+		}
 	});
 
 	// Simple section toggle with logging
@@ -66,6 +110,52 @@
 
 			console.log(`🟡 Advanced Controls - Range change: ${configKey} = ${value}`);
 			onConfigChange({ [configKey]: value } as Partial<VectorizerConfig>);
+			onParameterChange?.();
+		};
+	}
+	
+	// Dots-specific parameter handlers with architectural mapping
+	function handleDotDensityThreshold(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const value = parseFloat(target.value);
+		updateSliderFill(target);
+		console.log(`🎯 Advanced Controls - Dot density threshold: ${value}`);
+		onConfigChange({ dot_density_threshold: value });
+		onParameterChange?.();
+	}
+	
+	// Slider refs for radius controls
+	let minRadiusSliderRef = $state<HTMLInputElement>();
+	let maxRadiusSliderRef = $state<HTMLInputElement>();
+
+	function handleDotRadiusRange(isMin: boolean) {
+		return (event: Event) => {
+			const target = event.target as HTMLInputElement;
+			const value = parseFloat(target.value);
+			updateSliderFill(target);
+			
+			if (isMin) {
+				// Ensure max_radius is always larger than min_radius
+				const maxRadius = Math.max(value + 0.1, config.max_radius || value + 1.0);
+				console.log(`🎯 Advanced Controls - Min radius: ${value}, adjusted max: ${maxRadius}`);
+				onConfigChange({ 
+					min_radius: value, 
+					max_radius: maxRadius 
+				});
+				
+				// Reactive effect will handle visual slider updates
+			} else {
+				// Ensure max_radius is always larger than min_radius  
+				const minRadius = Math.min(value - 0.1, config.min_radius || value - 1.0);
+				const constrainedMinRadius = Math.max(0.3, minRadius);
+				console.log(`🎯 Advanced Controls - Max radius: ${value}, adjusted min: ${constrainedMinRadius}`);
+				onConfigChange({ 
+					min_radius: constrainedMinRadius, 
+					max_radius: value 
+				});
+				
+				// Reactive effect will handle visual slider updates
+			}
 			onParameterChange?.();
 		};
 	}
@@ -337,123 +427,150 @@
 			</div>
 		{/if}
 
-		<!-- Color Controls (Edge/Centerline backends only) -->
-		{#if config.backend === 'edge' || config.backend === 'centerline'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
-				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
-					onclick={() => toggleSection('colorControls')}
-					{disabled}
-					type="button"
-				>
-					<div class="flex items-center gap-2">
-						<!-- Color Palette Icon -->
-						<svg class="text-ferrari-600 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
-							<circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
-							<circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
-							<circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
-							<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
-						</svg>
-						<span class="text-converter-primary font-medium">Color Controls</span>
-					</div>
-					<div class="flex-shrink-0">
-						{#if expandedSections.colorControls}
-							<ChevronUp class="text-ferrari-600 h-4 w-4" />
-						{:else}
-							<ChevronDown class="text-ferrari-600 h-4 w-4" />
-						{/if}
-					</div>
-				</button>
+		<!-- Unified Color Controls (All backends) -->
+		<div class="border-ferrari-200/30 rounded-lg border bg-white">
+			<button
+				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+				onclick={() => toggleSection('colorControls')}
+				{disabled}
+				type="button"
+			>
+				<div class="flex items-center gap-2">
+					<!-- Color Palette Icon -->
+					<svg class="text-ferrari-600 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+						<circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+						<circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+						<circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+						<circle cx="12.5" cy="16.5" r=".5" fill="currentColor"/>
+						<circle cx="13.5" cy="13.5" r=".5" fill="currentColor"/>
+						<circle cx="9.5" cy="4.5" r=".5" fill="currentColor"/>
+						<path d="m8 2 1.88 1.88"/>
+						<path d="M14.12 3.88 16 2"/>
+						<path d="m8 22 1.88-1.88"/>
+						<path d="m14.12 20.12 2.5-2.5"/>
+						<path d="M2 8h2"/>
+						<path d="M22 8h-2"/>
+						<path d="m4 14 2-2"/>
+						<path d="m20 14-2-2"/>
+					</svg>
+					<span class="text-converter-primary font-medium">Color Controls</span>
+					{#if config.preserve_colors}
+						<span
+							class="bg-gradient-to-r from-red-400 via-yellow-400 to-blue-400 inline-block h-3 w-3 rounded-full"
+						></span>
+					{/if}
+				</div>
+				<div class="flex-shrink-0">
+					{#if expandedSections.colorControls}
+						<ChevronUp class="text-ferrari-600 h-4 w-4" />
+					{:else}
+						<ChevronDown class="text-ferrari-600 h-4 w-4" />
+					{/if}
+				</div>
+			</button>
 
-				{#if expandedSections.colorControls}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
-						<!-- Color Mode Toggle -->
+			{#if expandedSections.colorControls}
+				<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+					<!-- Color Mode Toggle -->
+					<div class="space-y-2">
+						<div class="flex items-center justify-between">
+							<label for="color-mode-buttons" class="text-converter-primary text-sm font-medium">Color Mode</label>
+							<span class="bg-ferrari-50 rounded px-2 py-1 text-xs">
+								{config.preserve_colors ? 'Color' : 'Mono'}
+							</span>
+						</div>
+						
+						<div id="color-mode-buttons" class="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="color-mode-buttons">
+							<button
+								class="group flex items-center justify-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {!config.preserve_colors ? 'border-gray-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}"
+								onclick={() => {
+									onConfigChange({ preserve_colors: false });
+									onParameterChange?.();
+								}}
+								{disabled}
+								type="button"
+							>
+								{#if !config.preserve_colors}
+									<div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0"></div>
+								{/if}
+								<span>Monochrome</span>
+							</button>
+							<button
+								class="group flex items-center justify-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {config.preserve_colors ? 'border-ferrari-500 bg-ferrari-50 text-ferrari-700' : 'border-gray-200 bg-white text-gray-700 hover:border-ferrari-300'}"
+								onclick={() => {
+									onConfigChange({ preserve_colors: true });
+									onParameterChange?.();
+								}}
+								{disabled}
+								type="button"
+							>
+								{#if config.preserve_colors}
+									<div class="w-3 h-3 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 flex-shrink-0"></div>
+								{/if}
+								<span>Preserve Colors</span>
+							</button>
+						</div>
+						
+						<div class="text-xs text-converter-secondary">
+							{#if config.preserve_colors}
+								{#if config.backend === 'edge' || config.backend === 'centerline'}
+									Colors will be sampled from the original image and applied to line paths
+								{:else if config.backend === 'superpixel'}
+									Colors will be preserved in superpixel regions
+								{:else}
+									Colors will be preserved in stippled dots
+								{/if}
+							{:else}
+								{#if config.backend === 'edge' || config.backend === 'centerline'}
+									Traditional black line art output (fastest processing)
+								{:else if config.backend === 'superpixel'}
+									Monochrome grayscale regions with enhanced contrast
+								{:else}
+									Monochrome grayscale stippling with enhanced contrast
+								{/if}
+							{/if}
+						</div>
+					</div>
+
+					{#if config.preserve_colors}
+						<!-- Color Accuracy Slider -->
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
-								<label class="text-converter-primary text-sm font-medium">Color Mode</label>
-								<span class="bg-ferrari-50 rounded px-2 py-1 text-xs">
-									{config.line_preserve_colors ? 'Color' : 'Mono'}
+								<label for="color-accuracy-unified" class="text-converter-primary text-sm">Color Accuracy</label>
+								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+									{Math.round((config.color_accuracy ?? 0.7) * 100)}%
 								</span>
 							</div>
-							
-							<div class="grid grid-cols-2 gap-2">
-								<button
-									class="group flex items-center justify-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {!config.line_preserve_colors ? 'border-gray-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}"
-									onclick={() => {
-										onConfigChange({ line_preserve_colors: false });
-										onParameterChange?.();
-									}}
-									{disabled}
-									type="button"
-								>
-									{#if !config.line_preserve_colors}
-										<div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0"></div>
-									{/if}
-									<span>Monochrome</span>
-								</button>
-								<button
-									class="group flex items-center justify-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {config.line_preserve_colors ? 'border-ferrari-500 bg-ferrari-50 text-ferrari-700' : 'border-gray-200 bg-white text-gray-700 hover:border-ferrari-300'}"
-									onclick={() => {
-										onConfigChange({ line_preserve_colors: true });
-										onParameterChange?.();
-									}}
-									{disabled}
-									type="button"
-								>
-									{#if config.line_preserve_colors}
-										<div class="w-3 h-3 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 flex-shrink-0"></div>
-									{/if}
-									<span>Preserve Colors</span>
-								</button>
-							</div>
-							
-							<div class="text-xs text-converter-secondary">
-								{#if config.line_preserve_colors}
-									Colors will be sampled from the original image and applied to line paths
-								{:else}
-									Traditional black line art output (fastest processing)
-								{/if}
+							<input
+								type="range"
+								id="color-accuracy-unified"
+								min="0.3"
+								max="1.0"
+								step="0.1"
+								value={config.color_accuracy ?? 0.7}
+								oninput={handleRangeChange('color_accuracy')}
+								{disabled}
+								class="slider-ferrari w-full"
+								use:initializeSliderFill
+							/>
+							<div class="text-converter-secondary text-xs">
+								Higher accuracy preserves more colors but increases processing time
 							</div>
 						</div>
 
-						{#if config.line_preserve_colors}
-							<!-- Color Accuracy Slider -->
+						{#if config.backend === 'edge' || config.backend === 'centerline'}
+							<!-- Max Colors Per Path (line tracing only) -->
 							<div class="space-y-2">
 								<div class="flex items-center justify-between">
-									<label for="line-color-accuracy" class="text-converter-primary text-sm">Color Accuracy</label>
-									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-										{Math.round((config.line_color_accuracy ?? 0.7) * 100)}%
-									</span>
-								</div>
-								<input
-									type="range"
-									id="line-color-accuracy"
-									min="0.3"
-									max="1.0"
-									step="0.1"
-									value={config.line_color_accuracy ?? 0.7}
-									oninput={handleRangeChange('line_color_accuracy')}
-									{disabled}
-									class="slider-ferrari w-full"
-									use:initializeSliderFill
-								/>
-								<div class="text-converter-secondary text-xs">
-									Higher accuracy preserves more colors but increases processing time
-								</div>
-							</div>
-
-							<!-- Max Colors Per Path -->
-							<div class="space-y-2">
-								<div class="flex items-center justify-between">
-									<label for="max-colors-path" class="text-converter-primary text-sm">Max Colors per Path</label>
+									<label for="max-colors-path-unified" class="text-converter-primary text-sm">Max Colors per Path</label>
 									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
 										{config.max_colors_per_path ?? 3}
 									</span>
 								</div>
 								<input
 									type="range"
-									id="max-colors-path"
+									id="max-colors-path-unified"
 									min="1"
 									max="10"
 									step="1"
@@ -464,122 +581,40 @@
 									use:initializeSliderFill
 								/>
 								<div class="text-converter-secondary text-xs">
-									Limits color complexity per path segment (1 = single dominant color, 10 = maximum variation)
-								</div>
-							</div>
-
-							<!-- Color Tolerance -->
-							<div class="space-y-2">
-								<div class="flex items-center justify-between">
-									<label for="color-tolerance" class="text-converter-primary text-sm">Color Tolerance</label>
-									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-										{Math.round((config.color_tolerance ?? 0.15) * 100)}%
-									</span>
-								</div>
-								<input
-									type="range"
-									id="color-tolerance"
-									min="0.05"
-									max="0.5"
-									step="0.05"
-									value={config.color_tolerance ?? 0.15}
-									oninput={handleRangeChange('color_tolerance')}
-									{disabled}
-									class="slider-ferrari w-full"
-									use:initializeSliderFill
-								/>
-								<div class="text-converter-secondary text-xs">
-									Controls color clustering sensitivity (lower = more distinct colors, higher = more grouping)
+									Limits the number of different colors per individual line path
 								</div>
 							</div>
 						{/if}
-					</div>
-				{/if}
-			</div>
-		{/if}
 
-		<!-- Superpixel Color Controls (Superpixel backend only) -->
-		{#if config.backend === 'superpixel'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
-				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
-					onclick={() => toggleSection('colorControls')}
-					{disabled}
-					type="button"
-				>
-					<div class="flex items-center gap-2">
-						<!-- Color Palette Icon -->
-						<svg class="text-ferrari-600 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
-							<circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
-							<circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
-							<circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
-							<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
-						</svg>
-						<span class="text-converter-primary font-medium">Color Controls</span>
-					</div>
-					<div class="flex-shrink-0">
-						{#if expandedSections.colorControls}
-							<ChevronUp class="text-ferrari-600 h-4 w-4" />
-						{:else}
-							<ChevronDown class="text-ferrari-600 h-4 w-4" />
-						{/if}
-					</div>
-				</button>
-				{#if expandedSections.colorControls}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
-						<!-- Color Mode Toggle -->
+						<!-- Color Tolerance -->
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
-								<label class="text-converter-primary text-sm font-medium">Color Mode</label>
-								<span class="bg-ferrari-50 rounded px-2 py-1 text-xs">
-									{config.superpixel_preserve_colors ? 'Color' : 'Mono'}
+								<label for="color-tolerance-unified" class="text-converter-primary text-sm">Color Similarity</label>
+								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+									{Math.round((config.color_tolerance ?? 0.15) * 100)}%
 								</span>
 							</div>
-							
-							<div class="grid grid-cols-2 gap-2">
-								<button
-									class="group flex items-center justify-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {!config.superpixel_preserve_colors ? 'border-gray-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}"
-									onclick={() => {
-										onConfigChange({ superpixel_preserve_colors: false });
-										onParameterChange?.();
-									}}
-									{disabled}
-									type="button"
-								>
-									{#if !config.superpixel_preserve_colors}
-										<div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0"></div>
-									{/if}
-									<span>Monochrome</span>
-								</button>
-								<button
-									class="group flex items-center justify-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {config.superpixel_preserve_colors ? 'border-ferrari-500 bg-ferrari-50 text-ferrari-700' : 'border-gray-200 bg-white text-gray-700 hover:border-ferrari-300'}"
-									onclick={() => {
-										onConfigChange({ superpixel_preserve_colors: true });
-										onParameterChange?.();
-									}}
-									{disabled}
-									type="button"
-								>
-									{#if config.superpixel_preserve_colors}
-										<div class="w-3 h-3 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 flex-shrink-0"></div>
-									{/if}
-									<span>Preserve Colors</span>
-								</button>
-							</div>
-							
-							<div class="text-xs text-converter-secondary">
-								{#if config.superpixel_preserve_colors}
-									Superpixel regions will be filled with colors sampled from the original image
-								{:else}
-									Traditional black and white superpixel regions (faster processing)
-								{/if}
+							<input
+								type="range"
+								id="color-tolerance-unified"
+								min="0.05"
+								max="0.4"
+								step="0.05"
+								value={config.color_tolerance ?? 0.15}
+								oninput={handleRangeChange('color_tolerance')}
+								{disabled}
+								class="slider-ferrari w-full"
+								use:initializeSliderFill
+							/>
+							<div class="text-converter-secondary text-xs">
+								Controls color clustering sensitivity (lower = more distinct colors, higher = more grouping)
 							</div>
 						</div>
-					</div>
-				{/if}
-			</div>
-		{/if}
+					{/if}
+				</div>
+			{/if}
+		</div>
+
 
 		<!-- Advanced Edge Detection (Edge backend only) -->
 		{#if config.backend === 'edge'}
@@ -672,6 +707,7 @@
 			</div>
 		{/if}
 
+
 		<!-- Advanced Dots Controls -->
 		{#if config.backend === 'dots'}
 			<div class="border-ferrari-200/30 rounded-lg border bg-white">
@@ -683,10 +719,7 @@
 				>
 					<div class="flex items-center gap-2">
 						<Sparkles class="text-ferrari-600 h-4 w-4" />
-						<span class="text-converter-primary font-medium">Advanced Stippling</span>
-						{#if config.adaptive_sizing !== false || config.poisson_disk_sampling}
-							<Check class="h-4 w-4 text-green-600" />
-						{/if}
+						<span class="text-converter-primary font-medium">Advanced Dot Settings</span>
 					</div>
 					<div class="flex-shrink-0">
 						{#if expandedSections.dotsAdvanced}
@@ -698,47 +731,200 @@
 				</button>
 
 				{#if expandedSections.dotsAdvanced}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
-						<!-- Adaptive Sizing -->
-						<div class="flex items-center space-x-3">
-							<input
-								type="checkbox"
-								id="adaptive-sizing"
-								checked={config.adaptive_sizing ?? true}
-								onchange={handleCheckboxChange('adaptive_sizing')}
-								{disabled}
-								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-							/>
-							<label
-								for="adaptive-sizing"
-								class="text-converter-primary cursor-pointer text-sm font-medium"
-							>
-								Adaptive Dot Sizing
-							</label>
-						</div>
-						<div class="text-converter-secondary ml-7 text-xs">
-							Variance-based size adjustment for detail areas.
+					<div class="border-ferrari-200/20 space-y-6 border-t p-4">
+						<!-- Configuration Summary and Validation -->
+						<div class="space-y-3">
+
+							<!-- Validation Feedback -->
+							{#if !dotsValidation.isValid}
+								<div class="bg-red-50 border border-red-200 rounded-lg p-3">
+									<div class="flex items-center gap-2 text-red-700 text-sm font-medium mb-2">
+										<AlertTriangle size={14} />
+										Configuration Issues
+									</div>
+									<ul class="text-red-600 text-xs space-y-1">
+										{#each dotsValidation.errors as error}
+											<li>• {error.message}</li>
+										{/each}
+									</ul>
+								</div>
+							{/if}
+
+							{#if dotsValidation.warnings.length > 0}
+								<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+									<div class="text-yellow-700 text-sm font-medium mb-2">Recommendations</div>
+									<ul class="text-yellow-600 text-xs space-y-1">
+										{#each dotsValidation.warnings as warning}
+											<li>• {warning}</li>
+										{/each}
+									</ul>
+								</div>
+							{/if}
 						</div>
 
-						<!-- Poisson Disk Sampling -->
-						<div class="flex items-center space-x-3">
-							<input
-								type="checkbox"
-								id="poisson-sampling"
-								checked={config.poisson_disk_sampling ?? false}
-								onchange={handleCheckboxChange('poisson_disk_sampling')}
-								{disabled}
-								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-							/>
-							<label
-								for="poisson-sampling"
-								class="text-converter-primary cursor-pointer text-sm font-medium"
-							>
-								Poisson Disk Sampling
-							</label>
+						<!-- Expert Parameter Controls -->
+						<div class="space-y-4">
+							<div class="text-sm font-medium text-converter-secondary">Expert Parameters</div>
+							
+							<!-- Dot Density Threshold -->
+							<div class="space-y-2">
+								<div class="flex items-center justify-between">
+									<label for="dot-density-threshold" class="text-converter-primary text-sm font-medium">
+										Dot Density Threshold
+									</label>
+									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+										{(config.dot_density_threshold ?? 0.15).toFixed(3)}
+									</span>
+								</div>
+								<input
+									id="dot-density-threshold"
+									type="range"
+									min={DOTS_PARAMETER_RANGES.DENSITY.ULTRA_FINE}
+									max={DOTS_PARAMETER_RANGES.DENSITY.MAX_SAFE}
+									step="0.001"
+									value={config.dot_density_threshold ?? 0.15}
+									onchange={handleDotDensityThreshold}
+									oninput={handleDotDensityThreshold}
+									{disabled}
+									class="slider-ferrari w-full"
+									use:initializeSliderFill
+								/>
+								<div class="text-converter-muted text-xs">
+									Lower = more dots (0.02 = ultra-fine), Higher = fewer dots (0.4 = sparse)
+								</div>
+							</div>
+
+							<!-- Dot Size Range -->
+							<div class="grid grid-cols-2 gap-4">
+								<!-- Min Radius -->
+								<div class="space-y-2">
+									<div class="flex items-center justify-between">
+										<label for="min-radius" class="text-converter-primary text-sm font-medium">
+											Min Radius
+										</label>
+										<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+											{(config.min_radius ?? 0.5).toFixed(1)}px
+										</span>
+									</div>
+									<input
+										bind:this={minRadiusSliderRef}
+										id="min-radius"
+										type="range"
+										min={DOTS_PARAMETER_RANGES.RADIUS.MIN_ALLOWED}
+										max="4.0"
+										step="0.1"
+										value={config.min_radius ?? 0.5}
+										onchange={handleDotRadiusRange(true)}
+										oninput={handleDotRadiusRange(true)}
+										{disabled}
+										class="slider-ferrari w-full"
+										use:initializeSliderFill
+									/>
+								</div>
+
+								<!-- Max Radius -->
+								<div class="space-y-2">
+									<div class="flex items-center justify-between">
+										<label for="max-radius" class="text-converter-primary text-sm font-medium">
+											Max Radius
+										</label>
+										<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+											{(config.max_radius ?? 3.0).toFixed(1)}px
+										</span>
+									</div>
+									<input
+										bind:this={maxRadiusSliderRef}
+										id="max-radius"
+										type="range"
+										min="1.0"
+										max={DOTS_PARAMETER_RANGES.RADIUS.MAX_ALLOWED}
+										step="0.1"
+										value={config.max_radius ?? 3.0}
+										onchange={handleDotRadiusRange(false)}
+										oninput={handleDotRadiusRange(false)}
+										{disabled}
+										class="slider-ferrari w-full"
+										use:initializeSliderFill
+									/>
+								</div>
+							</div>
+							<div class="text-converter-muted text-xs">
+								{#if config.min_radius !== undefined && config.max_radius !== undefined}
+									{@const avgSize = ((config.min_radius + config.max_radius) / 2).toFixed(1)}
+									{@const sizeRange = (config.max_radius - config.min_radius).toFixed(1)}
+									Average dot size: {avgSize}px • Size variation: {sizeRange}px
+								{:else}
+									Controls the size variation of individual dots (max must be larger than min)
+								{/if}
+							</div>
 						</div>
-						<div class="text-converter-secondary ml-7 text-xs">
-							Even distribution vs random placement for more uniform stippling.
+
+						<!-- Algorithm Features -->
+						<div class="space-y-4">
+							<div class="text-sm font-medium text-converter-secondary">Algorithm Features</div>
+							
+							<!-- Adaptive Sizing -->
+							<div class="flex items-center space-x-3">
+								<input
+									type="checkbox"
+									id="adaptive-sizing"
+									checked={config.adaptive_sizing ?? true}
+									onchange={handleCheckboxChange('adaptive_sizing')}
+									{disabled}
+									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+								/>
+								<label
+									for="adaptive-sizing"
+									class="text-converter-primary cursor-pointer text-sm font-medium"
+								>
+									Adaptive Dot Sizing
+								</label>
+							</div>
+							<div class="text-converter-secondary ml-7 text-xs">
+								Varies dot sizes based on image content and gradients for more natural appearance.
+							</div>
+
+							<!-- Gradient-Based Sizing -->
+							<div class="flex items-center space-x-3">
+								<input
+									type="checkbox"
+									id="gradient-sizing"
+									checked={config.gradient_based_sizing ?? true}
+									onchange={handleCheckboxChange('gradient_based_sizing')}
+									{disabled}
+									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+								/>
+								<label
+									for="gradient-sizing"
+									class="text-converter-primary cursor-pointer text-sm font-medium"
+								>
+									Gradient-Based Sizing
+								</label>
+							</div>
+							<div class="text-converter-secondary ml-7 text-xs">
+								Uses image gradients to determine dot placement and sizing for enhanced detail.
+							</div>
+
+							<!-- Poisson Disk Sampling -->
+							<div class="flex items-center space-x-3">
+								<input
+									type="checkbox"
+									id="poisson-sampling"
+									checked={config.poisson_disk_sampling ?? false}
+									onchange={handleCheckboxChange('poisson_disk_sampling')}
+									{disabled}
+									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+								/>
+								<label
+									for="poisson-sampling"
+									class="text-converter-primary cursor-pointer text-sm font-medium"
+								>
+									Poisson Disk Sampling
+								</label>
+							</div>
+							<div class="text-converter-secondary ml-7 text-xs">
+								Ensures more uniform distribution vs random placement (may be slower on large images).
+							</div>
 						</div>
 					</div>
 				{/if}

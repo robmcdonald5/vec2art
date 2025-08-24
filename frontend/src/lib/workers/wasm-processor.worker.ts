@@ -12,6 +12,10 @@
 import init, * as wasmModule from '../wasm/vectorize_wasm.js';
 import { calculateMultipassConfig } from '../types/vectorizer.js';
 
+// Import dots backend architecture
+import { mapUIConfigToDotsConfig, validateDotsConfig, describeDotsConfig } from '../utils/dots-mapping.js';
+import type { UISliderConfig, DotsBackendConfig } from '../types/dots-backend.js';
+
 // Worker state
 let wasmInitialized = false;
 let vectorizer: any = null;
@@ -177,6 +181,16 @@ function configureVectorizer(config: any) {
 	
 	console.log('[Worker] Configuring vectorizer with:', JSON.stringify(config, null, 2));
 	
+	// Apply dots backend configuration using proper architecture
+	if (config.backend === 'dots') {
+		console.log('[Worker] 🏗️ DOTS BACKEND - Using proper architectural configuration');
+		console.log('[Worker]   Input from UI:', { 
+			detail: config.detail, 
+			stroke_width: config.stroke_width,
+			color_mode: config.preserve_colors 
+		});
+	}
+	
 	// Apply configuration
 	if (config.backend) {
 		console.log('[Worker] Setting backend to:', config.backend);
@@ -202,7 +216,23 @@ function configureVectorizer(config: any) {
 	}
 	
 	if (typeof config.stroke_width === 'number') {
-		vectorizer.set_stroke_width(config.stroke_width);
+		if (config.backend === 'dots') {
+			// For dots backend: stroke_width controls dot sizes via UI mapping
+			// Extended range: 0.5-10.0 for bold artistic effects
+			const dotWidth = config.stroke_width;
+			const clampedWidth = Math.max(0.5, Math.min(10.0, dotWidth));
+			
+			// Map to extended ranges for larger dots
+			const normalizedWidth = (clampedWidth - 0.5) / (10.0 - 0.5);
+			const minRadius = 0.3 + (normalizedWidth * (3.0 - 0.3)); // 0.3-3.0 range
+			const maxRadius = Math.max(minRadius + 0.1, 1.0 + (normalizedWidth * (10.0 - 1.0))); // 1.0-10.0 range
+			
+			console.log(`[Worker] 🎯 Dots backend - mapping stroke_width=${dotWidth} to dot_size_range(${minRadius.toFixed(1)}, ${maxRadius.toFixed(1)})`);
+			vectorizer.set_dot_size_range(minRadius, maxRadius);
+		} else {
+			// For line art backends: stroke_width controls line thickness
+			vectorizer.set_stroke_width(config.stroke_width);
+		}
 	}
 	
 	// CRITICAL FIX: Auto-enable dependency chain for advanced features (WASM validation requirements)
@@ -341,25 +371,31 @@ function configureVectorizer(config: any) {
 		console.log('[Worker] No hand-drawn effects requested (preset: "none", all custom values zero)');
 	}
 	
-	// Apply backend-specific parameters
+	// Apply backend-specific parameters for dots backend
 	if (config.backend === 'dots') {
-		// Dots backend parameters
+		console.log('[Worker] 🎯 Configuring dots backend parameters');
+		
+		// Advanced parameters override basic stroke_width mapping
 		if (typeof config.dot_density_threshold === 'number' && typeof vectorizer.set_dot_density === 'function') {
-			console.log('[Worker] Setting dot density:', config.dot_density_threshold);
+			console.log(`[Worker] 🎛️ Advanced dot density: ${config.dot_density_threshold}`);
 			vectorizer.set_dot_density(config.dot_density_threshold);
-		} else if (typeof config.dot_density === 'number' && typeof vectorizer.set_dot_density === 'function') {
-			// Legacy support
-			console.log('[Worker] Setting dot density (legacy):', config.dot_density);
-			vectorizer.set_dot_density(config.dot_density);
 		}
 		
-		if (typeof config.min_radius === 'number' && typeof config.max_radius === 'number' && typeof vectorizer.set_dot_size_range === 'function') {
-			console.log('[Worker] Setting dot size range:', config.min_radius, config.max_radius);
-			vectorizer.set_dot_size_range(config.min_radius, config.max_radius);
+		// Advanced dot size parameters override stroke_width mapping (only when explicitly set)
+		const hasAdvancedSizeParams = (
+			typeof config.min_radius === 'number' ||
+			typeof config.max_radius === 'number'
+		);
+		
+		if (hasAdvancedSizeParams && typeof vectorizer.set_dot_size_range === 'function') {
+			const minRadius = config.min_radius ?? 0.5;
+			const maxRadius = config.max_radius ?? 3.0;
+			console.log(`[Worker] 🎛️ Advanced dot size override: ${minRadius.toFixed(1)}-${maxRadius.toFixed(1)}px (overriding stroke_width mapping)`);
+			vectorizer.set_dot_size_range(minRadius, maxRadius);
 		}
 		
+		// Algorithm features from checkboxes
 		const dotsBooleanMethods = {
-			preserve_colors: 'set_preserve_colors',
 			adaptive_sizing: 'set_adaptive_sizing',
 			poisson_disk_sampling: 'set_poisson_disk_sampling',
 			gradient_based_sizing: 'set_gradient_based_sizing'
@@ -370,6 +406,12 @@ function configureVectorizer(config: any) {
 				console.log(`[Worker] Setting ${key}:`, config[key]);
 				vectorizer[method](config[key]);
 			}
+		}
+		
+		// Color preservation
+		if (typeof config.preserve_colors === 'boolean' && typeof vectorizer.set_preserve_colors === 'function') {
+			console.log('[Worker] Setting preserve_colors:', config.preserve_colors);
+			vectorizer.set_preserve_colors(config.preserve_colors);
 		}
 	}
 	
@@ -392,8 +434,7 @@ function configureVectorizer(config: any) {
 		const superpixelBooleanMethods = {
 			fill_regions: 'set_fill_regions',
 			stroke_regions: 'set_stroke_regions',
-			simplify_boundaries: 'set_simplify_boundaries',
-			superpixel_preserve_colors: 'set_superpixel_preserve_colors'
+			simplify_boundaries: 'set_simplify_boundaries'
 		};
 		
 		for (const [key, method] of Object.entries(superpixelBooleanMethods)) {
@@ -401,6 +442,12 @@ function configureVectorizer(config: any) {
 				console.log(`[Worker] Setting ${key}:`, config[key]);
 				vectorizer[method](config[key]);
 			}
+		}
+		
+		// Unified color configuration for superpixel backend
+		if (typeof config.preserve_colors === 'boolean' && typeof vectorizer.set_superpixel_preserve_colors === 'function') {
+			console.log('[Worker] Setting unified preserve_colors for superpixel backend:', config.preserve_colors);
+			vectorizer.set_superpixel_preserve_colors(config.preserve_colors);
 		}
 	}
 	
@@ -467,19 +514,19 @@ function configureVectorizer(config: any) {
 		console.log('[Worker] ✅ Centerline backend parameters configured');
 	}
 	
-	// Line color configuration (applies to edge and centerline backends)
+	// Unified color configuration (applies to all backends)
 	if (config.backend === 'edge' || config.backend === 'centerline') {
-		if (typeof config.line_preserve_colors === 'boolean' && typeof vectorizer.set_line_preserve_colors === 'function') {
-			console.log('[Worker] Setting line_preserve_colors:', config.line_preserve_colors);
-			vectorizer.set_line_preserve_colors(config.line_preserve_colors);
+		if (typeof config.preserve_colors === 'boolean' && typeof vectorizer.set_line_preserve_colors === 'function') {
+			console.log('[Worker] Setting unified preserve_colors for line backend:', config.preserve_colors);
+			vectorizer.set_line_preserve_colors(config.preserve_colors);
 		}
 		
-		if (typeof config.line_color_accuracy === 'number' && typeof vectorizer.set_line_color_accuracy === 'function') {
-			const clampedAccuracy = Math.max(0.3, Math.min(1.0, config.line_color_accuracy));
-			if (clampedAccuracy !== config.line_color_accuracy) {
-				console.warn(`[Worker] ⚠️ Line color accuracy clamped from ${config.line_color_accuracy} to ${clampedAccuracy}`);
+		if (typeof config.color_accuracy === 'number' && typeof vectorizer.set_line_color_accuracy === 'function') {
+			const clampedAccuracy = Math.max(0.3, Math.min(1.0, config.color_accuracy));
+			if (clampedAccuracy !== config.color_accuracy) {
+				console.warn(`[Worker] ⚠️ Color accuracy clamped from ${config.color_accuracy} to ${clampedAccuracy}`);
 			}
-			console.log('[Worker] Setting line_color_accuracy:', clampedAccuracy);
+			console.log('[Worker] Setting color_accuracy for line backend:', clampedAccuracy);
 			vectorizer.set_line_color_accuracy(clampedAccuracy);
 		}
 		
@@ -559,8 +606,31 @@ async function processImage() {
 			try {
 				console.log('[Worker] About to call vectorize_with_progress...');
 				
+				// CRITICAL: Pre-process image data for dots backend stability
+				let processedImageData = currentImageData;
+				if (currentConfig?.backend === 'dots' && currentImageData) {
+					console.log('[Worker] 🔧 Pre-processing image data for dots backend stability...');
+					
+					// Create a copy of the image data to avoid modifying the original
+					const dataArray = new Uint8ClampedArray(currentImageData.data.length);
+					
+					// Copy and slightly modify image data for stability
+					for (let i = 0; i < currentImageData.data.length; i += 4) {
+						// Ensure no extreme values that might cause issues
+						dataArray[i] = Math.max(10, Math.min(245, currentImageData.data[i]));     // R
+						dataArray[i + 1] = Math.max(10, Math.min(245, currentImageData.data[i + 1])); // G
+						dataArray[i + 2] = Math.max(10, Math.min(245, currentImageData.data[i + 2])); // B
+						dataArray[i + 3] = Math.max(200, 255); // Ensure solid alpha
+					}
+					
+					// Create proper ImageData object
+					const imageDataCopy = new ImageData(dataArray, currentImageData.width, currentImageData.height);
+					processedImageData = imageDataCopy;
+					console.log('[Worker] ✅ Image data pre-processed for dots backend');
+				}
+				
 				// Call vectorize with ImageData and progress callback
-				const result = vectorizer.vectorize_with_progress(currentImageData, (progress: any) => {
+				const result = vectorizer.vectorize_with_progress(processedImageData, (progress: any) => {
 					console.log('[Worker] Progress callback received:', progress);
 					// Send progress updates to main thread
 					self.postMessage({

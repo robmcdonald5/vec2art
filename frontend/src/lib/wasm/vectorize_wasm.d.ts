@@ -1248,6 +1248,7 @@ export interface InitOutput {
   readonly _ZN4core5slice5index29slice_end_index_overflow_fail17h6b3c204b38da1968E: (a: number) => void;
   readonly _ZN4rand4rngs6thread10thread_rng17h6f426c4d1ff27123E: () => number;
   readonly _ZN5alloc2rc15Rc$LT$T$C$A$GT$9drop_slow17hc130b01e16c4a1b1E: (a: number) => void;
+  readonly _ZN5image8dynimage12DynamicImage8to_luma817h64eb1b41abdcf337E: (a: number, b: number) => void;
   readonly _ZN57_$LT$core..time..Duration$u20$as$u20$core..fmt..Debug$GT$3fmt17hcd79a1695152afc4E: (a: number, b: number) => number;
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17hd487c1843567f154E: (a: number, b: number) => void;
   readonly _ZN5alloc3str21_$LT$impl$u20$str$GT$12to_lowercase17he80a280017d8abb7E: (a: number, b: number, c: number) => void;
@@ -2779,7 +2780,6 @@ export interface InitOutput {
   readonly _ZN168_$LT$image..buffer_..ImageBuffer$LT$image..color..Rgba$LT$u8$GT$$C$alloc..vec..Vec$LT$u8$GT$$GT$$u20$as$u20$core..convert..From$LT$image..dynimage..DynamicImage$GT$$GT$4from17h6ad64302ea230ebeE: (a: number, b: number) => void;
   readonly _ZN5image8dynimage12DynamicImage8to_rgba817hf5438ff931824cddE: (a: number, b: number) => void;
   readonly _ZN168_$LT$image..buffer_..ImageBuffer$LT$image..color..Luma$LT$u8$GT$$C$alloc..vec..Vec$LT$u8$GT$$GT$$u20$as$u20$core..convert..From$LT$image..dynimage..DynamicImage$GT$$GT$4from17h9a6a77fc010ff8bdE: (a: number, b: number) => void;
-  readonly _ZN5image8dynimage12DynamicImage8to_luma817h64eb1b41abdcf337E: (a: number, b: number) => void;
   readonly _ZN169_$LT$image..buffer_..ImageBuffer$LT$image..color..LumaA$LT$u8$GT$$C$alloc..vec..Vec$LT$u8$GT$$GT$$u20$as$u20$core..convert..From$LT$image..dynimage..DynamicImage$GT$$GT$4from17he5ba802847b90a50E: (a: number, b: number) => void;
   readonly _ZN5image8dynimage12DynamicImage14to_luma_alpha817hcfe1a01185ffcbf7E: (a: number, b: number) => void;
   readonly _ZN169_$LT$image..buffer_..ImageBuffer$LT$image..color..Rgb$LT$u16$GT$$C$alloc..vec..Vec$LT$u16$GT$$GT$$u20$as$u20$core..convert..From$LT$image..dynimage..DynamicImage$GT$$GT$4from17h9bd31a714458d409E: (a: number, b: number) => void;

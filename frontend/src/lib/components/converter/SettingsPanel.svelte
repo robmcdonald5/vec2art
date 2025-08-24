@@ -170,7 +170,7 @@
 				<!-- Algorithm Selection -->
 				<div>
 					<div class="mb-3 flex items-center gap-2">
-						<label class="text-converter-primary block text-sm font-medium"> Algorithm </label>
+						<label for="backend-selector" class="text-converter-primary block text-sm font-medium"> Algorithm </label>
 						<Tooltip
 							content="Choose the line tracing algorithm. Edge is best for detailed drawings, Centerline for simple shapes, Superpixel for stylized art, and Dots for stippling effects."
 							position="right"
@@ -188,7 +188,7 @@
 				<!-- Style Preset -->
 				<div>
 					<div class="mb-3 flex items-center gap-2">
-						<label class="text-converter-primary block text-sm font-medium"> Style Preset </label>
+						<label for="preset-selector" class="text-converter-primary block text-sm font-medium"> Style Preset </label>
 						<Tooltip
 							content="Pre-configured settings for different art styles. Photo for realistic images, Logo for sharp graphics, Artistic for creative effects, and Sketch for hand-drawn appearance."
 							position="right"
@@ -210,7 +210,7 @@
 					{#if config.backend !== 'superpixel'}
 						<div>
 							<div class="mb-2 flex items-center gap-2">
-								<label class="text-converter-primary block text-sm font-medium"> Detail Level </label>
+								<label for="detail-level-slider" class="text-converter-primary block text-sm font-medium"> Detail Level </label>
 								<Tooltip
 									content="Controls how much detail is captured in the conversion. Lower values create simpler, cleaner lines. Higher values preserve more fine details and texture."
 									position="top"
@@ -218,6 +218,7 @@
 								/>
 							</div>
 							<input
+								id="detail-level-slider"
 								bind:this={detailSliderRef}
 								type="range"
 								min="0.1"
@@ -241,7 +242,7 @@
 					{#if config.backend === 'superpixel'}
 						<div>
 							<div class="mb-2 flex items-center gap-2">
-								<label class="text-converter-primary block text-sm font-medium"> Region Complexity </label>
+								<label for="region-complexity-slider" class="text-converter-primary block text-sm font-medium"> Region Complexity </label>
 								<Tooltip
 									content="Controls the number of regions in the superpixel segmentation. Lower values create fewer, larger regions. Higher values create more detailed segmentation with smaller regions."
 									position="top"
@@ -249,6 +250,7 @@
 								/>
 							</div>
 							<input
+								id="region-complexity-slider"
 								bind:this={regionComplexitySliderRef}
 								type="range"
 								min="50"
@@ -271,7 +273,7 @@
 					<!-- Line Width / Dot Width -->
 					<div>
 						<div class="mb-2 flex items-center gap-2">
-							<label class="text-converter-primary block text-sm font-medium">
+							<label for="stroke-width-slider" class="text-converter-primary block text-sm font-medium">
 								{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
 							</label>
 							<Tooltip
@@ -283,6 +285,7 @@
 							/>
 						</div>
 						<input
+							id="stroke-width-slider"
 							bind:this={strokeWidthSliderRef}
 							type="range"
 							min="0.5"
@@ -301,73 +304,41 @@
 						</div>
 					</div>
 
-					<!-- Color Toggle (Edge/Centerline/Superpixel backends) -->
-					{#if config.backend === 'edge' || config.backend === 'centerline'}
-						<div>
-							<div class="mb-2 flex items-center gap-2">
-								<label class="text-converter-primary block text-sm font-medium">Color Mode</label>
-								<Tooltip
-									content="Enable to preserve original image colors in line strokes. Disable for traditional black line art."
-									position="top"
-									size="md"
-								/>
-							</div>
-							<div class="flex items-center space-x-3">
-								<input
-									type="checkbox"
-									id="preserve-colors-quick"
-									checked={config.line_preserve_colors ?? false}
-									onchange={(event) => {
-										const target = event.target as HTMLInputElement;
-										onConfigChange({ line_preserve_colors: target.checked });
-										onParameterChange();
-									}}
-									{disabled}
-									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-								/>
-								<label
-									for="preserve-colors-quick"
-									class="text-converter-primary cursor-pointer text-sm font-medium"
-								>
-									Enable Color
-								</label>
-							</div>
+					<!-- Unified Color Toggle (All backends) -->
+					<div>
+						<div class="mb-2 flex items-center gap-2">
+							<label for="preserve-colors-unified" class="text-converter-primary block text-sm font-medium">Color Mode</label>
+							<Tooltip
+								content={config.backend === 'edge' || config.backend === 'centerline'
+									? 'Enable to preserve original image colors in line strokes. Disable for traditional black line art.'
+									: config.backend === 'superpixel'
+									? 'Enable to preserve original image colors in regions. Disable for monochrome grayscale output with enhanced contrast.'
+									: 'Enable to preserve original image colors in stippled dots. Disable for monochrome grayscale stippling with enhanced contrast.'}
+								position="top"
+								size="md"
+							/>
 						</div>
-					{/if}
-
-					<!-- Color Toggle (Superpixel backend only) -->
-					{#if config.backend === 'superpixel'}
-						<div>
-							<div class="mb-2 flex items-center gap-2">
-								<label class="text-converter-primary block text-sm font-medium">Color Mode</label>
-								<Tooltip
-									content="Enable to preserve original image colors in superpixel regions. Disable for monochrome grayscale output with enhanced contrast."
-									position="top"
-									size="md"
-								/>
-							</div>
-							<div class="flex items-center space-x-3">
-								<input
-									type="checkbox"
-									id="superpixel-preserve-colors-quick"
-									checked={config.superpixel_preserve_colors ?? true}
-									onchange={(event) => {
-										const target = event.target as HTMLInputElement;
-										onConfigChange({ superpixel_preserve_colors: target.checked });
-										onParameterChange();
-									}}
-									{disabled}
-									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-								/>
-								<label
-									for="superpixel-preserve-colors-quick"
-									class="text-converter-primary cursor-pointer text-sm font-medium"
-								>
-									Enable Color
-								</label>
-							</div>
+						<div class="flex items-center space-x-3">
+							<input
+								type="checkbox"
+								id="preserve-colors-unified"
+								checked={config.preserve_colors ?? false}
+								onchange={(event) => {
+									const target = event.target as HTMLInputElement;
+									onConfigChange({ preserve_colors: target.checked });
+									onParameterChange();
+								}}
+								{disabled}
+								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+							/>
+							<label
+								for="preserve-colors-unified"
+								class="text-converter-primary cursor-pointer text-sm font-medium"
+							>
+								Enable Color
+							</label>
 						</div>
-					{/if}
+					</div>
 				</div>
 			</div>
 		{/if}
