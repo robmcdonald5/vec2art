@@ -250,21 +250,21 @@
 					variant="outline"
 					size="sm"
 					class="border-ferrari-300 dark:border-ferrari-600 hover:bg-ferrari-50 dark:hover:bg-ferrari-900 hover:border-ferrari-400 dark:hover:border-ferrari-500 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
-					onclick={onAddMore}
-					disabled={isProcessing}
-				>
-					<Plus class="h-4 w-4 transition-transform group-hover:scale-110" />
-					Add More
-				</Button>
-				<Button
-					variant="outline"
-					size="sm"
-					class="border-ferrari-300 dark:border-ferrari-600 hover:bg-ferrari-50 dark:hover:bg-ferrari-900 hover:border-ferrari-400 dark:hover:border-ferrari-500 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
 					onclick={onReset}
 					disabled={isProcessing}
 				>
 					<RotateCcw class="h-4 w-4 transition-transform group-hover:rotate-12" />
 					Clear All
+				</Button>
+				<Button
+					variant="outline"
+					size="sm"
+					class="border-ferrari-300 dark:border-ferrari-600 hover:bg-ferrari-50 dark:hover:bg-ferrari-900 hover:border-ferrari-400 dark:hover:border-ferrari-500 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+					onclick={onAddMore}
+					disabled={isProcessing}
+				>
+					<Plus class="h-4 w-4 transition-transform group-hover:scale-110" />
+					Add More
 				</Button>
 			</div>
 
