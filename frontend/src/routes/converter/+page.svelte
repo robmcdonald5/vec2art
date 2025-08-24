@@ -38,6 +38,7 @@
 	let filesMetadata = $state<FileMetadata[]>([]); // Metadata for original files (for persistence)
 	let pendingFilesMetadata = $state<FileMetadata[] | null>(null); // Temporary storage for metadata restoration
 	let currentImageIndex = $state(0);
+	let processingImageIndex = $state(0); // Separate state for processing that doesn't trigger zoom reset
 	let currentProgress = $state<ProcessingProgress | null>(null);
 	let results = $state<(ProcessingResult | null)[]>([]);
 	let previewSvgUrls = $state<(string | null)[]>([]);
@@ -414,7 +415,7 @@
 			const processedResults = await vectorizerStore.processBatch(
 				(imageIndex, totalImages, progress) => {
 					const originalIndex = indexMapping[imageIndex];
-					currentImageIndex = originalIndex; // Show progress on the actual file being processed
+					processingImageIndex = originalIndex; // Track processing without triggering zoom reset
 					currentProgress = progress;
 
 					// Update completed count when a new image starts processing
@@ -470,6 +471,7 @@
 		} finally {
 			isProcessing = false;
 			currentProgress = null;
+			processingImageIndex = currentImageIndex; // Reset to current index when done
 		}
 	}
 
@@ -536,6 +538,7 @@
 		vectorizerStore.abortProcessing();
 		isProcessing = false;
 		currentProgress = null;
+		processingImageIndex = currentImageIndex; // Reset to current index when aborted
 		announceToScreenReader('Conversion stopped');
 	}
 
@@ -613,12 +616,33 @@
 			cleanedConfig.enable_etf_fdog = false;
 		}
 		
-		// If switching away from dots backend, reset dots-specific settings
-		if (backend !== 'dots') {
-			cleanedConfig.preserve_colors = false;
+		// Apply dots backend defaults when switching TO dots
+		if (backend === 'dots') {
+			cleanedConfig.preserve_colors = true;  // Enable Color by default
+			cleanedConfig.stroke_width = 1.0;      // Dot Width 1.0px by default
 			cleanedConfig.adaptive_sizing = true;
 			cleanedConfig.poisson_disk_sampling = false;
 			cleanedConfig.gradient_based_sizing = false;
+			console.log('🎯 Applied dots backend defaults: preserve_colors=true, stroke_width=1.0');
+		}
+		
+		// Apply superpixel backend defaults when switching TO superpixel
+		if (backend === 'superpixel') {
+			cleanedConfig.preserve_colors = true;  // Enable Color by default
+			console.log('🎯 Applied superpixel backend defaults: preserve_colors=true');
+		}
+		
+		// Reset backend-specific settings when switching away from them
+		if (backend !== 'dots') {
+			// Reset dots-specific settings (but keep preserve_colors if superpixel)
+			cleanedConfig.adaptive_sizing = true;
+			cleanedConfig.poisson_disk_sampling = false;
+			cleanedConfig.gradient_based_sizing = false;
+			
+			// Only disable colors if switching to edge or centerline backends
+			if (backend !== 'superpixel') {
+				cleanedConfig.preserve_colors = false;
+			}
 		}
 		
 		// If switching away from centerline backend, reset centerline-specific settings

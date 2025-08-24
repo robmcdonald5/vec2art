@@ -2,7 +2,7 @@
  * TypeScript interfaces for WASM vectorizer integration
  */
 
-export type VectorizerBackend = 'edge' | 'centerline' | 'superpixel' | 'dots';
+export type VectorizerBackend = 'edge' | 'dots' | 'superpixel' | 'centerline';
 
 export type VectorizerPreset = 'sketch' | 'technical' | 'artistic' | 'poster' | 'comic';
 
@@ -310,6 +310,7 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		// Dots backend - stippling and pointillism
 		backend: 'dots',
 		detail: 0.3, // Less detail for cleaner stippling
+		stroke_width: 1.0, // Dot Width 1.0px by default
 		pass_count: 1, // Single pass for dots algorithm
 		hand_drawn_preset: 'none', // Hand-drawn effects don't apply to dots
 		variable_weights: 0.0,
@@ -323,7 +324,7 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		background_tolerance: 0.1,
 		poisson_disk_sampling: true,
 		gradient_based_sizing: true,
-		// Unified color settings
+		// Unified color settings - Enable Color by default
 		preserve_colors: true,
 		color_sampling: 'adaptive',
 		color_accuracy: 0.8
