@@ -384,7 +384,6 @@
 						<InteractiveImagePanel
 							imageUrl={currentSvgUrl}
 							imageAlt="Converted SVG"
-							title="Converted SVG"
 							isProcessing={isProcessing}
 							className="flex-1"
 							externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}

@@ -33,7 +33,7 @@ const defaultState: PanZoomState = { scale: 1, x: 0, y: 0 };
 export function createPanZoomSyncStore(): PanZoomSyncStore {
 	let originalState = $state<PanZoomState>({ ...defaultState });
 	let convertedState = $state<PanZoomState>({ ...defaultState });
-	let isSyncEnabled = $state(false);
+	let isSyncEnabled = $state(true);
 
 	return {
 		get originalState() { 
