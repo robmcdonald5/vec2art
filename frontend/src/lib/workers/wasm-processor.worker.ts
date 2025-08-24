@@ -12,9 +12,7 @@
 import init, * as wasmModule from '../wasm/vectorize_wasm.js';
 import { calculateMultipassConfig } from '../types/vectorizer.js';
 
-// Import dots backend architecture
-import { mapUIConfigToDotsConfig, validateDotsConfig, describeDotsConfig } from '../utils/dots-mapping.js';
-import type { UISliderConfig, DotsBackendConfig } from '../types/dots-backend.js';
+// Note: dots backend parameters now handled directly in SettingsPanel.svelte
 
 // Worker state
 let wasmInitialized = false;
@@ -181,11 +179,11 @@ function configureVectorizer(config: any) {
 	
 	console.log('[Worker] Configuring vectorizer with:', JSON.stringify(config, null, 2));
 	
-	// Apply dots backend configuration using proper architecture
+	// Apply dots backend configuration
 	if (config.backend === 'dots') {
-		console.log('[Worker] 🏗️ DOTS BACKEND - Using proper architectural configuration');
+		console.log('[Worker] 🎯 DOTS BACKEND - Using dedicated dot_density_threshold parameter');
 		console.log('[Worker]   Input from UI:', { 
-			detail: config.detail, 
+			dot_density_threshold: config.dot_density_threshold,
 			stroke_width: config.stroke_width,
 			color_mode: config.preserve_colors 
 		});
@@ -204,15 +202,20 @@ function configureVectorizer(config: any) {
 	}
 	
 	if (typeof config.detail === 'number') {
-		// Invert detail level for backend (UI: 1.0=detailed, Backend: 0.0=detailed)
-		let invertedDetail = 1.0 - config.detail;
-		
-		// PERFORMANCE OPTIMIZATION: Reduce detail for single-threaded mode
-		// Since we disabled WASM threading due to crossbeam panics, optimize for speed
-		invertedDetail = Math.min(invertedDetail + 0.1, 0.9); // Reduce detail slightly for speed
-		console.log(`[Worker] 🔧 Performance optimization: Adjusted detail from ${config.detail} to effective ${1.0 - invertedDetail}`);
-		
-		vectorizer.set_detail(invertedDetail);
+		if (config.backend === 'dots') {
+			// For dots backend: skip set_detail() - we use set_dot_density() instead
+			console.log(`[Worker] 🎯 Dots backend - skipping set_detail(), using dot_density_threshold parameter instead`);
+		} else {
+			// For line art backends: invert detail level (UI: 1.0=detailed, Backend: 0.0=detailed)
+			let invertedDetail = 1.0 - config.detail;
+			
+			// PERFORMANCE OPTIMIZATION: Reduce detail for single-threaded mode
+			// Since we disabled WASM threading due to crossbeam panics, optimize for speed
+			invertedDetail = Math.min(invertedDetail + 0.1, 0.9); // Reduce detail slightly for speed
+			console.log(`[Worker] 🔧 Performance optimization: Adjusted detail from ${config.detail} to effective ${1.0 - invertedDetail}`);
+			
+			vectorizer.set_detail(invertedDetail);
+		}
 	}
 	
 	if (typeof config.stroke_width === 'number') {
@@ -375,9 +378,9 @@ function configureVectorizer(config: any) {
 	if (config.backend === 'dots') {
 		console.log('[Worker] 🎯 Configuring dots backend parameters');
 		
-		// Advanced parameters override basic stroke_width mapping
+		// Use dot_density_threshold if available (from new Dot Density slider)
 		if (typeof config.dot_density_threshold === 'number' && typeof vectorizer.set_dot_density === 'function') {
-			console.log(`[Worker] 🎛️ Advanced dot density: ${config.dot_density_threshold}`);
+			console.log(`[Worker] 🎯 Dot Density slider: ${config.dot_density_threshold}`);
 			vectorizer.set_dot_density(config.dot_density_threshold);
 		}
 		

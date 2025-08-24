@@ -9,14 +9,13 @@
 		Sparkles,
 		Target,
 		Check,
-		AlertTriangle
+		AlertTriangle,
+		Palette
 	} from 'lucide-svelte';
 	import type { VectorizerConfig } from '$lib/types/vectorizer';
 	import { calculateMultipassConfig, PASS_COUNT_DESCRIPTIONS } from '$lib/types/vectorizer';
 	
-	// Import dots backend architecture
-	import { mapUIConfigToDotsConfig, validateDotsConfig } from '$lib/utils/dots-mapping';
-	import type { UISliderConfig } from '$lib/types/dots-backend';
+	// Import dots backend parameter ranges (for dot size controls)
 	import { DOTS_PARAMETER_RANGES } from '$lib/types/dots-backend';
 
 	interface AdvancedControlsProps {
@@ -115,14 +114,6 @@
 	}
 	
 	// Dots-specific parameter handlers with architectural mapping
-	function handleDotDensityThreshold(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const value = parseFloat(target.value);
-		updateSliderFill(target);
-		console.log(`🎯 Advanced Controls - Dot density threshold: ${value}`);
-		onConfigChange({ dot_density_threshold: value });
-		onParameterChange?.();
-	}
 	
 	// Slider refs for radius controls
 	let minRadiusSliderRef = $state<HTMLInputElement>();
@@ -436,24 +427,7 @@
 				type="button"
 			>
 				<div class="flex items-center gap-2">
-					<!-- Color Palette Icon -->
-					<svg class="text-ferrari-600 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
-						<circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
-						<circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
-						<circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
-						<circle cx="12.5" cy="16.5" r=".5" fill="currentColor"/>
-						<circle cx="13.5" cy="13.5" r=".5" fill="currentColor"/>
-						<circle cx="9.5" cy="4.5" r=".5" fill="currentColor"/>
-						<path d="m8 2 1.88 1.88"/>
-						<path d="M14.12 3.88 16 2"/>
-						<path d="m8 22 1.88-1.88"/>
-						<path d="m14.12 20.12 2.5-2.5"/>
-						<path d="M2 8h2"/>
-						<path d="M22 8h-2"/>
-						<path d="m4 14 2-2"/>
-						<path d="m20 14-2-2"/>
-					</svg>
+					<Palette class="text-ferrari-600 h-4 w-4" />
 					<span class="text-converter-primary font-medium">Color Controls</span>
 					{#if config.preserve_colors}
 						<span
@@ -766,33 +740,6 @@
 						<div class="space-y-4">
 							<div class="text-sm font-medium text-converter-secondary">Expert Parameters</div>
 							
-							<!-- Dot Density Threshold -->
-							<div class="space-y-2">
-								<div class="flex items-center justify-between">
-									<label for="dot-density-threshold" class="text-converter-primary text-sm font-medium">
-										Dot Density Threshold
-									</label>
-									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-										{(config.dot_density_threshold ?? 0.15).toFixed(3)}
-									</span>
-								</div>
-								<input
-									id="dot-density-threshold"
-									type="range"
-									min={DOTS_PARAMETER_RANGES.DENSITY.ULTRA_FINE}
-									max={DOTS_PARAMETER_RANGES.DENSITY.MAX_SAFE}
-									step="0.001"
-									value={config.dot_density_threshold ?? 0.15}
-									onchange={handleDotDensityThreshold}
-									oninput={handleDotDensityThreshold}
-									{disabled}
-									class="slider-ferrari w-full"
-									use:initializeSliderFill
-								/>
-								<div class="text-converter-muted text-xs">
-									Lower = more dots (0.02 = ultra-fine), Higher = fewer dots (0.4 = sparse)
-								</div>
-							</div>
 
 							<!-- Dot Size Range -->
 							<div class="grid grid-cols-2 gap-4">

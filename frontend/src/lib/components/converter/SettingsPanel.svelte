@@ -96,6 +96,27 @@
 		};
 	}
 
+	// Special handler for dots backend detail/density mapping
+	function updateDotDensity(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const uiValue = parseFloat(target.value); // UI slider value (0.1 to 1.0)
+		
+		// INVERT for intuitive UX: Higher UI value = More dots = Lower density threshold
+		// Map UI range (0.1-1.0) to density threshold range (0.4-0.02)
+		const minThreshold = 0.02; // More dots
+		const maxThreshold = 0.4;  // Fewer dots
+		const invertedValue = maxThreshold - (uiValue - 0.1) / (1.0 - 0.1) * (maxThreshold - minThreshold);
+		
+		console.log(`🎯 Dot Density mapping: UI=${uiValue} → threshold=${invertedValue.toFixed(3)}`);
+		
+		// Update both parameters for proper functionality
+		onConfigChange({ 
+			detail: uiValue,  // Keep detail in sync for other logic
+			dot_density_threshold: invertedValue 
+		});
+		onParameterChange();
+	}
+
 	// Progressive slider functionality
 	function updateSliderFill(slider: HTMLInputElement) {
 		const min = parseFloat(slider.min);
@@ -206,16 +227,25 @@
 
 				<!-- Essential Parameters -->
 				<div class="grid grid-cols-1 gap-6">
-					<!-- Detail Level (Edge/Centerline/Dots backends only) -->
+					<!-- Detail Level (Edge/Centerline backends) OR Dot Density (Dots backend) -->
 					{#if config.backend !== 'superpixel'}
 						<div>
 							<div class="mb-2 flex items-center gap-2">
-								<label for="detail-level-slider" class="text-converter-primary block text-sm font-medium"> Detail Level </label>
-								<Tooltip
-									content="Controls how much detail is captured in the conversion. Lower values create simpler, cleaner lines. Higher values preserve more fine details and texture."
-									position="top"
-									size="md"
-								/>
+								{#if config.backend === 'dots'}
+									<label for="detail-level-slider" class="text-converter-primary block text-sm font-medium"> Dot Density </label>
+									<Tooltip
+										content="Controls how many dots are placed in the stippling output. Lower values create fewer, sparse dots. Higher values create denser, more detailed stippling."
+										position="top"
+										size="md"
+									/>
+								{:else}
+									<label for="detail-level-slider" class="text-converter-primary block text-sm font-medium"> Detail Level </label>
+									<Tooltip
+										content="Controls how much detail is captured in the conversion. Lower values create simpler, cleaner lines. Higher values preserve more fine details and texture."
+										position="top"
+										size="md"
+									/>
+								{/if}
 							</div>
 							<input
 								id="detail-level-slider"
@@ -225,15 +255,21 @@
 								max="1"
 								step="0.1"
 								value={config.detail || 0.6}
-								oninput={updateConfig('detail')}
+								oninput={config.backend === 'dots' ? updateDotDensity : updateConfig('detail')}
 								{disabled}
 								class="slider-ferrari w-full"
 								use:initializeSliderFill
 							/>
 							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
-								<span>Simple</span>
-								<span class="font-medium">{Math.round((config.detail || 0) * 10)}/10</span>
-								<span>Detailed</span>
+								{#if config.backend === 'dots'}
+									<span>Sparse</span>
+									<span class="font-medium">{Math.round((config.detail || 0) * 10)}/10</span>
+									<span>Dense</span>
+								{:else}
+									<span>Simple</span>
+									<span class="font-medium">{Math.round((config.detail || 0) * 10)}/10</span>
+									<span>Detailed</span>
+								{/if}
 							</div>
 						</div>
 					{/if}
