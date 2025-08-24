@@ -16,6 +16,7 @@
 	import ConverterHeader from './ConverterHeader.svelte';
 	import InteractiveImagePanel from './InteractiveImagePanel.svelte';
 	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
+	import type { SettingsSyncMode } from '$lib/types/settings-sync';
 
 	interface Props {
 		files: File[];
@@ -36,6 +37,9 @@
 		onRemoveFile: (index: number) => void;
 		isPanicked?: boolean;
 		onEmergencyRecovery?: () => void;
+		// Settings sync mode props
+		settingsSyncMode?: SettingsSyncMode;
+		onSettingsModeChange?: (mode: SettingsSyncMode) => void;
 	}
 
 	let {
@@ -56,7 +60,9 @@
 		onAddMore,
 		onRemoveFile,
 		isPanicked = false,
-		onEmergencyRecovery
+		onEmergencyRecovery,
+		settingsSyncMode,
+		onSettingsModeChange
 	}: Props = $props();
 
 	// Legacy state for slider comparison mode only
@@ -204,6 +210,8 @@
 		{onRemoveFile}
 		{isPanicked}
 		{onEmergencyRecovery}
+		{settingsSyncMode}
+		{onSettingsModeChange}
 	/>
 
 	<!-- Image Comparison Content -->

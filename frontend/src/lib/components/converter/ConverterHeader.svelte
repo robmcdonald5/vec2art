@@ -15,6 +15,8 @@
 	import { Button } from '$lib/components/ui/button';
 	import type { ProcessingProgress } from '$lib/types/vectorizer';
 	import type { FileMetadata } from '$lib/stores/converter-persistence';
+	import SettingsModeSelector from './SettingsModeSelector.svelte';
+	import type { SettingsSyncMode } from '$lib/types/settings-sync';
 
 	interface Props {
 		files: File[];
@@ -35,6 +37,9 @@
 		onRemoveFile: (index: number) => void;
 		isPanicked?: boolean;
 		onEmergencyRecovery?: () => void;
+		// Settings sync mode props
+		settingsSyncMode?: SettingsSyncMode;
+		onSettingsModeChange?: (mode: SettingsSyncMode) => void;
 	}
 
 	let {
@@ -55,7 +60,9 @@
 		onAddMore,
 		onRemoveFile,
 		isPanicked = false,
-		onEmergencyRecovery
+		onEmergencyRecovery,
+		settingsSyncMode = 'global',
+		onSettingsModeChange
 	}: Props = $props();
 
 	// Derived states - account for files, restored originalImageUrls, and filesMetadata
@@ -214,6 +221,16 @@
 							<ChevronRight class="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 						</Button>
 					</div>
+					
+					<!-- Settings Mode Selector (positioned right after navigation arrows) -->
+					{#if onSettingsModeChange}
+						<SettingsModeSelector
+							currentMode={settingsSyncMode}
+							totalImages={totalFiles}
+							onModeChange={onSettingsModeChange}
+							disabled={isProcessing}
+						/>
+					{/if}
 				</div>
 			{:else}
 				<!-- Single File: Clean header -->
@@ -224,7 +241,7 @@
 		</div>
 
 		<!-- Center: View Controls -->
-		<div class="mx-6 flex items-center">
+		<div class="mx-6 flex items-center gap-4">
 			<Button
 				variant="outline"
 				size="sm"

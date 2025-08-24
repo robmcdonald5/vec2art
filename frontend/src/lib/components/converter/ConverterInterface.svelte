@@ -2,6 +2,7 @@
 	import PreviewComparison from './PreviewComparison.svelte';
 	import type { ProcessingProgress, ProcessingResult } from '$lib/types/vectorizer';
 	import type { FileMetadata } from '$lib/stores/converter-persistence';
+	import type { SettingsSyncMode } from '$lib/types/settings-sync';
 
 	interface Props {
 		files: File[];
@@ -23,6 +24,9 @@
 		onRemoveFile: (index: number) => void;
 		isPanicked?: boolean;
 		onEmergencyRecovery?: () => void;
+		// Settings sync mode props
+		settingsSyncMode?: SettingsSyncMode;
+		onSettingsModeChange?: (mode: SettingsSyncMode) => void;
 	}
 
 	let {
@@ -44,7 +48,9 @@
 		onAddMore,
 		onRemoveFile,
 		isPanicked = false,
-		onEmergencyRecovery
+		onEmergencyRecovery,
+		settingsSyncMode,
+		onSettingsModeChange
 	}: Props = $props();
 </script>
 
@@ -68,4 +74,6 @@
 	{onRemoveFile}
 	{isPanicked}
 	{onEmergencyRecovery}
+	{settingsSyncMode}
+	{onSettingsModeChange}
 />

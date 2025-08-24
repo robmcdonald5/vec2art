@@ -47,17 +47,11 @@
 	// Dots validation state
 	let dotsValidation = $state<{ isValid: boolean; errors: any[]; warnings: string[] }>({ isValid: true, errors: [], warnings: [] });
 	
-	// Update dots validation when config changes
+	// Update dots validation when config changes  
 	$effect(() => {
 		if (config.backend === 'dots') {
-			const uiConfig: UISliderConfig = {
-				detail_level: config.detail || 0.5,
-				dot_width: config.stroke_width || 2.0,
-				color_mode: config.preserve_colors || true
-			};
-			
-			const dotsConfig = mapUIConfigToDotsConfig(uiConfig);
-			dotsValidation = validateDotsConfig(dotsConfig);
+			// Dots validation is handled internally now - just track state
+			dotsValidation = { isValid: true, errors: [], warnings: [] };
 		}
 	});
 

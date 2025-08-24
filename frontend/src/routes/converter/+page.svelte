@@ -12,6 +12,7 @@
 	import UploadArea from '$lib/components/converter/UploadArea.svelte';
 	import ConverterInterface from '$lib/components/converter/ConverterInterface.svelte';
 	import SettingsPanel from '$lib/components/converter/SettingsPanel.svelte';
+	import SettingsModeSelector from '$lib/components/converter/SettingsModeSelector.svelte';
 	import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
 	import { toastStore } from '$lib/stores/toast.svelte';
 	import { parameterHistory } from '$lib/stores/parameter-history.svelte';
@@ -31,6 +32,8 @@
 	import { getOptimalThreadCount } from '$lib/utils/performance-monitor';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte.js';
 	import { wasmWorkerService } from '$lib/services/wasm-worker-service';
+	import { settingsSyncStore } from '$lib/stores/settings-sync.svelte';
+	import type { SettingsSyncMode } from '$lib/types/settings-sync';
 
 	// UI State Management - Using Svelte 5 runes
 	let files = $state<File[]>([]);
@@ -54,12 +57,16 @@
 	let hasRecoveredState = $state(false);
 	let isRecoveringState = $state(false);
 
-	// Converter configuration state - use proper defaults
-	let config = $state<VectorizerConfig>({
+	// Converter configuration state - use settings sync store
+	// Initialize settings sync store with enhanced defaults
+	settingsSyncStore.updateConfig({
 		...DEFAULT_CONFIG,
 		optimize_svg: true,
 		svg_precision: 2
 	});
+	
+	// Derived config from settings sync store based on current mode and image
+	const config = $derived(settingsSyncStore.getCurrentConfig(currentImageIndex));
 
 	let selectedPreset = $state<VectorizerPreset | 'custom'>('artistic');
 	let performanceMode = $state<PerformanceMode>('balanced');
@@ -221,6 +228,17 @@
 			}
 		}
 		announceToScreenReader(`${selectedFiles.length} file(s) selected`);
+		
+		// Initialize/update settings sync store with new image count and current index
+		settingsSyncStore.initialize(selectedFiles.length, currentImageIndex);
+		
+		// Notify about image additions if files were added
+		if (preserveCurrentIndex && hasExistingFiles) {
+			// Images were added - notify for each new image
+			for (let i = previousFileCount; i < selectedFiles.length; i++) {
+				settingsSyncStore.handleImageAdded(i, selectedFiles.length);
+			}
+		}
 
 		console.log('🔍 [DEBUG] handleFilesSelect completed:', {
 			finalFilesCount: files.length,
@@ -233,7 +251,7 @@
 	function handleImageIndexChange(index: number) {
 		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata.length, results.length);
 		if (index >= 0 && index < maxLength) {
-			currentImageIndex = index;
+			handleImageIndexChangeWithSync(index);
 		}
 	}
 
@@ -307,6 +325,10 @@
 		originalImageUrls = newOriginalUrls;
 		filesMetadata = newFilesMetadata;
 		currentImageIndex = Math.min(newCurrentIndex, newFiles.length - 1);
+		
+		// Notify settings sync store about image removal
+		settingsSyncStore.handleImageRemoved(index, newFiles.length);
+		settingsSyncStore.setCurrentImageIndex(currentImageIndex);
 
 		// If no files left, reset everything
 		if (newFiles.length === 0) {
@@ -374,58 +396,87 @@
 				return;
 			}
 
-			// Smart conversion logic:
-			// 1. Always convert current image (even if already converted)
-			// 2. Convert any images that don't have results yet
-			// 3. Skip already converted images (except current)
+			// Settings sync-aware conversion logic:
+			// Get convert configuration based on current settings sync mode
+			const convertConfig = settingsSyncStore.getConvertConfig();
+			const imagesToProcess = convertConfig.imageIndices;
+			
+			console.log(
+				`🎯 Settings Sync Conversion (${convertConfig.mode}): Processing ${imagesToProcess.length} images`,
+				{ mode: convertConfig.mode, imageIndices: imagesToProcess }
+			);
 
-			const filesToProcess: File[] = [];
-			const indexMapping: number[] = []; // Maps processed file index to original file index
-
-			// Always include current image first (gets re-converted)
-			if (files[currentImageIndex]) {
-				filesToProcess.push(files[currentImageIndex]);
-				indexMapping.push(currentImageIndex);
-			}
-
-			// Add any files that haven't been converted yet
-			for (let i = 0; i < files.length; i++) {
-				if (i !== currentImageIndex && (!results[i] || !results[i]?.svg)) {
-					filesToProcess.push(files[i]);
-					indexMapping.push(i);
-				}
-			}
-
-			if (filesToProcess.length === 0) {
+			if (imagesToProcess.length === 0) {
 				toastStore.info('No files available for conversion');
 				return;
 			}
 
-			console.log(
-				`🎯 Smart conversion: Processing ${filesToProcess.length} files (current: ${currentImageIndex}, total: ${files.length})`
-			);
+			// Prepare files to process based on settings sync mode
+			const filesToProcess: File[] = [];
+			const indexMapping: number[] = [];
+			const configsToProcess: VectorizerConfig[] = [];
+
+			for (const imageIndex of imagesToProcess) {
+				if (files[imageIndex]) {
+					filesToProcess.push(files[imageIndex]);
+					indexMapping.push(imageIndex);
+					configsToProcess.push(convertConfig.configMap.get(imageIndex)!);
+				}
+			}
 
 			// Set up vectorizer with files to process
 			await vectorizerStore.setInputFiles(filesToProcess);
 			
-			// Sync current config to vectorizer store before processing
-			vectorizerStore.updateConfig(config);
+			// For per-image modes, we'll need to process files individually with their configs
+			// For global mode, all files use the same config
+			const processedResults: ProcessingResult[] = [];
+			
+			if (convertConfig.mode === 'global') {
+				// Global mode: use single config for all files
+				vectorizerStore.updateConfig(configsToProcess[0]);
+				const batchResults = await vectorizerStore.processBatch(
+					(imageIndex, totalImages, progress) => {
+						const originalIndex = indexMapping[imageIndex];
+						processingImageIndex = originalIndex;
+						currentProgress = progress;
 
-			// Process files
-			const processedResults = await vectorizerStore.processBatch(
-				(imageIndex, totalImages, progress) => {
-					const originalIndex = indexMapping[imageIndex];
-					processingImageIndex = originalIndex; // Track processing without triggering zoom reset
-					currentProgress = progress;
+						if (progress.stage === 'preprocessing' && progress.progress === 0) {
+							completedImages = imageIndex;
+						}
 
-					// Update completed count when a new image starts processing
-					if (progress.stage === 'preprocessing' && progress.progress === 0) {
-						completedImages = imageIndex;
+						announceToScreenReader(`Processing image ${originalIndex + 1}: ${progress.stage}`);
 					}
+				);
+				processedResults.push(...batchResults);
+			} else {
+				// Per-image modes: process each image with its own config
+				for (let i = 0; i < filesToProcess.length; i++) {
+					const imageConfig = configsToProcess[i];
+					const originalIndex = indexMapping[i];
+					
+					// Update config for this specific image
+					vectorizerStore.updateConfig(imageConfig);
+					
+					// Process single image
+					await vectorizerStore.setInputFiles([filesToProcess[i]]);
+					const singleResult = await vectorizerStore.processBatch(
+						(imageIndex, totalImages, progress) => {
+							processingImageIndex = originalIndex;
+							currentProgress = progress;
 
-					announceToScreenReader(`Processing image ${originalIndex + 1}: ${progress.stage}`);
+							if (progress.stage === 'preprocessing' && progress.progress === 0) {
+								completedImages = i;
+							}
+
+							announceToScreenReader(`Processing image ${originalIndex + 1}: ${progress.stage}`);
+						}
+					);
+					
+					if (singleResult.length > 0) {
+						processedResults.push(singleResult[0]);
+					}
 				}
-			);
+			}
 
 			// Update results and preview URLs for the processed files
 			let newResults = [...results];
@@ -589,8 +640,9 @@
 
 	// Configuration functions
 	function handleConfigChange(updates: Partial<VectorizerConfig>) {
-		const newConfig = { ...config, ...updates };
-		config = newConfig;
+		const currentConfig = settingsSyncStore.getCurrentConfig(currentImageIndex);
+		const newConfig = { ...currentConfig, ...updates };
+		settingsSyncStore.updateConfig(newConfig, currentImageIndex);
 
 		// Add to parameter history with description
 		const description = Object.keys(updates).join(', ') + ' changed';
@@ -598,7 +650,7 @@
 	}
 
 	function handleConfigReplace(newConfig: VectorizerConfig) {
-		config = newConfig;
+		settingsSyncStore.updateConfig(newConfig, currentImageIndex);
 	}
 
 	function handlePresetChange(preset: VectorizerPreset | 'custom') {
@@ -606,8 +658,9 @@
 	}
 
 	function handleBackendChange(backend: VectorizerBackend) {
-		// Clean up backend-specific settings when switching
-		let cleanedConfig = { ...config, backend };
+		// Get current config from settings sync store
+		const currentConfig = settingsSyncStore.getCurrentConfig(currentImageIndex);
+		let cleanedConfig = { ...currentConfig, backend };
 		
 		// If switching away from edge backend, disable edge-specific features
 		if (backend !== 'edge') {
@@ -650,11 +703,36 @@
 			cleanedConfig.enable_adaptive_threshold = false;
 		}
 		
-		config = cleanedConfig;
+		// Update the config through the settings sync store
+		settingsSyncStore.updateConfig(cleanedConfig, currentImageIndex);
 	}
 
 	function handleParameterChange() {
 		// Parameter change handled by config updates
+	}
+
+	// Settings sync mode handlers
+	function handleSettingsModeChange(mode: SettingsSyncMode) {
+		const success = settingsSyncStore.switchMode(mode, {
+			preserveCurrentConfig: true,
+			initializeFromGlobal: true,
+			confirmDataLoss: false // Confirmation is handled in the UI component
+		});
+		
+		if (success) {
+			console.log(`🔄 Switched to settings sync mode: ${mode}`);
+		}
+	}
+
+	// Image navigation with settings sync integration
+	function handleImageIndexChangeWithSync(index: number) {
+		const prevIndex = currentImageIndex;
+		currentImageIndex = index;
+		
+		// Update settings sync store current index
+		settingsSyncStore.setCurrentImageIndex(index);
+		
+		console.log(`🖼️ Image index changed from ${prevIndex} to ${index} (Mode: ${settingsSyncStore.syncMode})`);
 	}
 
 	function handlePerformanceModeChange(mode: PerformanceMode, threads: number) {
@@ -759,7 +837,7 @@
 				const savedConfig = converterPersistence.loadConfig();
 				// console.log('⚙️ [DEBUG] savedConfig:', savedConfig);
 				if (savedConfig) {
-					config = savedConfig;
+					settingsSyncStore.updateConfig(savedConfig);
 					// console.log('✅ [DEBUG] Config restored');
 				}
 				const savedPreset = converterPersistence.loadPreset();
@@ -794,7 +872,7 @@
 		// console.log('✨ [DEBUG] Complete state found, restoring...');
 		// Restore configuration seamlessly
 		if (state.config) {
-			config = state.config;
+			settingsSyncStore.updateConfig(state.config);
 			// console.log('✅ [DEBUG] Config restored from complete state');
 		}
 		if (state.preset) {
@@ -1104,6 +1182,8 @@
 							onRemoveFile={handleRemoveFile}
 							isPanicked={vectorizerStore.isPanicked}
 							onEmergencyRecovery={handleEmergencyRecovery}
+							settingsSyncMode={settingsSyncStore.syncMode}
+							onSettingsModeChange={handleSettingsModeChange}
 						/>
 					</div>
 
