@@ -394,6 +394,7 @@
 					</div>
 				</div>
 			</div>
+			{/if}
 
 			<!-- Current Status -->
 			<div class="flex items-center gap-2 border-t border-gray-200 pt-2 dark:border-gray-600">
