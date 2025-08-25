@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Spring } from 'svelte/motion';
-	import { BeforeAfterSlider } from '$lib/components/ui/before-after-slider';
+	import { spring } from 'svelte/motion';
+	import BeforeAfterSlider from '$lib/components/ui/before-after-slider/before-after-slider.svelte';
 	import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-svelte';
 	import { preload } from '$lib/utils/preload';
 
@@ -60,7 +60,7 @@
 	let autoPlayInterval: NodeJS.Timeout;
 
 	// Spring for smooth panel transitions
-	const panelOffset = new Spring(0, {
+	const panelOffset = spring(0, {
 		stiffness: 0.075,
 		damping: 0.25
 	});
@@ -155,7 +155,7 @@
 
 	function goToPanel(index: number) {
 		currentPanel = Math.max(0, Math.min(1, index));
-		panelOffset.target = -currentPanel * 100;
+		panelOffset.set(-currentPanel * 100);
 	}
 
 	function nextShowcase() {
@@ -205,10 +205,10 @@
 		if (isDragging && containerEl) {
 			// While dragging, update position immediately without spring
 			const offset = -currentPanel * 100 + (dragOffset() / containerEl.offsetWidth) * 100;
-			panelOffset.target = offset;
+			panelOffset.set(offset);
 		} else if (!isDragging) {
 			// When not dragging, ensure we're snapped to a panel
-			panelOffset.target = -currentPanel * 100;
+			panelOffset.set(-currentPanel * 100);
 		}
 	});
 </script>
@@ -226,7 +226,7 @@
 		<!-- Panels Wrapper -->
 		<div
 			class="flex h-full transition-none"
-			style="transform: translateX({panelOffset.current}%); will-change: transform;"
+			style="transform: translateX({$panelOffset}%); will-change: transform;"
 		>
 			<!-- Panel 1: Original Hero Content -->
 			<div class="w-full flex-shrink-0">
@@ -335,7 +335,7 @@
 					: 'text-gray-500 hover:text-gray-700'}"
 			>
 				<span
-					class="h-2 w-2 rounded-full {currentPanel === 0 ? 'bg-gray-300' : 'bg-ferrari-600'}"
+					class="h-2 w-2 rounded-full {currentPanel === 0 ? 'bg-ferrari-600' : 'bg-gray-300'}"
 				/>
 				Overview
 			</button>
@@ -347,7 +347,7 @@
 					: 'text-gray-500 hover:text-gray-700'}"
 			>
 				<span
-					class="h-2 w-2 rounded-full {currentPanel === 1 ? 'bg-gray-300' : 'bg-ferrari-600'}"
+					class="h-2 w-2 rounded-full {currentPanel === 1 ? 'bg-ferrari-600' : 'bg-gray-300'}"
 				/>
 				Examples
 			</button>
