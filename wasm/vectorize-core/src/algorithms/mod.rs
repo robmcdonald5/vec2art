@@ -1,83 +1,66 @@
 //! Vectorization algorithms module
 //!
-//! This module contains the trace-low vectorization algorithm and related utilities.
+//! This module contains organized vectorization algorithms grouped by functionality.
+//! 
+//! ## Organization:
+//! - `centerline/` - Centerline extraction and distance transforms
+//! - `dots/` - Stippling, dot generation, and background analysis
+//! - `edges/` - Edge detection, ETF, and gradient analysis  
+//! - `tracing/` - Path tracing, curve fitting, and trace-low algorithm
+//! - `visual/` - Color processing, SIMD operations, and visual enhancements
 
-pub mod adaptive_dots;
-pub mod background;
 pub mod centerline;
-pub mod color_processing;
-pub mod dot_styles;
 pub mod dots;
-pub mod dots_optimized;
 pub mod edges;
-pub mod etf;
-pub mod fit;
-pub mod gradient_detection;
-pub mod gradients;
-pub mod hand_drawn;
-pub mod path_utils;
-pub mod simd_color;
-pub mod svg_dots;
-pub mod trace;
-pub mod trace_low;
+pub mod tracing;
+pub mod visual;
 
-// Re-export commonly used types
-pub use adaptive_dots::{
-    analyze_image_regions, apply_adaptive_density, calculate_adaptive_density,
-    generate_adaptive_dots, poisson_disk_sampling, smooth_density_transitions, AdaptiveConfig,
-    Region,
-};
-pub use background::{
-    calculate_color_similarity, detect_background_advanced, detect_background_mask, rgba_to_lab,
-    BackgroundConfig, LabColor,
-};
-pub use color_processing::{
-    extract_path_colors, reduce_color_palette, rgba_to_hex, ColorSample, ColorSamplingMethod,
-    PathColorInfo,
-};
-pub use dot_styles::{
-    add_artistic_jitter, add_opacity_variation, add_size_variation, apply_artistic_effects,
-    apply_grid_alignment, apply_style_preset, get_style_parameters, DotStyle, JitterConfig,
-    OpacityVariationConfig, SizeVariationConfig,
-};
-pub use dots::{
-    generate_dots, generate_dots_auto_background, generate_dots_from_image, Dot, DotConfig,
-};
-pub use dots_optimized::{
-    analyze_gradients_optimized, detect_background_optimized, generate_dots_optimized_pipeline,
-    OptimizedDotConfig, OptimizedDotGenerator,
-};
-pub use edges::{
-    apply_nms, compute_fdog, compute_multi_direction_edges, compute_xdog, hysteresis_threshold,
-    EdgeResponse, FdogConfig, MultiDirectionEdges, NmsConfig, XdogConfig,
-};
-pub use etf::{compute_etf, EtfConfig, EtfField};
-pub use fit::{fit_beziers, CubicBezier, FitConfig};
-pub use gradient_detection::{
-    analyze_path_for_gradients, analyze_paths_for_gradients, generate_gradient_id,
-    GradientAnalysis as GradientDetectionAnalysis, GradientDetectionConfig, GradientPoint,
-    GradientStop, GradientType,
-};
-pub use gradients::{
-    analyze_image_gradients, analyze_image_gradients_with_config, calculate_gradient_magnitude,
-    calculate_local_variance, GradientAnalysis, GradientConfig,
-};
-pub use hand_drawn::{apply_hand_drawn_aesthetics, HandDrawnConfig, HandDrawnPresets};
-pub use simd_color::{
-    simd_k_means_palette_reduction, simd_analyze_gradient_strength, 
-    is_simd_available, get_simd_info,
-};
-pub use svg_dots::{
-    dots_to_svg_elements, dots_to_svg_paths, dots_to_svg_with_config, generate_dot_svg_document,
-    optimize_dot_svg, SvgDotConfig, SvgElement,
-};
+// Re-export commonly used types from organized modules
 pub use centerline::{
-    CenterlineAlgorithm, CompositeCenterlineAlgorithm, ThresholdingStrategy, ThinningStrategy,
-    DistanceTransformStrategy, ExtractionStrategy, SimplificationStrategy, PreprocessingStrategy,
-    PerformanceProfile, Complexity, MemoryUsage,
+    CenterlineAlgorithm, Complexity, CompositeCenterlineAlgorithm, DistanceTransformStrategy,
+    ExtractionStrategy, MemoryUsage, PerformanceProfile, PreprocessingStrategy,
+    SimplificationStrategy, ThinningStrategy, ThresholdingStrategy,
 };
-pub use trace::{trace_polylines, Point2F, Polyline, TraceConfig};
-pub use trace_low::{vectorize_trace_low, vectorize_trace_low_with_gradients, EnhancedSvgResult, TraceBackend, TraceLowConfig};
+
+// Dots module re-exports
+pub use dots::{
+    add_artistic_jitter, add_opacity_variation, add_size_variation, analyze_image_regions,
+    apply_adaptive_density, apply_artistic_effects, apply_grid_alignment, apply_style_preset,
+    calculate_adaptive_density, calculate_color_similarity, detect_background_advanced,
+    detect_background_mask, dots_to_svg_elements, dots_to_svg_paths, dots_to_svg_with_config,
+    generate_adaptive_dots, generate_dot_svg_document, generate_dots, generate_dots_auto_background,
+    generate_dots_from_image, generate_dots_optimized_pipeline, get_style_parameters,
+    optimize_dot_svg, poisson_disk_sampling, rgba_to_lab, smooth_density_transitions,
+    AdaptiveConfig, BackgroundConfig, Dot, DotConfig, DotStyle, JitterConfig, LabColor,
+    OpacityVariationConfig, OptimizedDotConfig, OptimizedDotGenerator, Region,
+    SizeVariationConfig, SvgDotConfig, SvgElement,
+};
+
+// Edges module re-exports  
+pub use edges::{
+    analyze_image_gradients, analyze_image_gradients_with_config, apply_nms,
+    calculate_gradient_magnitude, calculate_local_variance, compute_etf, compute_fdog,
+    compute_multi_direction_edges, compute_xdog, hysteresis_threshold, EdgeResponse, EtfConfig,
+    EtfField, FdogConfig, GradientAnalysis, GradientConfig, MultiDirectionEdges, NmsConfig,
+    XdogConfig,
+};
+
+// Tracing module re-exports
+pub use tracing::{
+    fit_beziers, trace_polylines, vectorize_trace_low, vectorize_trace_low_with_gradients,
+    CubicBezier, EnhancedSvgResult, FitConfig, Point2F, Polyline, TraceBackend, TraceConfig,
+    TraceLowConfig,
+};
+
+// Visual module re-exports
+pub use visual::{
+    analyze_path_for_gradients, analyze_paths_for_gradients, apply_hand_drawn_aesthetics,
+    extract_path_colors, generate_gradient_id, get_simd_info, is_simd_available,
+    reduce_color_palette, rgba_to_hex, simd_analyze_gradient_strength,
+    simd_k_means_palette_reduction, ColorSample, ColorSamplingMethod,
+    GradientDetectionAnalysis, GradientDetectionConfig, GradientPoint,
+    GradientStop, GradientType, HandDrawnConfig, HandDrawnPresets, PathColorInfo,
+};
 
 /// 2D point representation
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
