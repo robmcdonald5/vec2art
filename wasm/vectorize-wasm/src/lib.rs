@@ -26,7 +26,6 @@ use web_sys::ImageData;
 #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
 pub use wasm_bindgen_rayon::init_thread_pool as initThreadPool;
 
-
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator for smaller wasm binary size
 #[cfg(feature = "wee_alloc")]
@@ -62,7 +61,6 @@ struct ThreadingState {
     last_init_time_ms: Option<f64>,
 }
 
-
 /// Initialize the wasm module with basic setup
 #[wasm_bindgen(start)]
 pub fn init() {
@@ -80,11 +78,7 @@ pub fn init() {
     #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
     {
         log::info!("WASM parallel feature enabled - use start() to initialize threading");
-        update_threading_state(
-            PerformanceMode::MultiThreaded,
-            None,
-            None,
-        );
+        update_threading_state(PerformanceMode::MultiThreaded, None, None);
     }
 
     #[cfg(not(all(target_arch = "wasm32", feature = "wasm-parallel")))]
@@ -107,31 +101,34 @@ pub async fn start() -> Result<(), JsValue> {
     #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
     {
         use wasm_bindgen_futures::JsFuture;
-        
+
         // Get the hardware concurrency from the browser
         let thread_count = web_sys::window()
             .and_then(|w| Some(w.navigator().hardware_concurrency() as usize))
             .unwrap_or(1);
-        
+
         let thread_count = std::cmp::max(1, std::cmp::min(16, thread_count)); // Clamp to reasonable bounds
-        
-        log::info!("Initializing WASM thread pool with {} threads", thread_count);
-        
+
+        log::info!(
+            "Initializing WASM thread pool with {} threads",
+            thread_count
+        );
+
         // Initialize the thread pool - convert Promise to Future
         let promise = wasm_bindgen_rayon::init_thread_pool(thread_count);
-        JsFuture::from(promise)
-            .await
-            .map_err(|e| JsValue::from_str(&format!("Failed to initialize thread pool: {:?}", e)))?;
-        
+        JsFuture::from(promise).await.map_err(|e| {
+            JsValue::from_str(&format!("Failed to initialize thread pool: {:?}", e))
+        })?;
+
         log::info!("WASM thread pool initialized successfully");
-        
+
         update_threading_state(
             PerformanceMode::MultiThreaded,
             None,
             Some(js_sys::Date::now()),
         );
     }
-    
+
     #[cfg(not(all(target_arch = "wasm32", feature = "wasm-parallel")))]
     {
         log::info!("WASM parallel feature not enabled, using single-threaded execution");
@@ -141,12 +138,9 @@ pub async fn start() -> Result<(), JsValue> {
             None,
         );
     }
-    
+
     Ok(())
 }
-
-
-
 
 /// Update global threading state
 fn update_threading_state(mode: PerformanceMode, reason: Option<String>, init_time: Option<f64>) {
@@ -156,7 +150,6 @@ fn update_threading_state(mode: PerformanceMode, reason: Option<String>, init_ti
         state.last_init_time_ms = init_time;
     }
 }
-
 
 /// Available presets for JavaScript interaction
 #[wasm_bindgen]
@@ -385,7 +378,10 @@ impl WasmVectorizer {
     /// Set number of processing passes (1-10)
     #[wasm_bindgen]
     pub fn set_pass_count(&mut self, count: u32) -> Result<(), String> {
-        self.builder = self.builder.clone().pass_count(count)
+        self.builder = self
+            .builder
+            .clone()
+            .pass_count(count)
             .map_err(|e| format!("Invalid pass count: {}", e))?;
         Ok(())
     }
@@ -393,11 +389,7 @@ impl WasmVectorizer {
     /// Get number of processing passes
     #[wasm_bindgen]
     pub fn get_pass_count(&self) -> u32 {
-        self.builder
-            .clone()
-            .build()
-            .unwrap_or_default()
-            .pass_count
+        self.builder.clone().build().unwrap_or_default().pass_count
     }
 
     /// Enable or disable noise filtering
@@ -630,7 +622,10 @@ impl WasmVectorizer {
     #[wasm_bindgen]
     pub fn set_noise_filter_spatial_sigma(&mut self, sigma: f32) -> Result<(), JsValue> {
         if sigma < 0.5 || sigma > 5.0 {
-            return Err(JsValue::from_str(&format!("Spatial sigma {} out of range [0.5, 5.0]", sigma)));
+            return Err(JsValue::from_str(&format!(
+                "Spatial sigma {} out of range [0.5, 5.0]",
+                sigma
+            )));
         }
         self.builder = self.builder.clone().noise_filter_spatial_sigma(sigma);
         Ok(())
@@ -640,7 +635,10 @@ impl WasmVectorizer {
     #[wasm_bindgen]
     pub fn set_noise_filter_range_sigma(&mut self, sigma: f32) -> Result<(), JsValue> {
         if sigma < 10.0 || sigma > 100.0 {
-            return Err(JsValue::from_str(&format!("Range sigma {} out of range [10.0, 100.0]", sigma)));
+            return Err(JsValue::from_str(&format!(
+                "Range sigma {} out of range [10.0, 100.0]",
+                sigma
+            )));
         }
         self.builder = self.builder.clone().noise_filter_range_sigma(sigma);
         Ok(())
@@ -709,7 +707,10 @@ impl WasmVectorizer {
     /// This provides 5-10x performance improvement with better quality results
     #[wasm_bindgen]
     pub fn set_enable_distance_transform_centerline(&mut self, enabled: bool) {
-        self.builder = self.builder.clone().enable_distance_transform_centerline(enabled);
+        self.builder = self
+            .builder
+            .clone()
+            .enable_distance_transform_centerline(enabled);
     }
 
     // Superpixel-specific configuration
@@ -1226,12 +1227,14 @@ pub fn get_preset_description(preset: &str) -> Result<String, JsValue> {
 /// This is kept for compatibility but just logs a warning
 #[wasm_bindgen]
 pub fn init_threading(_num_threads: Option<u32>) -> JsValue {
-    log::warn!("init_threading() is deprecated. Use initThreadPool() directly from the WASM exports.");
-    
+    log::warn!(
+        "init_threading() is deprecated. Use initThreadPool() directly from the WASM exports."
+    );
+
     // Return a resolved promise for compatibility
     #[cfg(target_arch = "wasm32")]
     return js_sys::Promise::resolve(&JsValue::from_str("use initThreadPool instead")).into();
-    
+
     #[cfg(not(target_arch = "wasm32"))]
     JsValue::from_str("use initThreadPool instead")
 }
@@ -1509,7 +1512,7 @@ mod tests {
     #[wasm_bindgen_test]
     fn test_centerline_wasm_interface() {
         let mut vectorizer = WasmVectorizer::new();
-        
+
         // Test centerline-specific functions
         vectorizer.set_enable_adaptive_threshold(true);
         assert!(vectorizer.set_window_size(25).is_ok());
@@ -1517,7 +1520,7 @@ mod tests {
         assert!(vectorizer.set_min_branch_length(10.0).is_ok());
         assert!(vectorizer.set_douglas_peucker_epsilon(1.5).is_ok());
         vectorizer.set_enable_width_modulation(false);
-        
+
         // Test validation errors
         assert!(vectorizer.set_window_size(14).is_err()); // Too small
         assert!(vectorizer.set_window_size(51).is_err()); // Too large
@@ -1532,7 +1535,7 @@ mod tests {
     #[wasm_bindgen_test]
     fn test_superpixel_wasm_interface() {
         let mut vectorizer = WasmVectorizer::new();
-        
+
         // Test superpixel-specific functions
         assert!(vectorizer.set_num_superpixels(150).is_ok());
         assert!(vectorizer.set_compactness(20.0).is_ok());
@@ -1541,7 +1544,7 @@ mod tests {
         vectorizer.set_stroke_regions(false);
         vectorizer.set_simplify_boundaries(true);
         assert!(vectorizer.set_boundary_epsilon(2.0).is_ok());
-        
+
         // Test validation errors
         assert!(vectorizer.set_num_superpixels(15).is_err()); // Too small
         assert!(vectorizer.set_num_superpixels(1200).is_err()); // Too large
