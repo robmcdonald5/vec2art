@@ -373,9 +373,8 @@
 							<span class="font-medium capitalize">{systemCapabilities.deviceType}</span>
 						</div>
 					</div>
-
-				<div class="space-y-1">
-					<div class="flex items-center gap-1">
+					<div class="space-y-1">
+						<div class="flex items-center gap-1">
 						<Activity class="h-3 w-3" />
 						<span class="text-gray-600 dark:text-gray-400">Frame Rate:</span>
 						<span

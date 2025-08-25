@@ -95,8 +95,13 @@
 		</section>
 	</HeroSlider>
 
-	<!-- Enhanced Features Section -->
+	<!-- Interactive Algorithm Showcase -->
 	<section class="bg-section-elevated animate-on-scroll relative py-24 sm:py-32">
+		<AlgorithmShowcase />
+	</section>
+
+	<!-- Enhanced Features Section -->
+	<section class="bg-section-premium animate-on-scroll relative py-24 sm:py-32">
 		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 			<div class="animate-on-scroll mb-20 text-center">
 				<h2 class="heading-section">
@@ -167,11 +172,6 @@
 				</div>
 			</div>
 		</div>
-	</section>
-
-	<!-- Interactive Algorithm Showcase -->
-	<section class="bg-section-premium animate-on-scroll relative py-24 sm:py-32">
-		<AlgorithmShowcase />
 	</section>
 
 	<!-- Footer -->

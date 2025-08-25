@@ -3,6 +3,9 @@
 	import { fade, slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import BeforeAfterSlider from '$lib/components/ui/before-after-slider/before-after-slider.svelte';
+	import emblaCarouselSvelte from 'embla-carousel-svelte';
+	import Autoplay from 'embla-carousel-autoplay';
+	import type { EmblaCarouselType } from 'embla-carousel';
 	import { 
 		BarChart3, 
 		Palette, 
@@ -135,94 +138,113 @@
 			afterImage: '/gallery-stock-after.svg',
 			color: 'text-amber-600',
 			bgGradient: 'from-amber-50 to-yellow-50'
+		},
+		{
+			id: 'oil-painting',
+			name: 'Oil Painting',
+			technicalName: 'Brush Stroke Simulation',
+			description: 'Coming soon: Rich oil painting effects with realistic brush strokes and color blending.',
+			icon: Palette,
+			bestFor: 'Fine Art',
+			features: ['Brush textures', 'Color blending', 'Canvas effects'],
+			beforeImage: '/gallery-stock-before.png',
+			afterImage: '/gallery-stock-after.svg',
+			color: 'text-red-600',
+			bgGradient: 'from-red-50 to-orange-50'
+		},
+		{
+			id: 'comic-book',
+			name: 'Comic Book',
+			technicalName: 'Cel Shading',
+			description: 'Coming soon: Bold comic book style with flat colors and strong outlines for graphic novel aesthetics.',
+			icon: Image,
+			bestFor: 'Graphic Design',
+			features: ['Bold outlines', 'Flat colors', 'Pop art style'],
+			beforeImage: '/gallery-stock-before.png',
+			afterImage: '/gallery-stock-after.svg',
+			color: 'text-indigo-600',
+			bgGradient: 'from-indigo-50 to-purple-50'
+		},
+		{
+			id: 'charcoal',
+			name: 'Charcoal Draw',
+			technicalName: 'Texture Mapping',
+			description: 'Coming soon: Realistic charcoal drawing effects with natural texture and smudging techniques.',
+			icon: PenTool,
+			bestFor: 'Portrait Art',
+			features: ['Natural texture', 'Smudge effects', 'Paper grain'],
+			beforeImage: '/gallery-stock-before.png',
+			afterImage: '/gallery-stock-after.svg',
+			color: 'text-stone-600',
+			bgGradient: 'from-stone-50 to-gray-50'
+		},
+		{
+			id: 'glass-effect',
+			name: 'Glass Effect',
+			technicalName: 'Refraction Simulation',
+			description: 'Coming soon: Stunning glass and crystal effects with realistic light refraction and transparency.',
+			icon: Sparkles,
+			bestFor: 'Modern Design',
+			features: ['Light refraction', 'Transparency', 'Reflections'],
+			beforeImage: '/gallery-stock-before.png',
+			afterImage: '/gallery-stock-after.svg',
+			color: 'text-teal-600',
+			bgGradient: 'from-teal-50 to-cyan-50'
 		}
 	];
 
 	let selectedAlgorithm = $state(algorithms[0]);
-	let carouselContainer: HTMLDivElement;
-	let carouselScrollInterval: NodeJS.Timeout | undefined;
-	let isAutoScrolling = $state(true);
-	let isAutoSelecting = $state(true);
-	let scrollPosition = $state(0);
-	
-	// Create infinite loop by duplicating algorithms in reverse order for left-to-right progression
+	let emblaApi: EmblaCarouselType;
+	let autoplayPlugin = Autoplay({ delay: 3000, stopOnInteraction: true });
+
+	// Embla carousel options
+	const options = {
+		loop: true,
+		align: 'center' as const,
+		skipSnaps: false,
+		dragFree: false,
+		slidesToScroll: 1
+	};
+
+	// Use reversed algorithms for left-to-right progression
 	const reversedAlgorithms = [...algorithms].reverse();
-	const infiniteAlgorithms = [...reversedAlgorithms, ...reversedAlgorithms, ...reversedAlgorithms];
-	const SCROLL_SPEED = 0.5; // pixels per frame
-	const TAB_WIDTH = 288; // approximate width of each tab (w-60 sm:w-72 + gap)
 
-	function startCarouselScroll() {
-		if (!carouselContainer) return;
+	function onEmblaInit(event: CustomEvent<EmblaCarouselType>) {
+		emblaApi = event.detail;
 		
-		// Start from the end to scroll left-to-right
-		const maxScroll = algorithms.length * TAB_WIDTH;
-		scrollPosition = maxScroll * 2; // Start from second copy
-		carouselContainer.scrollLeft = scrollPosition;
+		// Listen for slide changes to update selected algorithm
+		emblaApi.on('select', () => {
+			const selectedIndex = emblaApi.selectedScrollSnap();
+			selectedAlgorithm = reversedAlgorithms[selectedIndex];
+		});
 		
-		carouselScrollInterval = setInterval(() => {
-			if (!carouselContainer) return;
-			
-			scrollPosition -= SCROLL_SPEED;
-			carouselContainer.scrollLeft = scrollPosition;
-			
-			// Reset scroll position when we've scrolled one full set of algorithms backwards
-			if (scrollPosition <= maxScroll) {
-				scrollPosition = maxScroll * 2;
-				carouselContainer.scrollLeft = scrollPosition;
-			}
-			
-			// Only update selected algorithm if auto-selection is still enabled
-			if (isAutoSelecting) {
-				updateSelectedFromCenter();
-			}
-		}, 16); // ~60fps
-	}
-
-	function stopCarouselScroll() {
-		if (carouselScrollInterval) {
-			clearInterval(carouselScrollInterval);
-			carouselScrollInterval = undefined;
-		}
-		isAutoScrolling = false;
-	}
-
-	function updateSelectedFromCenter() {
-		if (!carouselContainer) return;
-		
-		const containerCenter = carouselContainer.offsetWidth / 2;
-		const scrollCenter = carouselContainer.scrollLeft + containerCenter;
-		
-		// Account for the fact we start from the second copy and scroll backwards
-		const maxScroll = algorithms.length * TAB_WIDTH;
-		const adjustedScrollCenter = scrollCenter - maxScroll; // Adjust to the first copy's coordinate system
-		let centerTabIndex = Math.floor(adjustedScrollCenter / TAB_WIDTH);
-		
-		// Ensure we wrap around correctly for negative indices and stay within bounds
-		centerTabIndex = ((centerTabIndex % algorithms.length) + algorithms.length) % algorithms.length;
-		
-		// Since we reversed the array, we need to get from the reversed array
-		selectedAlgorithm = reversedAlgorithms[centerTabIndex];
+		// Set initial selected algorithm
+		const initialIndex = emblaApi.selectedScrollSnap();
+		selectedAlgorithm = reversedAlgorithms[initialIndex];
 	}
 
 	function handleTabClick(algorithm: Algorithm) {
-		// Stop auto-selection but keep carousel moving
-		isAutoSelecting = false;
-		selectedAlgorithm = algorithm;
+		if (!emblaApi) return;
+		
+		// Find the algorithm index and scroll to it
+		const algorithmIndex = reversedAlgorithms.findIndex(alg => alg.id === algorithm.id);
+		if (algorithmIndex !== -1) {
+			emblaApi.scrollTo(algorithmIndex);
+			selectedAlgorithm = algorithm;
+		}
 	}
 
 	function handleSceneClick() {
-		// Stop auto-selection but keep carousel moving
-		isAutoSelecting = false;
+		// Scene click just stops autoplay - the carousel stays centered on current selection
+		if (autoplayPlugin) {
+			autoplayPlugin.stop();
+		}
 	}
 
-	onMount(() => {
-		if (typeof document !== 'undefined') {
-			startCarouselScroll();
-		}
-	});
-
 	onDestroy(() => {
-		stopCarouselScroll();
+		if (emblaApi) {
+			emblaApi.destroy();
+		}
 	});
 </script>
 
@@ -240,44 +262,48 @@
 
 <!-- Full-Width Infinite Carousel -->
 <div class="mb-12 w-full">
-	<div
-		bind:this={carouselContainer}
-		class="carousel-container flex gap-4 overflow-x-scroll scrollbar-hide pl-4 pb-4 pt-2"
-		style="scroll-behavior: auto;"
+	<div 
+		class="embla overflow-hidden"
+		use:emblaCarouselSvelte={{ options, plugins: [autoplayPlugin] }}
+		onemblaInit={onEmblaInit}
 	>
-			{#each infiniteAlgorithms as algorithm, index (algorithm.id + '-' + index)}
-				<button
-					class="algorithm-tab group relative flex-shrink-0 flex items-center gap-2 rounded-xl border-2 px-4 py-3 transition-all duration-300 sm:px-6 sm:py-4 w-60 sm:w-72 {
-						selectedAlgorithm.id === algorithm.id
-							? 'border-ferrari-500 bg-ferrari-50 shadow-lg scale-105'
-							: 'border-gray-200 bg-white hover:border-ferrari-500 hover:bg-ferrari-25 hover:scale-102 hover:shadow-md'
-					}"
-					onclick={() => handleTabClick(algorithm)}
-					aria-pressed={selectedAlgorithm.id === algorithm.id}
-					aria-label={`Select ${algorithm.name} algorithm`}
-				>
-					<svelte:component 
-						this={algorithm.icon} 
-						class="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 {
+		<div class="embla__container flex gap-4 pl-4 pb-4 pt-2">
+			{#each reversedAlgorithms as algorithm (algorithm.id)}
+				<div class="embla__slide flex-shrink-0" style="flex: 0 0 auto;">
+					<button
+						class="algorithm-tab group relative flex items-center gap-2 rounded-xl border-2 px-4 py-3 transition-all duration-300 sm:px-6 sm:py-4 w-44 sm:w-52 {
 							selectedAlgorithm.id === algorithm.id
-								? algorithm.color
-								: 'text-gray-400 group-hover:text-ferrari-500'
-						} transition-colors duration-300"
-					/>
-					<div class="text-left min-w-0 flex-1">
-						<div class="text-sm font-semibold sm:text-base truncate {
-							selectedAlgorithm.id === algorithm.id
-								? 'text-ferrari-700'
-								: 'text-gray-700 group-hover:text-ferrari-600'
-						}">
-							{algorithm.name}
+								? 'border-ferrari-500 bg-ferrari-50 shadow-lg scale-105'
+								: 'border-gray-200 bg-white hover:border-ferrari-500 hover:bg-ferrari-25 hover:scale-102 hover:shadow-md'
+						}"
+						onclick={() => handleTabClick(algorithm)}
+						aria-pressed={selectedAlgorithm.id === algorithm.id}
+						aria-label={`Select ${algorithm.name} algorithm`}
+					>
+						<svelte:component 
+							this={algorithm.icon} 
+							class="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 {
+								selectedAlgorithm.id === algorithm.id
+									? algorithm.color
+									: 'text-gray-400 group-hover:text-ferrari-500'
+							} transition-colors duration-300"
+						/>
+						<div class="text-left flex-1">
+							<div class="text-sm font-semibold sm:text-base whitespace-nowrap {
+								selectedAlgorithm.id === algorithm.id
+									? 'text-ferrari-700'
+									: 'text-gray-700 group-hover:text-ferrari-600'
+							}">
+								{algorithm.name}
+							</div>
 						</div>
-					</div>
-					{#if selectedAlgorithm.id === algorithm.id}
-						<div class="absolute -bottom-2 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-ferrari-500 animate-pulse"></div>
-					{/if}
-				</button>
+						{#if selectedAlgorithm.id === algorithm.id}
+							<div class="absolute -bottom-2 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-ferrari-500 animate-pulse"></div>
+						{/if}
+					</button>
+				</div>
 			{/each}
+		</div>
 	</div>
 </div>
 
@@ -343,7 +369,7 @@
 				<div class="mt-auto">
 					<a 
 						href="/converter?algorithm={selectedAlgorithm.id}"
-						class="group inline-flex items-center gap-2 rounded-xl bg-ferrari-600 px-6 py-3 text-white font-semibold shadow-lg transition-all duration-300 hover:bg-ferrari-700 hover:shadow-xl hover:-translate-y-0.5"
+						class="group inline-flex items-center justify-center gap-2 rounded-xl bg-ferrari-600 px-4 py-2.5 text-white font-semibold shadow-lg transition-all duration-300 hover:bg-ferrari-700 hover:shadow-xl hover:-translate-y-0.5 w-56"
 					>
 						Try {selectedAlgorithm.name}
 						<ArrowRight class="h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -361,18 +387,13 @@
 		background-clip: padding-box;
 	}
 
-	.carousel-container {
-		scroll-behavior: auto;
-		-webkit-overflow-scrolling: touch;
+	/* Embla Carousel styles */
+	.embla {
+		cursor: grab;
 	}
-
-	.scrollbar-hide {
-		-ms-overflow-style: none;
-		scrollbar-width: none;
-	}
-
-	.scrollbar-hide::-webkit-scrollbar {
-		display: none;
+	
+	.embla:active {
+		cursor: grabbing;
 	}
 
 	.algorithm-showcase-container {
@@ -407,5 +428,4 @@
 				0 0 30px rgba(220, 20, 60, 0.05);
 		}
 	}
-
 </style>
