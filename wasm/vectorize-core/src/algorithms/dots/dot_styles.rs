@@ -12,7 +12,7 @@
 //! - **TechnicalDrawing**: Uniform, precise dots for engineering drawings
 //! - **WatercolorEffect**: Large, soft dots with low opacity for layering effects
 
-use crate::algorithms::dots::{Dot, DotConfig};
+use crate::algorithms::dots::dots::{Dot, DotConfig};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 

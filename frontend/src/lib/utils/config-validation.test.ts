@@ -22,7 +22,7 @@ describe('config-validation', () => {
 		it('should detect out-of-range variable_weights', () => {
 			const config = { variable_weights: 1.5 };
 			const errors = validateArtisticEffects(config);
-			
+
 			expect(errors).toHaveLength(1);
 			expect(errors[0].field).toBe('variable_weights');
 			expect(errors[0].min).toBe(0.0);
@@ -32,7 +32,7 @@ describe('config-validation', () => {
 		it('should detect out-of-range tremor_strength', () => {
 			const config = { tremor_strength: 0.8 };
 			const errors = validateArtisticEffects(config);
-			
+
 			expect(errors).toHaveLength(1);
 			expect(errors[0].field).toBe('tremor_strength');
 			expect(errors[0].max).toBe(0.5);
@@ -41,7 +41,7 @@ describe('config-validation', () => {
 		it('should detect out-of-range tapering', () => {
 			const config = { tapering: -0.1 };
 			const errors = validateArtisticEffects(config);
-			
+
 			expect(errors).toHaveLength(1);
 			expect(errors[0].field).toBe('tapering');
 			expect(errors[0].min).toBe(0.0);
@@ -57,7 +57,7 @@ describe('config-validation', () => {
 			};
 
 			const clamped = clampArtisticEffects(config);
-			
+
 			expect(clamped.variable_weights).toBe(1.0);
 			expect(clamped.tremor_strength).toBe(0.5);
 			expect(clamped.tapering).toBe(0.0);
@@ -71,7 +71,7 @@ describe('config-validation', () => {
 			};
 
 			const clamped = clampArtisticEffects(config);
-			
+
 			expect(clamped.variable_weights).toBe(0.5);
 			expect(clamped.tremor_strength).toBe(0.25);
 			expect(clamped.tapering).toBe(0.8);

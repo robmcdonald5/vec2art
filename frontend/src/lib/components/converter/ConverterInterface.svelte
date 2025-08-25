@@ -1,29 +1,8 @@
 <script lang="ts">
 	import PreviewComparison from './PreviewComparison.svelte';
-	import type { ProcessingProgress, ProcessingResult } from '$lib/types/vectorizer';
-	import type { FileMetadata } from '$lib/stores/converter-persistence';
+	import type { ConverterComponentProps } from '$lib/types/shared-props';
 
-	interface Props {
-		files: File[];
-		originalImageUrls: (string | null)[];
-		filesMetadata: FileMetadata[];
-		currentImageIndex: number;
-		currentProgress?: ProcessingProgress;
-		results: (ProcessingResult | null)[];
-		previewSvgUrls: (string | null)[];
-		canConvert: boolean;
-		canDownload: boolean;
-		isProcessing: boolean;
-		onImageIndexChange: (index: number) => void;
-		onConvert: () => void;
-		onDownload: () => void;
-		onAbort: () => void;
-		onReset: () => void;
-		onAddMore: () => void;
-		onRemoveFile: (index: number) => void;
-		isPanicked?: boolean;
-		onEmergencyRecovery?: () => void;
-	}
+	interface Props extends ConverterComponentProps {}
 
 	let {
 		files,
@@ -44,7 +23,9 @@
 		onAddMore,
 		onRemoveFile,
 		isPanicked = false,
-		onEmergencyRecovery
+		onEmergencyRecovery,
+		settingsSyncMode,
+		onSettingsModeChange
 	}: Props = $props();
 </script>
 
@@ -68,4 +49,6 @@
 	{onRemoveFile}
 	{isPanicked}
 	{onEmergencyRecovery}
+	{settingsSyncMode}
+	{onSettingsModeChange}
 />

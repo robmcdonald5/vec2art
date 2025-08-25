@@ -9,7 +9,6 @@ use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant as StdInstant;
 
-
 /// Cross-platform time measurement abstraction
 #[derive(Debug, Clone, Copy)]
 pub struct Instant {
@@ -42,7 +41,7 @@ impl Instant {
                 // Fallback for web workers or other contexts
                 js_sys::Date::now()
             };
-            
+
             Self { timestamp }
         }
     }
@@ -65,7 +64,7 @@ impl Instant {
             } else {
                 js_sys::Date::now()
             };
-            
+
             let elapsed_ms = (now - self.timestamp).max(0.0);
             Duration::from_millis(elapsed_ms as u64)
         }
@@ -176,7 +175,7 @@ mod tests {
         let instant1 = Instant::now();
         thread::sleep(Duration::from_millis(1));
         let instant2 = Instant::now();
-        
+
         assert!(instant2.elapsed() < instant1.elapsed());
     }
 
@@ -185,7 +184,7 @@ mod tests {
         let instant = Instant::now();
         thread::sleep(Duration::from_millis(10));
         let elapsed = instant.elapsed();
-        
+
         // Should be at least 10ms, but allow for some variance
         assert!(elapsed >= Duration::from_millis(5));
         assert!(elapsed < Duration::from_millis(100));
@@ -196,7 +195,7 @@ mod tests {
         let instant1 = Instant::now();
         thread::sleep(Duration::from_millis(5));
         let instant2 = Instant::now();
-        
+
         let duration = instant2.duration_since(instant1);
         assert!(duration >= Duration::from_millis(1));
         assert!(duration < Duration::from_millis(50));
@@ -208,7 +207,7 @@ mod tests {
             thread::sleep(Duration::from_millis(10));
             42
         });
-        
+
         assert_eq!(result, 42);
         assert!(duration >= Duration::from_millis(5));
     }
@@ -217,10 +216,10 @@ mod tests {
     fn test_timer() {
         let mut timer = Timer::new();
         thread::sleep(Duration::from_millis(10));
-        
+
         let elapsed = timer.elapsed();
         assert!(elapsed >= Duration::from_millis(5));
-        
+
         timer.reset();
         let elapsed_after_reset = timer.elapsed();
         assert!(elapsed_after_reset < elapsed);

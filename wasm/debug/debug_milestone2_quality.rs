@@ -3,7 +3,7 @@ use image::ImageReader;
 use vectorize_core::algorithms::edges::{
     apply_nms, compute_fdog, hysteresis_threshold, FdogConfig, NmsConfig,
 };
-use vectorize_core::algorithms::etf::{compute_etf, EtfConfig};
+use vectorize_core::algorithms::edges::etf::{compute_etf, EtfConfig};
 use vectorize_core::{vectorize_trace_low, TraceBackend, TraceLowConfig};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

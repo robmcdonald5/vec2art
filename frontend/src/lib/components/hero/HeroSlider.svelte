@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { spring } from 'svelte/motion';
-	import { BeforeAfterSlider } from '$lib/components/ui/before-after-slider';
+	import BeforeAfterSlider from '$lib/components/ui/before-after-slider/before-after-slider.svelte';
 	import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-svelte';
 	import { preload } from '$lib/utils/preload';
 
@@ -205,7 +205,7 @@
 		if (isDragging && containerEl) {
 			// While dragging, update position immediately without spring
 			const offset = -currentPanel * 100 + (dragOffset() / containerEl.offsetWidth) * 100;
-			panelOffset.set(offset, { hard: true });
+			panelOffset.set(offset);
 		} else if (!isDragging) {
 			// When not dragging, ensure we're snapped to a panel
 			panelOffset.set(-currentPanel * 100);
@@ -298,19 +298,23 @@
 											<!-- Left Arrow -->
 											<button
 												onclick={prevShowcase}
-												class="group hover:bg-ferrari-600 hover:text-white absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
+												class="group hover:bg-ferrari-600 absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:text-white"
 												aria-label="Previous example"
 											>
-												<ChevronLeft class="h-4 w-4 text-gray-700 group-hover:text-white transition-colors" />
+												<ChevronLeft
+													class="h-4 w-4 text-gray-700 transition-colors group-hover:text-white"
+												/>
 											</button>
 
 											<!-- Right Arrow -->
 											<button
 												onclick={nextShowcase}
-												class="group hover:bg-ferrari-600 hover:text-white absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
+												class="group hover:bg-ferrari-600 absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:text-white"
 												aria-label="Next example"
 											>
-												<ChevronRight class="h-4 w-4 text-gray-700 group-hover:text-white transition-colors" />
+												<ChevronRight
+													class="h-4 w-4 text-gray-700 transition-colors group-hover:text-white"
+												/>
 											</button>
 										</div>
 									</div>
@@ -335,7 +339,7 @@
 					: 'text-gray-500 hover:text-gray-700'}"
 			>
 				<span
-					class="h-2 w-2 rounded-full {currentPanel === 0 ? 'bg-gray-300' : 'bg-ferrari-600'}"
+					class="h-2 w-2 rounded-full {currentPanel === 0 ? 'bg-ferrari-600' : 'bg-gray-300'}"
 				/>
 				Overview
 			</button>
@@ -347,7 +351,7 @@
 					: 'text-gray-500 hover:text-gray-700'}"
 			>
 				<span
-					class="h-2 w-2 rounded-full {currentPanel === 1 ? 'bg-gray-300' : 'bg-ferrari-600'}"
+					class="h-2 w-2 rounded-full {currentPanel === 1 ? 'bg-ferrari-600' : 'bg-gray-300'}"
 				/>
 				Examples
 			</button>

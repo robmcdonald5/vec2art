@@ -331,7 +331,8 @@ fn test_shared_array_buffer_instantiation() -> bool {
     // Use a try/catch approach via wasm_bindgen
     std::panic::catch_unwind(|| {
         js_sys::SharedArrayBuffer::new(1);
-    }).is_ok()
+    })
+    .is_ok()
 }
 
 fn check_cross_origin_isolated() -> bool {

@@ -3,9 +3,8 @@
 //! This module analyzes color patterns in paths to detect and generate SVG gradients
 //! for enhanced color rendering in vector output.
 
-use crate::algorithms::{Point, ColorSample};
+use crate::algorithms::{ColorSample, Point};
 use std::collections::HashMap;
-use image::Rgba;
 
 /// Point structure for gradient coordinates
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -109,8 +108,9 @@ pub fn analyze_path_for_gradients(
     // Try linear gradient first
     if config.enable_linear_gradients {
         if let Some(analysis) = detect_linear_gradient(path, color_samples, config) {
-            if analysis.quality_score >= config.min_quality_threshold 
-                && analysis.complexity_score <= config.max_complexity_threshold {
+            if analysis.quality_score >= config.min_quality_threshold
+                && analysis.complexity_score <= config.max_complexity_threshold
+            {
                 return Some(analysis);
             }
         }
@@ -119,8 +119,9 @@ pub fn analyze_path_for_gradients(
     // Try radial gradient if linear failed or was disabled
     if config.enable_radial_gradients {
         if let Some(analysis) = detect_radial_gradient(path, color_samples, config) {
-            if analysis.quality_score >= config.min_quality_threshold 
-                && analysis.complexity_score <= config.max_complexity_threshold {
+            if analysis.quality_score >= config.min_quality_threshold
+                && analysis.complexity_score <= config.max_complexity_threshold
+            {
                 return Some(analysis);
             }
         }
@@ -155,20 +156,20 @@ fn detect_linear_gradient(
     // Determine primary gradient direction
     let width = max_x - min_x;
     let height = max_y - min_y;
-    
+
     let (start, end, angle) = if width > height {
         // Horizontal gradient
         (
             GradientPoint::new(min_x, (min_y + max_y) * 0.5),
             GradientPoint::new(max_x, (min_y + max_y) * 0.5),
-            0.0
+            0.0,
         )
     } else {
         // Vertical gradient
         (
             GradientPoint::new((min_x + max_x) * 0.5, min_y),
             GradientPoint::new((min_x + max_x) * 0.5, max_y),
-            90.0
+            90.0,
         )
     };
 
@@ -269,7 +270,7 @@ fn calculate_linear_gradient_quality(color_samples: &[ColorSample]) -> f32 {
 
     // Normalize based on number of samples
     let avg_distance = total_distance / (color_samples.len() - 1) as f32;
-    
+
     // Quality is higher with more color variation but not too chaotic
     (avg_distance / 100.0).clamp(0.0, 1.0)
 }
@@ -281,10 +282,10 @@ fn calculate_radial_gradient_quality(color_samples: &[ColorSample], radius: f32)
     }
 
     let linear_quality = calculate_linear_gradient_quality(color_samples);
-    
+
     // Radial gradients work better with larger areas
     let size_bonus = (radius / 100.0).clamp(0.0, 0.3);
-    
+
     (linear_quality + size_bonus).clamp(0.0, 1.0)
 }
 
@@ -292,17 +293,19 @@ fn calculate_radial_gradient_quality(color_samples: &[ColorSample], radius: f32)
 fn calculate_gradient_complexity(stops: &[GradientStop]) -> f32 {
     // Complexity based on number of stops and color variation
     let stop_complexity = (stops.len() as f32 / 10.0).clamp(0.0, 1.0);
-    
+
     // Add variation complexity
     let mut variation_complexity = 0.0;
     if stops.len() > 1 {
         for i in 1..stops.len() {
-            let distance = calculate_color_distance_perceptual(&stops[i-1].color, &stops[i].color);
+            let distance =
+                calculate_color_distance_perceptual(&stops[i - 1].color, &stops[i].color);
             variation_complexity += distance;
         }
-        variation_complexity = (variation_complexity / (stops.len() - 1) as f32 / 100.0).clamp(0.0, 1.0);
+        variation_complexity =
+            (variation_complexity / (stops.len() - 1) as f32 / 100.0).clamp(0.0, 1.0);
     }
-    
+
     (stop_complexity + variation_complexity) * 0.5
 }
 
@@ -311,28 +314,15 @@ fn calculate_color_distance_perceptual(color1: &ColorSample, color2: &ColorSampl
     // Extract RGBA values
     let rgba1 = color1.color;
     let rgba2 = color2.color;
-    
+
     // Simple Euclidean distance in RGB space (could be improved with LAB color space)
     let dr = rgba1[0] as f32 - rgba2[0] as f32;
     let dg = rgba1[1] as f32 - rgba2[1] as f32;
     let db = rgba1[2] as f32 - rgba2[2] as f32;
-    
+
     (dr * dr + dg * dg + db * db).sqrt()
 }
 
-/// Convert hex color to RGB tuple
-fn hex_to_rgb(hex: &str) -> (u8, u8, u8) {
-    let hex = hex.trim_start_matches('#');
-    if hex.len() != 6 {
-        return (0, 0, 0);
-    }
-    
-    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
-    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
-    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
-    
-    (r, g, b)
-}
 
 /// Generate unique gradient ID for SVG
 pub fn generate_gradient_id(region_id: usize, gradient_type: &str) -> String {
@@ -345,13 +335,13 @@ pub fn analyze_paths_for_gradients(
     config: &GradientDetectionConfig,
 ) -> HashMap<usize, GradientAnalysis> {
     let mut results = HashMap::new();
-    
+
     for (i, (path, colors)) in paths_and_colors.iter().enumerate() {
         if let Some(analysis) = analyze_path_for_gradients(path, colors, config) {
             results.insert(i, analysis);
         }
     }
-    
+
     results
 }
 
@@ -360,6 +350,7 @@ mod tests {
     use super::*;
 
     fn create_test_color_sample(r: u8, g: u8, b: u8) -> ColorSample {
+        use image::Rgba;
         ColorSample {
             position: 0.0,
             color: Rgba([r, g, b, 255]),
@@ -369,23 +360,20 @@ mod tests {
 
     #[test]
     fn test_linear_gradient_detection() {
-        let path = vec![
-            Point::new(0.0, 50.0),
-            Point::new(100.0, 50.0),
-        ];
-        
+        let path = vec![Point::new(0.0, 50.0), Point::new(100.0, 50.0)];
+
         let colors = vec![
             create_test_color_sample(255, 0, 0),
             create_test_color_sample(0, 255, 0),
             create_test_color_sample(0, 0, 255),
         ];
-        
+
         let config = GradientDetectionConfig::default();
         let analysis = detect_linear_gradient(&path, &colors, &config);
-        
+
         assert!(analysis.is_some());
         let analysis = analysis.unwrap();
-        
+
         match analysis.gradient_type {
             GradientType::Linear { stops, angle, .. } => {
                 assert_eq!(stops.len(), 3);
@@ -402,19 +390,19 @@ mod tests {
             Point::new(100.0, 50.0),
             Point::new(75.0, 100.0),
         ];
-        
+
         let colors = vec![
             create_test_color_sample(255, 255, 255),
             create_test_color_sample(128, 128, 128),
             create_test_color_sample(0, 0, 0),
         ];
-        
+
         let config = GradientDetectionConfig::default();
         let analysis = detect_radial_gradient(&path, &colors, &config);
-        
+
         assert!(analysis.is_some());
         let analysis = analysis.unwrap();
-        
+
         match analysis.gradient_type {
             GradientType::Radial { stops, .. } => {
                 assert_eq!(stops.len(), 3);
@@ -428,7 +416,7 @@ mod tests {
         let red = create_test_color_sample(255, 0, 0);
         let blue = create_test_color_sample(0, 0, 255);
         let distance = calculate_color_distance_perceptual(&red, &blue);
-        
+
         assert!(distance > 0.0);
         assert!(distance > 200.0); // Red to blue should have significant distance
     }

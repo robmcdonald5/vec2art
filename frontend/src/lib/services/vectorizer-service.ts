@@ -53,7 +53,7 @@ export class VectorizerService {
 	private isProcessing = false;
 	private abortController: AbortController | null = null;
 	private currentPerformanceMode: PerformanceMode = 'balanced';
-	
+
 	// Failure detection and recovery
 	private failureCount = 0;
 	private lastFailureTime = 0;
@@ -172,8 +172,8 @@ export class VectorizerService {
 			'already borrowed',
 			'index out of bounds'
 		];
-		
-		return criticalErrors.some(criticalError => 
+
+		return criticalErrors.some((criticalError) =>
 			errorMessage.toLowerCase().includes(criticalError.toLowerCase())
 		);
 	}
@@ -183,39 +183,41 @@ export class VectorizerService {
 	 */
 	private async handleFailure(error: any): Promise<void> {
 		const now = Date.now();
-		
+
 		// Reset failure count if enough time has passed
 		if (now - this.lastFailureTime > this.failureResetTime) {
 			this.failureCount = 0;
 		}
-		
+
 		this.failureCount++;
 		this.lastFailureTime = now;
-		
-		console.warn(`[VectorizerService] Failure ${this.failureCount}/${this.maxFailureCount}:`, error);
-		
+
+		console.warn(
+			`[VectorizerService] Failure ${this.failureCount}/${this.maxFailureCount}:`,
+			error
+		);
+
 		// If this is a critical error and we haven't exceeded max failures, try to recover
 		if (this.isCriticalError(error) && this.failureCount <= this.maxFailureCount) {
 			console.log('[VectorizerService] Attempting automatic recovery...');
-			
+
 			try {
 				// Mark as uninitialized
 				this.isInitialized = false;
 				this.initializationPromise = null;
 				this.vectorizer = null;
 				this.wasmModule = null;
-				
+
 				// Wait a bit before reinitializing
-				await new Promise(resolve => setTimeout(resolve, 1000));
-				
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+
 				// Reinitialize WASM module
 				await this.initialize();
-				
+
 				console.log('[VectorizerService] ✅ Automatic recovery successful');
-				
+
 				// Reset failure count on successful recovery
 				this.failureCount = 0;
-				
 			} catch (recoveryError) {
 				console.error('[VectorizerService] ❌ Automatic recovery failed:', recoveryError);
 				// Don't throw here, let the original error be handled normally
@@ -333,7 +335,8 @@ export class VectorizerService {
 			...DEFAULT_CONFIG,
 			backend: backend as any,
 			detail: preset === 'minimal' ? DEFAULT_CONFIG.detail * 0.5 : DEFAULT_CONFIG.detail,
-			stroke_width: preset === 'minimal' ? DEFAULT_CONFIG.stroke_width * 0.67 : DEFAULT_CONFIG.stroke_width,
+			stroke_width:
+				preset === 'minimal' ? DEFAULT_CONFIG.stroke_width * 0.67 : DEFAULT_CONFIG.stroke_width,
 			multipass: backend === 'edge', // Only edge backend uses multipass
 			pass_count: 1,
 			multipass_mode: 'auto',
@@ -399,7 +402,7 @@ export class VectorizerService {
 			if (preset === 'enhanced') {
 				// Try to add superpixel-specific features if available (currently missing)
 				if (typeof this.vectorizer.set_num_superpixels === 'function') {
-					config.num_superpixels = 100;
+					config.num_superpixels = 150;
 				}
 			}
 		}
@@ -683,7 +686,10 @@ export class VectorizerService {
 
 			// Configure directional strength threshold
 			if (workingConfig.directional_strength_threshold !== undefined) {
-				this.safeCall('set_directional_strength_threshold', workingConfig.directional_strength_threshold);
+				this.safeCall(
+					'set_directional_strength_threshold',
+					workingConfig.directional_strength_threshold
+				);
 			}
 
 			// Configure artistic effects (hand-drawn aesthetics)
@@ -717,7 +723,7 @@ export class VectorizerService {
 				let etfFdog = workingConfig.enable_etf_fdog;
 				let flowTracing = workingConfig.enable_flow_tracing;
 				let bezierFitting = workingConfig.enable_bezier_fitting;
-				
+
 				// Auto-enable dependencies
 				if (bezierFitting && !flowTracing) {
 					console.log('[VectorizerService] Auto-enabling flow tracing for Bezier fitting');
@@ -727,7 +733,7 @@ export class VectorizerService {
 					console.log('[VectorizerService] Auto-enabling ETF/FDoG for flow tracing');
 					etfFdog = true;
 				}
-				
+
 				// Apply in correct order
 				this.vectorizer.set_enable_etf_fdog(etfFdog);
 				this.vectorizer.set_enable_flow_tracing(flowTracing);
@@ -870,7 +876,7 @@ export class VectorizerService {
 		// Use Web Worker service for processing to prevent main thread blocking
 		// This runs WASM in a separate thread, preventing browser freezing
 		console.log('[VectorizerService] Processing via Web Worker for thread safety');
-		
+
 		if (this.isProcessing) {
 			throw new Error('Another processing operation is already in progress');
 		}
@@ -886,11 +892,7 @@ export class VectorizerService {
 
 			// Process via Web Worker (runs WASM off main thread)
 			// Pass the complete ImageData object to maintain structure
-			const result = await wasmWorkerService.processImage(
-				imageData,
-				config,
-				onProgress
-			);
+			const result = await wasmWorkerService.processImage(imageData, config, onProgress);
 
 			const endTime = performance.now();
 			const processingTime = endTime - startTime;
@@ -901,7 +903,7 @@ export class VectorizerService {
 			// Enhance result with additional statistics
 			result.processing_time_ms = processingTime;
 			result.config_used = config;
-			
+
 			if (!result.statistics) {
 				result.statistics = {
 					input_dimensions: [imageData.width, imageData.height] as [number, number],

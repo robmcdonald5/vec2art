@@ -2,7 +2,7 @@
  * TypeScript interfaces for WASM vectorizer integration
  */
 
-export type VectorizerBackend = 'edge' | 'centerline' | 'superpixel' | 'dots';
+export type VectorizerBackend = 'edge' | 'dots' | 'superpixel' | 'centerline';
 
 export type VectorizerPreset = 'sketch' | 'technical' | 'artistic' | 'poster' | 'comic';
 
@@ -86,7 +86,6 @@ export interface VectorizerConfig {
 	min_radius?: number; // 0.2-3.0 px
 	max_radius?: number; // 0.5-10.0 px
 	adaptive_sizing?: boolean;
-	preserve_colors?: boolean;
 	background_tolerance?: number; // 0.0-1.0
 	poisson_disk_sampling?: boolean;
 	min_distance_factor?: number; // 0.5-2.0
@@ -108,10 +107,12 @@ export interface VectorizerConfig {
 	simplify_boundaries?: boolean;
 	boundary_epsilon?: number; // 0.5-3.0 px
 
-	// Line tracing color options
-	line_preserve_colors?: boolean; // Whether to preserve original colors in line tracing
-	line_color_sampling?: 'dominant' | 'gradient' | 'content-aware' | 'adaptive'; // Color sampling method
-	line_color_accuracy?: number; // 0.0-1.0 (0.0 = fast, 1.0 = accurate)
+	// Unified color preservation (applies to all backends)
+	preserve_colors?: boolean; // Whether to preserve original colors vs monochrome output
+
+	// Advanced color options (when preserve_colors is enabled)
+	color_sampling?: 'dominant' | 'gradient' | 'content-aware' | 'adaptive'; // Color sampling method
+	color_accuracy?: number; // 0.0-1.0 (0.0 = fast, 1.0 = accurate)
 	max_colors_per_path?: number; // 1-10 maximum colors per path segment
 	color_tolerance?: number; // 0.0-1.0 color similarity tolerance
 	enable_palette_reduction?: boolean; // Whether to enable color palette reduction
@@ -254,10 +255,10 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	variable_weights: 0.0,
 	tremor_strength: 0.0,
 	tapering: 0.0,
-	// Line tracing color defaults
-	line_preserve_colors: false, // Default to monochrome for backward compatibility
-	line_color_sampling: 'dominant', // Default to simple dominant color sampling
-	line_color_accuracy: 0.7, // Good balance of speed vs accuracy
+	// Unified color defaults
+	preserve_colors: false, // Default to monochrome for backward compatibility
+	color_sampling: 'dominant', // Default to simple dominant color sampling
+	color_accuracy: 0.7, // Good balance of speed vs accuracy
 	max_colors_per_path: 3, // Reasonable color complexity limit
 	color_tolerance: 0.15, // Moderate color similarity threshold
 	enable_palette_reduction: false, // Default disabled for backward compatibility
@@ -309,6 +310,7 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		// Dots backend - stippling and pointillism
 		backend: 'dots',
 		detail: 0.3, // Less detail for cleaner stippling
+		stroke_width: 1.0, // Dot Width 1.0px by default
 		pass_count: 1, // Single pass for dots algorithm
 		hand_drawn_preset: 'none', // Hand-drawn effects don't apply to dots
 		variable_weights: 0.0,
@@ -316,17 +318,16 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		tapering: 0.0,
 		// Dots-specific settings
 		dot_density_threshold: 0.15,
-		preserve_colors: true,
 		adaptive_sizing: true,
 		min_radius: 0.5,
 		max_radius: 3.0,
 		background_tolerance: 0.1,
 		poisson_disk_sampling: true,
 		gradient_based_sizing: true,
-		// Line color settings (for when user switches to edge/centerline)
-		line_preserve_colors: true,
-		line_color_sampling: 'adaptive',
-		line_color_accuracy: 0.8
+		// Unified color settings - Enable Color by default
+		preserve_colors: true,
+		color_sampling: 'adaptive',
+		color_accuracy: 0.8
 	},
 	poster: {
 		// Superpixel backend - bold regions and clean shapes
@@ -345,7 +346,9 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		fill_regions: true,
 		stroke_regions: true,
 		simplify_boundaries: true,
-		boundary_epsilon: 1.0
+		boundary_epsilon: 1.0,
+		// Unified color setting
+		preserve_colors: true
 	},
 	comic: {
 		// Edge backend - high-quality comic book style
@@ -366,10 +369,10 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		enable_flow_tracing: false,
 		enable_bezier_fitting: false,
 		enable_etf_fdog: false,
-		// Line color settings for comic book style
-		line_preserve_colors: true,
-		line_color_sampling: 'gradient',
-		line_color_accuracy: 0.6
+		// Unified color settings for comic book style
+		preserve_colors: true,
+		color_sampling: 'gradient',
+		color_accuracy: 0.6
 	}
 };
 
@@ -404,15 +407,13 @@ export const HAND_DRAWN_DESCRIPTIONS: Record<HandDrawnPreset, string> = {
 	custom: 'Custom artistic effects - manually adjusted using individual sliders'
 };
 
-// Utility functions for multipass processing  
-export function calculateMultipassConfig(
-	config: VectorizerConfig
-): { multipass: boolean } {
-	const { pass_count } = config;
-	
-	// Enable multipass for 2+ passes
-	return { 
-		multipass: pass_count > 1 
+// Utility functions for multipass processing
+export function calculateMultipassConfig(config: VectorizerConfig): { multipass: boolean } {
+	const { pass_count, backend } = config;
+
+	// Enable multipass only for edge backend with 2+ passes
+	return {
+		multipass: backend === 'edge' && pass_count > 1
 	};
 }
 

@@ -5,9 +5,11 @@
 //! and parallel processing for maximum efficiency.
 
 use crate::algorithms::{
-    background::{detect_background_advanced, BackgroundConfig},
-    dots::{Dot, DotConfig},
-    gradients::{GradientAnalysis, GradientConfig},
+    dots::{
+        background::{detect_background_advanced, BackgroundConfig},
+        dots::{Dot, DotConfig},
+    },
+    edges::gradients::{GradientAnalysis, GradientConfig},
 };
 use crate::performance::{
     memory_pool::PoolManager,
@@ -427,7 +429,7 @@ pub fn analyze_gradients_optimized(
                 .collect();
 
             execute_parallel(pixel_coords.iter(), |&(x, y)| {
-                crate::algorithms::gradients::calculate_local_variance(
+                crate::algorithms::edges::gradients::calculate_local_variance(
                     gray,
                     x,
                     y,
@@ -439,7 +441,7 @@ pub fn analyze_gradients_optimized(
             (0..height)
                 .flat_map(|y| {
                     (0..width).map(move |x| {
-                        crate::algorithms::gradients::calculate_local_variance(
+                        crate::algorithms::edges::gradients::calculate_local_variance(
                             gray,
                             x,
                             y,
@@ -458,7 +460,7 @@ pub fn analyze_gradients_optimized(
         }
     } else {
         // Use standard gradient analysis with parallel optimization
-        crate::algorithms::gradients::analyze_image_gradients_with_config(gray, config)
+        crate::algorithms::edges::gradients::analyze_image_gradients_with_config(gray, config)
     }
 }
 
@@ -492,7 +494,7 @@ fn detect_background_with_simd_optimization(
 
     // Sample edge colors (standard implementation)
     let edge_colors =
-        crate::algorithms::background::sample_edge_pixels(rgba, config.edge_sample_ratio);
+        crate::algorithms::dots::background::sample_edge_pixels(rgba, config.edge_sample_ratio);
     if edge_colors.is_empty() {
         return vec![false; total_pixels];
     }
@@ -743,13 +745,13 @@ mod tests {
         // Generate gradient analysis and background mask
         let gray = image::imageops::grayscale(&img);
         let gradient_config = GradientConfig::default();
-        let gradient_analysis = crate::algorithms::gradients::analyze_image_gradients_with_config(
+        let gradient_analysis = crate::algorithms::edges::gradients::analyze_image_gradients_with_config(
             &gray,
             &gradient_config,
         );
         let background_config = BackgroundConfig::default();
         let background_mask =
-            crate::algorithms::background::detect_background_advanced(&img, &background_config);
+            crate::algorithms::dots::background::detect_background_advanced(&img, &background_config);
 
         let dots = generator.generate_dots_optimized(&img, &gradient_analysis, &background_mask);
 
@@ -866,7 +868,15 @@ mod tests {
         // Both should complete within reasonable time
         // Note: Performance can vary significantly based on system and configuration
         // Allow more time for complex processing, especially on slower systems
-        assert!(standard_time.as_millis() < 10000, "Standard dots took too long: {:?}", standard_time);
-        assert!(optimized_time.as_millis() < 15000, "Optimized dots took too long: {:?}", optimized_time);
+        assert!(
+            standard_time.as_millis() < 10000,
+            "Standard dots took too long: {:?}",
+            standard_time
+        );
+        assert!(
+            optimized_time.as_millis() < 15000,
+            "Optimized dots took too long: {:?}",
+            optimized_time
+        );
     }
 }

@@ -12,11 +12,13 @@
 	import UploadArea from '$lib/components/converter/UploadArea.svelte';
 	import ConverterInterface from '$lib/components/converter/ConverterInterface.svelte';
 	import SettingsPanel from '$lib/components/converter/SettingsPanel.svelte';
+	import SettingsModeSelector from '$lib/components/converter/SettingsModeSelector.svelte';
 	import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
 	import { toastStore } from '$lib/stores/toast.svelte';
 	import { parameterHistory } from '$lib/stores/parameter-history.svelte';
 	import { converterPersistence } from '$lib/stores/converter-persistence';
 	import type { FileMetadata } from '$lib/stores/converter-persistence';
+	import { devLog, devDebug, devWarn, devError, devSuccess } from '$lib/utils/dev-logger';
 
 	// Types and stores
 	import type {
@@ -31,6 +33,9 @@
 	import { getOptimalThreadCount } from '$lib/utils/performance-monitor';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte.js';
 	import { wasmWorkerService } from '$lib/services/wasm-worker-service';
+	import { settingsSyncStore } from '$lib/stores/settings-sync.svelte';
+	import type { SettingsSyncMode } from '$lib/types/settings-sync';
+	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
 
 	// UI State Management - Using Svelte 5 runes
 	let files = $state<File[]>([]);
@@ -38,6 +43,7 @@
 	let filesMetadata = $state<FileMetadata[]>([]); // Metadata for original files (for persistence)
 	let pendingFilesMetadata = $state<FileMetadata[] | null>(null); // Temporary storage for metadata restoration
 	let currentImageIndex = $state(0);
+	let processingImageIndex = $state(0); // Separate state for processing that doesn't trigger zoom reset
 	let currentProgress = $state<ProcessingProgress | null>(null);
 	let results = $state<(ProcessingResult | null)[]>([]);
 	let previewSvgUrls = $state<(string | null)[]>([]);
@@ -53,12 +59,19 @@
 	let hasRecoveredState = $state(false);
 	let isRecoveringState = $state(false);
 
-	// Converter configuration state - use proper defaults
-	let config = $state<VectorizerConfig>({
+	// Component reset key to force remounting
+	let componentResetKey = $state(0);
+
+	// Converter configuration state - use settings sync store
+	// Initialize settings sync store with enhanced defaults
+	settingsSyncStore.updateConfig({
 		...DEFAULT_CONFIG,
 		optimize_svg: true,
 		svg_precision: 2
 	});
+
+	// Derived config from settings sync store based on current mode and image
+	const config = $derived(settingsSyncStore.getCurrentConfig(currentImageIndex));
 
 	let selectedPreset = $state<VectorizerPreset | 'custom'>('artistic');
 	let performanceMode = $state<PerformanceMode>('balanced');
@@ -87,40 +100,49 @@
 	}
 
 	// File management functions
-	async function handleFilesSelect(selectedFiles: File[], preserveCurrentIndex: boolean = false, retryCount: number = 0) {
-		console.log('🔍 [DEBUG] handleFilesSelect called:', {
+	async function handleFilesSelect(
+		selectedFiles: File[],
+		preserveCurrentIndex: boolean = false,
+		retryCount: number = 0
+	) {
+		devDebug('handleFilesSelect called', {
 			selectedFilesCount: selectedFiles.length,
-			selectedFileNames: selectedFiles.map(f => f.name),
+			selectedFileNames: selectedFiles.map((f) => f.name),
 			currentFilesCount: files.length,
-			currentOriginalUrlsCount: originalImageUrls.length,
 			preserveCurrentIndex,
-			isRecoveringState,
-			pageLoaded
+			isRecoveringState
 		});
 
 		// CRITICAL: Don't process uploads during state recovery to prevent race conditions
 		if (isRecoveringState) {
-			console.log('⚠️ [DEBUG] Blocking file upload during state recovery, retry count:', retryCount);
-			
+			devWarn('file_operations', 'Blocking file upload during state recovery', { retryCount });
+
 			// Prevent infinite retry loops
-			if (retryCount >= 50) { // Max 5 seconds of retries (50 * 100ms)
-				console.error('❌ [DEBUG] Max retry attempts reached, forcing state recovery to complete');
+			if (retryCount >= 50) {
+				// Max 5 seconds of retries (50 * 100ms)
+				devError(
+					'file_operations',
+					'Max retry attempts reached, forcing state recovery to complete'
+				);
 				isRecoveringState = false; // Force recovery to complete
 			} else {
 				// Queue the upload to retry after state recovery completes
-				setTimeout(() => handleFilesSelect(selectedFiles, preserveCurrentIndex, retryCount + 1), 100);
+				setTimeout(
+					() => handleFilesSelect(selectedFiles, preserveCurrentIndex, retryCount + 1),
+					100
+				);
 				return;
 			}
 		}
 
 		const previousFileCount = files.length;
 		const previousRestoredCount = Math.max(originalImageUrls.length, filesMetadata.length);
-		
+
 		// FIXED: Don't consider restored state as "existing data" for fresh uploads
 		// Only consider actual File objects as existing data
 		const hasExistingFiles = previousFileCount > 0;
 
-		console.log('🔍 [DEBUG] File selection state:', {
+		devDebug('File selection state', {
 			previousFileCount,
 			previousRestoredCount,
 			hasExistingFiles,
@@ -134,7 +156,7 @@
 			// Create URLs for the new files and append to existing URLs
 			const newImageUrls = [...originalImageUrls]; // Keep existing URLs (restored or active)
 			const startIndex = Math.max(previousFileCount, previousRestoredCount); // Start after existing data
-			
+
 			// Handle both URLs and metadata for new files
 			if (previousFileCount === 0 && previousRestoredCount > 0) {
 				// Restored state case: append all selectedFiles as new
@@ -201,7 +223,7 @@
 		}
 
 		// Only reset index if we're replacing all files, not adding to existing ones
-		if (!preserveCurrentIndex || (!hasExistingFiles)) {
+		if (!preserveCurrentIndex || !hasExistingFiles) {
 			currentImageIndex = 0;
 			// Clear previous results when replacing
 			results = [];
@@ -221,18 +243,33 @@
 		}
 		announceToScreenReader(`${selectedFiles.length} file(s) selected`);
 
-		console.log('🔍 [DEBUG] handleFilesSelect completed:', {
+		// Initialize/update settings sync store with new image count and current index
+		settingsSyncStore.initialize(selectedFiles.length, currentImageIndex);
+
+		// Notify about image additions if files were added
+		if (preserveCurrentIndex && hasExistingFiles) {
+			// Images were added - notify for each new image
+			for (let i = previousFileCount; i < selectedFiles.length; i++) {
+				settingsSyncStore.handleImageAdded(i, selectedFiles.length);
+			}
+		}
+
+		devDebug('handleFilesSelect completed', {
 			finalFilesCount: files.length,
-			finalFileNames: files.map(f => f.name),
 			finalOriginalUrlsCount: originalImageUrls.length,
 			finalCurrentIndex: currentImageIndex
 		});
 	}
 
 	function handleImageIndexChange(index: number) {
-		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata.length, results.length);
+		const maxLength = Math.max(
+			files.length,
+			originalImageUrls.length,
+			filesMetadata.length,
+			results.length
+		);
 		if (index >= 0 && index < maxLength) {
-			currentImageIndex = index;
+			handleImageIndexChangeWithSync(index);
 		}
 	}
 
@@ -261,9 +298,19 @@
 
 	function handleRemoveFile(index: number) {
 		// Bounds checking - ensure index is valid for all arrays that will be accessed
-		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata.length, results.length, previewSvgUrls.length);
+		const maxLength = Math.max(
+			files.length,
+			originalImageUrls.length,
+			filesMetadata.length,
+			results.length,
+			previewSvgUrls.length
+		);
 		if (index < 0 || index >= maxLength || isProcessing) {
-			console.warn('Cannot remove file - invalid index or processing:', { index, maxLength, isProcessing });
+			console.warn('Cannot remove file - invalid index or processing:', {
+				index,
+				maxLength,
+				isProcessing
+			});
 			return;
 		}
 
@@ -307,6 +354,10 @@
 		filesMetadata = newFilesMetadata;
 		currentImageIndex = Math.min(newCurrentIndex, newFiles.length - 1);
 
+		// Notify settings sync store about image removal
+		settingsSyncStore.handleImageRemoved(index, newFiles.length);
+		settingsSyncStore.setCurrentImageIndex(currentImageIndex);
+
 		// If no files left, reset everything
 		if (newFiles.length === 0) {
 			handleReset();
@@ -344,14 +395,14 @@
 			try {
 				if (!wasmWorkerService.initialized) {
 					console.log('🔧 Initializing WASM in Web Worker...');
-					
+
 					// Initialize with requested thread count (safe in Worker context)
-					await wasmWorkerService.initialize({ 
-						threadCount: threadCount || 1 
+					await wasmWorkerService.initialize({
+						threadCount: threadCount || 1
 					});
-					
+
 					console.log('✅ WASM Web Worker initialized successfully');
-					
+
 					if (threadCount > 1) {
 						toastStore.success(`Multi-threading enabled with ${threadCount} threads`, 3000);
 					}
@@ -365,66 +416,151 @@
 			// Check if we have any actual files to process
 			if (files.length === 0) {
 				console.log('🔍 [DEBUG] No files available for conversion');
-				if (originalImageUrls.length > 0) {
-					toastStore.error('Files from previous session could not be restored. Please upload your images again.');
+				if (originalImageUrls.length > 0 || filesMetadata.length > 0) {
+					// We have restored state but no File objects - this is the bug!
+					console.log(
+						'⚠️ [DEBUG] Restored state detected but File objects missing. Attempting recovery...'
+					);
+					toastStore.error(
+						'Files from previous session need to be re-uploaded. Your settings and results are preserved, but please upload your images again to continue.',
+						8000
+					);
 				} else {
 					toastStore.error('No files available for conversion. Please upload some images first.');
 				}
 				return;
 			}
 
-			// Smart conversion logic:
-			// 1. Always convert current image (even if already converted)
-			// 2. Convert any images that don't have results yet
-			// 3. Skip already converted images (except current)
+			// Settings sync-aware conversion logic:
+			// Get convert configuration based on current settings sync mode
+			const convertConfig = settingsSyncStore.getConvertConfig();
+			const imagesToProcess = convertConfig.imageIndices;
 
-			const filesToProcess: File[] = [];
-			const indexMapping: number[] = []; // Maps processed file index to original file index
+			console.log(
+				`🎯 Settings Sync Conversion (${convertConfig.mode}): Processing ${imagesToProcess.length} images`,
+				{ mode: convertConfig.mode, imageIndices: imagesToProcess }
+			);
 
-			// Always include current image first (gets re-converted)
-			if (files[currentImageIndex]) {
-				filesToProcess.push(files[currentImageIndex]);
-				indexMapping.push(currentImageIndex);
-			}
+			// Debug settings sync store state
+			const syncStats = settingsSyncStore.getStatistics();
+			console.log('🔍 [DEBUG] Settings sync store statistics:', syncStats);
+			console.log('🔍 [DEBUG] Current UI state:', {
+				filesCount: files.length,
+				originalImageUrlsCount: originalImageUrls.length,
+				filesMetadataCount: filesMetadata.length,
+				resultsCount: results.length,
+				currentImageIndex
+			});
 
-			// Add any files that haven't been converted yet
-			for (let i = 0; i < files.length; i++) {
-				if (i !== currentImageIndex && (!results[i] || !results[i]?.svg)) {
-					filesToProcess.push(files[i]);
-					indexMapping.push(i);
+			if (imagesToProcess.length === 0) {
+				console.error('❌ [DEBUG] No images to process - settings sync store issue detected');
+
+				// DEFENSIVE FALLBACK: If settings sync is broken, try to process available files directly
+				if (files.length > 0) {
+					console.log('🔧 [DEBUG] Attempting fallback processing with available files');
+					const fallbackIndices = Array.from({ length: files.length }, (_, i) => i);
+
+					// Process all available files with current config
+					await vectorizerStore.setInputFiles(files);
+					vectorizerStore.updateConfig(config);
+
+					const fallbackResults = await vectorizerStore.processBatch(
+						(imageIndex, totalImages, progress) => {
+							processingImageIndex = imageIndex;
+							currentProgress = progress;
+							completedImages = imageIndex;
+							announceToScreenReader(`Processing image ${imageIndex + 1}: ${progress.stage}`);
+						}
+					);
+
+					// Update results
+					results = fallbackResults;
+					previewSvgUrls = fallbackResults.map((result) => {
+						if (result && result.svg) {
+							const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+							return URL.createObjectURL(blob);
+						}
+						return null;
+					});
+
+					toastStore.success(
+						`Fallback processing completed: ${fallbackResults.length} image(s) converted`
+					);
+					return;
+				} else {
+					toastStore.error(
+						'No files available for conversion. Settings sync store may not be properly initialized.'
+					);
+					return;
 				}
 			}
 
-			if (filesToProcess.length === 0) {
-				toastStore.info('No files available for conversion');
-				return;
-			}
+			// Prepare files to process based on settings sync mode
+			const filesToProcess: File[] = [];
+			const indexMapping: number[] = [];
+			const configsToProcess: VectorizerConfig[] = [];
 
-			console.log(
-				`🎯 Smart conversion: Processing ${filesToProcess.length} files (current: ${currentImageIndex}, total: ${files.length})`
-			);
+			for (const imageIndex of imagesToProcess) {
+				if (files[imageIndex]) {
+					filesToProcess.push(files[imageIndex]);
+					indexMapping.push(imageIndex);
+					configsToProcess.push(convertConfig.configMap.get(imageIndex)!);
+				}
+			}
 
 			// Set up vectorizer with files to process
 			await vectorizerStore.setInputFiles(filesToProcess);
-			
-			// Sync current config to vectorizer store before processing
-			vectorizerStore.updateConfig(config);
 
-			// Process files
-			const processedResults = await vectorizerStore.processBatch(
-				(imageIndex, totalImages, progress) => {
-					const originalIndex = indexMapping[imageIndex];
-					currentImageIndex = originalIndex; // Show progress on the actual file being processed
-					currentProgress = progress;
+			// For per-image modes, we'll need to process files individually with their configs
+			// For global mode, all files use the same config
+			const processedResults: ProcessingResult[] = [];
 
-					// Update completed count when a new image starts processing
-					if (progress.stage === 'preprocessing' && progress.progress === 0) {
-						completedImages = imageIndex;
+			if (convertConfig.mode === 'global') {
+				// Global mode: use single config for all files
+				vectorizerStore.updateConfig(configsToProcess[0]);
+				const batchResults = await vectorizerStore.processBatch(
+					(imageIndex, totalImages, progress) => {
+						const originalIndex = indexMapping[imageIndex];
+						processingImageIndex = originalIndex;
+						currentProgress = progress;
+
+						if (progress.stage === 'preprocessing' && progress.progress === 0) {
+							completedImages = imageIndex;
+						}
+
+						announceToScreenReader(`Processing image ${originalIndex + 1}: ${progress.stage}`);
 					}
+				);
+				processedResults.push(...batchResults);
+			} else {
+				// Per-image modes: process each image with its own config
+				for (let i = 0; i < filesToProcess.length; i++) {
+					const imageConfig = configsToProcess[i];
+					const originalIndex = indexMapping[i];
 
-					announceToScreenReader(`Processing image ${originalIndex + 1}: ${progress.stage}`);
+					// Update config for this specific image
+					vectorizerStore.updateConfig(imageConfig);
+
+					// Process single image
+					await vectorizerStore.setInputFiles([filesToProcess[i]]);
+					const singleResult = await vectorizerStore.processBatch(
+						(imageIndex, totalImages, progress) => {
+							processingImageIndex = originalIndex;
+							currentProgress = progress;
+
+							if (progress.stage === 'preprocessing' && progress.progress === 0) {
+								completedImages = i;
+							}
+
+							announceToScreenReader(`Processing image ${originalIndex + 1}: ${progress.stage}`);
+						}
+					);
+
+					if (singleResult.length > 0) {
+						processedResults.push(singleResult[0]);
+					}
 				}
-			);
+			}
 
 			// Update results and preview URLs for the processed files
 			let newResults = [...results];
@@ -470,6 +606,7 @@
 		} finally {
 			isProcessing = false;
 			currentProgress = null;
+			processingImageIndex = currentImageIndex; // Reset to current index when done
 		}
 	}
 
@@ -488,7 +625,12 @@
 		}
 
 		// Bounds checking for array access
-		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata.length, results.length);
+		const maxLength = Math.max(
+			files.length,
+			originalImageUrls.length,
+			filesMetadata.length,
+			results.length
+		);
 		if (currentImageIndex < 0 || currentImageIndex >= maxLength) {
 			console.error('Current image index out of bounds:', currentImageIndex, 'max:', maxLength);
 			toastStore.error('Cannot download - invalid image selection');
@@ -497,7 +639,7 @@
 
 		try {
 			const result = results[currentImageIndex];
-			
+
 			// Get filename from either file object or metadata
 			let filename = 'converted_image';
 			if (currentImageIndex < files.length && files[currentImageIndex]) {
@@ -536,6 +678,7 @@
 		vectorizerStore.abortProcessing();
 		isProcessing = false;
 		currentProgress = null;
+		processingImageIndex = currentImageIndex; // Reset to current index when aborted
 		announceToScreenReader('Conversion stopped');
 	}
 
@@ -559,6 +702,13 @@
 		isProcessing = false;
 		completedImages = 0;
 		batchStartTime = null;
+
+		// Reset pan/zoom state
+		panZoomStore.resetStates();
+
+		// Force component remounting by changing key
+		componentResetKey++;
+
 		announceToScreenReader('Converter reset');
 	}
 
@@ -566,14 +716,14 @@
 		try {
 			isProcessing = true;
 			toastStore.info('🚨 Starting emergency recovery...');
-			
+
 			// Perform emergency recovery
 			await vectorizerStore.emergencyRecovery();
-			
+
 			// Reset UI state but keep files
 			currentProgress = null;
 			isProcessing = false;
-			
+
 			toastStore.success('✅ Emergency recovery completed successfully');
 			announceToScreenReader('Emergency recovery completed. Converter is ready to use again');
 		} catch (error) {
@@ -586,8 +736,9 @@
 
 	// Configuration functions
 	function handleConfigChange(updates: Partial<VectorizerConfig>) {
-		const newConfig = { ...config, ...updates };
-		config = newConfig;
+		const currentConfig = settingsSyncStore.getCurrentConfig(currentImageIndex);
+		const newConfig = { ...currentConfig, ...updates };
+		settingsSyncStore.updateConfig(newConfig, currentImageIndex);
 
 		// Add to parameter history with description
 		const description = Object.keys(updates).join(', ') + ' changed';
@@ -595,7 +746,7 @@
 	}
 
 	function handleConfigReplace(newConfig: VectorizerConfig) {
-		config = newConfig;
+		settingsSyncStore.updateConfig(newConfig, currentImageIndex);
 	}
 
 	function handlePresetChange(preset: VectorizerPreset | 'custom') {
@@ -603,34 +754,167 @@
 	}
 
 	function handleBackendChange(backend: VectorizerBackend) {
-		// Clean up backend-specific settings when switching
-		let cleanedConfig = { ...config, backend };
-		
-		// If switching away from edge backend, disable edge-specific features
-		if (backend !== 'edge') {
-			cleanedConfig.enable_flow_tracing = false;
-			cleanedConfig.enable_bezier_fitting = false;
-			cleanedConfig.enable_etf_fdog = false;
-		}
-		
-		// If switching away from dots backend, reset dots-specific settings
-		if (backend !== 'dots') {
-			cleanedConfig.preserve_colors = false;
-			cleanedConfig.adaptive_sizing = true;
+		console.log(`🔧 Backend change: switching to ${backend}`);
+
+		// Get current config from settings sync store
+		const currentConfig = settingsSyncStore.getCurrentConfig(currentImageIndex);
+		let cleanedConfig = { ...currentConfig, backend };
+
+		// COMPREHENSIVE BACKEND CLEANUP: Reset ALL backend-specific settings to defaults first
+
+		// Reset ALL edge backend specific settings
+		cleanedConfig.enable_flow_tracing = false;
+		cleanedConfig.enable_bezier_fitting = false;
+		cleanedConfig.enable_etf_fdog = false;
+		cleanedConfig.trace_min_gradient = undefined;
+		cleanedConfig.trace_min_coherency = undefined;
+		cleanedConfig.trace_max_gap = undefined;
+		cleanedConfig.trace_max_length = undefined;
+		cleanedConfig.fit_lambda_curvature = undefined;
+		cleanedConfig.fit_max_error = undefined;
+		cleanedConfig.fit_split_angle = undefined;
+		cleanedConfig.etf_radius = undefined;
+		cleanedConfig.etf_iterations = undefined;
+		cleanedConfig.etf_coherency_tau = undefined;
+		cleanedConfig.fdog_sigma_s = undefined;
+		cleanedConfig.fdog_sigma_c = undefined;
+		cleanedConfig.fdog_tau = undefined;
+		cleanedConfig.nms_low = undefined;
+		cleanedConfig.nms_high = undefined;
+
+		// Reset ALL centerline backend specific settings
+		cleanedConfig.enable_adaptive_threshold = false;
+		cleanedConfig.window_size = undefined;
+		cleanedConfig.sensitivity_k = undefined;
+		cleanedConfig.use_optimized = undefined;
+		cleanedConfig.thinning_algorithm = undefined;
+		cleanedConfig.min_branch_length = undefined;
+		cleanedConfig.micro_loop_removal = undefined;
+		cleanedConfig.enable_width_modulation = undefined;
+		cleanedConfig.edt_radius_ratio = undefined;
+		cleanedConfig.width_modulation_range = undefined;
+		cleanedConfig.max_join_distance = undefined;
+		cleanedConfig.max_join_angle = undefined;
+		cleanedConfig.edt_bridge_check = undefined;
+		cleanedConfig.douglas_peucker_epsilon = undefined;
+		cleanedConfig.adaptive_simplification = undefined;
+
+		// Reset ALL dots backend specific settings
+		cleanedConfig.dot_density_threshold = undefined;
+		cleanedConfig.dot_density = undefined;
+		cleanedConfig.dot_size_range = undefined;
+		cleanedConfig.min_radius = undefined;
+		cleanedConfig.max_radius = undefined;
+		cleanedConfig.adaptive_sizing = undefined;
+		cleanedConfig.background_tolerance = undefined;
+		cleanedConfig.poisson_disk_sampling = undefined;
+		cleanedConfig.min_distance_factor = undefined;
+		cleanedConfig.grid_resolution = undefined;
+		cleanedConfig.gradient_based_sizing = undefined;
+		cleanedConfig.local_variance_scaling = undefined;
+		cleanedConfig.color_clustering = undefined;
+		cleanedConfig.opacity_variation = undefined;
+
+		// Reset ALL superpixel backend specific settings
+		cleanedConfig.num_superpixels = undefined;
+		cleanedConfig.compactness = undefined;
+		cleanedConfig.slic_iterations = undefined;
+		cleanedConfig.min_region_size = undefined;
+		cleanedConfig.color_distance = undefined;
+		cleanedConfig.spatial_distance_weight = undefined;
+		cleanedConfig.fill_regions = undefined;
+		cleanedConfig.stroke_regions = undefined;
+		cleanedConfig.simplify_boundaries = undefined;
+		cleanedConfig.boundary_epsilon = undefined;
+
+		// Reset color preservation to default (false) for all backends initially
+		cleanedConfig.preserve_colors = false;
+
+		// NOW apply backend-specific defaults for the SELECTED backend
+		if (backend === 'dots') {
+			cleanedConfig.preserve_colors = true; // Enable Color by default for dots
+			cleanedConfig.stroke_width = 1.0; // Dot Width 1.0px by default
+			cleanedConfig.adaptive_sizing = true; // Enable adaptive sizing
 			cleanedConfig.poisson_disk_sampling = false;
 			cleanedConfig.gradient_based_sizing = false;
+			console.log(
+				'🎯 Applied dots backend defaults: preserve_colors=true, stroke_width=1.0, adaptive_sizing=true'
+			);
 		}
-		
-		// If switching away from centerline backend, reset centerline-specific settings
-		if (backend !== 'centerline') {
-			cleanedConfig.enable_adaptive_threshold = false;
+
+		if (backend === 'superpixel') {
+			cleanedConfig.preserve_colors = true; // Enable Color by default for superpixel
+			cleanedConfig.fill_regions = true; // Enable region filling
+			cleanedConfig.stroke_regions = false; // Disable region stroking by default
+			console.log(
+				'🎯 Applied superpixel backend defaults: preserve_colors=true, fill_regions=true'
+			);
 		}
-		
-		config = cleanedConfig;
+
+		if (backend === 'centerline') {
+			cleanedConfig.preserve_colors = false; // Centerline typically monochrome
+			cleanedConfig.enable_adaptive_threshold = false; // Start with defaults
+			console.log('🎯 Applied centerline backend defaults: preserve_colors=false');
+		}
+
+		if (backend === 'edge') {
+			cleanedConfig.preserve_colors = false; // Edge typically monochrome
+			cleanedConfig.enable_flow_tracing = false; // Start with basic edge detection
+			cleanedConfig.enable_bezier_fitting = false;
+			cleanedConfig.enable_etf_fdog = false;
+			console.log(
+				'🎯 Applied edge backend defaults: preserve_colors=false, advanced features disabled'
+			);
+		}
+
+		console.log(`✅ Backend cleanup complete for ${backend}. Updated config:`, {
+			backend: cleanedConfig.backend,
+			preserve_colors: cleanedConfig.preserve_colors,
+			stroke_width: cleanedConfig.stroke_width,
+			adaptive_sizing: cleanedConfig.adaptive_sizing
+		});
+
+		// Update the config through the settings sync store
+		settingsSyncStore.updateConfig(cleanedConfig, currentImageIndex);
+
+		// Validate that no cross-contamination occurred
+		const validation = settingsSyncStore.validateAndCleanConfigs();
+		if (validation.issues.length > 0) {
+			console.warn(
+				`⚠️ Backend change to ${backend} triggered validation cleanup:`,
+				validation.issues
+			);
+		}
 	}
 
 	function handleParameterChange() {
 		// Parameter change handled by config updates
+	}
+
+	// Settings sync mode handlers
+	function handleSettingsModeChange(mode: SettingsSyncMode) {
+		const success = settingsSyncStore.switchMode(mode, {
+			preserveCurrentConfig: true,
+			initializeFromGlobal: true,
+			confirmDataLoss: false // Confirmation is handled in the UI component
+		});
+
+		if (success) {
+			console.log(`🔄 Switched to settings sync mode: ${mode}`);
+		}
+	}
+
+	// Image navigation with settings sync integration
+	function handleImageIndexChangeWithSync(index: number) {
+		const prevIndex = currentImageIndex;
+		currentImageIndex = index;
+
+		// Update settings sync store current index
+		settingsSyncStore.setCurrentImageIndex(index);
+
+		console.log(
+			`🖼️ Image index changed from ${prevIndex} to ${index} (Mode: ${settingsSyncStore.syncMode})`
+		);
 	}
 
 	function handlePerformanceModeChange(mode: PerformanceMode, threads: number) {
@@ -642,11 +926,11 @@
 		try {
 			console.log('🔄 Retrying WASM initialization...');
 			toastStore.info('🔄 Retrying WASM initialization...', 3000);
-			
+
 			// Reset the vectorizer store and reinitialize
 			await vectorizerStore.reset();
 			await vectorizerStore.initialize({ autoInitThreads: false });
-			
+
 			toastStore.success('✅ WASM initialization successful!', 3000);
 		} catch (error) {
 			console.error('❌ Retry initialization failed:', error);
@@ -689,27 +973,29 @@
 
 			const header = parts[0];
 			const data = parts[1];
-			
+
 			// Extract MIME type
 			const mimeMatch = header.match(/data:([^;]+)/);
 			const mimeType = mimeMatch ? mimeMatch[1] : metadata.type;
-			
+
 			// Decode base64 data
 			const byteString = atob(data);
 			const arrayBuffer = new ArrayBuffer(byteString.length);
 			const uint8Array = new Uint8Array(arrayBuffer);
-			
+
 			for (let i = 0; i < byteString.length; i++) {
 				uint8Array[i] = byteString.charCodeAt(i);
 			}
-			
+
 			return new File([arrayBuffer], metadata.name, {
 				type: mimeType,
 				lastModified: metadata.lastModified
 			});
 		} catch (error) {
 			console.error('Error converting data URL to File:', error);
-			throw new Error(`Failed to recreate file ${metadata.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			throw new Error(
+				`Failed to recreate file ${metadata.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
+			);
 		}
 	}
 
@@ -735,7 +1021,7 @@
 				const savedConfig = converterPersistence.loadConfig();
 				// console.log('⚙️ [DEBUG] savedConfig:', savedConfig);
 				if (savedConfig) {
-					config = savedConfig;
+					settingsSyncStore.updateConfig(savedConfig);
 					// console.log('✅ [DEBUG] Config restored');
 				}
 				const savedPreset = converterPersistence.loadPreset();
@@ -767,105 +1053,149 @@
 				return;
 			}
 
-		// console.log('✨ [DEBUG] Complete state found, restoring...');
-		// Restore configuration seamlessly
-		if (state.config) {
-			config = state.config;
-			// console.log('✅ [DEBUG] Config restored from complete state');
-		}
-		if (state.preset) {
-			selectedPreset = state.preset as VectorizerPreset | 'custom';
-			// console.log('✅ [DEBUG] Preset restored from complete state');
-		}
-		if (state.performanceMode) {
-			performanceMode = state.performanceMode as PerformanceMode;
-			// console.log('✅ [DEBUG] Performance mode restored from complete state');
-		}
-		if (state.threadCount) {
-			// Use saved thread count as-is, respecting user's choice
-			threadCount = state.threadCount;
-			// console.log('✅ [DEBUG] Thread count restored from complete state');
-		}
-		if (state.currentIndex !== undefined) {
-			currentImageIndex = state.currentIndex;
-			// console.log('✅ [DEBUG] Current index restored from complete state');
-		}
+			// console.log('✨ [DEBUG] Complete state found, restoring...');
+			// Restore configuration seamlessly
+			if (state.config) {
+				settingsSyncStore.updateConfig(state.config);
+				// console.log('✅ [DEBUG] Config restored from complete state');
+			}
+			if (state.preset) {
+				selectedPreset = state.preset as VectorizerPreset | 'custom';
+				// console.log('✅ [DEBUG] Preset restored from complete state');
+			}
+			if (state.performanceMode) {
+				performanceMode = state.performanceMode as PerformanceMode;
+				// console.log('✅ [DEBUG] Performance mode restored from complete state');
+			}
+			if (state.threadCount) {
+				// Use saved thread count as-is, respecting user's choice
+				threadCount = state.threadCount;
+				// console.log('✅ [DEBUG] Thread count restored from complete state');
+			}
+			if (state.currentIndex !== undefined) {
+				currentImageIndex = state.currentIndex;
+				// console.log('✅ [DEBUG] Current index restored from complete state');
+			}
 
-		// Restore original image URLs and recreate File objects
-		if (state.imageUrls && state.imageUrls.length > 0 && state.filesMetadata && state.filesMetadata.length > 0) {
-			// console.log('🔄 [DEBUG] Recreating File objects from stored data URLs...');
-			
-			const restoredFiles: File[] = [];
-			const restoredImageUrls: (string | null)[] = [];
-			
-			for (let i = 0; i < state.imageUrls.length; i++) {
-				const dataUrl = state.imageUrls[i];
-				const metadata = state.filesMetadata[i];
-				
-				if (dataUrl && metadata) {
-					try {
-						// Convert data URL back to File object
-						const file = dataUrlToFile(dataUrl, metadata);
-						restoredFiles.push(file);
-						
-						// Create new blob URL for display
-						const displayUrl = URL.createObjectURL(file);
-						restoredImageUrls.push(displayUrl);
-						
-						// console.log(`✅ [DEBUG] Recreated file: ${metadata.name}`);
-					} catch (error) {
-						console.error(`❌ [DEBUG] Failed to recreate file ${metadata.name}:`, error);
-						// Keep the data URL as fallback for display
-						restoredImageUrls.push(dataUrl);
+			// Restore original image URLs and recreate File objects
+			if (
+				state.imageUrls &&
+				state.imageUrls.length > 0 &&
+				state.filesMetadata &&
+				state.filesMetadata.length > 0
+			) {
+				// console.log('🔄 [DEBUG] Recreating File objects from stored data URLs...');
+
+				const restoredFiles: File[] = [];
+				const restoredImageUrls: (string | null)[] = [];
+
+				for (let i = 0; i < state.imageUrls.length; i++) {
+					const dataUrl = state.imageUrls[i];
+					const metadata = state.filesMetadata[i];
+
+					if (dataUrl && metadata) {
+						try {
+							// Convert data URL back to File object
+							const file = dataUrlToFile(dataUrl, metadata);
+							restoredFiles.push(file);
+
+							// Create new blob URL for display
+							const displayUrl = URL.createObjectURL(file);
+							restoredImageUrls.push(displayUrl);
+
+							// console.log(`✅ [DEBUG] Recreated file: ${metadata.name}`);
+						} catch (error) {
+							console.error(`❌ [DEBUG] Failed to recreate file ${metadata.name}:`, error);
+							// Keep the data URL as fallback for display
+							restoredImageUrls.push(dataUrl);
+						}
+					} else {
+						restoredImageUrls.push(null);
 					}
+				}
+
+				// Set the recreated files and URLs
+				files = restoredFiles;
+				originalImageUrls = restoredImageUrls;
+
+				// Store metadata for restoration after function completes
+				pendingFilesMetadata = [...state.filesMetadata];
+
+				// Log restoration success rate for debugging
+				const totalExpected = state.filesMetadata.length;
+				const actuallyRestored = restoredFiles.length;
+				console.log(
+					`📁 [DEBUG] File restoration: ${actuallyRestored}/${totalExpected} files successfully recreated`
+				);
+
+				if (actuallyRestored === 0 && totalExpected > 0) {
+					console.warn('⚠️ [DEBUG] No files were restored - this will cause the conversion bug!');
+				}
+			} else if (state.filesMetadata && state.filesMetadata.length > 0) {
+				// Fallback: just metadata without data URLs (older format)
+				pendingFilesMetadata = [...state.filesMetadata];
+				// console.log('✅ [DEBUG] Files metadata scheduled for restoration (no data URLs)');
+			}
+
+			// Restore results (but not files - user needs to re-upload)
+			if (state.results && state.results.length > 0) {
+				const loadedResults = converterPersistence.loadResults();
+				results = loadedResults;
+				// Create preview URLs for loaded results
+				previewSvgUrls = loadedResults.map((result) => {
+					if (result && result.svg) {
+						const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+						return URL.createObjectURL(blob);
+					}
+					return null;
+				});
+			}
+
+			// Validate and adjust currentIndex after restoration
+			const maxLength = Math.max(
+				files.length,
+				originalImageUrls.length,
+				state.filesMetadata?.length || 0,
+				results.length
+			);
+			if (currentImageIndex >= maxLength) {
+				currentImageIndex = Math.max(0, maxLength - 1);
+				// console.log('⚠️ [DEBUG] Adjusted currentIndex to fit restored arrays:', currentImageIndex);
+			}
+
+			// Show notification about state recovery
+			if (state.filesMetadata && state.filesMetadata.length > 0) {
+				// CRITICAL: Initialize settings sync store with restored file count
+				// This is essential for conversion to work after page reload
+				const restoredFileCount = Math.max(
+					files.length,
+					originalImageUrls.length,
+					state.filesMetadata.length
+				);
+				console.log(
+					`🔧 [DEBUG] Initializing settings sync store with ${restoredFileCount} restored files`
+				);
+				settingsSyncStore.initialize(restoredFileCount, currentImageIndex);
+
+				if (files.length === 0) {
+					// Files metadata was restored but actual File objects failed to recreate
+					console.log(
+						`⚠️ State partially restored: settings and metadata recovered, but files need re-upload`
+					);
+					hasRecoveredState = true;
+					// Show a user-friendly notification about needing to re-upload
+					setTimeout(() => {
+						toastStore.info(
+							'Your previous session was restored with settings preserved. Please re-upload your images to continue where you left off.',
+							6000
+						);
+					}, 1000); // Delay to avoid overlapping with other initialization toasts
 				} else {
-					restoredImageUrls.push(null);
+					// Full successful restoration
+					console.log(`✅ Full state restored: ${files.length} files and settings recovered`);
+					hasRecoveredState = true;
 				}
 			}
-			
-			// Set the recreated files and URLs
-			files = restoredFiles;
-			originalImageUrls = restoredImageUrls;
-			
-			// Store metadata for restoration after function completes
-			pendingFilesMetadata = [...state.filesMetadata];
-			// console.log(`✅ [DEBUG] Recreated ${restoredFiles.length} files from stored state`);
-		} else if (state.filesMetadata && state.filesMetadata.length > 0) {
-			// Fallback: just metadata without data URLs (older format)
-			pendingFilesMetadata = [...state.filesMetadata];
-			// console.log('✅ [DEBUG] Files metadata scheduled for restoration (no data URLs)');
-		}
-
-		// Restore results (but not files - user needs to re-upload)
-		if (state.results && state.results.length > 0) {
-			const loadedResults = converterPersistence.loadResults();
-			results = loadedResults;
-			// Create preview URLs for loaded results
-			previewSvgUrls = loadedResults.map((result) => {
-				if (result && result.svg) {
-					const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-					return URL.createObjectURL(blob);
-				}
-				return null;
-			});
-		}
-
-		// Get filesMetadata from state first
-		const filesMetadata = state.filesMetadata;
-
-		// Validate and adjust currentIndex after restoration
-		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata?.length || 0, results.length);
-		if (currentImageIndex >= maxLength) {
-			currentImageIndex = Math.max(0, maxLength - 1);
-			// console.log('⚠️ [DEBUG] Adjusted currentIndex to fit restored arrays:', currentImageIndex);
-		}
-
-		// Only show a subtle notification if we recovered actual results
-		if (filesMetadata && filesMetadata.length > 0 && state.results && state.results.length > 0) {
-			// Subtle notification - not intrusive
-			console.log(`Restored ${filesMetadata.length} previous results`);
-			hasRecoveredState = true;
-		}
 
 			// CRITICAL: Mark state recovery as complete
 			isRecoveringState = false;
@@ -1033,15 +1363,65 @@
 				<button
 					class="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg transition-all hover:bg-red-700 hover:shadow-xl"
 					onclick={() => {
+						// Clear all persistence data
 						converterPersistence.clearAll();
+
+						// Reset all UI state
 						handleReset();
-						toastStore.info('🧹 Cleared all cached data and persistence');
-						location.reload();
+
+						// Reset all settings to defaults
+						settingsSyncStore.updateConfig({
+							...DEFAULT_CONFIG,
+							optimize_svg: true,
+							svg_precision: 2
+						});
+
+						// Reset settings sync mode to global
+						settingsSyncStore.switchMode('global', {
+							preserveCurrentConfig: false,
+							initializeFromGlobal: false,
+							confirmDataLoss: false
+						});
+
+						// Reset preset selection
+						selectedPreset = 'artistic';
+
+						// Reset performance settings to defaults
+						performanceMode = 'balanced';
+						threadCount = getOptimalThreadCount('balanced');
+
+						// Reset vectorizer store to clean state
+						vectorizerStore.reset();
+
+						// Clear parameter history
+						parameterHistory.clear();
+
+						// Reset pan/zoom state
+						panZoomStore.resetStates();
+
+						// Validate and clean any backend cross-contamination
+						const validation = settingsSyncStore.validateAndCleanConfigs();
+						if (validation.issues.length > 0) {
+							console.log(
+								'🛡️ Clear All found and cleaned cross-contamination issues:',
+								validation.issues
+							);
+						}
+
+						// Force component remounting by changing key
+						componentResetKey++;
+
+						toastStore.info('🧹 Cleared all data and reset all settings to defaults');
+
+						// Small delay before reload to ensure pan/zoom reset takes effect
+						setTimeout(() => {
+							location.reload();
+						}, 100);
 					}}
-					title="Clear all cached data and reload page"
+					title="Clear all data and reset all settings to defaults"
 				>
 					<RefreshCw class="h-4 w-4" />
-					Clear Cache
+					Clear All
 				</button>
 			</div>
 		{/if}
@@ -1060,27 +1440,31 @@
 				<main class="grid grid-cols-1 gap-8 xl:grid-cols-[1fr_auto]">
 					<!-- Main converter area -->
 					<div class="space-y-6">
-						<ConverterInterface
-							{files}
-							{originalImageUrls}
-							{filesMetadata}
-							{currentImageIndex}
-							currentProgress={currentProgress ?? undefined}
-							{results}
-							{previewSvgUrls}
-							{canConvert}
-							{canDownload}
-							{isProcessing}
-							onImageIndexChange={handleImageIndexChange}
-							onConvert={handleConvert}
-							onDownload={handleDownload}
-							onAbort={handleAbort}
-							onReset={handleReset}
-							onAddMore={handleAddMore}
-							onRemoveFile={handleRemoveFile}
-							isPanicked={vectorizerStore.isPanicked}
-							onEmergencyRecovery={handleEmergencyRecovery}
-						/>
+						{#key componentResetKey}
+							<ConverterInterface
+								{files}
+								{originalImageUrls}
+								{filesMetadata}
+								{currentImageIndex}
+								currentProgress={currentProgress ?? undefined}
+								{results}
+								{previewSvgUrls}
+								{canConvert}
+								{canDownload}
+								{isProcessing}
+								onImageIndexChange={handleImageIndexChange}
+								onConvert={handleConvert}
+								onDownload={handleDownload}
+								onAbort={handleAbort}
+								onReset={handleReset}
+								onAddMore={handleAddMore}
+								onRemoveFile={handleRemoveFile}
+								isPanicked={vectorizerStore.isPanicked}
+								onEmergencyRecovery={handleEmergencyRecovery}
+								settingsSyncMode={settingsSyncStore.syncMode}
+								onSettingsModeChange={handleSettingsModeChange}
+							/>
+						{/key}
 					</div>
 
 					<!-- Settings panel -->

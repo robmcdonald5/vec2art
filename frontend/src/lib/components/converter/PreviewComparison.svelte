@@ -6,33 +6,19 @@
 		Maximize2,
 		ArrowLeftRight,
 		Download,
-		X
+		X,
+		Link,
+		Unlink
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type { ProcessingProgress } from '$lib/types/vectorizer';
 	import type { FileMetadata } from '$lib/stores/converter-persistence';
 	import ConverterHeader from './ConverterHeader.svelte';
+	import InteractiveImagePanel from './InteractiveImagePanel.svelte';
+	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
+	import type { ConverterComponentProps } from '$lib/types/shared-props';
 
-	interface Props {
-		files: File[];
-		originalImageUrls: (string | null)[];
-		filesMetadata: FileMetadata[];
-		currentImageIndex: number;
-		currentProgress?: ProcessingProgress;
-		previewSvgUrls: (string | null)[];
-		canConvert: boolean;
-		canDownload: boolean;
-		isProcessing: boolean;
-		onImageIndexChange: (index: number) => void;
-		onConvert: () => void;
-		onDownload: () => void;
-		onAbort: () => void;
-		onReset: () => void;
-		onAddMore: () => void;
-		onRemoveFile: (index: number) => void;
-		isPanicked?: boolean;
-		onEmergencyRecovery?: () => void;
-	}
+	interface Props extends ConverterComponentProps {}
 
 	let {
 		files,
@@ -52,17 +38,12 @@
 		onAddMore,
 		onRemoveFile,
 		isPanicked = false,
-		onEmergencyRecovery
+		onEmergencyRecovery,
+		settingsSyncMode,
+		onSettingsModeChange
 	}: Props = $props();
 
-	// Preview state - separate for original and converted
-	let originalZoomLevel = $state(1);
-	let originalPanOffset = $state({ x: 0, y: 0 });
-	let originalAutoFitZoom = $state(1);
-	let convertedZoomLevel = $state(1);
-	let convertedPanOffset = $state({ x: 0, y: 0 });
-	let convertedAutoFitZoom = $state(1);
-
+	// Legacy state for slider comparison mode only
 	let imageElement = $state<HTMLImageElement>();
 	let imageContainer = $state<HTMLDivElement>();
 
@@ -93,69 +74,20 @@
 		}, 0);
 	}
 
-	// Original image zoom functions
-	function originalZoomIn() {
-		const currentIndex = findClosestZoomIndex(originalZoomLevel);
-		const nextIndex = Math.min(currentIndex + 1, zoomLevels.length - 1);
-		originalZoomLevel = zoomLevels[nextIndex];
-	}
-
-	function originalZoomOut() {
-		const currentIndex = findClosestZoomIndex(originalZoomLevel);
-		const prevIndex = Math.max(currentIndex - 1, 0);
-		originalZoomLevel = zoomLevels[prevIndex];
-	}
-
-	function originalResetView() {
-		originalZoomLevel = originalAutoFitZoom;
-		originalPanOffset = { x: 0, y: 0 };
-	}
-
-	// Converted image zoom functions
-	function convertedZoomIn() {
-		const currentIndex = findClosestZoomIndex(convertedZoomLevel);
-		const nextIndex = Math.min(currentIndex + 1, zoomLevels.length - 1);
-		convertedZoomLevel = zoomLevels[nextIndex];
-	}
-
-	function convertedZoomOut() {
-		const currentIndex = findClosestZoomIndex(convertedZoomLevel);
-		const prevIndex = Math.max(currentIndex - 1, 0);
-		convertedZoomLevel = zoomLevels[prevIndex];
-	}
-
-	function convertedResetView() {
-		convertedZoomLevel = convertedAutoFitZoom;
-		convertedPanOffset = { x: 0, y: 0 };
+	// Reset pan/zoom store when changing images
+	function resetPanZoomState() {
+		panZoomStore.resetStates();
 	}
 
 	function handleImageIndexChange(newIndex: number) {
 		onImageIndexChange(newIndex);
-		originalResetView();
-		convertedResetView();
+		resetPanZoomState();
 	}
 
-	function fitToContainer() {
-		if (!imageElement || !imageContainer) return;
-
-		const containerRect = imageContainer.getBoundingClientRect();
-		// Use 95% of container for better fit, and ensure we don't go over 100% (1.0) for true size
-		const scaleX = (containerRect.width * 0.95) / imageElement.naturalWidth;
-		const scaleY = (containerRect.height * 0.95) / imageElement.naturalHeight;
-		const optimalScale = Math.min(scaleX, scaleY, 1.0);
-
-		// Use 1.0 (100%) as the default zoom level for better baseline
-		// Only scale down if the image is larger than container, never scale up
-		const normalizedScale = optimalScale >= 0.9 ? 1.0 : optimalScale;
-
-		originalAutoFitZoom = normalizedScale;
-		originalZoomLevel = normalizedScale;
-		originalPanOffset = { x: 0, y: 0 };
-
-		// Also set converted image to same initial zoom
-		convertedAutoFitZoom = normalizedScale;
-		convertedZoomLevel = normalizedScale;
-		convertedPanOffset = { x: 0, y: 0 };
+	// Legacy function for slider mode only - basic fit behavior
+	function fitToSliderContainer() {
+		// This is only used for slider comparison mode
+		// The intelligent scaling is now handled by InteractiveImagePanel
 	}
 
 	// Slider comparison functions
@@ -256,6 +188,8 @@
 		{onRemoveFile}
 		{isPanicked}
 		{onEmergencyRecovery}
+		{settingsSyncMode}
+		{onSettingsModeChange}
 	/>
 
 	<!-- Image Comparison Content -->
@@ -378,77 +312,41 @@
 			<!-- Original Image -->
 			<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
+					<!-- Sync Controls -->
 					<div class="mb-3 flex items-center justify-between px-2">
-						<div
-							class="text-converter-primary mr-2 flex-1 text-sm font-medium"
-							title={currentFile?.name}
-						>
-							<div class="filename-display flex items-center gap-2">
-								<span class="flex-1">{currentFile?.name || 'Original'}</span>
-								{#if currentFile}
-									<button
-										class="text-gray-400 hover:text-red-500 transition-colors duration-200 text-sm font-medium"
-										onclick={() => onRemoveFile(currentImageIndex)}
-										disabled={isProcessing}
-										aria-label="Remove current image"
-										title="Remove this image"
-									>
-										×
-									</button>
+						<div class="flex items-center gap-2">
+							<span class="text-converter-primary text-sm font-medium">Original</span>
+							<button
+								class="text-converter-primary hover:text-ferrari-600 transition-colors duration-200 {panZoomStore.isSyncEnabled
+									? 'text-ferrari-600'
+									: 'text-gray-400'}"
+								onclick={panZoomStore.toggleSync}
+								aria-label={panZoomStore.isSyncEnabled ? 'Disable sync' : 'Enable sync'}
+								title={panZoomStore.isSyncEnabled
+									? 'Views are synchronized'
+									: 'Click to sync both views'}
+							>
+								{#if panZoomStore.isSyncEnabled}
+									<Link class="h-4 w-4" />
+								{:else}
+									<Unlink class="h-4 w-4" />
 								{/if}
-							</div>
-						</div>
-						<!-- Zoom Controls for Original -->
-						<div class="flex gap-1">
-							<Button
-								variant="outline"
-								size="icon"
-								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={originalZoomOut}
-								aria-label="Zoom out original image"
-							>
-								<ZoomOut class="h-4 w-4 transition-transform group-hover:scale-110" />
-							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={originalZoomIn}
-								aria-label="Zoom in original image"
-							>
-								<ZoomIn class="h-4 w-4 transition-transform group-hover:scale-110" />
-							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={originalResetView}
-								aria-label="Reset original image view"
-							>
-								<Maximize2 class="h-4 w-4 transition-transform group-hover:scale-110" />
-							</Button>
+							</button>
 						</div>
 					</div>
-					<div
-						bind:this={imageContainer}
-						class="dark:bg-ferrari-900 flex-1 overflow-hidden rounded-lg bg-white"
-					>
-						{#if currentImageUrl}
-							<img
-								bind:this={imageElement}
-								src={currentImageUrl}
-								alt={currentFile?.name}
-								class="h-full w-full cursor-move object-contain transition-transform"
-								style="transform: scale({originalZoomLevel}) translate({originalPanOffset.x}px, {originalPanOffset.y}px)"
-								onload={fitToContainer}
-								draggable="false"
-							/>
-						{:else}
-							<div class="flex h-full items-center justify-center">
-								<FileImage class="text-converter-muted h-16 w-16" />
-							</div>
-						{/if}
-					</div>
+
+					<InteractiveImagePanel
+						imageUrl={currentImageUrl}
+						imageAlt={currentFile?.name || 'Original image'}
+						title={currentFile?.name || 'Original'}
+						onRemove={currentFile ? () => onRemoveFile(currentImageIndex) : undefined}
+						showRemoveButton={Boolean(currentFile)}
+						{isProcessing}
+						className="flex-1"
+						externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.convertedState : undefined}
+						onPanZoomChange={(state) => panZoomStore.updateOriginalState(state)}
+						enableSync={panZoomStore.isSyncEnabled}
+					/>
 				</div>
 			</div>
 
@@ -457,79 +355,52 @@
 				<div class="absolute inset-4 flex flex-col">
 					<div class="mb-3 flex items-center justify-between px-2">
 						<div class="text-converter-primary text-sm font-medium">Converted SVG</div>
-						<div class="flex items-center gap-2">
-							<!-- Download Button (only show when result is available) -->
-							{#if hasResult && canDownload}
-								<Button
-									variant="ferrari"
-									size="sm"
-									class="transition-all duration-200 hover:-translate-y-0.5 hover:scale-105 hover:shadow-lg active:translate-y-0 active:scale-95"
-									onclick={onDownload}
-									disabled={isProcessing}
-								>
-									<Download class="h-4 w-4 transition-transform group-hover:scale-110" />
-									Download
-								</Button>
-							{/if}
-							<!-- Zoom Controls for Converted SVG -->
-							<div class="flex gap-1">
-								<Button
-									variant="outline"
-									size="icon"
-									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-									onclick={convertedZoomOut}
-									aria-label="Zoom out converted SVG"
-								>
-									<ZoomOut class="h-4 w-4 transition-transform group-hover:scale-110" />
-								</Button>
-								<Button
-									variant="outline"
-									size="icon"
-									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-									onclick={convertedZoomIn}
-									aria-label="Zoom in converted SVG"
-								>
-									<ZoomIn class="h-4 w-4 transition-transform group-hover:scale-110" />
-								</Button>
-								<Button
-									variant="outline"
-									size="icon"
-									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-									onclick={convertedResetView}
-									aria-label="Reset converted SVG view"
-								>
-									<Maximize2 class="h-4 w-4 transition-transform group-hover:scale-110" />
-								</Button>
-							</div>
-						</div>
-					</div>
-					<div class="dark:bg-ferrari-900 flex-1 overflow-hidden rounded-lg bg-white">
-						{#if hasResult && currentSvgUrl}
-							<img
-								src={currentSvgUrl}
-								alt="Converted SVG"
-								class="h-full w-full object-contain transition-transform"
-								style="transform: scale({convertedZoomLevel}) translate({convertedPanOffset.x}px, {convertedPanOffset.y}px)"
-								draggable="false"
-							/>
-						{:else if currentProgress}
-							<div class="flex h-full items-center justify-center">
-								<div class="space-y-3 text-center">
-									<div
-										class="border-ferrari-500 mx-auto h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"
-									></div>
-									<p class="text-converter-secondary text-sm">Converting...</p>
-								</div>
-							</div>
-						{:else}
-							<div class="flex h-full items-center justify-center">
-								<div class="space-y-3 text-center">
-									<FileImage class="text-converter-muted mx-auto h-16 w-16" />
-									<p class="text-converter-secondary text-sm">Click Convert to see result</p>
-								</div>
-							</div>
+						<!-- Download Button (only show when result is available) -->
+						{#if hasResult && canDownload}
+							<Button
+								variant="ferrari"
+								size="sm"
+								class="transition-all duration-200 hover:-translate-y-0.5 hover:scale-105 hover:shadow-lg active:translate-y-0 active:scale-95"
+								onclick={onDownload}
+								disabled={isProcessing}
+							>
+								<Download class="h-4 w-4 transition-transform group-hover:scale-110" />
+								Download
+							</Button>
 						{/if}
 					</div>
+
+					{#if hasResult && currentSvgUrl}
+						<InteractiveImagePanel
+							imageUrl={currentSvgUrl}
+							imageAlt="Converted SVG"
+							{isProcessing}
+							className="flex-1"
+							externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}
+							onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
+							enableSync={panZoomStore.isSyncEnabled}
+						/>
+					{:else if currentProgress}
+						<div
+							class="dark:bg-ferrari-900 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-white"
+						>
+							<div class="space-y-3 text-center">
+								<div
+									class="border-ferrari-500 mx-auto h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"
+								></div>
+								<p class="text-converter-secondary text-sm">Converting...</p>
+							</div>
+						</div>
+					{:else}
+						<div
+							class="dark:bg-ferrari-900 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-white"
+						>
+							<div class="space-y-3 text-center">
+								<FileImage class="text-converter-muted mx-auto h-16 w-16" />
+								<p class="text-converter-secondary text-sm">Click Convert to see result</p>
+							</div>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>

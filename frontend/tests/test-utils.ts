@@ -106,6 +106,80 @@ export function setupBrowserMocks() {
 		});
 	}
 
+	// Mock File constructor (critical for tests)
+	if (!globalThis.File) {
+		globalThis.File = class MockFile {
+			public name: string;
+			public size: number;
+			public type: string;
+			public lastModified: number;
+
+			constructor(fileBits: BlobPart[], fileName: string, options?: FilePropertyBag) {
+				this.name = fileName;
+				this.type = options?.type || '';
+				this.lastModified = options?.lastModified || Date.now();
+
+				// Calculate size from file bits
+				this.size = fileBits.reduce((total, part) => {
+					if (typeof part === 'string') return total + new TextEncoder().encode(part).length;
+					if (part instanceof ArrayBuffer) return total + part.byteLength;
+					if (part instanceof Uint8Array) return total + part.byteLength;
+					return total;
+				}, 0);
+			}
+
+			async arrayBuffer(): Promise<ArrayBuffer> {
+				return new ArrayBuffer(this.size);
+			}
+
+			async text(): Promise<string> {
+				return '';
+			}
+
+			stream(): ReadableStream<Uint8Array> {
+				return new ReadableStream({
+					start(controller) {
+						controller.enqueue(new Uint8Array(this.size));
+						controller.close();
+					}
+				});
+			}
+		} as any;
+	}
+
+	// Mock FileList constructor
+	if (!globalThis.FileList) {
+		globalThis.FileList = class MockFileList extends Array<File> {
+			item(index: number): File | null {
+				return this[index] || null;
+			}
+		} as any;
+	}
+
+	// Mock DataTransfer for drag/drop tests
+	if (!globalThis.DataTransfer) {
+		globalThis.DataTransfer = class MockDataTransfer {
+			public files: FileList = new FileList();
+			public items = {
+				add: vi.fn((file: File) => {
+					(this.files as any).push(file);
+				})
+			};
+		} as any;
+	}
+
+	// Mock DragEvent for file drop tests
+	if (!globalThis.DragEvent) {
+		globalThis.DragEvent = class MockDragEvent extends Event {
+			public dataTransfer: DataTransfer | null;
+
+			constructor(type: string, eventInit?: DragEventInit) {
+				super(type, eventInit);
+				this.dataTransfer = eventInit?.dataTransfer || null;
+			}
+		} as any;
+	}
+
 	return mockNavigator;
 }
 

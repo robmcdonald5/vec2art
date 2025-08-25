@@ -295,8 +295,8 @@ pub fn analyze_image_gradients_with_config(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use image::{GrayImage, Luma};
     use crate::utils::Instant;
+    use image::{GrayImage, Luma};
 
     /// Create a simple test gradient image
     fn create_test_gradient_image() -> GrayImage {

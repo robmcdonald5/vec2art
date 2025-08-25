@@ -4,9 +4,9 @@
 //! It creates natural, non-uniform dot distributions using Poisson disk sampling and provides
 //! smooth transitions between density regions to avoid clustering artifacts.
 
-use crate::algorithms::background::{detect_background_advanced, BackgroundConfig};
-use crate::algorithms::dots::{Dot, DotConfig};
-use crate::algorithms::gradients::GradientAnalysis;
+use crate::algorithms::dots::background::{detect_background_advanced, BackgroundConfig};
+use crate::algorithms::dots::dots::{Dot, DotConfig};
+use crate::algorithms::edges::gradients::GradientAnalysis;
 use crate::execution::execute_parallel;
 use image::RgbaImage;
 use std::collections::HashMap;
@@ -633,7 +633,7 @@ fn find_region_for_pixel(x: u32, y: u32, regions: &[Region]) -> Option<&Region> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithms::gradients::analyze_image_gradients;
+    use crate::algorithms::edges::gradients::analyze_image_gradients;
     use image::GrayImage;
 
     /// Create a test gradient analysis

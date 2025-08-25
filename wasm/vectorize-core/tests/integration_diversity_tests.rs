@@ -5,11 +5,13 @@
 
 use image::{ImageBuffer, Rgba, RgbaImage};
 use std::time::Instant;
-use vectorize_core::algorithms::{
-    apply_style_preset, dots_to_svg_with_config, generate_dots_from_image, DotConfig, DotStyle,
-    SvgDotConfig, TraceBackend, TraceLowConfig,
+use vectorize_core::algorithms::dots::{
+    dot_styles::{apply_style_preset, DotStyle},
+    dots::{generate_dots_from_image, DotConfig},
+    svg_dots::{dots_to_svg_with_config, SvgDotConfig},
 };
-use vectorize_core::{vectorize_trace_low_rgba, algorithms::trace_low::vectorize_trace_low};
+use vectorize_core::{TraceBackend, TraceLowConfig};
+use vectorize_core::{algorithms::tracing::trace_low::vectorize_trace_low, vectorize_trace_low_rgba};
 
 /// Test image generators for different scenarios
 mod image_generators {
@@ -700,8 +702,8 @@ mod edge_case_tests {
         let config = TraceLowConfig {
             backend: TraceBackend::Dots,
             dot_density_threshold: 0.15, // Higher threshold to limit dots
-            dot_min_radius: 0.5, // Larger minimum radius
-            dot_max_radius: 2.0, // Larger maximum radius
+            dot_min_radius: 0.5,         // Larger minimum radius
+            dot_max_radius: 2.0,         // Larger maximum radius
             dot_preserve_colors: true,
             ..Default::default()
         };

@@ -1,0 +1,231 @@
+/**
+ * Configuration Pipeline - Single Unified System
+ *
+ * This module demonstrates the proper architectural solution by providing
+ * a single configuration pipeline that replaces all bandaid parameter mapping.
+ *
+ * The pipeline is predictable, maintainable, and provides clear error handling.
+ */
+
+import type { VectorizerConfig } from '../types/vectorizer.js';
+import type { UISliderConfig, DotsBackendConfig } from '../types/dots-backend.js';
+import { mapUIConfigToDotsConfig, validateDotsConfig, describeDotsConfig } from './dots-mapping.js';
+
+/**
+ * Configuration pipeline result for any backend
+ */
+export interface ConfigPipelineResult {
+	/** Whether the configuration is valid and safe */
+	isValid: boolean;
+
+	/** Processed configuration ready for WASM */
+	processedConfig: VectorizerConfig;
+
+	/** Human-readable description of the configuration */
+	description: string;
+
+	/** Any validation errors */
+	errors: string[];
+
+	/** Any warnings or recommendations */
+	warnings: string[];
+
+	/** Backend-specific processed configuration (if applicable) */
+	backendConfig?: DotsBackendConfig;
+}
+
+/**
+ * Main configuration pipeline function
+ *
+ * This is the single entry point for all parameter processing.
+ * It replaces all the scattered parameter mapping logic with one deterministic function.
+ *
+ * @param rawConfig - Raw configuration from UI components
+ * @returns Processed and validated configuration
+ */
+export function processConfiguration(rawConfig: VectorizerConfig): ConfigPipelineResult {
+	const errors: string[] = [];
+	const warnings: string[] = [];
+	let processedConfig = { ...rawConfig };
+	let description = `${rawConfig.backend || 'edge'} backend`;
+	let backendConfig: DotsBackendConfig | undefined;
+
+	// Backend-specific processing
+	switch (rawConfig.backend) {
+		case 'dots': {
+			// Extract UI configuration
+			const uiConfig: UISliderConfig = {
+				detail_level: rawConfig.detail || 0.5,
+				dot_width: rawConfig.stroke_width || 2.0,
+				color_mode: rawConfig.preserve_colors || true
+			};
+
+			// Apply architectural mapping
+			backendConfig = mapUIConfigToDotsConfig(uiConfig);
+
+			// Validate for safety
+			const validation = validateDotsConfig(backendConfig);
+
+			if (!validation.isValid) {
+				errors.push(...validation.errors.map((e) => e.message));
+			}
+
+			warnings.push(...validation.warnings);
+
+			// Update processed config with validated backend parameters
+			processedConfig = {
+				...processedConfig,
+				// Keep original UI parameters for other processing
+				detail: uiConfig.detail_level,
+				stroke_width: uiConfig.dot_width,
+				preserve_colors: uiConfig.color_mode,
+
+				// Add backend-specific parameters (will be used by WASM worker)
+				dot_density_threshold: backendConfig.dot_density_threshold,
+				min_radius: backendConfig.min_radius,
+				max_radius: backendConfig.max_radius,
+				adaptive_sizing: backendConfig.adaptive_sizing,
+				poisson_disk_sampling: backendConfig.poisson_disk_sampling,
+				gradient_based_sizing: backendConfig.gradient_based_sizing
+			};
+
+			description = `Stippling: ${describeDotsConfig(backendConfig)}`;
+			break;
+		}
+
+		case 'edge':
+		case 'centerline':
+		case 'superpixel':
+		default: {
+			// For other backends, just validate basic parameters
+			if (typeof rawConfig.detail === 'number') {
+				if (rawConfig.detail < 0 || rawConfig.detail > 1) {
+					warnings.push('Detail level outside normal range (0.0-1.0)');
+					processedConfig.detail = Math.max(0, Math.min(1, rawConfig.detail));
+				}
+			}
+
+			if (typeof rawConfig.stroke_width === 'number') {
+				if (rawConfig.stroke_width < 0.1 || rawConfig.stroke_width > 10) {
+					warnings.push('Stroke width outside normal range (0.1-10.0)');
+					processedConfig.stroke_width = Math.max(0.1, Math.min(10, rawConfig.stroke_width));
+				}
+			}
+
+			description = `${rawConfig.backend || 'edge'} backend with detail=${rawConfig.detail?.toFixed(2)}, stroke=${rawConfig.stroke_width?.toFixed(1)}`;
+			break;
+		}
+	}
+
+	return {
+		isValid: errors.length === 0,
+		processedConfig,
+		description,
+		errors,
+		warnings,
+		backendConfig
+	};
+}
+
+/**
+ * Validate a complete configuration for safe WASM processing
+ *
+ * This function performs comprehensive validation to prevent crashes
+ * and ensures all required parameters are present with valid values.
+ *
+ * @param config - Configuration to validate
+ * @returns Detailed validation result
+ */
+export function validateCompleteConfiguration(config: VectorizerConfig): {
+	isValid: boolean;
+	errors: string[];
+	warnings: string[];
+	readyForProcessing: boolean;
+} {
+	const result = processConfiguration(config);
+
+	// Additional safety checks for WASM processing
+	const additionalErrors: string[] = [];
+	const additionalWarnings: string[] = [];
+
+	// Check for required parameters
+	if (typeof config.detail !== 'number') {
+		additionalErrors.push('Detail level is required');
+	}
+
+	if (typeof config.stroke_width !== 'number') {
+		additionalErrors.push('Stroke width is required');
+	}
+
+	// Check for potentially problematic combinations
+	if (config.backend === 'dots' && config.detail !== undefined && config.detail > 0.95) {
+		additionalWarnings.push('Very high detail level may cause slow processing for dots backend');
+	}
+
+	const allErrors = [...result.errors, ...additionalErrors];
+	const allWarnings = [...result.warnings, ...additionalWarnings];
+
+	return {
+		isValid: allErrors.length === 0,
+		errors: allErrors,
+		warnings: allWarnings,
+		readyForProcessing: allErrors.length === 0
+	};
+}
+
+/**
+ * Get human-readable configuration summary
+ *
+ * @param config - Configuration to summarize
+ * @returns Human-readable summary
+ */
+export function getConfigurationSummary(config: VectorizerConfig): string {
+	const result = processConfiguration(config);
+	return result.description;
+}
+
+/**
+ * Example usage and testing function
+ *
+ * This demonstrates how the architectural system works in practice.
+ */
+export function demonstrateConfigurationPipeline(): void {
+	console.log('=== Configuration Pipeline Architecture Demo ===');
+
+	// Example 1: Dots backend with valid parameters
+	const dotsConfig: Partial<VectorizerConfig> & { backend: 'dots' } = {
+		backend: 'dots',
+		detail: 0.8, // High detail (UI slider at 80%)
+		stroke_width: 2.0, // Medium dot width
+		preserve_colors: true
+	};
+
+	const result1 = processConfiguration(dotsConfig as VectorizerConfig);
+	console.log('Example 1 - Dots (Valid):', result1.description);
+	console.log('  Valid:', result1.isValid);
+	console.log('  Backend Config:', result1.backendConfig);
+
+	// Example 2: Dots backend with edge case parameters
+	const edgeCaseConfig: Partial<VectorizerConfig> & { backend: 'dots' } = {
+		backend: 'dots',
+		detail: 1.0, // Maximum detail
+		stroke_width: 0.5, // Minimum width
+		preserve_colors: false
+	};
+
+	const result2 = processConfiguration(edgeCaseConfig as VectorizerConfig);
+	console.log('Example 2 - Dots (Edge Case):', result2.description);
+	console.log('  Valid:', result2.isValid);
+	console.log('  Warnings:', result2.warnings);
+
+	// Example 3: Edge backend (traditional approach)
+	const edgeConfig: Partial<VectorizerConfig> & { backend: 'edge' } = {
+		backend: 'edge',
+		detail: 0.6,
+		stroke_width: 1.5
+	};
+
+	const result3 = processConfiguration(edgeConfig as VectorizerConfig);
+	console.log('Example 3 - Edge Backend:', result3.description);
+	console.log('  Valid:', result3.isValid);
+}

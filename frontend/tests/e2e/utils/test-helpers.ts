@@ -116,7 +116,10 @@ export class ConverterPage {
 	/**
 	 * Set individual artistic effect values
 	 */
-	async setArtisticEffect(effect: 'variable_weights' | 'tremor_strength' | 'tapering', value: number) {
+	async setArtisticEffect(
+		effect: 'variable_weights' | 'tremor_strength' | 'tapering',
+		value: number
+	) {
 		const slider = this.page.locator(`input[id="${effect}"]`);
 		await expect(slider).toBeVisible();
 		await slider.fill(value.toString());
@@ -126,7 +129,10 @@ export class ConverterPage {
 	 * Set hand-drawn style preset
 	 */
 	async setHandDrawnPreset(preset: 'none' | 'subtle' | 'medium' | 'strong' | 'sketchy') {
-		const select = this.page.locator('select, [role="combobox"]').filter({ hasText: /hand.*drawn.*style/i }).first();
+		const select = this.page
+			.locator('select, [role="combobox"]')
+			.filter({ hasText: /hand.*drawn.*style/i })
+			.first();
 		await select.selectOption(preset);
 	}
 

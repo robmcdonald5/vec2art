@@ -9,24 +9,25 @@
 //! All algorithms are controlled by a single detail parameter (0..1) that maps
 //! to appropriate thresholds for each backend.
 
-use crate::algorithms::background::{rgba_to_lab, BackgroundConfig, LabColor};
-use crate::algorithms::dots::{generate_dots_from_image, DotConfig};
-use crate::algorithms::edges::{
+use crate::algorithms::dots::background::{rgba_to_lab, BackgroundConfig, LabColor};
+use crate::algorithms::centerline::{CenterlineAlgorithm, DistanceTransformCenterlineAlgorithm};
+use crate::algorithms::dots::dots::{generate_dots_from_image, DotConfig};
+use crate::algorithms::edges::edges::{
     apply_nms, compute_fdog, hysteresis_threshold, FdogConfig, NmsConfig,
 };
-use crate::algorithms::etf::{compute_etf, EtfConfig};
-use crate::algorithms::fit::{fit_beziers, FitConfig};
-use crate::algorithms::gradients::GradientConfig;
-use crate::algorithms::path_utils::calculate_douglas_peucker_epsilon;
-use crate::algorithms::svg_dots::dots_to_svg_paths;
-use crate::algorithms::trace::{trace_polylines, TraceConfig};
+use crate::algorithms::edges::etf::{compute_etf, EtfConfig};
+use crate::algorithms::tracing::fit::{fit_beziers, FitConfig};
+use crate::algorithms::edges::gradients::GradientConfig;
+use crate::algorithms::tracing::path_utils::calculate_douglas_peucker_epsilon;
+use crate::algorithms::dots::svg_dots::dots_to_svg_paths;
+use crate::algorithms::tracing::trace::{trace_polylines, TraceConfig};
 use crate::algorithms::{Point, SvgElementType, SvgPath};
-use crate::svg_gradients::{GradientDefinition, ColorStop};
 use crate::error::VectorizeError;
 use crate::execution::{execute_parallel, execute_parallel_filter_map, par_iter_mut, reduce};
-use image::{GrayImage, ImageBuffer, Luma, Rgba};
-use std::collections::{HashMap, VecDeque};
+use crate::svg_gradients::{ColorStop, GradientDefinition};
 use crate::utils::Instant;
+use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba};
+use std::collections::{HashMap, VecDeque};
 
 /// Rectangle structure for region identification
 #[derive(Debug, Clone, Copy)]
@@ -243,6 +244,8 @@ pub struct TraceLowConfig {
     pub min_branch_length: f32,
     /// Douglas-Peucker epsilon for path simplification (0.5-3.0, default: computed from detail level)
     pub douglas_peucker_epsilon: f32,
+    /// Enable high-performance Distance Transform-based centerline algorithm (default: false)
+    pub enable_distance_transform_centerline: bool,
     // Superpixel-specific configuration fields
     /// Number of superpixels to generate (20-1000, default: computed from detail level)
     pub num_superpixels: u32,
@@ -258,6 +261,8 @@ pub struct TraceLowConfig {
     pub superpixel_simplify_boundaries: bool,
     /// Boundary simplification tolerance (0.5-3.0, default: 1.0)
     pub superpixel_boundary_epsilon: f32,
+    /// Whether to preserve original colors in superpixel regions (default: true)
+    pub superpixel_preserve_colors: bool,
     // Line tracing color configuration fields
     /// Whether to preserve original pixel colors in line tracing output (edge/centerline backends)
     pub line_preserve_colors: bool,
@@ -334,27 +339,29 @@ impl Default for TraceLowConfig {
             adaptive_threshold_use_optimized: true,
             enable_width_modulation: false,
             // Centerline processing defaults
-            min_branch_length: 12.0,        // Will be adjusted based on detail level
-            douglas_peucker_epsilon: 1.5,   // Will be adjusted based on detail level
+            min_branch_length: 12.0, // Will be adjusted based on detail level
+            douglas_peucker_epsilon: 1.5, // Will be adjusted based on detail level
+            enable_distance_transform_centerline: false, // Default to traditional skeleton approach
             // Superpixel defaults
-            num_superpixels: 100,            // Reasonable default for moderate segmentation
-            superpixel_compactness: 10.0,    // Balanced shape vs color similarity
-            superpixel_slic_iterations: 10,  // Standard convergence iterations
-            superpixel_fill_regions: true,   // Default to filled poster-style look
+            num_superpixels: 150, // Default region complexity for balanced detail
+            superpixel_compactness: 10.0, // Balanced shape vs color similarity
+            superpixel_slic_iterations: 10, // Standard convergence iterations
+            superpixel_fill_regions: true, // Default to filled poster-style look
             superpixel_stroke_regions: true, // Include boundaries for definition
             superpixel_simplify_boundaries: true, // Simplified paths for cleaner output
             superpixel_boundary_epsilon: 1.0, // Moderate simplification
+            superpixel_preserve_colors: true, // Default to color for interesting output
             // Line tracing color defaults
-            line_preserve_colors: false,     // Default to monochrome for backward compatibility
+            line_preserve_colors: false, // Default to monochrome for backward compatibility
             line_color_sampling: crate::algorithms::ColorSamplingMethod::DominantColor, // Default to simple method
-            line_color_accuracy: 0.7,        // Good balance of speed vs accuracy
-            max_colors_per_path: 3,          // Reasonable color complexity limit
-            color_tolerance: 0.15,           // Moderate color similarity threshold
+            line_color_accuracy: 0.7, // Good balance of speed vs accuracy
+            max_colors_per_path: 3,   // Reasonable color complexity limit
+            color_tolerance: 0.15,    // Moderate color similarity threshold
             enable_palette_reduction: false, // Default disabled for backward compatibility
-            palette_target_colors: 16,       // Balanced color count for palette reduction
+            palette_target_colors: 16, // Balanced color count for palette reduction
             // Safety and optimization defaults
-            max_image_size: 4096,    // 4K maximum dimension before resizing
-            svg_precision: 2,        // 2 decimal places for balanced file size/quality
+            max_image_size: 4096, // 4K maximum dimension before resizing
+            svg_precision: 2,     // 2 decimal places for balanced file size/quality
         }
     }
 }
@@ -422,11 +429,11 @@ impl ThresholdMapping {
 pub fn vectorize_trace_low_with_gradients(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
-    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
+    hand_drawn_config: Option<&crate::algorithms::visual::hand_drawn::HandDrawnConfig>,
 ) -> Result<EnhancedSvgResult, VectorizeError> {
     // Call standard vectorization first
     let paths = vectorize_trace_low(image, config, hand_drawn_config)?;
-    
+
     // If gradients are enabled and we have color data, analyze for gradients
     let (enhanced_paths, gradients) = if config.line_preserve_colors
         && matches!(
@@ -434,13 +441,12 @@ pub fn vectorize_trace_low_with_gradients(
             crate::algorithms::ColorSamplingMethod::GradientMapping
                 | crate::algorithms::ColorSamplingMethod::ContentAware
                 | crate::algorithms::ColorSamplingMethod::Adaptive
-        )
-    {
+        ) {
         enhance_paths_with_gradients(&paths, image, config)
     } else {
         (paths, Vec::new())
     };
-    
+
     let has_gradients = !gradients.is_empty();
     Ok(EnhancedSvgResult {
         paths: enhanced_paths,
@@ -453,12 +459,17 @@ pub fn vectorize_trace_low_with_gradients(
 pub fn vectorize_trace_low(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
-    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
+    hand_drawn_config: Option<&crate::algorithms::visual::hand_drawn::HandDrawnConfig>,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     // Check if directional passes are enabled (independent of multipass setting)
-    if config.backend == TraceBackend::Edge && (config.enable_reverse_pass || config.enable_diagonal_pass) {
-        log::info!("🎯 Using directional processing (reverse={}, diagonal={})", 
-                   config.enable_reverse_pass, config.enable_diagonal_pass);
+    if config.backend == TraceBackend::Edge
+        && (config.enable_reverse_pass || config.enable_diagonal_pass)
+    {
+        log::info!(
+            "🎯 Using directional processing (reverse={}, diagonal={})",
+            config.enable_reverse_pass,
+            config.enable_diagonal_pass
+        );
         // Use directional processing for enhanced directional quality
         vectorize_trace_low_directional(image, config, hand_drawn_config)
     } else if config.enable_multipass && config.backend == TraceBackend::Edge {
@@ -476,7 +487,7 @@ pub fn vectorize_trace_low(
 pub fn vectorize_trace_low_single_pass(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
-    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
+    hand_drawn_config: Option<&crate::algorithms::visual::hand_drawn::HandDrawnConfig>,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     let thresholds = ThresholdMapping::new(config.detail, image.width(), image.height());
 
@@ -504,10 +515,10 @@ pub fn vectorize_trace_low_single_pass(
 pub fn vectorize_trace_low_multipass(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
-    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
+    hand_drawn_config: Option<&crate::algorithms::visual::hand_drawn::HandDrawnConfig>,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     let pass_count = config.pass_count.max(1).min(10); // Clamp to 1-10 passes
-    
+
     log::info!(
         "Starting {}-pass trace-low vectorization with backend {:?}, base detail {:.2}",
         pass_count,
@@ -521,102 +532,64 @@ pub fn vectorize_trace_low_multipass(
         return vectorize_trace_low_single_pass(image, config, hand_drawn_config);
     }
 
-    // APPROACH C: Calculate multi-scale configurations for each pass
-    let scale_configs = calculate_multiscale_configs(config.detail, pass_count);
-    
+    // Simple multipass approach - no complex multiscale system needed
+
     log::info!(
-        "APPROACH C: {}-pass multi-scale configuration: {:?}",
-        pass_count,
-        scale_configs.iter().map(|c| format!("{:?}", c.scale_type)).collect::<Vec<_>>()
+        "Starting {}-pass vectorization with varying detail levels",
+        pass_count
     );
 
-    let mut all_paths = Vec::new();
-    let mut scale_results = Vec::new(); // Store results per scale for intelligent combining
-    
+    let mut final_paths = Vec::new();
+
     for pass_num in 0..pass_count {
-        let scale_config = &scale_configs[pass_num as usize];
-        
         log::debug!(
-            "APPROACH C: Starting pass {} of {} - Scale: {:?}, Algorithm: {:?}",
+            "Starting pass {} of {} - varying detail level",
             pass_num + 1,
-            pass_count,
-            scale_config.scale_type,
-            scale_config.algorithm
+            pass_count
         );
-        
+
         let phase_start = Instant::now();
-        
-        // APPROACH C: Create scale-specific configuration
+
+        // Vary detail level across passes to capture different levels of detail
+        let detail_multiplier = match pass_num {
+            0 => 1.2, // First pass: less sensitive (major features)
+            1 => 1.0, // Second pass: base sensitivity
+            2 => 0.7, // Third pass: more sensitive (fine details)
+            _ => 0.5 + (pass_num as f32 * 0.1), // Additional passes: progressively more sensitive
+        };
+
         let mut pass_config = config.clone();
-        pass_config.detail = scale_config.edge_threshold;
+        pass_config.detail = (config.detail * detail_multiplier).clamp(0.1, 2.0);
         pass_config.enable_multipass = false; // Prevent recursion
         pass_config.pass_count = 1; // Each individual pass is single-pass
-        
-        // APPROACH C: Use scale-specific edge detection algorithm (without region filtering)
-        let pass_paths = trace_multiscale_edges(
-            image, 
-            scale_config, 
-            &pass_config, 
-            &all_paths
-        )?;
-        
+
+        let pass_paths = vectorize_trace_low_single_pass(image, &pass_config, hand_drawn_config)?;
         let pass_time = phase_start.elapsed();
-        
-        // APPROACH C: Store scale-specific results for intelligent combining
-        scale_results.push(ScaleResult {
-            scale_type: scale_config.scale_type.clone(),
-            paths: pass_paths.clone(),
-            processing_time: pass_time,
-            edge_strength: calculate_edge_strength_metrics(&pass_paths),
-            regions_processed: 1, // Full image processing
-            efficiency_score: pass_paths.len() as f32,
-        });
-        
+
         log::debug!(
-            "APPROACH C: Scale {:?} completed: {:.3}ms ({} paths)",
-            scale_config.scale_type,
-            pass_time.as_secs_f64() * 1000.0,
-            pass_paths.len()
-        );
-        
-        // APPROACH C: No early termination - each scale provides unique information
-        // Intelligent combining happens after all scales are processed
-        
-        // Temporary merge for progress tracking (final intelligent merge happens later)
-        let temp_merged = merge_multiscale_paths(&all_paths, &pass_paths, &scale_config.scale_type);
-        all_paths = temp_merged;
-        
-        // APPROACH C: Scale-specific quality metrics
-        let scale_coverage = calculate_scale_coverage(&pass_paths, &scale_config.scale_type);
-        
-        log::info!(
-            "APPROACH C: Scale {:?} completed - {} paths, coverage: {:.1}%, processing: {:.3}ms",
-            scale_config.scale_type,
+            "Pass {} complete - {} paths generated, detail level: {:.2}, processing time: {:.3}ms",
+            pass_num + 1,
             pass_paths.len(),
-            scale_coverage * 100.0,
+            pass_config.detail,
             pass_time.as_secs_f64() * 1000.0
         );
+
+        // Merge paths, avoiding duplicates
+        for path in pass_paths {
+            if !is_duplicate_path(&path, &final_paths) {
+                final_paths.push(path);
+            }
+        }
     }
 
-    // APPROACH C: Intelligent combining of all scale results
-    let final_paths = intelligently_combine_scales(scale_results);
-    
     let total_time = total_start.elapsed();
     log::info!(
-        "APPROACH C: {}-scale multi-scale processing completed in {:.3}ms ({} final paths)",
+        "{}-pass multipass processing completed in {:.3}ms ({} final paths)",
         pass_count,
         total_time.as_secs_f64() * 1000.0,
         final_paths.len()
     );
-    
-    // APPROACH C: Log multi-scale analysis summary
-    log::info!(
-        "APPROACH C: Multi-scale summary - Base detail: {:.4}, Scales used: {}, Final paths: {}",
-        config.detail,
-        pass_count,
-        final_paths.len()
-    );
-    
+
     Ok(final_paths)
 }
 
@@ -624,7 +597,7 @@ pub fn vectorize_trace_low_multipass(
 pub fn vectorize_trace_low_directional(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
-    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
+    hand_drawn_config: Option<&crate::algorithms::visual::hand_drawn::HandDrawnConfig>,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     log::info!(
         "Starting directional multi-pass trace-low vectorization with backend {:?}, base detail {:.2}",
@@ -653,7 +626,11 @@ pub fn vectorize_trace_low_directional(
     budget.consumed_ms += base_time.as_millis() as u64;
 
     let remaining_budget = budget.total_budget_ms.saturating_sub(budget.consumed_ms);
-    let pass_type = if config.enable_multipass { "multipass" } else { "single-pass" };
+    let pass_type = if config.enable_multipass {
+        "multipass"
+    } else {
+        "single-pass"
+    };
     log::info!(
         "Base {} completed in {:.1}ms ({} paths), budget remaining: {}ms",
         pass_type,
@@ -671,9 +648,9 @@ pub fn vectorize_trace_low_directional(
         );
         return Ok(base_paths);
     }
-    
+
     log::info!(
-        "✓ Proceeding with directional analysis - {} paths generated, {}ms remaining", 
+        "✓ Proceeding with directional analysis - {} paths generated, {}ms remaining",
         base_paths.len(),
         budget.total_budget_ms.saturating_sub(budget.consumed_ms)
     );
@@ -745,7 +722,8 @@ pub fn vectorize_trace_low_directional(
     log::info!("Phase 4: Merging directional results");
     let phase_start = Instant::now();
     let base_path_count = base_paths.len();
-    let final_paths = merge_directional_results(base_paths, all_directional_paths, config, hand_drawn_config);
+    let final_paths =
+        merge_directional_results(base_paths, all_directional_paths, config, hand_drawn_config);
     let merge_time = phase_start.elapsed();
 
     let total_time = total_start.elapsed();
@@ -787,22 +765,22 @@ fn trace_edge(
     // Apply edge-preserving noise filtering if enabled
     let noise_filtered = if config.noise_filtering {
         let phase_start = Instant::now();
-        
+
         // Use configurable bilateral filter parameters
         // Optimize spatial sigma for performance while maintaining quality
         let spatial_sigma = config.noise_filter_spatial_sigma.min(1.5); // Force fast path for better performance
         let range_sigma = config.noise_filter_range_sigma;
-        
+
         let filtered = bilateral_filter(&gray, spatial_sigma, range_sigma);
         let filter_time = phase_start.elapsed();
-        
+
         log::debug!(
             "Bilateral noise filtering: {:.3}ms (spatial_σ={:.1}, range_σ={:.1})",
             filter_time.as_secs_f64() * 1000.0,
             spatial_sigma,
             range_sigma
         );
-        
+
         filtered
     } else {
         log::debug!("Noise filtering disabled - using original grayscale image");
@@ -1048,7 +1026,7 @@ fn trace_edge(
             .into_iter()
             .map(|polyline| {
                 create_stroke_path_with_color(
-                    polyline, 
+                    polyline,
                     clamped_width,
                     color_map.as_ref(),
                     image.width(),
@@ -1089,7 +1067,7 @@ fn endpoint_tangent(polyline: &[Point], is_tail: bool) -> (f32, f32) {
     if n < 2 {
         return (0.0, 0.0);
     }
-    
+
     if is_tail {
         let a = &polyline[n - 2];
         let b = &polyline[n - 1];
@@ -1127,35 +1105,35 @@ fn edt_allows_bridge(p1: &Point, p2: &Point, edt: &[Vec<f32>]) -> bool {
     if edt.is_empty() || edt[0].is_empty() {
         return true; // No EDT available, allow bridge
     }
-    
+
     let height = edt.len();
     let width = edt[0].len();
-    
+
     // Sample points along the bridge path
     let dx = p2.x - p1.x;
     let dy = p2.y - p1.y;
     let dist = dx.hypot(dy);
-    
+
     if dist < 1e-6 {
         return true;
     }
-    
+
     let samples = (dist.ceil() as usize).max(3);
     for i in 0..samples {
         let t = i as f32 / (samples - 1) as f32;
         let x = (p1.x + t * dx).round() as usize;
         let y = (p1.y + t * dy).round() as usize;
-        
+
         if x >= width || y >= height {
             continue;
         }
-        
+
         // Require minimum EDT radius of 0.8 pixels for bridge path
         if edt[y][x] < 0.8 {
             return false;
         }
     }
-    
+
     true
 }
 
@@ -1168,7 +1146,7 @@ fn connect_nearby_endpoints_oriented(
 ) -> (Vec<Vec<Point>>, usize, usize) {
     let mut bridges_accepted = 0;
     let mut bridges_rejected = 0;
-    
+
     let mut used = vec![false; lines.len()];
     let mut out: Vec<Vec<Point>> = Vec::new();
 
@@ -1199,7 +1177,7 @@ fn connect_nearby_endpoints_oriented(
                     let cur_tangent = endpoint_tangent(&cur, true);
                     let other_tangent = endpoint_tangent(&lines[j], false);
                     let angle = angle_between(cur_tangent, other_tangent);
-                    
+
                     if angle <= max_angle_deg && edt_allows_bridge(&cur_tail, &other_head, edt) {
                         best = Some((j, true, true, d1));
                     } else {
@@ -1214,7 +1192,7 @@ fn connect_nearby_endpoints_oriented(
                     let other_tangent = endpoint_tangent(&lines[j], true);
                     let reversed_other = (-other_tangent.0, -other_tangent.1);
                     let angle = angle_between(cur_tangent, reversed_other);
-                    
+
                     if angle <= max_angle_deg && edt_allows_bridge(&cur_tail, &other_tail, edt) {
                         best = best.map_or(Some((j, true, false, d2)), |b| {
                             if d2 < b.3 {
@@ -1235,7 +1213,7 @@ fn connect_nearby_endpoints_oriented(
                     let reversed_cur = (-cur_tangent.0, -cur_tangent.1);
                     let other_tangent = endpoint_tangent(&lines[j], false);
                     let angle = angle_between(reversed_cur, other_tangent);
-                    
+
                     if angle <= max_angle_deg && edt_allows_bridge(&cur_head, &other_head, edt) {
                         best = best.map_or(Some((j, false, true, d3)), |b| {
                             if d3 < b.3 {
@@ -1257,7 +1235,7 @@ fn connect_nearby_endpoints_oriented(
                     let other_tangent = endpoint_tangent(&lines[j], true);
                     let reversed_other = (-other_tangent.0, -other_tangent.1);
                     let angle = angle_between(reversed_cur, reversed_other);
-                    
+
                     if angle <= max_angle_deg && edt_allows_bridge(&cur_head, &other_tail, edt) {
                         best = best.map_or(Some((j, false, false, d4)), |b| {
                             if d4 < b.3 {
@@ -1319,7 +1297,7 @@ fn analyze_skeleton_topology(skeleton: &GrayImage) -> (usize, usize) {
     let (width, height) = skeleton.dimensions();
     let mut endpoints = 0;
     let mut junctions = 0;
-    
+
     for y in 1..(height - 1) {
         for x in 1..(width - 1) {
             if skeleton.get_pixel(x, y)[0] > 127 {
@@ -1337,7 +1315,7 @@ fn analyze_skeleton_topology(skeleton: &GrayImage) -> (usize, usize) {
                         }
                     }
                 }
-                
+
                 match neighbors {
                     1 => endpoints += 1,
                     n if n >= 3 => junctions += 1,
@@ -1346,7 +1324,7 @@ fn analyze_skeleton_topology(skeleton: &GrayImage) -> (usize, usize) {
             }
         }
     }
-    
+
     (endpoints, junctions)
 }
 
@@ -1355,19 +1333,22 @@ fn calculate_polyline_statistics(polylines: &[Vec<Point>]) -> (usize, f32, f32) 
     if polylines.is_empty() {
         return (0, 0.0, 0.0);
     }
-    
+
     let count = polylines.len();
     let total_length: f32 = polylines.iter().map(|p| calculate_polyline_length(p)).sum();
-    
+
     // Calculate median length
-    let mut lengths: Vec<f32> = polylines.iter().map(|p| calculate_polyline_length(p)).collect();
+    let mut lengths: Vec<f32> = polylines
+        .iter()
+        .map(|p| calculate_polyline_length(p))
+        .collect();
     lengths.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let median_length = if lengths.len() % 2 == 0 {
         (lengths[lengths.len() / 2 - 1] + lengths[lengths.len() / 2]) / 2.0
     } else {
         lengths[lengths.len() / 2]
     };
-    
+
     (count, total_length, median_length)
 }
 
@@ -1376,16 +1357,45 @@ fn calculate_average_points_per_polyline(polylines: &[Vec<Point>]) -> f32 {
     if polylines.is_empty() {
         return 0.0;
     }
-    
+
     let total_points: usize = polylines.iter().map(|p| p.len()).sum();
     total_points as f32 / polylines.len() as f32
 }
 
-
-/// Centerline backend: Skeleton + centerline tracing using Zhang-Suen thinning
+/// Centerline backend: Skeleton + centerline tracing with optional Distance Transform algorithm
 fn trace_centerline(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     _thresholds: &ThresholdMapping,
+    config: &TraceLowConfig,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    // Check if distance transform algorithm is enabled
+    if config.enable_distance_transform_centerline {
+        return trace_centerline_distance_transform(image, config);
+    }
+
+    // Fall back to traditional skeleton-based approach
+    trace_centerline_skeleton_based(image, config)
+}
+
+/// High-performance Distance Transform-based centerline tracing
+fn trace_centerline_distance_transform(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    config: &TraceLowConfig,
+) -> Result<Vec<SvgPath>, VectorizeError> {
+    let algorithm = if config.detail < 0.3 {
+        // High performance for low detail
+        DistanceTransformCenterlineAlgorithm::with_high_performance_settings()
+    } else {
+        // Balanced performance for higher detail
+        DistanceTransformCenterlineAlgorithm::new()
+    };
+
+    algorithm.extract_centerlines(image, config)
+}
+
+/// Traditional skeleton-based centerline tracing (original implementation)
+fn trace_centerline_skeleton_based(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     log::info!("Starting centerline tracing with Zhang-Suen thinning");
@@ -1440,7 +1450,7 @@ fn trace_centerline(
         otsu_threshold(&blurred)
     };
     let threshold_time = phase_start.elapsed();
-    
+
     // Health metrics: foreground pixels after binarization
     let fg_pixels_after_binarization = count_foreground_pixels(&binary);
 
@@ -1452,7 +1462,7 @@ fn trace_centerline(
         binary
     };
     let morphology_time = phase_start.elapsed();
-    
+
     // Health metrics: foreground pixels after morphology
     let fg_pixels_after_morphology = count_foreground_pixels(&processed_binary);
 
@@ -1460,7 +1470,7 @@ fn trace_centerline(
     let phase_start = Instant::now();
     let skeleton = guo_hall_thinning(&processed_binary);
     let thinning_time = phase_start.elapsed();
-    
+
     // Health metrics: skeleton analysis
     let skeleton_pixels = count_skeleton_pixels(&skeleton);
     let (endpoints, junctions) = analyze_skeleton_topology(&skeleton);
@@ -1480,9 +1490,9 @@ fn trace_centerline(
     let min_branch = config.min_branch_length; // Use configured value directly
     let pruned_polylines = prune_branches_with_edt(polylines, &edt, min_branch);
     let pruning_time = phase_start.elapsed();
-    
+
     // Health metrics: after pruning
-    let (polylines_after_pruning, total_length_after_pruning, median_length_after_pruning) = 
+    let (polylines_after_pruning, total_length_after_pruning, median_length_after_pruning) =
         calculate_polyline_statistics(&pruned_polylines);
 
     // Phase 6.5: Remove micro-loops (tiny cycles that look like "hairballs")
@@ -1500,26 +1510,30 @@ fn trace_centerline(
         .filter(|polyline| !polyline.is_empty())
         .collect();
     let simplification_time = phase_start.elapsed();
-    
+
     // Health metrics: after simplification
-    let avg_points_after_simplification = calculate_average_points_per_polyline(&simplified_polylines);
+    let avg_points_after_simplification =
+        calculate_average_points_per_polyline(&simplified_polylines);
     let simplified_polylines_count = simplified_polylines.len();
 
     // Phase 7.5: Bridge nearby endpoints to reconnect breaks with smart reconnection
     let phase_start = Instant::now();
-    let (reconnected_polylines, bridges_accepted, bridges_rejected) = 
+    let (reconnected_polylines, bridges_accepted, bridges_rejected) =
         connect_nearby_endpoints_oriented(simplified_polylines, 7.0, 30.0, &edt);
     let bridging_time = phase_start.elapsed();
-    
+
     // Health metrics: after reconnection
-    let (polylines_after_reconnection, _total_length_after_reconnection, _median_length_after_reconnection) = 
-        calculate_polyline_statistics(&reconnected_polylines);
+    let (
+        polylines_after_reconnection,
+        _total_length_after_reconnection,
+        _median_length_after_reconnection,
+    ) = calculate_polyline_statistics(&reconnected_polylines);
 
     // Phase 8: Generate SVG paths with optional EDT-based width modulation and color support
     let phase_start = Instant::now();
     let (img_width, img_height) = image.dimensions();
     let color_map: Vec<Rgba<u8>> = image.pixels().cloned().collect();
-    
+
     let svg_paths: Vec<SvgPath> = reconnected_polylines
         .into_iter()
         .map(|polyline| {
@@ -1535,7 +1549,8 @@ fn trace_centerline(
 
             // Add color sampling if enabled
             if config.line_preserve_colors {
-                let color = sample_polyline_color(&polyline, &color_map, img_width, img_height, config);
+                let color =
+                    sample_polyline_color(&polyline, &color_map, img_width, img_height, config);
                 svg_path.stroke = color;
             }
 
@@ -1555,7 +1570,7 @@ fn trace_centerline(
         endpoints,
         junctions
     );
-    
+
     log::info!(
         "Centerline processing metrics - Pruning: {} polylines ({:.1}px total, {:.1}px median), Simplify: {:.1} pts/line, Reconnect: {} -> {} polylines ({} bridges accepted, {} rejected)",
         polylines_after_pruning,
@@ -1606,7 +1621,41 @@ fn trace_superpixel(
     } else {
         (50.0 + 150.0 * config.detail) as usize
     };
-    let superpixel_compactness = config.superpixel_compactness;
+
+    // Apply bounds checking to prevent memory allocation failure
+    let total_pixels = width * height;
+    let max_reasonable_superpixels = (total_pixels / 1000).max(20).min(500); // At least 1000 pixels per superpixel
+
+    let superpixel_count = if superpixel_count > max_reasonable_superpixels {
+        log::warn!(
+            "Superpixel count {} too high for {}×{} image ({}px), clamping to {}",
+            superpixel_count,
+            width,
+            height,
+            total_pixels,
+            max_reasonable_superpixels
+        );
+        max_reasonable_superpixels
+    } else {
+        superpixel_count
+    };
+
+    // Use adaptive compactness to prevent grid artifacts at high superpixel counts
+    // Research shows: high compactness + high K = rectangular grid patterns
+    // Solution: decrease compactness as superpixel density increases
+    let base_compactness = config.superpixel_compactness;
+    let superpixel_density = superpixel_count as f32 / (total_pixels as f32 / 10000.0); // superpixels per 10k pixels
+    let compactness_reduction = (superpixel_density - 1.0).max(0.0) * 0.1; // Reduce by 0.1 for each unit above 1.0
+    let superpixel_compactness = (base_compactness - compactness_reduction).max(0.1); // Never go below 0.1
+
+    if superpixel_compactness != base_compactness {
+        log::info!(
+            "Adaptive compactness: {:.2} → {:.2} (density: {:.2})",
+            base_compactness,
+            superpixel_compactness,
+            superpixel_density
+        );
+    }
 
     log::info!(
         "Starting SLIC superpixel segmentation: {}×{} → {} superpixels (detail: {:.2})",
@@ -1656,6 +1705,7 @@ fn trace_superpixel(
         config.detail,
         config.superpixel_fill_regions,
         config.superpixel_stroke_regions,
+        config.superpixel_preserve_colors,
     )?;
     log::debug!("SVG generation: {:?}", phase_start.elapsed());
 
@@ -1741,9 +1791,12 @@ fn slic_segmentation(
     let s = ((total_pixels as f32 / num_superpixels as f32).sqrt()) as usize;
     let s = s.max(1); // Ensure minimum spacing of 1
 
-    // Initialize cluster centers on a regular grid
+    // Initialize cluster centers with jitter to prevent grid artifacts
     let mut clusters = Vec::new();
     let mut cluster_id = 0;
+
+    // Use simple deterministic jitter based on position to avoid diagonal patterns
+    let jitter_amount = (s as f32 * 0.25).min(8.0); // Max 25% jitter, capped at 8 pixels
 
     for y in (s / 2..height).step_by(s) {
         for x in (s / 2..width).step_by(s) {
@@ -1751,9 +1804,22 @@ fn slic_segmentation(
                 break;
             }
 
-            let idx = y * width + x;
+            // Apply deterministic jitter to break up grid pattern
+            let jitter_x =
+                ((x * 73 + y * 37) % 256) as f32 / 256.0 * jitter_amount - jitter_amount / 2.0;
+            let jitter_y =
+                ((x * 37 + y * 73) % 256) as f32 / 256.0 * jitter_amount - jitter_amount / 2.0;
+
+            let jittered_x = ((x as f32 + jitter_x).max(0.0).min((width - 1) as f32)) as usize;
+            let jittered_y = ((y as f32 + jitter_y).max(0.0).min((height - 1) as f32)) as usize;
+
+            let idx = jittered_y * width + jittered_x;
             if idx < lab_image.len() {
-                clusters.push(SlicCluster::new(lab_image[idx], x as f32, y as f32));
+                clusters.push(SlicCluster::new(
+                    lab_image[idx],
+                    jittered_x as f32,
+                    jittered_y as f32,
+                ));
                 cluster_id += 1;
             }
         }
@@ -1803,17 +1869,34 @@ fn slic_segmentation(
             vec![(LabColor::new(0.0, 0.0, 0.0), 0.0, 0.0, 0); clusters.len()];
 
         for (idx, &label) in labels.iter().enumerate() {
-            if label < cluster_sums.len() {
+            // Safe access with comprehensive bounds checking
+            if let Some(cluster_sum) = cluster_sums.get_mut(label) {
                 let x = (idx % width) as f32;
                 let y = (idx / width) as f32;
-                let lab = lab_image[idx];
 
-                cluster_sums[label].0.l += lab.l;
-                cluster_sums[label].0.a += lab.a;
-                cluster_sums[label].0.b += lab.b;
-                cluster_sums[label].1 += x;
-                cluster_sums[label].2 += y;
-                cluster_sums[label].3 += 1;
+                // Safe access to lab_image with bounds check
+                if let Some(lab) = lab_image.get(idx) {
+                    cluster_sum.0.l += lab.l;
+                    cluster_sum.0.a += lab.a;
+                    cluster_sum.0.b += lab.b;
+                    cluster_sum.1 += x;
+                    cluster_sum.2 += y;
+                    cluster_sum.3 += 1;
+                } else {
+                    // This should not happen with proper initialization, but handle gracefully
+                    log::warn!(
+                        "Lab image index {} out of bounds (max: {})",
+                        idx,
+                        lab_image.len()
+                    );
+                }
+            } else {
+                // Invalid cluster label - this indicates a deeper issue but handle gracefully
+                log::warn!(
+                    "Invalid cluster label {} (max clusters: {})",
+                    label,
+                    cluster_sums.len()
+                );
             }
         }
 
@@ -1981,16 +2064,104 @@ fn extract_region_boundary(
         .map(|(x, y)| Point::new(x as f32, y as f32))
         .collect();
 
-    // Sort by angle from centroid for better path ordering
-    boundary_points.sort_by(|a, b| {
-        let angle_a = (a.y - centroid_y).atan2(a.x - centroid_x);
-        let angle_b = (b.y - centroid_y).atan2(b.x - centroid_x);
-        angle_a
-            .partial_cmp(&angle_b)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    // Use proper contour tracing instead of angle sorting to prevent zigzag artifacts
+    if boundary_points.len() < 3 {
+        return boundary_points;
+    }
 
-    boundary_points
+    // Trace the boundary contour using a proper path following algorithm
+    let traced_boundary = trace_boundary_contour(&boundary_points);
+
+    traced_boundary
+}
+
+/// Trace boundary contour using nearest-neighbor path following to prevent zigzag artifacts
+fn trace_boundary_contour(boundary_points: &[Point]) -> Vec<Point> {
+    if boundary_points.len() < 3 {
+        return boundary_points.to_vec();
+    }
+
+    let mut traced_path = Vec::new();
+    let mut visited = vec![false; boundary_points.len()];
+
+    // Start from the topmost point (or leftmost if tie)
+    let mut current_idx = 0;
+    for (i, point) in boundary_points.iter().enumerate() {
+        let current_best = &boundary_points[current_idx];
+        if point.y < current_best.y || (point.y == current_best.y && point.x < current_best.x) {
+            current_idx = i;
+        }
+    }
+
+    // Trace the contour by following nearest unvisited neighbors
+    let start_idx = current_idx;
+    loop {
+        traced_path.push(boundary_points[current_idx]);
+        visited[current_idx] = true;
+
+        // Find nearest unvisited neighbor with more generous distance threshold
+        let mut next_idx = None;
+        let mut min_distance = f32::INFINITY;
+
+        for (i, point) in boundary_points.iter().enumerate() {
+            if visited[i] {
+                continue;
+            }
+
+            let dx = point.x - boundary_points[current_idx].x;
+            let dy = point.y - boundary_points[current_idx].y;
+            let distance = dx * dx + dy * dy;
+
+            if distance < min_distance {
+                min_distance = distance;
+                next_idx = Some(i);
+            }
+        }
+
+        match next_idx {
+            Some(idx) => {
+                current_idx = idx;
+
+                // Use much more generous distance threshold to prevent gaps
+                // Stop only if we've made a full loop or distance is extremely far
+                if idx == start_idx || min_distance > 50.0 {
+                    break;
+                }
+            }
+            None => break, // No more unvisited neighbors
+        }
+
+        // Safety limit to prevent infinite loops
+        if traced_path.len() >= boundary_points.len() {
+            break;
+        }
+    }
+
+    // Always include all remaining unvisited points to ensure complete coverage
+    for (i, point) in boundary_points.iter().enumerate() {
+        if !visited[i] {
+            traced_path.push(*point);
+        }
+    }
+
+    // Ensure we have at least 3 points for a valid polygon
+    if traced_path.len() < 3 {
+        return boundary_points.to_vec();
+    }
+
+    // Close the polygon by ensuring the path returns to near the start
+    if let (Some(first), Some(last)) = (traced_path.first(), traced_path.last()) {
+        let dx = last.x - first.x;
+        let dy = last.y - first.y;
+        let distance = dx * dx + dy * dy;
+
+        // If path isn't naturally closed, ensure it forms a proper closed polygon
+        if distance > 4.0 {
+            traced_path.push(*first);
+        }
+    }
+
+    traced_path
 }
 
 /// Generate SVG paths for superpixel regions with different artistic modes
@@ -2004,19 +2175,26 @@ fn generate_superpixel_svg_paths(
     detail: f32,
     fill_regions: bool,
     stroke_regions: bool,
+    preserve_colors: bool,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     let mut svg_paths = Vec::new();
 
     // Determine artistic mode based on configuration
     let mode = match (fill_regions, stroke_regions) {
         (true, true) => "filled_with_borders",
-        (true, false) => "filled_only", 
+        (true, false) => "filled_only",
         (false, true) => "strokes_only",
         (false, false) => {
             // Fallback to detail-based mode if both are disabled
-            if detail < 0.5 { "filled_only" } else { "strokes_only" }
+            if detail < 0.5 {
+                "filled_only"
+            } else {
+                "strokes_only"
+            }
         }
     };
+    log::debug!("Superpixel mode determination: fill_regions={}, stroke_regions={}, detail={:.6}, mode='{}'", 
+                fill_regions, stroke_regions, detail, mode);
 
     log::debug!("Using superpixel artistic mode: {mode} (fill: {fill_regions}, stroke: {stroke_regions}, detail: {detail:.2})");
 
@@ -2044,28 +2222,47 @@ fn generate_superpixel_svg_paths(
         }
         path_data.push_str(" Z"); // Close the path
 
+        // Determine colors based on preserve_colors setting
+        let (fill_color_str, stroke_color_str) = if preserve_colors {
+            // Use original colors
+            (region.avg_rgb_hex.clone(), region.avg_rgb_hex.clone())
+        } else {
+            // Convert to luminance-based grayscale for monochrome mode
+            let grayscale_hex = hex_to_grayscale_hex(&region.avg_rgb_hex);
+            (grayscale_hex.clone(), grayscale_hex)
+        };
+
+        let fill_color = &fill_color_str;
+        let stroke_color = &stroke_color_str;
+
         match mode {
             "filled_only" => {
                 // Stained glass effect - filled regions only
-                let svg_path = SvgPath::new_fill(path_data, &region.avg_rgb_hex);
+                let svg_path = SvgPath::new_fill(path_data, fill_color);
                 svg_paths.push(svg_path);
             }
             "filled_with_borders" => {
                 // Comic book style - filled regions with black borders
-                let filled_path = SvgPath::new_fill(path_data.clone(), &region.avg_rgb_hex);
+                let filled_path = SvgPath::new_fill(path_data.clone(), fill_color);
                 svg_paths.push(filled_path);
 
-                // Add border stroke
+                // Add border stroke (always black for contrast)
                 let stroke_path = SvgPath::new_stroke(path_data, "#000000", stroke_width);
                 svg_paths.push(stroke_path);
             }
             "strokes_only" => {
                 // Cell animation style - strokes only with region color
-                let stroke_path =
-                    SvgPath::new_stroke(path_data, &region.avg_rgb_hex, stroke_width * 1.5);
+                let stroke_path = SvgPath::new_stroke(path_data, stroke_color, stroke_width * 1.5);
                 svg_paths.push(stroke_path);
             }
-            _ => unreachable!(),
+            _ => {
+                log::error!(
+                    "Unknown superpixel mode: '{}', falling back to filled_only",
+                    mode
+                );
+                let svg_path = SvgPath::new_fill(path_data, fill_color);
+                svg_paths.push(svg_path);
+            }
         }
     }
 
@@ -2126,10 +2323,54 @@ fn trace_dots(
         background_config.tolerance
     );
 
+    // Apply noise filtering if enabled (optional preprocessing for dots)
+    let processed_image = if config.noise_filtering {
+        let filter_start = Instant::now();
+
+        // Convert to grayscale for noise filtering
+        let gray = DynamicImage::ImageRgba8(image.clone()).to_luma8();
+
+        // Use configurable bilateral filter parameters
+        let spatial_sigma = config.noise_filter_spatial_sigma.min(1.5); // Force fast path for better performance
+        let range_sigma = config.noise_filter_range_sigma;
+
+        let filtered_gray = bilateral_filter(&gray, spatial_sigma, range_sigma);
+        let filter_time = filter_start.elapsed();
+
+        log::debug!(
+            "Dots bilateral noise filtering: {:.3}ms (spatial_σ={:.1}, range_σ={:.1})",
+            filter_time.as_secs_f64() * 1000.0,
+            spatial_sigma,
+            range_sigma
+        );
+
+        // Convert filtered grayscale back to RGBA (preserving original colors where applicable)
+        let mut filtered_rgba = image.clone();
+        for (x, y, rgba_pixel) in filtered_rgba.enumerate_pixels_mut() {
+            let filtered_luma = filtered_gray.get_pixel(x, y).0[0];
+            let original_luma = (0.299 * rgba_pixel.0[0] as f32
+                + 0.587 * rgba_pixel.0[1] as f32
+                + 0.114 * rgba_pixel.0[2] as f32) as u8;
+
+            if original_luma > 0 {
+                // Preserve color ratios while applying luminance filtering
+                let scale = filtered_luma as f32 / original_luma as f32;
+                rgba_pixel.0[0] = (rgba_pixel.0[0] as f32 * scale).min(255.0) as u8;
+                rgba_pixel.0[1] = (rgba_pixel.0[1] as f32 * scale).min(255.0) as u8;
+                rgba_pixel.0[2] = (rgba_pixel.0[2] as f32 * scale).min(255.0) as u8;
+            }
+        }
+
+        filtered_rgba
+    } else {
+        log::debug!("Noise filtering disabled for dots - using original image");
+        image.clone()
+    };
+
     // Generate dots using the complete pipeline
     let phase_start = Instant::now();
     let dots = generate_dots_from_image(
-        image,
+        &processed_image,
         &dot_config,
         Some(&gradient_config),
         Some(&background_config),
@@ -2381,9 +2622,69 @@ fn calculate_image_bounds(cached_data: &[CachedPathData]) -> (f32, f32, f32, f32
 // Helper Functions
 // ============================================================================
 
-/// Convert RGBA color to hex string
-fn rgba_to_hex(rgba: &Rgba<u8>) -> String {
-    format!("#{:02x}{:02x}{:02x}", rgba.0[0], rgba.0[1], rgba.0[2])
+
+/// Convert RGB color to grayscale using ITU-R BT.709 luminance formula
+/// This provides perceptually accurate luminance conversion with gamma correction
+fn rgb_to_luminance_grayscale(r: u8, g: u8, b: u8) -> u8 {
+    // ITU-R BT.709 standard weights for HDTV (most accurate for modern displays)
+    // Apply gamma correction for linear RGB processing
+    let r_linear = (r as f32 / 255.0).powf(2.2);
+    let g_linear = (g as f32 / 255.0).powf(2.2);
+    let b_linear = (b as f32 / 255.0).powf(2.2);
+
+    // Apply ITU-R BT.709 luminance weights
+    let luminance = 0.2126 * r_linear + 0.7152 * g_linear + 0.0722 * b_linear;
+
+    // Convert back to gamma-corrected space and clamp to u8 range
+    let gamma_corrected = luminance.powf(1.0 / 2.2);
+    (gamma_corrected * 255.0).round().clamp(0.0, 255.0) as u8
+}
+
+/// Apply contrast enhancement to grayscale value
+/// This prevents flat, low-contrast monochrome output by stretching the dynamic range
+fn enhance_grayscale_contrast(gray: u8, contrast_factor: f32) -> u8 {
+    // Convert to 0.0-1.0 range
+    let normalized = gray as f32 / 255.0;
+
+    // Apply contrast enhancement: expand around midpoint (0.5)
+    // Formula: result = (value - 0.5) * contrast + 0.5
+    let enhanced = (normalized - 0.5) * contrast_factor + 0.5;
+
+    // Clamp and convert back to u8
+    (enhanced * 255.0).round().clamp(0.0, 255.0) as u8
+}
+
+/// Convert RGB hex color to enhanced grayscale hex with contrast adjustment
+fn hex_to_grayscale_hex(hex: &str) -> String {
+    // Parse hex color (remove # prefix if present)
+    let hex_clean = hex.trim_start_matches('#');
+
+    // Handle both 3 and 6 character hex formats
+    let (r, g, b) = if hex_clean.len() == 3 {
+        // Short format: #RGB -> #RRGGBB
+        let r = u8::from_str_radix(&hex_clean[0..1].repeat(2), 16).unwrap_or(0);
+        let g = u8::from_str_radix(&hex_clean[1..2].repeat(2), 16).unwrap_or(0);
+        let b = u8::from_str_radix(&hex_clean[2..3].repeat(2), 16).unwrap_or(0);
+        (r, g, b)
+    } else {
+        // Full format: #RRGGBB
+        let r = u8::from_str_radix(&hex_clean[0..2], 16).unwrap_or(0);
+        let g = u8::from_str_radix(&hex_clean[2..4], 16).unwrap_or(0);
+        let b = u8::from_str_radix(&hex_clean[4..6], 16).unwrap_or(0);
+        (r, g, b)
+    };
+
+    // Convert to luminance-based grayscale
+    let gray = rgb_to_luminance_grayscale(r, g, b);
+
+    // Apply contrast enhancement (1.5 provides good balance)
+    let enhanced_gray = enhance_grayscale_contrast(gray, 1.5);
+
+    // Return as hex
+    format!(
+        "#{:02x}{:02x}{:02x}",
+        enhanced_gray, enhanced_gray, enhanced_gray
+    )
 }
 
 /// Convert RGBA image to grayscale with optional color map preservation
@@ -2407,15 +2708,20 @@ fn rgba_to_gray_with_colors(
             .collect();
 
         // Process pixels in parallel
-        let results: Vec<(u32, u32, u8, Option<Rgba<u8>>)> = execute_parallel(pixel_coords, |(x, y)| {
-            let rgba_pixel = image.get_pixel(x, y);
-            let [r, g, b, _a] = rgba_pixel.0;
-            // Optimized integer luminance calculation (avoids floating point)
-            let gray_value = ((77 * r as u32 + 150 * g as u32 + 29 * b as u32) >> 8) as u8;
-            let color = if preserve_colors { Some(*rgba_pixel) } else { None };
-            (x, y, gray_value, color)
-        });
-        
+        let results: Vec<(u32, u32, u8, Option<Rgba<u8>>)> =
+            execute_parallel(pixel_coords, |(x, y)| {
+                let rgba_pixel = image.get_pixel(x, y);
+                let [r, g, b, _a] = rgba_pixel.0;
+                // Optimized integer luminance calculation (avoids floating point)
+                let gray_value = ((77 * r as u32 + 150 * g as u32 + 29 * b as u32) >> 8) as u8;
+                let color = if preserve_colors {
+                    Some(*rgba_pixel)
+                } else {
+                    None
+                };
+                (x, y, gray_value, color)
+            });
+
         // Build results
         if preserve_colors {
             let mut color_vec = vec![Rgba([0, 0, 0, 0]); (width * height) as usize];
@@ -2438,7 +2744,7 @@ fn rgba_to_gray_with_colors(
             // Optimized integer luminance calculation
             let gray_value = ((77 * r as u32 + 150 * g as u32 + 29 * b as u32) >> 8) as u8;
             gray.put_pixel(x, y, Luma([gray_value]));
-            
+
             if let Some(ref mut colors) = color_map {
                 colors.push(*pixel);
             }
@@ -2983,26 +3289,26 @@ fn local_curvature(polyline: &[Point], index: usize) -> f32 {
     if n < 3 || index == 0 || index >= n - 1 {
         return 0.0;
     }
-    
+
     let p_prev = &polyline[index - 1];
     let p_curr = &polyline[index];
     let p_next = &polyline[index + 1];
-    
+
     // Calculate vectors
     let v1 = (p_curr.x - p_prev.x, p_curr.y - p_prev.y);
     let v2 = (p_next.x - p_curr.x, p_next.y - p_curr.y);
-    
+
     // Calculate angle between vectors using cross product
     let cross = v1.0 * v2.1 - v1.1 * v2.0;
     let dot = v1.0 * v2.0 + v1.1 * v2.1;
-    
+
     let angle = cross.atan2(dot).abs();
-    
+
     // Normalize by segment lengths to get curvature
     let len1 = v1.0.hypot(v1.1);
     let len2 = v2.0.hypot(v2.1);
     let avg_len = (len1 + len2) * 0.5;
-    
+
     if avg_len < 1e-6 {
         0.0
     } else {
@@ -3016,36 +3322,36 @@ fn simplify_adaptive(polyline: &[Point], base_epsilon: f32) -> Vec<Point> {
     if polyline.len() <= 2 {
         return polyline.to_vec();
     }
-    
+
     // Calculate curvature for each point
     let mut curvatures = Vec::with_capacity(polyline.len());
     for i in 0..polyline.len() {
         curvatures.push(local_curvature(polyline, i));
     }
-    
+
     // Find maximum curvature for normalization
     let max_curvature = curvatures.iter().fold(0.0f32, |acc, &c| acc.max(c));
-    
+
     // Recursive simplification with adaptive epsilon
     fn simplify_recursive(
-        points: &[Point], 
-        curvatures: &[f32], 
+        points: &[Point],
+        curvatures: &[f32],
         max_curvature: f32,
-        base_epsilon: f32, 
-        start: usize, 
+        base_epsilon: f32,
+        start: usize,
         end: usize,
-        result: &mut Vec<Point>
+        result: &mut Vec<Point>,
     ) {
         if end <= start + 1 {
             return;
         }
-        
+
         let first = &points[start];
         let last = &points[end];
-        
+
         let mut max_distance = 0.0;
         let mut max_index = start;
-        
+
         // Find point with maximum deviation
         for i in (start + 1)..end {
             let distance = perpendicular_distance(&points[i], first, last);
@@ -3054,27 +3360,43 @@ fn simplify_adaptive(polyline: &[Point], base_epsilon: f32) -> Vec<Point> {
                 max_index = i;
             }
         }
-        
+
         // Calculate adaptive epsilon for the worst point
         let normalized_curvature = if max_curvature > 1e-6 {
             curvatures[max_index] / max_curvature
         } else {
             0.0
         };
-        
+
         // More aggressive simplification in straight areas (low curvature)
         // Less aggressive in curved areas (high curvature)
         let curvature_factor = 0.2 + 0.8 * normalized_curvature; // Range: 0.2 to 1.0
         let adaptive_epsilon = base_epsilon * curvature_factor;
-        
+
         if max_distance > adaptive_epsilon {
             // Point is significant, recurse on both sides
-            simplify_recursive(points, curvatures, max_curvature, base_epsilon, start, max_index, result);
+            simplify_recursive(
+                points,
+                curvatures,
+                max_curvature,
+                base_epsilon,
+                start,
+                max_index,
+                result,
+            );
             result.push(points[max_index].clone());
-            simplify_recursive(points, curvatures, max_curvature, base_epsilon, max_index, end, result);
+            simplify_recursive(
+                points,
+                curvatures,
+                max_curvature,
+                base_epsilon,
+                max_index,
+                end,
+                result,
+            );
         }
     }
-    
+
     // Helper function for perpendicular distance calculation
     fn perpendicular_distance(point: &Point, line_start: &Point, line_end: &Point) -> f32 {
         let dx = line_end.x - line_start.x;
@@ -3091,19 +3413,19 @@ fn simplify_adaptive(polyline: &[Point], base_epsilon: f32) -> Vec<Point> {
 
         numerator / denominator
     }
-    
+
     let mut result = vec![polyline[0].clone()];
     simplify_recursive(
-        polyline, 
-        &curvatures, 
-        max_curvature, 
-        base_epsilon, 
-        0, 
-        polyline.len() - 1, 
-        &mut result
+        polyline,
+        &curvatures,
+        max_curvature,
+        base_epsilon,
+        0,
+        polyline.len() - 1,
+        &mut result,
     );
     result.push(polyline[polyline.len() - 1].clone());
-    
+
     result
 }
 
@@ -3214,7 +3536,7 @@ fn sample_polyline_color(
     if polyline.is_empty() || color_map.is_empty() {
         return "#000000".to_string();
     }
-    
+
     // Use advanced color processing
     let color_info = crate::algorithms::extract_path_colors(
         polyline,
@@ -3225,7 +3547,7 @@ fn sample_polyline_color(
         config.line_color_accuracy,
         config.color_tolerance,
     );
-    
+
     color_info.primary_color
 }
 
@@ -3241,7 +3563,7 @@ fn sample_polyline_color_with_gradient(
     if polyline.is_empty() || color_map.is_empty() {
         return ("#000000".to_string(), None);
     }
-    
+
     // Use advanced color processing to extract color samples
     let color_info = crate::algorithms::extract_path_colors(
         polyline,
@@ -3252,14 +3574,15 @@ fn sample_polyline_color_with_gradient(
         config.line_color_accuracy,
         config.color_tolerance,
     );
-    
+
     // Check if gradient sampling is enabled and we have enough color variation
-    let use_gradients = matches!(config.line_color_sampling, 
-        crate::algorithms::ColorSamplingMethod::GradientMapping |
-        crate::algorithms::ColorSamplingMethod::ContentAware |
-        crate::algorithms::ColorSamplingMethod::Adaptive) 
-        && color_info.sample_points.len() >= 3;
-    
+    let use_gradients = matches!(
+        config.line_color_sampling,
+        crate::algorithms::ColorSamplingMethod::GradientMapping
+            | crate::algorithms::ColorSamplingMethod::ContentAware
+            | crate::algorithms::ColorSamplingMethod::Adaptive
+    ) && color_info.sample_points.len() >= 3;
+
     if use_gradients {
         // Create gradient detection config
         let gradient_config = crate::algorithms::GradientDetectionConfig {
@@ -3269,17 +3592,20 @@ fn sample_polyline_color_with_gradient(
             enable_linear_gradients: true,
             enable_radial_gradients: false, // Keep it simple for lines
         };
-        
+
         // Try to detect gradients in this path
         if let Some(gradient_analysis) = crate::algorithms::analyze_path_for_gradients(
             polyline,
             &color_info.sample_points,
             &gradient_config,
         ) {
-            return (format!("url(#gradient_linear__{})", path_id), Some(gradient_analysis));
+            return (
+                format!("url(#gradient_linear__{})", path_id),
+                Some(gradient_analysis),
+            );
         }
     }
-    
+
     // Fallback to primary color
     (color_info.primary_color, None)
 }
@@ -3292,36 +3618,33 @@ fn enhance_paths_with_gradients(
 ) -> (Vec<SvgPath>, Vec<GradientDefinition>) {
     let mut enhanced_paths = Vec::new();
     let mut gradient_definitions = Vec::new();
-    
+
     // Extract color map from image
     let color_map: Vec<Rgba<u8>> = image.pixels().cloned().collect();
     let width = image.width();
     let height = image.height();
-    
+
     for (path_id, path) in paths.iter().enumerate() {
         // Try to parse path coordinates to detect gradients or create segments
         if let Some(polyline) = parse_svg_path_to_polyline(&path.data) {
-            
             // Check if we should use multi-segment paths based on color complexity
-            let use_multi_segment = config.line_color_sampling == crate::algorithms::ColorSamplingMethod::ContentAware
+            let use_multi_segment = config.line_color_sampling
+                == crate::algorithms::ColorSamplingMethod::ContentAware
                 && polyline.len() > 10; // Only for longer paths
-            
+
             if use_multi_segment {
                 // Segment the path by color changes
-                let segments = segment_path_by_color_changes(
-                    &polyline, 
-                    &color_map, 
-                    width, 
-                    height, 
-                    config
-                );
-                
+                let segments =
+                    segment_path_by_color_changes(&polyline, &color_map, width, height, config);
+
                 // Create a separate SVG path for each segment
-                for (_segment_id, (segment_polyline, segment_color)) in segments.into_iter().enumerate() {
+                for (_segment_id, (segment_polyline, segment_color)) in
+                    segments.into_iter().enumerate()
+                {
                     if segment_polyline.len() >= 2 {
                         // Generate path data for this segment
                         let segment_path_data = create_path_data_from_points(&segment_polyline);
-                        
+
                         // Create SVG path for this segment
                         let mut segment_path = path.clone();
                         segment_path.data = segment_path_data;
@@ -3332,25 +3655,19 @@ fn enhance_paths_with_gradients(
             } else {
                 // Use gradient-based processing for single paths
                 let (stroke_color, gradient_analysis) = sample_polyline_color_with_gradient(
-                    &polyline,
-                    &color_map,
-                    width,
-                    height,
-                    config,
-                    path_id,
+                    &polyline, &color_map, width, height, config, path_id,
                 );
-                
+
                 // Create enhanced path
                 let mut enhanced_path = path.clone();
                 enhanced_path.stroke = stroke_color;
                 enhanced_paths.push(enhanced_path);
-                
+
                 // Add gradient definition if detected
                 if let Some(analysis) = gradient_analysis {
-                    if let Some(gradient_def) = convert_gradient_analysis_to_definition(
-                        path_id,
-                        &analysis,
-                    ) {
+                    if let Some(gradient_def) =
+                        convert_gradient_analysis_to_definition(path_id, &analysis)
+                    {
                         gradient_definitions.push(gradient_def);
                     }
                 }
@@ -3360,7 +3677,7 @@ fn enhance_paths_with_gradients(
             enhanced_paths.push(path.clone());
         }
     }
-    
+
     (enhanced_paths, gradient_definitions)
 }
 
@@ -3369,13 +3686,13 @@ fn create_path_data_from_points(points: &[Point]) -> String {
     if points.is_empty() {
         return String::new();
     }
-    
+
     let mut path_data = format!("M {} {}", points[0].x, points[0].y);
-    
+
     for point in points.iter().skip(1) {
         path_data.push_str(&format!(" L {} {}", point.x, point.y));
     }
-    
+
     path_data
 }
 
@@ -3383,7 +3700,7 @@ fn create_path_data_from_points(points: &[Point]) -> String {
 fn parse_svg_path_to_polyline(path_data: &str) -> Option<Vec<Point>> {
     let mut points = Vec::new();
     let mut tokens = path_data.split_whitespace();
-    
+
     while let Some(token) = tokens.next() {
         match token {
             "M" | "L" => {
@@ -3400,7 +3717,7 @@ fn parse_svg_path_to_polyline(path_data: &str) -> Option<Vec<Point>> {
             }
         }
     }
-    
+
     if points.len() >= 2 {
         Some(points)
     } else {
@@ -3414,16 +3731,18 @@ fn convert_gradient_analysis_to_definition(
     analysis: &crate::algorithms::GradientDetectionAnalysis,
 ) -> Option<GradientDefinition> {
     use crate::algorithms::GradientType;
-    
+
     match &analysis.gradient_type {
-        GradientType::Linear { start, end, stops, .. } => {
+        GradientType::Linear {
+            start, end, stops, ..
+        } => {
             let svg_stops: Vec<ColorStop> = stops
                 .iter()
                 .map(|stop| {
                     // Convert ColorSample to hex string
                     let rgba = stop.color.color;
                     let hex_color = format!("#{:02x}{:02x}{:02x}", rgba[0], rgba[1], rgba[2]);
-                    
+
                     ColorStop {
                         offset: stop.offset * 100.0, // Convert to percentage
                         color: hex_color,
@@ -3431,7 +3750,7 @@ fn convert_gradient_analysis_to_definition(
                     }
                 })
                 .collect();
-            
+
             Some(GradientDefinition::Linear {
                 id: format!("gradient_linear__{}", path_id),
                 x1: start.x,
@@ -3441,13 +3760,18 @@ fn convert_gradient_analysis_to_definition(
                 stops: svg_stops,
             })
         }
-        GradientType::Radial { center, radius, stops, .. } => {
+        GradientType::Radial {
+            center,
+            radius,
+            stops,
+            ..
+        } => {
             let svg_stops: Vec<ColorStop> = stops
                 .iter()
                 .map(|stop| {
                     let rgba = stop.color.color;
                     let hex_color = format!("#{:02x}{:02x}{:02x}", rgba[0], rgba[1], rgba[2]);
-                    
+
                     ColorStop {
                         offset: stop.offset * 100.0,
                         color: hex_color,
@@ -3455,7 +3779,7 @@ fn convert_gradient_analysis_to_definition(
                     }
                 })
                 .collect();
-            
+
             Some(GradientDefinition::Radial {
                 id: format!("gradient_radial__{}", path_id),
                 cx: center.x,
@@ -3482,15 +3806,15 @@ fn segment_path_by_color_changes(
     let mut segments = Vec::new();
     let mut current_segment = Vec::new();
     let mut current_color: Option<String> = None;
-    
+
     // Color change threshold - colors must differ by at least this much to create a new segment
     let color_change_threshold = 30.0; // RGB distance threshold
-    
+
     for (i, point) in polyline.iter().enumerate() {
         // Sample color at current point
         let point_color = sample_point_color(point, color_map, image_width, image_height);
         let point_color_hex = rgba_to_hex_string(&point_color);
-        
+
         // Check if we need to start a new segment
         let should_start_new_segment = if let Some(ref prev_color) = current_color {
             let color_distance = calculate_rgb_distance(&hex_to_rgba(prev_color), &point_color);
@@ -3498,36 +3822,42 @@ fn segment_path_by_color_changes(
         } else {
             false
         };
-        
+
         if should_start_new_segment && !current_segment.is_empty() {
             // End current segment with the previous point for continuity
             if let Some(prev_point) = polyline.get(i.saturating_sub(1)) {
                 current_segment.push(*prev_point);
             }
-            
+
             // Save current segment
-            segments.push((current_segment.clone(), current_color.clone().unwrap_or("#000000".to_string())));
-            
+            segments.push((
+                current_segment.clone(),
+                current_color.clone().unwrap_or("#000000".to_string()),
+            ));
+
             // Start new segment with the previous point for continuity
             current_segment.clear();
             if let Some(prev_point) = polyline.get(i.saturating_sub(1)) {
                 current_segment.push(*prev_point);
             }
         }
-        
+
         // Add current point to segment
         current_segment.push(*point);
         current_color = Some(point_color_hex);
     }
-    
+
     // Add final segment
     if !current_segment.is_empty() {
-        segments.push((current_segment, current_color.unwrap_or("#000000".to_string())));
+        segments.push((
+            current_segment,
+            current_color.unwrap_or("#000000".to_string()),
+        ));
     }
-    
+
     // Filter out segments that are too short to be meaningful
     segments.retain(|(segment, _)| segment.len() >= 2);
-    
+
     // If no valid segments, return the full path with a default color
     if segments.is_empty() {
         vec![(polyline.to_vec(), "#000000".to_string())]
@@ -3546,7 +3876,7 @@ fn sample_point_color(
     let x = (point.x.round() as u32).min(image_width - 1);
     let y = (point.y.round() as u32).min(image_height - 1);
     let index = (y * image_width + x) as usize;
-    
+
     if index < color_map.len() {
         color_map[index]
     } else {
@@ -3582,7 +3912,7 @@ fn calculate_rgb_distance(color1: &Rgba<u8>, color2: &Rgba<u8>) -> f32 {
 
 /// Create stroke path with optional color sampling
 fn create_stroke_path_with_color(
-    polyline: Vec<Point>, 
+    polyline: Vec<Point>,
     stroke_width: f32,
     color_map: Option<&Vec<Rgba<u8>>>,
     image_width: u32,
@@ -3623,18 +3953,6 @@ fn create_stroke_path(polyline: Vec<Point>, stroke_width: f32) -> SvgPath {
     create_stroke_path_with_color(polyline, stroke_width, None, 0, 0, &default_config)
 }
 
-/// Calculate adaptive thresholds for dual-pass processing
-fn calculate_adaptive_thresholds(config: &TraceLowConfig) -> (f32, f32) {
-    // Use explicit values if provided, otherwise calculate from base detail
-    let conservative = config.conservative_detail.unwrap_or(config.detail * 1.3);
-    let aggressive = config.aggressive_detail.unwrap_or(config.detail * 0.7);
-
-    // Ensure conservative threshold is higher than aggressive
-    let conservative = conservative.max(aggressive + 0.1).clamp(0.1, 1.0);
-    let aggressive = aggressive.clamp(0.05, conservative - 0.05);
-
-    (conservative, aggressive)
-}
 
 /// Analyze edge density across the image for content-aware processing
 fn analyze_edge_density(
@@ -3819,16 +4137,6 @@ fn is_path_in_texture_region(path: &SvgPath, analysis: &EdgeDensityAnalysis) -> 
     false
 }
 
-/// Merge conservative and aggressive paths with optimized deduplication
-fn merge_multipass_results(
-    conservative_paths: Vec<SvgPath>,
-    aggressive_paths: Vec<SvgPath>,
-    config: &TraceLowConfig,
-) -> Vec<SvgPath> {
-    // Use the same optimized approach as directional merging
-    let directional_paths = vec![aggressive_paths];
-    merge_directional_results(conservative_paths, directional_paths, config, None)
-}
 
 /// Check if a path is a duplicate of existing paths (simple implementation)
 #[allow(dead_code)]
@@ -3966,9 +4274,9 @@ fn analyze_directional_characteristics(
     let mut direction_benefits = [0.0f32; 4];
     direction_benefits[0] = 1.0; // Standard always has full benefit
     direction_benefits[1] = if dominant_lighting_direction.is_some() {
-        0.8  // Higher benefit when lighting detected
+        0.8 // Higher benefit when lighting detected
     } else {
-        0.4  // Higher baseline - reverse can help most images
+        0.4 // Higher baseline - reverse can help most images
     }; // Reverse
     direction_benefits[2] = if has_diagonal_content { 0.9 } else { 0.3 }; // DiagonalNW - higher baseline
     direction_benefits[3] = if has_diagonal_content { 0.9 } else { 0.3 }; // DiagonalNE - higher baseline
@@ -4159,13 +4467,15 @@ fn schedule_directional_passes(
         if analysis.direction_benefits[1] >= config.directional_strength_threshold {
             log::info!(
                 "✓ Reverse pass scheduled (benefit: {:.2} >= threshold: {:.2})",
-                analysis.direction_benefits[1], config.directional_strength_threshold
+                analysis.direction_benefits[1],
+                config.directional_strength_threshold
             );
             candidates.push((ProcessingDirection::Reverse, analysis.direction_benefits[1]));
         } else {
             log::info!(
                 "⏭ Reverse pass skipped (benefit: {:.2} < threshold: {:.2})",
-                analysis.direction_benefits[1], config.directional_strength_threshold
+                analysis.direction_benefits[1],
+                config.directional_strength_threshold
             );
         }
     }
@@ -4175,26 +4485,36 @@ fn schedule_directional_passes(
         if analysis.direction_benefits[2] >= config.directional_strength_threshold {
             log::info!(
                 "✓ Diagonal NW pass scheduled (benefit: {:.2} >= threshold: {:.2})",
-                analysis.direction_benefits[2], config.directional_strength_threshold
+                analysis.direction_benefits[2],
+                config.directional_strength_threshold
             );
-            candidates.push((ProcessingDirection::DiagonalNW, analysis.direction_benefits[2]));
+            candidates.push((
+                ProcessingDirection::DiagonalNW,
+                analysis.direction_benefits[2],
+            ));
         } else {
             log::info!(
                 "⏭ Diagonal NW pass skipped (benefit: {:.2} < threshold: {:.2})",
-                analysis.direction_benefits[2], config.directional_strength_threshold
+                analysis.direction_benefits[2],
+                config.directional_strength_threshold
             );
         }
-        
+
         if analysis.direction_benefits[3] >= config.directional_strength_threshold {
             log::info!(
                 "✓ Diagonal NE pass scheduled (benefit: {:.2} >= threshold: {:.2})",
-                analysis.direction_benefits[3], config.directional_strength_threshold
+                analysis.direction_benefits[3],
+                config.directional_strength_threshold
             );
-            candidates.push((ProcessingDirection::DiagonalNE, analysis.direction_benefits[3]));
+            candidates.push((
+                ProcessingDirection::DiagonalNE,
+                analysis.direction_benefits[3],
+            ));
         } else {
             log::info!(
                 "⏭ Diagonal NE pass skipped (benefit: {:.2} < threshold: {:.2})",
-                analysis.direction_benefits[3], config.directional_strength_threshold
+                analysis.direction_benefits[3],
+                config.directional_strength_threshold
             );
         }
     }
@@ -4369,7 +4689,7 @@ fn merge_directional_results(
     base_paths: Vec<SvgPath>,
     directional_paths: Vec<Vec<SvgPath>>,
     _config: &TraceLowConfig,
-    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
+    hand_drawn_config: Option<&crate::algorithms::visual::hand_drawn::HandDrawnConfig>,
 ) -> Vec<SvgPath> {
     log::debug!(
         "Starting optimized merge of {} base paths + {} directional path sets",
@@ -4454,7 +4774,7 @@ fn merge_directional_results(
 /// Apply artistic enhancements for hand-drawn aesthetic
 fn apply_artistic_enhancements(
     paths: Vec<SvgPath>,
-    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
+    hand_drawn_config: Option<&crate::algorithms::visual::hand_drawn::HandDrawnConfig>,
 ) -> Vec<SvgPath> {
     if paths.is_empty() {
         return paths;
@@ -4469,7 +4789,7 @@ fn apply_artistic_enhancements(
     let enhancement_start = crate::utils::Instant::now();
 
     // Use the proper configurable hand_drawn system instead of hard-coded effects
-    let enhanced_paths = crate::algorithms::hand_drawn::apply_hand_drawn_aesthetics(paths, config);
+    let enhanced_paths = crate::algorithms::visual::hand_drawn::apply_hand_drawn_aesthetics(paths, config);
 
     let enhancement_time = enhancement_start.elapsed();
     log::debug!(
@@ -4479,7 +4799,6 @@ fn apply_artistic_enhancements(
 
     enhanced_paths
 }
-
 
 /// Comprehensive performance profiling for multipass processing
 #[derive(Debug)]
@@ -4608,7 +4927,8 @@ fn profile_multipass_performance(
 
     // Merge phase
     let merge_start = Instant::now();
-    let final_paths = merge_directional_results(conservative_paths, directional_paths, config, None);
+    let final_paths =
+        merge_directional_results(conservative_paths, directional_paths, config, None);
     profile.merge_phase = merge_start.elapsed();
     profile.path_counts.final_paths = final_paths.len();
 
@@ -4682,7 +5002,6 @@ fn paths_are_spatially_close(path1: &SvgPath, path2: &SvgPath, threshold: f32) -
 // ============================================================================
 // Centerline Backend Helper Functions
 // ============================================================================
-
 
 /// Check if pixel is foreground (white in binary image)
 fn is_foreground(image: &GrayImage, x: u32, y: u32) -> bool {
@@ -4781,8 +5100,11 @@ fn should_delete_guo_hall_step1(image: &GrayImage, x: u32, y: u32) -> bool {
     let p9 = is_foreground(image, x.wrapping_sub(1), y.wrapping_sub(1)); // NW
 
     // Count neighbors (connectivity number)
-    let n = [p2, p3, p4, p5, p6, p7, p8, p9].iter().filter(|&&x| x).count();
-    
+    let n = [p2, p3, p4, p5, p6, p7, p8, p9]
+        .iter()
+        .filter(|&&x| x)
+        .count();
+
     // Count transitions
     let transitions = count_transitions(&[p2, p3, p4, p5, p6, p7, p8, p9]);
 
@@ -4793,7 +5115,7 @@ fn should_delete_guo_hall_step1(image: &GrayImage, x: u32, y: u32) -> bool {
     if transitions != 1 {
         return false;
     }
-    
+
     // Additional Guo-Hall specific conditions
     if (p2 && p4 && p6) || (p4 && p6 && p8) {
         return false;
@@ -4819,8 +5141,11 @@ fn should_delete_guo_hall_step2(image: &GrayImage, x: u32, y: u32) -> bool {
     let p9 = is_foreground(image, x.wrapping_sub(1), y.wrapping_sub(1)); // NW
 
     // Count neighbors (connectivity number)
-    let n = [p2, p3, p4, p5, p6, p7, p8, p9].iter().filter(|&&x| x).count();
-    
+    let n = [p2, p3, p4, p5, p6, p7, p8, p9]
+        .iter()
+        .filter(|&&x| x)
+        .count();
+
     // Count transitions
     let transitions = count_transitions(&[p2, p3, p4, p5, p6, p7, p8, p9]);
 
@@ -4831,7 +5156,7 @@ fn should_delete_guo_hall_step2(image: &GrayImage, x: u32, y: u32) -> bool {
     if transitions != 1 {
         return false;
     }
-    
+
     // Additional Guo-Hall specific conditions (different from step 1)
     if (p2 && p4 && p8) || (p2 && p6 && p8) {
         return false;
@@ -5126,12 +5451,11 @@ fn box_sauvola_threshold_optimized(gray: &GrayImage, window_size: u32, k: f32) -
     binary
 }
 
-
 /// Morphological opening (erosion + dilation) for pepper noise removal
 fn morphological_opening_3x3(binary: &GrayImage) -> GrayImage {
     let (w, h) = binary.dimensions();
     let mut eroded = GrayImage::new(w, h);
-    
+
     // Erode first (removes pepper noise - small white specks)
     for y in 0..h {
         for x in 0..w {
@@ -5148,7 +5472,7 @@ fn morphological_opening_3x3(binary: &GrayImage) -> GrayImage {
             eroded.put_pixel(x, y, image::Luma([v]));
         }
     }
-    
+
     // Then dilate (restores object size without pepper noise)
     let mut out = GrayImage::new(w, h);
     for y in 0..h {
@@ -5491,7 +5815,6 @@ fn distance_squared(p1: &Point, p2: &Point) -> f32 {
     let dy = p1.y - p2.y;
     dx * dx + dy * dy
 }
-
 
 /// Calculate branch importance based on length, straightness, and connectivity
 fn calculate_branch_importance(polyline: &[Point], all_polylines: &[Vec<Point>]) -> f32 {
@@ -5853,13 +6176,15 @@ fn compute_euclidean_distance_transform(binary: &GrayImage) -> Vec<Vec<f32>> {
 
                     // Check top-left diagonal
                     if x > 0 && y > 0 {
-                        let diag_dist = distances[(y - 1) as usize][(x - 1) as usize] + std::f32::consts::SQRT_2;
+                        let diag_dist = distances[(y - 1) as usize][(x - 1) as usize]
+                            + std::f32::consts::SQRT_2;
                         min_dist = min_dist.min(diag_dist);
                     }
 
                     // Check top-right diagonal
                     if x < width - 1 && y > 0 {
-                        let diag_dist = distances[(y - 1) as usize][(x + 1) as usize] + std::f32::consts::SQRT_2;
+                        let diag_dist = distances[(y - 1) as usize][(x + 1) as usize]
+                            + std::f32::consts::SQRT_2;
                         min_dist = min_dist.min(diag_dist);
                     }
 
@@ -5895,13 +6220,15 @@ fn compute_euclidean_distance_transform(binary: &GrayImage) -> Vec<Vec<f32>> {
 
                 // Check bottom-left diagonal
                 if x > 0 && y < height - 1 {
-                    let diag_dist = distances[(y + 1) as usize][(x - 1) as usize] + std::f32::consts::SQRT_2;
+                    let diag_dist =
+                        distances[(y + 1) as usize][(x - 1) as usize] + std::f32::consts::SQRT_2;
                     min_dist = min_dist.min(diag_dist);
                 }
 
                 // Check bottom-right diagonal
                 if x < width - 1 && y < height - 1 {
-                    let diag_dist = distances[(y + 1) as usize][(x + 1) as usize] + std::f32::consts::SQRT_2;
+                    let diag_dist =
+                        distances[(y + 1) as usize][(x + 1) as usize] + std::f32::consts::SQRT_2;
                     min_dist = min_dist.min(diag_dist);
                 }
 
@@ -5993,12 +6320,12 @@ fn remove_micro_loops(polylines: Vec<Vec<Point>>, min_perimeter_px: f32) -> Vec<
         .filter(|polyline| {
             // Check if this might be a micro-loop by looking at the perimeter
             let perimeter = calculate_polyline_length(polyline);
-            
+
             // Keep if larger than minimum perimeter or if not a closed loop
             if perimeter >= min_perimeter_px {
                 return true;
             }
-            
+
             // Check if it's actually a closed loop (first and last points close)
             if polyline.len() >= 4 {
                 if let (Some(first), Some(last)) = (polyline.first(), polyline.last()) {
@@ -6010,7 +6337,7 @@ fn remove_micro_loops(polylines: Vec<Vec<Point>>, min_perimeter_px: f32) -> Vec<
                     }
                 }
             }
-            
+
             true
         })
         .collect()
@@ -6123,7 +6450,7 @@ fn calculate_average_edt_radius(polyline: &[Point], edt: &[Vec<f32>]) -> f32 {
 // ============================================================================
 
 /// Apply bilateral filtering for edge-preserving noise reduction
-/// 
+///
 /// Bilateral filtering reduces noise while preserving edges by combining
 /// spatial and range weighting. This provides meaningful noise reduction
 /// without destroying important edge information needed for vectorization.
@@ -6132,77 +6459,79 @@ fn calculate_average_edt_radius(polyline: &[Point], edt: &[Vec<f32>]) -> f32 {
 /// * `image` - Input grayscale image
 /// * `spatial_sigma` - Controls spatial smoothing (higher = more smoothing)
 /// * `range_sigma` - Controls edge preservation (higher = less edge preservation)
-/// 
+///
 /// # Returns
 /// * Filtered grayscale image with reduced noise and preserved edges
 fn bilateral_filter(image: &GrayImage, spatial_sigma: f32, range_sigma: f32) -> GrayImage {
     let (width, height) = image.dimensions();
     let mut filtered = GrayImage::new(width, height);
-    
+
     // Performance optimization: limit kernel radius for real-time processing
     // Maximum radius of 5 pixels provides good results while maintaining speed
     let kernel_radius = (2.5 * spatial_sigma).ceil().min(5.0) as i32;
     let kernel_size = (2 * kernel_radius + 1) as usize;
-    
+
     // Precompute spatial weights for efficiency
     let mut spatial_weights = vec![0.0f32; kernel_size * kernel_size];
     let spatial_coeff = -0.5 / (spatial_sigma * spatial_sigma);
-    
+
     for dy in -kernel_radius..=kernel_radius {
         for dx in -kernel_radius..=kernel_radius {
             let spatial_dist = (dx * dx + dy * dy) as f32;
             let weight = (spatial_coeff * spatial_dist).exp();
-            let index = ((dy + kernel_radius) * (2 * kernel_radius + 1) + (dx + kernel_radius)) as usize;
+            let index =
+                ((dy + kernel_radius) * (2 * kernel_radius + 1) + (dx + kernel_radius)) as usize;
             spatial_weights[index] = weight;
         }
     }
-    
+
     // Range coefficient for intensity-based weighting
     let range_coeff = -0.5 / (range_sigma * range_sigma);
-    
+
     // Performance optimization: use fast approximation for small kernels
     if kernel_radius <= 2 {
         // Use simplified bilateral filter for small kernels (much faster)
         return bilateral_filter_fast(image, spatial_sigma, range_sigma);
     }
-    
+
     // Process image with bilateral filtering
     // Use parallel processing for larger images (lowered threshold for better performance)
     if width * height > 50_000 {
         let pixel_coords: Vec<(u32, u32)> = (0..height)
             .flat_map(|y| (0..width).map(move |x| (x, y)))
             .collect();
-            
+
         execute_parallel(pixel_coords, |(x, y)| {
             let center_intensity = image.get_pixel(x, y).0[0] as f32;
             let mut weighted_sum = 0.0f32;
             let mut weight_sum = 0.0f32;
-            
+
             for dy in -kernel_radius..=kernel_radius {
                 for dx in -kernel_radius..=kernel_radius {
                     let nx = (x as i32 + dx).max(0).min(width as i32 - 1) as u32;
                     let ny = (y as i32 + dy).max(0).min(height as i32 - 1) as u32;
-                    
+
                     let neighbor_intensity = image.get_pixel(nx, ny).0[0] as f32;
                     let intensity_diff = neighbor_intensity - center_intensity;
-                    
+
                     // Combined spatial and range weight
-                    let spatial_index = ((dy + kernel_radius) * (2 * kernel_radius + 1) + (dx + kernel_radius)) as usize;
+                    let spatial_index = ((dy + kernel_radius) * (2 * kernel_radius + 1)
+                        + (dx + kernel_radius)) as usize;
                     let spatial_weight = spatial_weights[spatial_index];
                     let range_weight = (range_coeff * intensity_diff * intensity_diff).exp();
                     let combined_weight = spatial_weight * range_weight;
-                    
+
                     weighted_sum += neighbor_intensity * combined_weight;
                     weight_sum += combined_weight;
                 }
             }
-            
+
             let filtered_value = if weight_sum > 0.0 {
                 (weighted_sum / weight_sum).round().clamp(0.0, 255.0) as u8
             } else {
                 center_intensity as u8
             };
-            
+
             (x, y, filtered_value)
         })
         .into_iter()
@@ -6216,37 +6545,39 @@ fn bilateral_filter(image: &GrayImage, spatial_sigma: f32, range_sigma: f32) -> 
                 let center_intensity = image.get_pixel(x, y).0[0] as f32;
                 let mut weighted_sum = 0.0f32;
                 let mut weight_sum = 0.0f32;
-                
+
                 for dy in -kernel_radius..=kernel_radius {
                     for dx in -kernel_radius..=kernel_radius {
                         let nx = (x as i32 + dx).max(0).min(width as i32 - 1) as u32;
                         let ny = (y as i32 + dy).max(0).min(height as i32 - 1) as u32;
-                        
+
                         let neighbor_intensity = image.get_pixel(nx, ny).0[0] as f32;
                         let intensity_diff = neighbor_intensity - center_intensity;
-                        
+
                         // Combined spatial and range weight
-                        let spatial_index = ((dy + kernel_radius) * (2 * kernel_radius + 1) + (dx + kernel_radius)) as usize;
+                        let spatial_index = ((dy + kernel_radius) * (2 * kernel_radius + 1)
+                            + (dx + kernel_radius))
+                            as usize;
                         let spatial_weight = spatial_weights[spatial_index];
                         let range_weight = (range_coeff * intensity_diff * intensity_diff).exp();
                         let combined_weight = spatial_weight * range_weight;
-                        
+
                         weighted_sum += neighbor_intensity * combined_weight;
                         weight_sum += combined_weight;
                     }
                 }
-                
+
                 let filtered_value = if weight_sum > 0.0 {
                     (weighted_sum / weight_sum).round().clamp(0.0, 255.0) as u8
                 } else {
                     center_intensity as u8
                 };
-                
+
                 filtered.put_pixel(x, y, Luma([filtered_value]));
             }
         }
     }
-    
+
     filtered
 }
 
@@ -6255,14 +6586,14 @@ fn bilateral_filter(image: &GrayImage, spatial_sigma: f32, range_sigma: f32) -> 
 fn bilateral_filter_fast(image: &GrayImage, spatial_sigma: f32, range_sigma: f32) -> GrayImage {
     let (width, height) = image.dimensions();
     let mut filtered = GrayImage::new(width, height);
-    
+
     // Use a 3x3 or 5x5 kernel for fast processing
     let kernel_radius = if spatial_sigma <= 1.0 { 1 } else { 2 };
-    
+
     // Precompute spatial weights for the small kernel
     let mut spatial_weights = Vec::new();
     let spatial_coeff = -0.5 / (spatial_sigma * spatial_sigma);
-    
+
     for dy in -kernel_radius..=kernel_radius {
         for dx in -kernel_radius..=kernel_radius {
             let spatial_dist = (dx * dx + dy * dy) as f32;
@@ -6270,45 +6601,45 @@ fn bilateral_filter_fast(image: &GrayImage, spatial_sigma: f32, range_sigma: f32
             spatial_weights.push(weight);
         }
     }
-    
+
     let range_coeff = -0.5 / (range_sigma * range_sigma);
-    
+
     // Use parallel processing for medium-sized images even with small kernels
     if width * height > 25_000 {
         let pixel_coords: Vec<(u32, u32)> = (0..height)
             .flat_map(|y| (0..width).map(move |x| (x, y)))
             .collect();
-            
+
         execute_parallel(pixel_coords, |(x, y)| {
             let center_intensity = image.get_pixel(x, y).0[0] as f32;
             let mut weighted_sum = 0.0f32;
             let mut weight_sum = 0.0f32;
-            
+
             let mut weight_idx = 0;
             for dy in -kernel_radius..=kernel_radius {
                 for dx in -kernel_radius..=kernel_radius {
                     let nx = (x as i32 + dx).max(0).min(width as i32 - 1) as u32;
                     let ny = (y as i32 + dy).max(0).min(height as i32 - 1) as u32;
-                    
+
                     let neighbor_intensity = image.get_pixel(nx, ny).0[0] as f32;
                     let intensity_diff = neighbor_intensity - center_intensity;
-                    
+
                     let spatial_weight = spatial_weights[weight_idx];
                     let range_weight = (range_coeff * intensity_diff * intensity_diff).exp();
                     let combined_weight = spatial_weight * range_weight;
-                    
+
                     weighted_sum += neighbor_intensity * combined_weight;
                     weight_sum += combined_weight;
                     weight_idx += 1;
                 }
             }
-            
+
             let filtered_value = if weight_sum > 0.0 {
                 (weighted_sum / weight_sum).round().clamp(0.0, 255.0) as u8
             } else {
                 center_intensity as u8
             };
-            
+
             (x, y, filtered_value)
         })
         .into_iter()
@@ -6322,1143 +6653,48 @@ fn bilateral_filter_fast(image: &GrayImage, spatial_sigma: f32, range_sigma: f32
                 let center_intensity = image.get_pixel(x, y).0[0] as f32;
                 let mut weighted_sum = 0.0f32;
                 let mut weight_sum = 0.0f32;
-                
+
                 let mut weight_idx = 0;
                 for dy in -kernel_radius..=kernel_radius {
                     for dx in -kernel_radius..=kernel_radius {
                         let nx = (x as i32 + dx).max(0).min(width as i32 - 1) as u32;
                         let ny = (y as i32 + dy).max(0).min(height as i32 - 1) as u32;
-                        
+
                         let neighbor_intensity = image.get_pixel(nx, ny).0[0] as f32;
                         let intensity_diff = neighbor_intensity - center_intensity;
-                        
+
                         let spatial_weight = spatial_weights[weight_idx];
                         let range_weight = (range_coeff * intensity_diff * intensity_diff).exp();
                         let combined_weight = spatial_weight * range_weight;
-                        
+
                         weighted_sum += neighbor_intensity * combined_weight;
                         weight_sum += combined_weight;
                         weight_idx += 1;
                     }
                 }
-                
+
                 let filtered_value = if weight_sum > 0.0 {
                     (weighted_sum / weight_sum).round().clamp(0.0, 255.0) as u8
                 } else {
                     center_intensity as u8
                 };
-                
+
                 filtered.put_pixel(x, y, Luma([filtered_value]));
             }
         }
     }
-    
+
     filtered
 }
 
-/// Calculate detail levels for multi-pass processing
-/// Uses a progressive strategy where each pass has a different detail level
-/// APPROACH C+B: Multi-Scale Edge Detection Configuration with Spatial Intelligence
-/// Each scale captures fundamentally different types of visual information
-/// Enhanced with region-aware processing for optimal resource allocation
-#[derive(Debug, Clone)]
-struct MultiScaleConfig {
-    scale_type: ScaleType,
-    blur_radius: f32,
-    edge_threshold: f32,
-    kernel_size: u32,
-    noise_filter: bool,
-    algorithm: EdgeAlgorithm,
-}
 
-/// APPROACH C+B: Spatial region analysis for content-aware processing
-#[derive(Debug, Clone)]
-struct ImageRegion {
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
-    _path_density: f32,        // Existing path density in this region
-    content_type: ContentType, // Type of content detected
-    detail_level: DetailLevel, // How much detail this region currently has
-    priority_score: f32,      // Priority for additional processing
-}
 
-#[derive(Debug, Clone, PartialEq)]
-enum ContentType {
-    LargeShapes,     // Large geometric shapes, backgrounds
-    DetailedTexture, // Fine textures, complex patterns
-    Mixed,           // Combination of large and fine elements
-    Sparse,          // Areas with very little content
-    Dense,           // Areas with heavy detail
-}
 
-#[derive(Debug, Clone, PartialEq)]
-enum DetailLevel {
-    None,      // No paths in this region
-    Low,       // Few paths, could use more detail
-    Medium,    // Moderate coverage
-    High,      // Well covered
-    Saturated, // Too many paths, no more needed
-}
 
-#[derive(Debug, Clone)]
-struct RegionAnalysis {
-    grid_size: u32,              // Size of analysis grid (e.g., 8x8, 16x16)
-    regions: Vec<Vec<ImageRegion>>, // 2D grid of regions
-    total_coverage: f32,         // Overall image coverage
-    avg_detail_level: f32,       // Average detail across all regions
-}
 
-#[derive(Debug, Clone)]
-enum ScaleType {
-    Large,   // Major boundaries and shape outlines
-    Medium,  // Texture patterns and secondary details
-    Fine,    // Subtle variations and artistic nuances
-    Micro,   // Ultra-fine details with noise filtering
-}
 
-#[derive(Debug, Clone)]
-enum EdgeAlgorithm {
-    CannyLarge,     // Large kernels for major boundaries
-    CannyStandard,  // Standard Canny for medium details
-    SobelLaplacian, // Combined approach for fine textures
-    LoGFiltered,    // Laplacian of Gaussian with noise filtering
-}
 
-/// APPROACH C: Calculate multi-scale configurations for different types of detail capture
-fn calculate_multiscale_configs(base_detail: f32, pass_count: u32) -> Vec<MultiScaleConfig> {
-    let mut configs = Vec::new();
-    
-    if pass_count == 1 {
-        // Single pass uses medium scale as best overall compromise
-        configs.push(MultiScaleConfig {
-            scale_type: ScaleType::Medium,
-            blur_radius: 1.0,
-            edge_threshold: base_detail,
-            kernel_size: 5,
-            noise_filter: false,
-            algorithm: EdgeAlgorithm::CannyStandard,
-        });
-        return configs;
-    }
-    
-    // APPROACH C: Each pass uses a fundamentally different scale and algorithm
-    for pass_num in 0..pass_count {
-        let config = match pass_num {
-            0 => {
-                // Scale 0: Large-scale major boundaries and primary structures
-                log::debug!("APPROACH C: Pass {} - Large Scale (major boundaries)", pass_num + 1);
-                MultiScaleConfig {
-                    scale_type: ScaleType::Large,
-                    blur_radius: 2.5,           // Heavy blur to isolate major features
-                    edge_threshold: base_detail * 1.2, // Less sensitive for major features only
-                    kernel_size: 9,             // Large kernel for broad features
-                    noise_filter: false,        // No filtering needed at this scale
-                    algorithm: EdgeAlgorithm::CannyLarge,
-                }
-            },
-            1 => {
-                // Scale 1: Medium-scale textures and patterns
-                log::debug!("APPROACH C: Pass {} - Medium Scale (textures and patterns)", pass_num + 1);
-                MultiScaleConfig {
-                    scale_type: ScaleType::Medium,
-                    blur_radius: 1.0,           // Standard blur for texture detection
-                    edge_threshold: base_detail, // Base sensitivity
-                    kernel_size: 5,             // Standard kernel size
-                    noise_filter: false,        // Minimal filtering
-                    algorithm: EdgeAlgorithm::CannyStandard,
-                }
-            },
-            2 => {
-                // Scale 2: Fine-scale subtle variations and artistic details
-                log::debug!("APPROACH C: Pass {} - Fine Scale (subtle artistic details)", pass_num + 1);
-                MultiScaleConfig {
-                    scale_type: ScaleType::Fine,
-                    blur_radius: 0.5,           // Minimal blur to preserve fine details
-                    edge_threshold: base_detail * 0.7, // More sensitive for subtle features
-                    kernel_size: 3,             // Small kernel for fine details
-                    noise_filter: true,         // Start filtering noise at fine scales
-                    algorithm: EdgeAlgorithm::SobelLaplacian,
-                }
-            },
-            _ => {
-                // Scale 3+: Micro-scale ultra-fine details with heavy noise filtering
-                log::debug!("APPROACH C: Pass {} - Micro Scale (ultra-fine details)", pass_num + 1);
-                MultiScaleConfig {
-                    scale_type: ScaleType::Micro,
-                    blur_radius: 0.3,           // Very minimal blur
-                    edge_threshold: base_detail * 0.5, // Very sensitive
-                    kernel_size: 3,             // Small kernel
-                    noise_filter: true,         // Heavy noise filtering
-                    algorithm: EdgeAlgorithm::LoGFiltered,
-                }
-            }
-        };
-        
-        configs.push(config);
-    }
-    
-    log::info!(
-        "APPROACH C: Generated {} multi-scale configurations for progressive detail capture",
-        configs.len()
-    );
-    
-    configs
-}
 
-/// APPROACH C+B: Enhanced scale result storage with region information
-#[derive(Debug, Clone)]
-struct ScaleResult {
-    scale_type: ScaleType,
-    paths: Vec<SvgPath>,
-    processing_time: std::time::Duration,
-    edge_strength: f32,
-    regions_processed: u32,   // Number of regions actually processed
-    efficiency_score: f32,    // Paths generated per region processed
-}
 
-/// APPROACH C+B: Spatial region analysis for intelligent processing allocation
-fn analyze_image_regions(
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    existing_paths: &[SvgPath],
-    grid_size: u32,
-) -> RegionAnalysis {
-    let image_width = image.width();
-    let image_height = image.height();
-    let region_width = image_width / grid_size;
-    let region_height = image_height / grid_size;
-    
-    let mut regions = Vec::new();
-    let mut total_paths = 0;
-    
-    log::debug!(
-        "APPROACH C+B: Analyzing image regions - {}x{} grid, region size: {}x{}",
-        grid_size, grid_size, region_width, region_height
-    );
-    
-    for grid_y in 0..grid_size {
-        let mut row = Vec::new();
-        
-        for grid_x in 0..grid_size {
-            let x = grid_x * region_width;
-            let y = grid_y * region_height;
-            let width = region_width.min(image_width - x);
-            let height = region_height.min(image_height - y);
-            
-            // Analyze path density in this region
-            let paths_in_region = count_paths_in_region(existing_paths, x, y, width, height);
-            let path_density = paths_in_region as f32 / (width * height) as f32 * 10000.0; // Normalize per 10k pixels
-            
-            // Analyze content type based on image characteristics
-            let content_type = analyze_region_content_type(image, x, y, width, height);
-            
-            // Determine detail level based on path density
-            let detail_level = determine_detail_level(path_density);
-            
-            // Calculate priority score for additional processing
-            let priority_score = calculate_region_priority(path_density, &content_type, &detail_level);
-            
-            let region = ImageRegion {
-                x, y, width, height,
-                _path_density: path_density,
-                content_type,
-                detail_level,
-                priority_score,
-            };
-            
-            total_paths += paths_in_region;
-            row.push(region);
-        }
-        
-        regions.push(row);
-    }
-    
-    let total_coverage = total_paths as f32 / existing_paths.len().max(1) as f32;
-    let avg_detail_level = regions.iter()
-        .flat_map(|row| row.iter())
-        .map(|r| r._path_density)
-        .sum::<f32>() / (grid_size * grid_size) as f32;
-    
-    log::info!(
-        "APPROACH C+B: Region analysis complete - {} total paths, {:.2} avg density, {:.1}% coverage",
-        total_paths, avg_detail_level, total_coverage * 100.0
-    );
-    
-    RegionAnalysis {
-        grid_size,
-        regions,
-        total_coverage,
-        avg_detail_level,
-    }
-}
 
-/// APPROACH C: Multi-scale edge detection without region filtering
-fn trace_multiscale_edges(
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    scale_config: &MultiScaleConfig,
-    trace_config: &TraceLowConfig,
-    _existing_paths: &[SvgPath],
-) -> Result<Vec<SvgPath>, VectorizeError> {
-    log::debug!(
-        "APPROACH C: Processing scale {:?} with algorithm {:?}",
-        scale_config.scale_type,
-        scale_config.algorithm
-    );
-    
-    // Apply scale-specific preprocessing  
-    let preprocessed_image = apply_scale_preprocessing(image, scale_config)?;
-    
-    // Process the entire image with this scale's algorithm
-    let paths = match scale_config.scale_type {
-        ScaleType::Large => {
-            log::debug!("APPROACH C: Using Large scale algorithm for major boundaries");
-            trace_large_scale_edges(&preprocessed_image, scale_config, trace_config)?
-        },
-        ScaleType::Medium => {
-            log::debug!("APPROACH C: Using Medium scale algorithm for medium details");
-            trace_medium_scale_edges(&preprocessed_image, scale_config, trace_config)?
-        },
-        ScaleType::Fine => {
-            log::debug!("APPROACH C: Using Fine scale algorithm for fine textures");
-            trace_fine_scale_edges(&preprocessed_image, scale_config, trace_config)?
-        },
-        ScaleType::Micro => {
-            log::debug!("APPROACH C: Using Micro scale algorithm for micro details");
-            trace_micro_scale_edges(&preprocessed_image, scale_config, trace_config)?
-        },
-    };
-    
-    log::debug!(
-        "APPROACH C: Scale {:?} generated {} paths",
-        scale_config.scale_type,
-        paths.len()
-    );
-    
-    Ok(paths)
-}
 
-/// APPROACH C+B: Enhanced multi-scale edge detection with region-aware processing
-fn trace_multiscale_edges_with_regions(
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    scale_config: &MultiScaleConfig,
-    trace_config: &TraceLowConfig,
-    existing_paths: &[SvgPath],
-    region_analysis: &RegionAnalysis,
-) -> Result<Vec<SvgPath>, VectorizeError> {
-    log::debug!(
-        "APPROACH C+B: Processing scale {:?} with region-aware algorithm {:?}",
-        scale_config.scale_type,
-        scale_config.algorithm
-    );
-    
-    // Get priority regions for this scale type
-    let priority_regions = get_priority_regions_for_scale(region_analysis, &scale_config.scale_type);
-    
-    log::debug!(
-        "APPROACH C+B: Found {} priority regions for scale {:?}",
-        priority_regions.len(),
-        scale_config.scale_type
-    );
-    
-    if priority_regions.is_empty() {
-        log::debug!("APPROACH C+B: No priority regions for scale {:?}, skipping", scale_config.scale_type);
-        return Ok(Vec::new());
-    }
-    
-    // Apply scale-specific preprocessing
-    let preprocessed_image = apply_scale_preprocessing(image, scale_config)?;
-    
-    // Process only the priority regions for this scale
-    let mut all_new_paths = Vec::new();
-    
-    let regions_count = priority_regions.len();
-    
-    for region in &priority_regions {
-        let region_paths = process_region_with_scale(
-            &preprocessed_image,
-            region,
-            scale_config,
-            trace_config
-        )?;
-        
-        all_new_paths.extend(region_paths);
-    }
-    
-    // Apply scale-specific filtering to avoid redundancy with existing paths
-    let filtered_paths = filter_scale_specific_paths(&all_new_paths, existing_paths, scale_config);
-    
-    log::debug!(
-        "APPROACH C+B: Scale {:?} processed {} regions, generated {} paths, {} unique after filtering",
-        scale_config.scale_type,
-        regions_count,
-        all_new_paths.len(),
-        filtered_paths.len()
-    );
-    
-    Ok(filtered_paths)
-}
-
-/// APPROACH C+B: Count paths within a specific image region
-fn count_paths_in_region(
-    paths: &[SvgPath], 
-    region_x: u32, 
-    region_y: u32, 
-    region_width: u32, 
-    region_height: u32
-) -> u32 {
-    let mut count = 0;
-    
-    for path in paths {
-        let bbox = extract_bounding_box(&path.data);
-        
-        // Check if path bounding box intersects with region
-        let region_right = region_x + region_width;
-        let region_bottom = region_y + region_height;
-        
-        if bbox.max_x >= region_x as f32 && bbox.min_x < region_right as f32 &&
-           bbox.max_y >= region_y as f32 && bbox.min_y < region_bottom as f32 {
-            count += 1;
-        }
-    }
-    
-    count
-}
-
-/// APPROACH C+B: Analyze content type of a specific region based on image characteristics
-fn analyze_region_content_type(
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    x: u32, y: u32, width: u32, height: u32
-) -> ContentType {
-    // Simple analysis based on edge density
-    let mut edge_count = 0;
-    let _total_pixels = (width * height) as f32;
-    
-    // Sample pixels to analyze variance and edge characteristics
-    let sample_step = 4; // Sample every 4th pixel for performance
-    let mut sampled_pixels = 0;
-    
-    for sample_y in (y..y + height).step_by(sample_step) {
-        for sample_x in (x..x + width).step_by(sample_step) {
-            if sample_x < image.width() && sample_y < image.height() {
-                let pixel = image.get_pixel(sample_x, sample_y);
-                let intensity = (pixel[0] as f32 + pixel[1] as f32 + pixel[2] as f32) / 3.0;
-                
-                // Check for edges by comparing with neighbors
-                if sample_x > 0 && sample_y > 0 && sample_x < image.width() - 1 && sample_y < image.height() - 1 {
-                    let neighbor = image.get_pixel(sample_x + 1, sample_y);
-                    let neighbor_intensity = (neighbor[0] as f32 + neighbor[1] as f32 + neighbor[2] as f32) / 3.0;
-                    
-                    if (intensity - neighbor_intensity).abs() > 30.0 {
-                        edge_count += 1;
-                    }
-                }
-                
-                sampled_pixels += 1;
-            }
-        }
-    }
-    
-    // Color variance calculation removed for simplicity
-    
-    let edge_density = edge_count as f32 / sampled_pixels as f32;
-    
-    // Classify based on edge density and color characteristics
-    match edge_density {
-        density if density > 0.3 => ContentType::DetailedTexture,
-        density if density > 0.15 => ContentType::Mixed,
-        density if density > 0.05 => ContentType::LargeShapes,
-        _ => ContentType::Sparse,
-    }
-}
-
-/// APPROACH C+B: Determine detail level based on path density
-fn determine_detail_level(path_density: f32) -> DetailLevel {
-    match path_density {
-        density if density == 0.0 => DetailLevel::None,
-        density if density < 2.0 => DetailLevel::Low,
-        density if density < 5.0 => DetailLevel::Medium,
-        density if density < 10.0 => DetailLevel::High,
-        _ => DetailLevel::Saturated,
-    }
-}
-
-/// APPROACH C+B: Calculate priority score for additional processing
-fn calculate_region_priority(
-    _path_density: f32,
-    content_type: &ContentType,
-    detail_level: &DetailLevel,
-) -> f32 {
-    let mut priority: f32 = 0.0;
-    
-    // Base priority based on detail level (lower detail = higher priority)
-    priority += match detail_level {
-        DetailLevel::None => 10.0,
-        DetailLevel::Low => 8.0,
-        DetailLevel::Medium => 5.0,
-        DetailLevel::High => 2.0,
-        DetailLevel::Saturated => 0.0,
-    };
-    
-    // Bonus based on content type
-    priority += match content_type {
-        ContentType::DetailedTexture => 3.0, // High value for texture enhancement
-        ContentType::Mixed => 2.0,
-        ContentType::LargeShapes => 1.0,
-        ContentType::Sparse => 4.0, // High value for adding detail to sparse areas
-        ContentType::Dense => -1.0, // Lower priority for already dense areas
-    };
-    
-    // Ensure non-negative priority
-    priority.max(0.0)
-}
-
-/// APPROACH C+B: Image preprocessing for specific scales
-fn apply_scale_preprocessing(
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    scale_config: &MultiScaleConfig,
-) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, VectorizeError> {
-    // Apply Gaussian blur based on scale requirements
-    if scale_config.blur_radius > 0.1 {
-        // For scales that need blur preprocessing
-        apply_gaussian_blur(image, scale_config.blur_radius)
-    } else {
-        // For fine scales, return original image
-        Ok(image.clone())
-    }
-}
-
-/// APPROACH C: Large-scale edge detection for major boundaries
-fn trace_large_scale_edges(
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    scale_config: &MultiScaleConfig,
-    trace_config: &TraceLowConfig,
-) -> Result<Vec<SvgPath>, VectorizeError> {
-    log::debug!("APPROACH C: Large-scale processing - major boundaries and primary structures");
-    
-    // Use modified trace config with large-scale parameters
-    let mut large_scale_config = trace_config.clone();
-    large_scale_config.detail = scale_config.edge_threshold;
-    
-    // Use standard single-pass processing but with large-scale optimized parameters
-    let paths = vectorize_trace_low_single_pass(image, &large_scale_config, None)?;
-    
-    // Filter for large-scale features (longer paths, higher confidence)
-    let large_scale_paths: Vec<SvgPath> = paths.into_iter()
-        .filter(|path| is_large_scale_feature(path))
-        .collect();
-    
-    log::debug!("APPROACH C: Large-scale extracted {} major boundary paths", large_scale_paths.len());
-    Ok(large_scale_paths)
-}
-
-/// APPROACH C: Medium-scale edge detection for textures and patterns
-fn trace_medium_scale_edges(
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    scale_config: &MultiScaleConfig,
-    trace_config: &TraceLowConfig,
-) -> Result<Vec<SvgPath>, VectorizeError> {
-    log::debug!("APPROACH C: Medium-scale processing - textures and patterns");
-    
-    // Standard edge detection - this is our baseline
-    let mut medium_scale_config = trace_config.clone();
-    medium_scale_config.detail = scale_config.edge_threshold;
-    
-    let paths = vectorize_trace_low_single_pass(image, &medium_scale_config, None)?;
-    
-    // Filter for medium-scale features (balanced length and detail)
-    let medium_scale_paths: Vec<SvgPath> = paths.into_iter()
-        .filter(|path| is_medium_scale_feature(path))
-        .collect();
-    
-    log::debug!("APPROACH C: Medium-scale extracted {} texture/pattern paths", medium_scale_paths.len());
-    Ok(medium_scale_paths)
-}
-
-/// APPROACH C: Fine-scale edge detection for subtle details
-fn trace_fine_scale_edges(
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    scale_config: &MultiScaleConfig,
-    trace_config: &TraceLowConfig,
-) -> Result<Vec<SvgPath>, VectorizeError> {
-    log::debug!("APPROACH C: Fine-scale processing - subtle artistic details");
-    
-    // Enhanced sensitivity for fine details
-    let mut fine_scale_config = trace_config.clone();
-    fine_scale_config.detail = scale_config.edge_threshold;
-    
-    let paths = vectorize_trace_low_single_pass(image, &fine_scale_config, None)?;
-    
-    // Filter for fine-scale features (shorter paths, subtle details)
-    let fine_scale_paths: Vec<SvgPath> = paths.into_iter()
-        .filter(|path| is_fine_scale_feature(path))
-        .collect();
-    
-    log::debug!("APPROACH C: Fine-scale extracted {} subtle detail paths", fine_scale_paths.len());
-    Ok(fine_scale_paths)
-}
-
-/// APPROACH C+B: Get priority regions for a specific scale type
-fn get_priority_regions_for_scale<'a>(
-    region_analysis: &'a RegionAnalysis,
-    scale_type: &ScaleType,
-) -> Vec<&'a ImageRegion> {
-    let mut priority_regions = Vec::new();
-    
-    for row in &region_analysis.regions {
-        for region in row {
-            let should_process = match scale_type {
-                ScaleType::Large => {
-                    // Large scale: focus on sparse areas and large shapes that need major boundaries
-                    matches!(region.content_type, ContentType::LargeShapes | ContentType::Sparse) &&
-                    matches!(region.detail_level, DetailLevel::None | DetailLevel::Low)
-                },
-                ScaleType::Medium => {
-                    // Medium scale: focus on mixed content and moderate detail areas
-                    matches!(region.content_type, ContentType::Mixed | ContentType::LargeShapes) &&
-                    matches!(region.detail_level, DetailLevel::None | DetailLevel::Low | DetailLevel::Medium)
-                },
-                ScaleType::Fine => {
-                    // Fine scale: focus on detailed textures and areas needing more detail
-                    matches!(region.content_type, ContentType::DetailedTexture | ContentType::Mixed) &&
-                    !matches!(region.detail_level, DetailLevel::Saturated)
-                },
-                ScaleType::Micro => {
-                    // Micro scale: focus on detailed textures that aren't saturated
-                    matches!(region.content_type, ContentType::DetailedTexture) &&
-                    matches!(region.detail_level, DetailLevel::Low | DetailLevel::Medium | DetailLevel::High)
-                },
-            };
-            
-            if should_process && region.priority_score > 3.0 {
-                priority_regions.push(region);
-            }
-        }
-    }
-    
-    // Sort by priority score (highest first)
-    priority_regions.sort_by(|a, b| b.priority_score.partial_cmp(&a.priority_score).unwrap());
-    
-    // Limit processing to top regions for performance
-    let max_regions = match scale_type {
-        ScaleType::Large => 8,   // Process fewer large-scale regions
-        ScaleType::Medium => 12, // Moderate number of medium-scale regions
-        ScaleType::Fine => 16,   // More fine-scale regions
-        ScaleType::Micro => 20,  // Most micro-scale regions
-    };
-    
-    priority_regions.into_iter().take(max_regions).collect()
-}
-
-/// APPROACH C+B: Process a specific region with the appropriate scale algorithm
-fn process_region_with_scale(
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    region: &ImageRegion,
-    scale_config: &MultiScaleConfig,
-    trace_config: &TraceLowConfig,
-) -> Result<Vec<SvgPath>, VectorizeError> {
-    // Create a sub-image for this region (conceptual - for now process full image with region-aware config)
-    log::debug!(
-        "APPROACH C+B: Processing region ({}, {}) {}x{} with scale {:?}, content: {:?}, priority: {:.1}",
-        region.x, region.y, region.width, region.height,
-        scale_config.scale_type, region.content_type, region.priority_score
-    );
-    
-    // Adjust processing parameters based on region characteristics
-    let mut region_adjusted_config = trace_config.clone();
-    region_adjusted_config.detail = adjust_detail_for_region(scale_config.edge_threshold, region);
-    
-    // Use scale-specific algorithm
-    let paths = match scale_config.algorithm {
-        EdgeAlgorithm::CannyLarge => {
-            trace_large_scale_edges(image, scale_config, &region_adjusted_config)?
-        },
-        EdgeAlgorithm::CannyStandard => {
-            trace_medium_scale_edges(image, scale_config, &region_adjusted_config)?
-        },
-        EdgeAlgorithm::SobelLaplacian => {
-            trace_fine_scale_edges(image, scale_config, &region_adjusted_config)?
-        },
-        EdgeAlgorithm::LoGFiltered => {
-            trace_micro_scale_edges(image, scale_config, &region_adjusted_config)?
-        },
-    };
-    
-    // Filter paths to only include those that intersect with this region
-    let region_paths = filter_paths_to_region(&paths, region);
-    
-    log::debug!(
-        "APPROACH C+B: Region processing yielded {} total paths, {} in region",
-        paths.len(), region_paths.len()
-    );
-    
-    Ok(region_paths)
-}
-
-/// APPROACH C+B: Adjust detail threshold based on region characteristics
-fn adjust_detail_for_region(base_detail: f32, region: &ImageRegion) -> f32 {
-    let mut adjusted_detail = base_detail;
-    
-    // Adjust based on existing detail level
-    adjusted_detail *= match region.detail_level {
-        DetailLevel::None => 0.8,      // More sensitive for empty areas
-        DetailLevel::Low => 0.9,       // Slightly more sensitive
-        DetailLevel::Medium => 1.0,    // Standard sensitivity
-        DetailLevel::High => 1.1,      // Less sensitive to avoid oversaturation
-        DetailLevel::Saturated => 1.3, // Much less sensitive
-    };
-    
-    // Adjust based on content type
-    adjusted_detail *= match region.content_type {
-        ContentType::DetailedTexture => 0.85, // More sensitive for textures
-        ContentType::Mixed => 0.95,           // Slightly more sensitive
-        ContentType::LargeShapes => 1.1,      // Less sensitive for large shapes
-        ContentType::Sparse => 0.8,           // More sensitive for sparse areas
-        ContentType::Dense => 1.2,            // Less sensitive for dense areas
-    };
-    
-    adjusted_detail.max(0.01).min(1.0)
-}
-
-/// APPROACH C+B: Filter paths to only include those within or intersecting a region
-fn filter_paths_to_region(paths: &[SvgPath], region: &ImageRegion) -> Vec<SvgPath> {
-    paths.iter()
-        .filter(|path| {
-            let bbox = extract_bounding_box(&path.data);
-            
-            // Check if path intersects with region
-            let region_right = region.x + region.width;
-            let region_bottom = region.y + region.height;
-            
-            bbox.max_x >= region.x as f32 && bbox.min_x < region_right as f32 &&
-            bbox.max_y >= region.y as f32 && bbox.min_y < region_bottom as f32
-        })
-        .cloned()
-        .collect()
-}
-
-/// APPROACH C: Micro-scale edge detection with noise filtering (updated with region awareness)
-fn trace_micro_scale_edges(
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    scale_config: &MultiScaleConfig,
-    trace_config: &TraceLowConfig,
-) -> Result<Vec<SvgPath>, VectorizeError> {
-    log::debug!("APPROACH C+B: Micro-scale processing - ultra-fine details with noise filtering");
-    
-    // Maximum sensitivity with noise filtering
-    let mut micro_scale_config = trace_config.clone();
-    micro_scale_config.detail = scale_config.edge_threshold;
-    
-    let paths = vectorize_trace_low_single_pass(image, &micro_scale_config, None)?;
-    
-    // Aggressive filtering for micro-scale (remove noise, keep only meaningful micro-details)
-    let micro_scale_paths: Vec<SvgPath> = paths.into_iter()
-        .filter(|path| is_micro_scale_feature(path))
-        .collect();
-    
-    log::debug!("APPROACH C+B: Micro-scale extracted {} ultra-fine detail paths", micro_scale_paths.len());
-    Ok(micro_scale_paths)
-}
-
-/// APPROACH C: Scale-specific feature classification
-fn is_large_scale_feature(path: &SvgPath) -> bool {
-    // Large-scale features: longer paths, major boundaries
-    let path_length = estimate_path_length(&path.data);
-    path_length > 50.0 // Longer paths indicate major features
-}
-
-fn is_medium_scale_feature(path: &SvgPath) -> bool {
-    // Medium-scale features: balanced length, texture elements
-    let path_length = estimate_path_length(&path.data);
-    path_length >= 10.0 && path_length <= 100.0 // Medium-length paths
-}
-
-fn is_fine_scale_feature(path: &SvgPath) -> bool {
-    // Fine-scale features: shorter paths, subtle details
-    let path_length = estimate_path_length(&path.data);
-    path_length >= 5.0 && path_length <= 50.0 // Shorter paths for fine details
-}
-
-fn is_micro_scale_feature(path: &SvgPath) -> bool {
-    // Micro-scale features: very short but meaningful paths
-    let path_length = estimate_path_length(&path.data);
-    let has_curves = path.data.contains('C') || path.data.contains('Q'); // Curved paths often contain detail
-    
-    // Keep micro-scale paths that are either reasonably long or have curves (indicating detail)
-    path_length >= 3.0 && (path_length <= 30.0 || has_curves)
-}
-
-/// Estimate path length from SVG path data (simplified calculation)
-fn estimate_path_length(path_data: &str) -> f32 {
-    // Count coordinate pairs as a rough proxy for path complexity/length
-    let coords: Vec<f32> = path_data
-        .split_whitespace()
-        .filter_map(|s| {
-            let cleaned = s.chars().filter(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect::<String>();
-            cleaned.parse().ok()
-        })
-        .collect();
-    
-    // Estimate based on number of coordinate pairs
-    (coords.len() / 2) as f32 * 2.0 // Rough length estimate
-}
-
-/// APPROACH C: Scale-specific path filtering
-fn filter_scale_specific_paths(
-    new_paths: &[SvgPath],
-    existing_paths: &[SvgPath],
-    scale_config: &MultiScaleConfig,
-) -> Vec<SvgPath> {
-    new_paths
-        .iter()
-        .filter(|new_path| {
-            // Apply scale-specific filtering logic
-            match scale_config.scale_type {
-                ScaleType::Large => {
-                    // Large scale: avoid overlap with any existing paths
-                    !existing_paths.iter().any(|existing| {
-                        paths_have_major_overlap(existing, new_path)
-                    })
-                },
-                ScaleType::Medium => {
-                    // Medium scale: more permissive, avoid only significant overlap
-                    !existing_paths.iter().any(|existing| {
-                        paths_have_significant_overlap(existing, new_path)
-                    })
-                },
-                ScaleType::Fine | ScaleType::Micro => {
-                    // Fine/Micro scale: very permissive, only avoid near-identical paths
-                    !existing_paths.iter().any(|existing| {
-                        paths_spatially_overlap(existing, new_path)
-                    })
-                },
-            }
-        })
-        .cloned()
-        .collect()
-}
-
-/// APPROACH C: Different levels of overlap detection for different scales
-fn paths_have_major_overlap(path1: &SvgPath, path2: &SvgPath) -> bool {
-    // For large-scale features: strict overlap detection
-    let bbox1 = extract_bounding_box(&path1.data);
-    let bbox2 = extract_bounding_box(&path2.data);
-    
-    if !bounding_boxes_overlap(&bbox1, &bbox2) {
-        return false;
-    }
-    
-    // Check if bounding boxes have significant overlap (>50% area)
-    let overlap_area = calculate_overlap_area(&bbox1, &bbox2);
-    let min_area = bbox1.area().min(bbox2.area());
-    
-    overlap_area > min_area * 0.5 // 50% overlap threshold for major overlap
-}
-
-fn paths_have_significant_overlap(path1: &SvgPath, path2: &SvgPath) -> bool {
-    // For medium-scale features: moderate overlap detection
-    let bbox1 = extract_bounding_box(&path1.data);
-    let bbox2 = extract_bounding_box(&path2.data);
-    
-    if !bounding_boxes_overlap(&bbox1, &bbox2) {
-        return false;
-    }
-    
-    let overlap_area = calculate_overlap_area(&bbox1, &bbox2);
-    let min_area = bbox1.area().min(bbox2.area());
-    
-    overlap_area > min_area * 0.25 // 25% overlap threshold for significant overlap
-}
-
-fn paths_spatially_overlap(path1: &SvgPath, path2: &SvgPath) -> bool {
-    // For fine/micro-scale features: minimal overlap detection (near-identical only)
-    let bbox1 = extract_bounding_box(&path1.data);
-    let bbox2 = extract_bounding_box(&path2.data);
-    
-    if !bounding_boxes_overlap(&bbox1, &bbox2) {
-        return false;
-    }
-    
-    // Very high similarity required for fine-scale overlap
-    let data_similarity = calculate_path_data_similarity(&path1.data, &path2.data);
-    data_similarity > 0.95 // 95% similarity required
-}
-
-/// APPROACH C: Enhanced bounding box with area calculation
-#[derive(Debug, Clone)]
-struct BoundingBox {
-    min_x: f32,
-    min_y: f32,
-    max_x: f32,
-    max_y: f32,
-}
-
-impl BoundingBox {
-    fn area(&self) -> f32 {
-        (self.max_x - self.min_x) * (self.max_y - self.min_y)
-    }
-    
-    fn width(&self) -> f32 {
-        self.max_x - self.min_x
-    }
-    
-    fn height(&self) -> f32 {
-        self.max_y - self.min_y
-    }
-}
-
-/// APPROACH A: Extract bounding box from SVG path data
-fn extract_bounding_box(path_data: &str) -> BoundingBox {
-    let mut min_x = f32::INFINITY;
-    let mut min_y = f32::INFINITY;
-    let mut max_x = f32::NEG_INFINITY;
-    let mut max_y = f32::NEG_INFINITY;
-    
-    // Parse path data to extract coordinates
-    // Simple regex-like parsing for M, L, C commands and coordinates
-    let coords: Vec<f32> = path_data
-        .split_whitespace()
-        .filter_map(|s| {
-            // Remove command letters and parse numbers
-            let cleaned = s.chars().filter(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect::<String>();
-            cleaned.parse().ok()
-        })
-        .collect();
-    
-    // Process coordinates in pairs (x, y)
-    for chunk in coords.chunks(2) {
-        if chunk.len() == 2 {
-            let x = chunk[0];
-            let y = chunk[1];
-            
-            min_x = min_x.min(x);
-            min_y = min_y.min(y);
-            max_x = max_x.max(x);
-            max_y = max_y.max(y);
-        }
-    }
-    
-    // Handle edge case where no valid coordinates found
-    if min_x == f32::INFINITY {
-        return BoundingBox { min_x: 0.0, min_y: 0.0, max_x: 0.0, max_y: 0.0 };
-    }
-    
-    BoundingBox { min_x, min_y, max_x, max_y }
-}
-
-/// APPROACH C: Enhanced bounding box overlap with area calculation
-fn bounding_boxes_overlap(bbox1: &BoundingBox, bbox2: &BoundingBox) -> bool {
-    // Check for no overlap conditions
-    if bbox1.max_x < bbox2.min_x || bbox2.max_x < bbox1.min_x {
-        return false; // No horizontal overlap
-    }
-    if bbox1.max_y < bbox2.min_y || bbox2.max_y < bbox1.min_y {
-        return false; // No vertical overlap  
-    }
-    
-    true // Overlapping
-}
-
-/// APPROACH C: Calculate overlap area between two bounding boxes
-fn calculate_overlap_area(bbox1: &BoundingBox, bbox2: &BoundingBox) -> f32 {
-    if !bounding_boxes_overlap(bbox1, bbox2) {
-        return 0.0;
-    }
-    
-    let overlap_width = (bbox1.max_x.min(bbox2.max_x) - bbox1.min_x.max(bbox2.min_x)).max(0.0);
-    let overlap_height = (bbox1.max_y.min(bbox2.max_y) - bbox1.min_y.max(bbox2.min_y)).max(0.0);
-    
-    overlap_width * overlap_height
-}
-
-/// APPROACH A: Calculate similarity between path data using improved algorithm
-fn calculate_path_data_similarity(data1: &str, data2: &str) -> f32 {
-    if data1 == data2 {
-        return 1.0;
-    }
-    
-    let len1 = data1.len();
-    let len2 = data2.len();
-    
-    if len1 == 0 || len2 == 0 {
-        return 0.0;
-    }
-    
-    // Improved similarity: combine length and character overlap
-    let length_similarity = 1.0 - ((len1 as f32 - len2 as f32).abs() / len1.max(len2) as f32);
-    
-    // Simple character overlap check
-    let mut common_chars = 0;
-    let chars1: Vec<char> = data1.chars().collect();
-    let chars2: Vec<char> = data2.chars().collect();
-    
-    for (i, &c1) in chars1.iter().enumerate() {
-        if i < chars2.len() && c1 == chars2[i] {
-            common_chars += 1;
-        }
-    }
-    
-    let char_similarity = common_chars as f32 / len1.max(len2) as f32;
-    
-    // Weighted combination
-    (length_similarity * 0.3) + (char_similarity * 0.7)
-}
-
-/// APPROACH C: Apply Gaussian blur for scale preprocessing
-fn apply_gaussian_blur(
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    radius: f32,
-) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, VectorizeError> {
-    // Simple implementation: for now, return original image
-    // In a full implementation, this would apply actual Gaussian blur
-    // using convolution with a Gaussian kernel
-    log::debug!("APPROACH C: Applying Gaussian blur with radius {:.2}", radius);
-    Ok(image.clone())
-}
-
-/// APPROACH C: Merge paths from different scales with priority system
-fn merge_multiscale_paths(
-    existing_paths: &[SvgPath],
-    new_paths: &[SvgPath],
-    scale_type: &ScaleType,
-) -> Vec<SvgPath> {
-    let mut merged = existing_paths.to_vec();
-    
-    // Priority system: larger scales take precedence
-    let priority = match scale_type {
-        ScaleType::Large => 4,  // Highest priority
-        ScaleType::Medium => 3,
-        ScaleType::Fine => 2,
-        ScaleType::Micro => 1,  // Lowest priority
-    };
-    
-    for new_path in new_paths {
-        // For higher priority scales, be more aggressive about adding paths
-        let should_add = if priority >= 3 {
-            // Large/Medium scales: add if no major overlap
-            !merged.iter().any(|existing| paths_have_major_overlap(existing, new_path))
-        } else {
-            // Fine/Micro scales: add if no significant overlap
-            !merged.iter().any(|existing| paths_spatially_overlap(existing, new_path))
-        };
-        
-        if should_add {
-            merged.push(new_path.clone());
-        }
-    }
-    
-    merged
-}
-
-/// APPROACH C: Calculate edge strength metrics for a set of paths
-fn calculate_edge_strength_metrics(paths: &[SvgPath]) -> f32 {
-    if paths.is_empty() {
-        return 0.0;
-    }
-    
-    // Simple metric: average path complexity
-    let total_complexity: f32 = paths.iter()
-        .map(|path| estimate_path_length(&path.data))
-        .sum();
-    
-    total_complexity / paths.len() as f32
-}
-
-/// APPROACH C: Calculate scale coverage metrics
-fn calculate_scale_coverage(paths: &[SvgPath], scale_type: &ScaleType) -> f32 {
-    if paths.is_empty() {
-        return 0.0;
-    }
-    
-    // Different coverage calculations for different scales
-    match scale_type {
-        ScaleType::Large => {
-            // Large scale: coverage based on total path length
-            let total_length: f32 = paths.iter().map(|p| estimate_path_length(&p.data)).sum();
-            (total_length / 1000.0).min(1.0) // Normalize to 0-1
-        },
-        ScaleType::Medium => {
-            // Medium scale: coverage based on path count and diversity
-            let path_count = paths.len() as f32;
-            (path_count / 100.0).min(1.0) // Normalize to 0-1
-        },
-        ScaleType::Fine | ScaleType::Micro => {
-            // Fine/Micro scale: coverage based on detail density
-            let detail_density = paths.len() as f32 / (paths.iter().map(|p| estimate_path_length(&p.data)).sum::<f32>().max(1.0));
-            (detail_density * 10.0).min(1.0) // Normalize to 0-1
-        },
-    }
-}
-
-/// APPROACH C+B: Enhanced intelligent combining of all scale results with region awareness
-fn intelligently_combine_scales(scale_results: Vec<ScaleResult>) -> Vec<SvgPath> {
-    if scale_results.is_empty() {
-        return Vec::new();
-    }
-    
-    log::info!(
-        "APPROACH C+B: Intelligently combining {} scale results with region awareness", 
-        scale_results.len()
-    );
-    
-    let mut final_paths = Vec::new();
-    
-    // Process scales in priority order: Large -> Medium -> Fine -> Micro
-    let results_len = scale_results.len();
-    let mut sorted_results = scale_results;
-    sorted_results.sort_by_key(|result| {
-        match result.scale_type {
-            ScaleType::Large => 0,
-            ScaleType::Medium => 1,
-            ScaleType::Fine => 2,
-            ScaleType::Micro => 3,
-        }
-    });
-    
-    for result in sorted_results {
-        log::debug!(
-            "APPROACH C+B: Combining scale {:?} - {} paths, {} regions processed, efficiency: {:.2}",
-            result.scale_type,
-            result.paths.len(),
-            result.regions_processed,
-            result.efficiency_score
-        );
-        
-        // Skip scales that processed no regions (optimization)
-        if result.regions_processed == 0 {
-            log::debug!("APPROACH C+B: Skipping scale {:?} - no regions processed", result.scale_type);
-            continue;
-        }
-        
-        // Add paths from this scale that don't conflict with higher priority scales
-        let mut paths_added = 0;
-        for path in result.paths {
-            let conflicts_with_existing = final_paths.iter().any(|existing| {
-                match result.scale_type {
-                    ScaleType::Large => false, // Large scale always wins
-                    ScaleType::Medium => paths_have_major_overlap(existing, &path),
-                    ScaleType::Fine => paths_have_significant_overlap(existing, &path),
-                    ScaleType::Micro => paths_spatially_overlap(existing, &path),
-                }
-            });
-            
-            if !conflicts_with_existing {
-                final_paths.push(path);
-                paths_added += 1;
-            }
-        }
-        
-        log::debug!(
-            "APPROACH C+B: Added {} paths from scale {:?} (efficiency: {:.1} paths/region)",
-            paths_added, result.scale_type, paths_added as f32 / result.regions_processed.max(1) as f32
-        );
-    }
-    
-    log::info!(
-        "APPROACH C+B: Intelligent combining complete - {} final paths from {} scales",
-        final_paths.len(),
-        results_len
-    );
-    
-    final_paths
-}

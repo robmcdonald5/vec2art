@@ -50,7 +50,7 @@
 	let currentMetrics = $state(performanceMonitor.getCurrentMetrics());
 	let monitoringInterval: ReturnType<typeof setInterval> | undefined;
 	let isStressed = $state(false);
-	
+
 	// New dynamic CPU detection state
 	let cpuCapabilities = $state<CPUCapabilities | null>(null);
 	let performanceRecommendations = $state<PerformanceRecommendation[]>([]);
@@ -152,15 +152,15 @@
 
 		// Map old performance modes to new system
 		const modeMapping = {
-			'economy': 'battery',
-			'balanced': 'balanced', 
-			'performance': 'performance',
-			'custom': 'balanced' // fallback for custom
+			economy: 'battery',
+			balanced: 'balanced',
+			performance: 'performance',
+			custom: 'balanced' // fallback for custom
 		} as const;
 
 		const newMode = modeMapping[mode];
-		const recommendation = performanceRecommendations.find(r => r.mode === newMode);
-		
+		const recommendation = performanceRecommendations.find((r) => r.mode === newMode);
+
 		return recommendation ? recommendation.threadCount : getOptimalThreadCountOld(mode);
 	}
 
@@ -330,7 +330,8 @@
 							<span class="font-medium">{cpuCapabilities.cores}</span>
 						</div>
 						<div class="flex items-center gap-1">
-							<span class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
+							<span
+								class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
 								>📱</span
 							>
 							<span class="text-gray-600 dark:text-gray-400">Device:</span>
@@ -344,7 +345,8 @@
 							<span class="font-medium capitalize">{cpuCapabilities.estimatedPerformance}</span>
 						</div>
 						<div class="flex items-center gap-1">
-							<span class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
+							<span
+								class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
 								>💾</span
 							>
 							<span class="text-gray-600 dark:text-gray-400">Memory:</span>
@@ -366,35 +368,37 @@
 							<span class="font-medium">{systemCapabilities.cores}</span>
 						</div>
 						<div class="flex items-center gap-1">
-							<span class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
+							<span
+								class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
 								>📱</span
 							>
 							<span class="text-gray-600 dark:text-gray-400">Device:</span>
 							<span class="font-medium capitalize">{systemCapabilities.deviceType}</span>
 						</div>
 					</div>
-
-				<div class="space-y-1">
-					<div class="flex items-center gap-1">
-						<Activity class="h-3 w-3" />
-						<span class="text-gray-600 dark:text-gray-400">Frame Rate:</span>
-						<span
-							class="font-medium {currentMetrics.frameRate < 30
-								? 'text-red-500'
-								: 'text-green-500'}"
-						>
-							{Math.round(currentMetrics.frameRate)} FPS
-						</span>
-					</div>
-					<div class="flex items-center gap-1">
-						<span class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
-							>💾</span
-						>
-						<span class="text-gray-600 dark:text-gray-400">Memory:</span>
-						<span class="font-medium capitalize">{systemCapabilities.memoryEstimate}</span>
+					<div class="space-y-1">
+						<div class="flex items-center gap-1">
+							<Activity class="h-3 w-3" />
+							<span class="text-gray-600 dark:text-gray-400">Frame Rate:</span>
+							<span
+								class="font-medium {currentMetrics.frameRate < 30
+									? 'text-red-500'
+									: 'text-green-500'}"
+							>
+								{Math.round(currentMetrics.frameRate)} FPS
+							</span>
+						</div>
+						<div class="flex items-center gap-1">
+							<span
+								class="flex h-3 w-3 items-center justify-center text-gray-600 dark:text-gray-400"
+								>💾</span
+							>
+							<span class="text-gray-600 dark:text-gray-400">Memory:</span>
+							<span class="font-medium capitalize">{systemCapabilities.memoryEstimate}</span>
+						</div>
 					</div>
 				</div>
-			</div>
+			{/if}
 
 			<!-- Current Status -->
 			<div class="flex items-center gap-2 border-t border-gray-200 pt-2 dark:border-gray-600">

@@ -1,3 +1,5 @@
+// @vitest-environment happy-dom
+
 /**
  * @file file-dropzone.test.ts
  * Comprehensive tests for FileDropzone component

@@ -10,7 +10,7 @@
 //! The flow-guided approach produces more coherent, artistic line art compared to
 //! traditional edge detection methods.
 
-use crate::algorithms::etf::{compute_etf, EtfConfig, EtfField};
+use crate::algorithms::edges::etf::{compute_etf, EtfConfig, EtfField};
 use crate::execution::execute_parallel;
 use image::GrayImage;
 use serde::{Deserialize, Serialize};
@@ -694,7 +694,7 @@ fn gaussian_smooth(field: &[f32], width: u32, height: u32, sigma: f32) -> Vec<f3
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithms::etf::{compute_etf, EtfConfig};
+    use crate::algorithms::edges::etf::{compute_etf, EtfConfig};
     use image::{GrayImage, Luma};
 
     #[test]

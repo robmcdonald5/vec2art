@@ -7,7 +7,7 @@
 //! - Adaptive simplification based on local curvature
 //! - CPU-optimized iterative fitting with numerical stability
 
-use crate::algorithms::trace::{Point2F, Polyline};
+use crate::algorithms::tracing::trace::{Point2F, Polyline};
 use crate::execution::*;
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;

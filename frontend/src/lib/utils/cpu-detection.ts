@@ -284,11 +284,11 @@ function calculateThreadRecommendations(
 	if (cores <= 4) {
 		recommended = Math.max(1, cores - 1); // Leave 1 core free on low-end systems
 	} else if (cores <= 8) {
-		recommended = Math.floor(cores * 0.5); // Use ~50% on mid-range systems  
+		recommended = Math.floor(cores * 0.5); // Use ~50% on mid-range systems
 	} else {
 		recommended = Math.floor(cores * 0.4); // Use ~40% on high-end systems to leave more headroom
 	}
-	
+
 	const maxSafe = Math.min(cores - 1, 12); // Always leave at least 1 core free, cap at 12 for stability
 
 	return {

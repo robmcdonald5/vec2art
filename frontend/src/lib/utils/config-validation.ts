@@ -96,8 +96,10 @@ export function detectPresetFromValues(config: VectorizerConfig): string | null 
 	const tolerance = 0.01; // Allow small floating point differences
 
 	for (const [preset, values] of Object.entries(presetValues)) {
-		const tremorMatch = Math.abs((config.tremor_strength ?? 0) - values.tremor_strength) <= tolerance;
-		const weightsMatch = Math.abs((config.variable_weights ?? 0) - values.variable_weights) <= tolerance;
+		const tremorMatch =
+			Math.abs((config.tremor_strength ?? 0) - values.tremor_strength) <= tolerance;
+		const weightsMatch =
+			Math.abs((config.variable_weights ?? 0) - values.variable_weights) <= tolerance;
 		const taperingMatch = Math.abs((config.tapering ?? 0) - values.tapering) <= tolerance;
 
 		if (tremorMatch && weightsMatch && taperingMatch) {

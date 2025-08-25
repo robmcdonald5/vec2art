@@ -4,23 +4,37 @@
 //! environments that support SharedArrayBuffer and atomics. It gracefully falls
 //! back to single-threaded execution when threading is not available.
 
+use std::sync::atomic::{AtomicU8, Ordering};
 use wasm_bindgen::prelude::*;
 
 /// Thread pool initialization state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 pub enum ThreadPoolState {
     /// Threading is not supported (no SharedArrayBuffer or atomics)
-    NotSupported,
+    NotSupported = 0,
     /// Threading is supported but not initialized
-    Supported,
+    Supported = 1,
     /// Thread pool is initialized and ready
-    Initialized,
+    Initialized = 2,
     /// Thread pool initialization failed
-    Failed,
+    Failed = 3,
 }
 
-/// Global thread pool state tracking
-static mut THREAD_POOL_STATE: ThreadPoolState = ThreadPoolState::Supported;
+impl From<u8> for ThreadPoolState {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => ThreadPoolState::NotSupported,
+            1 => ThreadPoolState::Supported,
+            2 => ThreadPoolState::Initialized,
+            3 => ThreadPoolState::Failed,
+            _ => ThreadPoolState::Supported, // Default fallback
+        }
+    }
+}
+
+/// Global thread pool state tracking using atomic operations for thread safety
+static THREAD_POOL_STATE: AtomicU8 = AtomicU8::new(ThreadPoolState::Supported as u8);
 
 /// Initialize the WASM thread pool with the specified number of threads
 ///
@@ -39,9 +53,7 @@ static mut THREAD_POOL_STATE: ThreadPoolState = ThreadPoolState::Supported;
 pub fn init_thread_pool(num_threads: Option<usize>) -> JsValue {
     // Check if SharedArrayBuffer is available
     if !is_shared_array_buffer_supported() {
-        unsafe {
-            THREAD_POOL_STATE = ThreadPoolState::NotSupported;
-        }
+        THREAD_POOL_STATE.store(ThreadPoolState::NotSupported as u8, Ordering::SeqCst);
         log::info!("SharedArrayBuffer not supported, using single-threaded execution");
         // Return resolved promise for compatibility
         return js_sys::Promise::resolve(&JsValue::from_str("single-threaded")).into();
@@ -71,9 +83,7 @@ pub fn init_thread_pool(num_threads: Option<usize>) -> JsValue {
 #[cfg(not(all(target_arch = "wasm32", feature = "wasm-parallel")))]
 #[wasm_bindgen]
 pub fn init_thread_pool(_num_threads: Option<usize>) -> JsValue {
-    unsafe {
-        THREAD_POOL_STATE = ThreadPoolState::NotSupported;
-    }
+    THREAD_POOL_STATE.store(ThreadPoolState::NotSupported as u8, Ordering::SeqCst);
     log::info!("WASM parallel feature not enabled, using single-threaded execution");
     // Return resolved promise for compatibility
     #[cfg(target_arch = "wasm32")]
@@ -85,7 +95,7 @@ pub fn init_thread_pool(_num_threads: Option<usize>) -> JsValue {
 
 /// Get the current thread pool status
 pub fn get_thread_pool_status() -> ThreadPoolState {
-    unsafe { THREAD_POOL_STATE }
+    ThreadPoolState::from(THREAD_POOL_STATE.load(Ordering::SeqCst))
 }
 
 /// Check if threading is currently active and functional
@@ -135,7 +145,8 @@ fn is_shared_array_buffer_supported() -> bool {
     // This avoids eval by using direct constructor access
     std::panic::catch_unwind(|| {
         js_sys::SharedArrayBuffer::new(1);
-    }).is_ok()
+    })
+    .is_ok()
 }
 
 /// Check if SharedArrayBuffer is supported (always false when threading is not enabled)
@@ -148,31 +159,25 @@ fn is_shared_array_buffer_supported() -> bool {
 ///
 /// This function can be called to disable threading even if it's supported
 pub fn force_single_threaded() {
-    unsafe {
-        THREAD_POOL_STATE = ThreadPoolState::NotSupported;
-    }
+    THREAD_POOL_STATE.store(ThreadPoolState::NotSupported as u8, Ordering::SeqCst);
     log::info!("Forced single-threaded execution mode");
 }
 
 /// Confirm successful thread pool initialization
-/// 
+///
 /// This should be called by JavaScript when the initThreadPool promise resolves successfully
 #[wasm_bindgen]
 pub fn confirm_threading_success() {
-    unsafe {
-        THREAD_POOL_STATE = ThreadPoolState::Initialized;
-    }
+    THREAD_POOL_STATE.store(ThreadPoolState::Initialized as u8, Ordering::SeqCst);
     log::info!("Thread pool initialization confirmed successful");
 }
 
 /// Mark thread pool initialization failure
-/// 
+///
 /// This should be called by JavaScript when the initThreadPool promise rejects
 #[wasm_bindgen]
 pub fn mark_threading_failed() {
-    unsafe {
-        THREAD_POOL_STATE = ThreadPoolState::Failed;
-    }
+    THREAD_POOL_STATE.store(ThreadPoolState::Failed as u8, Ordering::SeqCst);
     log::info!("Thread pool initialization marked as failed");
 }
 

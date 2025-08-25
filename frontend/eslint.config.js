@@ -43,7 +43,15 @@ export default [
 			'.storybook/**/*',
 			'src/stories/**/*',
 			'tests/algorithm-validation/**/*.js',
-			'src/lib/stores/*.svelte.ts'
+			'src/lib/stores/*.svelte.ts',
+			// Additional generated/build artifacts to ignore
+			'playwright-report/**/*',
+			'test-results/**/*',
+			'tests/e2e/test-results/**/*',
+			'*.tsbuildinfo',
+			'**/*.generated.*',
+			'**/*.config.js.timestamp-*',
+			'.env*'
 		]
 	},
 	...storybook.configs['flat/recommended']

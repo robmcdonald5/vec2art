@@ -1,8 +1,16 @@
 <script lang="ts">
-	import { Sliders, Eye, PenTool, Filter } from 'lucide-svelte';
+	import { Sliders, Eye, PenTool, Filter, AlertTriangle } from 'lucide-svelte';
 	import type { VectorizerConfig, HandDrawnPreset } from '$lib/types/vectorizer';
 	import { HAND_DRAWN_DESCRIPTIONS } from '$lib/types/vectorizer';
 	import { CustomSelect } from '$lib/components/ui/custom-select';
+
+	// Import dots backend architecture
+	import {
+		mapUIConfigToDotsConfig,
+		validateDotsConfig,
+		describeDotsConfig
+	} from '$lib/utils/dots-mapping.js';
+	import type { UISliderConfig } from '$lib/types/dots-backend.js';
 
 	interface ParameterPanelProps {
 		config: VectorizerConfig;
@@ -23,7 +31,23 @@
 	const detailToUI = (detail: number) => Math.round(detail * 9 + 1);
 	const detailFromUI = (uiValue: number) => (uiValue - 1) / 9;
 
+	// Validation state for dots backend
+	let dotsValidation = $state({ isValid: true, errors: [], warnings: [] });
 
+	// Update dots validation when config changes
+	$effect(() => {
+		if (config.backend === 'dots') {
+			const uiConfig: UISliderConfig = {
+				detail_level: config.detail || 0.5,
+				dot_width: config.stroke_width || 2.0,
+				color_mode: config.preserve_colors || true
+			};
+
+			// Note: We don't have image dimensions in the UI panel, but the WASM worker will handle size-aware adjustment
+			const dotsConfig = mapUIConfigToDotsConfig(uiConfig);
+			dotsValidation = validateDotsConfig(dotsConfig);
+		}
+	});
 
 	function handleDetailChange(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -33,24 +57,28 @@
 		// Update progressive fill
 		updateSliderFill(target);
 
+		// PROPER ARCHITECTURE: Always use generic parameters
+		// The WASM worker will handle backend-specific mapping using the architectural system
 		onConfigChange({ detail: internalValue });
 		onParameterChange?.();
 	}
 
 	function handleStrokeWidthChange(event: Event) {
 		const target = event.target as HTMLInputElement;
+		const value = parseFloat(target.value);
 
 		// Update progressive fill
 		updateSliderFill(target);
 
-		onConfigChange({ stroke_width: parseFloat(target.value) });
+		// PROPER ARCHITECTURE: Always use generic parameters
+		// The WASM worker will handle backend-specific mapping using the architectural system
+		onConfigChange({ stroke_width: value });
 		onParameterChange?.();
 	}
 
-
 	function handleHandDrawnChange(value: string) {
 		const preset = value as HandDrawnPreset;
-		
+
 		// If custom is selected, just update the preset without changing the values
 		if (preset === 'custom') {
 			console.log(`[ParameterPanel] Hand-drawn preset "${preset}" - keeping current custom values`);
@@ -58,7 +86,7 @@
 			onParameterChange?.();
 			return;
 		}
-		
+
 		// PROPER FIX: Hand-drawn preset sets base values, hand-drawn intensity modifies them
 		// Each preset defines a style foundation that hand-drawn intensity can fine-tune
 		const presetValues = {
@@ -68,14 +96,17 @@
 			strong: { tremor_strength: 0.3, variable_weights: 0.5, tapering: 0.6 },
 			sketchy: { tremor_strength: 0.4, variable_weights: 0.7, tapering: 0.8 }
 		};
-		
-		console.log(`[ParameterPanel] Hand-drawn preset "${preset}" - setting base values:`, presetValues[preset]);
-		
+
+		console.log(
+			`[ParameterPanel] Hand-drawn preset "${preset}" - setting base values:`,
+			presetValues[preset]
+		);
+
 		onConfigChange({
 			hand_drawn_preset: preset,
 			...presetValues[preset]
 		});
-		
+
 		onParameterChange?.();
 	}
 
@@ -99,40 +130,17 @@
 		onParameterChange?.();
 	}
 
-	// Backend-specific parameter handlers
-	function handleDotDensityChange(event: Event) {
+	// REMOVED: Backend-specific parameter handlers are no longer needed
+	// The architectural system handles all parameter mapping in the WASM worker
+
+	function handleRegionComplexityChange(event: Event) {
 		const target = event.target as HTMLInputElement;
-		const uiValue = parseInt(target.value);
-		const density = (10 - uiValue) / 9 * 0.1 + 0.05; // Map 1-10 to 0.15-0.05 (inverted)
-
-		// Update progressive fill
-		updateSliderFill(target);
-
-		onConfigChange({ dot_density_threshold: density });
-		onParameterChange?.();
-	}
-
-	function handlePreserveColorsChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		onConfigChange({ preserve_colors: target.checked });
-		onParameterChange?.();
-	}
-
-	function handleRegionCountChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const uiValue = parseInt(target.value);
-		const regions = Math.round(uiValue * 45 + 50); // Map 1-10 to 50-500
+		const regions = parseInt(target.value);
 
 		// Update progressive fill
 		updateSliderFill(target);
 
 		onConfigChange({ num_superpixels: regions });
-		onParameterChange?.();
-	}
-
-	function handleFillRegionsChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		onConfigChange({ fill_regions: target.checked });
 		onParameterChange?.();
 	}
 
@@ -150,7 +158,7 @@
 			variable_weights: currentConfig.variable_weights ?? 0,
 			tapering: currentConfig.tapering ?? 0
 		};
-		
+
 		// Check against all presets (except custom)
 		const presetValues = {
 			none: { tremor_strength: 0.0, variable_weights: 0.0, tapering: 0.0 },
@@ -159,7 +167,7 @@
 			strong: { tremor_strength: 0.3, variable_weights: 0.5, tapering: 0.6 },
 			sketchy: { tremor_strength: 0.4, variable_weights: 0.7, tapering: 0.8 }
 		};
-		
+
 		// Check if current values match any preset (with small tolerance for floating point)
 		for (const [preset, values] of Object.entries(presetValues)) {
 			const tolerance = 0.01;
@@ -171,7 +179,7 @@
 				return preset as HandDrawnPreset;
 			}
 		}
-		
+
 		return 'custom';
 	}
 
@@ -185,17 +193,17 @@
 			updateSliderFill(input);
 
 			console.log(`🟡 Parameter Panel - Range change: ${configKey} = ${value}`);
-			
+
 			// Update the config with the new value
 			const newConfig = { [configKey]: value } as Partial<VectorizerConfig>;
-			
+
 			// Check if this change makes it a custom preset
 			if (['variable_weights', 'tremor_strength', 'tapering'].includes(configKey)) {
 				const detectedPreset = checkForCustomPreset(newConfig);
 				newConfig.hand_drawn_preset = detectedPreset;
 				console.log(`🟡 Parameter Panel - Detected preset: ${detectedPreset}`);
 			}
-			
+
 			onConfigChange(newConfig);
 			onParameterChange?.();
 		};
@@ -204,18 +212,17 @@
 	// Derived values for UI display
 	let detailUI = $derived(detailToUI(config.detail));
 	let dotDensityUI = $derived(
-		config.dot_density_threshold ? Math.round((0.15 - config.dot_density_threshold) / 0.1 * 9 + 1) : 5
+		config.dot_density_threshold
+			? Math.round(((0.15 - config.dot_density_threshold) / 0.1) * 9 + 1)
+			: 5
 	);
-	let regionCountUI = $derived(
-		config.num_superpixels ? Math.round((config.num_superpixels - 50) / 45) : 3
-	);
-	
+
 	// Hand-drawn preset options (with custom at the bottom)
 	const handDrawnOptions = (() => {
 		const allKeys = Object.keys(HAND_DRAWN_DESCRIPTIONS) as HandDrawnPreset[];
-		const nonCustomKeys = allKeys.filter(key => key !== 'custom');
+		const nonCustomKeys = allKeys.filter((key) => key !== 'custom');
 		const orderedKeys = [...nonCustomKeys, 'custom'];
-		
+
 		return orderedKeys.map((preset) => ({
 			value: preset,
 			label: preset.charAt(0).toUpperCase() + preset.slice(1)
@@ -239,6 +246,7 @@
 	// Reactive effects to update slider fills when config changes externally
 	let detailSliderRef = $state<HTMLInputElement>();
 	let strokeWidthSliderRef = $state<HTMLInputElement>();
+	let regionComplexitySliderRef = $state<HTMLInputElement>();
 	let spatialSigmaSliderRef = $state<HTMLInputElement>();
 	let rangeSigmaSliderRef = $state<HTMLInputElement>();
 	let variableWeightsSliderRef = $state<HTMLInputElement>();
@@ -256,6 +264,13 @@
 		// Update stroke width slider fill when config.stroke_width changes
 		if (strokeWidthSliderRef && config.stroke_width !== undefined) {
 			updateSliderFill(strokeWidthSliderRef);
+		}
+	});
+
+	$effect(() => {
+		// Update region complexity slider fill when config.num_superpixels changes
+		if (regionComplexitySliderRef && config.num_superpixels !== undefined) {
+			updateSliderFill(regionComplexitySliderRef);
 		}
 	});
 
@@ -298,40 +313,80 @@
 <section class="space-y-6">
 	<!-- Core Parameters (Always Visible) -->
 	<div class="space-y-4">
-		<!-- Detail Level -->
-		<div class="space-y-2">
-			<div class="flex items-center justify-between">
-				<label
-					for="detail-level"
-					class="text-converter-primary flex items-center gap-2 text-sm font-medium"
-				>
-					<Eye class="text-converter-secondary h-4 w-4" aria-hidden="true" />
-					Detail Level
-				</label>
-				<span
-					class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-					aria-live="polite">{detailUI}/10</span
-				>
+		<!-- Detail Level (Edge/Centerline/Dots backends only) -->
+		{#if config.backend !== 'superpixel'}
+			<div class="space-y-2">
+				<div class="flex items-center justify-between">
+					<label
+						for="detail-level"
+						class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+					>
+						<Eye class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+						Detail Level
+					</label>
+					<span
+						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+						aria-live="polite">{detailUI}/10</span
+					>
+				</div>
+				<input
+					bind:this={detailSliderRef}
+					id="detail-level"
+					type="range"
+					min="1"
+					max="10"
+					value={detailUI}
+					onchange={handleDetailChange}
+					oninput={handleDetailChange}
+					{disabled}
+					class="slider-ferrari w-full"
+					aria-describedby="detail-level-desc"
+					use:initializeSliderFill
+				/>
+				<div id="detail-level-desc" class="text-converter-muted text-xs">
+					Controls line density and sensitivity. Higher values capture more details but may include
+					noise.
+				</div>
 			</div>
-			<input
-				bind:this={detailSliderRef}
-				id="detail-level"
-				type="range"
-				min="1"
-				max="10"
-				value={detailUI}
-				onchange={handleDetailChange}
-				oninput={handleDetailChange}
-				{disabled}
-				class="slider-ferrari w-full"
-				aria-describedby="detail-level-desc"
-				use:initializeSliderFill
-			/>
-			<div id="detail-level-desc" class="text-converter-muted text-xs">
-				Controls line density and sensitivity. Higher values capture more details but may include
-				noise.
+		{/if}
+
+		<!-- Region Complexity (Superpixel backend only) -->
+		{#if config.backend === 'superpixel'}
+			<div class="space-y-2">
+				<div class="flex items-center justify-between">
+					<label
+						for="region-complexity"
+						class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+					>
+						<Sliders class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+						Region Complexity
+					</label>
+					<span
+						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+						aria-live="polite">{config.num_superpixels || 150}</span
+					>
+				</div>
+				<input
+					bind:this={regionComplexitySliderRef}
+					id="region-complexity"
+					type="range"
+					min="50"
+					max="500"
+					step="25"
+					value={config.num_superpixels || 150}
+					onchange={handleRegionComplexityChange}
+					oninput={handleRegionComplexityChange}
+					{disabled}
+					class="slider-ferrari w-full"
+					aria-describedby="region-complexity-desc"
+					use:initializeSliderFill
+				/>
+				<div id="region-complexity-desc" class="text-converter-muted text-xs">
+					Controls the number of regions in the superpixel segmentation. Higher values create more
+					detailed segmentation.
+				</div>
 			</div>
-		</div>
+		{/if}
 
 		<!-- Line Width / Dot Width -->
 		<div class="space-y-2">
@@ -353,7 +408,7 @@
 				id="stroke-width"
 				type="range"
 				min="0.5"
-				max="5.0"
+				max="10.0"
 				step="0.1"
 				value={config.stroke_width}
 				onchange={handleStrokeWidthChange}
@@ -364,7 +419,7 @@
 				use:initializeSliderFill
 			/>
 			<div id="stroke-width-desc" class="text-converter-muted text-xs">
-				{config.backend === 'dots' 
+				{config.backend === 'dots'
 					? 'Controls the size of dots in stippling output. Smaller dots create finer detail.'
 					: 'Base thickness of generated lines at standard resolution.'}
 			</div>
@@ -381,7 +436,9 @@
 				<!-- Variable Line Weights -->
 				<div class="space-y-2">
 					<div class="flex items-center justify-between">
-						<label for="variable-weights" class="text-converter-primary text-sm">Variable Line Weights</label>
+						<label for="variable-weights" class="text-converter-primary text-sm"
+							>Variable Line Weights</label
+						>
 						<span class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-xs">
 							{(config.variable_weights ?? 0).toFixed(1)}
 						</span>
@@ -407,7 +464,9 @@
 				<!-- Tremor Strength -->
 				<div class="space-y-2">
 					<div class="flex items-center justify-between">
-						<label for="tremor-strength" class="text-converter-primary text-sm">Tremor Strength</label>
+						<label for="tremor-strength" class="text-converter-primary text-sm"
+							>Tremor Strength</label
+						>
 						<span class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-xs">
 							{(config.tremor_strength ?? 0).toFixed(1)}
 						</span>
@@ -478,113 +537,8 @@
 		{/if}
 	</div>
 
-	<!-- Backend-Specific Controls -->
-	{#if config.backend === 'dots'}
-		<div class="space-y-4 border-t pt-4">
-			<h4 class="text-converter-secondary text-sm font-medium">Stippling Controls</h4>
-
-			<!-- Dot Density -->
-			<div class="space-y-2">
-				<div class="flex items-center justify-between">
-					<label for="dot-density" class="text-converter-primary text-sm font-medium"
-						>Dot Density</label
-					>
-					<span
-						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-						aria-live="polite">{dotDensityUI}/10</span
-					>
-				</div>
-				<input
-					id="dot-density"
-					type="range"
-					min="1"
-					max="10"
-					value={dotDensityUI}
-					onchange={handleDotDensityChange}
-					oninput={handleDotDensityChange}
-					{disabled}
-					class="slider-ferrari w-full"
-					aria-describedby="dot-density-desc"
-					use:initializeSliderFill
-				/>
-				<div id="dot-density-desc" class="text-converter-muted text-xs">
-					Controls dot placement density. Higher values create denser stippling patterns.
-				</div>
-			</div>
-
-			<!-- Preserve Colors -->
-			<div class="flex items-center space-x-3">
-				<input
-					id="preserve-colors"
-					type="checkbox"
-					checked={config.preserve_colors ?? true}
-					onchange={handlePreserveColorsChange}
-					{disabled}
-					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
-				/>
-				<label
-					for="preserve-colors"
-					class="text-converter-primary cursor-pointer text-sm font-medium"
-				>
-					Preserve Colors
-				</label>
-			</div>
-			<div class="text-converter-muted ml-7 text-xs">
-				Keep original image colors in the stippling effect instead of monochrome dots.
-			</div>
-		</div>
-	{:else if config.backend === 'superpixel'}
-		<div class="space-y-4 border-t pt-4">
-			<h4 class="text-converter-secondary text-sm font-medium">Region Controls</h4>
-
-			<!-- Region Count -->
-			<div class="space-y-2">
-				<div class="flex items-center justify-between">
-					<label for="region-count" class="text-converter-primary text-sm font-medium"
-						>Region Complexity</label
-					>
-					<span
-						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-						aria-live="polite">{regionCountUI}/10</span
-					>
-				</div>
-				<input
-					id="region-count"
-					type="range"
-					min="1"
-					max="10"
-					value={regionCountUI}
-					onchange={handleRegionCountChange}
-					oninput={handleRegionCountChange}
-					{disabled}
-					class="slider-ferrari w-full"
-					aria-describedby="region-count-desc"
-					use:initializeSliderFill
-				/>
-				<div id="region-count-desc" class="text-converter-muted text-xs">
-					Controls number of color regions. Higher values create more detailed segmentation.
-				</div>
-			</div>
-
-			<!-- Fill Regions -->
-			<div class="flex items-center space-x-3">
-				<input
-					id="fill-regions"
-					type="checkbox"
-					checked={config.fill_regions ?? true}
-					onchange={handleFillRegionsChange}
-					{disabled}
-					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
-				/>
-				<label for="fill-regions" class="text-converter-primary cursor-pointer text-sm font-medium">
-					Fill Regions
-				</label>
-			</div>
-			<div class="text-converter-muted ml-7 text-xs">
-				Fill color regions instead of showing only outlines for bolder poster-style effects.
-			</div>
-		</div>
-	{:else if config.backend === 'centerline'}
+	<!-- Backend-Specific Configuration and Validation -->
+	{#if config.backend === 'centerline'}
 		<div class="space-y-4 border-t pt-4">
 			<h4 class="text-converter-secondary text-sm font-medium">Precision Controls</h4>
 
@@ -611,103 +565,105 @@
 		</div>
 	{/if}
 
-	<!-- Noise Filtering (All Backends) -->
-	<div class="space-y-2 border-t pt-4">
-		<div class="flex items-center space-x-3">
-			<input
-				id="noise-filtering"
-				type="checkbox"
-				checked={config.noise_filtering}
-				onchange={handleNoiseFilteringChange}
-				{disabled}
-				class="border-border text-primary h-4 w-4 rounded focus:outline-none"
-			/>
-			<label
-				for="noise-filtering"
-				class="text-converter-primary cursor-pointer text-sm font-medium"
-			>
-				Noise Filtering
-			</label>
-		</div>
-		<div class="text-converter-muted ml-7 text-xs">
-			Apply edge-preserving bilateral filtering to reduce noise while preserving important edges.
-		</div>
-		
-		<!-- Advanced Noise Filtering Controls (shown when noise filtering is enabled) -->
-		{#if config.noise_filtering}
-			<div class="ml-7 space-y-3 pt-2">
-				<!-- Spatial Sigma (Smoothing Strength) -->
-				<div class="space-y-2">
-					<div class="flex items-center justify-between">
-						<label
-							for="spatial-sigma"
-							class="text-converter-primary flex items-center gap-2 text-sm font-medium"
-						>
-							<Filter class="text-converter-secondary h-4 w-4" aria-hidden="true" />
-							Smoothing Strength
-						</label>
-						<span
-							class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-							aria-live="polite">{config.noise_filter_spatial_sigma?.toFixed(1) ?? '1.2'}</span
-						>
-					</div>
-					<input
-						bind:this={spatialSigmaSliderRef}
-						id="spatial-sigma"
-						type="range"
-						min="0.5"
-						max="1.5"
-						step="0.1"
-						value={config.noise_filter_spatial_sigma ?? 1.2}
-						onchange={handleSpatialSigmaChange}
-						oninput={handleSpatialSigmaChange}
-						{disabled}
-						class="slider-ferrari w-full"
-						aria-describedby="spatial-sigma-desc"
-						use:initializeSliderFill
-					/>
-					<div id="spatial-sigma-desc" class="text-converter-muted text-xs">
-						Higher values provide more smoothing but may blur fine details.
-					</div>
-				</div>
-				
-				<!-- Range Sigma (Edge Preservation) -->
-				<div class="space-y-2">
-					<div class="flex items-center justify-between">
-						<label
-							for="range-sigma"
-							class="text-converter-primary flex items-center gap-2 text-sm font-medium"
-						>
-							<Eye class="text-converter-secondary h-4 w-4" aria-hidden="true" />
-							Edge Preservation
-						</label>
-						<span
-							class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-							aria-live="polite">{config.noise_filter_range_sigma?.toFixed(0) ?? '50'}</span
-						>
-					</div>
-					<input
-						bind:this={rangeSigmaSliderRef}
-						id="range-sigma"
-						type="range"
-						min="10"
-						max="100"
-						step="5"
-						value={config.noise_filter_range_sigma ?? 50.0}
-						onchange={handleRangeSigmaChange}
-						oninput={handleRangeSigmaChange}
-						{disabled}
-						class="slider-ferrari w-full"
-						aria-describedby="range-sigma-desc"
-						use:initializeSliderFill
-					/>
-					<div id="range-sigma-desc" class="text-converter-muted text-xs">
-						Higher values preserve fewer edges (less selective filtering).
-					</div>
-				</div>
+	<!-- Noise Filtering (Edge/Centerline/Dots backends only - Superpixel has natural noise reduction) -->
+	{#if config.backend !== 'superpixel'}
+		<div class="space-y-2 border-t pt-4">
+			<div class="flex items-center space-x-3">
+				<input
+					id="noise-filtering"
+					type="checkbox"
+					checked={config.noise_filtering}
+					onchange={handleNoiseFilteringChange}
+					{disabled}
+					class="border-border text-primary h-4 w-4 rounded focus:outline-none"
+				/>
+				<label
+					for="noise-filtering"
+					class="text-converter-primary cursor-pointer text-sm font-medium"
+				>
+					Noise Filtering
+				</label>
 			</div>
-		{/if}
-	</div>
+			<div class="text-converter-muted ml-7 text-xs">
+				Apply edge-preserving bilateral filtering to reduce noise while preserving important edges.
+			</div>
+
+			<!-- Advanced Noise Filtering Controls (shown when noise filtering is enabled) -->
+			{#if config.noise_filtering}
+				<div class="ml-7 space-y-3 pt-2">
+					<!-- Spatial Sigma (Smoothing Strength) -->
+					<div class="space-y-2">
+						<div class="flex items-center justify-between">
+							<label
+								for="spatial-sigma"
+								class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+							>
+								<Filter class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+								Smoothing Strength
+							</label>
+							<span
+								class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+								aria-live="polite">{config.noise_filter_spatial_sigma?.toFixed(1) ?? '1.2'}</span
+							>
+						</div>
+						<input
+							bind:this={spatialSigmaSliderRef}
+							id="spatial-sigma"
+							type="range"
+							min="0.5"
+							max="1.5"
+							step="0.1"
+							value={config.noise_filter_spatial_sigma ?? 1.2}
+							onchange={handleSpatialSigmaChange}
+							oninput={handleSpatialSigmaChange}
+							{disabled}
+							class="slider-ferrari w-full"
+							aria-describedby="spatial-sigma-desc"
+							use:initializeSliderFill
+						/>
+						<div id="spatial-sigma-desc" class="text-converter-muted text-xs">
+							Higher values provide more smoothing but may blur fine details.
+						</div>
+					</div>
+
+					<!-- Range Sigma (Edge Preservation) -->
+					<div class="space-y-2">
+						<div class="flex items-center justify-between">
+							<label
+								for="range-sigma"
+								class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+							>
+								<Eye class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+								Edge Preservation
+							</label>
+							<span
+								class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+								aria-live="polite">{config.noise_filter_range_sigma?.toFixed(0) ?? '50'}</span
+							>
+						</div>
+						<input
+							bind:this={rangeSigmaSliderRef}
+							id="range-sigma"
+							type="range"
+							min="10"
+							max="100"
+							step="5"
+							value={config.noise_filter_range_sigma ?? 50.0}
+							onchange={handleRangeSigmaChange}
+							oninput={handleRangeSigmaChange}
+							{disabled}
+							class="slider-ferrari w-full"
+							aria-describedby="range-sigma-desc"
+							use:initializeSliderFill
+						/>
+						<div id="range-sigma-desc" class="text-converter-muted text-xs">
+							Higher values preserve fewer edges (less selective filtering).
+						</div>
+					</div>
+				</div>
+			{/if}
+		</div>
+	{/if}
 </section>
 
 <style>

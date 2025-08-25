@@ -3,8 +3,8 @@
 //! These tests verify the SVG dot renderer with real dots and various configurations
 //! to ensure production-ready quality and performance.
 
-use vectorize_core::algorithms::dots::Dot;
-use vectorize_core::algorithms::svg_dots::{
+use vectorize_core::algorithms::dots::dots::Dot;
+use vectorize_core::algorithms::dots::svg_dots::{
     dots_to_svg_with_config, optimize_dot_svg, SvgDotConfig,
 };
 

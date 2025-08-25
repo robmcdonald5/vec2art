@@ -11,7 +11,7 @@
 //! - Loop prevention with max_len constraint
 //! - CPU-optimized implementation with SIMD-friendly operations
 
-use crate::algorithms::etf::EtfField;
+use crate::algorithms::edges::etf::EtfField;
 use crate::execution::execute_parallel;
 use image::GrayImage;
 use serde::{Deserialize, Serialize};
@@ -460,7 +460,7 @@ fn smooth_polyline(polyline: Polyline, max_duplicate_distance: f32) -> Polyline 
 mod tests {
     use super::*;
     use crate::algorithms::{
-        etf::{compute_etf, EtfConfig},
+        edges::etf::{compute_etf, EtfConfig},
         Point,
     };
     use image::{GrayImage, Luma};

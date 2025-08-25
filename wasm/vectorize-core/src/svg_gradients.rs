@@ -3,7 +3,7 @@
 //! This module provides functionality to generate SVG documents with gradient definitions
 //! based on gradient analysis results from the trace-low algorithm.
 
-use crate::algorithms::{SvgPath, SvgElementType};
+use crate::algorithms::{SvgElementType, SvgPath};
 use crate::config::SvgConfig;
 
 /// SVG gradient definition
@@ -12,14 +12,17 @@ pub enum GradientDefinition {
     /// Linear gradient definition
     Linear {
         id: String,
-        x1: f32, y1: f32,
-        x2: f32, y2: f32,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
         stops: Vec<ColorStop>,
     },
     /// Radial gradient definition
     Radial {
         id: String,
-        cx: f32, cy: f32,
+        cx: f32,
+        cy: f32,
         r: f32,
         stops: Vec<ColorStop>,
     },
@@ -91,7 +94,7 @@ pub fn generate_svg_document_with_gradients(
     }
 
     svg.push_str("</svg>");
-    
+
     // Apply optimization if enabled
     if config.optimize {
         crate::svg::optimize_colored_svg(&svg, !gradients.is_empty(), config.precision)
@@ -120,33 +123,38 @@ pub fn generate_optimized_svg_document_with_gradients(
     config: &SvgConfig,
     enable_compression: bool,
 ) -> (String, f32) {
-    let original_svg = generate_svg_document_with_gradients(paths, gradients, width, height, config);
-    
+    let original_svg =
+        generate_svg_document_with_gradients(paths, gradients, width, height, config);
+
     if !enable_compression {
         return (original_svg, 0.0);
     }
-    
+
     // Apply advanced optimization
-    let optimized_svg = crate::svg::optimize_colored_svg(
-        &original_svg, 
-        !gradients.is_empty(), 
-        config.precision
-    );
-    
+    let optimized_svg =
+        crate::svg::optimize_colored_svg(&original_svg, !gradients.is_empty(), config.precision);
+
     let compression_ratio = crate::svg::calculate_compression_ratio(&original_svg, &optimized_svg);
-    
+
     (optimized_svg, compression_ratio)
 }
 
 /// Format a gradient definition as SVG
 fn format_gradient_definition(gradient: &GradientDefinition, _config: &SvgConfig) -> String {
     match gradient {
-        GradientDefinition::Linear { id, x1, y1, x2, y2, stops } => {
+        GradientDefinition::Linear {
+            id,
+            x1,
+            y1,
+            x2,
+            y2,
+            stops,
+        } => {
             let mut def = format!(
                 r#"<linearGradient id="{}" x1="{}" y1="{}" x2="{}" y2="{}">"#,
                 id, x1, y1, x2, y2
             );
-            
+
             for stop in stops {
                 def.push_str(&format!(
                     r#"<stop offset="{}%" stop-color="{}""#,
@@ -157,16 +165,22 @@ fn format_gradient_definition(gradient: &GradientDefinition, _config: &SvgConfig
                 }
                 def.push_str("/>");
             }
-            
+
             def.push_str("</linearGradient>");
             def
         }
-        GradientDefinition::Radial { id, cx, cy, r, stops } => {
+        GradientDefinition::Radial {
+            id,
+            cx,
+            cy,
+            r,
+            stops,
+        } => {
             let mut def = format!(
                 r#"<radialGradient id="{}" cx="{}" cy="{}" r="{}">"#,
                 id, cx, cy, r
             );
-            
+
             for stop in stops {
                 def.push_str(&format!(
                     r#"<stop offset="{}%" stop-color="{}""#,
@@ -177,7 +191,7 @@ fn format_gradient_definition(gradient: &GradientDefinition, _config: &SvgConfig
                 }
                 def.push_str("/>");
             }
-            
+
             def.push_str("</radialGradient>");
             def
         }
