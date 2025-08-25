@@ -377,7 +377,8 @@
 									<label class="text-sm font-medium text-gray-700 dark:text-gray-300"
 										>Thread Count</label
 									>
-									<span class="rounded bg-gray-100 px-2 py-1 font-mono text-xs text-left dark:bg-gray-800"
+									<span
+										class="rounded bg-gray-100 px-2 py-1 text-left font-mono text-xs dark:bg-gray-800"
 										>{currentThreadCount} of {systemCapabilities.cores}</span
 									>
 								</div>
@@ -437,10 +438,10 @@
 				</Button>
 			{/if}
 			{#if isPanicked && onEmergencyRecovery}
-				<Button 
-					variant="destructive" 
-					onclick={onEmergencyRecovery} 
-					class="bg-red-600 text-white hover:bg-red-700 animate-pulse"
+				<Button
+					variant="destructive"
+					onclick={onEmergencyRecovery}
+					class="animate-pulse bg-red-600 text-white hover:bg-red-700"
 					title="Emergency Recovery: Reset WASM module to fix panic state"
 				>
 					<RefreshCw class="h-4 w-4" />

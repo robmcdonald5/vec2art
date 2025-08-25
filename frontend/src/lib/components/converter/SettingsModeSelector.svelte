@@ -27,12 +27,12 @@
 
 	// Get the selected mode info
 	const selectedMode = $derived(SETTINGS_SYNC_MODES[currentMode]);
-	
+
 	// Find the longest mode name to ensure consistent dropdown width
 	const longestModeName = $derived(() => {
 		return Object.values(SETTINGS_SYNC_MODES)
-			.map(mode => mode.name)
-			.reduce((longest, current) => current.length > longest.length ? current : longest, '');
+			.map((mode) => mode.name)
+			.reduce((longest, current) => (current.length > longest.length ? current : longest), '');
 	});
 
 	function toggleDropdown() {
@@ -146,7 +146,11 @@
 				<span class="text-converter-primary block truncate">
 					{selectedMode.name}
 				</span>
-				<ChevronDown class="ml-2 h-3 w-3 flex-shrink-0 text-ferrari-600 transition-transform duration-300 {isOpen ? 'rotate-180' : 'rotate-0'}" />
+				<ChevronDown
+					class="text-ferrari-600 ml-2 h-3 w-3 flex-shrink-0 transition-transform duration-300 {isOpen
+						? 'rotate-180'
+						: 'rotate-0'}"
+				/>
 			</div>
 		</button>
 
@@ -156,8 +160,8 @@
 				class="
 				dropdown-animate-in border-ferrari-200/30 absolute top-full right-0
 				left-0 z-50 max-h-60
-				overflow-y-auto overflow-x-hidden rounded-b-md border-r border-b
-				border-l border-t-0 bg-white shadow-lg
+				overflow-x-hidden overflow-y-auto rounded-b-md border-t-0 border-r
+				border-b border-l bg-white shadow-lg
 			"
 			>
 				<div role="listbox" id="settings-mode-listbox">
@@ -191,7 +195,7 @@
 								<span class="block truncate">{mode.name}</span>
 								{#if isSelected}
 									<svg
-										class="h-3 w-3 flex-shrink-0 text-ferrari-600"
+										class="text-ferrari-600 h-3 w-3 flex-shrink-0"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -211,23 +215,23 @@
 				</div>
 			</div>
 		{/if}
-		
+
 		<!-- Hover Tooltip - positioned to the right -->
 		{#if showTooltip && hoveredMode}
 			{@const tooltipMode = SETTINGS_SYNC_MODES[hoveredMode]}
 			<div
 				bind:this={tooltipElement}
-				class="absolute top-0 left-full z-60 ml-2 w-80 max-w-sm rounded-lg border border-ferrari-200/50 bg-white shadow-lg dark:bg-ferrari-900 dark:border-ferrari-700"
+				class="border-ferrari-200/50 dark:bg-ferrari-900 dark:border-ferrari-700 absolute top-0 left-full z-60 ml-2 w-80 max-w-sm rounded-lg border bg-white shadow-lg"
 				role="tooltip"
 				aria-describedby="mode-tooltip"
 			>
 				<div class="p-3">
-					<div class="flex items-center gap-2 mb-2">
-						<h4 class="text-sm font-semibold text-converter-primary">
+					<div class="mb-2 flex items-center gap-2">
+						<h4 class="text-converter-primary text-sm font-semibold">
 							{tooltipMode.name}
 						</h4>
 					</div>
-					<p class="text-xs text-ferrari-600 dark:text-ferrari-300 leading-relaxed">
+					<p class="text-ferrari-600 dark:text-ferrari-300 text-xs leading-relaxed">
 						{tooltipMode.description}
 					</p>
 				</div>

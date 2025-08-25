@@ -15,7 +15,7 @@ class ParameterHistory {
 	get canUndo() {
 		return this.currentIndex > 0;
 	}
-	
+
 	get canRedo() {
 		return this.currentIndex < this.history.length - 1;
 	}

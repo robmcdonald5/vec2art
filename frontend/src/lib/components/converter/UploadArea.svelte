@@ -1,13 +1,9 @@
 <script lang="ts">
 	import { Upload, FileImage, AlertCircle } from 'lucide-svelte';
 	import { validateImageFiles } from '$lib/utils/file-validation';
+	import type { FileUploadProps } from '$lib/types/shared-props';
 
-	interface Props {
-		onFilesSelect: (files: File[]) => void;
-		disabled?: boolean;
-		maxSize?: number;
-		accept?: string;
-	}
+	interface Props extends FileUploadProps {}
 
 	let {
 		onFilesSelect,

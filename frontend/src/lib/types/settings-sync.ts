@@ -76,7 +76,8 @@ export const SETTINGS_SYNC_MODES: Record<SettingsSyncMode, SettingsSyncModeInfo>
 	global: {
 		id: 'global',
 		name: 'Global Sync',
-		description: 'All images share identical settings. Changes apply to every image. Converting processes all images together using the same configuration.',
+		description:
+			'All images share identical settings. Changes apply to every image. Converting processes all images together using the same configuration.',
 		icon: 'Globe',
 		convertBehavior: 'all',
 		settingsBehavior: 'shared'
@@ -84,7 +85,8 @@ export const SETTINGS_SYNC_MODES: Record<SettingsSyncMode, SettingsSyncModeInfo>
 	'per-image-batch': {
 		id: 'per-image-batch',
 		name: 'Individual Sync',
-		description: 'Each image has its own independent settings. Navigate between images to configure each separately. Converting processes all images together, each with its own settings.',
+		description:
+			'Each image has its own independent settings. Navigate between images to configure each separately. Converting processes all images together, each with its own settings.',
 		icon: 'Layers',
 		convertBehavior: 'all',
 		settingsBehavior: 'individual'
@@ -92,7 +94,8 @@ export const SETTINGS_SYNC_MODES: Record<SettingsSyncMode, SettingsSyncModeInfo>
 	'per-image-individual': {
 		id: 'per-image-individual',
 		name: 'Individual Convert',
-		description: 'Each image has independent settings like Individual Sync, but converting only processes the currently selected image instead of all images.',
+		description:
+			'Each image has independent settings like Individual Sync, but converting only processes the currently selected image instead of all images.',
 		icon: 'Focus',
 		convertBehavior: 'current',
 		settingsBehavior: 'individual'

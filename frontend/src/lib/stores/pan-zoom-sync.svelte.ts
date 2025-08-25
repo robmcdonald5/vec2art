@@ -1,6 +1,6 @@
 /**
  * Pan/Zoom Synchronization Store
- * 
+ *
  * Manages synchronized pan/zoom state between before/after image panels
  * using Svelte 5 runes for reactive state management.
  */
@@ -16,7 +16,7 @@ export interface PanZoomSyncStore {
 	readonly originalState: PanZoomState;
 	readonly convertedState: PanZoomState;
 	readonly isSyncEnabled: boolean;
-	
+
 	// Control functions
 	updateOriginalState: (state: PanZoomState) => void;
 	updateConvertedState: (state: PanZoomState) => void;
@@ -36,21 +36,21 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 	let isSyncEnabled = $state(true);
 
 	return {
-		get originalState() { 
-			return originalState; 
+		get originalState() {
+			return originalState;
 		},
-		
-		get convertedState() { 
-			return convertedState; 
+
+		get convertedState() {
+			return convertedState;
 		},
-		
-		get isSyncEnabled() { 
-			return isSyncEnabled; 
+
+		get isSyncEnabled() {
+			return isSyncEnabled;
 		},
 
 		updateOriginalState(newState: PanZoomState) {
 			originalState = { ...newState };
-			
+
 			// If sync is enabled, update converted state too
 			if (isSyncEnabled) {
 				convertedState = { ...newState };
@@ -59,7 +59,7 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 
 		updateConvertedState(newState: PanZoomState) {
 			convertedState = { ...newState };
-			
+
 			// If sync is enabled, update original state too
 			if (isSyncEnabled) {
 				originalState = { ...newState };
@@ -74,7 +74,7 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 
 		toggleSync() {
 			isSyncEnabled = !isSyncEnabled;
-			
+
 			// When enabling sync, sync to the original state
 			if (isSyncEnabled) {
 				convertedState = { ...originalState };

@@ -161,22 +161,22 @@
 					{/if}
 				</button>
 			{/each}
-			
+
 			<!-- ASCII (WIP) - Non-interactive placeholder -->
 			<div
-				class="relative flex min-h-[120px] flex-col items-start gap-3 rounded-lg border border-gray-200 p-4 text-left opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900 dark:border-gray-700"
+				class="relative flex min-h-[120px] cursor-not-allowed flex-col items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-left opacity-50 dark:border-gray-700 dark:bg-gray-900"
 				role="presentation"
 				aria-label="ASCII conversion - coming soon"
 			>
 				<!-- Header with Icon and Title -->
 				<div class="flex w-full items-center gap-3">
-					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500">
+					<div
+						class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500"
+					>
 						<Terminal class="h-5 w-5" aria-hidden="true" />
 					</div>
 					<div class="min-w-0 flex-1">
-						<h4 class="text-sm font-semibold text-gray-400 dark:text-gray-500">
-							ASCII (WIP)
-						</h4>
+						<h4 class="text-sm font-semibold text-gray-400 dark:text-gray-500">ASCII (WIP)</h4>
 					</div>
 				</div>
 
@@ -188,15 +188,21 @@
 				<!-- Feature Tags -->
 				<div class="flex flex-wrap gap-1">
 					{#each ['ASCII art', 'Text output', 'Character sets', 'Density control'] as feature (feature)}
-						<span class="inline-flex items-center rounded bg-gray-200 px-2 py-1 text-xs font-medium text-gray-400 dark:bg-gray-700 dark:text-gray-500">
+						<span
+							class="inline-flex items-center rounded bg-gray-200 px-2 py-1 text-xs font-medium text-gray-400 dark:bg-gray-700 dark:text-gray-500"
+						>
 							{feature}
 						</span>
 					{/each}
 				</div>
 
 				<!-- Coming Soon Overlay -->
-				<div class="absolute inset-0 flex items-center justify-center rounded-lg bg-gray-50/80 dark:bg-gray-900/80">
-					<span class="rounded bg-gray-200 px-2 py-1 text-xs font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+				<div
+					class="absolute inset-0 flex items-center justify-center rounded-lg bg-gray-50/80 dark:bg-gray-900/80"
+				>
+					<span
+						class="rounded bg-gray-200 px-2 py-1 text-xs font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+					>
 						Coming Soon
 					</span>
 				</div>

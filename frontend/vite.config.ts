@@ -29,7 +29,7 @@ export default defineConfig({
 	optimizeDeps: {
 		include: ['class-variance-authority', 'tailwind-merge', 'clsx', 'svelte-image-viewer'],
 		exclude: [
-			'vectorize-wasm', 
+			'vectorize-wasm',
 			'/wasm/vectorize_wasm.js', // Exclude our static WASM files
 			'svelte/motion' // Exclude svelte/motion from optimization
 		]

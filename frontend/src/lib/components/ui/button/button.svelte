@@ -112,7 +112,7 @@
 
 <svelte:element
 	this={as}
-	class={cn(buttonVariants({ variant, size }), "btn-clickable", className)}
+	class={cn(buttonVariants({ variant, size }), 'btn-clickable', className)}
 	{disabled}
 	{type}
 	onclick={handleClick}

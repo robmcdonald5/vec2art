@@ -55,16 +55,16 @@ async function loadWasmModule() {
 					const threadCount = navigator.hardwareConcurrency || 4;
 					const promise = wasm.initThreadPool(threadCount);
 					await promise;
-					
+
 					// Confirm success after promise resolves (important for state management)
 					if (typeof wasm.confirm_threading_success === 'function') {
 						wasm.confirm_threading_success();
 					}
-					
+
 					console.log(`✅ Thread pool initialized with ${threadCount} threads`);
 				} catch (error) {
 					console.warn('⚠️ Thread pool initialization failed:', error);
-					
+
 					// Mark threading as failed for proper fallback
 					if (typeof wasm.mark_threading_failed === 'function') {
 						wasm.mark_threading_failed();

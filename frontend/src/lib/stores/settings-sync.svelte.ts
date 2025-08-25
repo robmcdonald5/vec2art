@@ -73,7 +73,9 @@ export class SettingsSyncStore {
 				const newImageConfigs = new Map(this._imageConfigs);
 				newImageConfigs.set(targetIndex, initialConfig);
 				this._imageConfigs = newImageConfigs;
-				console.log(`🛡️ Created clean config for image ${targetIndex} to prevent backend cross-contamination`);
+				console.log(
+					`🛡️ Created clean config for image ${targetIndex} to prevent backend cross-contamination`
+				);
 			}
 			return this._imageConfigs.get(targetIndex)!;
 		}
@@ -106,10 +108,13 @@ export class SettingsSyncStore {
 		const oldMode = this._syncMode;
 
 		// Handle mode-specific transitions
-		if (oldMode === 'global' && (newMode === 'per-image-batch' || newMode === 'per-image-individual')) {
+		if (
+			oldMode === 'global' &&
+			(newMode === 'per-image-batch' || newMode === 'per-image-individual')
+		) {
 			// Global → Per-Image: Store global config for potential restoration
 			this._lastGlobalConfig = { ...this._globalConfig };
-			
+
 			if (options.initializeFromGlobal !== false) {
 				// CRITICAL: Only copy core settings, not backend-specific ones
 				// This prevents backend settings from leaking between images
@@ -131,7 +136,7 @@ export class SettingsSyncStore {
 					optimize_svg: this._globalConfig.optimize_svg,
 					include_metadata: this._globalConfig.include_metadata
 				};
-				
+
 				// CRITICAL: Create new Map to trigger Svelte 5 reactivity
 				const newImageConfigs = new Map<number, VectorizerConfig>();
 				for (let i = 0; i < this._totalImages; i++) {
@@ -140,10 +145,14 @@ export class SettingsSyncStore {
 					newImageConfigs.set(i, cleanConfig);
 				}
 				this._imageConfigs = newImageConfigs;
-				console.log(`🛡️ Mode switch ${oldMode} → ${newMode}: Initialized ${this._totalImages} images with clean core config`);
+				console.log(
+					`🛡️ Mode switch ${oldMode} → ${newMode}: Initialized ${this._totalImages} images with clean core config`
+				);
 			}
-		} 
-		else if ((oldMode === 'per-image-batch' || oldMode === 'per-image-individual') && newMode === 'global') {
+		} else if (
+			(oldMode === 'per-image-batch' || oldMode === 'per-image-individual') &&
+			newMode === 'global'
+		) {
 			// Per-Image → Global: Option to preserve current image's config
 			if (options.preserveCurrentConfig && this._imageConfigs.has(this._currentImageIndex)) {
 				this._globalConfig = { ...this._imageConfigs.get(this._currentImageIndex)! };
@@ -151,7 +160,7 @@ export class SettingsSyncStore {
 				// Restore previous global config
 				this._globalConfig = { ...this._lastGlobalConfig };
 			}
-			
+
 			// Clear per-image configs to save memory (optional)
 			if (options.confirmDataLoss !== false) {
 				this._imageConfigs.clear();
@@ -183,10 +192,10 @@ export class SettingsSyncStore {
 			// CRITICAL: Always use DEFAULT_CONFIG to prevent backend cross-contamination
 			// Never copy from existing image configs that might have different backend settings
 			const initConfig = { ...DEFAULT_CONFIG };
-			
+
 			// CRITICAL: Create new Map to trigger Svelte 5 reactivity
 			const newImageConfigs = new Map<number, VectorizerConfig>();
-			
+
 			// Copy existing configs, shifting indices as needed
 			for (const [index, config] of this._imageConfigs.entries()) {
 				if (index < imageIndex) {
@@ -197,12 +206,14 @@ export class SettingsSyncStore {
 					newImageConfigs.set(index + 1, config);
 				}
 			}
-			
+
 			// Add the new image config at the specified index
 			newImageConfigs.set(imageIndex, initConfig);
 			this._imageConfigs = newImageConfigs;
-			
-			console.log(`🛡️ Added image ${imageIndex} with clean default config to prevent cross-contamination`);
+
+			console.log(
+				`🛡️ Added image ${imageIndex} with clean default config to prevent cross-contamination`
+			);
 		}
 	}
 
@@ -215,7 +226,7 @@ export class SettingsSyncStore {
 		if (this._syncMode !== 'global') {
 			// CRITICAL: Create new Map to trigger Svelte 5 reactivity
 			const newImageConfigs = new Map<number, VectorizerConfig>();
-			
+
 			// Copy configs, shifting indices down for configs after the removed index
 			for (const [index, config] of this._imageConfigs.entries()) {
 				if (index < imageIndex) {
@@ -227,7 +238,7 @@ export class SettingsSyncStore {
 				}
 				// Skip the config at the removed index (effectively deleting it)
 			}
-			
+
 			this._imageConfigs = newImageConfigs;
 
 			// Adjust current index if needed
@@ -253,8 +264,7 @@ export class SettingsSyncStore {
 				imageIndices: Array.from({ length: this._totalImages }, (_, i) => i),
 				configMap
 			};
-		} 
-		else if (this._syncMode === 'per-image-batch') {
+		} else if (this._syncMode === 'per-image-batch') {
 			// Batch mode: all images with their individual configs
 			for (let i = 0; i < this._totalImages; i++) {
 				configMap.set(i, this.getCurrentConfig(i));
@@ -264,8 +274,7 @@ export class SettingsSyncStore {
 				imageIndices: Array.from({ length: this._totalImages }, (_, i) => i),
 				configMap
 			};
-		} 
-		else {
+		} else {
 			// Individual mode: only current image
 			configMap.set(this._currentImageIndex, this.getCurrentConfig(this._currentImageIndex));
 			return {
@@ -310,7 +319,7 @@ export class SettingsSyncStore {
 			memoryUsage: {
 				globalConfig: JSON.stringify(this._globalConfig).length,
 				imageConfigs: Array.from(this._imageConfigs.values())
-					.map(config => JSON.stringify(config).length)
+					.map((config) => JSON.stringify(config).length)
 					.reduce((sum, size) => sum + size, 0)
 			}
 		};
@@ -322,13 +331,13 @@ export class SettingsSyncStore {
 	initialize(totalImages: number, currentIndex: number = 0): void {
 		this._totalImages = totalImages;
 		this._currentImageIndex = Math.min(currentIndex, totalImages - 1);
-		
+
 		// Initialize per-image configs if in per-image mode
 		if (this._syncMode !== 'global') {
 			// CRITICAL: Create new Map to trigger Svelte 5 reactivity
 			const newImageConfigs = new Map(this._imageConfigs);
 			let mapChanged = false;
-			
+
 			for (let i = 0; i < totalImages; i++) {
 				if (!newImageConfigs.has(i)) {
 					// Always use clean default config for safety
@@ -336,7 +345,7 @@ export class SettingsSyncStore {
 					mapChanged = true;
 				}
 			}
-			
+
 			// Only update the Map if changes were made
 			if (mapChanged) {
 				this._imageConfigs = newImageConfigs;
@@ -355,29 +364,69 @@ export class SettingsSyncStore {
 		// Define backend-specific setting groups
 		const backendSpecificSettings = {
 			edge: [
-				'enable_flow_tracing', 'enable_bezier_fitting', 'enable_etf_fdog',
-				'trace_min_gradient', 'trace_min_coherency', 'trace_max_gap', 'trace_max_length',
-				'fit_lambda_curvature', 'fit_max_error', 'fit_split_angle',
-				'etf_radius', 'etf_iterations', 'etf_coherency_tau',
-				'fdog_sigma_s', 'fdog_sigma_c', 'fdog_tau', 'nms_low', 'nms_high'
+				'enable_flow_tracing',
+				'enable_bezier_fitting',
+				'enable_etf_fdog',
+				'trace_min_gradient',
+				'trace_min_coherency',
+				'trace_max_gap',
+				'trace_max_length',
+				'fit_lambda_curvature',
+				'fit_max_error',
+				'fit_split_angle',
+				'etf_radius',
+				'etf_iterations',
+				'etf_coherency_tau',
+				'fdog_sigma_s',
+				'fdog_sigma_c',
+				'fdog_tau',
+				'nms_low',
+				'nms_high'
 			],
 			centerline: [
-				'enable_adaptive_threshold', 'window_size', 'sensitivity_k', 'use_optimized',
-				'thinning_algorithm', 'min_branch_length', 'micro_loop_removal',
-				'enable_width_modulation', 'edt_radius_ratio', 'width_modulation_range',
-				'max_join_distance', 'max_join_angle', 'edt_bridge_check',
-				'douglas_peucker_epsilon', 'adaptive_simplification'
+				'enable_adaptive_threshold',
+				'window_size',
+				'sensitivity_k',
+				'use_optimized',
+				'thinning_algorithm',
+				'min_branch_length',
+				'micro_loop_removal',
+				'enable_width_modulation',
+				'edt_radius_ratio',
+				'width_modulation_range',
+				'max_join_distance',
+				'max_join_angle',
+				'edt_bridge_check',
+				'douglas_peucker_epsilon',
+				'adaptive_simplification'
 			],
 			dots: [
-				'dot_density_threshold', 'dot_density', 'dot_size_range', 'min_radius', 'max_radius',
-				'adaptive_sizing', 'background_tolerance', 'poisson_disk_sampling',
-				'min_distance_factor', 'grid_resolution', 'gradient_based_sizing',
-				'local_variance_scaling', 'color_clustering', 'opacity_variation'
+				'dot_density_threshold',
+				'dot_density',
+				'dot_size_range',
+				'min_radius',
+				'max_radius',
+				'adaptive_sizing',
+				'background_tolerance',
+				'poisson_disk_sampling',
+				'min_distance_factor',
+				'grid_resolution',
+				'gradient_based_sizing',
+				'local_variance_scaling',
+				'color_clustering',
+				'opacity_variation'
 			],
 			superpixel: [
-				'num_superpixels', 'compactness', 'slic_iterations', 'min_region_size',
-				'color_distance', 'spatial_distance_weight', 'fill_regions',
-				'stroke_regions', 'simplify_boundaries', 'boundary_epsilon'
+				'num_superpixels',
+				'compactness',
+				'slic_iterations',
+				'min_region_size',
+				'color_distance',
+				'spatial_distance_weight',
+				'fill_regions',
+				'stroke_regions',
+				'simplify_boundaries',
+				'boundary_epsilon'
 			]
 		};
 
@@ -390,7 +439,9 @@ export class SettingsSyncStore {
 				if (backend !== currentBackend) {
 					for (const setting of settings) {
 						if ((config as any)[setting] !== undefined && (config as any)[setting] !== false) {
-							issues.push(`${context}: Found ${backend} setting '${setting}' in ${currentBackend} config`);
+							issues.push(
+								`${context}: Found ${backend} setting '${setting}' in ${currentBackend} config`
+							);
 							// Clean the contaminated setting
 							(config as any)[setting] = undefined;
 							configCleaned = true;
@@ -415,7 +466,10 @@ export class SettingsSyncStore {
 		}
 
 		if (issues.length > 0) {
-			console.warn(`🛡️ Settings validation found ${issues.length} cross-contamination issues, cleaned ${cleaned} configs:`, issues);
+			console.warn(
+				`🛡️ Settings validation found ${issues.length} cross-contamination issues, cleaned ${cleaned} configs:`,
+				issues
+			);
 		}
 
 		return { cleaned, issues };

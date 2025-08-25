@@ -131,7 +131,9 @@
 				{selectedOption?.label || placeholder}
 			</span>
 			<span class="text-ferrari-600 ml-2 flex items-center">
-				<ChevronDown class="h-4 w-4 transition-transform duration-300 {isOpen ? 'rotate-180' : 'rotate-0'}" />
+				<ChevronDown
+					class="h-4 w-4 transition-transform duration-300 {isOpen ? 'rotate-180' : 'rotate-0'}"
+				/>
 			</span>
 		</div>
 	</button>
@@ -142,8 +144,8 @@
 			class="
 			dropdown-animate-in border-ferrari-200/30 absolute top-full right-0
 			left-0 z-50 max-h-60
-			overflow-y-auto overflow-x-hidden rounded-b-md border-r border-b
-			border-l border-t-0 bg-white shadow-lg
+			overflow-x-hidden overflow-y-auto rounded-b-md border-t-0 border-r
+			border-b border-l bg-white shadow-lg
 		"
 		>
 			<div role="listbox" id="dropdown-listbox">
@@ -175,7 +177,7 @@
 							<span class="block truncate">{option.label}</span>
 							{#if isSelected}
 								<svg
-									class="h-4 w-4 flex-shrink-0 text-ferrari-600"
+									class="text-ferrari-600 h-4 w-4 flex-shrink-0"
 									fill="none"
 									stroke="currentColor"
 									viewBox="0 0 24 24"

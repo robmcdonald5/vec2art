@@ -3,9 +3,13 @@
 	import type { VectorizerConfig, HandDrawnPreset } from '$lib/types/vectorizer';
 	import { HAND_DRAWN_DESCRIPTIONS } from '$lib/types/vectorizer';
 	import { CustomSelect } from '$lib/components/ui/custom-select';
-	
+
 	// Import dots backend architecture
-	import { mapUIConfigToDotsConfig, validateDotsConfig, describeDotsConfig } from '$lib/utils/dots-mapping.js';
+	import {
+		mapUIConfigToDotsConfig,
+		validateDotsConfig,
+		describeDotsConfig
+	} from '$lib/utils/dots-mapping.js';
 	import type { UISliderConfig } from '$lib/types/dots-backend.js';
 
 	interface ParameterPanelProps {
@@ -26,10 +30,10 @@
 	// Convert internal 0.0-1.0 detail to 1-10 UI range
 	const detailToUI = (detail: number) => Math.round(detail * 9 + 1);
 	const detailFromUI = (uiValue: number) => (uiValue - 1) / 9;
-	
+
 	// Validation state for dots backend
 	let dotsValidation = $state({ isValid: true, errors: [], warnings: [] });
-	
+
 	// Update dots validation when config changes
 	$effect(() => {
 		if (config.backend === 'dots') {
@@ -38,14 +42,12 @@
 				dot_width: config.stroke_width || 2.0,
 				color_mode: config.preserve_colors || true
 			};
-			
+
 			// Note: We don't have image dimensions in the UI panel, but the WASM worker will handle size-aware adjustment
 			const dotsConfig = mapUIConfigToDotsConfig(uiConfig);
 			dotsValidation = validateDotsConfig(dotsConfig);
 		}
 	});
-
-
 
 	function handleDetailChange(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -74,10 +76,9 @@
 		onParameterChange?.();
 	}
 
-
 	function handleHandDrawnChange(value: string) {
 		const preset = value as HandDrawnPreset;
-		
+
 		// If custom is selected, just update the preset without changing the values
 		if (preset === 'custom') {
 			console.log(`[ParameterPanel] Hand-drawn preset "${preset}" - keeping current custom values`);
@@ -85,7 +86,7 @@
 			onParameterChange?.();
 			return;
 		}
-		
+
 		// PROPER FIX: Hand-drawn preset sets base values, hand-drawn intensity modifies them
 		// Each preset defines a style foundation that hand-drawn intensity can fine-tune
 		const presetValues = {
@@ -95,14 +96,17 @@
 			strong: { tremor_strength: 0.3, variable_weights: 0.5, tapering: 0.6 },
 			sketchy: { tremor_strength: 0.4, variable_weights: 0.7, tapering: 0.8 }
 		};
-		
-		console.log(`[ParameterPanel] Hand-drawn preset "${preset}" - setting base values:`, presetValues[preset]);
-		
+
+		console.log(
+			`[ParameterPanel] Hand-drawn preset "${preset}" - setting base values:`,
+			presetValues[preset]
+		);
+
 		onConfigChange({
 			hand_drawn_preset: preset,
 			...presetValues[preset]
 		});
-		
+
 		onParameterChange?.();
 	}
 
@@ -129,7 +133,6 @@
 	// REMOVED: Backend-specific parameter handlers are no longer needed
 	// The architectural system handles all parameter mapping in the WASM worker
 
-
 	function handleRegionComplexityChange(event: Event) {
 		const target = event.target as HTMLInputElement;
 		const regions = parseInt(target.value);
@@ -155,7 +158,7 @@
 			variable_weights: currentConfig.variable_weights ?? 0,
 			tapering: currentConfig.tapering ?? 0
 		};
-		
+
 		// Check against all presets (except custom)
 		const presetValues = {
 			none: { tremor_strength: 0.0, variable_weights: 0.0, tapering: 0.0 },
@@ -164,7 +167,7 @@
 			strong: { tremor_strength: 0.3, variable_weights: 0.5, tapering: 0.6 },
 			sketchy: { tremor_strength: 0.4, variable_weights: 0.7, tapering: 0.8 }
 		};
-		
+
 		// Check if current values match any preset (with small tolerance for floating point)
 		for (const [preset, values] of Object.entries(presetValues)) {
 			const tolerance = 0.01;
@@ -176,7 +179,7 @@
 				return preset as HandDrawnPreset;
 			}
 		}
-		
+
 		return 'custom';
 	}
 
@@ -190,17 +193,17 @@
 			updateSliderFill(input);
 
 			console.log(`🟡 Parameter Panel - Range change: ${configKey} = ${value}`);
-			
+
 			// Update the config with the new value
 			const newConfig = { [configKey]: value } as Partial<VectorizerConfig>;
-			
+
 			// Check if this change makes it a custom preset
 			if (['variable_weights', 'tremor_strength', 'tapering'].includes(configKey)) {
 				const detectedPreset = checkForCustomPreset(newConfig);
 				newConfig.hand_drawn_preset = detectedPreset;
 				console.log(`🟡 Parameter Panel - Detected preset: ${detectedPreset}`);
 			}
-			
+
 			onConfigChange(newConfig);
 			onParameterChange?.();
 		};
@@ -209,15 +212,17 @@
 	// Derived values for UI display
 	let detailUI = $derived(detailToUI(config.detail));
 	let dotDensityUI = $derived(
-		config.dot_density_threshold ? Math.round((0.15 - config.dot_density_threshold) / 0.1 * 9 + 1) : 5
+		config.dot_density_threshold
+			? Math.round(((0.15 - config.dot_density_threshold) / 0.1) * 9 + 1)
+			: 5
 	);
-	
+
 	// Hand-drawn preset options (with custom at the bottom)
 	const handDrawnOptions = (() => {
 		const allKeys = Object.keys(HAND_DRAWN_DESCRIPTIONS) as HandDrawnPreset[];
-		const nonCustomKeys = allKeys.filter(key => key !== 'custom');
+		const nonCustomKeys = allKeys.filter((key) => key !== 'custom');
 		const orderedKeys = [...nonCustomKeys, 'custom'];
-		
+
 		return orderedKeys.map((preset) => ({
 			value: preset,
 			label: preset.charAt(0).toUpperCase() + preset.slice(1)
@@ -377,7 +382,8 @@
 					use:initializeSliderFill
 				/>
 				<div id="region-complexity-desc" class="text-converter-muted text-xs">
-					Controls the number of regions in the superpixel segmentation. Higher values create more detailed segmentation.
+					Controls the number of regions in the superpixel segmentation. Higher values create more
+					detailed segmentation.
 				</div>
 			</div>
 		{/if}
@@ -413,7 +419,7 @@
 				use:initializeSliderFill
 			/>
 			<div id="stroke-width-desc" class="text-converter-muted text-xs">
-				{config.backend === 'dots' 
+				{config.backend === 'dots'
 					? 'Controls the size of dots in stippling output. Smaller dots create finer detail.'
 					: 'Base thickness of generated lines at standard resolution.'}
 			</div>
@@ -430,7 +436,9 @@
 				<!-- Variable Line Weights -->
 				<div class="space-y-2">
 					<div class="flex items-center justify-between">
-						<label for="variable-weights" class="text-converter-primary text-sm">Variable Line Weights</label>
+						<label for="variable-weights" class="text-converter-primary text-sm"
+							>Variable Line Weights</label
+						>
 						<span class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-xs">
 							{(config.variable_weights ?? 0).toFixed(1)}
 						</span>
@@ -456,7 +464,9 @@
 				<!-- Tremor Strength -->
 				<div class="space-y-2">
 					<div class="flex items-center justify-between">
-						<label for="tremor-strength" class="text-converter-primary text-sm">Tremor Strength</label>
+						<label for="tremor-strength" class="text-converter-primary text-sm"
+							>Tremor Strength</label
+						>
 						<span class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-xs">
 							{(config.tremor_strength ?? 0).toFixed(1)}
 						</span>
@@ -577,81 +587,81 @@
 			<div class="text-converter-muted ml-7 text-xs">
 				Apply edge-preserving bilateral filtering to reduce noise while preserving important edges.
 			</div>
-			
+
 			<!-- Advanced Noise Filtering Controls (shown when noise filtering is enabled) -->
 			{#if config.noise_filtering}
-			<div class="ml-7 space-y-3 pt-2">
-				<!-- Spatial Sigma (Smoothing Strength) -->
-				<div class="space-y-2">
-					<div class="flex items-center justify-between">
-						<label
-							for="spatial-sigma"
-							class="text-converter-primary flex items-center gap-2 text-sm font-medium"
-						>
-							<Filter class="text-converter-secondary h-4 w-4" aria-hidden="true" />
-							Smoothing Strength
-						</label>
-						<span
-							class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-							aria-live="polite">{config.noise_filter_spatial_sigma?.toFixed(1) ?? '1.2'}</span
-						>
+				<div class="ml-7 space-y-3 pt-2">
+					<!-- Spatial Sigma (Smoothing Strength) -->
+					<div class="space-y-2">
+						<div class="flex items-center justify-between">
+							<label
+								for="spatial-sigma"
+								class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+							>
+								<Filter class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+								Smoothing Strength
+							</label>
+							<span
+								class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+								aria-live="polite">{config.noise_filter_spatial_sigma?.toFixed(1) ?? '1.2'}</span
+							>
+						</div>
+						<input
+							bind:this={spatialSigmaSliderRef}
+							id="spatial-sigma"
+							type="range"
+							min="0.5"
+							max="1.5"
+							step="0.1"
+							value={config.noise_filter_spatial_sigma ?? 1.2}
+							onchange={handleSpatialSigmaChange}
+							oninput={handleSpatialSigmaChange}
+							{disabled}
+							class="slider-ferrari w-full"
+							aria-describedby="spatial-sigma-desc"
+							use:initializeSliderFill
+						/>
+						<div id="spatial-sigma-desc" class="text-converter-muted text-xs">
+							Higher values provide more smoothing but may blur fine details.
+						</div>
 					</div>
-					<input
-						bind:this={spatialSigmaSliderRef}
-						id="spatial-sigma"
-						type="range"
-						min="0.5"
-						max="1.5"
-						step="0.1"
-						value={config.noise_filter_spatial_sigma ?? 1.2}
-						onchange={handleSpatialSigmaChange}
-						oninput={handleSpatialSigmaChange}
-						{disabled}
-						class="slider-ferrari w-full"
-						aria-describedby="spatial-sigma-desc"
-						use:initializeSliderFill
-					/>
-					<div id="spatial-sigma-desc" class="text-converter-muted text-xs">
-						Higher values provide more smoothing but may blur fine details.
+
+					<!-- Range Sigma (Edge Preservation) -->
+					<div class="space-y-2">
+						<div class="flex items-center justify-between">
+							<label
+								for="range-sigma"
+								class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+							>
+								<Eye class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+								Edge Preservation
+							</label>
+							<span
+								class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+								aria-live="polite">{config.noise_filter_range_sigma?.toFixed(0) ?? '50'}</span
+							>
+						</div>
+						<input
+							bind:this={rangeSigmaSliderRef}
+							id="range-sigma"
+							type="range"
+							min="10"
+							max="100"
+							step="5"
+							value={config.noise_filter_range_sigma ?? 50.0}
+							onchange={handleRangeSigmaChange}
+							oninput={handleRangeSigmaChange}
+							{disabled}
+							class="slider-ferrari w-full"
+							aria-describedby="range-sigma-desc"
+							use:initializeSliderFill
+						/>
+						<div id="range-sigma-desc" class="text-converter-muted text-xs">
+							Higher values preserve fewer edges (less selective filtering).
+						</div>
 					</div>
 				</div>
-				
-				<!-- Range Sigma (Edge Preservation) -->
-				<div class="space-y-2">
-					<div class="flex items-center justify-between">
-						<label
-							for="range-sigma"
-							class="text-converter-primary flex items-center gap-2 text-sm font-medium"
-						>
-							<Eye class="text-converter-secondary h-4 w-4" aria-hidden="true" />
-							Edge Preservation
-						</label>
-						<span
-							class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-							aria-live="polite">{config.noise_filter_range_sigma?.toFixed(0) ?? '50'}</span
-						>
-					</div>
-					<input
-						bind:this={rangeSigmaSliderRef}
-						id="range-sigma"
-						type="range"
-						min="10"
-						max="100"
-						step="5"
-						value={config.noise_filter_range_sigma ?? 50.0}
-						onchange={handleRangeSigmaChange}
-						oninput={handleRangeSigmaChange}
-						{disabled}
-						class="slider-ferrari w-full"
-						aria-describedby="range-sigma-desc"
-						use:initializeSliderFill
-					/>
-					<div id="range-sigma-desc" class="text-converter-muted text-xs">
-						Higher values preserve fewer edges (less selective filtering).
-					</div>
-				</div>
-			</div>
-		{/if}
+			{/if}
 		</div>
 	{/if}
 </section>

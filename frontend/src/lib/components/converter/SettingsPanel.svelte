@@ -100,19 +100,20 @@
 	function updateDotDensity(event: Event) {
 		const target = event.target as HTMLInputElement;
 		const uiValue = parseFloat(target.value); // UI slider value (0.1 to 1.0)
-		
+
 		// INVERT for intuitive UX: Higher UI value = More dots = Lower density threshold
 		// Map UI range (0.1-1.0) to density threshold range (0.4-0.02)
 		const minThreshold = 0.02; // More dots
-		const maxThreshold = 0.4;  // Fewer dots
-		const invertedValue = maxThreshold - (uiValue - 0.1) / (1.0 - 0.1) * (maxThreshold - minThreshold);
-		
+		const maxThreshold = 0.4; // Fewer dots
+		const invertedValue =
+			maxThreshold - ((uiValue - 0.1) / (1.0 - 0.1)) * (maxThreshold - minThreshold);
+
 		console.log(`🎯 Dot Density mapping: UI=${uiValue} → threshold=${invertedValue.toFixed(3)}`);
-		
+
 		// Update both parameters for proper functionality
-		onConfigChange({ 
-			detail: uiValue,  // Keep detail in sync for other logic
-			dot_density_threshold: invertedValue 
+		onConfigChange({
+			detail: uiValue, // Keep detail in sync for other logic
+			dot_density_threshold: invertedValue
 		});
 		onParameterChange();
 	}
@@ -191,7 +192,9 @@
 				<!-- Algorithm Selection -->
 				<div>
 					<div class="mb-3 flex items-center gap-2">
-						<label for="backend-selector" class="text-converter-primary block text-sm font-medium"> Algorithm </label>
+						<label for="backend-selector" class="text-converter-primary block text-sm font-medium">
+							Algorithm
+						</label>
 						<Tooltip
 							content="Choose the line tracing algorithm. Edge is best for detailed drawings, Centerline for simple shapes, Superpixel for stylized art, and Dots for stippling effects."
 							position="right"
@@ -209,7 +212,9 @@
 				<!-- Style Preset -->
 				<div>
 					<div class="mb-3 flex items-center gap-2">
-						<label for="preset-selector" class="text-converter-primary block text-sm font-medium"> Style Preset </label>
+						<label for="preset-selector" class="text-converter-primary block text-sm font-medium">
+							Style Preset
+						</label>
 						<Tooltip
 							content="Pre-configured settings for different art styles. Photo for realistic images, Logo for sharp graphics, Artistic for creative effects, and Sketch for hand-drawn appearance."
 							position="right"
@@ -232,14 +237,24 @@
 						<div>
 							<div class="mb-2 flex items-center gap-2">
 								{#if config.backend === 'dots'}
-									<label for="detail-level-slider" class="text-converter-primary block text-sm font-medium"> Dot Density </label>
+									<label
+										for="detail-level-slider"
+										class="text-converter-primary block text-sm font-medium"
+									>
+										Dot Density
+									</label>
 									<Tooltip
 										content="Controls how many dots are placed in the stippling output. Lower values create fewer, sparse dots. Higher values create denser, more detailed stippling."
 										position="top"
 										size="md"
 									/>
 								{:else}
-									<label for="detail-level-slider" class="text-converter-primary block text-sm font-medium"> Detail Level </label>
+									<label
+										for="detail-level-slider"
+										class="text-converter-primary block text-sm font-medium"
+									>
+										Detail Level
+									</label>
 									<Tooltip
 										content="Controls how much detail is captured in the conversion. Lower values create simpler, cleaner lines. Higher values preserve more fine details and texture."
 										position="top"
@@ -278,7 +293,12 @@
 					{#if config.backend === 'superpixel'}
 						<div>
 							<div class="mb-2 flex items-center gap-2">
-								<label for="region-complexity-slider" class="text-converter-primary block text-sm font-medium"> Region Complexity </label>
+								<label
+									for="region-complexity-slider"
+									class="text-converter-primary block text-sm font-medium"
+								>
+									Region Complexity
+								</label>
 								<Tooltip
 									content="Controls the number of regions in the superpixel segmentation. Lower values create fewer, larger regions. Higher values create more detailed segmentation with smaller regions."
 									position="top"
@@ -309,7 +329,10 @@
 					<!-- Line Width / Dot Width -->
 					<div>
 						<div class="mb-2 flex items-center gap-2">
-							<label for="stroke-width-slider" class="text-converter-primary block text-sm font-medium">
+							<label
+								for="stroke-width-slider"
+								class="text-converter-primary block text-sm font-medium"
+							>
 								{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
 							</label>
 							<Tooltip
@@ -343,13 +366,16 @@
 					<!-- Unified Color Toggle (All backends) -->
 					<div>
 						<div class="mb-2 flex items-center gap-2">
-							<label for="preserve-colors-unified" class="text-converter-primary block text-sm font-medium">Color Mode</label>
+							<label
+								for="preserve-colors-unified"
+								class="text-converter-primary block text-sm font-medium">Color Mode</label
+							>
 							<Tooltip
 								content={config.backend === 'edge' || config.backend === 'centerline'
 									? 'Enable to preserve original image colors in line strokes. Disable for traditional black line art.'
 									: config.backend === 'superpixel'
-									? 'Enable to preserve original image colors in regions. Disable for monochrome grayscale output with enhanced contrast.'
-									: 'Enable to preserve original image colors in stippled dots. Disable for monochrome grayscale stippling with enhanced contrast.'}
+										? 'Enable to preserve original image colors in regions. Disable for monochrome grayscale output with enhanced contrast.'
+										: 'Enable to preserve original image colors in stippled dots. Disable for monochrome grayscale stippling with enhanced contrast.'}
 								position="top"
 								size="md"
 							/>
@@ -416,46 +442,52 @@
 					<!-- Enhanced Header with improved responsive layout -->
 					<div class="mb-6">
 						<!-- Title row -->
-						<div class="flex items-center gap-3 mb-3">
+						<div class="mb-3 flex items-center gap-3">
 							<div class="bg-ferrari-200/50 rounded-lg p-2">
 								<Zap class="text-ferrari-600 h-5 w-5" />
 							</div>
 							<h4 class="text-converter-primary text-lg font-semibold">Performance</h4>
 						</div>
-						
+
 						<!-- Status indicators row - better responsive layout -->
-						<div class="flex flex-wrap items-center gap-2 mb-3">
-							<div class="bg-ferrari-100 text-ferrari-800 inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium shadow-sm flex-shrink-0">
+						<div class="mb-3 flex flex-wrap items-center gap-2">
+							<div
+								class="bg-ferrari-100 text-ferrari-800 inline-flex flex-shrink-0 items-center rounded-full px-3 py-1.5 text-sm font-medium shadow-sm"
+							>
 								<Cpu class="mr-1.5 h-4 w-4 flex-shrink-0" />
 								<span class="font-mono">{threadCount}</span>
 								<span class="ml-1 text-xs opacity-75">threads</span>
 							</div>
-							
+
 							<!-- Enhanced status indicator with error handling -->
 							{#if hasError}
 								<button
-									class="inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium shadow-sm flex-shrink-0 bg-red-100 text-red-800 hover:bg-red-200 transition-colors duration-200 cursor-pointer"
+									class="inline-flex flex-shrink-0 cursor-pointer items-center rounded-full bg-red-100 px-3 py-1.5 text-sm font-medium text-red-800 shadow-sm transition-colors duration-200 hover:bg-red-200"
 									onclick={handleRetryInitialization}
-									disabled={disabled}
+									{disabled}
 									type="button"
 									title="Click to retry WASM initialization"
 								>
-									<div class="mr-1.5 h-2 w-2 rounded-full flex-shrink-0 bg-red-500"></div>
+									<div class="mr-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-red-500"></div>
 									<span class="whitespace-nowrap">Retry</span>
 								</button>
 							{:else if threadsInitialized}
-								<div class="inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium shadow-sm flex-shrink-0 bg-green-100 text-green-800">
-									<div class="mr-1.5 h-2 w-2 rounded-full flex-shrink-0 bg-green-500"></div>
+								<div
+									class="inline-flex flex-shrink-0 items-center rounded-full bg-green-100 px-3 py-1.5 text-sm font-medium text-green-800 shadow-sm"
+								>
+									<div class="mr-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-green-500"></div>
 									<span class="whitespace-nowrap">Active</span>
 								</div>
 							{:else}
-								<div class="inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium shadow-sm flex-shrink-0 bg-green-50 text-green-700 border border-green-200">
-									<div class="mr-1.5 h-2 w-2 rounded-full flex-shrink-0 bg-green-400"></div>
+								<div
+									class="inline-flex flex-shrink-0 items-center rounded-full border border-green-200 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 shadow-sm"
+								>
+									<div class="mr-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-green-400"></div>
 									<span class="whitespace-nowrap">Ready</span>
 								</div>
 							{/if}
 						</div>
-						
+
 						<!-- Performance description -->
 						<p class="text-converter-secondary text-sm leading-relaxed">
 							Optimize processing speed and system resource usage for your device capabilities.
@@ -477,84 +509,112 @@
 						<div class="grid grid-cols-2 gap-3">
 							<!-- Economy Mode -->
 							<button
-								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode === 'economy' ? 'border-green-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-green-300'}"
+								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode ===
+								'economy'
+									? 'border-green-500 bg-gray-50 text-gray-700'
+									: 'border-gray-200 bg-white text-gray-700 hover:border-green-300'}"
 								onclick={() => clickPerformanceMode('economy')}
 								{disabled}
 								type="button"
 							>
-								<div class="w-3 h-3 rounded-full bg-green-500 flex-shrink-0"></div>
+								<div class="h-3 w-3 flex-shrink-0 rounded-full bg-green-500"></div>
 								<span>Economy</span>
 							</button>
-							
+
 							<!-- Balanced Mode -->
 							<button
-								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode === 'balanced' ? 'border-blue-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'}"
+								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode ===
+								'balanced'
+									? 'border-blue-500 bg-gray-50 text-gray-700'
+									: 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'}"
 								onclick={() => clickPerformanceMode('balanced')}
 								{disabled}
 								type="button"
 							>
-								<div class="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0"></div>
+								<div class="h-3 w-3 flex-shrink-0 rounded-full bg-blue-500"></div>
 								<span>Balanced</span>
 							</button>
-							
+
 							<!-- Performance Mode -->
 							<button
-								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode === 'performance' ? 'border-yellow-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-yellow-300'}"
+								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode ===
+								'performance'
+									? 'border-yellow-500 bg-gray-50 text-gray-700'
+									: 'border-gray-200 bg-white text-gray-700 hover:border-yellow-300'}"
 								onclick={() => clickPerformanceMode('performance')}
 								{disabled}
 								type="button"
 							>
-								<div class="w-3 h-3 rounded-full bg-yellow-500 flex-shrink-0"></div>
+								<div class="h-3 w-3 flex-shrink-0 rounded-full bg-yellow-500"></div>
 								<span>Performance</span>
 							</button>
-							
+
 							<!-- Custom Mode -->
 							<button
-								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode === 'custom' ? 'border-purple-500 bg-gray-50 text-gray-700' : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300'}"
+								class="group flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:outline-none {currentPerformanceMode ===
+								'custom'
+									? 'border-purple-500 bg-gray-50 text-gray-700'
+									: 'border-gray-200 bg-white text-gray-700 hover:border-purple-300'}"
 								onclick={() => clickPerformanceMode('custom')}
 								{disabled}
 								type="button"
 							>
-								<div class="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0"></div>
+								<div class="h-3 w-3 flex-shrink-0 rounded-full bg-purple-500"></div>
 								<span>Custom</span>
 							</button>
 						</div>
 
 						<!-- Enhanced mode description with better visual treatment -->
-						<div class="text-converter-secondary bg-gradient-to-r from-ferrari-50 to-ferrari-100/50 rounded-xl p-4 text-sm border border-ferrari-200/30">
+						<div
+							class="text-converter-secondary from-ferrari-50 to-ferrari-100/50 border-ferrari-200/30 rounded-xl border bg-gradient-to-r p-4 text-sm"
+						>
 							<div class="flex items-start gap-3">
 								<div class="mt-0.5">
 									{#if currentPerformanceMode === 'economy'}
-										<div class="w-3 h-3 rounded-full bg-green-500 flex items-center justify-center">
-											<div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+										<div class="flex h-3 w-3 items-center justify-center rounded-full bg-green-500">
+											<div class="h-1.5 w-1.5 rounded-full bg-white"></div>
 										</div>
 									{:else if currentPerformanceMode === 'balanced'}
-										<div class="w-3 h-3 rounded-full bg-blue-500 flex items-center justify-center">
-											<div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+										<div class="flex h-3 w-3 items-center justify-center rounded-full bg-blue-500">
+											<div class="h-1.5 w-1.5 rounded-full bg-white"></div>
 										</div>
 									{:else if currentPerformanceMode === 'performance'}
-										<div class="w-3 h-3 rounded-full bg-yellow-500 flex items-center justify-center">
-											<div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+										<div
+											class="flex h-3 w-3 items-center justify-center rounded-full bg-yellow-500"
+										>
+											<div class="h-1.5 w-1.5 rounded-full bg-white"></div>
 										</div>
 									{:else if currentPerformanceMode === 'custom'}
-										<div class="w-3 h-3 rounded-full bg-purple-500 flex items-center justify-center">
-											<div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+										<div
+											class="flex h-3 w-3 items-center justify-center rounded-full bg-purple-500"
+										>
+											<div class="h-1.5 w-1.5 rounded-full bg-white"></div>
 										</div>
 									{/if}
 								</div>
 								<div>
 									{#if currentPerformanceMode === 'economy'}
 										<span class="text-ferrari-700 font-semibold">Economy Mode:</span>
-										<span class="text-converter-secondary">Minimal CPU usage for background processing. Ideal when multitasking or on battery power.</span>
+										<span class="text-converter-secondary"
+											>Minimal CPU usage for background processing. Ideal when multitasking or on
+											battery power.</span
+										>
 									{:else if currentPerformanceMode === 'balanced'}
 										<span class="text-ferrari-700 font-semibold">Balanced Mode:</span>
-										<span class="text-converter-secondary">Optimal speed and system responsiveness. Recommended for most users.</span>
+										<span class="text-converter-secondary"
+											>Optimal speed and system responsiveness. Recommended for most users.</span
+										>
 									{:else if currentPerformanceMode === 'performance'}
 										<span class="text-ferrari-700 font-semibold">Performance Mode:</span>
-										<span class="text-converter-secondary">Maximum processing speed using all available cores. May temporarily slow other applications.</span>
+										<span class="text-converter-secondary"
+											>Maximum processing speed using all available cores. May temporarily slow
+											other applications.</span
+										>
 									{:else if currentPerformanceMode === 'custom'}
 										<span class="text-ferrari-700 font-semibold">Custom Mode:</span>
-										<span class="text-converter-secondary">Fine-tune thread count for your specific hardware and workload requirements.</span>
+										<span class="text-converter-secondary"
+											>Fine-tune thread count for your specific hardware and workload requirements.</span
+										>
 									{/if}
 								</div>
 							</div>
@@ -563,31 +623,37 @@
 
 					<!-- Enhanced Custom Thread Count Section -->
 					{#if currentPerformanceMode === 'custom'}
-						<div class="mt-6 space-y-4 bg-gradient-to-br from-purple-50/50 to-ferrari-50/30 rounded-xl p-4 border border-purple-200/30">
+						<div
+							class="to-ferrari-50/30 mt-6 space-y-4 rounded-xl border border-purple-200/30 bg-gradient-to-br from-purple-50/50 p-4"
+						>
 							<!-- Improved header layout with better spacing -->
 							<div class="space-y-3">
 								<!-- Title row -->
 								<div class="flex items-center gap-2">
-									<div class="bg-purple-100 rounded-lg p-1.5 flex-shrink-0">
-										<Cpu class="text-purple-600 h-4 w-4" />
+									<div class="flex-shrink-0 rounded-lg bg-purple-100 p-1.5">
+										<Cpu class="h-4 w-4 text-purple-600" />
 									</div>
-									<label class="text-converter-primary text-base font-medium">Thread Configuration</label>
+									<label class="text-converter-primary text-base font-medium"
+										>Thread Configuration</label
+									>
 									<Tooltip
 										content="Number of parallel processing threads. More threads = faster processing but higher CPU usage. Optimal number depends on your device's capabilities."
 										position="top"
 										size="md"
 									/>
 								</div>
-								
+
 								<!-- Counter display row -->
 								<div class="flex justify-start">
-									<span class="bg-purple-100 text-purple-800 rounded-full px-4 py-2 font-mono text-sm font-medium shadow-sm">
+									<span
+										class="rounded-full bg-purple-100 px-4 py-2 font-mono text-sm font-medium text-purple-800 shadow-sm"
+									>
 										{currentThreadCount}
 										<span class="ml-1 text-xs opacity-75">of {systemCapabilities.cores}</span>
 									</span>
 								</div>
 							</div>
-							
+
 							<!-- Thread Count Slider with Visual Progress -->
 							<div class="space-y-3">
 								<div class="relative">
@@ -599,30 +665,36 @@
 										value={currentThreadCount}
 										oninput={updateThreadCount}
 										{disabled}
-										class="slider-ferrari w-full h-2"
+										class="slider-ferrari h-2 w-full"
 										use:initializeSliderFill
 									/>
 									<!-- Thread usage visualization -->
-									<div class="flex justify-between mt-2 text-xs text-converter-secondary">
+									<div class="text-converter-secondary mt-2 flex justify-between text-xs">
 										<span class="flex items-center gap-1">
-											<div class="w-2 h-2 rounded-full bg-green-500"></div>
+											<div class="h-2 w-2 rounded-full bg-green-500"></div>
 											Light (1-2)
 										</span>
 										<span class="flex items-center gap-1">
-											<div class="w-2 h-2 rounded-full bg-blue-500"></div>
+											<div class="h-2 w-2 rounded-full bg-blue-500"></div>
 											Optimal ({getOptimalThreadCount('balanced')})
 										</span>
 										<span class="flex items-center gap-1">
-											<div class="w-2 h-2 rounded-full bg-orange-500"></div>
+											<div class="h-2 w-2 rounded-full bg-orange-500"></div>
 											Max ({systemCapabilities.cores})
 										</span>
 									</div>
 								</div>
-								
+
 								<!-- Performance Impact Indicator -->
-								<div class="bg-white/70 border border-purple-200/50 rounded-lg p-3 text-sm">
-									<div class="flex items-center gap-2 mb-2">
-										<div class="w-3 h-3 rounded-full {currentThreadCount <= 2 ? 'bg-green-500' : currentThreadCount <= getOptimalThreadCount('balanced') ? 'bg-blue-500' : 'bg-orange-500'}"></div>
+								<div class="rounded-lg border border-purple-200/50 bg-white/70 p-3 text-sm">
+									<div class="mb-2 flex items-center gap-2">
+										<div
+											class="h-3 w-3 rounded-full {currentThreadCount <= 2
+												? 'bg-green-500'
+												: currentThreadCount <= getOptimalThreadCount('balanced')
+													? 'bg-blue-500'
+													: 'bg-orange-500'}"
+										></div>
 										<span class="text-converter-primary font-medium">
 											{#if currentThreadCount <= 2}
 												Light Usage
@@ -653,7 +725,6 @@
 
 				<!-- Advanced Controls -->
 				<AdvancedControls {config} {onConfigChange} {disabled} {onParameterChange} />
-
 			</div>
 		{/if}
 	</div>

@@ -31,13 +31,13 @@
 			console.log('No trigger element found');
 			return;
 		}
-		
+
 		const triggerRect = triggerElement.getBoundingClientRect();
 		const offset = 8; // Gap between trigger and tooltip
-		
+
 		let top = 0;
 		let left = 0;
-		
+
 		switch (position) {
 			case 'top':
 				top = triggerRect.top - offset;
@@ -56,7 +56,7 @@
 				left = triggerRect.right + offset;
 				break;
 		}
-		
+
 		console.log('Calculated position:', { top, left, triggerRect, position });
 		tooltipPosition = { top, left };
 	}
@@ -134,7 +134,7 @@
 	<button
 		bind:this={triggerElement}
 		type="button"
-		class="inline-flex h-4 w-4 items-center justify-center text-gray-400 transition-all duration-200 hover:text-ferrari-600 hover:scale-110 {disabled
+		class="hover:text-ferrari-600 inline-flex h-4 w-4 items-center justify-center text-gray-400 transition-all duration-200 hover:scale-110 {disabled
 			? 'cursor-not-allowed opacity-50'
 			: 'cursor-help'}"
 		onmouseenter={handleMouseEnter}
@@ -161,18 +161,20 @@
 			transition:fade={{ duration: 200 }}
 		>
 			<!-- Arrow -->
-			<div class="absolute h-0 w-0 border-4 z-[9999999] {arrowClasses[position]}"></div>
+			<div class="absolute z-[9999999] h-0 w-0 border-4 {arrowClasses[position]}"></div>
 
 			<!-- Content -->
 			<div class="relative">
 				{#if title}
-					<div class="mb-2 pb-2 border-b border-gray-600">
+					<div class="mb-2 border-b border-gray-600 pb-2">
 						<h4 class="text-sm font-semibold text-white">{title}</h4>
 					</div>
 				{/if}
-				
-				<p class="text-sm text-white m-0" 
-				   style="line-height: 1.5; white-space: pre-wrap; text-wrap: balance; word-wrap: break-word;">
+
+				<p
+					class="m-0 text-sm text-white"
+					style="line-height: 1.5; white-space: pre-wrap; text-wrap: balance; word-wrap: break-word;"
+				>
 					{content || ''}
 				</p>
 			</div>

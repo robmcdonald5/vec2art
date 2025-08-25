@@ -74,7 +74,7 @@
 							<a
 								href="/converter"
 								use:preload
-								class="btn-ferrari-primary group inline-flex transform items-center justify-center gap-2 rounded-md px-10 py-3 text-xl font-semibold text-white whitespace-nowrap shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:shadow-2xl focus:outline-none"
+								class="btn-ferrari-primary group inline-flex transform items-center justify-center gap-2 rounded-md px-10 py-3 text-xl font-semibold whitespace-nowrap text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:shadow-2xl focus:outline-none"
 							>
 								Start Converting
 								<ArrowRight

@@ -109,7 +109,7 @@ export interface VectorizerConfig {
 
 	// Unified color preservation (applies to all backends)
 	preserve_colors?: boolean; // Whether to preserve original colors vs monochrome output
-	
+
 	// Advanced color options (when preserve_colors is enabled)
 	color_sampling?: 'dominant' | 'gradient' | 'content-aware' | 'adaptive'; // Color sampling method
 	color_accuracy?: number; // 0.0-1.0 (0.0 = fast, 1.0 = accurate)
@@ -407,15 +407,13 @@ export const HAND_DRAWN_DESCRIPTIONS: Record<HandDrawnPreset, string> = {
 	custom: 'Custom artistic effects - manually adjusted using individual sliders'
 };
 
-// Utility functions for multipass processing  
-export function calculateMultipassConfig(
-	config: VectorizerConfig
-): { multipass: boolean } {
+// Utility functions for multipass processing
+export function calculateMultipassConfig(config: VectorizerConfig): { multipass: boolean } {
 	const { pass_count, backend } = config;
-	
+
 	// Enable multipass only for edge backend with 2+ passes
-	return { 
-		multipass: backend === 'edge' && pass_count > 1 
+	return {
+		multipass: backend === 'edge' && pass_count > 1
 	};
 }
 

@@ -13,33 +13,28 @@
 		RefreshCw
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
-	import type { ProcessingProgress } from '$lib/types/vectorizer';
-	import type { FileMetadata } from '$lib/stores/converter-persistence';
 	import SettingsModeSelector from './SettingsModeSelector.svelte';
-	import type { SettingsSyncMode } from '$lib/types/settings-sync';
+	import type {
+		FileDataProps,
+		ProcessingControlProps,
+		ActionHandlerProps,
+		SettingsSyncProps
+	} from '$lib/types/shared-props';
 
-	interface Props {
-		files: File[];
-		originalImageUrls: (string | null)[];
-		filesMetadata: FileMetadata[];
-		currentImageIndex: number;
-		currentProgress?: ProcessingProgress;
+	interface Props
+		extends FileDataProps,
+			ProcessingControlProps,
+			ActionHandlerProps,
+			SettingsSyncProps {
+		// Required callbacks for this component
+		onImageIndexChange: (index: number) => void;
+		onRemoveFile: (index: number) => void;
+		// Component-specific props
 		viewMode: 'side-by-side' | 'slider';
 		hasResult: boolean;
-		canConvert: boolean;
-		isProcessing: boolean;
-		onImageIndexChange: (index: number) => void;
 		onViewModeToggle: () => void;
-		onConvert: () => void;
-		onAbort: () => void;
-		onReset: () => void;
-		onAddMore: () => void;
-		onRemoveFile: (index: number) => void;
 		isPanicked?: boolean;
 		onEmergencyRecovery?: () => void;
-		// Settings sync mode props
-		settingsSyncMode?: SettingsSyncMode;
-		onSettingsModeChange?: (mode: SettingsSyncMode) => void;
 	}
 
 	let {
@@ -66,21 +61,25 @@
 	}: Props = $props();
 
 	// Derived states - account for files, restored originalImageUrls, and filesMetadata
-	const hasMultipleFiles = $derived(Math.max(files.length, originalImageUrls.length, filesMetadata.length) > 1);
-	const totalFiles = $derived(Math.max(files.length, originalImageUrls.length, filesMetadata.length));
+	const hasMultipleFiles = $derived(
+		Math.max(files.length, originalImageUrls.length, filesMetadata.length) > 1
+	);
+	const totalFiles = $derived(
+		Math.max(files.length, originalImageUrls.length, filesMetadata.length)
+	);
 	const currentFile = $derived(files[currentImageIndex]);
 	const currentFilename = $derived(currentFile?.name || '');
-	
+
 	// Create unified file info for dropdown display
 	const fileDisplayInfo = $derived.by(() => {
 		const result = [];
 		const maxLength = Math.max(files.length, originalImageUrls.length, filesMetadata.length);
-		
+
 		for (let i = 0; i < maxLength; i++) {
 			const file = files[i];
 			const url = originalImageUrls[i];
 			const metadata = filesMetadata[i];
-			
+
 			if (file) {
 				// Current file - use actual file name
 				result.push({ name: file.name, type: 'file' });
@@ -95,7 +94,7 @@
 				result.push({ name: `Image ${i + 1}`, type: 'unknown' });
 			}
 		}
-		
+
 		return result;
 	});
 
@@ -221,7 +220,7 @@
 							<ChevronRight class="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 						</Button>
 					</div>
-					
+
 					<!-- Settings Mode Selector (positioned right after navigation arrows) -->
 					{#if onSettingsModeChange}
 						<SettingsModeSelector
@@ -310,13 +309,13 @@
 					Convert
 				</Button>
 			{/if}
-			
+
 			<!-- Emergency Recovery Button (only show when panicked) -->
 			{#if isPanicked && onEmergencyRecovery}
 				<Button
 					variant="destructive"
 					size="sm"
-					class="bg-red-600 text-white hover:bg-red-700 animate-pulse transition-all duration-200 hover:scale-105 hover:shadow-lg active:scale-95"
+					class="animate-pulse bg-red-600 text-white transition-all duration-200 hover:scale-105 hover:bg-red-700 hover:shadow-lg active:scale-95"
 					onclick={onEmergencyRecovery}
 					title="Emergency Recovery: Reset WASM module to fix panic state"
 				>
@@ -326,7 +325,6 @@
 			{/if}
 		</div>
 	</div>
-
 </div>
 
 <!-- Click outside to close dropdown -->

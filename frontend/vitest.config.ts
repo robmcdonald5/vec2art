@@ -10,7 +10,7 @@ const dirname =
 
 // Storybook integration disabled for now due to complexity
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
 	plugins: [sveltekit()],
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}'],
@@ -18,6 +18,12 @@ export default defineConfig({
 		environment: 'happy-dom',
 		globals: true,
 		setupFiles: ['./tests/setup.ts'],
+		// Force browser mode for Svelte 5 components
+		browser: {
+			enabled: false, // We use happy-dom instead of real browser
+			provider: 'playwright',
+			name: 'chromium'
+		},
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'json', 'html', 'lcov'],
@@ -98,6 +104,8 @@ export default defineConfig({
 		alias: {
 			$lib: path.resolve('./src/lib'),
 			'@tests': path.resolve('./tests')
-		}
+		},
+		// CRITICAL: Tell Vite to use browser conditions in test mode for Svelte 5
+		conditions: mode === 'test' ? ['browser'] : []
 	}
-});
+}));

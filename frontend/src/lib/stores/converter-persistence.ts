@@ -30,7 +30,7 @@ const CURRENT_CONFIG_VERSION = 4; // Increment when breaking changes occur
 const PANIC_PRONE_CONFIGS = [
 	// Combinations that cause panics
 	(config: VectorizerConfig) => config.reverse_pass === true,
-	(config: VectorizerConfig) => config.diagonal_pass === true, 
+	(config: VectorizerConfig) => config.diagonal_pass === true,
 	(config: VectorizerConfig) => config.enable_etf_fdog === true,
 	(config: VectorizerConfig) => config.enable_flow_tracing === true,
 	(config: VectorizerConfig) => config.enable_bezier_fitting === true,
@@ -84,11 +84,11 @@ class ConverterPersistence {
 		try {
 			const configStr = JSON.stringify(config);
 			console.log('💾 [DEBUG] saveConfig: Saving config to', STORAGE_KEYS.CONFIG, ':', configStr);
-			
+
 			// Save config and version
 			localStorage.setItem(STORAGE_KEYS.CONFIG, configStr);
 			localStorage.setItem(STORAGE_KEYS.CONFIG_VERSION, CURRENT_CONFIG_VERSION.toString());
-			
+
 			console.log('✅ [DEBUG] saveConfig: Successfully saved with version', CURRENT_CONFIG_VERSION);
 			return true;
 		} catch (error) {
@@ -110,7 +110,7 @@ class ConverterPersistence {
 			console.log('🔍 [DEBUG] loadConfig: Loading from', STORAGE_KEYS.CONFIG);
 			const stored = localStorage.getItem(STORAGE_KEYS.CONFIG);
 			const storedVersion = localStorage.getItem(STORAGE_KEYS.CONFIG_VERSION);
-			
+
 			if (!stored) {
 				console.log('📋 [DEBUG] loadConfig: No stored config found');
 				return null;
@@ -121,24 +121,28 @@ class ConverterPersistence {
 
 			// Check if migration is needed
 			if (configVersion < CURRENT_CONFIG_VERSION) {
-				console.log(`🔄 [DEBUG] loadConfig: Migrating config from v${configVersion} to v${CURRENT_CONFIG_VERSION}`);
+				console.log(
+					`🔄 [DEBUG] loadConfig: Migrating config from v${configVersion} to v${CURRENT_CONFIG_VERSION}`
+				);
 				const migratedConfig = this.migrateConfig(config, configVersion);
-				
+
 				// Save migrated config
 				this.saveConfig(migratedConfig);
 				localStorage.setItem(STORAGE_KEYS.CONFIG_VERSION, CURRENT_CONFIG_VERSION.toString());
-				
+
 				return migratedConfig;
 			}
 
 			// Check for panic-prone configuration
 			if (this.isPanicProneConfig(config)) {
-				console.warn('⚠️ [DEBUG] loadConfig: Panic-prone config detected, applying safety migration');
+				console.warn(
+					'⚠️ [DEBUG] loadConfig: Panic-prone config detected, applying safety migration'
+				);
 				const safeConfig = this.applySafetyMigration(config);
-				
+
 				// Save safe config
 				this.saveConfig(safeConfig);
-				
+
 				return safeConfig;
 			}
 
@@ -157,7 +161,7 @@ class ConverterPersistence {
 	 * Check if configuration has panic-prone settings
 	 */
 	private isPanicProneConfig(config: VectorizerConfig): boolean {
-		return PANIC_PRONE_CONFIGS.some(check => check(config));
+		return PANIC_PRONE_CONFIGS.some((check) => check(config));
 	}
 
 	/**
@@ -179,7 +183,7 @@ class ConverterPersistence {
 			// Replace dangerous presets
 			hand_drawn_preset: config.hand_drawn_preset === 'strong' ? 'medium' : config.hand_drawn_preset
 		};
-		
+
 		console.log('🛡️ [DEBUG] Applied safety migration to config');
 		return safeConfig;
 	}
@@ -194,7 +198,7 @@ class ConverterPersistence {
 		if (fromVersion < 2) {
 			migratedConfig = {
 				...DEFAULT_CONFIG,
-				...migratedConfig,
+				...migratedConfig
 				// Preserve user preferences but ensure new defaults are included
 			};
 		}

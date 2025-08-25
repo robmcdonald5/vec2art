@@ -16,31 +16,9 @@
 	import ConverterHeader from './ConverterHeader.svelte';
 	import InteractiveImagePanel from './InteractiveImagePanel.svelte';
 	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
-	import type { SettingsSyncMode } from '$lib/types/settings-sync';
+	import type { ConverterComponentProps } from '$lib/types/shared-props';
 
-	interface Props {
-		files: File[];
-		originalImageUrls: (string | null)[];
-		filesMetadata: FileMetadata[];
-		currentImageIndex: number;
-		currentProgress?: ProcessingProgress;
-		previewSvgUrls: (string | null)[];
-		canConvert: boolean;
-		canDownload: boolean;
-		isProcessing: boolean;
-		onImageIndexChange: (index: number) => void;
-		onConvert: () => void;
-		onDownload: () => void;
-		onAbort: () => void;
-		onReset: () => void;
-		onAddMore: () => void;
-		onRemoveFile: (index: number) => void;
-		isPanicked?: boolean;
-		onEmergencyRecovery?: () => void;
-		// Settings sync mode props
-		settingsSyncMode?: SettingsSyncMode;
-		onSettingsModeChange?: (mode: SettingsSyncMode) => void;
-	}
+	interface Props extends ConverterComponentProps {}
 
 	let {
 		files,
@@ -339,10 +317,14 @@
 						<div class="flex items-center gap-2">
 							<span class="text-converter-primary text-sm font-medium">Original</span>
 							<button
-								class="text-converter-primary hover:text-ferrari-600 transition-colors duration-200 {panZoomStore.isSyncEnabled ? 'text-ferrari-600' : 'text-gray-400'}"
+								class="text-converter-primary hover:text-ferrari-600 transition-colors duration-200 {panZoomStore.isSyncEnabled
+									? 'text-ferrari-600'
+									: 'text-gray-400'}"
 								onclick={panZoomStore.toggleSync}
 								aria-label={panZoomStore.isSyncEnabled ? 'Disable sync' : 'Enable sync'}
-								title={panZoomStore.isSyncEnabled ? 'Views are synchronized' : 'Click to sync both views'}
+								title={panZoomStore.isSyncEnabled
+									? 'Views are synchronized'
+									: 'Click to sync both views'}
 							>
 								{#if panZoomStore.isSyncEnabled}
 									<Link class="h-4 w-4" />
@@ -359,7 +341,7 @@
 						title={currentFile?.name || 'Original'}
 						onRemove={currentFile ? () => onRemoveFile(currentImageIndex) : undefined}
 						showRemoveButton={Boolean(currentFile)}
-						isProcessing={isProcessing}
+						{isProcessing}
 						className="flex-1"
 						externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.convertedState : undefined}
 						onPanZoomChange={(state) => panZoomStore.updateOriginalState(state)}
@@ -392,14 +374,16 @@
 						<InteractiveImagePanel
 							imageUrl={currentSvgUrl}
 							imageAlt="Converted SVG"
-							isProcessing={isProcessing}
+							{isProcessing}
 							className="flex-1"
 							externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}
 							onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
 							enableSync={panZoomStore.isSyncEnabled}
 						/>
 					{:else if currentProgress}
-						<div class="flex-1 overflow-hidden rounded-lg bg-white dark:bg-ferrari-900 flex items-center justify-center">
+						<div
+							class="dark:bg-ferrari-900 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-white"
+						>
 							<div class="space-y-3 text-center">
 								<div
 									class="border-ferrari-500 mx-auto h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"
@@ -408,7 +392,9 @@
 							</div>
 						</div>
 					{:else}
-						<div class="flex-1 overflow-hidden rounded-lg bg-white dark:bg-ferrari-900 flex items-center justify-center">
+						<div
+							class="dark:bg-ferrari-900 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-white"
+						>
 							<div class="space-y-3 text-center">
 								<FileImage class="text-converter-muted mx-auto h-16 w-16" />
 								<p class="text-converter-secondary text-sm">Click Convert to see result</p>

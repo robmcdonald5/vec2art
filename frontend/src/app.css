@@ -105,13 +105,13 @@
 		white-space: nowrap;
 		border: 0;
 	}
-	
+
 	/* Ferrari button text color utility - highest priority */
 	.btn-ferrari-primary,
 	button.btn-ferrari-primary,
 	.btn-ferrari-primary.btn-clickable,
-	button[class*="btn-ferrari-primary"],
-	*[class*="btn-ferrari-primary"] {
+	button[class*='btn-ferrari-primary'],
+	*[class*='btn-ferrari-primary'] {
 		color: white !important;
 		font-weight: 600 !important;
 	}
@@ -130,35 +130,35 @@
 		color: white !important; /* Force white text */
 		font-weight: 600 !important; /* Force semibold */
 	}
-	
+
 	/* Maximum specificity override for button component text */
 	button.btn-ferrari-primary,
 	.btn-ferrari-primary.btn-ferrari-primary,
 	button.btn-ferrari-primary.btn-clickable,
 	.btn-ferrari-primary:not(:disabled),
-	button[class*="btn-ferrari-primary"] {
+	button[class*='btn-ferrari-primary'] {
 		color: white !important;
 		font-weight: 600 !important;
 	}
-	
+
 	/* Ensure icons in Ferrari buttons are also white */
 	.btn-ferrari-primary svg {
 		color: white !important;
 	}
-	
+
 	/* Algorithm badge styling */
 	.algorithm-badge {
 		@apply rounded-full px-4 py-1.5 text-sm font-semibold text-white shadow-md;
 		background: linear-gradient(135deg, #ff6b6b 0%, #dc143c 50%, #b91c2e 100%);
 		box-shadow: 0 4px 15px -3px rgba(220, 20, 60, 0.3);
 	}
-	
+
 	/* Slider label styling */
 	.slider-labels {
 		@apply mt-1 flex justify-between text-xs;
 		color: #6b7280 !important;
 	}
-	
+
 	/* Button pointer events fix */
 	.btn-clickable {
 		pointer-events: auto !important;
@@ -930,7 +930,8 @@
 
 	/* Progress dot animations */
 	@keyframes pulse-dot {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 1;
 			transform: scale(1);
 		}

@@ -148,11 +148,11 @@ export async function loadVectorizer(options?: {
 			}
 
 			wasmModule = wasmJs;
-			
+
 			// DISABLED: Thread pool auto-initialization to prevent CPU spinning
 			// Thread pool will be initialized only when explicitly requested
 			console.log('[WASM Loader] Thread pool initialization deferred (lazy loading mode)');
-			
+
 			console.log('[WASM Loader] ✅ Initialization complete');
 
 			return wasmModule;

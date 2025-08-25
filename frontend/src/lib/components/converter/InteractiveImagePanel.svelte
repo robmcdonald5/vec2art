@@ -33,14 +33,14 @@
 	// Component state for controls
 	let containerElement = $state<HTMLDivElement>();
 	let isInitialized = $state(true); // svelte-image-viewer is always ready
-	
+
 	// Pan/zoom state that connects to svelte-image-viewer
 	let targetScale = $state(1);
 	let targetOffsetX = $state(0);
 	let targetOffsetY = $state(0);
 	let initialFitScale = $state(1);
 	let hasCalculatedInitialFit = $state(false);
-	
+
 	// Sync external pan/zoom state when provided
 	$effect(() => {
 		if (externalPanZoom && enableSync) {
@@ -49,7 +49,7 @@
 			targetOffsetY = externalPanZoom.y;
 		}
 	});
-	
+
 	// Notify parent of pan/zoom changes when callback is provided
 	$effect(() => {
 		if (onPanZoomChange) {
@@ -60,8 +60,7 @@
 			});
 		}
 	});
-	
-	
+
 	// Zoom levels for discrete stepping - more granular for better control
 	const zoomLevels = [0.1, 0.2, 0.3, 0.5, 0.67, 0.8, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
 
@@ -79,18 +78,18 @@
 		if (!containerElement) return 1;
 
 		const containerRect = containerElement.getBoundingClientRect();
-		const containerWidth = containerRect.width - 20; // Account for padding  
+		const containerWidth = containerRect.width - 20; // Account for padding
 		const containerHeight = containerRect.height - 20;
-		
+
 		// Replicate CSS object-fit: contain algorithm
 		// This is the exact same logic that makes the slider mode work perfectly
 		const scaleX = containerWidth / imageWidth;
 		const scaleY = containerHeight / imageHeight;
-		
+
 		// Use the smaller scale to ensure entire image fits (contain behavior)
 		// This matches your requirement: wide images fit to sides, tall images fit to top/bottom
 		const fitScale = Math.min(scaleX, scaleY);
-		
+
 		console.log('[ImageViewer] CSS object-fit contain scale calculation:', {
 			imageSize: `${imageWidth}x${imageHeight}`,
 			containerSize: `${containerWidth}x${containerHeight}`,
@@ -98,47 +97,57 @@
 			scaleY: scaleY.toFixed(3),
 			finalScale: fitScale.toFixed(3)
 		});
-		
+
 		return Math.max(fitScale, 0.1);
 	}
 
 	// Proven solution pattern from research - handles both cached and uncached images
-	function waitForImageLoad(imageUrl: string): Promise<{width: number, height: number}> {
+	function waitForImageLoad(imageUrl: string): Promise<{ width: number; height: number }> {
 		return new Promise((resolve, reject) => {
 			const img = new Image();
-			
+
 			console.log('[ImageViewer] Starting to load image:', imageUrl);
-			
+
 			const handleLoad = () => {
-				console.log('[ImageViewer] Load event fired - dimensions:', img.naturalWidth, 'x', img.naturalHeight);
+				console.log(
+					'[ImageViewer] Load event fired - dimensions:',
+					img.naturalWidth,
+					'x',
+					img.naturalHeight
+				);
 				if (img.naturalWidth === 0 || img.naturalHeight === 0) {
 					console.error('[ImageViewer] Image loaded but dimensions are 0');
 					reject(new Error('Image dimensions are 0'));
 					return;
 				}
-				resolve({width: img.naturalWidth, height: img.naturalHeight});
+				resolve({ width: img.naturalWidth, height: img.naturalHeight });
 			};
-			
+
 			const handleError = () => {
 				console.error('[ImageViewer] Failed to load image:', imageUrl);
 				reject(new Error('Failed to load image'));
 			};
-			
+
 			// Setup event handlers for non-cached images
 			img.addEventListener('load', handleLoad);
 			img.addEventListener('error', handleError);
-			
+
 			// Set src FIRST - required for complete property to work
 			img.src = imageUrl;
-			
+
 			// Then check if already cached (research-proven timing)
 			if (img.complete && img.naturalWidth !== 0) {
 				// Image is cached and dimensions are available immediately
-				console.log('[ImageViewer] Image already cached with dimensions:', img.naturalWidth, 'x', img.naturalHeight);
+				console.log(
+					'[ImageViewer] Image already cached with dimensions:',
+					img.naturalWidth,
+					'x',
+					img.naturalHeight
+				);
 				// Remove event listeners since we don't need them
 				img.removeEventListener('load', handleLoad);
 				img.removeEventListener('error', handleError);
-				resolve({width: img.naturalWidth, height: img.naturalHeight});
+				resolve({ width: img.naturalWidth, height: img.naturalHeight });
 			}
 			// If not complete, the load event handler will resolve the promise
 		});
@@ -161,9 +170,9 @@
 
 	async function resetView() {
 		if (!imageUrl) return;
-		
+
 		try {
-			const {width, height} = await waitForImageLoad(imageUrl);
+			const { width, height } = await waitForImageLoad(imageUrl);
 			const optimalScale = calculateOptimalScale(width, height);
 			targetScale = optimalScale;
 			targetOffsetX = 0;
@@ -177,21 +186,21 @@
 	// Simple approach: just try to fit the image to container like object-fit: contain would
 	async function fitToContainer() {
 		if (!imageUrl || !containerElement) return;
-		
+
 		try {
 			// Get actual image dimensions
-			const {width, height} = await waitForImageLoad(imageUrl);
-			
+			const { width, height } = await waitForImageLoad(imageUrl);
+
 			// Get container dimensions
 			const containerRect = containerElement.getBoundingClientRect();
 			const containerWidth = containerRect.width - 40; // Some padding
 			const containerHeight = containerRect.height - 40;
-			
+
 			// Simple object-fit: contain calculation
 			const scaleX = containerWidth / width;
 			const scaleY = containerHeight / height;
 			const fitScale = Math.min(scaleX, scaleY); // This is exactly what object-fit: contain does
-			
+
 			console.log('[ImageViewer] Simple fit calculation:', {
 				imageSize: `${width}x${height}`,
 				containerSize: `${containerWidth.toFixed(0)}x${containerHeight.toFixed(0)}`,
@@ -200,12 +209,11 @@
 				fitScale: fitScale.toFixed(3),
 				currentTargetScale: targetScale
 			});
-			
+
 			// Just set it - no complex math
 			targetScale = Math.max(fitScale, 0.1);
 			targetOffsetX = 0;
 			targetOffsetY = 0;
-			
 		} catch (error) {
 			console.error('[ImageViewer] Failed to fit to container:', error);
 		}
@@ -215,22 +223,22 @@
 	$effect(() => {
 		if (imageUrl && containerElement) {
 			console.log('[ImageViewer] Image URL changed, calculating proper scale');
-			
+
 			// Reset position immediately
 			targetOffsetX = 0;
 			targetOffsetY = 0;
-			
+
 			// Calculate proper scale asynchronously
 			(async () => {
 				try {
-					const {width, height} = await waitForImageLoad(imageUrl);
+					const { width, height } = await waitForImageLoad(imageUrl);
 					const containerRect = containerElement.getBoundingClientRect();
-					
+
 					// Real object-fit: contain calculation
 					const scaleX = containerRect.width / width;
 					const scaleY = containerRect.height / height;
 					const optimalScale = Math.min(scaleX, scaleY); // This is what CSS object-fit: contain does
-					
+
 					console.log('[ImageViewer] Proper scale calculation:', {
 						imageSize: `${width}x${height}`,
 						containerSize: `${containerRect.width.toFixed(0)}x${containerRect.height.toFixed(0)}`,
@@ -238,10 +246,9 @@
 						scaleY: scaleY.toFixed(4),
 						optimalScale: optimalScale.toFixed(4)
 					});
-					
+
 					// Apply the calculated scale
 					targetScale = Math.max(optimalScale, 0.1);
-					
 				} catch (error) {
 					console.error('[ImageViewer] Failed to calculate proper scale:', error);
 					targetScale = 1.0; // Fallback
@@ -249,17 +256,16 @@
 			})();
 		}
 	});
-
 </script>
 
-<div class="relative flex flex-col h-full {className}">
+<div class="relative flex h-full flex-col {className}">
 	<!-- Header with title and controls -->
-	<div class="flex items-center justify-between px-2 mb-3">
-		<div class="text-converter-primary text-sm font-medium flex items-center gap-2 flex-1" title={title}>
+	<div class="mb-3 flex items-center justify-between px-2">
+		<div class="text-converter-primary flex flex-1 items-center gap-2 text-sm font-medium" {title}>
 			<span class="truncate">{title}</span>
 			{#if showRemoveButton && onRemove}
 				<button
-					class="text-gray-400 hover:text-red-500 transition-colors duration-200 text-sm font-medium ml-2"
+					class="ml-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-red-500"
 					onclick={onRemove}
 					disabled={isProcessing}
 					aria-label="Remove image"
@@ -269,7 +275,7 @@
 				</button>
 			{/if}
 		</div>
-		
+
 		<!-- Working control buttons -->
 		<div class="flex gap-1">
 			<Button
@@ -309,19 +315,19 @@
 	</div>
 
 	<!-- Interactive image container with svelte-image-viewer -->
-	<div 
+	<div
 		bind:this={containerElement}
-		class="flex-1 overflow-hidden rounded-lg bg-white dark:bg-ferrari-900 relative group"
+		class="dark:bg-ferrari-900 group relative flex-1 overflow-hidden rounded-lg bg-white"
 		tabindex="0"
 		role="application"
 		aria-label="Interactive {imageAlt} viewer - Use mouse wheel to zoom, drag to pan"
 	>
 		{#if imageUrl}
 			<!-- svelte-image-viewer component with programmatic controls -->
-			<div class="w-full h-full">
-				<ImageViewer 
-					src={imageUrl} 
-					alt={imageAlt} 
+			<div class="h-full w-full">
+				<ImageViewer
+					src={imageUrl}
+					alt={imageAlt}
 					bind:targetScale
 					bind:targetOffsetX
 					bind:targetOffsetY
@@ -330,16 +336,18 @@
 					scaleSmoothing={800}
 				/>
 			</div>
-			
+
 			<!-- Interactive cursor hint -->
-			<div class="absolute bottom-2 left-2 bg-black/75 text-white text-xs px-2 py-1 rounded pointer-events-none opacity-0 transition-opacity group-hover:opacity-100">
-				<Move class="inline h-3 w-3 mr-1" />
+			<div
+				class="pointer-events-none absolute bottom-2 left-2 rounded bg-black/75 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+			>
+				<Move class="mr-1 inline h-3 w-3" />
 				Drag to pan • Wheel to zoom • Use buttons for precise control
 			</div>
 		{:else}
-			<div class="flex items-center justify-center h-full text-gray-400">
+			<div class="flex h-full items-center justify-center text-gray-400">
 				<div class="text-center">
-					<Maximize2 class="h-16 w-16 mx-auto mb-2 opacity-50" />
+					<Maximize2 class="mx-auto mb-2 h-16 w-16 opacity-50" />
 					<p class="text-sm">No image</p>
 				</div>
 			</div>
@@ -347,12 +355,11 @@
 
 		<!-- Zoom level indicator -->
 		{#if imageUrl}
-			<div class="absolute top-2 right-2 bg-black/75 text-white text-xs px-2 py-1 rounded">
+			<div class="absolute top-2 right-2 rounded bg-black/75 px-2 py-1 text-xs text-white">
 				{Math.round(targetScale * 100)}%
 			</div>
 		{/if}
 	</div>
-
 </div>
 
 <style>
