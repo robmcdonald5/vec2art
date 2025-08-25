@@ -111,7 +111,7 @@
 			beforeImage: '/gallery-stock-before.png',
 			afterImage: '/gallery-stock-after.svg',
 			color: 'text-gray-600',
-			bgGradient: 'from-gray-50 to-slate-50'
+			bgGradient: 'from-zinc-100 to-neutral-100'
 		},
 		{
 			id: 'neon',
@@ -176,7 +176,7 @@
 			beforeImage: '/gallery-stock-before.png',
 			afterImage: '/gallery-stock-after.svg',
 			color: 'text-stone-600',
-			bgGradient: 'from-stone-50 to-gray-50'
+			bgGradient: 'from-yellow-100 to-orange-100'
 		},
 		{
 			id: 'glass-effect',
@@ -324,7 +324,7 @@
 			</div>
 
 			<!-- Details Panel -->
-			<div class="p-8 lg:p-12 flex flex-col">
+			<div class="p-8 lg:p-12 flex flex-col bg-slate-50">
 				<div class="mb-6">
 					<h3 class="text-3xl font-bold text-gray-900 mb-2">
 						{selectedAlgorithm.name}
