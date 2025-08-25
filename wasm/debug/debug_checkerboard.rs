@@ -1,7 +1,7 @@
 //! Debug checkerboard gradient analysis
 
 use image::ImageReader;
-use vectorize_core::algorithms::gradients::analyze_image_gradients;
+use vectorize_core::algorithms::edges::gradients::analyze_image_gradients;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== CHECKERBOARD GRADIENT ANALYSIS ===\n");

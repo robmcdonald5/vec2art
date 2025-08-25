@@ -5,8 +5,8 @@
 
 use image::{Rgba, RgbaImage};
 use std::time::Instant;
-use vectorize_core::algorithms::background::BackgroundConfig;
-use vectorize_core::algorithms::dots::{generate_dots_from_image, Dot, DotConfig};
+use vectorize_core::algorithms::dots::background::BackgroundConfig;
+use vectorize_core::algorithms::dots::dots::{generate_dots_from_image, Dot, DotConfig};
 
 /// Create a complex test image with various features
 fn create_complex_test_image() -> RgbaImage {

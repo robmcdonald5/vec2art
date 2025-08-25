@@ -6,13 +6,13 @@
 use image::{Rgba, RgbaImage};
 use std::time::{Duration, Instant};
 
-use vectorize_core::algorithms::dots_optimized::{
+use vectorize_core::algorithms::dots::dots_optimized::{
     generate_dots_optimized_pipeline, OptimizedDotConfig, OptimizedDotGenerator,
 };
 use vectorize_core::algorithms::{
-    background::{detect_background_advanced, BackgroundConfig},
-    dots::{generate_dots_from_image, DotConfig},
-    gradients::analyze_image_gradients,
+    dots::background::{detect_background_advanced, BackgroundConfig},
+    dots::dots::{generate_dots_from_image, DotConfig},
+    edges::gradients::analyze_image_gradients,
 };
 use vectorize_core::performance::PerformanceConfig;
 

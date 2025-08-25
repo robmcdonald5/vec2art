@@ -5,11 +5,11 @@
 
 use image::{Rgba, RgbaImage};
 use std::time::{Duration, Instant};
-use vectorize_core::algorithms::{
+use vectorize_core::algorithms::dots::{
     dots::{generate_dots_from_image, DotConfig},
     dots_optimized::{generate_dots_optimized_pipeline, OptimizedDotConfig},
-    gradients::analyze_image_gradients,
 };
+use vectorize_core::algorithms::edges::gradients::analyze_image_gradients;
 use vectorize_core::performance::{
     memory_pool::DotPool,
     parallel_utils::{ParallelConfig, PixelProcessor},

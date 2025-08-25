@@ -1,9 +1,9 @@
 //! Debug checkerboard background detection
 
 use image::ImageReader;
-use vectorize_core::algorithms::background::{detect_background_advanced, BackgroundConfig};
-use vectorize_core::algorithms::dots::{generate_dots, DotConfig};
-use vectorize_core::algorithms::gradients::analyze_image_gradients;
+use vectorize_core::algorithms::dots::background::{detect_background_advanced, BackgroundConfig};
+use vectorize_core::algorithms::dots::dots::{generate_dots, DotConfig};
+use vectorize_core::algorithms::edges::gradients::analyze_image_gradients;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== CHECKERBOARD BACKGROUND DETECTION ===\n");

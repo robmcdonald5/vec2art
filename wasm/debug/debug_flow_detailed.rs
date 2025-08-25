@@ -3,8 +3,8 @@ use image::ImageReader;
 use vectorize_core::algorithms::edges::{
     apply_nms, compute_fdog, hysteresis_threshold, FdogConfig, NmsConfig,
 };
-use vectorize_core::algorithms::etf::{compute_etf, EtfConfig};
-use vectorize_core::algorithms::trace::{trace_polylines, TraceConfig};
+use vectorize_core::algorithms::edges::etf::{compute_etf, EtfConfig};
+use vectorize_core::algorithms::tracing::trace::{trace_polylines, TraceConfig};
 // Removed unused imports
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -162,7 +162,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("✓ Flow tracing worked! Analyzing polyline details:");
 
         // Calculate polyline lengths before and after Douglas-Peucker
-        use vectorize_core::algorithms::path_utils::douglas_peucker_simplify;
+        use vectorize_core::algorithms::tracing::path_utils::douglas_peucker_simplify;
         let dp_epsilon = 0.5; // Small epsilon for testing
 
         for (i, polyline) in traced_polylines.iter().take(5).enumerate() {

@@ -1,7 +1,7 @@
 //! Test if tolerance 1.0 actually disables background detection
 
 use image::ImageReader;
-use vectorize_core::algorithms::background::{detect_background_advanced, BackgroundConfig};
+use vectorize_core::algorithms::dots::background::{detect_background_advanced, BackgroundConfig};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== BACKGROUND TOLERANCE 1.0 TEST ===\n");
