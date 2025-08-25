@@ -65,11 +65,15 @@ export class SettingsSyncStore {
 		} else {
 			// Per-image modes: return individual config or create default if missing
 			if (!this._imageConfigs.has(targetIndex)) {
-				// Initialize with global config if available, otherwise default
-				const initialConfig = this._lastGlobalConfig 
-					? { ...this._lastGlobalConfig }
-					: { ...this._globalConfig };
-				this._imageConfigs.set(targetIndex, initialConfig);
+				// Initialize with clean default config to prevent backend cross-contamination
+				// CRITICAL: Always start with DEFAULT_CONFIG, never copy from other configs
+				// that might have backend-specific settings from different algorithms
+				const initialConfig = { ...DEFAULT_CONFIG };
+				// CRITICAL: Create new Map to trigger Svelte 5 reactivity
+				const newImageConfigs = new Map(this._imageConfigs);
+				newImageConfigs.set(targetIndex, initialConfig);
+				this._imageConfigs = newImageConfigs;
+				console.log(`🛡️ Created clean config for image ${targetIndex} to prevent backend cross-contamination`);
 			}
 			return this._imageConfigs.get(targetIndex)!;
 		}
@@ -86,7 +90,10 @@ export class SettingsSyncStore {
 			this._globalConfig = { ...newConfig };
 		} else {
 			// Per-image modes: update specific image's config
-			this._imageConfigs.set(targetIndex, { ...newConfig });
+			// CRITICAL: Create new Map to trigger Svelte 5 reactivity
+			const newImageConfigs = new Map(this._imageConfigs);
+			newImageConfigs.set(targetIndex, { ...newConfig });
+			this._imageConfigs = newImageConfigs;
 		}
 	}
 
@@ -100,13 +107,40 @@ export class SettingsSyncStore {
 
 		// Handle mode-specific transitions
 		if (oldMode === 'global' && (newMode === 'per-image-batch' || newMode === 'per-image-individual')) {
-			// Global → Per-Image: Copy global config to all images
+			// Global → Per-Image: Store global config for potential restoration
 			this._lastGlobalConfig = { ...this._globalConfig };
 			
 			if (options.initializeFromGlobal !== false) {
+				// CRITICAL: Only copy core settings, not backend-specific ones
+				// This prevents backend settings from leaking between images
+				const coreConfig = {
+					backend: this._globalConfig.backend,
+					preset: this._globalConfig.preset,
+					detail: this._globalConfig.detail,
+					stroke_width: this._globalConfig.stroke_width,
+					noise_filtering: this._globalConfig.noise_filtering,
+					multipass: this._globalConfig.multipass,
+					pass_count: this._globalConfig.pass_count,
+					multipass_mode: this._globalConfig.multipass_mode,
+					hand_drawn_preset: this._globalConfig.hand_drawn_preset,
+					variable_weights: this._globalConfig.variable_weights,
+					tremor_strength: this._globalConfig.tremor_strength,
+					tapering: this._globalConfig.tapering,
+					preserve_colors: this._globalConfig.preserve_colors,
+					svg_precision: this._globalConfig.svg_precision,
+					optimize_svg: this._globalConfig.optimize_svg,
+					include_metadata: this._globalConfig.include_metadata
+				};
+				
+				// CRITICAL: Create new Map to trigger Svelte 5 reactivity
+				const newImageConfigs = new Map<number, VectorizerConfig>();
 				for (let i = 0; i < this._totalImages; i++) {
-					this._imageConfigs.set(i, { ...this._globalConfig });
+					// Start with clean default config and only apply safe core settings
+					const cleanConfig = { ...DEFAULT_CONFIG, ...coreConfig };
+					newImageConfigs.set(i, cleanConfig);
 				}
+				this._imageConfigs = newImageConfigs;
+				console.log(`🛡️ Mode switch ${oldMode} → ${newMode}: Initialized ${this._totalImages} images with clean core config`);
 			}
 		} 
 		else if ((oldMode === 'per-image-batch' || oldMode === 'per-image-individual') && newMode === 'global') {
@@ -145,24 +179,30 @@ export class SettingsSyncStore {
 		this._totalImages = totalImages;
 
 		if (this._syncMode !== 'global') {
-			// Per-image modes: initialize new image with current global or current image's config
-			const initConfig = this._imageConfigs.has(this._currentImageIndex)
-				? { ...this._imageConfigs.get(this._currentImageIndex)! }
-				: { ...this._globalConfig };
+			// Per-image modes: initialize new image with clean default config
+			// CRITICAL: Always use DEFAULT_CONFIG to prevent backend cross-contamination
+			// Never copy from existing image configs that might have different backend settings
+			const initConfig = { ...DEFAULT_CONFIG };
 			
-			this._imageConfigs.set(imageIndex, initConfig);
-
-			// Shift existing configs if needed (if image inserted, not appended)
-			const configsToShift = new Map<number, VectorizerConfig>();
+			// CRITICAL: Create new Map to trigger Svelte 5 reactivity
+			const newImageConfigs = new Map<number, VectorizerConfig>();
+			
+			// Copy existing configs, shifting indices as needed
 			for (const [index, config] of this._imageConfigs.entries()) {
-				if (index >= imageIndex && index !== imageIndex) {
-					configsToShift.set(index + 1, config);
-					this._imageConfigs.delete(index);
+				if (index < imageIndex) {
+					// Configs before the insertion point stay the same
+					newImageConfigs.set(index, config);
+				} else {
+					// Configs at or after the insertion point get shifted up by 1
+					newImageConfigs.set(index + 1, config);
 				}
 			}
-			for (const [index, config] of configsToShift.entries()) {
-				this._imageConfigs.set(index, config);
-			}
+			
+			// Add the new image config at the specified index
+			newImageConfigs.set(imageIndex, initConfig);
+			this._imageConfigs = newImageConfigs;
+			
+			console.log(`🛡️ Added image ${imageIndex} with clean default config to prevent cross-contamination`);
 		}
 	}
 
@@ -173,20 +213,22 @@ export class SettingsSyncStore {
 		this._totalImages = totalImages;
 
 		if (this._syncMode !== 'global') {
-			// Remove config for deleted image
-			this._imageConfigs.delete(imageIndex);
-
-			// Shift remaining configs down
-			const configsToShift = new Map<number, VectorizerConfig>();
+			// CRITICAL: Create new Map to trigger Svelte 5 reactivity
+			const newImageConfigs = new Map<number, VectorizerConfig>();
+			
+			// Copy configs, shifting indices down for configs after the removed index
 			for (const [index, config] of this._imageConfigs.entries()) {
-				if (index > imageIndex) {
-					configsToShift.set(index - 1, config);
-					this._imageConfigs.delete(index);
+				if (index < imageIndex) {
+					// Configs before the removed index stay the same
+					newImageConfigs.set(index, config);
+				} else if (index > imageIndex) {
+					// Configs after the removed index get shifted down by 1
+					newImageConfigs.set(index - 1, config);
 				}
+				// Skip the config at the removed index (effectively deleting it)
 			}
-			for (const [index, config] of configsToShift.entries()) {
-				this._imageConfigs.set(index, config);
-			}
+			
+			this._imageConfigs = newImageConfigs;
 
 			// Adjust current index if needed
 			if (this._currentImageIndex >= imageIndex && this._currentImageIndex > 0) {
@@ -239,14 +281,19 @@ export class SettingsSyncStore {
 	 */
 	resetConfigs(): void {
 		this._globalConfig = { ...DEFAULT_CONFIG };
-		this._imageConfigs.clear();
 		this._lastGlobalConfig = undefined;
 
 		// Re-initialize per-image configs if in per-image mode
 		if (this._syncMode !== 'global') {
+			// CRITICAL: Create new Map to trigger Svelte 5 reactivity
+			const newImageConfigs = new Map<number, VectorizerConfig>();
 			for (let i = 0; i < this._totalImages; i++) {
-				this._imageConfigs.set(i, { ...DEFAULT_CONFIG });
+				newImageConfigs.set(i, { ...DEFAULT_CONFIG });
 			}
+			this._imageConfigs = newImageConfigs;
+		} else {
+			// In global mode, just create empty Map
+			this._imageConfigs = new Map();
 		}
 	}
 
@@ -278,12 +325,100 @@ export class SettingsSyncStore {
 		
 		// Initialize per-image configs if in per-image mode
 		if (this._syncMode !== 'global') {
+			// CRITICAL: Create new Map to trigger Svelte 5 reactivity
+			const newImageConfigs = new Map(this._imageConfigs);
+			let mapChanged = false;
+			
 			for (let i = 0; i < totalImages; i++) {
-				if (!this._imageConfigs.has(i)) {
-					this._imageConfigs.set(i, { ...this._globalConfig });
+				if (!newImageConfigs.has(i)) {
+					// Always use clean default config for safety
+					newImageConfigs.set(i, { ...DEFAULT_CONFIG });
+					mapChanged = true;
 				}
 			}
+			
+			// Only update the Map if changes were made
+			if (mapChanged) {
+				this._imageConfigs = newImageConfigs;
+			}
 		}
+	}
+
+	/**
+	 * Validate and clean configs to prevent backend cross-contamination
+	 * Call this method periodically or when suspicious behavior is detected
+	 */
+	validateAndCleanConfigs(): { cleaned: number; issues: string[] } {
+		const issues: string[] = [];
+		let cleaned = 0;
+
+		// Define backend-specific setting groups
+		const backendSpecificSettings = {
+			edge: [
+				'enable_flow_tracing', 'enable_bezier_fitting', 'enable_etf_fdog',
+				'trace_min_gradient', 'trace_min_coherency', 'trace_max_gap', 'trace_max_length',
+				'fit_lambda_curvature', 'fit_max_error', 'fit_split_angle',
+				'etf_radius', 'etf_iterations', 'etf_coherency_tau',
+				'fdog_sigma_s', 'fdog_sigma_c', 'fdog_tau', 'nms_low', 'nms_high'
+			],
+			centerline: [
+				'enable_adaptive_threshold', 'window_size', 'sensitivity_k', 'use_optimized',
+				'thinning_algorithm', 'min_branch_length', 'micro_loop_removal',
+				'enable_width_modulation', 'edt_radius_ratio', 'width_modulation_range',
+				'max_join_distance', 'max_join_angle', 'edt_bridge_check',
+				'douglas_peucker_epsilon', 'adaptive_simplification'
+			],
+			dots: [
+				'dot_density_threshold', 'dot_density', 'dot_size_range', 'min_radius', 'max_radius',
+				'adaptive_sizing', 'background_tolerance', 'poisson_disk_sampling',
+				'min_distance_factor', 'grid_resolution', 'gradient_based_sizing',
+				'local_variance_scaling', 'color_clustering', 'opacity_variation'
+			],
+			superpixel: [
+				'num_superpixels', 'compactness', 'slic_iterations', 'min_region_size',
+				'color_distance', 'spatial_distance_weight', 'fill_regions',
+				'stroke_regions', 'simplify_boundaries', 'boundary_epsilon'
+			]
+		};
+
+		const checkConfig = (config: VectorizerConfig, context: string) => {
+			const currentBackend = config.backend;
+			let configCleaned = false;
+
+			// Check if this config has settings from other backends
+			for (const [backend, settings] of Object.entries(backendSpecificSettings)) {
+				if (backend !== currentBackend) {
+					for (const setting of settings) {
+						if ((config as any)[setting] !== undefined && (config as any)[setting] !== false) {
+							issues.push(`${context}: Found ${backend} setting '${setting}' in ${currentBackend} config`);
+							// Clean the contaminated setting
+							(config as any)[setting] = undefined;
+							configCleaned = true;
+						}
+					}
+				}
+			}
+
+			return configCleaned;
+		};
+
+		// Check global config
+		if (checkConfig(this._globalConfig, 'Global config')) {
+			cleaned++;
+		}
+
+		// Check all per-image configs
+		for (const [imageIndex, config] of this._imageConfigs.entries()) {
+			if (checkConfig(config, `Image ${imageIndex} config`)) {
+				cleaned++;
+			}
+		}
+
+		if (issues.length > 0) {
+			console.warn(`🛡️ Settings validation found ${issues.length} cross-contamination issues, cleaned ${cleaned} configs:`, issues);
+		}
+
+		return { cleaned, issues };
 	}
 }
 
