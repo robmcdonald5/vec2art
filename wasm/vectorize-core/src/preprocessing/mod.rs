@@ -44,7 +44,7 @@ pub fn analyze_resolution_requirements(
 ) -> ResolutionAnalysis {
     let (width, height) = image.dimensions();
     let max_dimension = std::cmp::max(width, height);
-    
+
     if max_dimension <= config.max_dimension {
         // No resizing needed
         ResolutionAnalysis {
@@ -58,12 +58,12 @@ pub fn analyze_resolution_requirements(
         let scale_factor = config.max_dimension as f32 / max_dimension as f32;
         let new_width = (width as f32 * scale_factor).round() as u32;
         let new_height = (height as f32 * scale_factor).round() as u32;
-        
+
         ResolutionAnalysis {
             scale_factor,
             original_dimensions: (width, height),
             processing_dimensions: (new_width, new_height),
-            parameter_adjustments: ParameterAdjustments { 
+            parameter_adjustments: ParameterAdjustments {
                 epsilon_scale: scale_factor as f64,
             },
         }

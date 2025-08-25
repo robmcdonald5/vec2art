@@ -17,8 +17,10 @@ pub mod telemetry;
 pub mod utils;
 
 // Re-export main types for convenience
-pub use algorithms::{vectorize_trace_low, vectorize_trace_low_with_gradients, EnhancedSvgResult, TraceBackend, TraceLowConfig};
-pub use svg_gradients::{GradientDefinition, ColorStop, generate_svg_document_with_gradients, generate_optimized_svg_document_with_gradients};
+pub use algorithms::{
+    vectorize_trace_low, vectorize_trace_low_with_gradients, EnhancedSvgResult, TraceBackend,
+    TraceLowConfig,
+};
 pub use config::SvgConfig;
 pub use config_builder::{ConfigBuilder, ConfigBuilderError, ConfigBuilderResult};
 pub use error::*;
@@ -27,6 +29,10 @@ pub use execution::{
     join, join3, par_bridge, par_enumerate, par_extend, par_iter, par_iter_mut, par_sort,
     par_sort_by, par_windows, par_zip, process_chunks_mut, reduce, scope, should_use_parallel,
     with_thread_pool, ThreadPoolConfig,
+};
+pub use svg_gradients::{
+    generate_optimized_svg_document_with_gradients, generate_svg_document_with_gradients,
+    ColorStop, GradientDefinition,
 };
 
 use image::{ImageBuffer, Rgba};
@@ -54,7 +60,7 @@ use image::{ImageBuffer, Rgba};
 pub fn vectorize_trace_low_rgba(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
-    hand_drawn_config: Option<&crate::algorithms::hand_drawn::HandDrawnConfig>,
+    hand_drawn_config: Option<&crate::algorithms::visual::hand_drawn::HandDrawnConfig>,
 ) -> Result<String, VectorizeError> {
     use input_validation::validate_image_input;
     use preprocessing::{
@@ -241,10 +247,13 @@ mod input_validation {
 use input_validation::*;
 
 // Re-export SVG optimization functions
-pub use svg::{optimize_colored_svg, calculate_compression_ratio};
+pub use svg::{calculate_compression_ratio, optimize_colored_svg};
 
 // Re-export SIMD color functions
-pub use algorithms::{simd_k_means_palette_reduction, simd_analyze_gradient_strength, is_simd_available, get_simd_info};
+pub use algorithms::{
+    get_simd_info, is_simd_available, simd_analyze_gradient_strength,
+    simd_k_means_palette_reduction,
+};
 
 #[cfg(test)]
 mod tests {
