@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
 	import { ArrowRight, Image, Zap, Download } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { preload } from '$lib/utils/preload';
 	import HeroSlider from '$lib/components/hero/HeroSlider.svelte';
+	import AlgorithmShowcase from '$lib/components/landing/AlgorithmShowcase.svelte';
 
 	// Intersection Observer for scroll animations
 	let observer: IntersectionObserver;
@@ -169,166 +169,9 @@
 		</div>
 	</section>
 
-	<!-- Enhanced Algorithm Backends -->
+	<!-- Interactive Algorithm Showcase -->
 	<section class="bg-section-premium animate-on-scroll relative py-24 sm:py-32">
-		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
-			<div class="animate-on-scroll mb-16 text-center">
-				<h2 class="heading-section">
-					Conversion <span class="text-gradient-modern">Pipeline</span>
-				</h2>
-				<p class="text-premium mx-auto mt-6 max-w-3xl">
-					Choose the perfect algorithm for your image type and artistic vision
-				</p>
-			</div>
-
-			<div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-				<div class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8">
-					<div class="relative">
-						<div
-							class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
-						>
-							<svg class="h-9 w-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-								></path>
-							</svg>
-						</div>
-						<h3 class="text-speed-gray-900 mb-4 text-2xl font-bold">Centerline Tracing</h3>
-						<p class="text-speed-gray-600 leading-relaxed">
-							Zhang-Suen algorithm for bold shapes and logos with precise paths
-						</p>
-					</div>
-					<!-- Dynamic hover overlay -->
-					<div
-						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
-					></div>
-					<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
-						<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-							<path
-								fill-rule="evenodd"
-								d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-								clip-rule="evenodd"
-							></path>
-						</svg>
-						Best for logos
-					</div>
-				</div>
-
-				<div
-					class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-100"
-				>
-					<div class="relative">
-						<div
-							class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
-						>
-							<svg class="h-9 w-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-								></path>
-							</svg>
-						</div>
-						<h3 class="text-speed-gray-900 mb-4 text-2xl font-bold">Dot Mapping</h3>
-						<p class="text-speed-gray-600 leading-relaxed">
-							Adaptive stippling for artistic textures and vintage effects
-						</p>
-					</div>
-					<!-- Dynamic hover overlay -->
-					<div
-						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
-					></div>
-					<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
-						<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-							<path
-								fill-rule="evenodd"
-								d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-								clip-rule="evenodd"
-							></path>
-						</svg>
-						Artistic style
-					</div>
-				</div>
-
-				<div
-					class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-200"
-				>
-					<div class="relative">
-						<div
-							class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
-						>
-							<svg class="h-9 w-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-								></path>
-							</svg>
-						</div>
-						<h3 class="text-speed-gray-900 mb-4 text-2xl font-bold">Line Tracing</h3>
-						<p class="text-speed-gray-600 leading-relaxed">
-							Canny edge detection for detailed line art and sketches
-						</p>
-					</div>
-					<!-- Dynamic hover overlay -->
-					<div
-						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
-					></div>
-					<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
-						<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-							<path
-								fill-rule="evenodd"
-								d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-								clip-rule="evenodd"
-							></path>
-						</svg>
-						Sketchy style
-					</div>
-				</div>
-
-				<div
-					class="card-ferrari-interactive animate-on-scroll group flex flex-col rounded-3xl p-8 delay-300 lg:col-span-1"
-				>
-					<div class="relative">
-						<div
-							class="icon-ferrari-bg mx-auto mb-6 flex h-18 w-18 transform items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-110"
-						>
-							<svg class="h-9 w-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
-								></path>
-							</svg>
-						</div>
-						<h3 class="text-speed-gray-900 mb-4 text-2xl font-bold">Superpixel</h3>
-						<p class="text-speed-gray-600 leading-relaxed">
-							SLIC segmentation for stylized and abstract art
-						</p>
-					</div>
-					<!-- Dynamic hover overlay -->
-					<div
-						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
-					></div>
-					<div class="text-ferrari-600 mt-auto flex items-center pt-6 text-sm font-medium">
-						<svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-							<path
-								fill-rule="evenodd"
-								d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-								clip-rule="evenodd"
-							></path>
-						</svg>
-						Retro style
-					</div>
-				</div>
-			</div>
-		</div>
+		<AlgorithmShowcase />
 	</section>
 
 	<!-- Footer -->
