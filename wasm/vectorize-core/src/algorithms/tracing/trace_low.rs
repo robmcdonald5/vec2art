@@ -146,6 +146,17 @@ pub enum ProcessingDirection {
     DiagonalNE,
 }
 
+/// Available background removal algorithms for pre-processing
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum BackgroundRemovalAlgorithm {
+    /// OTSU automatic thresholding (fast, works well for simple backgrounds)
+    Otsu,
+    /// Adaptive thresholding for complex lighting (slower, better quality)
+    Adaptive,
+    /// Automatic algorithm selection based on image complexity
+    Auto,
+}
+
 /// Configuration for trace-low algorithms
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TraceLowConfig {
@@ -278,6 +289,15 @@ pub struct TraceLowConfig {
     pub enable_palette_reduction: bool,
     /// Target number of colors for palette reduction (2-50, default: 16)
     pub palette_target_colors: u32,
+    // Background removal parameters
+    /// Enable background removal pre-processing (default: false)
+    pub enable_background_removal: bool,
+    /// Background removal strength/aggressiveness (0.0-1.0, default: 0.5)
+    pub background_removal_strength: f32,
+    /// Background removal algorithm selection (default: Auto)
+    pub background_removal_algorithm: BackgroundRemovalAlgorithm,
+    /// Background removal threshold override (0-255, default: auto-calculated)
+    pub background_removal_threshold: Option<u8>,
     // Safety and optimization parameters
     /// Maximum image size (width or height) before automatic resizing (512-8192, default: 4096)
     pub max_image_size: u32,
@@ -359,6 +379,11 @@ impl Default for TraceLowConfig {
             color_tolerance: 0.15,    // Moderate color similarity threshold
             enable_palette_reduction: false, // Default disabled for backward compatibility
             palette_target_colors: 16, // Balanced color count for palette reduction
+            // Background removal defaults
+            enable_background_removal: false, // Default disabled for backward compatibility
+            background_removal_strength: 0.5, // Moderate strength
+            background_removal_algorithm: BackgroundRemovalAlgorithm::Auto, // Automatic selection
+            background_removal_threshold: None, // Auto-calculated threshold
             // Safety and optimization defaults
             max_image_size: 4096, // 4K maximum dimension before resizing
             svg_precision: 2,     // 2 decimal places for balanced file size/quality

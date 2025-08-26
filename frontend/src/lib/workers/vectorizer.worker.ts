@@ -183,6 +183,24 @@ class VectorizerWorker {
 		this.vectorizer.set_enable_flow_tracing(config.enable_flow_tracing);
 		this.vectorizer.set_enable_bezier_fitting(config.enable_bezier_fitting);
 
+		// Configure background removal preprocessing
+		if (config.enable_background_removal !== undefined) {
+			console.log(`[VectorizerWorker] Setting background removal: ${config.enable_background_removal}`);
+			this.vectorizer.enable_background_removal(config.enable_background_removal);
+		}
+		if (config.background_removal_strength !== undefined) {
+			console.log(`[VectorizerWorker] Setting background removal strength: ${config.background_removal_strength}`);
+			this.vectorizer.set_background_removal_strength(config.background_removal_strength);
+		}
+		if (config.background_removal_algorithm !== undefined) {
+			console.log(`[VectorizerWorker] Setting background removal algorithm: ${config.background_removal_algorithm}`);
+			this.vectorizer.set_background_removal_algorithm(config.background_removal_algorithm);
+		}
+		if (config.background_removal_threshold !== undefined) {
+			console.log(`[VectorizerWorker] Setting background removal threshold: ${config.background_removal_threshold}`);
+			this.vectorizer.set_background_removal_threshold(config.background_removal_threshold);
+		}
+
 		// Configure dots-specific settings
 		if (config.backend === 'dots') {
 			if (config.dot_density !== undefined) {

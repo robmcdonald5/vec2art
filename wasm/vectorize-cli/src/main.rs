@@ -161,6 +161,37 @@ enum Commands {
         #[arg(long, default_value = "true", value_parser = clap::value_parser!(bool),
               help = "Use adaptive sizing based on image variance")]
         adaptive_sizing: bool,
+
+        // Background removal parameters
+        /// Enable background removal preprocessing to improve line tracing quality.
+        /// Automatically removes distracting backgrounds before vectorization.
+        #[arg(long, help = "Enable background removal preprocessing")]
+        background_removal: bool,
+
+        /// Background removal strength/aggressiveness (0.0-1.0).
+        /// Higher values remove more background, lower values are more conservative.
+        /// 0.3 = conservative, 0.5 = moderate, 0.7 = aggressive.
+        #[arg(
+            long,
+            default_value = "0.5",
+            help = "Background removal strength (0.0-1.0)"
+        )]
+        bg_strength: f32,
+
+        /// Background removal algorithm (otsu, adaptive, auto).
+        /// 'otsu' is fastest for uniform backgrounds, 'adaptive' works better with complex lighting,
+        /// 'auto' automatically selects the best algorithm based on image characteristics.
+        #[arg(
+            long,
+            default_value = "auto",
+            help = "Background removal algorithm (otsu, adaptive, auto)"
+        )]
+        bg_algorithm: String,
+
+        /// Override automatic background threshold (0-255).
+        /// Only use if automatic threshold detection produces poor results.
+        #[arg(long, help = "Manual background threshold override (0-255)")]
+        bg_threshold: Option<u8>,
     },
 
     /// Simple vectorization using default trace-low settings
@@ -221,6 +252,10 @@ fn main() -> Result<()> {
             background_tolerance,
             preserve_colors,
             adaptive_sizing,
+            background_removal,
+            bg_strength,
+            bg_algorithm,
+            bg_threshold,
         } => {
             // No manual validation needed - ConfigBuilder handles all validation
 
@@ -248,6 +283,10 @@ fn main() -> Result<()> {
                 background_tolerance,
                 preserve_colors,
                 adaptive_sizing,
+                background_removal,
+                bg_strength,
+                &bg_algorithm,
+                bg_threshold,
             )
         }
         Commands::Convert {
@@ -283,6 +322,10 @@ fn main() -> Result<()> {
                 0.1,                // default background tolerance
                 true,               // default preserve colors
                 true,               // default adaptive sizing
+                false,              // background removal disabled by default
+                0.5,                // default background removal strength
+                "auto",             // default background removal algorithm
+                None,               // no background threshold override
             )
         }
     }
@@ -313,6 +356,10 @@ fn vectorize_trace_low_command(
     background_tolerance: f32,
     preserve_colors: bool,
     adaptive_sizing: bool,
+    background_removal: bool,
+    bg_strength: f32,
+    bg_algorithm: &str,
+    bg_threshold: Option<u8>,
 ) -> Result<()> {
     let start_time = Instant::now();
 
@@ -331,6 +378,13 @@ fn vectorize_trace_low_command(
         rgba_image.height()
     );
     println!("Backend: {backend}, Detail: {detail:.2}, Stroke Width: {stroke_width:.2}");
+    
+    if background_removal {
+        println!("Background removal: Enabled (Algorithm: {}, Strength: {:.2})", bg_algorithm, bg_strength);
+        if let Some(threshold) = bg_threshold {
+            println!("Background removal threshold override: {}", threshold);
+        }
+    }
 
     // Build configuration using ConfigBuilder with validation
     let mut config_builder = ConfigBuilder::new()
@@ -358,7 +412,13 @@ fn vectorize_trace_low_command(
         .background_tolerance(background_tolerance)
         .context("Invalid background tolerance")?
         .preserve_colors(preserve_colors)
-        .adaptive_sizing(adaptive_sizing);
+        .adaptive_sizing(adaptive_sizing)
+        .background_removal(background_removal)
+        .background_removal_strength(bg_strength)
+        .context("Invalid background removal strength")?
+        .background_removal_algorithm_by_name(bg_algorithm)
+        .context("Invalid background removal algorithm")?
+        .background_removal_threshold(bg_threshold);
 
     // Add hand-drawn preset if specified
     if hand_drawn != "none" {

@@ -10,7 +10,9 @@
 		Target,
 		Check,
 		AlertTriangle,
-		Palette
+		Palette,
+		Eraser,
+		Filter
 	} from 'lucide-svelte';
 	import type { VectorizerConfig } from '$lib/types/vectorizer';
 	import { calculateMultipassConfig, PASS_COUNT_DESCRIPTIONS } from '$lib/types/vectorizer';
@@ -34,6 +36,7 @@
 
 	// Simple section state management
 	let expandedSections = $state({
+		backgroundFiltering: false,
 		multipass: false,
 		directional: false,
 		edgeDetection: false,
@@ -56,6 +59,13 @@
 		if (config.backend === 'dots') {
 			// Dots validation is handled internally now - just track state
 			dotsValidation = { isValid: true, errors: [], warnings: [] };
+		}
+	});
+
+	// Update background removal strength slider fill when config changes
+	$effect(() => {
+		if (backgroundRemovalStrengthSliderRef && config.background_removal_strength !== undefined) {
+			updateSliderFill(backgroundRemovalStrengthSliderRef);
 		}
 	});
 
@@ -116,6 +126,7 @@
 	// Slider refs for radius controls
 	let minRadiusSliderRef = $state<HTMLInputElement>();
 	let maxRadiusSliderRef = $state<HTMLInputElement>();
+	let backgroundRemovalStrengthSliderRef = $state<HTMLInputElement>();
 
 	function handleDotRadiusRange(isMin: boolean) {
 		return (event: Event) => {
@@ -222,11 +233,204 @@
 	</p>
 
 	<div class="space-y-3">
+		<!-- Background Filtering (All algorithms) -->
+		<div
+			class="border-ferrari-200/30 border bg-white {expandedSections.backgroundFiltering
+				? 'rounded-t-lg'
+				: 'rounded-lg'}"
+		>
+			<button
+				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.backgroundFiltering
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
+				onclick={() => toggleSection('backgroundFiltering')}
+				{disabled}
+				type="button"
+			>
+				<div class="flex items-center gap-2">
+					<div class="bg-ferrari-100 rounded p-1">
+						<Eraser class="text-ferrari-600 h-4 w-4" />
+					</div>
+					<span class="text-converter-primary font-medium">Background Filtering</span>
+					{#if config.enable_background_removal}
+						<Check class="h-4 w-4 text-green-600" />
+					{/if}
+				</div>
+				<div class="flex-shrink-0">
+					{#if expandedSections.backgroundFiltering}
+						<ChevronUp class="text-ferrari-600 h-4 w-4" />
+					{:else}
+						<ChevronDown class="text-ferrari-600 h-4 w-4" />
+					{/if}
+				</div>
+			</button>
+
+			{#if expandedSections.backgroundFiltering}
+				<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
+					<div class="text-converter-secondary text-xs">
+						Automatically remove distracting backgrounds to improve line tracing quality for all
+						algorithms.
+					</div>
+
+					<!-- Enable Background Filtering Toggle -->
+					<div class="flex items-center space-x-3">
+						<input
+							type="checkbox"
+							id="enable-background-filtering"
+							checked={config.enable_background_removal ?? false}
+							onchange={(e) => {
+								const checked = e.currentTarget.checked;
+								console.log(`🟡 Advanced Controls - Background removal toggle: ${checked}`);
+								onConfigChange({ enable_background_removal: checked });
+								onParameterChange?.();
+							}}
+							{disabled}
+							class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+						/>
+						<label
+							for="enable-background-filtering"
+							class="text-converter-primary cursor-pointer text-sm font-medium"
+						>
+							Enable Background Filtering
+						</label>
+					</div>
+
+					<!-- Background Filtering Options (shown when enabled) -->
+					{#if config.enable_background_removal}
+						<div class="ml-7 space-y-4 pt-2">
+							<!-- Algorithm Selection -->
+							<div class="space-y-2">
+								<div id="bg-algorithm-label" class="text-converter-primary text-sm font-medium">
+									Algorithm
+								</div>
+
+								<!-- Algorithm Button Group -->
+								<div
+									class="grid grid-cols-2 gap-2"
+									role="radiogroup"
+									aria-labelledby="bg-algorithm-label"
+								>
+									<button
+										type="button"
+										class="relative rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:ring-0 focus:outline-none {(config.background_removal_algorithm ??
+											'otsu') === 'otsu'
+											? 'border-ferrari-500 bg-ferrari-50 text-ferrari-700'
+											: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}"
+										onclick={() => {
+											console.log('🟡 Advanced Controls - Background removal algorithm: otsu');
+											onConfigChange({ background_removal_algorithm: 'otsu' });
+											onParameterChange?.();
+										}}
+										{disabled}
+										aria-checked={(config.background_removal_algorithm ?? 'otsu') === 'otsu'}
+										role="radio"
+									>
+										{#if (config.background_removal_algorithm ?? 'otsu') === 'otsu'}
+											<div class="bg-ferrari-600 absolute top-2 right-2 h-3 w-3 rounded-full"></div>
+										{/if}
+										<div class="text-center">
+											<div class="font-medium">OTSU</div>
+											<div class="text-xs text-current opacity-75">Fast</div>
+										</div>
+									</button>
+
+									<button
+										type="button"
+										class="relative rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:ring-0 focus:outline-none {config.background_removal_algorithm ===
+										'adaptive'
+											? 'border-ferrari-500 bg-ferrari-50 text-ferrari-700'
+											: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}"
+										onclick={() => {
+											console.log('🟡 Advanced Controls - Background removal algorithm: adaptive');
+											onConfigChange({ background_removal_algorithm: 'adaptive' });
+											onParameterChange?.();
+										}}
+										{disabled}
+										aria-checked={config.background_removal_algorithm === 'adaptive'}
+										role="radio"
+									>
+										{#if config.background_removal_algorithm === 'adaptive'}
+											<div class="bg-ferrari-600 absolute top-2 right-2 h-3 w-3 rounded-full"></div>
+										{/if}
+										<div class="text-center">
+											<div class="font-medium">Adaptive</div>
+											<div class="text-xs text-current opacity-75">Better Quality</div>
+										</div>
+									</button>
+								</div>
+
+								<!-- Algorithm Description -->
+								<div class="text-converter-secondary rounded bg-gray-50 p-2 text-xs">
+									{#if (config.background_removal_algorithm ?? 'otsu') === 'otsu'}
+										Fast automatic thresholding. Works well for simple, uniform backgrounds.
+									{:else if config.background_removal_algorithm === 'adaptive'}
+										Adaptive thresholding for complex lighting. Slower but better quality.
+									{/if}
+								</div>
+							</div>
+
+							<!-- Strength Slider -->
+							<div class="space-y-2">
+								<div class="flex items-center justify-between">
+									<label
+										for="bg-strength-slider"
+										class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+									>
+										<Filter class="text-ferrari-600 h-4 w-4" />
+										Strength
+									</label>
+									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+										{Math.round((config.background_removal_strength ?? 0.5) * 100)}%
+									</span>
+								</div>
+								<input
+									bind:this={backgroundRemovalStrengthSliderRef}
+									id="bg-strength-slider"
+									type="range"
+									min="0.0"
+									max="1.0"
+									step="0.1"
+									value={config.background_removal_strength ?? 0.5}
+									onchange={(e) => {
+										const value = parseFloat(e.currentTarget.value);
+										updateSliderFill(e.currentTarget);
+										console.log(`🟡 Advanced Controls - Background removal strength: ${value}`);
+										onConfigChange({ background_removal_strength: value });
+										onParameterChange?.();
+									}}
+									oninput={(e) => {
+										const value = parseFloat(e.currentTarget.value);
+										updateSliderFill(e.currentTarget);
+										console.log(`🟡 Advanced Controls - Background removal strength: ${value}`);
+										onConfigChange({ background_removal_strength: value });
+										onParameterChange?.();
+									}}
+									{disabled}
+									class="slider-ferrari w-full"
+									use:initializeSliderFill
+								/>
+								<div class="text-converter-secondary text-xs">
+									Higher values remove more background (more aggressive), lower values are more
+									conservative.
+								</div>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
+
 		<!-- Multi-pass Processing (Edge backend only) -->
 		{#if config.backend === 'edge'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
+			<div
+				class="border-ferrari-200/30 border bg-white {expandedSections.multipass
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
+			>
 				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors duration-200 focus:outline-none"
+					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.multipass
+						? 'rounded-t-lg'
+						: 'rounded-lg'}"
 					onclick={() => toggleSection('multipass')}
 					{disabled}
 					type="button"
@@ -250,7 +454,7 @@
 				</button>
 
 				{#if expandedSections.multipass}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+					<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 						<!-- Pass Count Slider -->
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
@@ -287,9 +491,15 @@
 
 		<!-- Directional Processing (Edge backend only) -->
 		{#if config.backend === 'edge'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
+			<div
+				class="border-ferrari-200/30 border bg-white {expandedSections.directional
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
+			>
 				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.directional
+						? 'rounded-t-lg'
+						: 'rounded-lg'}"
 					onclick={() => toggleSection('directional')}
 					{disabled}
 					type="button"
@@ -311,7 +521,7 @@
 				</button>
 
 				{#if expandedSections.directional}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+					<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 						<!-- Reverse Pass -->
 						<div class="flex items-center space-x-3">
 							<input
@@ -417,9 +627,15 @@
 		{/if}
 
 		<!-- Unified Color Controls (All backends) -->
-		<div class="border-ferrari-200/30 rounded-lg border bg-white">
+		<div
+			class="border-ferrari-200/30 border bg-white {expandedSections.colorControls
+				? 'rounded-t-lg'
+				: 'rounded-lg'}"
+		>
 			<button
-				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.colorControls
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
 				onclick={() => toggleSection('colorControls')}
 				{disabled}
 				type="button"
@@ -443,7 +659,7 @@
 			</button>
 
 			{#if expandedSections.colorControls}
-				<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+				<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 					<!-- Color Mode Toggle -->
 					<div class="space-y-2">
 						<div class="flex items-center justify-between">
@@ -607,9 +823,15 @@
 
 		<!-- Advanced Edge Detection (Edge backend only) -->
 		{#if config.backend === 'edge'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
+			<div
+				class="border-ferrari-200/30 border bg-white {expandedSections.edgeDetection
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
+			>
 				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.edgeDetection
+						? 'rounded-t-lg'
+						: 'rounded-lg'}"
 					onclick={() => toggleSection('edgeDetection')}
 					{disabled}
 					type="button"
@@ -650,7 +872,7 @@
 				</button>
 
 				{#if expandedSections.edgeDetection}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+					<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 						<div class="rounded-lg bg-amber-50 p-3">
 							<p class="text-xs text-amber-700">
 								⚠️ Advanced features add 20-50% processing time but can significantly improve
@@ -707,9 +929,15 @@
 
 		<!-- Advanced Dots Controls -->
 		{#if config.backend === 'dots'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
+			<div
+				class="border-ferrari-200/30 border bg-white {expandedSections.dotsAdvanced
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
+			>
 				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.dotsAdvanced
+						? 'rounded-t-lg'
+						: 'rounded-lg'}"
 					onclick={() => toggleSection('dotsAdvanced')}
 					{disabled}
 					type="button"
@@ -728,7 +956,7 @@
 				</button>
 
 				{#if expandedSections.dotsAdvanced}
-					<div class="border-ferrari-200/20 space-y-6 border-t p-4">
+					<div class="border-ferrari-200/20 space-y-6 rounded-b-lg border-t p-4">
 						<!-- Configuration Summary and Validation -->
 						<div class="space-y-3">
 							<!-- Validation Feedback -->
@@ -902,9 +1130,15 @@
 
 		<!-- Advanced Superpixel Controls -->
 		{#if config.backend === 'superpixel'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
+			<div
+				class="border-ferrari-200/30 border bg-white {expandedSections.superpixelAdvanced
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
+			>
 				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.superpixelAdvanced
+						? 'rounded-t-lg'
+						: 'rounded-lg'}"
 					onclick={() => toggleSection('superpixelAdvanced')}
 					{disabled}
 					type="button"
@@ -923,7 +1157,7 @@
 				</button>
 
 				{#if expandedSections.superpixelAdvanced}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+					<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 						<!-- Compactness -->
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
@@ -996,9 +1230,15 @@
 		{/if}
 
 		<!-- Performance Settings -->
-		<div class="border-ferrari-200/30 rounded-lg border bg-white">
+		<div
+			class="border-ferrari-200/30 border bg-white {expandedSections.performance
+				? 'rounded-t-lg'
+				: 'rounded-lg'}"
+		>
 			<button
-				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.performance
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
 				onclick={() => toggleSection('performance')}
 				{disabled}
 				type="button"
@@ -1017,7 +1257,7 @@
 			</button>
 
 			{#if expandedSections.performance}
-				<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+				<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 					<!-- SVG Optimization (NOT YET IMPLEMENTED) -->
 					<div class="cursor-not-allowed opacity-50" title="This feature is coming soon">
 						<div class="flex items-center space-x-3">

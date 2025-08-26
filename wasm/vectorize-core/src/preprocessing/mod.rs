@@ -8,6 +8,13 @@ use image::RgbaImage;
 mod old;
 pub use old::*;
 
+// Include background removal functionality
+mod background_removal;
+pub use background_removal::*;
+
+// Include test module for debugging background removal
+pub mod test_background_removal;
+
 /// Dummy resolution analysis for simplified preprocessing
 #[derive(Debug, Clone)]
 pub struct ResolutionAnalysis {

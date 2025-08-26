@@ -824,6 +824,20 @@ export class VectorizerService {
 				}
 			}
 
+			// Configure background removal preprocessing
+			if (workingConfig.enable_background_removal !== undefined) {
+				this.safeCall('enable_background_removal', workingConfig.enable_background_removal);
+			}
+			if (workingConfig.background_removal_strength !== undefined) {
+				this.safeCall('set_background_removal_strength', workingConfig.background_removal_strength);
+			}
+			if (workingConfig.background_removal_algorithm !== undefined) {
+				this.safeCall('set_background_removal_algorithm', workingConfig.background_removal_algorithm);
+			}
+			if (workingConfig.background_removal_threshold !== undefined) {
+				this.safeCall('set_background_removal_threshold', workingConfig.background_removal_threshold);
+			}
+
 			// Configure global output settings (using safeCall for potentially missing functions)
 			if (workingConfig.svg_precision !== undefined) {
 				this.safeCall('set_svg_precision', workingConfig.svg_precision);

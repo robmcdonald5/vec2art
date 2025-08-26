@@ -675,6 +675,42 @@ function configureVectorizer(config: any) {
 		console.log('[Worker] ✅ Line color parameters configured');
 	}
 
+	// Configure background removal preprocessing
+	if (config.enable_background_removal !== undefined) {
+		console.log(`[Worker] Setting background removal: ${config.enable_background_removal}`);
+		if (typeof vectorizer.enable_background_removal === 'function') {
+			vectorizer.enable_background_removal(config.enable_background_removal);
+		}
+	}
+	if (config.background_removal_strength !== undefined) {
+		console.log(`[Worker] Setting background removal strength: ${config.background_removal_strength}`);
+		if (typeof vectorizer.set_background_removal_strength === 'function') {
+			try {
+				vectorizer.set_background_removal_strength(config.background_removal_strength);
+			} catch (error) {
+				console.error('[Worker] Error setting background removal strength:', error);
+			}
+		}
+	}
+	if (config.background_removal_algorithm !== undefined) {
+		console.log(`[Worker] Setting background removal algorithm: ${config.background_removal_algorithm}`);
+		if (typeof vectorizer.set_background_removal_algorithm === 'function') {
+			try {
+				// Map any remaining 'auto' values to 'otsu' as fallback
+				const algorithm = config.background_removal_algorithm === 'auto' ? 'otsu' : config.background_removal_algorithm;
+				vectorizer.set_background_removal_algorithm(algorithm);
+			} catch (error) {
+				console.error('[Worker] Error setting background removal algorithm:', error);
+			}
+		}
+	}
+	if (config.background_removal_threshold !== undefined) {
+		console.log(`[Worker] Setting background removal threshold: ${config.background_removal_threshold}`);
+		if (typeof vectorizer.set_background_removal_threshold === 'function') {
+			vectorizer.set_background_removal_threshold(config.background_removal_threshold);
+		}
+	}
+
 	console.log(
 		'[Worker] ✅ All configuration parameters applied successfully with strict validation'
 	);

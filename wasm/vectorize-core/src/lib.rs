@@ -65,7 +65,7 @@ pub fn vectorize_trace_low_rgba(
     use input_validation::validate_image_input;
     use preprocessing::{
         adjust_trace_low_config, analyze_resolution_requirements, apply_resolution_processing,
-        scale_svg_coordinates, ResolutionConfig,
+        scale_svg_coordinates, ResolutionConfig, apply_background_removal, BackgroundRemovalConfig,
     };
 
     log::info!("Starting trace-low vectorization with config: {config:?}");
@@ -98,7 +98,29 @@ pub fn vectorize_trace_low_rgba(
     let resolution_analysis = analyze_resolution_requirements(image, &resolution_config);
 
     // Apply resolution-aware processing
-    let processing_image = apply_resolution_processing(image, &resolution_analysis)?;
+    let mut processing_image = apply_resolution_processing(image, &resolution_analysis)?;
+
+    // Apply background removal if enabled
+    if config.enable_background_removal {
+        let bg_removal_config = BackgroundRemovalConfig {
+            algorithm: config.background_removal_algorithm,
+            strength: config.background_removal_strength,
+            threshold_override: config.background_removal_threshold,
+        };
+
+        log::info!("Applying background removal with strength {:.2}", config.background_removal_strength);
+        
+        let bg_removal_result = apply_background_removal(&processing_image, &bg_removal_config)?;
+        
+        log::info!(
+            "Background removal completed using algorithm {:?}, threshold {}, took {}ms",
+            bg_removal_result.algorithm_used,
+            bg_removal_result.threshold_used,
+            bg_removal_result.processing_time_ms
+        );
+
+        processing_image = bg_removal_result.image;
+    }
 
     // Adjust configuration based on resolution scaling
     let adjusted_config =

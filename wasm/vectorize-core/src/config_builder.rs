@@ -1005,6 +1005,50 @@ impl ConfigBuilder {
 
         Ok(Some(config))
     }
+
+    /// Enable/disable background removal preprocessing
+    pub fn background_removal(mut self, enabled: bool) -> Self {
+        self.config.enable_background_removal = enabled;
+        self
+    }
+
+    /// Set background removal strength (0.0-1.0)
+    pub fn background_removal_strength(mut self, strength: f32) -> ConfigBuilderResult<Self> {
+        if !(0.0..=1.0).contains(&strength) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Background removal strength must be between 0.0 and 1.0, got: {strength}"
+            )));
+        }
+        self.config.background_removal_strength = strength;
+        Ok(self)
+    }
+
+    /// Set background removal algorithm
+    pub fn background_removal_algorithm(mut self, algorithm: crate::algorithms::tracing::trace_low::BackgroundRemovalAlgorithm) -> Self {
+        self.config.background_removal_algorithm = algorithm;
+        self
+    }
+
+    /// Set background removal algorithm by string name (otsu, adaptive, auto)
+    pub fn background_removal_algorithm_by_name(mut self, algorithm: &str) -> ConfigBuilderResult<Self> {
+        use crate::algorithms::tracing::trace_low::BackgroundRemovalAlgorithm;
+        let algo = match algorithm.to_lowercase().as_str() {
+            "otsu" => BackgroundRemovalAlgorithm::Otsu,
+            "adaptive" => BackgroundRemovalAlgorithm::Adaptive,
+            "auto" => BackgroundRemovalAlgorithm::Auto,
+            _ => return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Invalid background removal algorithm: '{}'. Valid options: otsu, adaptive, auto", algorithm
+            ))),
+        };
+        self.config.background_removal_algorithm = algo;
+        Ok(self)
+    }
+
+    /// Set background removal threshold override (0-255)
+    pub fn background_removal_threshold(mut self, threshold: Option<u8>) -> Self {
+        self.config.background_removal_threshold = threshold;
+        self
+    }
 }
 
 #[cfg(test)]

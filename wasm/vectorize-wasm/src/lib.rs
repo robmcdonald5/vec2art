@@ -244,6 +244,11 @@ pub struct ConfigData {
     superpixel_simplify_boundaries: bool,
     superpixel_boundary_epsilon: f32,
     superpixel_preserve_colors: bool,
+    // Background removal
+    enable_background_removal: bool,
+    background_removal_strength: f32,
+    background_removal_algorithm: String,
+    background_removal_threshold: Option<u8>,
     // Safety and optimization
     max_image_size: u32,
     svg_precision: u8,
@@ -542,6 +547,42 @@ impl WasmVectorizer {
             .background_tolerance(tolerance)
             .map_err(|e| JsValue::from_str(&format!("Background tolerance error: {e}")))?;
         Ok(())
+    }
+
+    // Background removal methods
+
+    /// Enable or disable background removal preprocessing
+    #[wasm_bindgen]
+    pub fn enable_background_removal(&mut self, enabled: bool) {
+        self.builder = self.builder.clone().background_removal(enabled);
+    }
+
+    /// Set background removal strength (0.0-1.0)
+    #[wasm_bindgen]
+    pub fn set_background_removal_strength(&mut self, strength: f32) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .background_removal_strength(strength)
+            .map_err(|e| JsValue::from_str(&format!("Background removal strength error: {e}")))?;
+        Ok(())
+    }
+
+    /// Set background removal algorithm: "otsu", "adaptive", or "auto"
+    #[wasm_bindgen]
+    pub fn set_background_removal_algorithm(&mut self, algorithm: &str) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .background_removal_algorithm_by_name(algorithm)
+            .map_err(|e| JsValue::from_str(&format!("Background removal algorithm error: {e}")))?;
+        Ok(())
+    }
+
+    /// Set background removal threshold override (0-255)
+    #[wasm_bindgen]
+    pub fn set_background_removal_threshold(&mut self, threshold: Option<u8>) {
+        self.builder = self.builder.clone().background_removal_threshold(threshold);
     }
 
     // Hand-drawn aesthetics
@@ -1066,6 +1107,11 @@ impl WasmVectorizer {
             superpixel_simplify_boundaries: config.superpixel_simplify_boundaries,
             superpixel_boundary_epsilon: config.superpixel_boundary_epsilon,
             superpixel_preserve_colors: config.superpixel_preserve_colors,
+            // Background removal parameters
+            enable_background_removal: config.enable_background_removal,
+            background_removal_strength: config.background_removal_strength,
+            background_removal_algorithm: format!("{:?}", config.background_removal_algorithm).to_lowercase(),
+            background_removal_threshold: config.background_removal_threshold,
             // Safety and optimization parameters
             max_image_size: config.max_image_size,
             svg_precision: config.svg_precision,
@@ -1170,6 +1216,15 @@ impl WasmVectorizer {
                 .custom_tapering(tapering)
                 .map_err(|e| JsValue::from_str(&format!("Custom tapering error: {e}")))?;
         }
+
+        // Apply background removal settings
+        builder = builder
+            .background_removal(config_data.enable_background_removal)
+            .background_removal_strength(config_data.background_removal_strength)
+            .map_err(|e| JsValue::from_str(&format!("Background removal strength error: {e}")))?
+            .background_removal_algorithm_by_name(&config_data.background_removal_algorithm)
+            .map_err(|e| JsValue::from_str(&format!("Background removal algorithm error: {e}")))?
+            .background_removal_threshold(config_data.background_removal_threshold);
 
         self.builder = builder;
         Ok(())

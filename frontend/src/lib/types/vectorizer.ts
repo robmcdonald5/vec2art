@@ -118,6 +118,12 @@ export interface VectorizerConfig {
 	enable_palette_reduction?: boolean; // Whether to enable color palette reduction
 	palette_target_colors?: number; // 2-50 target number of colors for palette reduction
 
+	// Background removal preprocessing
+	enable_background_removal?: boolean; // Whether to enable background removal preprocessing
+	background_removal_strength?: number; // 0.0-1.0 strength of background removal
+	background_removal_algorithm?: 'otsu' | 'adaptive'; // Algorithm selection
+	background_removal_threshold?: number; // 0-255 manual threshold override (optional)
+
 	// Global output control
 	svg_precision?: number; // 0-4 decimal places
 	optimize_svg?: boolean;
@@ -263,6 +269,10 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	color_tolerance: 0.15, // Moderate color similarity threshold
 	enable_palette_reduction: false, // Default disabled for backward compatibility
 	palette_target_colors: 16, // Balanced color count for palette reduction
+	// Background removal defaults (OFF by default as requested)
+	enable_background_removal: false, // Default disabled
+	background_removal_strength: 0.5, // Moderate strength when enabled
+	background_removal_algorithm: 'otsu', // Fast algorithm by default
 	max_processing_time_ms: 60000 // 60 seconds for comprehensive processing
 };
 

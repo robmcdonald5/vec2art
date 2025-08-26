@@ -150,6 +150,7 @@
 		onParameterChange?.();
 	}
 
+
 	// Check if current artistic effect values match a preset
 	function checkForCustomPreset(newConfig: Partial<VectorizerConfig>): HandDrawnPreset {
 		const currentConfig = { ...config, ...newConfig };
@@ -228,6 +229,7 @@
 			label: preset.charAt(0).toUpperCase() + preset.slice(1)
 		}));
 	})();
+
 
 	// Progressive slider functionality
 	function updateSliderFill(slider: HTMLInputElement) {
@@ -308,6 +310,7 @@
 			updateSliderFill(taperingSliderRef);
 		}
 	});
+
 </script>
 
 <section class="space-y-6">
@@ -664,6 +667,7 @@
 			{/if}
 		</div>
 	{/if}
+
 </section>
 
 <style>
