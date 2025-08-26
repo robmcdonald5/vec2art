@@ -1176,7 +1176,7 @@ class VectorizerStore {
 		// Validate file type first
 		if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
 			throw new Error(
-				`SVG files cannot be used as source images. Please use JPG, PNG, or WebP files.`
+				`SVG files cannot be used as source images. Please use JPG, PNG, WebP, TIFF, BMP, or GIF files.`
 			);
 		}
 
@@ -1211,7 +1211,7 @@ class VectorizerStore {
 				URL.revokeObjectURL(objectUrl); // Clean up
 				reject(
 					new Error(
-						`Failed to load image: ${file.name}. Please ensure it's a valid JPG, PNG, or WebP file.`
+						`Failed to load image: ${file.name}. Please ensure it's a valid JPG, PNG, WebP, TIFF, BMP, or GIF file.`
 					)
 				);
 			};

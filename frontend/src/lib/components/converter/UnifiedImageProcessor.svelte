@@ -398,7 +398,7 @@
 						Drag and drop your images here, or click to browse
 					</p>
 					<p class="text-ferrari-600 text-xs">
-						Supports JPG, PNG, WebP • Max {Math.round(maxSize / (1024 * 1024))}MB per file
+						Supports JPG, PNG, WebP, TIFF, BMP, GIF
 					</p>
 				</div>
 			</div>

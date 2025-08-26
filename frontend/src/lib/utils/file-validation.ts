@@ -2,7 +2,7 @@
  * File validation utilities for image uploads
  */
 
-export const ALLOWED_IMAGE_FORMATS = ['image/jpeg', 'image/png', 'image/webp'];
+export const ALLOWED_IMAGE_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/tiff', 'image/bmp', 'image/gif'];
 export const BLOCKED_FORMATS = ['image/svg+xml'];
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -19,7 +19,7 @@ export function validateImageFile(file: File): ValidationResult {
 	if (BLOCKED_FORMATS.includes(file.type)) {
 		return {
 			isValid: false,
-			error: `SVG files cannot be used as source images. Please upload JPG, PNG, or WebP files.`
+			error: `SVG files cannot be used as source images. Please upload JPG, PNG, WebP, TIFF, BMP, or GIF files.`
 		};
 	}
 
@@ -27,12 +27,12 @@ export function validateImageFile(file: File): ValidationResult {
 	if (!ALLOWED_IMAGE_FORMATS.includes(file.type)) {
 		// Also check file extension as fallback
 		const extension = file.name.split('.').pop()?.toLowerCase();
-		const validExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+		const validExtensions = ['jpg', 'jpeg', 'png', 'webp', 'tiff', 'tif', 'bmp', 'gif'];
 
 		if (!extension || !validExtensions.includes(extension)) {
 			return {
 				isValid: false,
-				error: `Unsupported file format. Please use: JPG, PNG, or WebP`
+				error: `Unsupported file format. Please use: JPG, PNG, WebP, TIFF, BMP, or GIF`
 			};
 		}
 	}
@@ -85,6 +85,12 @@ export function getFileFormat(mimeType: string): string {
 			return 'PNG';
 		case 'image/webp':
 			return 'WebP';
+		case 'image/tiff':
+			return 'TIFF';
+		case 'image/bmp':
+			return 'BMP';
+		case 'image/gif':
+			return 'GIF';
 		case 'image/svg+xml':
 			return 'SVG';
 		default:

@@ -9,7 +9,7 @@
 		onFilesSelect,
 		disabled = false,
 		maxSize = 10 * 1024 * 1024, // 10MB
-		accept = 'image/jpeg,image/png,image/webp'
+		accept = 'image/jpeg,image/png,image/webp,image/tiff,image/bmp,image/gif'
 	}: Props = $props();
 
 	// Local state for drag and drop
@@ -146,10 +146,7 @@
 				</p>
 				<div class="space-y-2">
 					<p class="text-ferrari-600 text-sm">
-						Supports JPG, PNG, WebP • Max {Math.round(maxSize / (1024 * 1024))}MB per file
-					</p>
-					<p class="text-converter-muted text-xs">
-						Transform any raster image into expressive line art SVGs
+						Supports JPG, PNG, WebP, TIFF, BMP, GIF
 					</p>
 				</div>
 			</div>
@@ -168,8 +165,6 @@
 				<div class="mt-2 text-sm text-green-600">
 					{successMessage}
 				</div>
-			{:else}
-				<div class="text-converter-muted text-xs">Multiple files supported</div>
 			{/if}
 		</div>
 	</div>

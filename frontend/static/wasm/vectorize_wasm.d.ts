@@ -1366,6 +1366,13 @@ export interface InitOutput {
   readonly _ZN14vectorize_core13preprocessing3old16bilateral_filter17hd5b23767ba2567ebE: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core13preprocessing18background_removal24apply_background_removal17h64b759179be8488bE: (a: number, b: number, c: number) => void;
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17hc709976c4dc7c10cE: (a: number, b: number) => void;
+  readonly _ZN14vectorize_core13preprocessing23test_background_removal17create_test_image17ha88fec8cb23b0f35E: (a: number) => void;
+  readonly _ZN14vectorize_core13preprocessing23test_background_removal28test_otsu_background_removal17h808fb39b3ebe8e9dE: (a: number) => void;
+  readonly _ZN3std2io5stdio6_print17hf9e3545393ba8ed8E: (a: number) => void;
+  readonly _ZN14vectorize_core13preprocessing23test_background_removal32test_adaptive_background_removal17hf88a63a82a2aa822E: (a: number) => void;
+  readonly _ZN14vectorize_core13preprocessing23test_background_removal28test_auto_background_removal17h5c1c599c76f31d76E: (a: number) => void;
+  readonly _ZN14vectorize_core13preprocessing23test_background_removal33analyze_background_removal_effect17hdd9c4f3c5a0fa046E: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core13preprocessing23test_background_removal22run_comprehensive_test17h24c01acc7d703517E: (a: number) => void;
   readonly _ZN14vectorize_core13preprocessing31analyze_resolution_requirements17h0026ad85e84cffb4E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core13preprocessing27apply_resolution_processing17hd0e728fef4020783E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core13preprocessing23adjust_trace_low_config17he138806e5885b186E: (a: number, b: number, c: number) => void;
@@ -5652,7 +5659,6 @@ export interface InitOutput {
   readonly _ZN3std2io5stdio18set_output_capture17h08003b593225b698E: (a: number) => number;
   readonly _ZN3std2io5stdio22try_set_output_capture17h6ee1657e5b793877E: (a: number, b: number) => void;
   readonly _ZN3std2io5stdio23attempt_print_to_stderr17h2ac3bb4c2ab74529E: (a: number) => void;
-  readonly _ZN3std2io5stdio6_print17hf9e3545393ba8ed8E: (a: number) => void;
   readonly _ZN58_$LT$std..io..util..Repeat$u20$as$u20$core..fmt..Debug$GT$3fmt17h66be81499ec1c8d4E: (a: number, b: number) => number;
   readonly _ZN53_$LT$std..io..IoSlice$u20$as$u20$core..fmt..Debug$GT$3fmt17h063a5bc735606e2eE: (a: number, b: number) => number;
   readonly _ZN78_$LT$$LP$$RF$str$C$u16$RP$$u20$as$u20$std..net..socket_addr..ToSocketAddrs$GT$15to_socket_addrs17h24e7985174346653E: (a: number, b: number) => void;

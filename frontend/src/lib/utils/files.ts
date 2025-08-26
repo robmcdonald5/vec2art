@@ -30,8 +30,8 @@ export function validateImageFile(
 ): FileValidationResult {
 	const {
 		maxSize = 10 * 1024 * 1024, // 10MB default
-		allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
-		allowedExtensions = ['.png', '.jpg', '.jpeg', '.webp']
+		allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/tiff', 'image/bmp', 'image/gif'],
+		allowedExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.tiff', '.tif', '.bmp', '.gif']
 	} = options;
 
 	const warnings: string[] = [];
@@ -422,6 +422,6 @@ export const FILE_SIZE_LIMITS = {
  * Supported image formats
  */
 export const SUPPORTED_IMAGE_FORMATS = {
-	types: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
-	extensions: ['.png', '.jpg', '.jpeg', '.webp']
+	types: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/tiff', 'image/bmp', 'image/gif'],
+	extensions: ['.png', '.jpg', '.jpeg', '.webp', '.tiff', '.tif', '.bmp', '.gif']
 } as const;
