@@ -36,6 +36,9 @@
 	import { settingsSyncStore } from '$lib/stores/settings-sync.svelte';
 	import type { SettingsSyncMode } from '$lib/types/settings-sync';
 	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
+	import { getPresetById } from '$lib/presets/presets';
+	import { presetToVectorizerConfig, getAlgorithmDefaults } from '$lib/presets/converter';
+	import type { StylePreset } from '$lib/presets/types';
 
 	// UI State Management - Using Svelte 5 runes
 	let files = $state<File[]>([]);
@@ -73,7 +76,7 @@
 	// Derived config from settings sync store based on current mode and image
 	const config = $derived(settingsSyncStore.getCurrentConfig(currentImageIndex));
 
-	let selectedPreset = $state<VectorizerPreset | 'custom'>('artistic');
+	let selectedPreset = $state<VectorizerPreset | 'custom'>('custom');
 	let performanceMode = $state<PerformanceMode>('balanced');
 	let threadCount = $state(4); // Default to balanced mode thread count, will be updated by performance mode calculation
 	let threadsInitialized = $state(false);
@@ -751,7 +754,58 @@
 
 	function handlePresetChange(preset: VectorizerPreset | 'custom') {
 		selectedPreset = preset;
+		
+		// Convert preset to actual configuration and apply it
+		if (preset !== 'custom') {
+			// Try to map legacy preset to new StylePreset system
+			const legacyToStylePresetMapping: Record<VectorizerPreset, string> = {
+				'sketch': 'photo-to-sketch',           // Edge backend - photos to sketches
+				'technical': 'technical-drawing',     // Centerline backend - technical drawings  
+				'artistic': 'artistic-stippling',     // Dots backend - artistic effects
+				'poster': 'modern-abstract',          // Superpixel backend - poster-style
+				'comic': 'hand-drawn-illustration'    // Edge backend - hand-drawn style
+			};
+			
+			const stylePresetId = legacyToStylePresetMapping[preset];
+			const stylePreset = getPresetById(stylePresetId);
+			
+			if (stylePreset) {
+				// Convert StylePreset to VectorizerConfig to check against current config
+				const presetConfig = presetToVectorizerConfig(stylePreset);
+				
+				// Check if current config already matches this preset (to avoid double-application)
+				const configMatches = 
+					config.backend === presetConfig.backend &&
+					config.detail === presetConfig.detail &&
+					config.stroke_width === presetConfig.stroke_width;
+				
+				if (configMatches) {
+					console.log(`🎯 Config already matches ${stylePreset.metadata.name}, skipping re-application`);
+				} else {
+					console.log(`🎨 Applying preset: ${stylePreset.metadata.name} (${stylePreset.backend})`);
+					
+					// Apply the preset configuration to the settings store
+					settingsSyncStore.updateConfig(presetConfig, currentImageIndex);
+					
+					console.log(`✅ Preset config applied:`, {
+						backend: presetConfig.backend,
+						detail: presetConfig.detail,
+						stroke_width: presetConfig.stroke_width,
+						multipass: presetConfig.multipass,
+						hand_drawn_preset: presetConfig.hand_drawn_preset
+					});
+				}
+			} else {
+				console.warn(`⚠️ Could not find StylePreset for legacy preset: ${preset}`);
+			}
+		} else {
+			console.log(`🔧 Switching to custom settings - preserving current parameters`);
+			
+			// Custom mode - no reset, just switch the preset state
+			// The current parameters remain as they were
+		}
 	}
+
 
 	function handleBackendChange(backend: VectorizerBackend) {
 		console.log(`🔧 Backend change: switching to ${backend}`);
@@ -888,7 +942,10 @@
 	}
 
 	function handleParameterChange() {
-		// Parameter change handled by config updates
+		// When user manually changes a parameter, switch to custom preset
+		if (selectedPreset !== 'custom') {
+			selectedPreset = 'custom';
+		}
 	}
 
 	// Settings sync mode handlers
@@ -1327,7 +1384,7 @@
 
 <!-- Full viewport background wrapper -->
 <div class="bg-section-elevated min-h-screen">
-	<div class="mx-auto max-w-screen-2xl px-4 py-8 sm:px-6 lg:px-8">
+	<div class="mx-auto max-w-screen-2xl px-4 py-8 sm:px-6 lg:px-8" data-testid="converter-page">
 		<!-- Page Header -->
 		<header class="mb-8 text-center">
 			<h1 class="text-gradient-modern mb-4 text-4xl font-bold">Image to SVG Converter</h1>

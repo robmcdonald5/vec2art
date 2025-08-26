@@ -94,6 +94,7 @@
 	onchange={handleFileInput}
 	{disabled}
 	multiple
+	data-testid="file-input"
 />
 
 <div class="space-y-4">

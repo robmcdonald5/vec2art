@@ -7,6 +7,9 @@
 	} from '$lib/types/vectorizer';
 	import type { PerformanceMode } from '$lib/utils/performance-monitor';
 	import { performanceMonitor, getOptimalThreadCount } from '$lib/utils/performance-monitor';
+	import { getPresetById } from '$lib/presets/presets';
+	import { presetToVectorizerConfig, getAlgorithmDefaults } from '$lib/presets/converter';
+	import type { StylePreset } from '$lib/presets/types';
 	import BackendSelector from './BackendSelector.svelte';
 	import PresetSelector from './PresetSelector.svelte';
 	import ParameterPanel from './ParameterPanel.svelte';
@@ -90,11 +93,12 @@
 				value = parseFloat(target.value);
 			}
 
-			console.log(`🔧 Config update: ${key} = ${value}`);
 			onConfigChange({ [key]: value } as Partial<VectorizerConfig>);
 			onParameterChange();
 		};
 	}
+
+	// Legacy mapping functions removed - using direct StylePreset ID tracking instead
 
 	// Special handler for dots backend detail/density mapping
 	function updateDotDensity(event: Event) {
@@ -209,25 +213,32 @@
 					/>
 				</div>
 
-				<!-- Style Preset -->
+				<!-- Style Preset (Disabled - Coming Soon) -->
 				<div>
 					<div class="mb-3 flex items-center gap-2">
-						<label for="preset-selector" class="text-converter-primary block text-sm font-medium">
+						<label for="preset-selector" class="text-converter-secondary block text-sm font-medium opacity-60">
 							Style Preset
 						</label>
+						<span class="text-ferrari-600 text-xs font-semibold px-2 py-1 bg-ferrari-50 border border-ferrari-200 rounded-md">
+							COMING SOON
+						</span>
 						<Tooltip
-							content="Pre-configured settings for different art styles. Photo for realistic images, Logo for sharp graphics, Artistic for creative effects, and Sketch for hand-drawn appearance."
+							content="Advanced style presets are currently being refined and will be available in a future update. Use the manual parameter controls below for now."
 							position="right"
 							size="md"
 						/>
 					</div>
-					<PresetSelector
-						{selectedPreset}
-						{onPresetChange}
-						{disabled}
-						isCustom={selectedPreset === 'custom'}
-						compact={true}
-					/>
+					<div class="relative">
+						<PresetSelector
+							selectedPresetId={undefined}
+							onPresetSelect={(preset) => {
+								// Disabled - no action
+							}}
+							disabled={true}
+							selectedAlgorithm={config.backend}
+						/>
+						<div class="absolute inset-0 bg-gray-100/50 rounded-md cursor-not-allowed"></div>
+					</div>
 				</div>
 
 				<!-- Essential Parameters -->

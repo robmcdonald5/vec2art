@@ -37,7 +37,7 @@
 	function selectOption(option: SelectOption) {
 		if (option.disabled) return;
 
-		value = option.value;
+		// Close dropdown and notify parent of change
 		isOpen = false;
 		onchange?.(option.value);
 	}
