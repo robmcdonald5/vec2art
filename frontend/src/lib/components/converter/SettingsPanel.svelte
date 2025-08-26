@@ -14,7 +14,7 @@
 	import PresetSelector from './PresetSelector.svelte';
 	import ParameterPanel from './ParameterPanel.svelte';
 	import AdvancedControls from './AdvancedControls.svelte';
-	import Tooltip from '$lib/components/ui/tooltip/Tooltip.svelte';
+	import PortalTooltipFixed from '$lib/components/ui/tooltip/PortalTooltipFixed.svelte';
 
 	interface Props {
 		config: VectorizerConfig;
@@ -199,7 +199,7 @@
 						<label for="backend-selector" class="text-converter-primary block text-sm font-medium">
 							Algorithm
 						</label>
-						<Tooltip
+						<PortalTooltipFixed
 							content="Choose the line tracing algorithm. Edge is best for detailed drawings, Centerline for simple shapes, Superpixel for stylized art, and Dots for stippling effects."
 							position="right"
 							size="md"
@@ -222,7 +222,7 @@
 						<span class="text-ferrari-600 text-xs font-semibold px-2 py-1 bg-ferrari-50 border border-ferrari-200 rounded-md">
 							COMING SOON
 						</span>
-						<Tooltip
+						<PortalTooltipFixed
 							content="Advanced style presets are currently being refined and will be available in a future update. Use the manual parameter controls below for now."
 							position="right"
 							size="md"
@@ -254,7 +254,7 @@
 									>
 										Dot Density
 									</label>
-									<Tooltip
+									<PortalTooltipFixed
 										content="Controls how many dots are placed in the stippling output. Lower values create fewer, sparse dots. Higher values create denser, more detailed stippling."
 										position="top"
 										size="md"
@@ -266,7 +266,7 @@
 									>
 										Detail Level
 									</label>
-									<Tooltip
+									<PortalTooltipFixed
 										content="Controls how much detail is captured in the conversion. Lower values create simpler, cleaner lines. Higher values preserve more fine details and texture."
 										position="top"
 										size="md"
@@ -310,7 +310,7 @@
 								>
 									Region Complexity
 								</label>
-								<Tooltip
+								<PortalTooltipFixed
 									content="Controls the number of regions in the superpixel segmentation. Lower values create fewer, larger regions. Higher values create more detailed segmentation with smaller regions."
 									position="top"
 									size="md"
@@ -346,7 +346,7 @@
 							>
 								{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
 							</label>
-							<Tooltip
+							<PortalTooltipFixed
 								content={config.backend === 'dots'
 									? 'Controls the size of dots in stippling output. Smaller dots create finer detail, while larger dots create bold effects.'
 									: 'Adjusts the thickness of traced lines in the SVG output. Thinner lines work better for detailed images, while thicker lines are good for bold, graphic styles.'}
@@ -381,7 +381,7 @@
 								for="preserve-colors-unified"
 								class="text-converter-primary block text-sm font-medium">Color Mode</label
 							>
-							<Tooltip
+							<PortalTooltipFixed
 								content={config.backend === 'edge' || config.backend === 'centerline'
 									? 'Enable to preserve original image colors in line strokes. Disable for traditional black line art.'
 									: config.backend === 'superpixel'
@@ -511,7 +511,7 @@
 							<label class="text-converter-primary block text-base font-medium">
 								Performance Mode
 							</label>
-							<Tooltip
+							<PortalTooltipFixed
 								content="Controls CPU usage and processing speed. Economy uses fewer threads for background processing, Balanced provides optimal speed/resource balance, Performance maximizes speed using all available cores."
 								position="top"
 								size="md"
@@ -647,7 +647,7 @@
 									<label class="text-converter-primary text-base font-medium"
 										>Thread Configuration</label
 									>
-									<Tooltip
+									<PortalTooltipFixed
 										content="Number of parallel processing threads. More threads = faster processing but higher CPU usage. Optimal number depends on your device's capabilities."
 										position="top"
 										size="md"
