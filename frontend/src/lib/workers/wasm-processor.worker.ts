@@ -270,6 +270,12 @@ function configureVectorizer(config: any) {
 		config.enable_etf_fdog = true;
 	}
 
+	// Reverse and diagonal passes require multipass processing
+	if ((config.reverse_pass || config.diagonal_pass) && !config.multipass) {
+		console.log('[Worker] 🔧 Auto-enabling multipass for reverse/diagonal passes (WASM requirement)');
+		config.multipass = true;
+	}
+
 	// Apply core boolean configuration options
 	const booleanConfigMethods = {
 		noise_filtering: 'set_noise_filtering',

@@ -653,8 +653,11 @@ impl WasmVectorizer {
 
     /// Set maximum processing time in milliseconds
     #[wasm_bindgen]
-    pub fn set_max_processing_time_ms(&mut self, time_ms: u64) {
-        self.builder = self.builder.clone().max_processing_time_ms(time_ms);
+    pub fn set_max_processing_time_ms(&mut self, time_ms: u64) -> Result<(), JsValue> {
+        self.builder = self.builder.clone()
+            .max_processing_time_ms(time_ms)
+            .map_err(|e| JsValue::from_str(&format!("Max processing time error: {e}")))?;
+        Ok(())
     }
 
     // Noise filtering configuration
@@ -1144,6 +1147,7 @@ impl WasmVectorizer {
             .directional_threshold(config_data.directional_threshold)
             .map_err(|e| JsValue::from_str(&format!("Directional threshold error: {e}")))?
             .max_processing_time_ms(config_data.max_processing_time_ms)
+            .map_err(|e| JsValue::from_str(&format!("Max processing time error: {e}")))?
             .dot_density(config_data.dot_density)
             .map_err(|e| JsValue::from_str(&format!("Dot density error: {e}")))?
             .dot_size_range(config_data.dot_min_radius, config_data.dot_max_radius)

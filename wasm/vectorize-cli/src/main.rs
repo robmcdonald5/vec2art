@@ -405,6 +405,7 @@ fn vectorize_trace_low_command(
         .directional_threshold(directional_threshold)
         .context("Invalid directional threshold")?
         .max_processing_time_ms(max_time_ms)
+        .context("Invalid max processing time")?
         .dot_density(dot_density)
         .context("Invalid dot density")?
         .dot_size_range_from_string(dot_size_range)

@@ -175,9 +175,10 @@ impl ConfigBuilder {
     }
 
     /// Set maximum processing time in milliseconds
-    pub fn max_processing_time_ms(mut self, time_ms: u64) -> Self {
+    pub fn max_processing_time_ms(mut self, time_ms: u64) -> ConfigBuilderResult<Self> {
+        self.validate_processing_time(time_ms)?;
         self.config.max_processing_time_ms = time_ms;
-        self
+        Ok(self)
     }
 
     // Dot-specific parameters
@@ -358,10 +359,15 @@ impl ConfigBuilder {
         self
     }
 
-    /// Set window size for adaptive thresholding (15-50 pixels)
+    /// Set window size for adaptive thresholding (15-50 pixels, must be odd)
     pub fn window_size(mut self, size: u32) -> ConfigBuilderResult<Self> {
         self.validate_window_size(size)?;
-        self.config.adaptive_threshold_window_size = size;
+        // Ensure the window size is odd (required by adaptive threshold algorithm)
+        let odd_size = if size % 2 == 0 { size + 1 } else { size };
+        if odd_size != size {
+            // Auto-correct to nearest odd value
+        }
+        self.config.adaptive_threshold_window_size = odd_size;
         Ok(self)
     }
 
@@ -510,6 +516,8 @@ impl ConfigBuilder {
             .stroke_width(1.5)
             .unwrap()
             .multipass(true)
+            .pass_count(2)
+            .unwrap()
             .noise_filtering(true)
             .hand_drawn_preset("medium")
             .unwrap()
@@ -524,6 +532,8 @@ impl ConfigBuilder {
             .stroke_width(1.0)
             .unwrap()
             .multipass(true)
+            .pass_count(3)
+            .unwrap()
             .reverse_pass(true)
             .diagonal_pass(true)
             .enable_adaptive_threshold(true)
@@ -536,6 +546,8 @@ impl ConfigBuilder {
             .douglas_peucker_epsilon(1.0)
             .unwrap()
             .enable_width_modulation(false)
+            .max_processing_time_ms(120000)  // 2 minutes for technical drawings
+            .unwrap()
     }
 
     /// Configure for dense stippling effect
@@ -861,6 +873,7 @@ impl ConfigBuilder {
                 "Window size must be between 15 and 50 pixels, got: {size}"
             )));
         }
+        // Note: We auto-correct even values to odd in the setter method
         Ok(())
     }
 
@@ -947,21 +960,259 @@ impl ConfigBuilder {
         Ok(())
     }
 
+    fn validate_processing_time(&self, time_ms: u64) -> ConfigBuilderResult<()> {
+        if time_ms == 0 {
+            return Err(ConfigBuilderError::InvalidParameter(
+                "Processing time must be greater than 0".to_string(),
+            ));
+        }
+        if time_ms > 3600000 {  // 1 hour maximum
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Processing time too large (max: 3600000ms = 1 hour), got: {time_ms}ms"
+            )));
+        }
+        Ok(())
+    }
+
     fn validate_complete_config(&self) -> ConfigBuilderResult<()> {
-        // Validate ETF/FDoG dependencies
+        // 1. Validate hierarchical dependencies (critical)
+        self.validate_etf_fdog_dependencies()?;
+        
+        // 2. Validate backend-specific settings consistency
+        self.validate_backend_specific_settings()?;
+        
+        // 3. Validate value ranges and prevent division by zero
+        self.validate_numeric_ranges()?;
+        
+        // 4. Validate multipass logic consistency
+        self.validate_multipass_logic()?;
+        
+        // 5. Validate memory safety constraints
+        self.validate_memory_safety()?;
+        
+        // 6. Validate hand-drawn custom overrides
+        self.validate_hand_drawn_overrides()?;
+
+        Ok(())
+    }
+
+    /// Validate ETF/FDoG hierarchical dependencies
+    fn validate_etf_fdog_dependencies(&self) -> ConfigBuilderResult<()> {
+        // Flow tracing requires ETF/FDoG
         if self.config.enable_flow_tracing && !self.config.enable_etf_fdog {
             return Err(ConfigBuilderError::ValidationFailed(
                 "Flow tracing requires enable_etf_fdog to be true".to_string(),
             ));
         }
 
+        // Bézier fitting requires flow tracing (which requires ETF/FDoG)
         if self.config.enable_bezier_fitting && !self.config.enable_flow_tracing {
             return Err(ConfigBuilderError::ValidationFailed(
                 "Bézier fitting requires enable_flow_tracing to be true".to_string(),
             ));
         }
 
-        // Validate hand-drawn custom overrides
+        // Transitive dependency check
+        if self.config.enable_bezier_fitting && !self.config.enable_etf_fdog {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "Bézier fitting requires ETF/FDoG processing (enable_etf_fdog must be true)".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Validate backend-specific settings are not ignored
+    fn validate_backend_specific_settings(&self) -> ConfigBuilderResult<()> {
+        match self.config.backend {
+            TraceBackend::Edge | TraceBackend::Centerline => {
+                // ETF/FDoG settings only apply to Edge/Centerline backends
+                // Dot/Superpixel specific settings should be ignored (but warn if set inappropriately)
+                if self.config.dot_density_threshold != TraceLowConfig::default().dot_density_threshold
+                    || self.config.dot_min_radius != TraceLowConfig::default().dot_min_radius
+                    || self.config.dot_max_radius != TraceLowConfig::default().dot_max_radius {
+                    // This is not an error, but settings will be ignored
+                }
+            }
+            TraceBackend::Dots => {
+                // ETF/FDoG settings don't apply to dots backend and may cause confusion
+                if self.config.enable_etf_fdog || self.config.enable_flow_tracing || self.config.enable_bezier_fitting {
+                    return Err(ConfigBuilderError::ValidationFailed(
+                        "ETF/FDoG, flow tracing, and Bézier fitting are not supported by the Dots backend".to_string(),
+                    ));
+                }
+                
+                // Centerline settings don't apply
+                if self.config.enable_adaptive_threshold != TraceLowConfig::default().enable_adaptive_threshold
+                    || self.config.enable_width_modulation != TraceLowConfig::default().enable_width_modulation {
+                    // Settings will be ignored but not an error
+                }
+                
+                // Superpixel settings don't apply
+                if self.num_superpixels.is_some() || self.compactness.is_some() {
+                    // Settings will be ignored but not an error
+                }
+            }
+            TraceBackend::Superpixel => {
+                // ETF/FDoG settings don't apply to superpixel backend
+                if self.config.enable_etf_fdog || self.config.enable_flow_tracing || self.config.enable_bezier_fitting {
+                    return Err(ConfigBuilderError::ValidationFailed(
+                        "ETF/FDoG, flow tracing, and Bézier fitting are not supported by the Superpixel backend".to_string(),
+                    ));
+                }
+                
+                // Dot settings don't apply
+                if self.config.dot_density_threshold != TraceLowConfig::default().dot_density_threshold {
+                    // Settings will be ignored but not an error
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Validate numeric ranges and prevent division by zero
+    fn validate_numeric_ranges(&self) -> ConfigBuilderResult<()> {
+        // Check for potential division by zero in various calculations
+        if self.config.stroke_px_at_1080p <= 0.0 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "Stroke width must be positive to prevent division by zero".to_string(),
+            ));
+        }
+
+        if self.config.fdog_sigma_s <= 0.0 || self.config.fdog_sigma_c <= 0.0 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "FDoG sigma values must be positive".to_string(),
+            ));
+        }
+
+        if self.config.etf_radius == 0 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "ETF radius must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.config.trace_max_len == 0 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "Maximum polyline length must be greater than 0".to_string(),
+            ));
+        }
+
+        // Validate threshold relationships
+        if self.config.nms_low >= self.config.nms_high {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "NMS low threshold must be less than high threshold".to_string(),
+            ));
+        }
+
+        // Validate dot size relationships
+        if self.config.dot_min_radius >= self.config.dot_max_radius {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "Minimum dot radius must be less than maximum dot radius".to_string(),
+            ));
+        }
+
+        // Validate adaptive threshold window size is odd (required by algorithm)
+        if self.config.adaptive_threshold_window_size % 2 == 0 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "Adaptive threshold window size must be odd".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Validate multipass logic consistency
+    fn validate_multipass_logic(&self) -> ConfigBuilderResult<()> {
+        // If multipass is enabled, pass_count should be > 1
+        if self.config.enable_multipass && self.config.pass_count <= 1 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "Multipass enabled but pass_count is 1 - either disable multipass or increase pass_count".to_string(),
+            ));
+        }
+
+        // If pass_count > 1, multipass should be enabled
+        if self.config.pass_count > 1 && !self.config.enable_multipass {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "Pass count > 1 but multipass disabled - either enable multipass or set pass_count to 1".to_string(),
+            ));
+        }
+
+        // Conservative/aggressive detail levels only make sense with multipass
+        if (self.config.conservative_detail.is_some() || self.config.aggressive_detail.is_some())
+            && !self.config.enable_multipass {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "Conservative/aggressive detail settings require multipass processing to be enabled".to_string(),
+            ));
+        }
+
+        // Reverse/diagonal passes only make sense with multipass for backends that support them
+        if self.config.enable_reverse_pass || self.config.enable_diagonal_pass {
+            match self.config.backend {
+                TraceBackend::Dots | TraceBackend::Superpixel => {
+                    return Err(ConfigBuilderError::ValidationFailed(
+                        "Reverse and diagonal passes are not supported by Dots and Superpixel backends".to_string(),
+                    ));
+                }
+                _ => {
+                    if !self.config.enable_multipass {
+                        return Err(ConfigBuilderError::ValidationFailed(
+                            "Reverse and diagonal passes require multipass processing to be enabled".to_string(),
+                        ));
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Validate memory safety constraints
+    fn validate_memory_safety(&self) -> ConfigBuilderResult<()> {
+        // Check for memory exhaustion vectors
+        if self.config.max_image_size > 16384 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "Maximum image size exceeds memory safety limit (16384 pixels)".to_string(),
+            ));
+        }
+
+        // Check for potential memory exhaustion in superpixel backend
+        if self.config.backend == TraceBackend::Superpixel {
+            let num_superpixels = self.num_superpixels.unwrap_or(self.config.num_superpixels);
+            if num_superpixels > 2000 {
+                return Err(ConfigBuilderError::ValidationFailed(
+                    "Number of superpixels exceeds memory safety limit (2000)".to_string(),
+                ));
+            }
+            
+            // Check SLIC iterations don't cause timeout
+            let slic_iterations = self.slic_iterations.unwrap_or(self.config.superpixel_slic_iterations);
+            if slic_iterations > 50 {
+                return Err(ConfigBuilderError::ValidationFailed(
+                    "SLIC iterations exceed reasonable limit (50)".to_string(),
+                ));
+            }
+        }
+
+        // Check ETF iterations for reasonable bounds
+        if self.config.etf_iterations > 20 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "ETF iterations exceed reasonable limit (20)".to_string(),
+            ));
+        }
+
+        // Check trace max length for memory safety
+        if self.config.trace_max_len > 1_000_000 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "Maximum trace length exceeds memory safety limit (1,000,000)".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Validate hand-drawn custom overrides
+    fn validate_hand_drawn_overrides(&self) -> ConfigBuilderResult<()> {
         if (self.custom_tremor.is_some()
             || self.custom_variable_weights.is_some()
             || self.custom_tapering.is_some())
@@ -1201,6 +1452,60 @@ mod tests {
         // Custom tapering without preset
         let result = ConfigBuilder::new().custom_tapering(0.5).unwrap().build();
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_comprehensive_validation() {
+        // Test backend-specific validation
+        let result = ConfigBuilder::new()
+            .backend(TraceBackend::Dots)
+            .enable_etf_fdog(true)
+            .build();
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert!(e.to_string().contains("not supported by the Dots backend"));
+        }
+
+        // Test multipass consistency
+        let result = ConfigBuilder::new()
+            .multipass(true)
+            .pass_count(1)
+            .unwrap()
+            .build();
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert!(e.to_string().contains("Multipass enabled but pass_count is 1"));
+        }
+
+        // Test memory safety - parameter validation catches excessive values
+        let result = ConfigBuilder::new()
+            .max_image_size(20000);
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert!(e.to_string().contains("Maximum image size"));
+        }
+
+        // Test memory safety validation works - should pass since 8000 is within parameter limits (512-8192) and memory limits (<16384)
+        let result = ConfigBuilder::new()
+            .max_image_size(8000)
+            .unwrap()
+            .build();
+        assert!(result.is_ok(), "Max image size 8000 should be valid");
+
+        // Test numeric range validation (odd window size)
+        let config = ConfigBuilder::new()
+            .window_size(20)
+            .unwrap()
+            .build()
+            .unwrap();
+        assert_eq!(config.adaptive_threshold_window_size, 21); // Auto-corrected to odd
+
+        // Test zero stroke width protection
+        let result = ConfigBuilder::new().stroke_width(0.0);
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert!(e.to_string().contains("positive"));
+        }
     }
 
     #[test]

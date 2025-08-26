@@ -741,7 +741,8 @@ export interface InitOutput {
   readonly wasmvectorizer_set_enable_etf_fdog: (a: number, b: number) => void;
   readonly wasmvectorizer_set_enable_flow_tracing: (a: number, b: number) => void;
   readonly wasmvectorizer_set_enable_bezier_fitting: (a: number, b: number) => void;
-  readonly wasmvectorizer_set_max_processing_time_ms: (a: number, b: bigint) => void;
+  readonly wasmvectorizer_set_max_processing_time_ms: (a: number, b: bigint) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder22max_processing_time_ms17h69994f140a580287E: (a: number, b: number, c: bigint) => void;
   readonly _ZN60_$LT$u64$u20$as$u20$wasm_bindgen..describe..WasmDescribe$GT$8describe17h6d61dab76f70d48dE: () => void;
   readonly wasmvectorizer_set_noise_filter_spatial_sigma: (a: number, b: number) => [number, number];
   readonly _ZN4core3fmt5float52_$LT$impl$u20$core..fmt..Display$u20$for$u20$f32$GT$3fmt17h961bde8f698d7feaE: (a: number, b: number) => number;
@@ -1196,6 +1197,10 @@ export interface InitOutput {
   readonly _ZN14vectorize_core6config10validation20validate_color_count17hb982374b6676e0e7E: (a: number, b: number) => void;
   readonly _ZN14vectorize_core6config10validation19validate_iterations17hc88f3d506b073c14E: (a: number, b: number) => void;
   readonly _ZN14vectorize_core6config10validation18validate_tolerance17h6f2b5820cb9492deE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core6config10validation19validate_fdog_sigma17hfb97c7116371ca39E: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core6config10validation23validate_nms_thresholds17h358ac11c8e126427E: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core6config10validation23validate_dot_size_range17hb844117477d70e01E: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core6config10validation26validate_superpixel_config17hef2aae32891d2ea0E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN4core5slice5index24slice_end_index_len_fail17h26e926f109887fb8E: (a: number, b: number, c: number) => void;
   readonly _ZN4core5slice5index22slice_index_order_fail17he4708bd4c2f516cbE: (a: number, b: number, c: number) => void;
   readonly _ZN4core3num7dec2flt60_$LT$impl$u20$core..str..traits..FromStr$u20$for$u20$f32$GT$8from_str17h7a48c59568e75144E: (a: number, b: number, c: number) => void;

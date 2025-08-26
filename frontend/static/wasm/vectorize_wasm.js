@@ -1456,7 +1456,10 @@ export class WasmVectorizer {
      * @param {bigint} time_ms
      */
     set_max_processing_time_ms(time_ms) {
-        wasm.wasmvectorizer_set_max_processing_time_ms(this.__wbg_ptr, time_ms);
+        const ret = wasm.wasmvectorizer_set_max_processing_time_ms(this.__wbg_ptr, time_ms);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
     }
     /**
      * Set spatial sigma for bilateral noise filtering (0.5-5.0, higher = more smoothing)
@@ -8644,11 +8647,11 @@ function __wbg_get_imports() {
         const ret = result;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1971 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1972 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 86, __wbg_adapter_96);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1973 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1974 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 86, __wbg_adapter_96);
         return ret;
     };
