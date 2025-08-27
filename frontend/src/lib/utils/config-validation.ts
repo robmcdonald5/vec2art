@@ -198,6 +198,16 @@ export function validateDependencies(config: VectorizerConfig): DependencyError[
 		});
 	}
 
+	// Multipass enabled requires pass_count > 1
+	if (config.multipass && config.pass_count <= 1) {
+		errors.push({
+			field: 'pass_count',
+			message: 'Multipass enabled but pass count is 1 - either disable multipass or increase pass count',
+			requiredFields: ['pass_count'],
+			severity: 'error'
+		});
+	}
+
 	return errors;
 }
 
@@ -357,6 +367,17 @@ export function validateNumericRanges(config: VectorizerConfig): ValidationError
 		});
 	}
 
+	// Pass count validation - now supports full range with optimized deduplication  
+	if (config.pass_count && config.pass_count > 10) {
+		errors.push({
+			field: 'pass_count',
+			message: 'Pass count must be 10 or lower',
+			max: 10,
+			actual: config.pass_count,
+			severity: 'error'
+		});
+	}
+
 	return errors;
 }
 
@@ -380,6 +401,16 @@ export function sanitizeConfig(config: VectorizerConfig): VectorizerConfig {
 	if (sanitized.window_size !== undefined 
 		&& sanitized.window_size % 2 === 0) {
 		sanitized.window_size += 1;
+	}
+
+	// Auto-correct multipass/pass_count consistency
+	if (sanitized.multipass && sanitized.pass_count <= 1) {
+		sanitized.pass_count = 2; // Minimum for multipass
+	}
+
+	// Auto-correct pass_count to maximum supported value
+	if (sanitized.pass_count && sanitized.pass_count > 10) {
+		sanitized.pass_count = 10; // Maximum supported
 	}
 
 	// Clamp artistic effects

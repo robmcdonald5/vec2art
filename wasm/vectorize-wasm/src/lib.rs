@@ -1029,6 +1029,10 @@ impl WasmVectorizer {
         let result = vectorize_trace_low_rgba(&img_buffer, &config, hand_drawn_config.as_ref())
             .map_err(|e| JsValue::from_str(&format!("Vectorization failed: {e}")))?;
 
+        // REMOVED: Thread pool reset was causing corruption, not preventing it
+        // wasm-bindgen-rayon uses .build_global() and provides no proper cleanup mechanism
+        // Multiple init_thread_pool() calls create corrupted global state
+
         // Report progress: Complete
         if let Some(ref cb) = callback {
             let svg_size = result.len();
@@ -1281,6 +1285,71 @@ pub fn get_preset_description(preset: &str) -> Result<String, JsValue> {
 // ==============================================================================
 // Global Threading Control Functions
 // ==============================================================================
+
+/// Reset thread pool state to prevent memory corruption in high multipass scenarios
+/// Perform complete thread pool reset to prevent memory corruption in high multipass scenarios
+/// This performs a complete reset by forcing re-initialization of the wasm-bindgen-rayon thread pool
+#[wasm_bindgen]
+pub fn reset_thread_pool() -> JsValue {
+    #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
+    {
+        log::info!("Performing complete thread pool reset to prevent memory corruption");
+        
+        // Step 1: Reset local state tracking
+        if let Ok(mut state) = THREADING_STATE.lock() {
+            state.mode = PerformanceMode::Unknown;
+            state.last_init_time_ms = None;
+            state.fallback_reason = Some("Complete reset requested".to_string());
+        }
+        
+        // Step 2: Reset atomic thread pool state in threading module  
+        crate::threading::mark_threading_failed(); // Mark as failed to force re-init
+        
+        // Step 3: Re-initialize the actual wasm-bindgen-rayon thread pool
+        let thread_count = crate::threading::get_available_parallelism();
+        log::info!("Re-initializing thread pool with {} threads after reset", thread_count);
+        
+        // Return the actual wasm-bindgen-rayon initialization promise
+        // This ensures the thread pool workers are completely recreated
+        let init_promise = wasm_bindgen_rayon::init_thread_pool(thread_count);
+        
+        // The frontend worker should await this promise and call confirm_threading_success()
+        return init_promise.into();
+    }
+    
+    #[cfg(not(all(target_arch = "wasm32", feature = "wasm-parallel")))]
+    JsValue::from_str("thread pool reset not applicable in single-threaded mode")
+}
+
+/// Cleanup and reset thread pool after intensive operations
+/// This helps prevent the "every other failure" issue with high pass counts
+#[wasm_bindgen] 
+pub fn cleanup_after_multipass() -> JsValue {
+    #[cfg(all(target_arch = "wasm32", feature = "wasm-parallel"))]
+    {
+        log::debug!("Cleaning up thread pool state after multipass operation");
+        
+        // Force garbage collection if available
+        if let Ok(window) = web_sys::window().ok_or(JsValue::NULL) {
+            if let Ok(gc) = js_sys::Reflect::get(&window, &JsValue::from_str("gc")) {
+                if gc.is_function() {
+                    let _ = js_sys::Function::from(gc).call0(&window);
+                }
+            }
+        }
+        
+        // Reset internal state tracking
+        if let Ok(mut state) = THREADING_STATE.lock() {
+            // Clear any accumulated error state but keep the pool active
+            state.fallback_reason = None;
+        }
+        
+        return js_sys::Promise::resolve(&JsValue::from_str("cleanup complete")).into();
+    }
+    
+    #[cfg(not(all(target_arch = "wasm32", feature = "wasm-parallel")))]
+    JsValue::from_str("cleanup not needed in single-threaded mode")
+}
 
 /// Legacy function - use initThreadPool() directly from JavaScript instead
 /// This is kept for compatibility but just logs a warning

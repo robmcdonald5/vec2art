@@ -274,6 +274,23 @@ function configureVectorizer(config: any) {
 	if ((config.reverse_pass || config.diagonal_pass) && !config.multipass) {
 		console.log('[Worker] 🔧 Auto-enabling multipass for reverse/diagonal passes (WASM requirement)');
 		config.multipass = true;
+		// Ensure pass_count is > 1 when multipass is enabled
+		if (config.pass_count <= 1) {
+			console.log('[Worker] 🔧 Auto-setting pass_count to 2 for multipass (WASM requirement)');
+			config.pass_count = 2;
+		}
+	}
+
+	// General validation: multipass enabled but pass_count is 1
+	if (config.multipass && config.pass_count <= 1) {
+		console.log('[Worker] 🔧 Auto-correcting pass_count to 2 for multipass consistency (WASM requirement)');
+		config.pass_count = 2;
+	}
+
+	// Validate pass count is within supported range 
+	if (config.pass_count && config.pass_count > 10) {
+		console.log('[Worker] 🔧 Auto-limiting pass_count to 10 (maximum supported)');
+		config.pass_count = 10;
 	}
 
 	// Apply core boolean configuration options
@@ -846,6 +863,13 @@ async function processImage() {
 				}
 			}
 		});
+
+		// REMOVED: Thread pool cleanup was causing the "every other failure" corruption
+		// Research shows wasm-bindgen-rayon provides no proper cleanup mechanism  
+		// Multiple init_thread_pool() calls create corrupted global state in .build_global()
+		// Solution: Single thread pool lifetime - initialize once, reuse throughout app
+		console.log(`[Worker] ✅ ${currentConfig.pass_count}-pass operation completed without reset`);
+		console.log(`[Worker] 📊 Thread pool reused (single lifetime strategy)`);
 
 		console.log('[Worker] Vectorization complete');
 		return { success: true, svg };

@@ -202,7 +202,7 @@
 		positionTooltip();
 
 		return () => {
-			if (tooltipContent && portalTarget.contains(tooltipContent)) {
+			if (tooltipContent && portalTarget?.contains(tooltipContent)) {
 				portalTarget.removeChild(tooltipContent);
 			}
 		};

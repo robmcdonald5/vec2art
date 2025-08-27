@@ -39,6 +39,19 @@ if [ $? -eq 0 ]; then
     echo "  → Fixing worker context check..."
     find snippets/ -name "workerHelpers.js" -exec sed -i 's|if (name === "wasm_bindgen_worker")|if (typeof self !== '\''undefined'\'' \&\& self.name === "wasm_bindgen_worker")|g' {} \;
     
+    # Fix 4: Clean up corrupted TypeScript definitions (wasm-bindgen bug with complex symbols)
+    echo "  → Cleaning TypeScript definitions..."
+    if grep -q "_ZN.*\$.*E:" vectorize_wasm.d.ts; then
+        echo "    ⚠️  Detected corrupted TypeScript definitions, fixing..."
+        # Remove problematic symbol definitions that cause TypeScript parsing errors
+        sed -i '/readonly _ZN.*\$.*E:/d' vectorize_wasm.d.ts
+        # Also remove any malformed interface entries
+        sed -i '/^[[:space:]]*readonly.*\$.*:.*$/d' vectorize_wasm.d.ts
+        echo "    ✅ TypeScript definitions cleaned"
+    else
+        echo "    ✅ TypeScript definitions are clean"
+    fi
+    
     echo "📁 Synchronizing to static directory..."
     cd ../../../
     mkdir -p static/wasm

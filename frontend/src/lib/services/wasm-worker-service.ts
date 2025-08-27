@@ -227,6 +227,13 @@ export class WasmWorkerService {
 				});
 			}
 
+			// Use isolated worker for high-intensity operations (7+ passes)
+			// This prevents thread pool corruption during intensive multipass processing
+			if (config.pass_count >= 7) {
+				console.log('[WasmWorkerService] High-intensity operation detected, using isolated worker');
+				return this.processImageWithIsolatedWorker(imageData, config, onProgress);
+			}
+
 			return this.processImageInternal(imageData, config, onProgress);
 		});
 	}
@@ -295,6 +302,113 @@ export class WasmWorkerService {
 			throw processingError;
 		} finally {
 			this.progressCallback = null;
+		}
+	}
+
+
+	/**
+	 * Process image with isolated worker for high-intensity operations
+	 * Creates a fresh worker instance to prevent thread pool corruption
+	 */
+	private async processImageWithIsolatedWorker(
+		imageData: ImageData,
+		config: VectorizerConfig,
+		onProgress?: (progress: ProcessingProgress) => void
+	): Promise<ProcessingResult> {
+		let isolatedWorker: Worker | null = null;
+		const pendingMessages = new Map<string, { resolve: (value: any) => void; reject: (reason: any) => void }>();
+		
+		try {
+			console.log('[WasmWorkerService] 🚀 Creating isolated worker for high-intensity operation');
+			
+			// Create fresh isolated worker
+			isolatedWorker = new Worker(new URL('../workers/wasm-processor.worker.ts', import.meta.url), {
+				type: 'module'
+			});
+
+			// Set up isolated worker message handler
+			isolatedWorker.addEventListener('message', (event) => {
+				const { type, id, data, error } = event.data;
+
+				if (type === 'progress' && onProgress) {
+					onProgress(data);
+					return;
+				}
+
+				const pending = pendingMessages.get(id);
+				if (pending) {
+					pendingMessages.delete(id);
+					if (error) {
+						pending.reject(new Error(error));
+					} else {
+						pending.resolve(data);
+					}
+				}
+			});
+
+			// Set up isolated worker error handler
+			isolatedWorker.addEventListener('error', (error) => {
+				console.error('[WasmWorkerService] Isolated worker error:', error);
+				// Reject all pending promises
+				for (const [id, pending] of pendingMessages) {
+					pending.reject(new Error(`Isolated worker error: ${error.message}`));
+				}
+				pendingMessages.clear();
+			});
+
+			// Helper function to send message to isolated worker
+			const sendIsolatedMessage = (type: string, payload?: any): Promise<any> => {
+				return new Promise((resolve, reject) => {
+					const id = generateMessageId();
+					pendingMessages.set(id, { resolve, reject });
+					
+					isolatedWorker!.postMessage({ type, id, payload });
+					
+					// Timeout for isolated worker operations (longer for high-intensity)
+					const timeout = config.pass_count >= 8 ? 120000 : 60000; // 2min for 8+, 1min for 7
+					setTimeout(() => {
+						if (pendingMessages.has(id)) {
+							pendingMessages.delete(id);
+							reject(new Error(`Isolated worker operation timeout after ${timeout}ms`));
+						}
+					}, timeout);
+				});
+			};
+
+			// Initialize isolated worker WASM
+			console.log('[WasmWorkerService] 🔧 Initializing isolated worker WASM module');
+			await sendIsolatedMessage('init', {
+				threadCount: config.thread_count || 1,
+				backend: config.backend
+			});
+
+			// Process with isolated worker
+			console.log('[WasmWorkerService] 🎯 Processing with isolated worker');
+			const plainConfig = JSON.parse(JSON.stringify(config));
+			
+			const result = await sendIsolatedMessage('process', {
+				imageData: {
+					data: Array.from(imageData.data),
+					width: imageData.width,
+					height: imageData.height
+				},
+				config: plainConfig
+			});
+
+			console.log('[WasmWorkerService] ✅ Isolated worker processing complete');
+			return result;
+
+		} catch (error) {
+			console.error('[WasmWorkerService] Isolated worker processing failed:', error);
+			throw error;
+		} finally {
+			// Clean up isolated worker
+			if (isolatedWorker) {
+				console.log('[WasmWorkerService] 🧹 Terminating isolated worker');
+				isolatedWorker.terminate();
+				isolatedWorker = null;
+			}
+			pendingMessages.clear();
 		}
 	}
 

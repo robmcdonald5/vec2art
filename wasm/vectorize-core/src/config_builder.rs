@@ -1160,6 +1160,8 @@ impl ConfigBuilder {
                             "Reverse and diagonal passes require multipass processing to be enabled".to_string(),
                         ));
                     }
+                    // No additional constraints needed - deduplication algorithm is now optimized
+                    log::debug!("Directional passes enabled with {} passes", self.config.pass_count);
                 }
             }
         }
@@ -1173,6 +1175,13 @@ impl ConfigBuilder {
         if self.config.max_image_size > 16384 {
             return Err(ConfigBuilderError::ValidationFailed(
                 "Maximum image size exceeds memory safety limit (16384 pixels)".to_string(),
+            ));
+        }
+
+        // Pass count validation - allow full range now that deduplication is optimized
+        if self.config.pass_count > 10 {
+            return Err(ConfigBuilderError::ValidationFailed(
+                "Pass count must be 10 or lower".to_string(),
             ));
         }
 
