@@ -188,7 +188,9 @@
 					<!-- Brand Section -->
 					<div class="lg:col-span-1">
 						<div class="mb-6 flex items-center">
-							<h3 class="footer-gradient-text text-3xl font-bold">vec2art</h3>
+							<a href="/" class="hover:animate-ferrari-glow transition-all duration-300">
+								<h3 class="footer-gradient-text text-3xl font-bold">vec2art</h3>
+							</a>
 						</div>
 						<p class="mb-6 max-w-sm text-sm leading-relaxed text-gray-300">
 							Transform any image into beautiful SVG art using advanced vectorization algorithms
@@ -279,11 +281,17 @@
 						<h4 class="mb-4 text-sm font-semibold tracking-wider text-white uppercase">Support</h4>
 						<ul class="space-y-3">
 							<li>
-								<span class="cursor-not-allowed text-sm text-gray-500">Contact (Coming Soon)</span>
+								<a
+									href="/contact"
+									class="text-sm text-gray-300 transition-colors duration-200 hover:text-white"
+									>Contact</a
+								>
 							</li>
 							<li>
-								<span class="cursor-not-allowed text-sm text-gray-500"
-									>Issues Page (Coming Soon)</span
+								<a
+									href="/contact#bug-reports"
+									class="text-sm text-gray-300 transition-colors duration-200 hover:text-white"
+									>Issues Page</a
 								>
 							</li>
 							<li>
@@ -305,12 +313,12 @@
 				<div class="flex flex-col items-center justify-between gap-4 md:flex-row">
 					<p class="text-sm text-gray-400">© 2025 vec2art. Powered by Rust + WebAssembly.</p>
 					<div class="flex gap-6">
-						<span class="cursor-not-allowed text-sm text-gray-500"
-							>Privacy Policy (Coming Soon)</span
-						>
-						<span class="cursor-not-allowed text-sm text-gray-500"
-							>Terms of Service (Coming Soon)</span
-						>
+						<a href="/info#privacy-policy" class="text-sm text-gray-400 hover:text-gray-300 transition-colors">
+							Privacy Policy
+						</a>
+						<a href="/info#terms-of-service" class="text-sm text-gray-400 hover:text-gray-300 transition-colors">
+							Terms of Service
+						</a>
 					</div>
 				</div>
 			</div>
