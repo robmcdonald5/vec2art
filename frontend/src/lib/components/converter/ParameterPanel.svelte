@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Sliders, Eye, PenTool, Filter, AlertTriangle } from 'lucide-svelte';
+	import { Sliders, Eye, PenTool, Filter, AlertTriangle, Grid3X3 } from 'lucide-svelte';
 	import type { VectorizerConfig, HandDrawnPreset } from '$lib/types/vectorizer';
 	import { HAND_DRAWN_DESCRIPTIONS } from '$lib/types/vectorizer';
 	import { CustomSelect } from '$lib/components/ui/custom-select';
@@ -73,6 +73,12 @@
 		// PROPER ARCHITECTURE: Always use generic parameters
 		// The WASM worker will handle backend-specific mapping using the architectural system
 		onConfigChange({ stroke_width: value });
+		onParameterChange?.();
+	}
+
+	function handleInitializationPatternChange(value: string) {
+		console.log(`[ParameterPanel] Initialization pattern changed to: ${value}`);
+		onConfigChange({ initialization_pattern: value });
 		onParameterChange?.();
 	}
 
@@ -387,6 +393,69 @@
 				<div id="region-complexity-desc" class="text-converter-muted text-xs">
 					Controls the number of regions in the superpixel segmentation. Higher values create more
 					detailed segmentation.
+				</div>
+			</div>
+
+			<!-- Shape Regularity (Compactness) for Superpixel -->
+			<div class="space-y-2">
+				<div class="flex items-center justify-between">
+					<label
+						for="shape-regularity"
+						class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+					>
+						<Grid3X3 class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+						Shape Regularity
+					</label>
+					<span
+						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+						aria-live="polite">{config.compactness || 15}</span
+					>
+				</div>
+				<input
+					id="shape-regularity"
+					type="range"
+					min="5"
+					max="40"
+					step="5"
+					value={config.compactness || 15}
+					onchange={handleRangeChange('compactness')}
+					oninput={handleRangeChange('compactness')}
+					{disabled}
+					class="slider-ferrari w-full"
+					aria-describedby="shape-regularity-desc"
+					use:initializeSliderFill
+				/>
+				<div id="shape-regularity-desc" class="text-converter-muted text-xs">
+					Controls shape vs color trade-off. Lower = color-adaptive regions, Higher = regular geometric shapes.
+					Use lower values to reduce diagonal artifacts.
+				</div>
+			</div>
+
+			<!-- Initialization Pattern for Superpixel -->
+			<div class="space-y-2">
+				<label for="initialization-pattern" class="text-converter-primary flex items-center gap-2 text-sm font-medium">
+					<Grid3X3 class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+					Initialization Pattern
+				</label>
+				<CustomSelect
+					id="initialization-pattern"
+					value={config.initialization_pattern || 'poisson'}
+					onchange={handleInitializationPatternChange}
+					{disabled}
+					options={[
+						{ value: 'square', label: 'Square Grid', description: 'Traditional grid pattern - may create diagonal artifacts' },
+						{ value: 'hexagonal', label: 'Hexagonal', description: 'Reduces diagonal artifacts, more natural clustering' },
+						{ value: 'poisson', label: 'Poisson Disk', description: 'Random distribution, eliminates grid artifacts' }
+					]}
+				>
+					<span slot="selectedLabel">
+						{config.initialization_pattern === 'square' ? 'Square Grid' : 
+						 config.initialization_pattern === 'hexagonal' ? 'Hexagonal' :
+						 config.initialization_pattern === 'poisson' ? 'Poisson Disk' : 'Poisson Disk'}
+					</span>
+				</CustomSelect>
+				<div class="text-converter-muted text-xs">
+					Controls how superpixel centers are initially placed. Poisson disk sampling provides the best artifact reduction.
 				</div>
 			</div>
 		{/if}

@@ -157,6 +157,17 @@ pub enum BackgroundRemovalAlgorithm {
     Auto,
 }
 
+/// Superpixel cluster initialization patterns for SLIC algorithm
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum SuperpixelInitPattern {
+    /// Traditional square grid - may create diagonal artifacts
+    Square,
+    /// Hexagonal packing - reduces diagonal artifacts, more natural clustering
+    Hexagonal,
+    /// Poisson disk sampling - random distribution, eliminates grid artifacts
+    Poisson,
+}
+
 /// Configuration for trace-low algorithms
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TraceLowConfig {
@@ -264,6 +275,8 @@ pub struct TraceLowConfig {
     pub superpixel_compactness: f32,
     /// SLIC iterations for convergence (5-15, default: 10)
     pub superpixel_slic_iterations: u32,
+    /// Superpixel cluster initialization pattern (default: hexagonal)
+    pub superpixel_initialization_pattern: SuperpixelInitPattern,
     /// Whether to fill superpixel regions with solid color (default: true)
     pub superpixel_fill_regions: bool,
     /// Whether to stroke superpixel region boundaries (default: true)
@@ -366,6 +379,7 @@ impl Default for TraceLowConfig {
             num_superpixels: 150, // Default region complexity for balanced detail
             superpixel_compactness: 10.0, // Balanced shape vs color similarity
             superpixel_slic_iterations: 10, // Standard convergence iterations
+            superpixel_initialization_pattern: SuperpixelInitPattern::Poisson, // Default to best artifact-reducing pattern
             superpixel_fill_regions: true, // Default to filled poster-style look
             superpixel_stroke_regions: true, // Include boundaries for definition
             superpixel_simplify_boundaries: true, // Simplified paths for cleaner output
@@ -1679,22 +1693,10 @@ fn trace_superpixel(
         superpixel_count
     };
 
-    // Use adaptive compactness to prevent grid artifacts at high superpixel counts
-    // Research shows: high compactness + high K = rectangular grid patterns
-    // Solution: decrease compactness as superpixel density increases
-    let base_compactness = config.superpixel_compactness;
-    let superpixel_density = superpixel_count as f32 / (total_pixels as f32 / 10000.0); // superpixels per 10k pixels
-    let compactness_reduction = (superpixel_density - 1.0).max(0.0) * 0.1; // Reduce by 0.1 for each unit above 1.0
-    let superpixel_compactness = (base_compactness - compactness_reduction).max(0.1); // Never go below 0.1
+    // Use configured compactness with minimal adaptation
+    let superpixel_compactness = config.superpixel_compactness;
 
-    if superpixel_compactness != base_compactness {
-        log::info!(
-            "Adaptive compactness: {:.2} → {:.2} (density: {:.2})",
-            base_compactness,
-            superpixel_compactness,
-            superpixel_density
-        );
-    }
+    // Using fixed compactness value from configuration
 
     log::info!(
         "Starting SLIC superpixel segmentation: {}×{} → {} superpixels (detail: {:.2})",
@@ -1718,6 +1720,7 @@ fn trace_superpixel(
         superpixel_count,
         superpixel_compactness,
         config.superpixel_slic_iterations as usize, // Use configured iterations
+        config.superpixel_initialization_pattern, // Pass the pattern
     );
     log::debug!("SLIC segmentation: {:?}", phase_start.elapsed());
 
@@ -1781,12 +1784,10 @@ impl SlicCluster {
     }
 
     fn distance(&self, other_lab: &LabColor, other_x: f32, other_y: f32, compactness: f32) -> f32 {
-        // Color distance in LAB space
+        // Standard SLIC distance calculation
         let color_dist = self.lab.distance_to(other_lab);
-
-        // Spatial distance
         let spatial_dist = ((self.x - other_x).powi(2) + (self.y - other_y).powi(2)).sqrt();
-
+        
         // Combined distance with compactness weighting
         color_dist + compactness * spatial_dist
     }
@@ -1813,6 +1814,240 @@ struct SuperpixelRegion {
     area: usize,
 }
 
+/// Refine cluster centers to positions with lowest gradient magnitude
+/// This prevents clusters from being centered on edges and creates more uniform regions
+fn refine_cluster_centers(
+    clusters: &mut [SlicCluster],
+    lab_image: &[LabColor],
+    width: usize,
+    height: usize,
+    _search_window: usize,
+) {
+    for cluster in clusters.iter_mut() {
+        let center_x = cluster.x as usize;
+        let center_y = cluster.y as usize;
+        
+        // Search in 3x3 neighborhood for lowest gradient position
+        let mut min_gradient = f32::INFINITY;
+        let mut best_x = center_x;
+        let mut best_y = center_y;
+        
+        let search_radius = 1; // Search in 3x3 window
+        
+        for dy in -(search_radius as i32)..=(search_radius as i32) {
+            for dx in -(search_radius as i32)..=(search_radius as i32) {
+                let nx = (center_x as i32 + dx) as usize;
+                let ny = (center_y as i32 + dy) as usize;
+                
+                // Skip out-of-bounds positions
+                if nx == 0 || ny == 0 || nx >= width - 1 || ny >= height - 1 {
+                    continue;
+                }
+                
+                // Compute gradient magnitude using LAB color differences
+                let idx = ny * width + nx;
+                let idx_left = ny * width + (nx - 1);
+                let idx_right = ny * width + (nx + 1);
+                let idx_up = (ny - 1) * width + nx;
+                let idx_down = (ny + 1) * width + nx;
+                
+                if idx_right < lab_image.len() && idx_down < lab_image.len() {
+                    let grad_x = lab_image[idx_right].distance_to(&lab_image[idx_left]);
+                    let grad_y = lab_image[idx_down].distance_to(&lab_image[idx_up]);
+                    let gradient = (grad_x * grad_x + grad_y * grad_y).sqrt();
+                    
+                    if gradient < min_gradient {
+                        min_gradient = gradient;
+                        best_x = nx;
+                        best_y = ny;
+                    }
+                }
+            }
+        }
+        
+        // Update cluster center to lowest gradient position
+        if best_x != center_x || best_y != center_y {
+            cluster.x = best_x as f32;
+            cluster.y = best_y as f32;
+            let idx = best_y * width + best_x;
+            if idx < lab_image.len() {
+                cluster.lab = lab_image[idx];
+            }
+        }
+    }
+}
+
+/// Initialize cluster centers using different patterns to reduce grid artifacts
+fn initialize_cluster_centers(
+    lab_image: &[LabColor],
+    width: usize,
+    height: usize,
+    num_superpixels: usize,
+    s: usize,
+    pattern: SuperpixelInitPattern,
+) -> Vec<SlicCluster> {
+    let mut clusters = Vec::new();
+    let mut cluster_id = 0;
+
+    match pattern {
+        SuperpixelInitPattern::Square => {
+            // Traditional square grid initialization
+            for y in (s / 2..height).step_by(s) {
+                for x in (s / 2..width).step_by(s) {
+                    if cluster_id >= num_superpixels {
+                        break;
+                    }
+
+                    // Light jitter to prevent edge-snapping
+                    let jitter_x = ((x as f32 * 1.7 + y as f32 * 2.3) % 7.0) - 3.5;
+                    let jitter_y = ((y as f32 * 2.1 + x as f32 * 1.9) % 7.0) - 3.5;
+
+                    let jittered_x = ((x as f32 + jitter_x).max(0.0).min((width - 1) as f32)) as usize;
+                    let jittered_y = ((y as f32 + jitter_y).max(0.0).min((height - 1) as f32)) as usize;
+
+                    let idx = jittered_y * width + jittered_x;
+                    if idx < lab_image.len() {
+                        clusters.push(SlicCluster::new(
+                            lab_image[idx],
+                            jittered_x as f32,
+                            jittered_y as f32,
+                        ));
+                        cluster_id += 1;
+                    }
+                }
+                if cluster_id >= num_superpixels {
+                    break;
+                }
+            }
+        },
+        SuperpixelInitPattern::Hexagonal => {
+            // Hexagonal packing to reduce diagonal artifacts
+            let hex_height = (s as f32 * 0.866).round() as usize; // sqrt(3)/2 ≈ 0.866
+            let mut row = 0;
+            
+            for y in (hex_height / 2..height).step_by(hex_height) {
+                let x_offset = if row % 2 == 1 { s / 2 } else { 0 }; // Offset every other row
+                
+                for x in (s / 2 + x_offset..width).step_by(s) {
+                    if cluster_id >= num_superpixels {
+                        break;
+                    }
+
+                    // Light jitter to prevent edge-snapping
+                    let jitter_x = ((x as f32 * 1.7 + y as f32 * 2.3) % 7.0) - 3.5;
+                    let jitter_y = ((y as f32 * 2.1 + x as f32 * 1.9) % 7.0) - 3.5;
+
+                    let jittered_x = ((x as f32 + jitter_x).max(0.0).min((width - 1) as f32)) as usize;
+                    let jittered_y = ((y as f32 + jitter_y).max(0.0).min((height - 1) as f32)) as usize;
+
+                    let idx = jittered_y * width + jittered_x;
+                    if idx < lab_image.len() {
+                        clusters.push(SlicCluster::new(
+                            lab_image[idx],
+                            jittered_x as f32,
+                            jittered_y as f32,
+                        ));
+                        cluster_id += 1;
+                    }
+                }
+                row += 1;
+                if cluster_id >= num_superpixels {
+                    break;
+                }
+            }
+        },
+        SuperpixelInitPattern::Poisson => {
+            // Poisson disk sampling for random but well-distributed points
+            use std::collections::HashSet;
+            
+            let min_distance = (s as f32 * 0.7) as usize; // Minimum distance between points
+            let max_attempts = num_superpixels * 50; // Maximum attempts to find valid positions
+            let mut placed_points: HashSet<(usize, usize)> = HashSet::new();
+            let mut attempt = 0;
+            
+            while cluster_id < num_superpixels && attempt < max_attempts {
+                // Generate random position using deterministic hash (for reproducibility)
+                let hash_x = ((attempt * 73 + 17) % width) as usize;
+                let hash_y = ((attempt * 97 + 23) % height) as usize;
+                
+                // Check if this position is far enough from existing points
+                let mut valid = true;
+                for &(px, py) in &placed_points {
+                    let dx = (hash_x as isize - px as isize).abs() as f32;
+                    let dy = (hash_y as isize - py as isize).abs() as f32;
+                    let distance = (dx * dx + dy * dy).sqrt();
+                    
+                    if distance < min_distance as f32 {
+                        valid = false;
+                        break;
+                    }
+                }
+                
+                if valid {
+                    placed_points.insert((hash_x, hash_y));
+                    
+                    let idx = hash_y * width + hash_x;
+                    if idx < lab_image.len() {
+                        clusters.push(SlicCluster::new(
+                            lab_image[idx],
+                            hash_x as f32,
+                            hash_y as f32,
+                        ));
+                        cluster_id += 1;
+                    }
+                }
+                
+                attempt += 1;
+            }
+            
+            // If we couldn't place enough points with Poisson, fill remaining with regular grid
+            while cluster_id < num_superpixels {
+                let grid_size = (width * height / (num_superpixels - cluster_id)).max(1);
+                let step = (grid_size as f32).sqrt() as usize;
+                
+                for y in (step / 2..height).step_by(step) {
+                    for x in (step / 2..width).step_by(step) {
+                        if cluster_id >= num_superpixels {
+                            break;
+                        }
+                        
+                        // Check if this position conflicts with existing Poisson points
+                        let mut conflict = false;
+                        for &(px, py) in &placed_points {
+                            let dx = (x as isize - px as isize).abs() as f32;
+                            let dy = (y as isize - py as isize).abs() as f32;
+                            let distance = (dx * dx + dy * dy).sqrt();
+                            
+                            if distance < min_distance as f32 / 2.0 {
+                                conflict = true;
+                                break;
+                            }
+                        }
+                        
+                        if !conflict {
+                            let idx = y * width + x;
+                            if idx < lab_image.len() {
+                                clusters.push(SlicCluster::new(
+                                    lab_image[idx],
+                                    x as f32,
+                                    y as f32,
+                                ));
+                                cluster_id += 1;
+                            }
+                        }
+                    }
+                    if cluster_id >= num_superpixels {
+                        break;
+                    }
+                }
+                break; // Safety break to avoid infinite loop
+            }
+        }
+    }
+
+    clusters
+}
+
 /// SLIC superpixel segmentation algorithm
 ///
 /// Implements Simple Linear Iterative Clustering (SLIC) for superpixel segmentation.
@@ -1824,48 +2059,26 @@ fn slic_segmentation(
     num_superpixels: usize,
     compactness: f32,
     max_iterations: usize,
+    initialization_pattern: SuperpixelInitPattern,
 ) -> Vec<usize> {
     // Calculate initial grid spacing
     let total_pixels = width * height;
     let s = ((total_pixels as f32 / num_superpixels as f32).sqrt()) as usize;
     let s = s.max(1); // Ensure minimum spacing of 1
 
-    // Initialize cluster centers with jitter to prevent grid artifacts
-    let mut clusters = Vec::new();
-    let mut cluster_id = 0;
+    // Initialize cluster centers using the specified pattern
+    let mut clusters = initialize_cluster_centers(
+        lab_image,
+        width,
+        height,
+        num_superpixels,
+        s,
+        initialization_pattern,
+    );
 
-    // Use simple deterministic jitter based on position to avoid diagonal patterns
-    let jitter_amount = (s as f32 * 0.25).min(8.0); // Max 25% jitter, capped at 8 pixels
-
-    for y in (s / 2..height).step_by(s) {
-        for x in (s / 2..width).step_by(s) {
-            if cluster_id >= num_superpixels {
-                break;
-            }
-
-            // Apply deterministic jitter to break up grid pattern
-            let jitter_x =
-                ((x * 73 + y * 37) % 256) as f32 / 256.0 * jitter_amount - jitter_amount / 2.0;
-            let jitter_y =
-                ((x * 37 + y * 73) % 256) as f32 / 256.0 * jitter_amount - jitter_amount / 2.0;
-
-            let jittered_x = ((x as f32 + jitter_x).max(0.0).min((width - 1) as f32)) as usize;
-            let jittered_y = ((y as f32 + jitter_y).max(0.0).min((height - 1) as f32)) as usize;
-
-            let idx = jittered_y * width + jittered_x;
-            if idx < lab_image.len() {
-                clusters.push(SlicCluster::new(
-                    lab_image[idx],
-                    jittered_x as f32,
-                    jittered_y as f32,
-                ));
-                cluster_id += 1;
-            }
-        }
-        if cluster_id >= num_superpixels {
-            break;
-        }
-    }
+    // Refine cluster centers to lowest gradient positions (avoids edges)
+    // This is a crucial SLIC step that prevents clusters from starting on edges
+    refine_cluster_centers(&mut clusters, lab_image, width, height, s);
 
     // Initialize labels and distances
     let mut labels = vec![0; total_pixels];

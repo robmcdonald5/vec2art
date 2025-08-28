@@ -49,6 +49,7 @@ pub struct ConfigBuilder {
     num_superpixels: Option<u32>,
     compactness: Option<f32>,
     slic_iterations: Option<u32>,
+    initialization_pattern: Option<String>,
     fill_regions: Option<bool>,
     stroke_regions: Option<bool>,
     simplify_boundaries: Option<bool>,
@@ -75,6 +76,7 @@ impl ConfigBuilder {
             num_superpixels: None,
             compactness: None,
             slic_iterations: None,
+            initialization_pattern: None,
             fill_regions: None,
             stroke_regions: None,
             simplify_boundaries: None,
@@ -446,6 +448,13 @@ impl ConfigBuilder {
         Ok(self)
     }
 
+    /// Set superpixel initialization pattern: "square", "hexagonal", "triangular", or "poisson"
+    pub fn initialization_pattern(mut self, pattern: &str) -> ConfigBuilderResult<Self> {
+        self.validate_initialization_pattern(pattern)?;
+        self.initialization_pattern = Some(pattern.to_string());
+        Ok(self)
+    }
+
     /// Enable or disable filled superpixel regions
     pub fn fill_regions(mut self, enabled: bool) -> Self {
         self.fill_regions = Some(enabled);
@@ -640,6 +649,14 @@ impl ConfigBuilder {
         if let Some(iterations) = self.slic_iterations {
             config.superpixel_slic_iterations = iterations;
         }
+        if let Some(pattern) = &self.initialization_pattern {
+            config.superpixel_initialization_pattern = match pattern.as_str() {
+                "square" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Square,
+                "hexagonal" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal,
+                "poisson" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson,
+                _ => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson, // Default to Poisson (best for artifacts)
+            };
+        }
         if let Some(fill) = self.fill_regions {
             config.superpixel_fill_regions = fill;
         }
@@ -679,6 +696,14 @@ impl ConfigBuilder {
         }
         if let Some(iterations) = self.slic_iterations {
             config.superpixel_slic_iterations = iterations;
+        }
+        if let Some(pattern) = &self.initialization_pattern {
+            config.superpixel_initialization_pattern = match pattern.as_str() {
+                "square" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Square,
+                "hexagonal" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal,
+                "poisson" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson,
+                _ => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson, // Default to Poisson (best for artifacts)
+            };
         }
         if let Some(fill) = self.fill_regions {
             config.superpixel_fill_regions = fill;
@@ -940,6 +965,15 @@ impl ConfigBuilder {
             )));
         }
         Ok(())
+    }
+
+    fn validate_initialization_pattern(&self, pattern: &str) -> ConfigBuilderResult<()> {
+        match pattern {
+            "square" | "hexagonal" | "poisson" => Ok(()),
+            _ => Err(ConfigBuilderError::InvalidParameter(format!(
+                "Invalid initialization pattern: {pattern}. Must be one of: square, hexagonal, poisson"
+            ))),
+        }
     }
 
     fn validate_max_image_size(&self, size: u32) -> ConfigBuilderResult<()> {

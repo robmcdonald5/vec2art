@@ -239,6 +239,7 @@ pub struct ConfigData {
     num_superpixels: u32,
     superpixel_compactness: f32,
     superpixel_slic_iterations: u32,
+    superpixel_initialization_pattern: String,
     superpixel_fill_regions: bool,
     superpixel_stroke_regions: bool,
     superpixel_simplify_boundaries: bool,
@@ -793,6 +794,17 @@ impl WasmVectorizer {
         Ok(())
     }
 
+    /// Set superpixel initialization pattern: "square", "hexagonal", or "poisson"
+    #[wasm_bindgen]
+    pub fn set_initialization_pattern(&mut self, pattern: &str) -> Result<(), JsValue> {
+        self.builder = self
+            .builder
+            .clone()
+            .initialization_pattern(pattern)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(())
+    }
+
     /// Enable or disable filled superpixel regions
     #[wasm_bindgen]
     pub fn set_fill_regions(&mut self, enabled: bool) {
@@ -1109,6 +1121,11 @@ impl WasmVectorizer {
             num_superpixels: config.num_superpixels,
             superpixel_compactness: config.superpixel_compactness,
             superpixel_slic_iterations: config.superpixel_slic_iterations,
+            superpixel_initialization_pattern: match config.superpixel_initialization_pattern {
+                vectorize_core::algorithms::tracing::trace_low::SuperpixelInitPattern::Square => "square".to_string(),
+                vectorize_core::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal => "hexagonal".to_string(),
+                vectorize_core::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson => "poisson".to_string(),
+            },
             superpixel_fill_regions: config.superpixel_fill_regions,
             superpixel_stroke_regions: config.superpixel_stroke_regions,
             superpixel_simplify_boundaries: config.superpixel_simplify_boundaries,
@@ -1174,6 +1191,8 @@ impl WasmVectorizer {
             .map_err(|e| JsValue::from_str(&format!("Compactness error: {e}")))?
             .slic_iterations(config_data.superpixel_slic_iterations)
             .map_err(|e| JsValue::from_str(&format!("SLIC iterations error: {e}")))?
+            .initialization_pattern(&config_data.superpixel_initialization_pattern)
+            .map_err(|e| JsValue::from_str(&format!("Initialization pattern error: {e}")))?
             .fill_regions(config_data.superpixel_fill_regions)
             .stroke_regions(config_data.superpixel_stroke_regions)
             .simplify_boundaries(config_data.superpixel_simplify_boundaries)
