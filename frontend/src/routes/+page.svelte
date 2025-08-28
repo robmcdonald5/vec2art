@@ -288,13 +288,6 @@
 								>
 							</li>
 							<li>
-								<a
-									href="/contact#bug-reports"
-									class="text-sm text-gray-300 transition-colors duration-200 hover:text-white"
-									>Issues Page</a
-								>
-							</li>
-							<li>
 								<span class="cursor-not-allowed text-sm text-gray-500">Community (Coming Soon)</span
 								>
 							</li>

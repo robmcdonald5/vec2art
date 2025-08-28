@@ -1,13 +1,553 @@
 <script lang="ts">
-	import { MessageCircle, Bug, Lightbulb, Building2, Users, Mail, Github, ExternalLink, AlertCircle, CheckCircle, Clock, FileText } from 'lucide-svelte';
+	import { Building2, Mail, CheckCircle, Clock, Send, User, MessageSquare, Bug, AlertTriangle } from 'lucide-svelte';
+	import { onMount } from 'svelte';
+	import { PUBLIC_FORMSPARK_ENDPOINT_ID, PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
+	
+	// Form state management
+	let selectedCategory = 'general';
+	let formData = {
+		name: '',
+		email: '',
+		message: '',
+		category: 'general',
+		bugType: ''
+	};
+	
+	// Form validation
+	let errors: Record<string, string> = {};
+	let isSubmitting = false;
+	let isSubmitted = false;
+	
+	// Turnstile integration
+	let turnstileToken = '';
+	let turnstileWidget: any = null;
+	
+	// System detection
+	let systemInfo = {
+		browser: '',
+		browserVersion: '',
+		os: '',
+		deviceType: '',
+		screenResolution: '',
+		cores: '',
+		memory: '',
+		webAssemblySupport: false,
+		sharedArrayBufferSupport: false,
+		crossOriginIsolation: false
+	};
+	
+	// System detection function
+	function detectSystemInfo() {
+		if (typeof window === 'undefined') return;
+		
+		const nav = navigator;
+		const userAgent = nav.userAgent;
+		
+		// Detect browser and version
+		let browser = 'Unknown';
+		let browserVersion = '';
+		
+		if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) {
+			browser = 'Chrome';
+			const match = userAgent.match(/Chrome\/([0-9.]+)/);
+			browserVersion = match ? match[1] : '';
+		} else if (userAgent.includes('Firefox')) {
+			browser = 'Firefox';
+			const match = userAgent.match(/Firefox\/([0-9.]+)/);
+			browserVersion = match ? match[1] : '';
+		} else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
+			browser = 'Safari';
+			const match = userAgent.match(/Version\/([0-9.]+)/);
+			browserVersion = match ? match[1] : '';
+		} else if (userAgent.includes('Edg')) {
+			browser = 'Edge';
+			const match = userAgent.match(/Edg\/([0-9.]+)/);
+			browserVersion = match ? match[1] : '';
+		}
+		
+		// Detect OS
+		let os = 'Unknown';
+		if (userAgent.includes('Windows')) {
+			if (userAgent.includes('Windows NT 10.0')) os = 'Windows 11/10';
+			else if (userAgent.includes('Windows NT 6.3')) os = 'Windows 8.1';
+			else if (userAgent.includes('Windows NT 6.2')) os = 'Windows 8';
+			else if (userAgent.includes('Windows NT 6.1')) os = 'Windows 7';
+			else os = 'Windows';
+		} else if (userAgent.includes('Mac OS X')) {
+			const match = userAgent.match(/Mac OS X ([0-9_]+)/);
+			if (match) {
+				const version = match[1].replace(/_/g, '.');
+				os = `macOS ${version}`;
+			} else {
+				os = 'macOS';
+			}
+		} else if (userAgent.includes('Linux')) {
+			if (userAgent.includes('Android')) {
+				os = 'Android';
+			} else {
+				os = 'Linux';
+			}
+		} else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) {
+			os = 'iOS';
+		}
+		
+		// Detect device type
+		let deviceType = 'Desktop';
+		if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)) {
+			deviceType = /iPad/i.test(userAgent) ? 'Tablet' : 'Mobile';
+		} else if (/Tablet|PlayBook|Silk/i.test(userAgent)) {
+			deviceType = 'Tablet';
+		}
+		
+		// Screen resolution
+		const screenResolution = `${screen.width}x${screen.height}`;
+		
+		// CPU cores (approximate)
+		const cores = nav.hardwareConcurrency ? `${nav.hardwareConcurrency} cores` : 'Unknown';
+		
+		// Memory (approximate, in GB)
+		let memory = 'Unknown';
+		if (nav.deviceMemory) {
+			memory = `~${nav.deviceMemory}GB`;
+		}
+		
+		// WebAssembly support
+		const webAssemblySupport = typeof WebAssembly !== 'undefined';
+		
+		// SharedArrayBuffer support
+		const sharedArrayBufferSupport = typeof SharedArrayBuffer !== 'undefined';
+		
+		// Cross-Origin Isolation
+		const crossOriginIsolation = typeof window !== 'undefined' && 
+			window.crossOriginIsolated === true;
+		
+		systemInfo = {
+			browser,
+			browserVersion,
+			os,
+			deviceType,
+			screenResolution,
+			cores,
+			memory,
+			webAssemblySupport,
+			sharedArrayBufferSupport,
+			crossOriginIsolation
+		};
+	}
+	
+	// Bug report types
+	const bugTypes = {
+		'wasm-loading': {
+			label: 'WASM Loading Issues',
+			template: `**Issue Description:**
+[Describe what happens when you try to load vec2art]
+
+**Error Messages:**
+[Any error messages you see in the console or on screen]
+
+**Steps to Reproduce:**
+1. Go to vec2art.com
+2. [What did you do next?]
+3. [When did the error occur?]
+
+**Expected Behavior:**
+[What should have happened?]
+
+**Console Errors:**
+[Open browser dev tools (F12), check console for red errors and paste them here]
+
+**Additional Context:**
+[Any other relevant information about when this started happening]`
+		},
+		'processing-errors': {
+			label: 'Processing Errors',
+			template: `**Image Details:**
+• File format: [PNG/JPG/WebP/etc.]
+• File size: [e.g., 2.5MB]
+• Image dimensions: [e.g., 1920x1080]
+
+**Processing Settings:**
+• Algorithm used: [Edge Detection/Centerline/Superpixel/Dots]
+• Settings changed: [List any non-default settings]
+
+**Error Description:**
+[What went wrong during processing?]
+
+**Error Messages:**
+[Any error messages displayed]
+
+**Steps to Reproduce:**
+1. Upload image: [describe the image]
+2. Select algorithm: [which one?]
+3. Adjust settings: [what changes?]
+4. Click process
+5. [What happened?]
+
+**Expected Output:**
+[What should the SVG look like?]
+
+**Additional Context:**
+[Was this working before? Any patterns you've noticed?]`
+		},
+		'poor-quality': {
+			label: 'Poor Output Quality',
+			template: `**Image Information:**
+• Original image type: [Photo/Logo/Drawing/etc.]
+• File format: [PNG/JPG/WebP/etc.]
+• Image characteristics: [High contrast/Low contrast/Detailed/Simple/etc.]
+
+**Processing Details:**
+• Algorithm used: [Edge Detection/Centerline/Superpixel/Dots]
+• Settings used: [List all settings]
+• Processing time: [How long did it take?]
+
+**Quality Issues:**
+[Describe what's wrong with the output]
+• Missing details: [What's missing?]
+• Incorrect lines: [What looks wrong?]
+• Artifacts: [Any unwanted elements?]
+
+**Expected Quality:**
+[Describe what you expected the output to look like]
+
+**Comparison:**
+[If you've tried other tools, how do they compare?]
+
+**Sample Files:**
+[Can you share the original image? Yes/No]
+[Can you share the SVG output? Yes/No]`
+		},
+		'ui-bugs': {
+			label: 'UI/Interface Issues',
+			template: `**Interface Problem:**
+[Describe what's wrong with the user interface]
+
+**Location:**
+[Which page or section has the problem?]
+
+**Visual Issues:**
+• Layout problems: [Describe any layout issues]
+• Missing elements: [What's not showing up?]
+• Overlapping content: [Any content overlapping?]
+• Responsive issues: [Problems on mobile/tablet?]
+
+**Steps to Reproduce:**
+1. Navigate to: [which page?]
+2. [What actions did you take?]
+3. [When did the issue appear?]
+
+**Expected Appearance:**
+[How should it look?]
+
+**Screenshots:**
+[Can you provide screenshots? Yes/No]
+
+**Browser Zoom:**
+• Zoom level: [e.g., 100%, 150%]
+
+**Additional Notes:**
+[Any other relevant information]`
+		},
+		'performance': {
+			label: 'Performance Issues',
+			template: `**Performance Problem:**
+[Describe the performance issue]
+• Slow processing: [How slow?]
+• Browser freezing: [For how long?]
+• High memory usage: [How much RAM used?]
+• Fan spinning: [CPU overheating?]
+
+**Image Details:**
+• File size: [e.g., 5MB]
+• Dimensions: [e.g., 4K, 8000x6000]
+• Format: [PNG/JPG/WebP/etc.]
+• Complexity: [Simple/Detailed/Very complex]
+
+**Processing Settings:**
+• Algorithm: [Which one?]
+• Threading: [Single/Multi-threaded - check browser console]
+• Settings: [Any custom settings?]
+
+**Performance Metrics:**
+• Processing time: [How long did it take?]
+• Expected time: [How long should it take?]
+• Memory usage: [If you can check in Task Manager/Activity Monitor]
+• CPU usage: [If you can check]
+
+**Other Applications:**
+• Other apps running: [Any heavy applications?]
+
+**Comparison:**
+[Have you tried with smaller images? Different browsers?]`
+		},
+		'other': {
+			label: 'Other Technical Issue',
+			template: `**Issue Summary:**
+[Brief description of the problem]
+
+**Detailed Description:**
+[Explain what's happening in detail]
+
+**Steps to Reproduce:**
+1. [First step]
+2. [Second step]
+3. [Continue as needed]
+
+**Expected Behavior:**
+[What should happen instead?]
+
+**Actual Behavior:**
+[What actually happens?]
+
+**Error Messages:**
+[Any error messages you see]
+
+**Browser Console Errors:**
+[Open browser dev tools (F12), check console for red errors]
+
+**Workarounds:**
+[Have you found any ways to avoid this issue?]
+
+**Additional Context:**
+[Any other relevant information]`
+		}
+	};
+
+	// Category configurations
+	const categories = {
+		bug: {
+			id: 'bug',
+			title: 'Bug Report',
+			description: 'Report technical issues with structured details',
+			icon: Bug,
+			placeholder: 'Select a bug type above and the message field will auto-populate with a template to help you provide all the necessary details.',
+			color: 'ferrari'
+		},
+		business: {
+			id: 'business',
+			title: 'Business Inquiry',
+			description: 'Partnerships, commercial licensing, or enterprise solutions',
+			icon: Building2,
+			placeholder: 'Tell us about your business needs:\n• Company name and size\n• Intended use case for vec2art\n• Timeline and requirements\n• Contact preferences',
+			color: 'blue'
+		},
+		general: {
+			id: 'general',
+			title: 'General Contact',
+			description: 'Questions, feedback, or anything else',
+			icon: Mail,
+			placeholder: 'What can we help you with? Feel free to ask questions, share feedback, or just say hello!',
+			color: 'green'
+		}
+	};
+	
+	function selectCategory(categoryId: string) {
+		selectedCategory = categoryId;
+		formData.category = categoryId;
+		formData.message = ''; // Clear message when switching categories
+		formData.bugType = ''; // Clear bug type when switching categories
+		errors = {}; // Clear errors
+	}
+	
+	function selectBugType(bugTypeId: string) {
+		formData.bugType = bugTypeId;
+		if (bugTypeId && bugTypes[bugTypeId as keyof typeof bugTypes]) {
+			formData.message = bugTypes[bugTypeId as keyof typeof bugTypes].template;
+		}
+		// Clear message error if it exists
+		if (errors.message) {
+			delete errors.message;
+			errors = { ...errors };
+		}
+	}
+	
+	// Initialize system detection and Turnstile on mount
+	onMount(() => {
+		// Scroll to top of page when contact page loads
+		if (typeof window !== 'undefined') {
+			window.scrollTo({ top: 0, behavior: 'smooth' });
+		}
+		
+		detectSystemInfo();
+		
+		// Initialize Turnstile widget
+		if (typeof window !== 'undefined' && (window as any).turnstile) {
+			initTurnstile();
+		} else {
+			// Wait for Turnstile to load
+			const checkTurnstile = setInterval(() => {
+				if ((window as any).turnstile) {
+					clearInterval(checkTurnstile);
+					initTurnstile();
+				}
+			}, 100);
+		}
+	});
+	
+	function initTurnstile() {
+		const turnstileContainer = document.getElementById('turnstile-container');
+		if (turnstileContainer && (window as any).turnstile) {
+			turnstileWidget = (window as any).turnstile.render('#turnstile-container', {
+				sitekey: PUBLIC_TURNSTILE_SITE_KEY,
+				callback: (token: string) => {
+					turnstileToken = token;
+					// Clear any turnstile errors
+					if (errors.turnstile) {
+						delete errors.turnstile;
+						errors = { ...errors };
+					}
+				},
+				'error-callback': () => {
+					turnstileToken = '';
+					errors.turnstile = 'Verification failed. Please try again.';
+					errors = { ...errors };
+				},
+				'expired-callback': () => {
+					turnstileToken = '';
+					errors.turnstile = 'Verification expired. Please verify again.';
+					errors = { ...errors };
+				}
+			});
+		}
+	}
+	
+	function resetTurnstile() {
+		if (turnstileWidget && (window as any).turnstile) {
+			(window as any).turnstile.reset(turnstileWidget);
+			turnstileToken = '';
+		}
+	}
+	
+	function validateForm() {
+		errors = {};
+		
+		if (!formData.name.trim()) {
+			errors.name = 'Name is required';
+		}
+		
+		if (!formData.email.trim()) {
+			errors.email = 'Email is required';
+		} else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+			errors.email = 'Please enter a valid email address';
+		}
+		
+		if (formData.category === 'bug' && !formData.bugType) {
+			errors.bugType = 'Please select a bug type';
+		}
+		
+		if (!formData.message.trim()) {
+			errors.message = 'Message is required';
+		} else if (formData.message.trim().length < 10) {
+			errors.message = 'Message must be at least 10 characters long';
+		}
+		
+		if (!turnstileToken) {
+			errors.turnstile = 'Please complete the verification challenge';
+		}
+		
+		return Object.keys(errors).length === 0;
+	}
+	
+	async function handleSubmit() {
+		if (!validateForm()) {
+			return;
+		}
+		
+		isSubmitting = true;
+		
+		try {
+			// Prepare form data for Formspark
+			const submissionData = {
+				name: formData.name,
+				email: formData.email,
+				message: formData.message,
+				category: formData.category,
+				categoryTitle: currentCategory.title,
+				bugType: formData.bugType || 'N/A',
+				bugTypeLabel: formData.bugType ? bugTypes[formData.bugType as keyof typeof bugTypes]?.label : 'N/A',
+				'cf-turnstile-response': turnstileToken,
+				
+				// Auto-detected system information
+				browser: `${systemInfo.browser} ${systemInfo.browserVersion}`,
+				operatingSystem: systemInfo.os,
+				deviceType: systemInfo.deviceType,
+				screenResolution: systemInfo.screenResolution,
+				cpuCores: systemInfo.cores,
+				deviceMemory: systemInfo.memory,
+				webAssemblySupport: systemInfo.webAssemblySupport,
+				sharedArrayBufferSupport: systemInfo.sharedArrayBufferSupport,
+				crossOriginIsolation: systemInfo.crossOriginIsolation,
+				
+				// Submission metadata
+				submittedAt: new Date().toISOString(),
+				userAgent: navigator.userAgent,
+				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				language: navigator.language
+			};
+			
+			// Submit to Formspark
+			const response = await fetch(`https://submit-form.com/${PUBLIC_FORMSPARK_ENDPOINT_ID}`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Accept': 'application/json'
+				},
+				body: JSON.stringify(submissionData)
+			});
+			
+			if (!response.ok) {
+				throw new Error(`Submission failed: ${response.status} ${response.statusText}`);
+			}
+			
+			const result = await response.json();
+			console.log('Form submitted successfully:', result);
+			
+			isSubmitted = true;
+			
+			// Reset form after successful submission
+			setTimeout(() => {
+				formData = { name: '', email: '', message: '', category: 'general', bugType: '' };
+				selectedCategory = 'general';
+				isSubmitted = false;
+				resetTurnstile();
+			}, 5000);
+			
+		} catch (error) {
+			console.error('Submission error:', error);
+			
+			if (error instanceof Error) {
+				if (error.message.includes('Turnstile')) {
+					errors.turnstile = 'Verification failed. Please try again.';
+					resetTurnstile();
+				} else if (error.message.includes('400')) {
+					errors.submit = 'Invalid form data. Please check your input and try again.';
+				} else if (error.message.includes('429')) {
+					errors.submit = 'Too many requests. Please wait a moment and try again.';
+				} else if (error.message.includes('500')) {
+					errors.submit = 'Server error. Please try again later.';
+				} else {
+					errors.submit = 'Failed to send message. Please check your connection and try again.';
+				}
+			} else {
+				errors.submit = 'Network error. Please check your connection and try again.';
+			}
+			
+			errors = { ...errors };
+		} finally {
+			isSubmitting = false;
+		}
+	}
+	
+	$: currentCategory = categories[selectedCategory as keyof typeof categories];
 </script>
 
 <svelte:head>
 	<title>Contact Us | vec2art</title>
-	<meta name="description" content="Get help, report issues, or reach out for business inquiries. Multiple ways to connect with the vec2art team for technical support and partnerships." />
+	<meta name="description" content="Get in touch with the vec2art team. Report bugs, discuss business opportunities, or ask general questions through our contact form." />
+	<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </svelte:head>
 
-<div class="min-h-screen">
+<div class="min-h-screen bg-gray-50">
 	<!-- Hero Section -->
 	<section class="relative bg-white py-16 md:py-20">
 		<div class="mx-auto max-w-4xl px-4 md:px-6 lg:px-8">
@@ -16,556 +556,306 @@
 					Contact Us
 				</h1>
 				<p class="mx-auto max-w-2xl text-lg text-gray-600 md:text-xl">
-					Get help with technical issues, explore business opportunities, or join our growing community. We're here to help with all your vectorization needs.
+					We'd love to hear from you. Send us a message and we'll respond as soon as possible.
 				</p>
 				<div class="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 					<div class="flex items-center gap-2 rounded-md bg-green-50 px-4 py-2 text-sm font-medium text-green-700">
 						<Clock class="h-4 w-4" />
 						24-48h Response Time
 					</div>
-					<div class="flex items-center gap-2 rounded-md bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">
-						<Users class="h-4 w-4" />
-						Active Community Support
+					<div class="flex items-center gap-2 rounded-md bg-ferrari-50 px-4 py-2 text-sm font-medium text-ferrari-700">
+						<CheckCircle class="h-4 w-4" />
+						Secure & Private
 					</div>
 				</div>
 			</div>
 		</div>
 	</section>
 
-	<!-- Quick Navigation -->
-	<section class="bg-section-elevated py-8">
+	<!-- Contact Form Section -->
+	<section class="py-16 md:py-20">
 		<div class="mx-auto max-w-4xl px-4 md:px-6 lg:px-8">
-			<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-				<a href="#technical-support" class="flex flex-col items-center gap-2 rounded-lg border border-gray-200 bg-white p-4 text-center transition-colors hover:border-ferrari-300 hover:bg-ferrari-50">
-					<Bug class="h-6 w-6 text-ferrari-600" />
-					<span class="text-sm font-medium text-gray-900">Technical</span>
-				</a>
-				<a href="#business-inquiries" class="flex flex-col items-center gap-2 rounded-lg border border-gray-200 bg-white p-4 text-center transition-colors hover:border-ferrari-300 hover:bg-ferrari-50">
-					<Building2 class="h-6 w-6 text-ferrari-600" />
-					<span class="text-sm font-medium text-gray-900">Business</span>
-				</a>
-				<a href="#bug-reports" class="flex flex-col items-center gap-2 rounded-lg border border-gray-200 bg-white p-4 text-center transition-colors hover:border-ferrari-300 hover:bg-ferrari-50">
-					<AlertCircle class="h-6 w-6 text-ferrari-600" />
-					<span class="text-sm font-medium text-gray-900">Bug Reports</span>
-				</a>
-				<a href="#feature-requests" class="flex flex-col items-center gap-2 rounded-lg border border-gray-200 bg-white p-4 text-center transition-colors hover:border-ferrari-300 hover:bg-ferrari-50">
-					<Lightbulb class="h-6 w-6 text-ferrari-600" />
-					<span class="text-sm font-medium text-gray-900">Features</span>
-				</a>
-				<a href="#community" class="flex flex-col items-center gap-2 rounded-lg border border-gray-200 bg-white p-4 text-center transition-colors hover:border-ferrari-300 hover:bg-ferrari-50">
-					<Users class="h-6 w-6 text-ferrari-600" />
-					<span class="text-sm font-medium text-gray-900">Community</span>
-				</a>
-				<a href="#general-contact" class="flex flex-col items-center gap-2 rounded-lg border border-gray-200 bg-white p-4 text-center transition-colors hover:border-ferrari-300 hover:bg-ferrari-50">
-					<Mail class="h-6 w-6 text-ferrari-600" />
-					<span class="text-sm font-medium text-gray-900">General</span>
-				</a>
-			</div>
-		</div>
-	</section>
-
-	<!-- Technical Support Section -->
-	<section id="technical-support" class="bg-white py-16 md:py-20">
-		<div class="mx-auto max-w-4xl px-4 md:px-6 lg:px-8">
-			<div class="mb-12 text-center">
-				<Bug class="mx-auto mb-4 h-12 w-12 text-ferrari-600" />
-				<h2 class="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">Technical Support</h2>
-				<p class="text-lg text-gray-600">
-					Having trouble with processing, performance, or browser compatibility?
-				</p>
-			</div>
-
-			<div class="space-y-8">
-				<!-- Common Issues -->
-				<div class="rounded-lg border border-gray-200 bg-gray-50 p-6">
-					<h3 class="mb-4 text-xl font-semibold text-gray-900">Common Issues & Solutions</h3>
-					<div class="space-y-4">
-						<div class="flex gap-4">
-							<CheckCircle class="h-5 w-5 text-green-600 mt-1 flex-shrink-0" />
-							<div>
-								<h4 class="font-medium text-gray-900">WASM Loading Failures</h4>
-								<p class="text-sm text-gray-600">Enable Cross-Origin Isolation in your browser or try a different browser. Chrome and Firefox work best.</p>
-							</div>
-						</div>
-						<div class="flex gap-4">
-							<CheckCircle class="h-5 w-5 text-green-600 mt-1 flex-shrink-0" />
-							<div>
-								<h4 class="font-medium text-gray-900">Slow Processing</h4>
-								<p class="text-sm text-gray-600">Reduce image size or enable multithreading. Large images (>2MB) may take longer to process.</p>
-							</div>
-						</div>
-						<div class="flex gap-4">
-							<CheckCircle class="h-5 w-5 text-green-600 mt-1 flex-shrink-0" />
-							<div>
-								<h4 class="font-medium text-gray-900">Poor Output Quality</h4>
-								<p class="text-sm text-gray-600">Try different algorithms - Edge Detection works best for photos, Centerline for logos and text.</p>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Contact Methods -->
-				<div class="grid gap-6 md:grid-cols-2">
-					<div class="rounded-lg border border-ferrari-200 bg-ferrari-50 p-6">
-						<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-gray-900">
-							<Github class="h-5 w-5 text-ferrari-600" />
-							GitHub Issues
-						</h3>
-						<p class="mb-4 text-gray-700">
-							For technical problems, bugs, or compatibility issues. Please include your browser version and system details.
-						</p>
-						<a
-							href="https://github.com/vec2art/vec2art/issues"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="inline-flex items-center gap-2 rounded-md bg-ferrari-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-ferrari-700"
-						>
-							<ExternalLink class="h-4 w-4" />
-							Open GitHub Issue
-						</a>
-					</div>
-
-					<div class="rounded-lg border border-blue-200 bg-blue-50 p-6">
-						<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-gray-900">
-							<MessageCircle class="h-5 w-5 text-blue-600" />
-							Community Support
-						</h3>
-						<p class="mb-4 text-gray-700">
-							Get help from other users and share solutions in our community discussions.
-						</p>
-						<a
-							href="https://github.com/vec2art/vec2art/discussions"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-						>
-							<ExternalLink class="h-4 w-4" />
-							Join Discussions
-						</a>
-					</div>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- Business Inquiries Section -->
-	<section id="business-inquiries" class="bg-section-elevated py-16 md:py-20">
-		<div class="mx-auto max-w-4xl px-4 md:px-6 lg:px-8">
-			<div class="mb-12 text-center">
-				<Building2 class="mx-auto mb-4 h-12 w-12 text-ferrari-600" />
-				<h2 class="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">Business Inquiries</h2>
-				<p class="text-lg text-gray-600">
-					Interested in partnerships, commercial licensing, or custom development?
-				</p>
-			</div>
-
-			<div class="space-y-8">
-				<!-- Business Opportunities -->
-				<div class="grid gap-6 md:grid-cols-2">
-					<div class="card-ferrari-interactive group rounded-3xl p-6">
-						<div class="relative">
-							<h3 class="mb-3 text-xl font-semibold text-gray-900">Commercial Licensing</h3>
-							<p class="mb-4 text-gray-700">
-								Enterprise licenses for commercial use, white-label solutions, and API integration opportunities.
-							</p>
-							<ul class="list-disc list-inside space-y-1 text-sm text-gray-600">
-								<li>Custom branding and deployment</li>
-								<li>API access and documentation</li>
-								<li>Priority support and SLA</li>
-								<li>Custom algorithm development</li>
-							</ul>
-						</div>
-						<div class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"></div>
-					</div>
-
-					<div class="card-ferrari-interactive group rounded-3xl p-6">
-						<div class="relative">
-							<h3 class="mb-3 text-xl font-semibold text-gray-900">Partnership Opportunities</h3>
-							<p class="mb-4 text-gray-700">
-								Strategic partnerships, integration opportunities, and collaborative development projects.
-							</p>
-							<ul class="list-disc list-inside space-y-1 text-sm text-gray-600">
-								<li>Platform integrations</li>
-								<li>Technology partnerships</li>
-								<li>Research collaborations</li>
-								<li>Distribution partnerships</li>
-							</ul>
-						</div>
-						<div class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"></div>
-					</div>
-				</div>
-
-				<!-- Contact Information -->
-				<div class="border-l-4 border-ferrari-500 bg-ferrari-50 p-6 rounded-r-lg">
-					<div class="flex items-start gap-4">
-						<Mail class="h-6 w-6 text-ferrari-600 mt-1 flex-shrink-0" />
-						<div>
-							<h3 class="text-xl font-semibold text-gray-900 mb-2">Business Contact</h3>
-							<p class="text-gray-700 mb-3">
-								For business inquiries, partnerships, and commercial licensing, please reach out directly:
-							</p>
-							<div class="space-y-2 text-gray-700">
-								<div>
-									<span class="font-medium">Email:</span> 
-									<a href="mailto:business@vec2art.com" class="text-ferrari-600 hover:text-ferrari-700">business@vec2art.com</a>
-								</div>
-								<div>
-									<span class="font-medium">Response Time:</span> 
-									<span class="text-green-700">1-2 business days</span>
-								</div>
-								<div>
-									<span class="font-medium">Include:</span> 
-									<span>Company name, use case, and project scope</span>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- Bug Reports Section -->
-	<section id="bug-reports" class="bg-white py-16 md:py-20">
-		<div class="mx-auto max-w-4xl px-4 md:px-6 lg:px-8">
-			<div class="mb-12 text-center">
-				<AlertCircle class="mx-auto mb-4 h-12 w-12 text-ferrari-600" />
-				<h2 class="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">Bug Reports</h2>
-				<p class="text-lg text-gray-600">
-					Found a bug? Help us fix it by providing detailed information.
-				</p>
-			</div>
-
-			<div class="space-y-8">
-				<!-- Bug Report Template -->
-				<div class="rounded-lg border border-gray-200 bg-gray-50 p-6">
-					<h3 class="mb-4 text-xl font-semibold text-gray-900">Bug Report Information</h3>
-					<p class="mb-4 text-gray-700">When reporting a bug, please include the following information:</p>
-					<div class="grid gap-4 md:grid-cols-2">
-						<div>
-							<h4 class="font-medium text-gray-900 mb-2">System Information</h4>
-							<ul class="list-disc list-inside space-y-1 text-sm text-gray-600">
-								<li>Browser name and version</li>
-								<li>Operating system</li>
-								<li>Device type (desktop/mobile)</li>
-								<li>Available memory/RAM</li>
-							</ul>
-						</div>
-						<div>
-							<h4 class="font-medium text-gray-900 mb-2">Bug Details</h4>
-							<ul class="list-disc list-inside space-y-1 text-sm text-gray-600">
-								<li>Steps to reproduce the bug</li>
-								<li>Expected vs actual behavior</li>
-								<li>Image size and format</li>
-								<li>Algorithm and settings used</li>
-							</ul>
-						</div>
-					</div>
-				</div>
-
-				<!-- Reporting Methods -->
-				<div class="grid gap-6 md:grid-cols-2">
-					<div class="rounded-lg border border-ferrari-200 bg-ferrari-50 p-6">
-						<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-gray-900">
-							<Github class="h-5 w-5 text-ferrari-600" />
-							GitHub Issues (Preferred)
-						</h3>
-						<p class="mb-4 text-gray-700">
-							Create a detailed issue report on GitHub with all the information above. Use our bug report template.
-						</p>
-						<a
-							href="https://github.com/vec2art/vec2art/issues/new?template=bug_report.md"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="inline-flex items-center gap-2 rounded-md bg-ferrari-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-ferrari-700"
-						>
-							<AlertCircle class="h-4 w-4" />
-							Report Bug on GitHub
-						</a>
-					</div>
-
-					<div class="rounded-lg border border-gray-200 bg-gray-50 p-6">
-						<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-gray-900">
-							<Mail class="h-5 w-5 text-gray-600" />
-							Email Reports
-						</h3>
-						<p class="mb-4 text-gray-700">
-							For sensitive issues or if you can't use GitHub, send bug reports via email.
-						</p>
-						<a
-							href="mailto:bugs@vec2art.com?subject=Bug%20Report&body=Please%20include%20system%20info%20and%20steps%20to%20reproduce"
-							class="inline-flex items-center gap-2 rounded-md bg-gray-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
-						>
-							<Mail class="h-4 w-4" />
-							Email Bug Report
-						</a>
-					</div>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- Feature Requests Section -->
-	<section id="feature-requests" class="bg-section-elevated py-16 md:py-20">
-		<div class="mx-auto max-w-4xl px-4 md:px-6 lg:px-8">
-			<div class="mb-12 text-center">
-				<Lightbulb class="mx-auto mb-4 h-12 w-12 text-ferrari-600" />
-				<h2 class="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">Feature Requests</h2>
-				<p class="text-lg text-gray-600">
-					Have an idea for improving vec2art? We'd love to hear your suggestions!
-				</p>
-			</div>
-
-			<div class="space-y-8">
-				<!-- Feature Ideas -->
-				<div class="rounded-lg border border-blue-200 bg-blue-50 p-6">
-					<h3 class="mb-4 text-xl font-semibold text-gray-900">What Makes a Good Feature Request?</h3>
-					<div class="grid gap-4 md:grid-cols-2">
-						<div>
-							<h4 class="font-medium text-gray-900 mb-2">Clear Description</h4>
-							<ul class="list-disc list-inside space-y-1 text-sm text-gray-600">
-								<li>What the feature does</li>
-								<li>Why it would be useful</li>
-								<li>Who would benefit from it</li>
-								<li>How it fits with existing features</li>
-							</ul>
-						</div>
-						<div>
-							<h4 class="font-medium text-gray-900 mb-2">Implementation Details</h4>
-							<ul class="list-disc list-inside space-y-1 text-sm text-gray-600">
-								<li>UI/UX mockups or descriptions</li>
-								<li>Technical considerations</li>
-								<li>Similar features in other tools</li>
-								<li>Priority level and urgency</li>
-							</ul>
-						</div>
-					</div>
-				</div>
-
-				<!-- Request Methods -->
-				<div class="grid gap-6 md:grid-cols-2">
-					<div class="rounded-lg border border-ferrari-200 bg-ferrari-50 p-6">
-						<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-gray-900">
-							<Github class="h-5 w-5 text-ferrari-600" />
-							GitHub Feature Request
-						</h3>
-						<p class="mb-4 text-gray-700">
-							Submit a feature request on GitHub using our template. Track progress and join discussions.
-						</p>
-						<a
-							href="https://github.com/vec2art/vec2art/issues/new?template=feature_request.md"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="inline-flex items-center gap-2 rounded-md bg-ferrari-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-ferrari-700"
-						>
-							<Lightbulb class="h-4 w-4" />
-							Request Feature
-						</a>
-					</div>
-
-					<div class="rounded-lg border border-green-200 bg-green-50 p-6">
-						<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-gray-900">
-							<Users class="h-5 w-5 text-green-600" />
-							Community Discussion
-						</h3>
-						<p class="mb-4 text-gray-700">
-							Discuss ideas with the community first. Get feedback and refine your proposal.
-						</p>
-						<a
-							href="https://github.com/vec2art/vec2art/discussions/categories/feature-ideas"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
-						>
-							<MessageCircle class="h-4 w-4" />
-							Discuss Ideas
-						</a>
-					</div>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- Community Section -->
-	<section id="community" class="bg-white py-16 md:py-20">
-		<div class="mx-auto max-w-4xl px-4 md:px-6 lg:px-8">
-			<div class="mb-12 text-center">
-				<Users class="mx-auto mb-4 h-12 w-12 text-ferrari-600" />
-				<h2 class="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">Community</h2>
-				<p class="text-lg text-gray-600">
-					Join our growing community of developers, designers, and vectorization enthusiasts.
-				</p>
-			</div>
-
-			<div class="space-y-8">
-				<!-- Community Platforms -->
-				<div class="grid gap-6 md:grid-cols-3">
-					<div class="text-center rounded-lg border border-gray-200 p-6">
-						<Github class="mx-auto mb-4 h-8 w-8 text-ferrari-600" />
-						<h3 class="mb-2 text-lg font-semibold text-gray-900">GitHub</h3>
-						<p class="mb-4 text-sm text-gray-600">Contribute code, report issues, and track development</p>
-						<a
-							href="https://github.com/vec2art/vec2art"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="text-ferrari-600 hover:text-ferrari-700 text-sm font-medium"
-						>
-							Visit Repository
-						</a>
-					</div>
-
-					<div class="text-center rounded-lg border border-gray-200 p-6">
-						<MessageCircle class="mx-auto mb-4 h-8 w-8 text-ferrari-600" />
-						<h3 class="mb-2 text-lg font-semibold text-gray-900">Discussions</h3>
-						<p class="mb-4 text-sm text-gray-600">Ask questions, share tips, and connect with users</p>
-						<a
-							href="https://github.com/vec2art/vec2art/discussions"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="text-ferrari-600 hover:text-ferrari-700 text-sm font-medium"
-						>
-							Join Discussions
-						</a>
-					</div>
-
-					<div class="text-center rounded-lg border border-gray-200 p-6">
-						<FileText class="mx-auto mb-4 h-8 w-8 text-ferrari-600" />
-						<h3 class="mb-2 text-lg font-semibold text-gray-900">Documentation</h3>
-						<p class="mb-4 text-sm text-gray-600">Learn about algorithms, APIs, and best practices</p>
-						<a
-							href="https://docs.vec2art.com"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="text-ferrari-600 hover:text-ferrari-700 text-sm font-medium"
-						>
-							Read Docs
-						</a>
-					</div>
-				</div>
-
-				<!-- Contributing -->
-				<div class="border-l-4 border-ferrari-500 bg-ferrari-50 p-6 rounded-r-lg">
-					<div class="flex items-start gap-4">
-						<Users class="h-6 w-6 text-ferrari-600 mt-1 flex-shrink-0" />
-						<div>
-							<h3 class="text-xl font-semibold text-gray-900 mb-2">Contributing to vec2art</h3>
-							<p class="text-gray-700 mb-4">
-								We welcome contributions from the community! Whether you're a developer, designer, or just passionate about vectorization.
-							</p>
-							<div class="space-y-2 text-gray-700">
-								<div><span class="font-medium">Code Contributions:</span> Rust algorithms, frontend features, performance improvements</div>
-								<div><span class="font-medium">Documentation:</span> Tutorials, API docs, best practices guides</div>
-								<div><span class="font-medium">Testing:</span> Bug reports, algorithm testing, browser compatibility</div>
-								<div><span class="font-medium">Design:</span> UI/UX improvements, icons, examples</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- General Contact Section -->
-	<section id="general-contact" class="bg-section-elevated py-16 md:py-20">
-		<div class="mx-auto max-w-4xl px-4 md:px-6 lg:px-8">
-			<div class="mb-12 text-center">
-				<Mail class="mx-auto mb-4 h-12 w-12 text-ferrari-600" />
-				<h2 class="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">General Contact</h2>
-				<p class="text-lg text-gray-600">
-					For questions that don't fit the categories above, or just to say hello.
-				</p>
-			</div>
-
-			<div class="space-y-8">
-				<!-- Contact Options -->
-				<div class="grid gap-6 md:grid-cols-2">
-					<div class="rounded-lg border border-ferrari-200 bg-ferrari-50 p-6">
-						<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-gray-900">
-							<Mail class="h-5 w-5 text-ferrari-600" />
-							Email Us
-						</h3>
-						<p class="mb-4 text-gray-700">
-							For general questions, media inquiries, or anything else not covered above.
-						</p>
-						<div class="space-y-2 text-gray-700">
-							<div>
-								<span class="font-medium">Email:</span> 
-								<a href="mailto:hello@vec2art.com" class="text-ferrari-600 hover:text-ferrari-700">hello@vec2art.com</a>
-							</div>
-							<div>
-								<span class="font-medium">Response Time:</span> 
-								<span class="text-green-700">2-3 business days</span>
-							</div>
-						</div>
-					</div>
-
-					<div class="rounded-lg border border-blue-200 bg-blue-50 p-6">
-						<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-gray-900">
-							<ExternalLink class="h-5 w-5 text-blue-600" />
-							Social Media
-						</h3>
-						<p class="mb-4 text-gray-700">
-							Follow us for updates, tips, and community highlights.
-						</p>
-						<div class="flex gap-4">
-							<a
-								href="https://x.com/vec2art"
-								target="_blank"
-								rel="noopener noreferrer"
-								class="flex h-10 w-10 items-center justify-center rounded-lg bg-black text-white transition-all duration-200 hover:scale-105"
+			<div class="overflow-hidden rounded-3xl bg-white shadow-xl">
+				<!-- Category Selection -->
+				<div class="border-b border-gray-200 bg-section-elevated px-8 py-6">
+					<h2 class="mb-6 text-2xl font-bold text-gray-900">What can we help you with?</h2>
+					<div class="grid gap-4 md:grid-cols-3">
+						{#each Object.values(categories) as category}
+							<button
+								type="button"
+								class="group relative flex flex-col items-center gap-3 rounded-2xl border-2 p-6 text-center transition-all duration-200 {selectedCategory === category.id
+									? 'border-ferrari-500 bg-ferrari-50 shadow-md'
+									: 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'}"
+								onclick={() => selectCategory(category.id)}
 							>
-								<svg class="h-5 w-5" fill="white" viewBox="0 0 24 24">
-									<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-								</svg>
-							</a>
-							<a
-								href="https://instagram.com/vec2art"
-								target="_blank"
-								rel="noopener noreferrer"
-								class="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 text-white transition-all duration-200 hover:scale-105 hover:shadow-lg"
-							>
-								<svg class="h-5 w-5" fill="white" viewBox="0 0 24 24">
-									<path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-								</svg>
-							</a>
-						</div>
+								<svelte:component
+									this={category.icon}
+									class="h-8 w-8 {selectedCategory === category.id
+										? 'text-ferrari-600'
+										: 'text-gray-600 group-hover:text-gray-700'}"
+								/>
+								<div>
+									<h3
+										class="font-semibold {selectedCategory === category.id
+											? 'text-gray-900'
+											: 'text-gray-900'}"
+									>
+										{category.title}
+									</h3>
+									<p
+										class="mt-1 text-sm {selectedCategory === category.id
+											? 'text-gray-700'
+											: 'text-gray-600'}"
+									>
+										{category.description}
+									</p>
+								</div>
+								{#if selectedCategory === category.id}
+									<div class="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-ferrari-500 to-ferrari-600 opacity-20"></div>
+								{/if}
+							</button>
+						{/each}
 					</div>
 				</div>
 
-				<!-- FAQ -->
-				<div class="rounded-lg border border-gray-200 bg-gray-50 p-6">
-					<h3 class="mb-4 text-xl font-semibold text-gray-900">Frequently Asked Questions</h3>
-					<p class="mb-4 text-gray-700">Before contacting us, check if your question is answered in our FAQ:</p>
+				<!-- Contact Form -->
+				<div class="p-8">
+					{#if isSubmitted}
+						<!-- Success Message -->
+						<div class="text-center py-12">
+							<CheckCircle class="mx-auto mb-4 h-16 w-16 text-green-600" />
+							<h3 class="mb-2 text-2xl font-bold text-gray-900">Message Sent Successfully!</h3>
+							<p class="text-gray-600 mb-4">
+								Thank you for contacting us. We'll get back to you within 24-48 hours.
+							</p>
+							<div class="inline-flex items-center gap-2 rounded-full bg-green-50 px-4 py-2 text-sm font-medium text-green-700">
+								<CheckCircle class="h-4 w-4" />
+								Confirmation sent to {formData.email}
+							</div>
+						</div>
+					{:else}
+						<!-- Contact Form -->
+						<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-6">
+							<!-- Selected Category Display -->
+							<div class="flex items-center gap-3 rounded-lg border border-ferrari-200 bg-ferrari-50 p-4">
+								<svelte:component this={currentCategory.icon} class="h-6 w-6 text-ferrari-600" />
+								<div>
+									<h3 class="font-semibold text-gray-900">{currentCategory.title}</h3>
+									<p class="text-sm text-gray-700">{currentCategory.description}</p>
+								</div>
+							</div>
+
+							<!-- Bug Type Selector (only for bug reports) -->
+							{#if selectedCategory === 'bug'}
+								<div>
+									<label for="bugType" class="block text-sm font-medium text-gray-700 mb-2">
+										<AlertTriangle class="inline h-4 w-4 mr-1" />
+										Bug Type <span class="text-red-500">*</span>
+									</label>
+									<select
+										id="bugType"
+										bind:value={formData.bugType}
+										onchange={(e) => selectBugType(e.target.value)}
+										class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-ferrari-500 focus:ring-2 focus:ring-ferrari-500/20 focus:outline-none {errors.bugType ? 'border-red-500' : ''}"
+										required
+									>
+										<option value="">Select the type of bug you're reporting...</option>
+										{#each Object.entries(bugTypes) as [key, bugType]}
+											<option value={key}>{bugType.label}</option>
+										{/each}
+									</select>
+									{#if errors.bugType}
+										<p class="mt-1 text-sm text-red-600">{errors.bugType}</p>
+									{/if}
+									<p class="mt-2 text-sm text-gray-600">
+										<CheckCircle class="inline h-4 w-4 mr-1 text-green-600" />
+										Selecting a bug type will auto-fill the message with a helpful template
+									</p>
+									
+									<!-- System Detection Info -->
+									<div class="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
+										<h4 class="text-sm font-medium text-green-800 mb-2">
+											🔍 Auto-detected system information:
+										</h4>
+										<div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-green-700">
+											<div><strong>Browser:</strong> {systemInfo.browser} {systemInfo.browserVersion}</div>
+											<div><strong>OS:</strong> {systemInfo.os}</div>
+											<div><strong>Device:</strong> {systemInfo.deviceType}</div>
+											<div><strong>Screen:</strong> {systemInfo.screenResolution}</div>
+											<div><strong>CPU Cores:</strong> {systemInfo.cores}</div>
+											<div><strong>Memory:</strong> {systemInfo.memory}</div>
+											<div><strong>WebAssembly:</strong> {systemInfo.webAssemblySupport ? '✅ Supported' : '❌ Not supported'}</div>
+											<div><strong>SharedArrayBuffer:</strong> {systemInfo.sharedArrayBufferSupport ? '✅ Supported' : '❌ Not supported'}</div>
+											<div class="col-span-2"><strong>Cross-Origin Isolation:</strong> {systemInfo.crossOriginIsolation ? '✅ Enabled' : '❌ Disabled'}</div>
+										</div>
+										<p class="mt-2 text-xs text-green-600">
+											💡 This information will be automatically included in your bug report template
+										</p>
+									</div>
+								</div>
+							{/if}
+
+							<!-- Name and Email Row -->
+							<div class="grid gap-6 md:grid-cols-2">
+								<!-- Name Field -->
+								<div>
+									<label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+										<User class="inline h-4 w-4 mr-1" />
+										Full Name
+									</label>
+									<input
+										id="name"
+										type="text"
+										bind:value={formData.name}
+										class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-500 transition-colors focus:border-ferrari-500 focus:ring-2 focus:ring-ferrari-500/20 focus:outline-none {errors.name ? 'border-red-500' : ''}"
+										placeholder="Enter your full name"
+										required
+									/>
+									{#if errors.name}
+										<p class="mt-1 text-sm text-red-600">{errors.name}</p>
+									{/if}
+								</div>
+
+								<!-- Email Field -->
+								<div>
+									<label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+										<Mail class="inline h-4 w-4 mr-1" />
+										Email Address
+									</label>
+									<input
+										id="email"
+										type="email"
+										bind:value={formData.email}
+										class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-500 transition-colors focus:border-ferrari-500 focus:ring-2 focus:ring-ferrari-500/20 focus:outline-none {errors.email ? 'border-red-500' : ''}"
+										placeholder="Enter your email address"
+										required
+									/>
+									{#if errors.email}
+										<p class="mt-1 text-sm text-red-600">{errors.email}</p>
+									{/if}
+								</div>
+							</div>
+
+							<!-- Message Field -->
+							<div>
+								<label for="message" class="block text-sm font-medium text-gray-700 mb-2">
+									<MessageSquare class="inline h-4 w-4 mr-1" />
+									Message
+								</label>
+								<textarea
+									id="message"
+									bind:value={formData.message}
+									rows="8"
+									class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-500 transition-colors focus:border-ferrari-500 focus:ring-2 focus:ring-ferrari-500/20 focus:outline-none resize-vertical {errors.message ? 'border-red-500' : ''}"
+									placeholder={currentCategory.placeholder}
+									required
+								></textarea>
+								{#if errors.message}
+									<p class="mt-1 text-sm text-red-600">{errors.message}</p>
+								{/if}
+								<p class="mt-2 text-sm text-gray-500">
+									{formData.message.length}/1000 characters
+								</p>
+							</div>
+
+							<!-- Turnstile Verification -->
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-3">
+									<CheckCircle class="inline h-4 w-4 mr-1" />
+									Verification <span class="text-red-500">*</span>
+								</label>
+								<div id="turnstile-container" class="flex justify-center"></div>
+								{#if errors.turnstile}
+									<p class="mt-2 text-sm text-red-600 text-center">{errors.turnstile}</p>
+								{/if}
+								<p class="mt-2 text-xs text-gray-500 text-center">
+									This verification helps us prevent spam and protect your privacy
+								</p>
+							</div>
+
+							<!-- Submit Button -->
+							<div class="flex flex-col gap-4 pt-4">
+								{#if errors.submit}
+									<p class="text-sm text-red-600 text-center">{errors.submit}</p>
+								{/if}
+								
+								<button
+									type="submit"
+									disabled={isSubmitting}
+									class="flex items-center justify-center gap-2 rounded-lg bg-ferrari-600 px-8 py-4 text-white font-medium transition-all duration-200 hover:bg-ferrari-700 focus:outline-none focus:ring-2 focus:ring-ferrari-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									{#if isSubmitting}
+										<div class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+										Sending Message...
+									{:else}
+										<Send class="h-5 w-5" />
+										Send Email
+									{/if}
+								</button>
+								
+								<p class="text-center text-sm text-gray-600">
+									We'll respond to your {currentCategory.title.toLowerCase()} within 24-48 hours
+								</p>
+							</div>
+						</form>
+					{/if}
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Additional Information -->
+	<section class="bg-section-elevated py-16">
+		<div class="mx-auto max-w-4xl px-4 md:px-6 lg:px-8">
+			<div class="grid gap-8 md:grid-cols-2">
+				<!-- Privacy Notice -->
+				<div class="rounded-2xl bg-white p-6 shadow-sm">
+					<div class="mb-4 flex items-center gap-3">
+						<CheckCircle class="h-8 w-8 text-green-600" />
+						<h3 class="text-xl font-semibold text-gray-900">Your Privacy Matters</h3>
+					</div>
+					<div class="space-y-3 text-gray-700">
+						<p>Your contact information is kept completely private and secure.</p>
+						<ul class="list-disc list-inside space-y-1 text-sm">
+							<li>We never share your email with third parties</li>
+							<li>Messages are encrypted in transit</li>
+							<li>We only use your info to respond to your inquiry</li>
+							<li>You can request data deletion at any time</li>
+						</ul>
+					</div>
+				</div>
+
+				<!-- Response Times -->
+				<div class="rounded-2xl bg-white p-6 shadow-sm">
+					<div class="mb-4 flex items-center gap-3">
+						<Clock class="h-8 w-8 text-ferrari-600" />
+						<h3 class="text-xl font-semibold text-gray-900">Response Times</h3>
+					</div>
 					<div class="space-y-3">
-						<div>
-							<h4 class="font-medium text-gray-900">Is vec2art free to use?</h4>
-							<p class="text-sm text-gray-600">Yes! vec2art is completely free for personal and commercial use. No account required.</p>
+						<div class="flex items-center justify-between rounded-lg bg-ferrari-50 p-3">
+							<div class="flex items-center gap-2">
+								<Bug class="h-5 w-5 text-ferrari-600" />
+								<span class="font-medium text-gray-900">Bug Reports</span>
+							</div>
+							<span class="text-sm font-medium text-ferrari-700">12-24 hours</span>
 						</div>
-						<div>
-							<h4 class="font-medium text-gray-900">Do my images get uploaded to a server?</h4>
-							<p class="text-sm text-gray-600">No. All processing happens locally in your browser using WebAssembly. Your images never leave your device.</p>
+						<div class="flex items-center justify-between rounded-lg bg-blue-50 p-3">
+							<div class="flex items-center gap-2">
+								<Building2 class="h-5 w-5 text-blue-600" />
+								<span class="font-medium text-gray-900">Business Inquiries</span>
+							</div>
+							<span class="text-sm font-medium text-blue-700">24-48 hours</span>
 						</div>
-						<div>
-							<h4 class="font-medium text-gray-900">Which image formats are supported?</h4>
-							<p class="text-sm text-gray-600">PNG, JPG, JPEG, WebP, TIFF, BMP, and GIF formats are supported.</p>
-						</div>
-						<div>
-							<h4 class="font-medium text-gray-900">Why is processing slow on my device?</h4>
-							<p class="text-sm text-gray-600">Processing speed depends on your device's CPU and available memory. Try reducing image size or closing other browser tabs.</p>
+						<div class="flex items-center justify-between rounded-lg bg-green-50 p-3">
+							<div class="flex items-center gap-2">
+								<Mail class="h-5 w-5 text-green-600" />
+								<span class="font-medium text-gray-900">General Contact</span>
+							</div>
+							<span class="text-sm font-medium text-green-700">24-72 hours</span>
 						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	</section>
-
-	<!-- Back to Top -->
-	<section class="bg-white py-8">
-		<div class="mx-auto max-w-4xl px-4 md:px-6 lg:px-8 text-center">
-			<a href="#" class="inline-flex items-center gap-2 text-ferrari-600 hover:text-ferrari-700 transition-colors">
-				<Mail class="h-4 w-4" />
-				Back to Top
-			</a>
 		</div>
 	</section>
 </div>

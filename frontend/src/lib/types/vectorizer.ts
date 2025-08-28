@@ -99,6 +99,7 @@ export interface VectorizerConfig {
 	num_superpixels?: number; // 50-500
 	compactness?: number; // 5-30
 	slic_iterations?: number; // 5-15
+	initialization_pattern?: 'square' | 'hexagonal' | 'triangular' | 'poisson'; // Cluster initialization pattern
 	min_region_size?: number; // 10-100 px²
 	color_distance?: number; // 10-50
 	spatial_distance_weight?: number; // 0.5-2.0
@@ -273,7 +274,12 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	enable_background_removal: false, // Default disabled
 	background_removal_strength: 0.5, // Moderate strength when enabled
 	background_removal_algorithm: 'otsu', // Fast algorithm by default
-	max_processing_time_ms: 60000 // 60 seconds for comprehensive processing
+	max_processing_time_ms: 60000, // 60 seconds for comprehensive processing
+	// Superpixel backend defaults
+	num_superpixels: 150, // Moderate number of regions
+	compactness: 15, // Balanced shape regularity (reduced from previous 20 to avoid artifacts)
+	slic_iterations: 10, // Standard SLIC iteration count
+	initialization_pattern: 'poisson' // Poisson disk sampling shows least diagonal artifacts
 };
 
 // Preset configurations
@@ -353,6 +359,7 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		num_superpixels: 150,
 		compactness: 20,
 		slic_iterations: 10,
+		initialization_pattern: 'poisson', // Best artifact reduction
 		fill_regions: true,
 		stroke_regions: true,
 		simplify_boundaries: true,

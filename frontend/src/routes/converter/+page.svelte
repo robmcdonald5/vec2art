@@ -820,6 +820,13 @@
 		cleanedConfig.enable_flow_tracing = false;
 		cleanedConfig.enable_bezier_fitting = false;
 		cleanedConfig.enable_etf_fdog = false;
+		
+		// Reset multipass settings (edge-backend specific)
+		cleanedConfig.multipass = false;
+		cleanedConfig.reverse_pass = false;
+		cleanedConfig.diagonal_pass = false;
+		cleanedConfig.pass_count = undefined;
+		cleanedConfig.multipass_mode = undefined;
 		cleanedConfig.trace_min_gradient = undefined;
 		cleanedConfig.trace_min_coherency = undefined;
 		cleanedConfig.trace_max_gap = undefined;
@@ -916,8 +923,13 @@
 			cleanedConfig.enable_flow_tracing = false; // Start with basic edge detection
 			cleanedConfig.enable_bezier_fitting = false;
 			cleanedConfig.enable_etf_fdog = false;
+			
+			// Enable multipass settings for edge backend (with sensible defaults)
+			cleanedConfig.multipass = false; // Start with simple mode
+			cleanedConfig.reverse_pass = false; 
+			cleanedConfig.diagonal_pass = false;
 			console.log(
-				'🎯 Applied edge backend defaults: preserve_colors=false, advanced features disabled'
+				'🎯 Applied edge backend defaults: preserve_colors=false, advanced features disabled, multipass=false'
 			);
 		}
 

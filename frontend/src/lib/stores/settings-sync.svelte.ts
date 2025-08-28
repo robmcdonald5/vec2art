@@ -116,17 +116,15 @@ export class SettingsSyncStore {
 			this._lastGlobalConfig = { ...this._globalConfig };
 
 			if (options.initializeFromGlobal !== false) {
-				// CRITICAL: Only copy core settings, not backend-specific ones
-				// This prevents backend settings from leaking between images
+				// CRITICAL: Only copy truly universal settings, NOT backend-specific ones
+				// Backend-specific parameters (multipass, reverse_pass, etc.) must not leak between images
 				const coreConfig = {
 					backend: this._globalConfig.backend,
 					preset: this._globalConfig.preset,
 					detail: this._globalConfig.detail,
 					stroke_width: this._globalConfig.stroke_width,
 					noise_filtering: this._globalConfig.noise_filtering,
-					multipass: this._globalConfig.multipass,
-					pass_count: this._globalConfig.pass_count,
-					multipass_mode: this._globalConfig.multipass_mode,
+					// REMOVED: multipass, pass_count, multipass_mode - these are edge-backend specific!
 					hand_drawn_preset: this._globalConfig.hand_drawn_preset,
 					variable_weights: this._globalConfig.variable_weights,
 					tremor_strength: this._globalConfig.tremor_strength,

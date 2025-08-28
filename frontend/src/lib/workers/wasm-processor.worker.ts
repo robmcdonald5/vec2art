@@ -270,14 +270,22 @@ function configureVectorizer(config: any) {
 		config.enable_etf_fdog = true;
 	}
 
-	// Reverse and diagonal passes require multipass processing
+	// Reverse and diagonal passes require multipass processing (but only for supported backends)
 	if ((config.reverse_pass || config.diagonal_pass) && !config.multipass) {
-		console.log('[Worker] 🔧 Auto-enabling multipass for reverse/diagonal passes (WASM requirement)');
-		config.multipass = true;
-		// Ensure pass_count is > 1 when multipass is enabled
-		if (config.pass_count <= 1) {
-			console.log('[Worker] 🔧 Auto-setting pass_count to 2 for multipass (WASM requirement)');
-			config.pass_count = 2;
+		// Check if backend supports multipass
+		if (config.backend === 'edge') {
+			console.log('[Worker] 🔧 Auto-enabling multipass for reverse/diagonal passes (WASM requirement)');
+			config.multipass = true;
+			// Ensure pass_count is > 1 when multipass is enabled
+			if (config.pass_count <= 1) {
+				console.log('[Worker] 🔧 Auto-setting pass_count to 2 for multipass (WASM requirement)');
+				config.pass_count = 2;
+			}
+		} else {
+			// Backend doesn't support multipass - disable the conflicting settings
+			console.log(`[Worker] ⚠️ Backend '${config.backend}' doesn't support multipass - disabling reverse/diagonal passes`);
+			config.reverse_pass = false;
+			config.diagonal_pass = false;
 		}
 	}
 
@@ -532,6 +540,15 @@ function configureVectorizer(config: any) {
 				console.log(`[Worker] Setting ${key}:`, config[key]);
 				vectorizer[method](config[key]);
 			}
+		}
+
+		// Initialization pattern configuration
+		if (
+			typeof config.initialization_pattern === 'string' &&
+			typeof vectorizer.set_initialization_pattern === 'function'
+		) {
+			console.log('[Worker] Setting initialization_pattern:', config.initialization_pattern);
+			vectorizer.set_initialization_pattern(config.initialization_pattern);
 		}
 
 		// Unified color configuration for superpixel backend
