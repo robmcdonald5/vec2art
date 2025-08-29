@@ -129,6 +129,10 @@ impl WasmVectorizer {
         };
         
         self.backend = backend;
+        
+        // CRITICAL FIX: Apply backend to config_builder
+        self.config_builder = self.config_builder.clone().backend(backend);
+            
         log::info!("Backend set to: {:?}", self.backend);
         Ok(())
     }
@@ -153,6 +157,222 @@ impl WasmVectorizer {
     #[wasm_bindgen]
     pub fn set_multipass(&mut self, enabled: bool) {
         self.config_builder = self.config_builder.clone().multipass(enabled);
+    }
+
+    /// Set number of processing passes (1-10)
+    #[wasm_bindgen]
+    pub fn set_pass_count(&mut self, count: u32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().pass_count(count)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set pass count: {}", e)))?;
+        Ok(())
+    }
+
+    /// Set dot size range (min_radius, max_radius)
+    #[wasm_bindgen]
+    pub fn set_dot_size_range(&mut self, min_radius: f32, max_radius: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().dot_size_range(min_radius, max_radius)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set dot size range: {}", e)))?;
+        Ok(())
+    }
+
+    /// Enable or disable reverse pass
+    #[wasm_bindgen]
+    pub fn set_reverse_pass(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().reverse_pass(enabled);
+    }
+
+    /// Enable or disable diagonal pass
+    #[wasm_bindgen]
+    pub fn set_diagonal_pass(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().diagonal_pass(enabled);
+    }
+
+    /// Enable or disable ETF/FDoG edge detection
+    #[wasm_bindgen]
+    pub fn set_enable_etf_fdog(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().enable_etf_fdog(enabled);
+    }
+
+    /// Enable or disable flow tracing
+    #[wasm_bindgen]
+    pub fn set_enable_flow_tracing(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().enable_flow_tracing(enabled);
+    }
+
+    /// Enable or disable bezier fitting
+    #[wasm_bindgen]
+    pub fn set_enable_bezier_fitting(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().enable_bezier_fitting(enabled);
+    }
+
+    /// Set conservative detail for multipass processing
+    #[wasm_bindgen]
+    pub fn set_conservative_detail(&mut self, detail: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().conservative_detail(Some(detail))
+            .map_err(|e| JsValue::from_str(&format!("Failed to set conservative detail: {}", e)))?;
+        Ok(())
+    }
+
+    /// Set aggressive detail for multipass processing
+    #[wasm_bindgen]
+    pub fn set_aggressive_detail(&mut self, detail: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().aggressive_detail(Some(detail))
+            .map_err(|e| JsValue::from_str(&format!("Failed to set aggressive detail: {}", e)))?;
+        Ok(())
+    }
+
+    /// Set directional strength threshold
+    #[wasm_bindgen]
+    pub fn set_directional_strength_threshold(&mut self, threshold: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().directional_threshold(threshold)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set directional strength threshold: {}", e)))?;
+        Ok(())
+    }
+
+    /// Enable or disable noise filtering
+    #[wasm_bindgen]
+    pub fn set_noise_filtering(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().noise_filtering(enabled);
+    }
+
+    /// Set SVG precision
+    #[wasm_bindgen]
+    pub fn set_svg_precision(&mut self, precision: u8) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().svg_precision(precision)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set SVG precision: {}", e)))?;
+        Ok(())
+    }
+
+    // === CENTERLINE BACKEND METHODS ===
+    
+    /// Enable or disable adaptive threshold
+    #[wasm_bindgen]
+    pub fn set_enable_adaptive_threshold(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().enable_adaptive_threshold(enabled);
+    }
+
+    /// Set window size for adaptive threshold
+    #[wasm_bindgen]
+    pub fn set_window_size(&mut self, size: u32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().window_size(size)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set window size: {}", e)))?;
+        Ok(())
+    }
+
+    /// Set sensitivity k for adaptive threshold
+    #[wasm_bindgen]
+    pub fn set_sensitivity_k(&mut self, k: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().sensitivity_k(k)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set sensitivity k: {}", e)))?;
+        Ok(())
+    }
+
+    /// Enable or disable width modulation
+    #[wasm_bindgen]
+    pub fn set_enable_width_modulation(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().enable_width_modulation(enabled);
+    }
+
+    /// Set minimum branch length
+    #[wasm_bindgen]
+    pub fn set_min_branch_length(&mut self, length: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().min_branch_length(length)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set min branch length: {}", e)))?;
+        Ok(())
+    }
+
+    /// Set Douglas-Peucker epsilon
+    #[wasm_bindgen]
+    pub fn set_douglas_peucker_epsilon(&mut self, epsilon: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().douglas_peucker_epsilon(epsilon)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set Douglas-Peucker epsilon: {}", e)))?;
+        Ok(())
+    }
+
+    // === DOTS BACKEND METHODS ===
+
+    /// Set dot density threshold
+    #[wasm_bindgen]
+    pub fn set_dot_density(&mut self, threshold: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().dot_density(threshold)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set dot density: {}", e)))?;
+        Ok(())
+    }
+
+    /// Enable or disable adaptive sizing for dots
+    #[wasm_bindgen]
+    pub fn set_adaptive_sizing(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().adaptive_sizing(enabled);
+    }
+
+    /// Set background tolerance for dots
+    #[wasm_bindgen]
+    pub fn set_background_tolerance(&mut self, tolerance: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().background_tolerance(tolerance)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set background tolerance: {}", e)))?;
+        Ok(())
+    }
+
+    /// Enable or disable Poisson disk sampling
+    #[wasm_bindgen]
+    pub fn set_poisson_disk_sampling(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().set_poisson_disk_sampling(enabled);
+    }
+
+    /// Enable or disable gradient-based sizing
+    #[wasm_bindgen]
+    pub fn set_gradient_based_sizing(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().set_gradient_based_sizing(enabled);
+    }
+
+    // === SUPERPIXEL BACKEND METHODS ===
+
+    /// Set number of superpixels
+    #[wasm_bindgen]
+    pub fn set_num_superpixels(&mut self, count: u32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().num_superpixels(count)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set num superpixels: {}", e)))?;
+        Ok(())
+    }
+
+    /// Set superpixel compactness
+    #[wasm_bindgen]
+    pub fn set_compactness(&mut self, compactness: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().compactness(compactness)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set compactness: {}", e)))?;
+        Ok(())
+    }
+
+    /// Set SLIC iterations
+    #[wasm_bindgen]
+    pub fn set_slic_iterations(&mut self, iterations: u32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().slic_iterations(iterations)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set SLIC iterations: {}", e)))?;
+        Ok(())
+    }
+
+    /// Set boundary epsilon for superpixel simplification
+    #[wasm_bindgen]
+    pub fn set_boundary_epsilon(&mut self, epsilon: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().boundary_epsilon(epsilon)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set boundary epsilon: {}", e)))?;
+        Ok(())
+    }
+
+    // === COLOR PRESERVATION METHODS ===
+
+    /// Set preserve colors (generic)
+    #[wasm_bindgen]
+    pub fn set_preserve_colors(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().preserve_colors(enabled);
+    }
+
+    /// Set color tolerance
+    #[wasm_bindgen]
+    pub fn set_color_tolerance(&mut self, tolerance: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().color_tolerance(tolerance)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set color tolerance: {}", e)))?;
+        Ok(())
     }
 
     /// Process an image and return SVG
