@@ -1423,12 +1423,8 @@
 						// Reset all UI state
 						handleReset();
 
-						// Reset all settings to defaults
-						settingsSyncStore.updateConfig({
-							...DEFAULT_CONFIG,
-							optimize_svg: true,
-							svg_precision: 2
-						});
+						// Reset all settings to defaults using proper reset method
+						settingsSyncStore.resetConfigs();
 
 						// Reset settings sync mode to global
 						settingsSyncStore.switchMode('global', {
@@ -1464,11 +1460,6 @@
 						componentResetKey++;
 
 						toastStore.info('🧹 Cleared all data and reset all settings to defaults');
-
-						// Small delay before reload to ensure pan/zoom reset takes effect
-						setTimeout(() => {
-							location.reload();
-						}, 100);
 					}}
 					title="Clear all data and reset all settings to defaults"
 				>
