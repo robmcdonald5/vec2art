@@ -304,6 +304,122 @@ export class WasmVectorizer {
    */
   set_multipass(enabled: boolean): void;
   /**
+   * Set number of processing passes (1-10)
+   */
+  set_pass_count(count: number): void;
+  /**
+   * Set dot size range (min_radius, max_radius)
+   */
+  set_dot_size_range(min_radius: number, max_radius: number): void;
+  /**
+   * Enable or disable reverse pass
+   */
+  set_reverse_pass(enabled: boolean): void;
+  /**
+   * Enable or disable diagonal pass
+   */
+  set_diagonal_pass(enabled: boolean): void;
+  /**
+   * Enable or disable ETF/FDoG edge detection
+   */
+  set_enable_etf_fdog(enabled: boolean): void;
+  /**
+   * Enable or disable flow tracing
+   */
+  set_enable_flow_tracing(enabled: boolean): void;
+  /**
+   * Enable or disable bezier fitting
+   */
+  set_enable_bezier_fitting(enabled: boolean): void;
+  /**
+   * Set conservative detail for multipass processing
+   */
+  set_conservative_detail(detail: number): void;
+  /**
+   * Set aggressive detail for multipass processing
+   */
+  set_aggressive_detail(detail: number): void;
+  /**
+   * Set directional strength threshold
+   */
+  set_directional_strength_threshold(threshold: number): void;
+  /**
+   * Enable or disable noise filtering
+   */
+  set_noise_filtering(enabled: boolean): void;
+  /**
+   * Set SVG precision
+   */
+  set_svg_precision(precision: number): void;
+  /**
+   * Enable or disable adaptive threshold
+   */
+  set_enable_adaptive_threshold(enabled: boolean): void;
+  /**
+   * Set window size for adaptive threshold
+   */
+  set_window_size(size: number): void;
+  /**
+   * Set sensitivity k for adaptive threshold
+   */
+  set_sensitivity_k(k: number): void;
+  /**
+   * Enable or disable width modulation
+   */
+  set_enable_width_modulation(enabled: boolean): void;
+  /**
+   * Set minimum branch length
+   */
+  set_min_branch_length(length: number): void;
+  /**
+   * Set Douglas-Peucker epsilon
+   */
+  set_douglas_peucker_epsilon(epsilon: number): void;
+  /**
+   * Set dot density threshold
+   */
+  set_dot_density(threshold: number): void;
+  /**
+   * Enable or disable adaptive sizing for dots
+   */
+  set_adaptive_sizing(enabled: boolean): void;
+  /**
+   * Set background tolerance for dots
+   */
+  set_background_tolerance(tolerance: number): void;
+  /**
+   * Enable or disable Poisson disk sampling
+   */
+  set_poisson_disk_sampling(enabled: boolean): void;
+  /**
+   * Enable or disable gradient-based sizing
+   */
+  set_gradient_based_sizing(enabled: boolean): void;
+  /**
+   * Set number of superpixels
+   */
+  set_num_superpixels(count: number): void;
+  /**
+   * Set superpixel compactness
+   */
+  set_compactness(compactness: number): void;
+  /**
+   * Set SLIC iterations
+   */
+  set_slic_iterations(iterations: number): void;
+  /**
+   * Set boundary epsilon for superpixel simplification
+   */
+  set_boundary_epsilon(epsilon: number): void;
+  /**
+   * Set preserve colors (generic)
+   */
+  set_preserve_colors(enabled: boolean): void;
+  /**
+   * Set color tolerance
+   */
+  set_color_tolerance(tolerance: number): void;
+  /**
    * Process an image and return SVG
    */
   vectorize_with_progress(image_data: ImageData, callback?: Function | null): string;
@@ -485,6 +601,52 @@ export interface InitOutput {
   readonly wasmvectorizer_set_stroke_width: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder12stroke_width17he914efe3e25f932cE: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_multipass: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_pass_count: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder10pass_count17h614d39a72e89c2deE: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_dot_size_range: (a: number, b: number, c: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder14dot_size_range17h076e3aec622e4e11E: (a: number, b: number, c: number, d: number) => void;
+  readonly wasmvectorizer_set_reverse_pass: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_diagonal_pass: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_enable_etf_fdog: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_enable_flow_tracing: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_enable_bezier_fitting: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_conservative_detail: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder19conservative_detail17hf675095fa7b43150E: (a: number, b: number, c: number, d: number) => void;
+  readonly wasmvectorizer_set_aggressive_detail: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder17aggressive_detail17h81f74a14b5402273E: (a: number, b: number, c: number, d: number) => void;
+  readonly wasmvectorizer_set_directional_strength_threshold: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder21directional_threshold17h5dfc85eb74694672E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_noise_filtering: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_svg_precision: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder13svg_precision17h932b0ea77fcac475E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_enable_adaptive_threshold: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_window_size: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11window_size17h1bd1096517a16fecE: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_sensitivity_k: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder13sensitivity_k17h8f8bc2682fb2274dE: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_enable_width_modulation: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_min_branch_length: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder17min_branch_length17h676f08999670d0f5E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_douglas_peucker_epsilon: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder23douglas_peucker_epsilon17hd4212eda39a0c977E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_dot_density: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11dot_density17hd898c7c486d61de7E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_adaptive_sizing: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_background_tolerance: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder20background_tolerance17he74f43de92d1c216E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_poisson_disk_sampling: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_gradient_based_sizing: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_num_superpixels: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder15num_superpixels17h48cfd6d445f5201fE: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_compactness: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11compactness17hf40bc9280e144f78E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_slic_iterations: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder15slic_iterations17h07bf63887ecddc01E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_boundary_epsilon: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder16boundary_epsilon17h5cb2cc6b221cb333E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_preserve_colors: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_color_tolerance: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder15color_tolerance17h831dd0de45d9598eE: (a: number, b: number, c: number) => void;
   readonly _ZN7web_sys8features13gen_ImageData9ImageData5width17h888d221574a24bbaE: (a: number) => number;
   readonly _ZN7web_sys8features13gen_ImageData9ImageData6height17hcbb162ff433d4609E: (a: number) => number;
   readonly _ZN7web_sys8features13gen_ImageData9ImageData4data17hb8c2f8cdf4119a33E: (a: number, b: number) => void;
@@ -711,34 +873,17 @@ export interface InitOutput {
   readonly _ZN14vectorize_core6config10validation23validate_dot_size_range17h6deabae98f4d3e71E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core6config10validation26validate_superpixel_config17haef0e613e7726418E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder15backend_by_name17h803cd073c5853ae4E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder10pass_count17h614d39a72e89c2deE: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder19conservative_detail17hf675095fa7b43150E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder17aggressive_detail17h81f74a14b5402273E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder21directional_threshold17h5dfc85eb74694672E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder22max_processing_time_ms17h6504fdd38a7b5f1eE: (a: number, b: number, c: bigint) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11dot_density17hd898c7c486d61de7E: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder14dot_size_range17h076e3aec622e4e11E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder26dot_size_range_from_string17h09c959e0587a6991E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder20background_tolerance17he74f43de92d1c216E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder19line_color_accuracy17hde03ae8cb75763a1E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder19max_colors_per_path17h95237d18119e449cE: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder15color_tolerance17h831dd0de45d9598eE: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder21palette_target_colors17h42ddbe222e911ea6E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder17hand_drawn_preset17h13a6a9f761254bf1E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder13custom_tremor17h05d3073ad72cad40E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder23custom_variable_weights17hb724d17c05692054E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder15custom_tapering17hb79569c5455a594eE: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11window_size17h1bd1096517a16fecE: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder13sensitivity_k17h8f8bc2682fb2274dE: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder17min_branch_length17h676f08999670d0f5E: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder23douglas_peucker_epsilon17hd4212eda39a0c977E: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder15num_superpixels17h48cfd6d445f5201fE: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11compactness17hf40bc9280e144f78E: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder15slic_iterations17h07bf63887ecddc01E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder22initialization_pattern17h984a49a4bf1a09abE: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder16boundary_epsilon17h5cb2cc6b221cb333E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder14max_image_size17hd59eec37c6681dcfE: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder13svg_precision17h932b0ea77fcac475E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder12for_line_art17h690355f1db2fcf2aE: (a: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder10for_sketch17h25ac846cc55208ecE: (a: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder13for_technical17hbba1736af904acc5E: (a: number) => void;
