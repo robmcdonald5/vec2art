@@ -2,13 +2,15 @@
  * File validation utilities for image uploads
  */
 
-export const ALLOWED_IMAGE_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/tiff', 'image/bmp', 'image/gif'];
+export const ALLOWED_IMAGE_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/tiff', 'image/bmp', 'image/gif', 'image/avif'];
 export const BLOCKED_FORMATS = ['image/svg+xml'];
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+export const MAX_FILE_SIZE = 1 * 1024 * 1024 * 1024; // 1GB
+export const LARGE_FILE_WARNING_SIZE = 10 * 1024 * 1024; // 10MB
 
 export interface ValidationResult {
 	isValid: boolean;
 	error?: string;
+	warning?: string;
 }
 
 /**
@@ -19,7 +21,7 @@ export function validateImageFile(file: File): ValidationResult {
 	if (BLOCKED_FORMATS.includes(file.type)) {
 		return {
 			isValid: false,
-			error: `SVG files cannot be used as source images. Please upload JPG, PNG, WebP, TIFF, BMP, or GIF files.`
+			error: `SVG files cannot be used as source images. Please upload JPG, PNG, WebP, TIFF, BMP, GIF, or AVIF files.`
 		};
 	}
 
@@ -27,22 +29,31 @@ export function validateImageFile(file: File): ValidationResult {
 	if (!ALLOWED_IMAGE_FORMATS.includes(file.type)) {
 		// Also check file extension as fallback
 		const extension = file.name.split('.').pop()?.toLowerCase();
-		const validExtensions = ['jpg', 'jpeg', 'png', 'webp', 'tiff', 'tif', 'bmp', 'gif'];
+		const validExtensions = ['jpg', 'jpeg', 'png', 'webp', 'tiff', 'tif', 'bmp', 'gif', 'avif'];
 
 		if (!extension || !validExtensions.includes(extension)) {
 			return {
 				isValid: false,
-				error: `Unsupported file format. Please use: JPG, PNG, WebP, TIFF, BMP, or GIF`
+				error: `Unsupported file format. Please use: JPG, PNG, WebP, TIFF, BMP, GIF, or AVIF`
 			};
 		}
 	}
 
 	// Check file size
 	if (file.size > MAX_FILE_SIZE) {
-		const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+		const sizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(1);
 		return {
 			isValid: false,
-			error: `File too large (${sizeMB}MB). Maximum size is 10MB.`
+			error: `File too large (${sizeGB}GB). Maximum size is 1GB.`
+		};
+	}
+
+	// Check for large file warning
+	if (file.size > LARGE_FILE_WARNING_SIZE) {
+		const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+		return {
+			isValid: true,
+			warning: `Large file detected (${sizeMB}MB). Processing time may be significantly longer than usual.`
 		};
 	}
 
@@ -55,14 +66,22 @@ export function validateImageFile(file: File): ValidationResult {
 export function validateImageFiles(files: File[]): {
 	validFiles: File[];
 	errors: Array<{ file: string; error: string }>;
+	warnings: Array<{ file: string; warning: string }>;
 } {
 	const validFiles: File[] = [];
 	const errors: Array<{ file: string; error: string }> = [];
+	const warnings: Array<{ file: string; warning: string }> = [];
 
 	for (const file of files) {
 		const result = validateImageFile(file);
 		if (result.isValid) {
 			validFiles.push(file);
+			if (result.warning) {
+				warnings.push({
+					file: file.name,
+					warning: result.warning
+				});
+			}
 		} else {
 			errors.push({
 				file: file.name,
@@ -71,7 +90,7 @@ export function validateImageFiles(files: File[]): {
 		}
 	}
 
-	return { validFiles, errors };
+	return { validFiles, errors, warnings };
 }
 
 /**
@@ -91,6 +110,8 @@ export function getFileFormat(mimeType: string): string {
 			return 'BMP';
 		case 'image/gif':
 			return 'GIF';
+		case 'image/avif':
+			return 'AVIF';
 		case 'image/svg+xml':
 			return 'SVG';
 		default:

@@ -1,14 +1,22 @@
 #!/bin/bash
-# Complete WASM rebuild script with all required fixes
+# Complete WASM rebuild script for single-threaded + Web Worker architecture
 # Run from project root: ./rebuild-wasm.sh
 
 set -e  # Exit on any error
 
-echo "🔧 Building WASM module with multithreading..."
+echo "🔧 Building WASM module with single-threaded + Web Worker architecture..."
 cd wasm/vectorize-wasm
 
-# Build the WASM module
-wasm-pack build --target web --out-dir pkg --features wasm-parallel
+# Check for stable Rust toolchain and wasm32 target
+if ! rustup target list --installed | grep -q wasm32-unknown-unknown; then
+    echo "⚠️  Installing wasm32-unknown-unknown target..."
+    rustup target add wasm32-unknown-unknown
+fi
+
+echo "🚀 Building with wasm-pack using stable Rust for single-threaded architecture..."
+wasm-pack build \
+--target web \
+--out-dir pkg
 
 if [ $? -eq 0 ]; then
     echo "✅ Build successful!"
@@ -57,7 +65,7 @@ if [ $? -eq 0 ]; then
     mkdir -p static/wasm
     cp -r src/lib/wasm/* static/wasm/
     
-    echo "🎉 WASM rebuild complete with all fixes applied!"
+    echo "🎉 WASM rebuild complete for single-threaded + Web Worker architecture!"
     echo "✅ All import paths fixed automatically"
     echo "✅ Worker helpers fixed"
     echo "✅ Files synchronized to static directory"
@@ -66,6 +74,8 @@ if [ $? -eq 0 ]; then
     echo "   • frontend/src/lib/wasm/ (source)"
     echo "   • frontend/static/wasm/ (static serving)"
     echo ""
+    echo "🏗️  Architecture: Single-threaded WASM + Web Worker"
+    echo "⚡ Benefits: Stable, reliable, responsive UI"
     echo "🚀 Ready to test!"
 else
     echo "❌ Build failed!"

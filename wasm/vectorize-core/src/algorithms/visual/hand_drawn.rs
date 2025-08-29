@@ -256,20 +256,20 @@ fn calculate_perpendicular(p1: (f32, f32), p2: (f32, f32)) -> (f32, f32) {
 
 /// Apply geometric tapering using path manipulation (test helper function)
 #[cfg(test)]
-fn apply_geometric_tapering(path_data: &str, stroke_width: f32, tapering_strength: f32) -> String {
+fn apply_geometric_tapering(path_data: &str, _stroke_width: f32, _tapering_strength: f32) -> String {
     let points = parse_path_to_points(path_data);
     if points.len() < 2 {
         return String::from("M 0 0"); // Empty path
     }
     
-    let taper_zone_length = (points.len() / 4).max(1);
+    let _taper_zone_length = (points.len() / 4).max(1);
     let mut path_result = String::new();
     
     // Start with move command
     path_result.push_str(&format!("M {:.3} {:.3}", points[0].0, points[0].1));
     
     // Add lines with varying widths (simplified approach)
-    for (i, point) in points.iter().enumerate().skip(1) {
+    for (_i, point) in points.iter().enumerate().skip(1) {
         path_result.push_str(&format!(" L {:.3} {:.3}", point.0, point.1));
     }
     

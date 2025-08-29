@@ -626,15 +626,8 @@ mod tests {
         let manager = ThreadPoolManager::new(config);
 
         let result = manager.execute(|| {
-            #[cfg(feature = "parallel")]
-            {
-                use rayon::prelude::*;
-                (0..1000).into_par_iter().sum::<usize>()
-            }
-            #[cfg(not(feature = "parallel"))]
-            {
-                (0..1000).sum::<usize>()
-            }
+            // Single-threaded execution (WASM + Web Worker architecture)
+            (0..1000).sum::<usize>()
         });
 
         assert_eq!(result, 499500);

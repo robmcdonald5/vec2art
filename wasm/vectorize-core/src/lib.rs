@@ -9,6 +9,8 @@ pub mod config;
 pub mod config_builder;
 pub mod error;
 pub mod execution;
+#[cfg(feature = "gpu-acceleration")]
+pub mod gpu;
 pub mod performance;
 pub mod preprocessing;
 pub mod svg;

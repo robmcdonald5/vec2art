@@ -40,76 +40,125 @@ interface WorkerResponse {
  * Initialize WASM module in worker context
  */
 async function initializeWasm(config?: { threadCount?: number; backend?: string }) {
-	if (wasmInitialized) {
-		return { success: true, message: 'WASM already initialized' };
-	}
-
-	try {
-		devLog('wasm_operations', 'Initializing WASM module');
-
-		// Initialize WASM module
-		await init();
-
-		// Check if threading is available and requested
-		const hasThreadSupport =
-			typeof wasmModule.initThreadPool === 'function' && typeof SharedArrayBuffer !== 'undefined';
-
-		// WORKAROUND: Disable threading for dots backend due to memory access crashes
-		const isDotsBackend = config?.backend === 'dots';
-		const shouldUseThreading =
-			hasThreadSupport && config?.threadCount && config.threadCount > 1 && !isDotsBackend;
-
-		if (shouldUseThreading) {
-			console.log(`[Worker] Initializing thread pool with ${config!.threadCount} threads...`);
-
-			try {
-				// WORKAROUND: Disable threading due to crossbeam-epoch panics in wasm-bindgen-rayon
-				// These panics occur in crossbeam-epoch-0.9.18/src/internal.rs:385:57
-				// causing "Option::unwrap() on a None value" during worker spawning
-				console.warn(
-					'[Worker] 🔧 Skipping thread pool initialization due to known crossbeam-epoch panics'
-				);
-				console.warn(
-					'[Worker] 🔧 Using single-threaded mode for stability (Web Worker still provides isolation)'
-				);
-
-				if (typeof wasmModule.mark_threading_failed === 'function') {
-					wasmModule.mark_threading_failed();
+	console.log('[Worker] 🔧 initializeWasm called with config:', config);
+	console.log('[Worker] 🔧 Current wasmInitialized status:', wasmInitialized);
+	
+	// Always attempt threading setup, even if WASM was previously initialized
+	let wasmInitializationNeeded = !wasmInitialized;
+	
+	// Check if threading is available (used in return statement)
+	const hasThreadSupport = typeof wasmModule.initThreadPool === 'function' && typeof SharedArrayBuffer !== 'undefined';
+	
+	if (wasmInitializationNeeded) {
+		try {
+			devLog('wasm_operations', 'Initializing WASM module');
+			
+			// Step 1: Initialize WASM module (proper wasm-bindgen-rayon pattern)
+			await init();
+			console.log('[Worker] ✅ WASM module initialized');
+			
+			// Step 2: IMMEDIATELY initialize thread pool (critical timing from working examples)
+			if (config?.threadCount && config.threadCount > 1) {
+				console.log(`[Worker] 🚀 Following proper wasm-bindgen-rayon pattern: init() → initThreadPool(${config.threadCount})`);
+				
+				if (hasThreadSupport) {
+					try {
+						// This is the critical sequence from working examples
+						await wasmModule.initThreadPool(config.threadCount);
+						console.log(`[Worker] ✅ Thread pool initialized successfully with ${config.threadCount} threads`);
+						
+						// Confirm success
+						if (typeof wasmModule.confirm_threading_success === 'function') {
+							wasmModule.confirm_threading_success();
+						}
+						
+						console.log(`[Worker] 🧵 Active threads: ${wasmModule.get_thread_count ? wasmModule.get_thread_count() : 'Unknown'}`);
+					} catch (threadError) {
+						console.error(`[Worker] ❌ Thread pool initialization failed:`, threadError);
+						console.log('[Worker] 🔧 Falling back to single-threaded mode');
+						
+						if (typeof wasmModule.mark_threading_failed === 'function') {
+							wasmModule.mark_threading_failed();
+						}
+					}
+				} else {
+					console.log('[Worker] ⚠️ Threading not supported, using single-threaded mode');
 				}
-
-				// Note: Still using Web Worker for main thread isolation, just not WASM internal threading
-				console.log('[Worker] ✅ Single-threaded mode initialized successfully');
-			} catch (threadError) {
-				console.warn(
-					'[Worker] Thread pool initialization failed, continuing single-threaded:',
-					threadError
-				);
-
-				if (typeof wasmModule.mark_threading_failed === 'function') {
-					wasmModule.mark_threading_failed();
-				}
-			}
-		} else {
-			if (isDotsBackend) {
-				console.log(
-					'[Worker] Running in single-threaded mode (dots backend - threading disabled for stability)'
-				);
 			} else {
-				console.log('[Worker] Running in single-threaded mode');
+				console.log('[Worker] Single-threaded mode (threadCount <= 1)');
+			}
+			
+			// Step 3: Initialize GPU backend if available
+			console.log('[Worker] 🎮 Initializing GPU backend...');
+			if (typeof wasmModule.initialize_gpu_backend === 'function') {
+				try {
+					const gpuResult = await wasmModule.initialize_gpu_backend();
+					console.log('[Worker] ✅ GPU backend initialization result:', gpuResult);
+					
+					// Log GPU status for debugging
+					if (typeof wasmModule.get_gpu_backend_status === 'function') {
+						const gpuStatus = wasmModule.get_gpu_backend_status();
+						console.log('[Worker] 🎮 GPU Status:', gpuStatus);
+					}
+				} catch (gpuError) {
+					console.warn('[Worker] ⚠️ GPU backend initialization failed, continuing with CPU-only:', gpuError);
+				}
+			} else {
+				console.log('[Worker] ℹ️ GPU backend functions not available');
+			}
+
+			wasmInitialized = true;
+		} catch (error) {
+			console.error('[Worker] WASM initialization failed:', error);
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Unknown error'
+			};
+		}
+	} else {
+		console.log('[Worker] 🔧 WASM already initialized, attempting threading reconfiguration');
+		
+		// For already-initialized WASM, attempt threading reconfiguration
+		console.log('[Worker] 🔍 Threading reconfiguration check:');
+		console.log('  config?.threadCount:', config?.threadCount);
+		console.log('  threadCount > 1:', config?.threadCount && config.threadCount > 1);
+		console.log('  hasThreadSupport:', hasThreadSupport);
+		console.log('  typeof wasmModule.initThreadPool:', typeof wasmModule.initThreadPool);
+		console.log('  typeof SharedArrayBuffer:', typeof SharedArrayBuffer);
+		
+		if (config?.threadCount && config.threadCount > 1) {
+			if (hasThreadSupport) {
+				try {
+					console.log(`[Worker] 🔄 Reconfiguring threading: ${config.threadCount} threads`);
+					await wasmModule.initThreadPool(config.threadCount);
+					console.log(`[Worker] ✅ Threading reconfigured successfully`);
+					
+					if (typeof wasmModule.confirm_threading_success === 'function') {
+						wasmModule.confirm_threading_success();
+					}
+				} catch (threadError) {
+					console.error(`[Worker] ❌ Threading reconfiguration failed:`, threadError);
+					if (typeof wasmModule.mark_threading_failed === 'function') {
+						wasmModule.mark_threading_failed();
+					}
+				}
 			}
 		}
+	}
 
-		wasmInitialized = true;
+	// Return success
+	try {
+		
 		return {
 			success: true,
-			message: 'WASM initialized successfully',
+			message: wasmInitializationNeeded ? 'WASM and threading initialized successfully' : 'Threading configured successfully',
 			threading: hasThreadSupport && config?.threadCount ? config.threadCount : 1
 		};
-	} catch (error) {
-		console.error('[Worker] WASM initialization failed:', error);
+	} catch (threadError) {
+		console.error('[Worker] Threading setup failed:', threadError);
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : 'Unknown error'
+			error: threadError instanceof Error ? threadError.message : 'Threading setup failed'
 		};
 	}
 }
@@ -173,13 +222,21 @@ function createVectorizer(imageDataPayload: { data: number[]; width: number; hei
 /**
  * Configure vectorizer with settings
  */
-function configureVectorizer(config: any) {
+async function configureVectorizer(config: any) {
 	if (!vectorizer) {
 		throw new Error('Vectorizer not initialized');
 	}
 
 	// Store config globally for timeout handling
 	currentConfig = config;
+
+	// Ensure critical defaults are set if missing
+	if (config.pass_count === undefined) {
+		config.pass_count = 1; // Default to single pass
+		console.log('[Worker] 🔧 Setting default pass_count=1');
+	}
+	
+	console.log(`[Worker] 🔍 Current pass_count value: ${config.pass_count} (type: ${typeof config.pass_count})`);
 
 	// Calculate multipass configuration from pass_count and multipass_mode
 	if (config.pass_count !== undefined || config.multipass_mode !== undefined) {
@@ -192,6 +249,26 @@ function configureVectorizer(config: any) {
 	}
 
 	console.log('[Worker] Configuring vectorizer with:', JSON.stringify(config, null, 2));
+
+	// Check if we need to initialize threading
+	if (config.thread_count > 1 && typeof wasmModule.get_thread_count === 'function') {
+		const currentThreads = wasmModule.get_thread_count();
+		console.log('[Worker] 🧵 Current thread count:', currentThreads);
+		
+		if (currentThreads === 1) {
+			console.log('[Worker] 🔄 Initializing threading with', config.thread_count, 'threads...');
+			
+			try {
+				await initializeWasm({
+					threadCount: config.thread_count,
+					backend: config.backend
+				});
+				console.log('[Worker] ✅ Threading initialization completed');
+			} catch (error) {
+				console.warn('[Worker] ⚠️ Threading initialization failed:', error);
+			}
+		}
+	}
 
 	// Apply dots backend configuration
 	if (config.backend === 'dots') {
@@ -207,12 +284,9 @@ function configureVectorizer(config: any) {
 	if (config.backend) {
 		console.log('[Worker] Setting backend to:', config.backend);
 		vectorizer.set_backend(config.backend);
-
-		// WORKAROUND: Disable threading for dots backend by marking thread pool failed
-		if (config.backend === 'dots' && typeof wasmModule.mark_threading_failed === 'function') {
-			console.log('[Worker] 🔧 Disabling threading for dots backend to prevent memory crashes');
-			wasmModule.mark_threading_failed();
-		}
+		
+		// Phase 2: Enhanced threading system supports all algorithms including dots
+		console.log('[Worker] ✅ Enhanced threading system supports all backends including dots');
 	}
 
 	if (typeof config.detail === 'number') {
@@ -223,15 +297,8 @@ function configureVectorizer(config: any) {
 			);
 		} else {
 			// For line art backends: invert detail level (UI: 1.0=detailed, Backend: 0.0=detailed)
-			let invertedDetail = 1.0 - config.detail;
-
-			// PERFORMANCE OPTIMIZATION: Reduce detail for single-threaded mode
-			// Since we disabled WASM threading due to crossbeam panics, optimize for speed
-			invertedDetail = Math.min(invertedDetail + 0.1, 0.9); // Reduce detail slightly for speed
-			console.log(
-				`[Worker] 🔧 Performance optimization: Adjusted detail from ${config.detail} to effective ${1.0 - invertedDetail}`
-			);
-
+			const invertedDetail = 1.0 - config.detail;
+			console.log(`[Worker] Setting detail level: ${invertedDetail} (from UI value: ${config.detail})`);
 			vectorizer.set_detail(invertedDetail);
 		}
 	}
@@ -277,7 +344,7 @@ function configureVectorizer(config: any) {
 			console.log('[Worker] 🔧 Auto-enabling multipass for reverse/diagonal passes (WASM requirement)');
 			config.multipass = true;
 			// Ensure pass_count is > 1 when multipass is enabled
-			if (config.pass_count <= 1) {
+			if (!config.pass_count || config.pass_count <= 1) {
 				console.log('[Worker] 🔧 Auto-setting pass_count to 2 for multipass (WASM requirement)');
 				config.pass_count = 2;
 			}
@@ -289,8 +356,8 @@ function configureVectorizer(config: any) {
 		}
 	}
 
-	// General validation: multipass enabled but pass_count is 1
-	if (config.multipass && config.pass_count <= 1) {
+	// General validation: multipass enabled but pass_count is missing or <= 1
+	if (config.multipass && (!config.pass_count || config.pass_count <= 1)) {
 		console.log('[Worker] 🔧 Auto-correcting pass_count to 2 for multipass consistency (WASM requirement)');
 		config.pass_count = 2;
 	}
@@ -349,29 +416,30 @@ function configureVectorizer(config: any) {
 	}
 
 	// Apply hand-drawn preset first (required before custom parameters)
-	if (
-		typeof config.hand_drawn_preset === 'string' &&
-		typeof vectorizer.set_hand_drawn_preset === 'function'
-	) {
-		// Handle 'custom' preset - map to 'medium' to satisfy validation, then override with custom params
-		const wasmPreset = config.hand_drawn_preset === 'custom' ? 'medium' : config.hand_drawn_preset;
-		console.log(
-			'[Worker] Setting hand-drawn preset:',
-			config.hand_drawn_preset,
-			config.hand_drawn_preset === 'custom'
-				? '(mapped to "medium" for WASM validation, will override with custom values)'
-				: ''
-		);
-		try {
-			vectorizer.set_hand_drawn_preset(wasmPreset);
-		} catch (error) {
-			console.error('[Worker] Error: Hand-drawn preset error:', error);
-			// Fallback to 'medium' preset for any invalid preset (not 'none' to avoid validation errors)
-			console.log('[Worker] Falling back to "medium" preset due to error');
-			vectorizer.set_hand_drawn_preset('medium');
+	if (typeof config.hand_drawn_preset === 'string') {
+		if (typeof vectorizer.set_hand_drawn_preset === 'function') {
+			// Handle 'custom' preset - map to 'medium' to satisfy validation, then override with custom params
+			const wasmPreset = config.hand_drawn_preset === 'custom' ? 'medium' : config.hand_drawn_preset;
+			console.log(
+				'[Worker] Setting hand-drawn preset:',
+				config.hand_drawn_preset,
+				config.hand_drawn_preset === 'custom'
+					? '(mapped to "medium" for WASM validation, will override with custom values)'
+					: ''
+			);
+			try {
+				vectorizer.set_hand_drawn_preset(wasmPreset);
+			} catch (error) {
+				console.error('[Worker] Error: Hand-drawn preset error:', error);
+				// Fallback to 'medium' preset for any invalid preset (not 'none' to avoid validation errors)
+				console.log('[Worker] Falling back to "medium" preset due to error');
+				vectorizer.set_hand_drawn_preset('medium');
+			}
+		} else {
+			console.log(`[Worker] ℹ️ Hand-drawn preset "${config.hand_drawn_preset}" requested but WASM method not available - using current single-threaded architecture parameters`);
+			// Since the method isn't available, we're using the simplified single-threaded architecture
+			// where hand-drawn effects are achieved through the existing parameters (detail, stroke_width, multipass)
 		}
-	} else {
-		console.warn('[Worker] ⚠️ Hand-drawn preset not provided or WASM method unavailable');
 	}
 
 	// Apply noise filtering parameters (if enabled)
@@ -782,7 +850,9 @@ async function processImage() {
 		);
 		console.log('[Worker] Current config details:', {
 			backend: vectorizer.get_backend?.() || 'unknown',
-			detail: vectorizer.get_detail?.() || 'unknown'
+			detail: vectorizer.get_detail?.() || 'unknown',
+			thread_count: currentConfig?.thread_count || 'NOT_SET',
+			full_config: currentConfig
 		});
 
 		// Process with progress callback and JavaScript-based timeout
@@ -795,7 +865,7 @@ async function processImage() {
 			console.log('[Worker] Processing with JavaScript timeout:', timeoutMs, 'ms');
 		}
 
-		const svg = await new Promise<string>((resolve, reject) => {
+		const svg = await new Promise<string>(async (resolve, reject) => {
 			let timeoutHandle: number | undefined;
 			let isCompleted = false;
 
@@ -840,20 +910,63 @@ async function processImage() {
 					console.log('[Worker] ✅ Image data pre-processed for dots backend');
 				}
 
-				// Call vectorize with ImageData and progress callback
-				const result = vectorizer.vectorize_with_progress(processedImageData, (progress: any) => {
-					console.log('[Worker] Progress callback received:', progress);
-					// Send progress updates to main thread
-					self.postMessage({
-						type: 'progress',
-						id: 'current',
-						data: {
-							stage: progress.stage || 'processing',
-							progress: progress.progress || 0,
-							message: progress.message || 'Processing...'
+				// Call vectorize with enhanced error handling for WASM panics
+				let result;
+				try {
+					// Check if GPU acceleration is preferred and available
+					if (currentConfig?.preferGpu && typeof wasmModule.vectorize_with_gpu_acceleration === 'function') {
+						console.log('[Worker] 🚀 Using GPU-accelerated vectorization...');
+						result = await wasmModule.vectorize_with_gpu_acceleration(vectorizer, processedImageData!, true);
+					} else {
+						// Fallback to standard CPU vectorization
+						if (currentConfig?.preferGpu) {
+							console.log('[Worker] 💻 GPU preferred but not available, using CPU fallback...');
 						}
-					} as WorkerResponse);
-				});
+						result = vectorizer.vectorize_with_progress(processedImageData, (progress: any) => {
+						console.log('[Worker] Progress callback received:', progress);
+						// Send progress updates to main thread
+						self.postMessage({
+							type: 'progress',
+							id: 'current',
+							data: {
+								stage: progress.stage || 'processing',
+								progress: progress.progress || 0,
+								message: progress.message || 'Processing...'
+							}
+						} as WorkerResponse);
+					});
+					}
+				} catch (wasmError: any) {
+					console.error('[Worker] 💥 WASM vectorization error:', wasmError);
+					
+					// Check for specific WASM errors and provide user-friendly messages
+					// IMPORTANT: Preserve original error message for critical error detection
+					if (wasmError?.message?.includes?.('unreachable executed')) {
+						console.error('[Worker] 🚨 WASM unreachable error detected - backend bug');
+						const userError = new Error('Processing failed due to internal error. Try a different algorithm or image.');
+						// Add original error as property for service layer critical error detection
+						(userError as any).originalError = wasmError;
+						(userError as any).wasmErrorType = 'unreachable executed';
+						throw userError;
+					} else if (wasmError?.message?.includes?.('memory access out of bounds')) {
+						console.error('[Worker] 🚨 WASM memory bounds error detected');
+						const userError = new Error('Image processing failed due to memory constraints. Try a smaller image.');
+						(userError as any).originalError = wasmError;
+						(userError as any).wasmErrorType = 'memory access out of bounds';
+						throw userError;
+					} else if (wasmError?.message?.includes?.('RuntimeError')) {
+						console.error('[Worker] 🚨 WASM runtime error detected');
+						const userError = new Error('Processing engine error. Try refreshing the page or using a different algorithm.');
+						(userError as any).originalError = wasmError;
+						(userError as any).wasmErrorType = 'RuntimeError';
+						throw userError;
+					} else {
+						// Re-throw with enhanced error message and preserve original
+						const userError = new Error(`Processing failed: ${wasmError?.message || 'Unknown WASM error'}`);
+						(userError as any).originalError = wasmError;
+						throw userError;
+					}
+				}
 
 				// Clear timeout on successful completion
 				if (!isCompleted) {
@@ -900,21 +1013,62 @@ async function processImage() {
  */
 self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 	const { type, id, payload } = event.data;
+	
+	console.log(`[Worker] 📨 Received message: ${type}`, payload);
 
 	try {
 		let result: any;
 
 		switch (type) {
 			case 'init':
+				console.log('[Worker] 🎬 Processing init message with payload:', payload);
 				result = await initializeWasm(payload);
 				break;
 
 			case 'process':
+				console.log('[Worker] 🚨 PROCESS CASE ENTERED - STARTING THREADING DEBUG');
+				// Debug threading check
+				console.log('[Worker] 🔍 Threading check debug:');
+				console.log('  wasmInitialized:', wasmInitialized);
+				console.log('  payload.config?.thread_count:', payload.config?.thread_count);
+				console.log('  typeof wasmModule.get_thread_count:', typeof wasmModule.get_thread_count);
+				if (typeof wasmModule.get_thread_count === 'function') {
+					console.log('  wasmModule.get_thread_count():', wasmModule.get_thread_count());
+				}
+				
+				// Check if we need to reinitialize with threading
+				const wasmNotInit = !wasmInitialized;
+				const hasThreadCount = payload.config?.thread_count > 1;
+				const hasThreadCountFunc = typeof wasmModule.get_thread_count === 'function';
+				const currentThreadCount = hasThreadCountFunc ? wasmModule.get_thread_count() : 0;
+				const isSingleThreaded = currentThreadCount === 1;
+				const needsThreadInit = wasmNotInit || (hasThreadCount && hasThreadCountFunc && isSingleThreaded);
+				
+				console.log('[Worker] 🔍 Threading condition breakdown:');
+				console.log('  !wasmInitialized:', wasmNotInit);
+				console.log('  thread_count > 1:', hasThreadCount);
+				console.log('  has get_thread_count:', hasThreadCountFunc);
+				console.log('  current threads:', currentThreadCount);
+				console.log('  is single threaded:', isSingleThreaded);
+				console.log('[Worker] 🔍 Needs thread initialization:', needsThreadInit);
+				
+				if (needsThreadInit) {
+					console.log('[Worker] 🔄 Reinitializing WASM with threading support...');
+					const reinitResult = await initializeWasm({
+						threadCount: payload.config?.thread_count || 4,
+						backend: payload.config?.backend
+					});
+					console.log('[Worker] 🔄 Reinitialization result:', reinitResult);
+				}
+				
 				// Create vectorizer with image data
 				createVectorizer(payload.imageData);
 
 				// Configure vectorizer
 				configureVectorizer(payload.config);
+
+				// Store GPU preference for processing
+				currentConfig.preferGpu = payload.preferGpu;
 
 				// Process image
 				result = await processImage();

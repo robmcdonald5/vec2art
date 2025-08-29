@@ -8,14 +8,15 @@
 	let {
 		onFilesSelect,
 		disabled = false,
-		maxSize = 10 * 1024 * 1024, // 10MB
-		accept = 'image/jpeg,image/png,image/webp,image/tiff,image/bmp,image/gif'
+		maxSize = 1 * 1024 * 1024 * 1024, // 1GB
+		accept = 'image/jpeg,image/png,image/webp,image/tiff,image/bmp,image/gif,image/avif'
 	}: Props = $props();
 
 	// Local state for drag and drop
 	let fileInput: HTMLInputElement;
 	let dragOver = $state(false);
 	let errorMessage = $state('');
+	let warningMessage = $state('');
 	let successMessage = $state('');
 
 	// Handle file validation and upload
@@ -23,13 +24,18 @@
 		if (disabled) return;
 
 		errorMessage = '';
+		warningMessage = '';
 		successMessage = '';
 
 		// Use the validation utility
-		const { validFiles, errors } = validateImageFiles(newFiles);
+		const { validFiles, errors, warnings } = validateImageFiles(newFiles);
 
 		if (errors.length > 0) {
 			errorMessage = errors.map((e) => `${e.file}: ${e.error}`).join('\n');
+		}
+
+		if (warnings.length > 0) {
+			warningMessage = warnings.map((w) => `${w.file}: ${w.warning}`).join('\n');
 		}
 
 		if (validFiles.length > 0) {
@@ -111,6 +117,18 @@
 		</div>
 	{/if}
 
+	{#if warningMessage}
+		<div
+			class="rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950"
+			role="alert"
+		>
+			<div class="flex items-center gap-2">
+				<AlertCircle class="h-4 w-4 text-yellow-600" aria-hidden="true" />
+				<span class="text-sm text-yellow-700 dark:text-yellow-300">{warningMessage}</span>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Upload Dropzone -->
 	<div
 		class="card-ferrari-static flex min-h-[600px] cursor-pointer rounded-3xl border-2 border-dashed p-12 transition-all duration-300 hover:shadow-2xl
@@ -146,7 +164,7 @@
 				</p>
 				<div class="space-y-2">
 					<p class="text-ferrari-600 text-sm">
-						Supports JPG, PNG, WebP, TIFF, BMP, GIF
+						Supports JPG, PNG, WebP, TIFF, BMP, GIF, AVIF
 					</p>
 				</div>
 			</div>
@@ -160,6 +178,11 @@
 				<div class="mt-2 flex items-center gap-2 text-sm text-red-600">
 					<AlertCircle class="h-4 w-4" />
 					<span class="whitespace-pre-line">{errorMessage}</span>
+				</div>
+			{:else if warningMessage}
+				<div class="mt-2 flex items-center gap-2 text-sm text-yellow-600">
+					<AlertCircle class="h-4 w-4" />
+					<span class="whitespace-pre-line">{warningMessage}</span>
 				</div>
 			{:else if successMessage}
 				<div class="mt-2 text-sm text-green-600">

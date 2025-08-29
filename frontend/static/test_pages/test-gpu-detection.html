@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU Detection Test - vec2art</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            line-height: 1.6;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        .test-section.error {
+            border-left-color: #f44336;
+        }
+        .test-section.warning {
+            border-left-color: #ff9800;
+        }
+        .status {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 0.5rem;
+        }
+        .status.success { color: #4CAF50; }
+        .status.error { color: #f44336; }
+        .status.warning { color: #ff9800; }
+        .status.loading { color: #2196F3; }
+        pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+        button {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0.5rem 0.5rem 0 0;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .info-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 6px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #81C784;
+            margin-bottom: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 vec2art GPU Detection Test</h1>
+        <p>Testing GPU acceleration capabilities in the WASM module with multithreading support.</p>
+
+        <div id="loading" class="test-section">
+            <div class="status loading">🔄 Loading WASM module...</div>
+            <p>Initializing WebAssembly module with GPU acceleration features...</p>
+        </div>
+
+        <div id="gpu-test" class="test-section" style="display: none;">
+            <div class="status" id="gpu-status">🎮 GPU Detection</div>
+            <div id="gpu-results"></div>
+            <button onclick="testGpuDetection()" id="gpu-btn">Test GPU Detection</button>
+        </div>
+
+        <div id="threading-test" class="test-section" style="display: none;">
+            <div class="status" id="threading-status">🧵 Threading Support</div>
+            <div id="threading-results"></div>
+            <button onclick="testThreading()" id="threading-btn">Test Threading</button>
+        </div>
+
+        <div id="comprehensive-test" class="test-section" style="display: none;">
+            <div class="status" id="comp-status">🔍 Comprehensive Analysis</div>
+            <div id="comp-results"></div>
+            <button onclick="runComprehensiveTest()" id="comp-btn">Run Full Analysis</button>
+        </div>
+    </div>
+
+    <script type="module">
+        let wasmModule = null;
+
+        async function loadWASM() {
+            try {
+                console.log('🔄 Loading WASM module...');
+                
+                // Import the WASM module
+                const wasmJs = await import('/wasm/vectorize_wasm.js');
+                console.log('✅ WASM JavaScript loaded');
+
+                // Initialize the module
+                await wasmJs.default();
+                console.log('✅ WASM module initialized');
+                
+                wasmModule = wasmJs;
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('gpu-test').style.display = 'block';
+                document.getElementById('threading-test').style.display = 'block';
+                document.getElementById('comprehensive-test').style.display = 'block';
+                
+                console.log('🎉 All tests ready!');
+                
+                // Auto-run comprehensive test
+                setTimeout(runComprehensiveTest, 500);
+                
+            } catch (error) {
+                console.error('❌ WASM loading failed:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="status error">❌ WASM Loading Failed</div>
+                    <pre>${error.message}</pre>
+                    <p>Make sure you're running this from a development server (not file:// protocol) and that the WASM files are properly built.</p>
+                `;
+                document.getElementById('loading').className = 'test-section error';
+            }
+        }
+
+        window.testGpuDetection = function() {
+            if (!wasmModule) {
+                alert('WASM module not loaded yet!');
+                return;
+            }
+
+            try {
+                const webgpuAvailable = wasmModule.is_webgpu_available();
+                const gpuBackend = wasmModule.get_gpu_backend();
+                
+                const results = `
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">WebGPU Available:</div>
+                            <div>${webgpuAvailable ? '✅ Yes' : '❌ No'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">GPU Backend:</div>
+                            <div>${gpuBackend || 'None detected'}</div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('gpu-results').innerHTML = results;
+                document.getElementById('gpu-status').textContent = webgpuAvailable ? '✅ GPU Detection' : '⚠️ GPU Detection';
+                document.getElementById('gpu-status').className = webgpuAvailable ? 'status success' : 'status warning';
+                
+            } catch (error) {
+                document.getElementById('gpu-results').innerHTML = `
+                    <div class="status error">❌ GPU detection failed</div>
+                    <pre>${error.message}</pre>
+                `;
+                document.getElementById('gpu-status').className = 'status error';
+            }
+        }
+
+        window.testThreading = function() {
+            if (!wasmModule) {
+                alert('WASM module not loaded yet!');
+                return;
+            }
+
+            try {
+                const threadingSupported = wasmModule.is_threading_supported();
+                const threadCount = wasmModule.get_thread_count();
+                const crossOriginIsolated = wasmModule.is_cross_origin_isolated();
+                const sharedArrayBufferSupported = wasmModule.is_shared_array_buffer_supported();
+                
+                const results = `
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Threading Supported:</div>
+                            <div>${threadingSupported ? '✅ Yes' : '❌ No'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Thread Count:</div>
+                            <div>${threadCount || 'N/A'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Cross-Origin Isolated:</div>
+                            <div>${crossOriginIsolated ? '✅ Yes' : '❌ No'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">SharedArrayBuffer:</div>
+                            <div>${sharedArrayBufferSupported ? '✅ Available' : '❌ Not Available'}</div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('threading-results').innerHTML = results;
+                document.getElementById('threading-status').textContent = threadingSupported ? '✅ Threading Support' : '⚠️ Threading Support';
+                document.getElementById('threading-status').className = threadingSupported ? 'status success' : 'status warning';
+                
+            } catch (error) {
+                document.getElementById('threading-results').innerHTML = `
+                    <div class="status error">❌ Threading test failed</div>
+                    <pre>${error.message}</pre>
+                `;
+                document.getElementById('threading-status').className = 'status error';
+            }
+        }
+
+        window.runComprehensiveTest = function() {
+            if (!wasmModule) {
+                alert('WASM module not loaded yet!');
+                return;
+            }
+
+            try {
+                const report = wasmModule.check_threading_requirements();
+                
+                const results = `
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Environment:</div>
+                            <div>${report.environment || 'Unknown'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">WebGPU Support:</div>
+                            <div>${report.webgpu_supported ? '✅ Available' : '❌ Not Available'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">GPU Backend:</div>
+                            <div>${report.gpu_backend || 'None'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Threading Ready:</div>
+                            <div>${report.threading_supported ? '✅ Ready' : '❌ Not Ready'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Thread Count:</div>
+                            <div>${report.available_threads || 'N/A'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Cross-Origin Isolated:</div>
+                            <div>${report.cross_origin_isolated ? '✅ Yes' : '❌ No'}</div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('comp-results').innerHTML = results;
+                
+                const allGood = report.threading_supported && report.webgpu_supported;
+                document.getElementById('comp-status').textContent = allGood ? '✅ Comprehensive Analysis' : '⚠️ Comprehensive Analysis';
+                document.getElementById('comp-status').className = allGood ? 'status success' : 'status warning';
+                
+                // Also update individual test results
+                testGpuDetection();
+                testThreading();
+                
+            } catch (error) {
+                document.getElementById('comp-results').innerHTML = `
+                    <div class="status error">❌ Comprehensive test failed</div>
+                    <pre>${error.message}</pre>
+                `;
+                document.getElementById('comp-status').className = 'status error';
+            }
+        }
+
+        // Start loading immediately
+        loadWASM();
+    </script>
+</body>
+</html>

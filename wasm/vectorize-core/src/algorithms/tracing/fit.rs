@@ -162,10 +162,7 @@ pub fn fit_beziers(poly: &Polyline, cfg: &FitConfig) -> Vec<CubicBezier> {
         corner_indices.len()
     );
 
-    // Step 2: Fit Bézier curves to each segment using execution abstraction
-    #[cfg(feature = "parallel")]
-    let use_parallel = segments.len() > 1; // Use parallel processing if we have multiple segments
-    #[cfg(not(feature = "parallel"))]
+    // Step 2: Fit Bézier curves to each segment (single-threaded WASM + Web Worker architecture)
     let use_parallel = false;
 
     let valid_segments: Vec<&Polyline> = segments

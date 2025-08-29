@@ -40,6 +40,9 @@ import {
 // Import Web Worker service for safe WASM execution
 import { wasmWorkerService } from './wasm-worker-service';
 
+// Import GPU service for hardware acceleration
+import { gpuService } from './gpu-service';
+
 // Dynamic import type for WASM module
 type WasmModule = any; // We'll type this properly after loading
 type WasmVectorizer = any;
@@ -402,7 +405,7 @@ export class VectorizerService {
 			if (preset === 'enhanced') {
 				// Try to add superpixel-specific features if available (currently missing)
 				if (typeof this.vectorizer.set_num_superpixels === 'function') {
-					config.num_superpixels = 150;
+					config.num_superpixels = 250;
 				}
 			}
 		}

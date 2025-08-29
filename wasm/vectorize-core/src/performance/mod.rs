@@ -206,25 +206,12 @@ impl PerformanceUtils {
 
     /// Calculate optimal parallel threshold based on system capabilities
     pub fn calculate_optimal_parallel_threshold() -> usize {
-        let num_cpus = current_num_threads();
-        let base_threshold = 1000;
+        let _num_cpus = current_num_threads();
+        let _base_threshold = 1000;
 
-        // Scale threshold based on CPU count
-        // More CPUs can handle smaller work units efficiently
-        #[cfg(feature = "parallel")]
-        {
-            match num_cpus {
-                1 => usize::MAX, // Disable parallelization on single core
-                2..=4 => base_threshold * 10,
-                5..=8 => base_threshold * 5,
-                9..=16 => base_threshold * 2,
-                _ => base_threshold,
-            }
-        }
-        #[cfg(not(feature = "parallel"))]
-        {
-            usize::MAX // Disable parallelization in single-threaded mode
-        }
+        // Single-threaded WASM + Web Worker architecture
+        // Disable parallelization within WASM module
+        usize::MAX
     }
 }
 

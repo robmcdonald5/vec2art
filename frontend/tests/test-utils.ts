@@ -292,6 +292,7 @@ export const fileTestUtils = {
 			png: this.createMockFile('test-image.png', 1024 * 50, 'image/png'),
 			jpg: this.createMockFile('test-image.jpg', 1024 * 30, 'image/jpeg'),
 			webp: this.createMockFile('test-image.webp', 1024 * 25, 'image/webp'),
+			avif: this.createMockFile('test-image.avif', 1024 * 20, 'image/avif'),
 			large: this.createMockFile('large-image.png', 1024 * 1024 * 10, 'image/png'), // 10MB
 			invalid: this.createMockFile('invalid.txt', 1024, 'text/plain')
 		};

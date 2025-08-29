@@ -23,7 +23,7 @@ use crate::algorithms::dots::svg_dots::dots_to_svg_paths;
 use crate::algorithms::tracing::trace::{trace_polylines, TraceConfig};
 use crate::algorithms::{Point, SvgElementType, SvgPath};
 use crate::error::VectorizeError;
-use crate::execution::{execute_parallel, execute_parallel_filter_map, par_iter_mut, reduce};
+use crate::execution::{execute_parallel, execute_parallel_filter_map};
 use crate::svg_gradients::{ColorStop, GradientDefinition};
 use crate::utils::Instant;
 use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba};
@@ -109,6 +109,7 @@ struct SpatialIndex {
 #[derive(Debug, Clone)]
 struct CachedPathData {
     /// Parsed coordinates from path data
+    #[allow(dead_code)]
     coords: Vec<f32>,
     /// Bounding box of the path (min_x, min_y, max_x, max_y)
     bbox: (f32, f32, f32, f32),
@@ -1845,7 +1846,7 @@ fn refine_cluster_centers(
                 }
                 
                 // Compute gradient magnitude using LAB color differences
-                let idx = ny * width + nx;
+                let _idx = ny * width + nx;
                 let idx_left = ny * width + (nx - 1);
                 let idx_right = ny * width + (nx + 1);
                 let idx_up = (ny - 1) * width + nx;
@@ -2306,12 +2307,12 @@ fn extract_region_boundary(
     }
 
     // Simple ordering by angle from centroid (for better path generation)
-    let centroid_x =
+    let _centroid_x =
         boundary_pixels.iter().map(|(x, _)| *x as f32).sum::<f32>() / boundary_pixels.len() as f32;
-    let centroid_y =
+    let _centroid_y =
         boundary_pixels.iter().map(|(_, y)| *y as f32).sum::<f32>() / boundary_pixels.len() as f32;
 
-    let mut boundary_points: Vec<Point> = boundary_pixels
+    let boundary_points: Vec<Point> = boundary_pixels
         .into_iter()
         .map(|(x, y)| Point::new(x as f32, y as f32))
         .collect();
@@ -2536,11 +2537,15 @@ fn trace_dots(
     log::info!("Running dots backend");
     let total_start = Instant::now();
 
-    // Create DotConfig from TraceLowConfig
+    // Create DotConfig from TraceLowConfig with safety validation
+    let safe_min_radius = config.dot_min_radius.clamp(0.1, 10.0);
+    let safe_max_radius = config.dot_max_radius.clamp(safe_min_radius, 50.0);
+    let safe_density = config.dot_density_threshold.clamp(0.001, 0.999); // Avoid extreme values
+    
     let dot_config = DotConfig {
-        min_radius: config.dot_min_radius,
-        max_radius: config.dot_max_radius,
-        density_threshold: config.dot_density_threshold,
+        min_radius: safe_min_radius,
+        max_radius: safe_max_radius,
+        density_threshold: safe_density,
         preserve_colors: config.dot_preserve_colors,
         adaptive_sizing: config.dot_adaptive_sizing,
         spacing_factor: 1.5, // Fixed reasonable default
@@ -3284,23 +3289,13 @@ fn canny_edge_detection(image: &GrayImage, low_threshold: f32, high_threshold: f
         }
     }
 
-    // Find max magnitude for normalization using execution abstraction
-    let max_magnitude = if use_parallel {
-        reduce(&gradient_magnitude, 0.0f32, f32::max)
-    } else {
-        gradient_magnitude.iter().fold(0.0f32, |a, &b| a.max(b))
-    };
+    // Find max magnitude for normalization (single-threaded WASM + Web Worker architecture)
+    let max_magnitude = gradient_magnitude.iter().fold(0.0f32, |a, &b| a.max(b));
 
-    // Normalize gradient magnitude to [0, 1] using execution abstraction
+    // Normalize gradient magnitude to [0, 1] (single-threaded WASM + Web Worker architecture)
     if max_magnitude > 0.0 {
-        if use_parallel {
-            par_iter_mut(&mut gradient_magnitude, |mag| {
-                *mag /= max_magnitude;
-            });
-        } else {
-            for mag in &mut gradient_magnitude {
-                *mag /= max_magnitude;
-            }
+        for mag in &mut gradient_magnitude {
+            *mag /= max_magnitude;
         }
     }
 

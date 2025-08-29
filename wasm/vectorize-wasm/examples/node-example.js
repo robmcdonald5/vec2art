@@ -217,7 +217,7 @@ async function batchProcess(inputDir, outputDir, configurations) {
         // Get all image files from input directory
         const files = await fs.readdir(inputDir);
         const imageFiles = files.filter(file => 
-            /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(file)
+            /\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(file)
         );
         
         if (imageFiles.length === 0) {

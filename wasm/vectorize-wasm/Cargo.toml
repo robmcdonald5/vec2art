@@ -11,11 +11,16 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # Core vectorization library with conditional parallel features
-vectorize-core = { path = "../vectorize-core", default-features = false, features = ["wasm"] }
+vectorize-core = { path = "../vectorize-core", default-features = false }
 
-# Multi-threading support for WASM
-# Using RReverser fork since GoogleChromeLabs archived their version in July 2024
-wasm-bindgen-rayon = { git = "https://github.com/RReverser/wasm-bindgen-rayon", optional = true }
+# Note: Rayon/threading dependencies removed - using single-threaded WASM + Web Worker architecture
+
+# GPU acceleration support with enhanced WebGPU/WebGL2 capabilities
+wgpu = { version = "26.0", features = ["webgpu", "webgl"], optional = true }
+bytemuck = { version = "1.14", features = ["derive"], optional = true }
+pollster = { version = "0.3", optional = true }
+futures-channel = { version = "0.3", optional = true }
+futures-util = { version = "0.3", optional = true }
 
 # Image processing (needed for ImageBuffer)
 image = { workspace = true }
@@ -60,13 +65,22 @@ criterion = { version = "0.5", features = ["html_reports"] }
 rand = { version = "0.8", features = ["std_rng"] }
 
 [features]
-default = ["console_error_panic_hook", "wee_alloc", "single-threaded"]
+# Default features for single-threaded WASM + Web Worker architecture
+default = ["console_error_panic_hook", "wee_alloc", "enhanced-error-handling", "gpu-acceleration", "single-threaded", "wasm-base", "console_log"]
 console_error_panic_hook = []
 wee_alloc = []
-# Single-threaded mode for compatibility (default)
+console_log = []
+# Base WASM support (always enabled)
+wasm-base = ["vectorize-core/wasm"]
+# Single-threaded mode - our primary architecture for stability
 single-threaded = ["vectorize-core/single-threaded"]
-# Multi-threading support with atomics and shared memory
-wasm-parallel = ["wasm-bindgen-rayon", "vectorize-core/wasm-parallel"]
+# Enhanced error handling and graceful fallback
+enhanced-error-handling = []
+# GPU acceleration via WebGPU with comprehensive backend support
+gpu-acceleration = ["wgpu", "bytemuck", "pollster", "futures-channel", "futures-util", "vectorize-core/gpu-acceleration"]
+# Separate GPU backends for better control and fallback
+webgpu-backend = ["gpu-acceleration"]
+webgl-backend = ["gpu-acceleration"]
 
 # Enable optimizations for wasm builds
 [package.metadata.wasm-pack.profile.release]

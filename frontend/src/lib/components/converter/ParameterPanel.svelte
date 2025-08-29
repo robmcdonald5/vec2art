@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Sliders, Eye, PenTool, Filter, AlertTriangle, Grid3X3 } from 'lucide-svelte';
+	import { Sliders, Eye, PenTool, Filter, AlertTriangle, Grid3X3, Target, Puzzle } from 'lucide-svelte';
 	import type { VectorizerConfig, HandDrawnPreset } from '$lib/types/vectorizer';
 	import { HAND_DRAWN_DESCRIPTIONS } from '$lib/types/vectorizer';
 	import { CustomSelect } from '$lib/components/ui/custom-select';
@@ -367,12 +367,12 @@
 						for="region-complexity"
 						class="text-converter-primary flex items-center gap-2 text-sm font-medium"
 					>
-						<Sliders class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+						<Puzzle class="text-converter-secondary h-4 w-4" aria-hidden="true" />
 						Region Complexity
 					</label>
 					<span
 						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-						aria-live="polite">{config.num_superpixels || 150}</span
+						aria-live="polite">{config.num_superpixels || 250}</span
 					>
 				</div>
 				<input
@@ -382,7 +382,7 @@
 					min="50"
 					max="500"
 					step="25"
-					value={config.num_superpixels || 150}
+					value={config.num_superpixels || 250}
 					onchange={handleRegionComplexityChange}
 					oninput={handleRegionComplexityChange}
 					{disabled}
@@ -396,45 +396,10 @@
 				</div>
 			</div>
 
-			<!-- Shape Regularity (Compactness) for Superpixel -->
-			<div class="space-y-2">
-				<div class="flex items-center justify-between">
-					<label
-						for="shape-regularity"
-						class="text-converter-primary flex items-center gap-2 text-sm font-medium"
-					>
-						<Grid3X3 class="text-converter-secondary h-4 w-4" aria-hidden="true" />
-						Shape Regularity
-					</label>
-					<span
-						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-						aria-live="polite">{config.compactness || 15}</span
-					>
-				</div>
-				<input
-					id="shape-regularity"
-					type="range"
-					min="5"
-					max="40"
-					step="5"
-					value={config.compactness || 15}
-					onchange={handleRangeChange('compactness')}
-					oninput={handleRangeChange('compactness')}
-					{disabled}
-					class="slider-ferrari w-full"
-					aria-describedby="shape-regularity-desc"
-					use:initializeSliderFill
-				/>
-				<div id="shape-regularity-desc" class="text-converter-muted text-xs">
-					Controls shape vs color trade-off. Lower = color-adaptive regions, Higher = regular geometric shapes.
-					Use lower values to reduce diagonal artifacts.
-				</div>
-			</div>
-
 			<!-- Initialization Pattern for Superpixel -->
 			<div class="space-y-2">
 				<label for="initialization-pattern" class="text-converter-primary flex items-center gap-2 text-sm font-medium">
-					<Grid3X3 class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+					<Target class="text-converter-secondary h-4 w-4" aria-hidden="true" />
 					Initialization Pattern
 				</label>
 				<CustomSelect

@@ -276,7 +276,7 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	background_removal_algorithm: 'otsu', // Fast algorithm by default
 	max_processing_time_ms: 60000, // 60 seconds for comprehensive processing
 	// Superpixel backend defaults
-	num_superpixels: 150, // Moderate number of regions
+	num_superpixels: 250, // Higher detail for better region definition
 	compactness: 15, // Balanced shape regularity (reduced from previous 20 to avoid artifacts)
 	slic_iterations: 10, // Standard SLIC iteration count
 	initialization_pattern: 'poisson' // Poisson disk sampling shows least diagonal artifacts

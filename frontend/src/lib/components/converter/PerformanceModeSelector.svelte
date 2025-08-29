@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
+	import GpuAccelerationIndicator from '$lib/components/ui/gpu-acceleration-indicator.svelte';
 	import {
 		Zap,
 		Battery,
@@ -399,6 +400,16 @@
 					</div>
 				</div>
 			{/if}
+
+			<!-- GPU Acceleration Status -->
+			<div class="border-t border-gray-200 pt-2 dark:border-gray-600">
+				<div class="mb-2 flex items-center justify-between">
+					<h5 class="text-xs font-medium text-gray-900 dark:text-gray-100">GPU Acceleration</h5>
+				</div>
+				<div class="flex items-center justify-center">
+					<GpuAccelerationIndicator showDetails={true} size="md" />
+				</div>
+			</div>
 
 			<!-- Current Status -->
 			<div class="flex items-center gap-2 border-t border-gray-200 pt-2 dark:border-gray-600">

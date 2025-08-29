@@ -1161,7 +1161,7 @@
 						<!-- Compactness -->
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
-								<label for="compactness" class="text-converter-primary text-sm">Region Shape</label>
+								<label for="compactness" class="text-converter-primary text-sm">Shape Regularity</label>
 								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
 									{config.compactness ?? 20}
 								</span>

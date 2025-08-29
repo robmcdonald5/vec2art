@@ -298,6 +298,7 @@ fn simd_assign_clusters(
                             centroids[centroid_batch_start + 3],
                         ];
 
+                        #[allow(unused_variables)] // Used in SIMD code path
                         let color_batch_same = [color; 4];
                         let mut distances = [0.0f32; 4];
 

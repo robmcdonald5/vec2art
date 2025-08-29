@@ -433,9 +433,7 @@ pub fn detect_background_advanced(rgba: &RgbaImage, config: &BackgroundConfig) -
         .flat_map(|y| (0..width).map(move |x| (x, y)))
         .collect();
 
-    #[cfg(feature = "parallel")]
-    let use_parallel = total_pixels > 10000;
-    #[cfg(not(feature = "parallel"))]
+    // Always use single-threaded processing (WASM + Web Worker architecture)
     let use_parallel = false;
 
     let background_results: Vec<bool> = if use_parallel {

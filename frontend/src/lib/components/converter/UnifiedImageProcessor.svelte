@@ -45,7 +45,7 @@
 
 	let {
 		accept = 'image/*',
-		maxSize = 10 * 1024 * 1024,
+		maxSize = 1 * 1024 * 1024 * 1024,
 		onFilesSelect,
 		disabled = false,
 		currentFiles = [],
@@ -91,6 +91,8 @@
 	const currentImageUrl = $derived(currentFile ? URL.createObjectURL(currentFile) : null);
 	const currentSvgUrl = $derived(previewSvgUrls[currentImageIndex]);
 	const hasResult = $derived(Boolean(currentSvgUrl));
+	const currentResult = $derived(results[currentImageIndex]);
+	const isError = $derived(currentResult?.svg?.includes('Failed to convert') ?? false);
 
 	// Validate callback props
 	$effect(() => {
@@ -555,7 +557,9 @@
 					<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 						<div class="absolute inset-2 flex flex-col">
 							<div class="mb-2 flex items-center justify-between px-2">
-								<div class="text-converter-secondary text-xs font-medium">Converted SVG</div>
+								<div class="text-xs font-medium" class:text-red-600={isError} class:text-converter-secondary={!isError}>
+									{isError ? 'Failed to convert' : 'Converted SVG'}
+								</div>
 								<!-- Zoom Controls for Converted SVG -->
 								<div class="flex gap-1">
 									<Button
@@ -646,7 +650,7 @@
 
 						<!-- Primary Actions -->
 						<div class="flex gap-3">
-							{#if canDownload}
+							{#if canDownload && !isError}
 								<Button
 									variant="default"
 									size="sm"

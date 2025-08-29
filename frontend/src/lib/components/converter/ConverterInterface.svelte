@@ -36,6 +36,7 @@
 	{filesMetadata}
 	{currentImageIndex}
 	{currentProgress}
+	{results}
 	{previewSvgUrls}
 	{canConvert}
 	{canDownload}

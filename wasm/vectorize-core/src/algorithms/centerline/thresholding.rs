@@ -267,7 +267,7 @@ fn otsu_threshold(gray: &GrayImage) -> GrayImage {
         histogram[pixel.0[0] as usize] += 1;
     }
 
-    let total_pixels = gray.width() * gray.height();
+    let _total_pixels = gray.width() * gray.height();
 
     // Find optimal threshold using Otsu's method
     let mut max_variance = 0.0f64;

@@ -258,7 +258,7 @@
                 
                 // Import the WASM module
                 const wasmJs = await import('/wasm/vectorize_wasm.js');
-                await wasmJs.default(new URL('/wasm/vectorize_wasm_bg.wasm', location.origin));
+                await wasmJs.default({ module_or_path: new URL('/wasm/vectorize_wasm_bg.wasm', location.origin) });
                 
                 wasmModule = wasmJs;
                 

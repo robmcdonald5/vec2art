@@ -544,6 +544,23 @@ class VectorizerStore {
 				// Don't update current_image_index during batch processing
 				// The UI should manage its own display index separately from processing index
 
+				// Check for large image and provide user feedback
+				const pixelCount = imageData.width * imageData.height;
+				const megapixels = pixelCount / 1_000_000;
+				const isLargeImage = megapixels > 10;
+				
+				if (isLargeImage) {
+					console.log(`[VectorizerStore] 📊 Processing large image: ${megapixels.toFixed(1)}MP (${imageData.width}x${imageData.height})`);
+					
+					// Update progress to show optimization notice
+					this._state.current_progress = {
+						percent: 0,
+						stage: 'initialization' as const,
+						message: `Optimizing ${megapixels.toFixed(1)}MP image for processing...`
+					};
+					onProgress?.(i, images.length, this._state.current_progress);
+				}
+
 				try {
 					const result = await vectorizerService.processImage(
 						imageData,
@@ -562,7 +579,7 @@ class VectorizerStore {
 					console.error(`[VectorizerStore] Failed to process image ${i + 1}:`, imageError);
 					// Continue with remaining images but log the error
 					const errorResult: ProcessingResult = {
-						svg: '<svg><text>Processing failed</text></svg>',
+						svg: '<svg width="400" height="200" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fef2f2" stroke="#fca5a5" stroke-width="2" rx="8"/><text x="200" y="100" text-anchor="middle" dominant-baseline="central" fill="#dc2626" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="600">Failed to convert</text></svg>',
 						processing_time_ms: 0,
 						config_used: this._state.config,
 						statistics: {
@@ -862,6 +879,9 @@ class VectorizerStore {
 		}
 		if (typeof normalized.stroke_width === 'number') {
 			normalized.stroke_width = Math.max(0.1, Math.min(10, normalized.stroke_width));
+		}
+		if (typeof normalized.pass_count === 'number') {
+			normalized.pass_count = Math.max(1, Math.min(10, Math.round(normalized.pass_count)));
 		}
 
 		// Hand-drawn aesthetics normalization

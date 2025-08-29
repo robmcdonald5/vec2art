@@ -26,6 +26,7 @@
 		filesMetadata,
 		currentImageIndex,
 		currentProgress,
+		results,
 		previewSvgUrls,
 		canConvert,
 		canDownload,
@@ -62,6 +63,8 @@
 	);
 	const currentSvgUrl = $derived(previewSvgUrls[currentImageIndex]);
 	const hasResult = $derived(Boolean(currentSvgUrl));
+	const currentResult = $derived(results?.[currentImageIndex]);
+	const isError = $derived(currentResult?.svg?.includes('Failed to convert') ?? false);
 
 	// Zoom levels
 	const zoomLevels = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
@@ -354,9 +357,11 @@
 			<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
 					<div class="mb-3 flex items-center justify-between px-2">
-						<div class="text-converter-primary text-sm font-medium">Converted SVG</div>
+						<div class="text-sm font-medium" class:text-red-600={isError} class:text-converter-primary={!isError}>
+							{isError ? 'Failed to convert' : 'Converted SVG'}
+						</div>
 						<!-- Download Button (only show when result is available) -->
-						{#if hasResult && canDownload}
+						{#if hasResult && canDownload && !isError}
 							<Button
 								variant="ferrari"
 								size="sm"
