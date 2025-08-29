@@ -29,8 +29,6 @@
 		VectorizerPreset
 	} from '$lib/types/vectorizer';
 	import { DEFAULT_CONFIG } from '$lib/types/vectorizer';
-	import type { PerformanceMode } from '$lib/utils/performance-monitor';
-	import { getOptimalThreadCount } from '$lib/utils/performance-monitor';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte.js';
 	import { wasmWorkerService } from '$lib/services/wasm-worker-service';
 	import { settingsSyncStore } from '$lib/stores/settings-sync.svelte';
@@ -77,9 +75,6 @@
 	const config = $derived(settingsSyncStore.getCurrentConfig(currentImageIndex));
 
 	let selectedPreset = $state<VectorizerPreset | 'custom'>('custom');
-	let performanceMode = $state<PerformanceMode>('balanced');
-	let threadCount = $state(4); // Default to balanced mode thread count, will be updated by performance mode calculation
-	let threadsInitialized = $state(false);
 
 	// Derived states for UI logic - account for restored results
 	// UI state - files, original image URLs, AND results control the state
@@ -89,7 +84,13 @@
 			: 'LOADED'
 	);
 	const hasFiles = $derived(files.length > 0 || originalImageUrls.length > 0);
-	const canConvert = $derived(hasFiles && !isProcessing);
+	// Enhanced conversion readiness check - prevents race conditions
+	const canConvert = $derived(
+		hasFiles && 
+		!isProcessing && 
+		vectorizerStore.isInitialized &&
+		!vectorizerStore.hasError
+	);
 	const canDownload = $derived(results.length > 0 && !isProcessing);
 
 	// Accessibility announcements
@@ -384,7 +385,20 @@
 		});
 
 		if (!canConvert) {
-			console.warn('Cannot convert - no files or already processing');
+			// Enhanced validation with specific error messages
+			if (!hasFiles) {
+				console.warn('Cannot convert - no files loaded');
+				toastStore.error('Please upload an image first');
+			} else if (isProcessing) {
+				console.warn('Cannot convert - already processing');
+				toastStore.warning('Conversion already in progress');
+			} else if (!vectorizerStore.isInitialized) {
+				console.warn('Cannot convert - WASM not initialized');
+				toastStore.error('System not ready - please wait for initialization');
+			} else if (vectorizerStore.hasError) {
+				console.warn('Cannot convert - vectorizer has errors');
+				toastStore.error('System error detected - please refresh the page');
+			}
 			return;
 		}
 
@@ -396,20 +410,14 @@
 
 			// Initialize WASM using Web Worker (prevents main thread blocking)
 			try {
-				if (!wasmWorkerService.initialized) {
-					console.log('🔧 Initializing WASM in Web Worker...');
+				console.log('🔧 Initializing WASM in Web Worker...', {
+					initialized: wasmWorkerService.initialized
+				});
 
-					// Initialize with requested thread count (safe in Worker context)
-					await wasmWorkerService.initialize({
-						threadCount: threadCount || 1
-					});
+				// Initialize WASM worker
+				await wasmWorkerService.initialize({});
 
-					console.log('✅ WASM Web Worker initialized successfully');
-
-					if (threadCount > 1) {
-						toastStore.success(`Multi-threading enabled with ${threadCount} threads`, 3000);
-					}
-				}
+				console.log('✅ WASM Web Worker initialized successfully');
 			} catch (error) {
 				console.error('❌ Web Worker initialization failed:', error);
 				toastStore.error('Failed to initialize image processor - please refresh', 5000);
@@ -520,7 +528,10 @@
 
 			if (convertConfig.mode === 'global') {
 				// Global mode: use single config for all files
-				vectorizerStore.updateConfig(configsToProcess[0]);
+				const globalConfig = {
+					...configsToProcess[0]
+				};
+				vectorizerStore.updateConfig(globalConfig);
 				const batchResults = await vectorizerStore.processBatch(
 					(imageIndex, totalImages, progress) => {
 						const originalIndex = indexMapping[imageIndex];
@@ -538,7 +549,9 @@
 			} else {
 				// Per-image modes: process each image with its own config
 				for (let i = 0; i < filesToProcess.length; i++) {
-					const imageConfig = configsToProcess[i];
+					const imageConfig = {
+						...configsToProcess[i]
+					};
 					const originalIndex = indexMapping[i];
 
 					// Update config for this specific image
@@ -986,10 +999,6 @@
 		);
 	}
 
-	function handlePerformanceModeChange(mode: PerformanceMode, threads: number) {
-		performanceMode = mode;
-		threadCount = threads;
-	}
 
 	async function handleRetryInitialization() {
 		try {
@@ -998,7 +1007,9 @@
 
 			// Reset the vectorizer store and reinitialize
 			await vectorizerStore.reset();
-			await vectorizerStore.initialize({ autoInitThreads: false });
+			await vectorizerStore.initialize({ 
+				autoInitThreads: true
+			});
 
 			toastStore.success('✅ WASM initialization successful!', 3000);
 		} catch (error) {
@@ -1011,7 +1022,9 @@
 	onMount(async () => {
 		try {
 			// Initialize WASM module
-			await vectorizerStore.initialize({ autoInitThreads: false });
+			await vectorizerStore.initialize({ 
+				autoInitThreads: true
+			});
 
 			// Show success toast notification
 			toastStore.success('🚀 Converter ready! Upload images to get started.', 4000);
@@ -1099,23 +1112,7 @@
 					selectedPreset = savedPreset as VectorizerPreset | 'custom';
 					// console.log('✅ [DEBUG] Preset restored');
 				}
-				const perfSettings = converterPersistence.loadPerformanceSettings();
-				// console.log('⚡ [DEBUG] perfSettings:', perfSettings);
-				if (perfSettings.mode) {
-					performanceMode = perfSettings.mode as PerformanceMode;
-					// Use proper performance mode thread calculation
-					if (perfSettings.threadCount) {
-						threadCount = perfSettings.threadCount;
-					} else {
-						// Calculate proper thread count based on performance mode
-						threadCount = getOptimalThreadCount(perfSettings.mode as PerformanceMode);
-					}
-					// console.log('✅ [DEBUG] Performance settings restored');
-				} else {
-					// No saved performance settings - use optimal default for balanced mode
-					threadCount = getOptimalThreadCount('balanced');
-					// console.log('🎯 [DEBUG] Set default optimal thread count for balanced mode:', threadCount);
-				}
+				// No performance settings to restore in single-threaded architecture
 				// CRITICAL: Set recovery as complete even when no state found
 				isRecoveringState = false;
 				// console.log('✅ [DEBUG] State recovery completed (no state found)');
@@ -1132,15 +1129,7 @@
 				selectedPreset = state.preset as VectorizerPreset | 'custom';
 				// console.log('✅ [DEBUG] Preset restored from complete state');
 			}
-			if (state.performanceMode) {
-				performanceMode = state.performanceMode as PerformanceMode;
-				// console.log('✅ [DEBUG] Performance mode restored from complete state');
-			}
-			if (state.threadCount) {
-				// Use saved thread count as-is, respecting user's choice
-				threadCount = state.threadCount;
-				// console.log('✅ [DEBUG] Thread count restored from complete state');
-			}
+			// No performance settings to restore in single-threaded architecture
 			if (state.currentIndex !== undefined) {
 				currentImageIndex = state.currentIndex;
 				// console.log('✅ [DEBUG] Current index restored from complete state');
@@ -1290,11 +1279,7 @@
 		converterPersistence.savePreset(selectedPreset);
 	});
 
-	$effect(() => {
-		if (!pageLoaded) return;
-		// console.log('💾 [DEBUG] Saving performance settings:', performanceMode, threadCount);
-		converterPersistence.savePerformanceSettings(performanceMode, threadCount);
-	});
+	// No performance settings to save in single-threaded architecture
 
 	$effect(() => {
 		if (!pageLoaded) return;
@@ -1455,9 +1440,7 @@
 						// Reset preset selection
 						selectedPreset = 'artistic';
 
-						// Reset performance settings to defaults
-						performanceMode = 'balanced';
-						threadCount = getOptimalThreadCount('balanced');
+						// No performance settings to reset in single-threaded architecture
 
 						// Reset vectorizer store to clean state
 						vectorizerStore.reset();
@@ -1541,17 +1524,11 @@
 						<SettingsPanel
 							{config}
 							{selectedPreset}
-							{performanceMode}
-							{threadCount}
-							{threadsInitialized}
-							hasError={vectorizerStore.hasError}
 							disabled={isProcessing}
 							onConfigChange={handleConfigChange}
 							onPresetChange={handlePresetChange}
 							onBackendChange={handleBackendChange}
 							onParameterChange={handleParameterChange}
-							onPerformanceModeChange={handlePerformanceModeChange}
-							onRetryInitialization={handleRetryInitialization}
 						/>
 					</div>
 				</main>

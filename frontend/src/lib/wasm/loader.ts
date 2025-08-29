@@ -51,11 +51,17 @@ export async function loadVectorizer(options?: {
 
 			// Call default export to initialize wasm-bindgen glue
 			// This loads the .wasm file and sets up the proper bindings
-			await wasmJs.default(new URL('./vectorize_wasm_bg.wasm', import.meta.url));
+			// Use new object parameter format to avoid deprecated parameters warning
+			await wasmJs.default({ module_or_path: new URL('./vectorize_wasm_bg.wasm', import.meta.url) });
 			console.log('[WASM Loader] WASM module initialized');
 
 			// Store module reference
 			wasmModule = wasmJs;
+
+			// Expose GPU detection functions globally for the GPU indicator
+			if (typeof window !== 'undefined') {
+				(window as any).wasmJs = wasmJs;
+			}
 
 			// Check cross-origin isolation status for threading
 			const isIsolated = typeof window !== 'undefined' && window.crossOriginIsolated;
@@ -152,6 +158,34 @@ export async function loadVectorizer(options?: {
 			// DISABLED: Thread pool auto-initialization to prevent CPU spinning
 			// Thread pool will be initialized only when explicitly requested
 			console.log('[WASM Loader] Thread pool initialization deferred (lazy loading mode)');
+
+			// Initialize and log GPU acceleration status immediately after WASM load
+			try {
+				console.log('[WASM Loader] 🎮 Checking GPU acceleration status...');
+				
+				// Check GPU capabilities
+				const gpuStatus = await getGpuStatus();
+				if (gpuStatus.accelerationSupported) {
+					console.log(
+						`[WASM Loader] ✅ GPU Acceleration Available: ${gpuStatus.gpuBackend.toUpperCase()} backend detected`
+					);
+					console.log(`[WASM Loader] 🚀 GPU Status: ${gpuStatus.message}`);
+					
+					// Initialize GPU processing if possible
+					if (wasmJs.initialize_gpu_processing) {
+						try {
+							await wasmJs.initialize_gpu_processing();
+							console.log('[WASM Loader] ✅ GPU processing pipeline initialized successfully');
+						} catch (gpuError) {
+							console.warn('[WASM Loader] ⚠️ GPU processing initialization failed:', gpuError);
+						}
+					}
+				} else {
+					console.log(`[WASM Loader] ℹ️ GPU Acceleration: ${gpuStatus.status} - ${gpuStatus.message}`);
+				}
+			} catch (gpuError) {
+				console.warn('[WASM Loader] ⚠️ GPU status check failed:', gpuError);
+			}
 
 			console.log('[WASM Loader] ✅ Initialization complete');
 
@@ -542,6 +576,124 @@ export async function optimizeThreadCount(): Promise<number> {
 	} catch (error) {
 		console.warn('[WASM Loader] Thread optimization failed:', error);
 		return status.threadCount;
+	}
+}
+
+/**
+ * Get GPU acceleration status using new async GPU detection
+ */
+export async function getGpuStatus(): Promise<{
+	webgpuAvailable: boolean;
+	gpuBackend: string;
+	accelerationSupported: boolean;
+	status: 'enabled' | 'disabled' | 'not-available' | 'loading' | 'error';
+	message?: string;
+}> {
+	try {
+		// Ensure WASM is loaded
+		const wasm = await loadVectorizer();
+		
+		// Use GPU backend status function if available
+		if (wasm.get_gpu_backend_status) {
+			console.log('[WASM Loader] Using GPU backend status detection...');
+			
+			const capabilitiesJson = wasm.get_gpu_backend_status();
+			console.log('[WASM Loader] GPU capabilities JSON:', capabilitiesJson);
+			
+			// Parse JSON response
+			const capabilities = JSON.parse(capabilitiesJson);
+			console.log('[WASM Loader] Parsed GPU capabilities:', capabilities);
+			
+			let status: 'enabled' | 'disabled' | 'not-available' | 'loading' | 'error';
+			// In single-threaded + Web Worker architecture, GPU support = enabled (available on demand)
+			if (capabilities.webgpu_supported || capabilities.webgl2_supported) {
+				status = 'enabled';  // GPU is available for use
+			} else {
+				status = 'not-available';  // No GPU support at all
+			}
+			
+			// Generate appropriate message for single-threaded + Web Worker architecture
+			let message: string;
+			if (capabilities.webgpu_supported) {
+				message = 'WebGPU available - GPU acceleration ready for use';
+			} else if (capabilities.webgl2_supported) {
+				message = 'WebGL2 available - GPU acceleration ready for use';
+			} else {
+				message = capabilities.status_message || 'No GPU acceleration available';
+			}
+			
+			return {
+				webgpuAvailable: capabilities.webgpu_supported,
+				gpuBackend: capabilities.webgpu_supported ? 'webgpu' : capabilities.webgl2_supported ? 'webgl2' : 'none',
+				accelerationSupported: capabilities.webgpu_supported || capabilities.webgl2_supported,
+				status,
+				message
+			};
+		}
+		
+		// Fallback to individual detection functions
+		console.log('[WASM Loader] Falling back to individual GPU detection functions...');
+		
+		if (!wasm.is_webgpu_available || !wasm.detect_best_gpu_backend) {
+			return {
+				webgpuAvailable: false,
+				gpuBackend: 'none',
+				accelerationSupported: false,
+				status: 'error',
+				message: 'GPU detection functions not available in WASM module'
+			};
+		}
+
+		const webgpuAvailable = wasm.is_webgpu_available();
+		const webgl2Available = wasm.is_webgl2_available ? wasm.is_webgl2_available() : false;
+		const bestBackend = wasm.detect_best_gpu_backend();
+
+		// Convert backend enum to string
+		let backendString: string;
+		switch (bestBackend) {
+			case 0: // WebGPU
+				backendString = 'webgpu';
+				break;
+			case 1: // WebGL2
+				backendString = 'webgl2';
+				break;
+			case 2: // None
+			default:
+				backendString = 'none';
+				break;
+		}
+
+		let status: 'enabled' | 'disabled' | 'not-available' | 'loading' | 'error';
+		let message: string | undefined;
+
+		if (webgpuAvailable || webgl2Available) {
+			status = 'enabled';
+			if (webgpuAvailable) {
+				message = 'WebGPU available - GPU acceleration ready for use';
+			} else {
+				message = 'WebGL2 available - GPU acceleration ready for use';
+			}
+		} else {
+			status = 'not-available';
+			message = 'No GPU acceleration available on this device';
+		}
+
+		return {
+			webgpuAvailable,
+			gpuBackend: backendString,
+			accelerationSupported: webgpuAvailable || webgl2Available,
+			status,
+			message
+		};
+	} catch (error) {
+		console.error('[WASM Loader] GPU status check failed:', error);
+		return {
+			webgpuAvailable: false,
+			gpuBackend: 'none',
+			accelerationSupported: false,
+			status: 'error',
+			message: 'Failed to check GPU status: ' + (error as Error).message
+		};
 	}
 }
 
