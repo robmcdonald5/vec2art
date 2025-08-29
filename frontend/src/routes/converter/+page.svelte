@@ -59,6 +59,7 @@
 	let initError = $state<string | null>(null);
 	let hasRecoveredState = $state(false);
 	let isRecoveringState = $state(false);
+	let isClearingAll = $state(false); // Flag to prevent auto-save during Clear All
 
 	// Component reset key to force remounting
 	let componentResetKey = $state(0);
@@ -728,6 +729,58 @@
 		announceToScreenReader('Converter reset');
 	}
 
+	function handleClearAll() {
+		// Step 1: Set flag to prevent auto-save during clear operation
+		isClearingAll = true;
+
+		try {
+			// Step 2: Reset all UI state first (clears arrays, resets indices)
+			handleReset();
+
+			// Step 3: Reset all settings to defaults using proper reset method
+			settingsSyncStore.resetConfigs();
+
+			// Step 4: Reset settings sync mode to global
+			settingsSyncStore.switchMode('global', {
+				preserveCurrentConfig: false,
+				initializeFromGlobal: false,
+				confirmDataLoss: false
+			});
+
+			// Step 5: Reset preset selection
+			selectedPreset = 'artistic';
+
+			// Step 6: Reset vectorizer store to clean state
+			vectorizerStore.reset();
+
+			// Step 7: Clear parameter history
+			parameterHistory.clear();
+
+			// Step 8: Reset pan/zoom state (already done in handleReset)
+
+			// Step 9: Clear all persistence data AFTER state is reset
+			converterPersistence.clearAll();
+
+			// Step 10: Validate and clean any backend cross-contamination
+			const validation = settingsSyncStore.validateAndCleanConfigs();
+			if (validation.issues.length > 0) {
+				console.log(
+					'🛡️ Clear All found and cleaned cross-contamination issues:',
+					validation.issues
+				);
+			}
+
+			// Step 11: Force component remounting by changing key (already done in handleReset)
+
+			toastStore.info('🧹 Cleared all data and reset all settings to defaults');
+		} finally {
+			// Step 12: Always re-enable auto-save, even if something went wrong
+			setTimeout(() => {
+				isClearingAll = false;
+			}, 100);
+		}
+	}
+
 	async function handleEmergencyRecovery() {
 		try {
 			isProcessing = true;
@@ -1267,14 +1320,14 @@
 
 	// Auto-save individual settings when they change
 	$effect(() => {
-		if (!pageLoaded) return;
+		if (!pageLoaded || isClearingAll) return;
 		// console.log('💾 [DEBUG] Saving config:', config);
 		const saved = converterPersistence.saveConfig(config);
 		// console.log('💾 [DEBUG] Config save result:', saved);
 	});
 
 	$effect(() => {
-		if (!pageLoaded) return;
+		if (!pageLoaded || isClearingAll) return;
 		// console.log('💾 [DEBUG] Saving preset:', selectedPreset);
 		converterPersistence.savePreset(selectedPreset);
 	});
@@ -1417,37 +1470,38 @@
 				<button
 					class="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg transition-all hover:bg-red-700 hover:shadow-xl"
 					onclick={() => {
-						// Clear all persistence data
-						converterPersistence.clearAll();
+						// Step 1: Disable auto-save to prevent reactive re-saving
+						converterPersistence.setAutoSave(false);
 
-						// Reset all UI state
+						// Step 2: Reset all UI state first (clears arrays, resets indices)
 						handleReset();
 
-						// Reset all settings to defaults using proper reset method
+						// Step 3: Reset all settings to defaults using proper reset method
 						settingsSyncStore.resetConfigs();
 
-						// Reset settings sync mode to global
+						// Step 4: Reset settings sync mode to global
 						settingsSyncStore.switchMode('global', {
 							preserveCurrentConfig: false,
 							initializeFromGlobal: false,
 							confirmDataLoss: false
 						});
 
-						// Reset preset selection
+						// Step 5: Reset preset selection
 						selectedPreset = 'artistic';
 
-						// No performance settings to reset in single-threaded architecture
-
-						// Reset vectorizer store to clean state
+						// Step 6: Reset vectorizer store to clean state
 						vectorizerStore.reset();
 
-						// Clear parameter history
+						// Step 7: Clear parameter history
 						parameterHistory.clear();
 
-						// Reset pan/zoom state
+						// Step 8: Reset pan/zoom state
 						panZoomStore.resetStates();
 
-						// Validate and clean any backend cross-contamination
+						// Step 9: Clear all persistence data AFTER state is reset
+						converterPersistence.clearAll();
+
+						// Step 10: Validate and clean any backend cross-contamination
 						const validation = settingsSyncStore.validateAndCleanConfigs();
 						if (validation.issues.length > 0) {
 							console.log(
@@ -1456,8 +1510,13 @@
 							);
 						}
 
-						// Force component remounting by changing key
+						// Step 11: Force component remounting by changing key
 						componentResetKey++;
+
+						// Step 12: Re-enable auto-save after a delay to allow state to settle
+						setTimeout(() => {
+							converterPersistence.setAutoSave(true);
+						}, 500);
 
 						toastStore.info('🧹 Cleared all data and reset all settings to defaults');
 					}}
@@ -1499,7 +1558,7 @@
 								onConvert={handleConvert}
 								onDownload={handleDownload}
 								onAbort={handleAbort}
-								onReset={handleReset}
+								onReset={handleClearAll}
 								onAddMore={handleAddMore}
 								onRemoveFile={handleRemoveFile}
 								isPanicked={vectorizerStore.isPanicked}
@@ -1529,7 +1588,7 @@
 			<KeyboardShortcuts
 				onConvert={handleConvert}
 				onDownload={handleDownload}
-				onReset={handleReset}
+				onReset={handleClearAll}
 				onAbort={handleAbort}
 				onAddMore={handleAddMore}
 				{canConvert}
