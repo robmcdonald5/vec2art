@@ -410,8 +410,22 @@ async function configureVectorizer(config: any) {
 			typeof config[key] === 'number' &&
 			typeof vectorizer[method] === 'function'
 		) {
-			console.log(`[Worker] Setting ${key}:`, config[key]);
+			console.log(`[Worker] 🔧 Setting ${key} to ${config[key]} via ${method}()`);
 			vectorizer[method](config[key]);
+			
+			// Special debug logging for pass_count
+			if (key === 'pass_count') {
+				console.log(`[Worker] 📊 Debug: pass_count=${config[key]}, multipass=${config.multipass}`);
+				// Try to verify the value was set (if getter exists)
+				if (typeof vectorizer.get_pass_count === 'function') {
+					try {
+						const currentPassCount = vectorizer.get_pass_count();
+						console.log(`[Worker] ✅ Verified pass_count set to: ${currentPassCount}`);
+					} catch (e) {
+						console.log(`[Worker] ⚠️ Could not verify pass_count:`, e);
+					}
+				}
+			}
 		}
 	}
 

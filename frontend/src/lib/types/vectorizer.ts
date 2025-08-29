@@ -425,12 +425,13 @@ export const HAND_DRAWN_DESCRIPTIONS: Record<HandDrawnPreset, string> = {
 };
 
 // Utility functions for multipass processing
-export function calculateMultipassConfig(config: VectorizerConfig): { multipass: boolean } {
+export function calculateMultipassConfig(config: VectorizerConfig): { multipass: boolean; pass_count: number } {
 	const { pass_count, backend } = config;
 
 	// Enable multipass only for edge backend with 2+ passes
 	return {
-		multipass: backend === 'edge' && pass_count > 1
+		multipass: backend === 'edge' && pass_count > 1,
+		pass_count: pass_count  // Preserve the original pass_count
 	};
 }
 
