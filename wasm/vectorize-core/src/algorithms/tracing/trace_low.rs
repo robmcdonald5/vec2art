@@ -446,10 +446,11 @@ impl ThresholdMapping {
         // Global knob mapping as specified in trace-low-spec.md
         let dp_epsilon_px = ((0.003 + 0.012 * detail) * diag).clamp(0.003 * diag, 0.015 * diag);
         let min_stroke_length_px = 10.0 + 40.0 * detail;
-        // FIXED: Scale thresholds to match actual gradient magnitude range (0-2040 for L1 norm Sobel)
-        // Higher detail → Lower thresholds → More edges detected
-        // Using pixel-space thresholds that work with unnormalized gradients
-        let canny_high_threshold = 50.0 + 200.0 * (1.0 - detail); // Range: 250 (detail=0, few edges) to 50 (detail=1, many edges)
+        // FIXED: Scale thresholds to match actual gradient magnitude range
+        // Gradients are L1 norm of Sobel on 0-255 pixels, typical range 10-200
+        // Higher detail (1.0) → Lower thresholds → More edges detected
+        // Lower detail (0.1) → Higher thresholds → Fewer edges detected
+        let canny_high_threshold = 20.0 + 80.0 * (1.0 - detail); // Range: 100 (detail=0.1, few edges) to 20 (detail=1.0, many edges)
         let canny_low_threshold = 0.4 * canny_high_threshold;
         let min_centerline_branch_px = 12.0 + 36.0 * detail;
         let slic_cell_size_px = (600.0 + 2400.0 * detail).clamp(600.0, 3000.0);
