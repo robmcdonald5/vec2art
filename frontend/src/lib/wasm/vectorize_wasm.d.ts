@@ -412,6 +412,26 @@ export class WasmVectorizer {
    */
   set_boundary_epsilon(epsilon: number): void;
   /**
+   * Set initialization pattern for superpixel backend
+   */
+  set_initialization_pattern(pattern: string): void;
+  /**
+   * Set color preservation for superpixel backend
+   */
+  set_superpixel_preserve_colors(enabled: boolean): void;
+  /**
+   * Set fill regions for superpixel backend
+   */
+  set_fill_regions(enabled: boolean): void;
+  /**
+   * Set stroke regions for superpixel backend
+   */
+  set_stroke_regions(enabled: boolean): void;
+  /**
+   * Set simplify boundaries for superpixel backend
+   */
+  set_simplify_boundaries(enabled: boolean): void;
+  /**
    * Set preserve colors (generic)
    */
   set_preserve_colors(enabled: boolean): void;
@@ -705,6 +725,12 @@ export interface InitOutput {
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder15slic_iterations17h07bf63887ecddc01E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_boundary_epsilon: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder16boundary_epsilon17h5cb2cc6b221cb333E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_initialization_pattern: (a: number, b: number, c: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder22initialization_pattern17h984a49a4bf1a09abE: (a: number, b: number, c: number, d: number) => void;
+  readonly wasmvectorizer_set_superpixel_preserve_colors: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_fill_regions: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_stroke_regions: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_simplify_boundaries: (a: number, b: number) => void;
   readonly wasmvectorizer_set_preserve_colors: (a: number, b: number) => void;
   readonly wasmvectorizer_set_color_tolerance: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder15color_tolerance17h831dd0de45d9598eE: (a: number, b: number, c: number) => void;
@@ -959,7 +985,6 @@ export interface InitOutput {
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder26dot_size_range_from_string17h09c959e0587a6991E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder21palette_target_colors17h42ddbe222e911ea6E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder23custom_variable_weights17hb724d17c05692054E: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder22initialization_pattern17h984a49a4bf1a09abE: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder14max_image_size17hd59eec37c6681dcfE: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder12for_line_art17h690355f1db2fcf2aE: (a: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder10for_sketch17h25ac846cc55208ecE: (a: number) => void;

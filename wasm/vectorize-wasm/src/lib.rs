@@ -451,6 +451,38 @@ impl WasmVectorizer {
         Ok(())
     }
 
+    /// Set initialization pattern for superpixel backend
+    #[wasm_bindgen]
+    pub fn set_initialization_pattern(&mut self, pattern: &str) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().initialization_pattern(pattern)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set initialization pattern: {}", e)))?;
+        Ok(())
+    }
+
+    /// Set color preservation for superpixel backend
+    #[wasm_bindgen]
+    pub fn set_superpixel_preserve_colors(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().superpixel_preserve_colors(enabled);
+    }
+
+    /// Set fill regions for superpixel backend
+    #[wasm_bindgen]
+    pub fn set_fill_regions(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().fill_regions(enabled);
+    }
+
+    /// Set stroke regions for superpixel backend
+    #[wasm_bindgen]
+    pub fn set_stroke_regions(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().stroke_regions(enabled);
+    }
+
+    /// Set simplify boundaries for superpixel backend
+    #[wasm_bindgen]
+    pub fn set_simplify_boundaries(&mut self, enabled: bool) {
+        self.config_builder = self.config_builder.clone().simplify_boundaries(enabled);
+    }
+
     // === COLOR PRESERVATION METHODS ===
 
     /// Set preserve colors (generic)
