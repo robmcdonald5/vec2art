@@ -40,6 +40,55 @@ class VectorizerStore {
 		current_image_index: 0
 	});
 
+	// Per-algorithm configuration state to prevent slider overlap/sharing
+	private _algorithmConfigs = $state<Record<VectorizerBackend, VectorizerConfig>>({
+		edge: { 
+			...defaultConfig, 
+			backend: 'edge' as const,
+			detail: 0.8,
+			stroke_width: 1.5,
+			hand_drawn_preset: 'none' as const,
+			variable_weights: 0.0,
+			tremor_strength: 0.0,
+			tapering: 0.0
+		},
+		centerline: { 
+			...defaultConfig, 
+			backend: 'centerline' as const,
+			detail: 0.3,
+			stroke_width: 0.8,
+			enable_adaptive_threshold: true,
+			window_size: 25,
+			sensitivity_k: 0.4,
+			min_branch_length: 8,
+			douglas_peucker_epsilon: 1.0
+		},
+		superpixel: { 
+			...defaultConfig, 
+			backend: 'superpixel' as const,
+			detail: 0.2,  // Not used by superpixel but kept for consistency
+			stroke_width: 1.5,
+			num_superpixels: 250,
+			compactness: 15,
+			slic_iterations: 10,
+			initialization_pattern: 'poisson' as const
+		},
+		dots: { 
+			...defaultConfig, 
+			backend: 'dots' as const,
+			detail: 0.3,
+			stroke_width: 1.0,
+			dot_density_threshold: 0.15,
+			min_radius: 0.5,
+			max_radius: 3.0,
+			adaptive_sizing: true,
+			background_tolerance: 0.1,
+			poisson_disk_sampling: true,
+			gradient_based_sizing: true,
+			preserve_colors: true  // Enable colors by default for dots
+		}
+	});
+
 	// Track initialization state separately
 	private _initState = $state<{
 		wasmLoaded: boolean;
@@ -166,6 +215,13 @@ class VectorizerStore {
 	}
 
 	/**
+	 * Get the per-algorithm configurations for debugging/inspection
+	 */
+	get algorithmConfigs(): Record<VectorizerBackend, VectorizerConfig> {
+		return this._algorithmConfigs;
+	}
+
+	/**
 	 * Get the vectorizer service instance for development/debugging
 	 */
 	get vectorizerService() {
@@ -268,21 +324,111 @@ class VectorizerStore {
 	}
 
 	/**
-	 * Update configuration with normalization
+	 * Update configuration with normalization and per-algorithm state management
 	 */
 	updateConfig(updates: Partial<VectorizerConfig>): void {
 		// Apply parameter normalization before updating config
 		const normalizedUpdates = this.normalizeConfig(updates);
-		this._state.config = { ...this._state.config, ...normalizedUpdates };
+		
+		// If backend is changing, switch to the appropriate per-algorithm config
+		if (normalizedUpdates.backend && normalizedUpdates.backend !== this._state.config.backend) {
+			// Save current config state to the current algorithm
+			this._algorithmConfigs[this._state.config.backend] = { ...this._state.config };
+			
+			// Switch to the new algorithm's config
+			const newAlgorithmConfig = { ...this._algorithmConfigs[normalizedUpdates.backend] };
+			// Apply any additional updates from the current call
+			const otherUpdates = { ...normalizedUpdates };
+			delete otherUpdates.backend; // Remove backend from other updates
+			
+			this._state.config = { ...newAlgorithmConfig, ...otherUpdates };
+			console.log(`[VectorizerStore] Switched to ${normalizedUpdates.backend} algorithm config:`, this._state.config);
+		} else {
+			// Same algorithm, just update the current config and save to algorithm state
+			this._state.config = { ...this._state.config, ...normalizedUpdates };
+			this._algorithmConfigs[this._state.config.backend] = { ...this._state.config };
+		}
+		
 		this.clearError(); // Clear any previous config errors
 	}
 
 	/**
-	 * Reset configuration to defaults
+	 * Reset configuration to defaults - resets current algorithm config only
 	 */
 	resetConfig(): void {
-		this._state.config = { ...defaultConfig };
+		const currentBackend = this._state.config.backend;
+		const defaultAlgorithmConfig = this._getDefaultConfigForBackend(currentBackend);
+		this._state.config = { ...defaultAlgorithmConfig };
+		this._algorithmConfigs[currentBackend] = { ...defaultAlgorithmConfig };
 		this.clearError();
+	}
+
+	/**
+	 * Reset all algorithm configurations to their defaults
+	 */
+	resetAllAlgorithmConfigs(): void {
+		this._algorithmConfigs.edge = this._getDefaultConfigForBackend('edge');
+		this._algorithmConfigs.centerline = this._getDefaultConfigForBackend('centerline');
+		this._algorithmConfigs.superpixel = this._getDefaultConfigForBackend('superpixel');
+		this._algorithmConfigs.dots = this._getDefaultConfigForBackend('dots');
+		// Update current config to match current backend
+		this._state.config = { ...this._algorithmConfigs[this._state.config.backend] };
+		this.clearError();
+	}
+
+	/**
+	 * Get default configuration for a specific backend
+	 */
+	private _getDefaultConfigForBackend(backend: VectorizerBackend): VectorizerConfig {
+		const baseConfig = { ...defaultConfig, backend };
+		
+		switch (backend) {
+			case 'edge':
+				return {
+					...baseConfig,
+					detail: 0.8,
+					stroke_width: 1.5,
+					hand_drawn_preset: 'none',
+					variable_weights: 0.0,
+					tremor_strength: 0.0,
+					tapering: 0.0
+				};
+			case 'centerline':
+				return {
+					...baseConfig,
+					detail: 0.3,
+					stroke_width: 0.8,
+					enable_adaptive_threshold: true,
+					window_size: 25,
+					sensitivity_k: 0.4,
+					min_branch_length: 8,
+					douglas_peucker_epsilon: 1.0
+				};
+			case 'superpixel':
+				return {
+					...baseConfig,
+					detail: 0.2,
+					stroke_width: 1.5,
+					num_superpixels: 250,
+					compactness: 15,
+					slic_iterations: 10,
+					initialization_pattern: 'poisson'
+				};
+			case 'dots':
+				return {
+					...baseConfig,
+					detail: 0.3,
+					stroke_width: 1.0,
+					dot_density_threshold: 0.15,
+					min_radius: 0.5,
+					max_radius: 3.0,
+					adaptive_sizing: true,
+					background_tolerance: 0.1,
+					poisson_disk_sampling: true,
+					gradient_based_sizing: true,
+					preserve_colors: true
+				};
+		}
 	}
 
 	/**
@@ -758,7 +904,7 @@ class VectorizerStore {
 		this._state.input_files = [];
 		this._state.current_image_index = 0;
 		this.clearError();
-		this.resetConfig();
+		this.resetAllAlgorithmConfigs(); // Reset all algorithm configs, not just current
 	}
 
 	/**

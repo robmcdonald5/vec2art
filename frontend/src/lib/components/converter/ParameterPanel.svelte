@@ -245,8 +245,8 @@
 		strokeWidthUI = config.stroke_width || 2.0;
 	});
 	let dotDensityUI = $derived(
-		config.dot_density_threshold
-			? Math.round(((0.15 - config.dot_density_threshold) / 0.1) * 9 + 1)
+		config.dot_density_threshold !== undefined
+			? Math.round(((0.4 - config.dot_density_threshold) / (0.4 - 0.02)) * 9 + 1)
 			: 5
 	);
 
