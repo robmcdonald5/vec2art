@@ -127,7 +127,6 @@ export interface VectorizerConfig {
 
 	// Global output control
 	svg_precision?: number; // 0-4 decimal places
-	optimize_svg?: boolean;
 	include_metadata?: boolean;
 
 	// Performance settings

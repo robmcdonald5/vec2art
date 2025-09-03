@@ -690,6 +690,24 @@ impl WasmVectorizer {
         Ok(())
     }
 
+    /// Set custom variable weights (overrides preset)
+    #[wasm_bindgen]
+    pub fn set_custom_variable_weights(&mut self, weights: f32) -> Result<(), JsValue> {
+        log::info!("🔧 WASM: set_custom_variable_weights called with weights={}", weights);
+        
+        if !(0.0..=1.0).contains(&weights) {
+            let error_msg = format!("Variable weights must be between 0.0 and 1.0, got: {}", weights);
+            log::error!("❌ WASM: {}", error_msg);
+            return Err(JsValue::from_str(&error_msg));
+        }
+        
+        self.config_builder = self.config_builder.clone()
+            .custom_variable_weights(weights)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set custom variable weights: {}", e)))?;
+        log::info!("✅ WASM: Custom variable weights set to {}", weights);
+        Ok(())
+    }
+
     /// Set multi-pass intensity for sketchy overlapping strokes
     #[wasm_bindgen]
     pub fn set_multi_pass_intensity(&mut self, intensity: f32) -> Result<(), JsValue> {

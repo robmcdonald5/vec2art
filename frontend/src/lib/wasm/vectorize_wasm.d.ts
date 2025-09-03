@@ -480,6 +480,10 @@ export class WasmVectorizer {
    */
   set_custom_tapering(tapering: number): void;
   /**
+   * Set custom variable weights (overrides preset)
+   */
+  set_custom_variable_weights(weights: number): void;
+  /**
    * Set multi-pass intensity for sketchy overlapping strokes
    */
   set_multi_pass_intensity(intensity: number): void;
@@ -750,6 +754,8 @@ export interface InitOutput {
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder13custom_tremor17h05d3073ad72cad40E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_custom_tapering: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder15custom_tapering17hb79569c5455a594eE: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_custom_variable_weights: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder23custom_variable_weights17hb724d17c05692054E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_multi_pass_intensity: (a: number, b: number) => [number, number];
   readonly wasmvectorizer_set_image_resolution: (a: number, b: number, c: number) => [number, number];
   readonly wasmvectorizer_set_adaptive_scaling: (a: number, b: number) => void;
@@ -984,7 +990,6 @@ export interface InitOutput {
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder22max_processing_time_ms17h6504fdd38a7b5f1eE: (a: number, b: number, c: bigint) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder26dot_size_range_from_string17h09c959e0587a6991E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder21palette_target_colors17h42ddbe222e911ea6E: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder23custom_variable_weights17hb724d17c05692054E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder14max_image_size17hd59eec37c6681dcfE: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder12for_line_art17h690355f1db2fcf2aE: (a: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder10for_sketch17h25ac846cc55208ecE: (a: number) => void;

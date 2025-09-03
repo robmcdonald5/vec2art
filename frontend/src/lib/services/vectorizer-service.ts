@@ -845,10 +845,6 @@ export class VectorizerService {
 			if (workingConfig.svg_precision !== undefined) {
 				this.safeCall('set_svg_precision', workingConfig.svg_precision);
 			}
-			if (workingConfig.optimize_svg !== undefined) {
-				// Use safeCall since this function might not exist in WASM
-				this.safeCall('set_optimize_svg', workingConfig.optimize_svg);
-			}
 			if (workingConfig.include_metadata !== undefined) {
 				// Use safeCall since this function might not exist in WASM
 				this.safeCall('set_include_metadata', workingConfig.include_metadata);

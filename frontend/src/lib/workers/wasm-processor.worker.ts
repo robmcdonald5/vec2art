@@ -418,8 +418,7 @@ async function configureVectorizer(config: any) {
 		enable_flow_tracing: 'set_enable_flow_tracing',
 		enable_bezier_fitting: 'set_enable_bezier_fitting',
 		enable_adaptive_threshold: 'set_enable_adaptive_threshold',
-		enable_width_modulation: 'set_enable_width_modulation',
-		optimize_svg: 'set_optimize_svg'
+		enable_width_modulation: 'set_enable_width_modulation'
 	};
 
 	for (const [key, method] of Object.entries(booleanConfigMethods)) {

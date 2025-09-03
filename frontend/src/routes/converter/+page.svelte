@@ -68,7 +68,6 @@
 	// Initialize settings sync store with enhanced defaults
 	settingsSyncStore.updateConfig({
 		...DEFAULT_CONFIG,
-		optimize_svg: true,
 		svg_precision: 2
 	});
 
@@ -904,147 +903,21 @@
 	function handleBackendChange(backend: VectorizerBackend) {
 		console.log(`🔧 Backend change: switching to ${backend}`);
 
-		// Get current config from settings sync store
-		const currentConfig = settingsSyncStore.getCurrentConfig(currentImageIndex);
-		let cleanedConfig = { ...currentConfig, backend };
-
-		// COMPREHENSIVE BACKEND CLEANUP: Reset ALL backend-specific settings to defaults first
-
-		// Reset ALL edge backend specific settings
-		cleanedConfig.enable_flow_tracing = false;
-		cleanedConfig.enable_bezier_fitting = false;
-		cleanedConfig.enable_etf_fdog = false;
+		// SIMPLIFIED: Let the vectorizer store handle backend switching with proper defaults
+		// The vectorizer store has per-algorithm configurations that handle all the complexity
+		vectorizerStore.updateConfig({ backend });
 		
-		// Reset multipass settings (edge-backend specific)
-		cleanedConfig.multipass = false;
-		cleanedConfig.reverse_pass = false;
-		cleanedConfig.diagonal_pass = false;
-		cleanedConfig.pass_count = undefined;
-		cleanedConfig.multipass_mode = undefined;
-		cleanedConfig.trace_min_gradient = undefined;
-		cleanedConfig.trace_min_coherency = undefined;
-		cleanedConfig.trace_max_gap = undefined;
-		cleanedConfig.trace_max_length = undefined;
-		cleanedConfig.fit_lambda_curvature = undefined;
-		cleanedConfig.fit_max_error = undefined;
-		cleanedConfig.fit_split_angle = undefined;
-		cleanedConfig.etf_radius = undefined;
-		cleanedConfig.etf_iterations = undefined;
-		cleanedConfig.etf_coherency_tau = undefined;
-		cleanedConfig.fdog_sigma_s = undefined;
-		cleanedConfig.fdog_sigma_c = undefined;
-		cleanedConfig.fdog_tau = undefined;
-		cleanedConfig.nms_low = undefined;
-		cleanedConfig.nms_high = undefined;
-
-		// Reset ALL centerline backend specific settings
-		cleanedConfig.enable_adaptive_threshold = false;
-		cleanedConfig.window_size = undefined;
-		cleanedConfig.sensitivity_k = undefined;
-		cleanedConfig.use_optimized = undefined;
-		cleanedConfig.thinning_algorithm = undefined;
-		cleanedConfig.min_branch_length = undefined;
-		cleanedConfig.micro_loop_removal = undefined;
-		cleanedConfig.enable_width_modulation = undefined;
-		cleanedConfig.edt_radius_ratio = undefined;
-		cleanedConfig.width_modulation_range = undefined;
-		cleanedConfig.max_join_distance = undefined;
-		cleanedConfig.max_join_angle = undefined;
-		cleanedConfig.edt_bridge_check = undefined;
-		cleanedConfig.douglas_peucker_epsilon = undefined;
-		cleanedConfig.adaptive_simplification = undefined;
-
-		// Reset ALL dots backend specific settings
-		cleanedConfig.dot_density_threshold = undefined;
-		cleanedConfig.dot_density = undefined;
-		cleanedConfig.dot_size_range = undefined;
-		cleanedConfig.min_radius = undefined;
-		cleanedConfig.max_radius = undefined;
-		cleanedConfig.adaptive_sizing = undefined;
-		cleanedConfig.background_tolerance = undefined;
-		cleanedConfig.poisson_disk_sampling = undefined;
-		cleanedConfig.min_distance_factor = undefined;
-		cleanedConfig.grid_resolution = undefined;
-		cleanedConfig.gradient_based_sizing = undefined;
-		cleanedConfig.local_variance_scaling = undefined;
-		cleanedConfig.color_clustering = undefined;
-		cleanedConfig.opacity_variation = undefined;
-
-		// Reset ALL superpixel backend specific settings
-		cleanedConfig.num_superpixels = undefined;
-		cleanedConfig.compactness = undefined;
-		cleanedConfig.slic_iterations = undefined;
-		cleanedConfig.min_region_size = undefined;
-		cleanedConfig.color_distance = undefined;
-		cleanedConfig.spatial_distance_weight = undefined;
-		cleanedConfig.fill_regions = undefined;
-		cleanedConfig.stroke_regions = undefined;
-		cleanedConfig.simplify_boundaries = undefined;
-		cleanedConfig.boundary_epsilon = undefined;
-
-		// Reset color preservation to default (false) for all backends initially
-		cleanedConfig.preserve_colors = false;
-
-		// NOW apply backend-specific defaults for the SELECTED backend
-		if (backend === 'dots') {
-			cleanedConfig.preserve_colors = true; // Enable Color by default for dots
-			cleanedConfig.stroke_width = 1.0; // Dot Width 1.0px by default
-			cleanedConfig.adaptive_sizing = true; // Enable adaptive sizing
-			cleanedConfig.poisson_disk_sampling = false;
-			cleanedConfig.gradient_based_sizing = false;
-			console.log(
-				'🎯 Applied dots backend defaults: preserve_colors=true, stroke_width=1.0, adaptive_sizing=true'
-			);
-		}
-
-		if (backend === 'superpixel') {
-			cleanedConfig.preserve_colors = true; // Enable Color by default for superpixel
-			cleanedConfig.fill_regions = true; // Enable region filling
-			cleanedConfig.stroke_regions = false; // Disable region stroking by default
-			console.log(
-				'🎯 Applied superpixel backend defaults: preserve_colors=true, fill_regions=true'
-			);
-		}
-
-		if (backend === 'centerline') {
-			cleanedConfig.preserve_colors = false; // Centerline typically monochrome
-			cleanedConfig.enable_adaptive_threshold = true; // Enable adaptive threshold by default
-			console.log('🎯 Applied centerline backend defaults: preserve_colors=false, enable_adaptive_threshold=true');
-		}
-
-		if (backend === 'edge') {
-			cleanedConfig.preserve_colors = false; // Edge typically monochrome
-			cleanedConfig.enable_flow_tracing = false; // Start with basic edge detection
-			cleanedConfig.enable_bezier_fitting = false;
-			cleanedConfig.enable_etf_fdog = false;
-			
-			// Enable multipass settings for edge backend (with sensible defaults)
-			cleanedConfig.multipass = false; // Start with simple mode
-			cleanedConfig.reverse_pass = false; 
-			cleanedConfig.diagonal_pass = false;
-			console.log(
-				'🎯 Applied edge backend defaults: preserve_colors=false, advanced features disabled, multipass=false'
-			);
-		}
-
-		console.log(`✅ Backend cleanup complete for ${backend}. Updated config:`, {
-			backend: cleanedConfig.backend,
-			preserve_colors: cleanedConfig.preserve_colors,
-			stroke_width: cleanedConfig.stroke_width,
-			adaptive_sizing: cleanedConfig.adaptive_sizing
+		// Sync the vectorizer store config to the settings sync store 
+		const updatedConfig = vectorizerStore.config;
+		settingsSyncStore.updateConfig(updatedConfig, currentImageIndex);
+		
+		console.log(`✅ Backend switched to ${backend} using store defaults:`, {
+			backend: updatedConfig.backend,
+			detail: updatedConfig.detail,
+			stroke_width: updatedConfig.stroke_width,
+			enable_adaptive_threshold: updatedConfig.enable_adaptive_threshold,
+			preserve_colors: updatedConfig.preserve_colors
 		});
-
-		// Update the config through the settings sync store
-		settingsSyncStore.updateConfig(cleanedConfig, currentImageIndex);
-
-		// Validate that no cross-contamination occurred
-		const validation = settingsSyncStore.validateAndCleanConfigs();
-		if (validation.issues.length > 0) {
-			console.warn(
-				`⚠️ Backend change to ${backend} triggered validation cleanup:`,
-				validation.issues
-			);
-		}
 	}
 
 	function handleParameterChange() {

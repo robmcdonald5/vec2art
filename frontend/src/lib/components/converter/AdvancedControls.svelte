@@ -1238,28 +1238,6 @@
 
 			{#if expandedSections.performance}
 				<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
-					<!-- SVG Optimization (NOT YET IMPLEMENTED) -->
-					<div class="cursor-not-allowed opacity-50" title="This feature is coming soon">
-						<div class="flex items-center space-x-3">
-							<input
-								type="checkbox"
-								id="optimize-svg"
-								checked={false}
-								onchange={handleCheckboxChange('optimize_svg')}
-								disabled={true}
-								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 cursor-not-allowed rounded"
-							/>
-							<label
-								for="optimize-svg"
-								class="text-converter-primary cursor-not-allowed text-sm font-medium"
-							>
-								Optimize SVG Output <span class="text-ferrari-400 text-xs">(Coming Soon)</span>
-							</label>
-						</div>
-						<div class="text-converter-secondary ml-7 text-xs">
-							Apply output optimization and cleanup for smaller file sizes.
-						</div>
-					</div>
 
 					<!-- Include Metadata (NOT YET IMPLEMENTED) -->
 					<div class="cursor-not-allowed opacity-50" title="This feature is coming soon">

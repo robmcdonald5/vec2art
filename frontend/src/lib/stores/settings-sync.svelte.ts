@@ -131,7 +131,6 @@ export class SettingsSyncStore {
 					tapering: this._globalConfig.tapering,
 					preserve_colors: this._globalConfig.preserve_colors,
 					svg_precision: this._globalConfig.svg_precision,
-					optimize_svg: this._globalConfig.optimize_svg,
 					include_metadata: this._globalConfig.include_metadata
 				};
 

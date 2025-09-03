@@ -138,7 +138,6 @@
 
 		// Global output settings
 		{ name: 'set_svg_precision', backend: 'all', required: false, type: 'int', range: '0-4' },
-		{ name: 'set_optimize_svg', backend: 'all', required: false, type: 'bool' },
 		{ name: 'set_include_metadata', backend: 'all', required: false, type: 'bool' },
 
 		// Performance settings
