@@ -356,8 +356,8 @@
 <section class="space-y-6">
 	<!-- Core Parameters (Always Visible) -->
 	<div class="space-y-4">
-		<!-- Detail Level (Edge/Centerline/Dots backends only) -->
-		{#if config.backend !== 'superpixel'}
+		<!-- Detail Level (Edge/Centerline backends only) -->
+		{#if config.backend === 'edge' || config.backend === 'centerline'}
 			<div class="space-y-2">
 				<div class="flex items-center justify-between">
 					<label

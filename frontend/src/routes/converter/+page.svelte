@@ -513,6 +513,9 @@
 					toastStore.success(
 						`Fallback processing completed: ${fallbackResults.length} image(s) converted`
 					);
+
+					// CRITICAL: Wait for SVG URLs to be fully ready before unlocking UI (fallback path)
+					await new Promise(resolve => setTimeout(resolve, 100));
 					return;
 				} else {
 					toastStore.error(
@@ -630,6 +633,11 @@
 
 			toastStore.success(message);
 			announceToScreenReader(`Conversion completed: ${filesToProcess.length} images processed`);
+
+			// CRITICAL: Wait for SVG URLs to be fully ready before unlocking UI
+			// This prevents the UI from unlocking before the SVG output is visible to users
+			// Small delay ensures blob URLs are resolved and DOM is updated
+			await new Promise(resolve => setTimeout(resolve, 100));
 		} catch (error) {
 			console.error('Conversion failed:', error);
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
