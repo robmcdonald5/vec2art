@@ -125,8 +125,15 @@ pub fn vectorize_trace_low_rgba(
     }
 
     // Adjust configuration based on resolution scaling
-    let adjusted_config =
+    let mut adjusted_config =
         adjust_trace_low_config(config, &resolution_analysis.parameter_adjustments);
+
+    // CRITICAL FIX: Disable background removal in trace-low since we already applied it above
+    // This prevents double processing which causes timeouts/hangs
+    if config.enable_background_removal {
+        log::info!("Background removal already applied in preprocessing - disabling in trace-low");
+        adjusted_config.enable_background_removal = false;
+    }
 
     log::info!(
         "Processing: {}x{} -> {}x{} (scale: {:.3})",
