@@ -1008,8 +1008,8 @@
 
 		if (backend === 'centerline') {
 			cleanedConfig.preserve_colors = false; // Centerline typically monochrome
-			cleanedConfig.enable_adaptive_threshold = false; // Start with defaults
-			console.log('🎯 Applied centerline backend defaults: preserve_colors=false');
+			cleanedConfig.enable_adaptive_threshold = true; // Enable adaptive threshold by default
+			console.log('🎯 Applied centerline backend defaults: preserve_colors=false, enable_adaptive_threshold=true');
 		}
 
 		if (backend === 'edge') {
