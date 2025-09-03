@@ -323,7 +323,7 @@ impl Default for TraceLowConfig {
     fn default() -> Self {
         Self {
             backend: TraceBackend::Edge,
-            detail: 0.3,
+            detail: 0.5, // Default neutral value - user input should override this
             stroke_px_at_1080p: 1.2,
             enable_multipass: false,
             pass_count: 1,
@@ -436,13 +436,18 @@ pub struct ThresholdMapping {
 impl ThresholdMapping {
     /// Calculate all thresholds from detail parameter and image size
     pub fn new(detail: f32, image_width: u32, image_height: u32) -> Self {
+        // Ensure detail is valid and within bounds
         let detail = detail.clamp(0.0, 1.0);
-        let diag = ((image_width.pow(2) + image_height.pow(2)) as f32).sqrt();
+        // Ensure image dimensions are valid
+        let image_width = image_width.max(1);
+        let image_height = image_height.max(1);
+        let diag = ((image_width.pow(2) + image_height.pow(2)) as f32).sqrt().max(1.0);
 
         // Global knob mapping as specified in trace-low-spec.md
         let dp_epsilon_px = ((0.003 + 0.012 * detail) * diag).clamp(0.003 * diag, 0.015 * diag);
         let min_stroke_length_px = 10.0 + 40.0 * detail;
-        let canny_high_threshold = 0.15 + 0.20 * detail;
+        // Detail mapping: higher detail values mean higher detail (more edges, lower thresholds)
+        let canny_high_threshold = 0.35 - 0.20 * detail; // Range: 0.35 (detail=0, low detail) to 0.15 (detail=1, high detail)
         let canny_low_threshold = 0.4 * canny_high_threshold;
         let min_centerline_branch_px = 12.0 + 36.0 * detail;
         let slic_cell_size_px = (600.0 + 2400.0 * detail).clamp(600.0, 3000.0);
@@ -581,6 +586,15 @@ pub fn vectorize_trace_low_multipass(
 
     let mut final_paths = Vec::new();
 
+    // Pre-process the image once for stability and memory efficiency
+    let preprocessed_image = if config.enable_background_removal {
+        log::debug!("Pre-processing image with background removal for multipass stability");
+        apply_background_removal(image, config)?
+    } else {
+        log::debug!("Using original image for multipass processing");
+        image.clone()
+    };
+
     for pass_num in 0..pass_count {
         log::debug!(
             "Starting pass {} of {} - varying detail level",
@@ -590,20 +604,38 @@ pub fn vectorize_trace_low_multipass(
 
         let phase_start = Instant::now();
 
-        // Vary detail level across passes to capture different levels of detail
+        // CRITICAL FIX: Ensure first pass is at least as detailed as single-pass
+        // Lower detail values = MORE sensitive = MORE detail captured
         let detail_multiplier = match pass_num {
-            0 => 1.2, // First pass: less sensitive (major features)
-            1 => 1.0, // Second pass: base sensitivity
-            2 => 0.7, // Third pass: more sensitive (fine details)
-            _ => 0.5 + (pass_num as f32 * 0.1), // Additional passes: progressively more sensitive
+            0 => 1.0, // First pass: match single-pass sensitivity (baseline detail)
+            1 => 0.8, // Second pass: more sensitive (fine details)
+            2 => 0.6, // Third pass: even more sensitive (very fine details)
+            _ => (0.4 - (pass_num.saturating_sub(3) as f32 * 0.05)).max(0.1), // Additional passes: progressively more sensitive, clamped at 0.1
         };
 
         let mut pass_config = config.clone();
-        pass_config.detail = (config.detail * detail_multiplier).clamp(0.1, 2.0);
+        // Use base detail of 0.1 if config.detail is 0.0 to avoid multiplication by zero
+        let base_detail = if config.detail < 0.01 { 0.1 } else { config.detail };
+        pass_config.detail = (base_detail * detail_multiplier).clamp(0.1, 2.0);
         pass_config.enable_multipass = false; // Prevent recursion
         pass_config.pass_count = 1; // Each individual pass is single-pass
+        // Disable directional passes for individual multipass iterations to avoid conflicts
+        pass_config.enable_reverse_pass = false;
+        pass_config.enable_diagonal_pass = false;
+        // Disable background removal for individual passes since we pre-processed
+        pass_config.enable_background_removal = false;
 
-        let pass_paths = vectorize_trace_low_single_pass(image, &pass_config, hand_drawn_config)?;
+        let pass_paths = match vectorize_trace_low_single_pass(&preprocessed_image, &pass_config, hand_drawn_config) {
+            Ok(paths) => paths,
+            Err(e) => {
+                log::warn!(
+                    "Pass {} failed with error: {:?}, continuing with remaining passes",
+                    pass_num + 1,
+                    e
+                );
+                continue; // Skip this pass and continue with the next
+            }
+        };
         let pass_time = phase_start.elapsed();
 
         log::debug!(
@@ -614,12 +646,11 @@ pub fn vectorize_trace_low_multipass(
             pass_time.as_secs_f64() * 1000.0
         );
 
-        // Merge paths, avoiding duplicates
-        for path in pass_paths {
-            if !is_duplicate_path(&path, &final_paths) {
-                final_paths.push(path);
-            }
-        }
+        // PERFORMANCE FIX: Use simple append instead of expensive O(N²) deduplication
+        // The slight increase in duplicate paths is far better than multipass hanging
+        // Modern SVG renderers handle duplicate paths efficiently
+        log::debug!("Appending {} paths from pass {} (deduplication disabled for WASM performance)", pass_paths.len(), pass_num + 1);
+        final_paths.extend(pass_paths);
     }
 
     let total_time = total_start.elapsed();
@@ -791,6 +822,15 @@ fn trace_edge(
     config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     log::info!("Running edge backend");
+    
+    // Validate image dimensions
+    if image.width() == 0 || image.height() == 0 {
+        return Err(VectorizeError::InvalidDimensions {
+            width: image.width(),
+            height: image.height(),
+            details: "Image must have non-zero dimensions".to_string(),
+        });
+    }
     let total_start = Instant::now();
 
     // Convert to grayscale with optional color preservation
@@ -802,6 +842,30 @@ fn trace_edge(
         grayscale_time.as_secs_f64() * 1000.0
     );
 
+    // Apply background removal preprocessing if enabled
+    let preprocessed_gray = if config.enable_background_removal {
+        let phase_start = Instant::now();
+        log::debug!("Applying background removal preprocessing");
+        
+        // Apply background removal to the original image first
+        let processed_image = apply_background_removal(image, config)?;
+        
+        // Convert the processed image to grayscale
+        let (processed_gray, _) = rgba_to_gray_with_colors(&processed_image, config.line_preserve_colors);
+        
+        let bg_removal_time = phase_start.elapsed();
+        log::debug!(
+            "Background removal: {:.3}ms (algorithm: {:?})",
+            bg_removal_time.as_secs_f64() * 1000.0,
+            config.background_removal_algorithm
+        );
+        
+        processed_gray
+    } else {
+        log::debug!("Background removal disabled - using original grayscale image");
+        gray
+    };
+
     // Apply edge-preserving noise filtering if enabled
     let noise_filtered = if config.noise_filtering {
         let phase_start = Instant::now();
@@ -811,7 +875,7 @@ fn trace_edge(
         let spatial_sigma = config.noise_filter_spatial_sigma.min(1.5); // Force fast path for better performance
         let range_sigma = config.noise_filter_range_sigma;
 
-        let filtered = bilateral_filter(&gray, spatial_sigma, range_sigma);
+        let filtered = bilateral_filter(&preprocessed_gray, spatial_sigma, range_sigma);
         let filter_time = phase_start.elapsed();
 
         log::debug!(
@@ -823,8 +887,8 @@ fn trace_edge(
 
         filtered
     } else {
-        log::debug!("Noise filtering disabled - using original grayscale image");
-        gray
+        log::debug!("Noise filtering disabled - using preprocessed grayscale image");
+        preprocessed_gray
     };
 
     // Apply Gaussian blur (σ=1.0-2.0 based on detail)
@@ -1099,6 +1163,231 @@ fn trace_edge(
     log::info!("Edge backend generated {} stroke paths", svg_paths.len());
 
     Ok(svg_paths)
+}
+
+/// Apply background removal preprocessing to image
+fn apply_background_removal(
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    config: &TraceLowConfig,
+) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, VectorizeError> {
+    use crate::algorithms::dots::background::{detect_background_advanced, BackgroundConfig};
+    
+    // Create background detection config
+    let bg_config = BackgroundConfig {
+        tolerance: config.background_removal_strength * 0.3, // Convert 0.0-1.0 to tolerance range
+        edge_sample_ratio: 0.1,
+        sample_edge_pixels: true,
+        cluster_colors: false,
+        num_clusters: 3,
+        random_seed: 42,
+    };
+    
+    // Detect background mask
+    let background_mask = detect_background_advanced(image, &bg_config);
+    
+    // Apply background removal based on algorithm
+    let mut result_image = image.clone();
+    
+    match config.background_removal_algorithm {
+        BackgroundRemovalAlgorithm::Otsu => {
+            apply_otsu_background_removal(&mut result_image, &background_mask, config)?;
+        }
+        BackgroundRemovalAlgorithm::Adaptive => {
+            apply_adaptive_background_removal(&mut result_image, &background_mask, config)?;
+        }
+        BackgroundRemovalAlgorithm::Auto => {
+            // Use adaptive for complex images, otsu for simple ones
+            let complexity = calculate_image_complexity(image);
+            if complexity > 0.3 {
+                apply_adaptive_background_removal(&mut result_image, &background_mask, config)?;
+            } else {
+                apply_otsu_background_removal(&mut result_image, &background_mask, config)?;
+            }
+        }
+    }
+    
+    Ok(result_image)
+}
+
+/// Apply OTSU-based background removal
+fn apply_otsu_background_removal(
+    image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
+    background_mask: &[bool],
+    config: &TraceLowConfig,
+) -> Result<(), VectorizeError> {
+    let strength = config.background_removal_strength;
+    let threshold = if let Some(t) = config.background_removal_threshold {
+        t
+    } else {
+        // Calculate OTSU threshold
+        calculate_otsu_threshold(image)
+    };
+    
+    for (i, pixel) in image.pixels_mut().enumerate() {
+        if i < background_mask.len() && background_mask[i] {
+            // Apply background removal with strength
+            let gray_value = (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
+            if gray_value < threshold {
+                let fade_factor = 1.0 - strength;
+                pixel[0] = (pixel[0] as f32 * fade_factor + 255.0 * strength) as u8;
+                pixel[1] = (pixel[1] as f32 * fade_factor + 255.0 * strength) as u8;
+                pixel[2] = (pixel[2] as f32 * fade_factor + 255.0 * strength) as u8;
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+/// Apply adaptive background removal
+fn apply_adaptive_background_removal(
+    image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
+    background_mask: &[bool],
+    config: &TraceLowConfig,
+) -> Result<(), VectorizeError> {
+    // Calculate adaptive threshold for the image
+    let adaptive_threshold = calculate_adaptive_threshold(image);
+    let strength = config.background_removal_strength;
+    
+    for (i, pixel) in image.pixels_mut().enumerate() {
+        if i < background_mask.len() && background_mask[i] {
+            // Apply adaptive background removal with strength-based removal
+            let gray_value = (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
+            
+            if gray_value < adaptive_threshold {
+                // Background pixel detected - apply removal
+                let removal_strength = strength.min(1.0).max(0.0);
+                let fade_factor = 1.0 - (removal_strength * 0.8);
+                
+                pixel[0] = (pixel[0] as f32 * fade_factor + 255.0 * (1.0 - fade_factor)) as u8;
+                pixel[1] = (pixel[1] as f32 * fade_factor + 255.0 * (1.0 - fade_factor)) as u8;
+                pixel[2] = (pixel[2] as f32 * fade_factor + 255.0 * (1.0 - fade_factor)) as u8;
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+/// Calculate adaptive threshold for image with single-pass efficiency
+fn calculate_adaptive_threshold(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> u8 {
+    let total_pixels = (image.width() * image.height()) as f32;
+    
+    if total_pixels == 0.0 {
+        return 128; // Safe fallback
+    }
+    
+    // Single pass calculation to avoid memory issues with large images
+    let mut sum_brightness = 0.0f64;
+    let mut sum_squares = 0.0f64;
+    
+    // Use double precision to avoid overflow issues with large images
+    for pixel in image.pixels() {
+        let gray = 0.299 * pixel[0] as f64 + 0.587 * pixel[1] as f64 + 0.114 * pixel[2] as f64;
+        sum_brightness += gray;
+        sum_squares += gray * gray;
+    }
+    
+    let mean = sum_brightness / total_pixels as f64;
+    let variance = (sum_squares / total_pixels as f64) - (mean * mean);
+    let std_dev = variance.max(0.0).sqrt();
+    
+    // Adaptive threshold based on mean and standard deviation
+    let adaptive_factor = 0.7; // Tunable parameter
+    let threshold = mean - (std_dev * adaptive_factor);
+    
+    // Clamp to valid u8 range
+    (threshold.max(0.0).min(255.0)) as u8
+}
+
+/// Calculate OTSU threshold for image with overflow protection
+fn calculate_otsu_threshold(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> u8 {
+    let total_pixels = (image.width() as u64) * (image.height() as u64);
+    
+    if total_pixels == 0 {
+        return 128; // Safe fallback
+    }
+    
+    // Use u64 for histogram to handle large images safely
+    let mut histogram = [0u64; 256];
+    for pixel in image.pixels() {
+        let gray = (0.299 * pixel[0] as f64 + 0.587 * pixel[1] as f64 + 0.114 * pixel[2] as f64).round() as usize;
+        if gray < 256 {
+            histogram[gray] += 1;
+        }
+    }
+    
+    let mut best_threshold = 128u8;
+    let mut best_variance = 0.0f64;
+    
+    for threshold in 1..255 {
+        let (w0, w1, mean0, mean1) = calculate_class_stats_safe(&histogram, threshold, total_pixels);
+        
+        if w0 > 0.0 && w1 > 0.0 {
+            let between_class_variance = w0 * w1 * (mean0 - mean1).powi(2);
+            if between_class_variance > best_variance {
+                best_variance = between_class_variance;
+                best_threshold = threshold as u8;
+            }
+        }
+    }
+    
+    best_threshold
+}
+
+/// Calculate class statistics for OTSU with overflow protection
+fn calculate_class_stats_safe(histogram: &[u64; 256], threshold: usize, total: u64) -> (f64, f64, f64, f64) {
+    let mut sum0 = 0u64;
+    let mut sum1 = 0u64;
+    let mut weight0 = 0u64;
+    let mut weight1 = 0u64;
+    
+    for (i, &count) in histogram.iter().enumerate() {
+        if i <= threshold {
+            weight0 += count;
+            sum0 += (i as u64) * count;
+        } else {
+            weight1 += count;
+            sum1 += (i as u64) * count;
+        }
+    }
+    
+    let w0 = weight0 as f64 / total as f64;
+    let w1 = weight1 as f64 / total as f64;
+    let mean0 = if weight0 > 0 { sum0 as f64 / weight0 as f64 } else { 0.0 };
+    let mean1 = if weight1 > 0 { sum1 as f64 / weight1 as f64 } else { 0.0 };
+    
+    (w0, w1, mean0, mean1)
+}
+
+
+/// Calculate image complexity for algorithm selection
+fn calculate_image_complexity(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> f32 {
+    let mut complexity = 0.0;
+    let width = image.width();
+    let height = image.height();
+    
+    // Sample edge variance to avoid expensive full calculation
+    let sample_rate = 4;
+    for y in (1..(height-1)).step_by(sample_rate) {
+        for x in (1..(width-1)).step_by(sample_rate) {
+            let center = image.get_pixel(x, y);
+            let right = image.get_pixel(x+1, y);
+            let bottom = image.get_pixel(x, y+1);
+            
+            let diff_h = ((center[0] as i16 - right[0] as i16).abs() + 
+                         (center[1] as i16 - right[1] as i16).abs() + 
+                         (center[2] as i16 - right[2] as i16).abs()) as f32 / 3.0;
+            let diff_v = ((center[0] as i16 - bottom[0] as i16).abs() + 
+                         (center[1] as i16 - bottom[1] as i16).abs() + 
+                         (center[2] as i16 - bottom[2] as i16).abs()) as f32 / 3.0;
+            
+            complexity += (diff_h + diff_v) / 255.0;
+        }
+    }
+    
+    let sample_count = ((width - 2) / sample_rate as u32) * ((height - 2) / sample_rate as u32);
+    complexity / sample_count.max(1) as f32
 }
 
 /// Calculate tangent direction at endpoint of a polyline
@@ -2957,8 +3246,8 @@ fn rgba_to_gray_with_colors(
         None
     };
 
-    // Use parallel processing for larger images
-    if width * height > 100_000 {
+    // Use parallel processing for larger images (disabled in WASM builds to prevent memory issues)
+    if width * height > 100_000 && !cfg!(target_arch = "wasm32") {
         // Generate coordinate pairs for parallel processing
         let pixel_coords: Vec<(u32, u32)> = (0..height)
             .flat_map(|y| (0..width).map(move |x| (x, y)))
@@ -3042,8 +3331,8 @@ fn gaussian_blur(image: &GrayImage, sigma: f32) -> GrayImage {
         // Apply separable integer Gaussian filter with parallel processing
         let mut temp = GrayImage::new(width, height);
 
-        // Horizontal pass - process rows in parallel
-        if width * height > 50_000 {
+        // Horizontal pass - process rows in parallel (disabled in WASM builds to prevent memory issues)
+        if width * height > 50_000 && !cfg!(target_arch = "wasm32") {
             let pixel_coords: Vec<(u32, u32)> = (0..height)
                 .flat_map(|y| (0..width).map(move |x| (x, y)))
                 .collect();
@@ -3079,8 +3368,8 @@ fn gaussian_blur(image: &GrayImage, sigma: f32) -> GrayImage {
             }
         }
 
-        // Vertical pass - process pixels in parallel
-        if width * height > 50_000 {
+        // Vertical pass - process pixels in parallel (disabled in WASM builds to prevent memory issues)
+        if width * height > 50_000 && !cfg!(target_arch = "wasm32") {
             let pixel_coords: Vec<(u32, u32)> = (0..height)
                 .flat_map(|y| (0..width).map(move |x| (x, y)))
                 .collect();
@@ -3132,8 +3421,8 @@ fn gaussian_blur(image: &GrayImage, sigma: f32) -> GrayImage {
         // Apply separable Gaussian filter with parallel processing
         let mut temp = GrayImage::new(width, height);
 
-        // Horizontal pass
-        if width * height > 50_000 {
+        // Horizontal pass (disabled in WASM builds to prevent memory issues)
+        if width * height > 50_000 && !cfg!(target_arch = "wasm32") {
             // Create index vector for parallel processing
             let indices: Vec<(u32, u32)> = (0..height)
                 .flat_map(|y| (0..width).map(move |x| (x, y)))
@@ -3170,8 +3459,8 @@ fn gaussian_blur(image: &GrayImage, sigma: f32) -> GrayImage {
             }
         }
 
-        // Vertical pass
-        if width * height > 50_000 {
+        // Vertical pass (disabled in WASM builds to prevent memory issues)
+        if width * height > 50_000 && !cfg!(target_arch = "wasm32") {
             // Create index vector for parallel processing
             let indices: Vec<(u32, u32)> = (0..height)
                 .flat_map(|y| (0..width).map(move |x| (x, y)))
@@ -3223,7 +3512,7 @@ fn canny_edge_detection(image: &GrayImage, low_threshold: f32, high_threshold: f
     let mut gradient_magnitude = vec![0.0f32; total_pixels];
 
     // Calculate gradients using parallel processing with unrolled Sobel operators
-    let use_parallel = width * height > 50_000;
+    let use_parallel = width * height > 50_000 && !cfg!(target_arch = "wasm32");
 
     if use_parallel {
         // Create index vector for parallel processing
@@ -4974,8 +5263,17 @@ fn link_edges_to_polylines_directional(
     // Apply direction-specific filtering
     match direction {
         ProcessingDirection::DiagonalNW | ProcessingDirection::DiagonalNE => {
-            // Filter to prefer diagonal-oriented paths
+            // Filter to prefer diagonal-oriented paths, but keep at least some paths
+            let original_count = polylines.len();
             polylines.retain(|polyline| is_diagonal_oriented(polyline));
+            
+            // Log for debugging
+            log::debug!(
+                "Diagonal filtering for {:?}: {} -> {} polylines",
+                direction,
+                original_count,
+                polylines.len()
+            );
         }
         _ => {}
     }
@@ -4985,17 +5283,37 @@ fn link_edges_to_polylines_directional(
 
 /// Check if a polyline is diagonally oriented
 fn is_diagonal_oriented(polyline: &[Point]) -> bool {
+    if polyline.is_empty() {
+        return false;
+    }
+    
     if polyline.len() < 2 {
         return false;
     }
 
-    let start = &polyline[0];
-    let end = &polyline[polyline.len() - 1];
+    // Safely get first and last points
+    let start = match polyline.first() {
+        Some(p) => p,
+        None => return false,
+    };
+    
+    let end = match polyline.last() {
+        Some(p) => p,
+        None => return false,
+    };
+    
     let dx = (end.x - start.x).abs();
     let dy = (end.y - start.y).abs();
 
     // Check if the line is more diagonal than orthogonal
-    let diagonal_ratio = dx.min(dy) / dx.max(dy).max(1.0);
+    // Avoid division by zero
+    let max_delta = dx.max(dy);
+    if max_delta < 1.0 {
+        return false; // Too small to determine orientation
+    }
+    
+    let min_delta = dx.min(dy);
+    let diagonal_ratio = min_delta / max_delta;
     diagonal_ratio > 0.4 // At least 40% diagonal component
 }
 
@@ -5176,7 +5494,8 @@ fn profile_multipass_performance(
     // Conservative pass
     let pass_start = Instant::now();
     let mut conservative_config = config.clone();
-    conservative_config.detail = config.conservative_detail.unwrap_or(config.detail * 1.3);
+    // FIXED: Conservative pass should use higher thresholds (lower detail value)
+    conservative_config.detail = config.conservative_detail.unwrap_or(config.detail * 0.7);
     conservative_config.enable_multipass = false;
     let conservative_paths = vectorize_trace_low_single_pass(image, &conservative_config, None)?;
     profile.conservative_pass = pass_start.elapsed();
@@ -5188,7 +5507,8 @@ fn profile_multipass_performance(
     // Aggressive pass
     let pass_start = Instant::now();
     let mut aggressive_config = config.clone();
-    aggressive_config.detail = config.aggressive_detail.unwrap_or(config.detail * 0.7);
+    // FIXED: Aggressive pass should use lower thresholds (higher detail value)
+    aggressive_config.detail = config.aggressive_detail.unwrap_or(config.detail * 1.3);
     aggressive_config.enable_multipass = false;
     let aggressive_paths =
         trace_edge_aggressive(image, &conservative_paths, &analysis, &aggressive_config)?;
@@ -6820,8 +7140,8 @@ fn bilateral_filter(image: &GrayImage, spatial_sigma: f32, range_sigma: f32) -> 
     }
 
     // Process image with bilateral filtering
-    // Use parallel processing for larger images (lowered threshold for better performance)
-    if width * height > 50_000 {
+    // Use parallel processing for larger images (disabled in WASM builds to prevent memory issues)
+    if width * height > 50_000 && !cfg!(target_arch = "wasm32") {
         let pixel_coords: Vec<(u32, u32)> = (0..height)
             .flat_map(|y| (0..width).map(move |x| (x, y)))
             .collect();
@@ -6940,8 +7260,8 @@ fn bilateral_filter_fast(image: &GrayImage, spatial_sigma: f32, range_sigma: f32
 
     let range_coeff = -0.5 / (range_sigma * range_sigma);
 
-    // Use parallel processing for medium-sized images even with small kernels
-    if width * height > 25_000 {
+    // Use parallel processing for medium-sized images even with small kernels (disabled in WASM builds to prevent memory issues)
+    if width * height > 25_000 && !cfg!(target_arch = "wasm32") {
         let pixel_coords: Vec<(u32, u32)> = (0..height)
             .flat_map(|y| (0..width).map(move |x| (x, y)))
             .collect();

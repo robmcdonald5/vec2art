@@ -667,10 +667,10 @@ export class VectorizerService {
 			}
 
 			// Configure core settings
-			// Invert detail level: UI shows 0.1=Simple, 1.0=Detailed, but backend expects inverse
-			// (higher backend values = more blur = less detail, so we invert for intuitive UI)
-			const invertedDetail = 1.0 - workingConfig.detail;
-			this.vectorizer.set_detail(invertedDetail);
+			// Pass detail directly - backend expects higher values for more detail
+			// UI: 0.1=Simple (less detail), 1.0=Detailed (more detail)
+			// Backend: 0.1=less detail (lower thresholds), 1.0=more detail (higher thresholds)
+			this.vectorizer.set_detail(workingConfig.detail);
 			this.vectorizer.set_stroke_width(workingConfig.stroke_width);
 
 			// Configure multi-pass processing
@@ -679,12 +679,12 @@ export class VectorizerService {
 			this.vectorizer.set_reverse_pass(workingConfig.reverse_pass);
 			this.vectorizer.set_diagonal_pass(workingConfig.diagonal_pass);
 
-			// Configure multipass detail levels if specified (also invert these)
+			// Configure multipass detail levels if specified (pass directly, no inversion)
 			if (workingConfig.conservative_detail !== undefined) {
-				this.safeCall('set_conservative_detail', 1.0 - workingConfig.conservative_detail);
+				this.safeCall('set_conservative_detail', workingConfig.conservative_detail);
 			}
 			if (workingConfig.aggressive_detail !== undefined) {
-				this.safeCall('set_aggressive_detail', 1.0 - workingConfig.aggressive_detail);
+				this.safeCall('set_aggressive_detail', workingConfig.aggressive_detail);
 			}
 
 			// Configure directional strength threshold

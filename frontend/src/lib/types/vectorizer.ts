@@ -13,7 +13,7 @@ export interface VectorizerConfig {
 	backend: VectorizerBackend;
 	preset?: VectorizerPreset;
 	detail: number; // 0.0-1.0 (internally mapped from 1-10 UI)
-	stroke_width: number; // 0.5-5.0 px
+	stroke_width: number; // 0.5-10.0 px
 	noise_filtering: boolean;
 	noise_filter_spatial_sigma?: number; // 0.5-1.5 for UI slider (higher = more smoothing, default: 1.2)
 	noise_filter_range_sigma?: number; // 10.0-100.0 (higher = less edge preservation, default: 50.0)
@@ -274,7 +274,7 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	enable_background_removal: false, // Default disabled
 	background_removal_strength: 0.5, // Moderate strength when enabled
 	background_removal_algorithm: 'otsu', // Fast algorithm by default
-	max_processing_time_ms: 60000, // 60 seconds for comprehensive processing
+	max_processing_time_ms: 180000, // 3 minutes for comprehensive processing (increased from 60s due to background removal)
 	// Superpixel backend defaults
 	num_superpixels: 250, // Higher detail for better region definition
 	compactness: 15, // Balanced shape regularity (reduced from previous 20 to avoid artifacts)

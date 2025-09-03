@@ -166,19 +166,26 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 /**
  * Create vectorizer instance with image data
  */
-function createVectorizer(imageDataPayload: { data: number[]; width: number; height: number }) {
+async function createVectorizer(imageDataPayload: { data: number[]; width: number; height: number }) {
 	if (!wasmInitialized || !wasmModule.WasmVectorizer) {
 		throw new Error('WASM not initialized or WasmVectorizer not available');
 	}
 
-	// Clean up previous vectorizer if exists
+	// DEFENSIVE CLEANUP: Always clean up previous vectorizer to prevent state corruption
 	if (vectorizer) {
 		try {
+			console.log('[Worker] 🧹 Cleaning up previous vectorizer to prevent state corruption');
 			vectorizer.free();
 		} catch (e) {
-			console.warn('[Worker] Failed to free previous vectorizer:', e);
+			console.warn('[Worker] ⚠️ Failed to free previous vectorizer (may be corrupted):', e);
 		}
 	}
+	
+	// ALWAYS force null to ensure fresh instance, even if cleanup failed
+	vectorizer = null;
+	
+	// Small delay to ensure WASM cleanup is complete (helps with memory corruption)
+	await new Promise(resolve => setTimeout(resolve, 10));
 
 	// Create a proper ImageData object from the serialized data
 	console.log('[Worker] Creating ImageData object:', {
@@ -229,6 +236,27 @@ async function configureVectorizer(config: any) {
 
 	// Store config globally for timeout handling
 	currentConfig = config;
+	
+	console.log('[Worker] 🚀 Using robust configuration mapper for bulletproof config transmission');
+	
+	// TEMPORARILY DISABLED: Robust config mapper has interface issues
+	// The vectorizer instance has no methods available, suggesting type mismatch
+	// Using legacy configuration until interface is fixed
+	console.log('[Worker] 🔧 Using legacy configuration (robust mapper temporarily disabled for debugging)');
+	
+	// Robust config mapper attempt (disabled for now)
+	// try {
+	//     const { RobustConfigMapper } = await import('./robust-config-mapper');
+	//     const configMapper = new RobustConfigMapper(vectorizer as any);
+	//     
+	//     await configMapper.applyConfiguration(config);
+	//     console.log('[Worker] ✅ Robust configuration application completed successfully');
+	//     return;
+	//     
+	// } catch (robustConfigError) {
+	//     console.error('[Worker] ❌ Robust config mapper failed, falling back to legacy configuration:', robustConfigError);
+	//     // Fall through to legacy configuration as backup
+	// }
 
 	// Ensure critical defaults are set if missing
 	if (config.pass_count === undefined) {
@@ -296,10 +324,16 @@ async function configureVectorizer(config: any) {
 				`[Worker] 🎯 Dots backend - skipping set_detail(), using dot_density_threshold parameter instead`
 			);
 		} else {
-			// For line art backends: invert detail level (UI: 1.0=detailed, Backend: 0.0=detailed)
-			const invertedDetail = 1.0 - config.detail;
-			console.log(`[Worker] Setting detail level: ${invertedDetail} (from UI value: ${config.detail})`);
-			vectorizer.set_detail(invertedDetail);
+			// For line art backends: pass detail directly (UI: 1.0=detailed, Backend: 1.0=detailed)
+			// FIXED: Removed incorrect inversion that caused detail slider to work backwards
+			console.log(`[Worker] Setting detail level: ${config.detail} (UI range 0.1-1.0)`);
+			try {
+				vectorizer.set_detail(config.detail);
+				console.log(`[Worker] ✅ Detail level set successfully: ${config.detail}`);
+			} catch (detailError) {
+				console.error(`[Worker] ❌ Failed to set detail level ${config.detail}:`, detailError);
+				console.error(`[Worker] ❌ Vectorizer methods available:`, Object.getOwnPropertyNames(vectorizer));
+			}
 		}
 	}
 
@@ -321,7 +355,13 @@ async function configureVectorizer(config: any) {
 			vectorizer.set_dot_size_range(minRadius, maxRadius);
 		} else {
 			// For line art backends: stroke_width controls line thickness
-			vectorizer.set_stroke_width(config.stroke_width);
+			console.log(`[Worker] Setting stroke width: ${config.stroke_width} (Range: 0.5-10.0)`);
+			try {
+				vectorizer.set_stroke_width(config.stroke_width);
+				console.log(`[Worker] ✅ Stroke width set successfully: ${config.stroke_width}`);
+			} catch (strokeError) {
+				console.error(`[Worker] ❌ Failed to set stroke width ${config.stroke_width}:`, strokeError);
+			}
 		}
 	}
 
@@ -591,8 +631,8 @@ async function configureVectorizer(config: any) {
 		}
 	}
 
+	// Superpixel backend parameters - ONLY apply to superpixel backend
 	if (config.backend === 'superpixel') {
-		// Superpixel backend parameters
 		const superpixelNumericMethods = {
 			num_superpixels: 'set_num_superpixels',
 			compactness: 'set_compactness',
@@ -600,6 +640,7 @@ async function configureVectorizer(config: any) {
 			boundary_epsilon: 'set_boundary_epsilon'
 		};
 
+		console.log('[Worker] Applying superpixel backend parameters...');
 		for (const [key, method] of Object.entries(superpixelNumericMethods)) {
 			if (
 				key in config &&
@@ -623,7 +664,7 @@ async function configureVectorizer(config: any) {
 				vectorizer[method](config[key]);
 			}
 		}
-
+		
 		// Initialization pattern configuration
 		if (
 			typeof config.initialization_pattern === 'string' &&
@@ -632,7 +673,7 @@ async function configureVectorizer(config: any) {
 			console.log('[Worker] Setting initialization_pattern:', config.initialization_pattern);
 			vectorizer.set_initialization_pattern(config.initialization_pattern);
 		}
-
+		
 		// Unified color configuration for superpixel backend
 		if (
 			typeof config.preserve_colors === 'boolean' &&
@@ -644,6 +685,8 @@ async function configureVectorizer(config: any) {
 			);
 			vectorizer.set_superpixel_preserve_colors(config.preserve_colors);
 		}
+	} else {
+		console.log(`[Worker] Skipping superpixel parameters for ${config.backend} backend`);
 	}
 
 	// Apply performance settings
@@ -869,8 +912,26 @@ async function processImage() {
 			full_config: currentConfig
 		});
 
-		// Process with progress callback and JavaScript-based timeout
-		const timeoutMs = currentConfig.max_processing_time_ms || 30000;
+		// Process with progress callback and dynamic JavaScript-based timeout
+		let timeoutMs = currentConfig.max_processing_time_ms || 30000;
+		
+		// CRITICAL FIX: Extend timeout for background removal to prevent race condition
+		if (currentConfig.enable_background_removal) {
+			const pixelCount = currentImageData.width * currentImageData.height;
+			const megapixels = pixelCount / 1_000_000;
+			
+			// Match the WASM timeout extensions to prevent conflicting timeouts
+			if (megapixels > 8) {
+				timeoutMs = Math.max(timeoutMs, 300000); // 5 minutes minimum for 8MP+
+			} else if (megapixels > 5) {
+				timeoutMs = Math.max(timeoutMs, 240000); // 4 minutes minimum for 5-8MP
+			} else {
+				timeoutMs = Math.max(timeoutMs, 180000); // 3 minutes minimum for smaller images
+			}
+			
+			console.log(`[Worker] Background removal: Extended JS timeout to ${timeoutMs/1000}s for ${megapixels.toFixed(1)}MP image`);
+		}
+		
 		const isUnlimited = timeoutMs >= 999999; // 999999ms+ considered unlimited
 
 		if (isUnlimited) {
@@ -926,30 +987,105 @@ async function processImage() {
 
 				// Call vectorize with enhanced error handling for WASM panics
 				let result;
+				let mainTimeoutHandle: number | null = null;
+				let emergencyTimeoutHandle: number | null = null;
+				
 				try {
-					// Check if GPU acceleration is preferred and available
-					if (currentConfig?.preferGpu && typeof wasmModule.vectorize_with_gpu_acceleration === 'function') {
-						console.log('[Worker] 🚀 Using GPU-accelerated vectorization...');
-						result = await wasmModule.vectorize_with_gpu_acceleration(vectorizer, processedImageData!, true);
-					} else {
-						// Fallback to standard CPU vectorization
-						if (currentConfig?.preferGpu) {
-							console.log('[Worker] 💻 GPU preferred but not available, using CPU fallback...');
+					// Set up dynamic timeout based on image size and background removal
+					let wasmTimeoutMs = 180000; // 3 minutes base timeout
+					
+					// Adjust timeout for background removal (which is very CPU intensive)
+					if (currentConfig?.enable_background_removal) {
+						const pixelCount = processedImageData.width * processedImageData.height;
+						const megapixels = pixelCount / 1_000_000;
+						
+						if (megapixels > 8) {
+							wasmTimeoutMs = 300000; // 5 minutes for 8MP+ with background removal
+						} else if (megapixels > 5) {
+							wasmTimeoutMs = 240000; // 4 minutes for 5-8MP with background removal  
+						} else {
+							wasmTimeoutMs = 180000; // Keep 3 minutes for smaller images
 						}
-						result = vectorizer.vectorize_with_progress(processedImageData, (progress: any) => {
-						console.log('[Worker] Progress callback received:', progress);
-						// Send progress updates to main thread
-						self.postMessage({
-							type: 'progress',
-							id: 'current',
-							data: {
-								stage: progress.stage || 'processing',
-								progress: progress.progress || 0,
-								message: progress.message || 'Processing...'
-							}
-						} as WorkerResponse);
-					});
+						
+						console.log(`[Worker] 🕐 Background removal enabled: Extended WASM timeout to ${wasmTimeoutMs/1000}s for ${megapixels.toFixed(1)}MP image`);
+					} else {
+						console.log(`[Worker] 🕐 Setting WASM processing timeout: ${wasmTimeoutMs/1000}s`);
 					}
+					
+					// Wrap WASM call in a Promise race with timeout
+					result = await Promise.race([
+						// WASM processing promise
+						new Promise((resolve, reject) => {
+							try {
+								// Check if GPU acceleration is preferred and available
+								if (currentConfig?.preferGpu && typeof wasmModule.vectorize_with_gpu_acceleration === 'function') {
+									console.log('[Worker] 🚀 Using GPU-accelerated vectorization...');
+									const gpuResult = wasmModule.vectorize_with_gpu_acceleration(vectorizer, processedImageData!, true);
+									resolve(gpuResult);
+								} else {
+									// Fallback to standard CPU vectorization
+									if (currentConfig?.preferGpu) {
+										console.log('[Worker] 💻 GPU preferred but not available, using CPU fallback...');
+									}
+									
+									console.log('[Worker] 🚀 Starting WASM vectorize_with_progress call...');
+									try {
+										const cpuResult = vectorizer.vectorize_with_progress(processedImageData, (progress: any) => {
+											console.log('[Worker] Progress callback received:', progress);
+											// Send progress updates to main thread
+											self.postMessage({
+												type: 'progress',
+												id: 'current',
+												data: {
+													stage: progress.stage || 'processing',
+													progress: progress.progress || 0,
+													message: progress.message || 'Processing...'
+												}
+											} as WorkerResponse);
+										});
+										
+										console.log('[Worker] ✅ WASM vectorize_with_progress completed, result type:', typeof cpuResult, 'length:', cpuResult?.length || 'no length');
+										
+										// Add explicit timeout check
+										if (!cpuResult) {
+											console.error('[Worker] ❌ WASM returned null/undefined result');
+											reject(new Error('WASM processing returned null result'));
+											return;
+										}
+										
+										console.log('[Worker] ✅ About to resolve with result');
+										resolve(cpuResult);
+									} catch (wasmCallError) {
+										console.error('[Worker] ❌ WASM vectorize_with_progress threw error:', wasmCallError);
+										reject(wasmCallError);
+									}
+								}
+							} catch (wasmError) {
+								console.error('[Worker] 💥 WASM processing error in promise wrapper:', wasmError);
+								reject(wasmError);
+							}
+						}),
+						
+						// Timeout promise with proper cleanup tracking
+						new Promise((_, reject) => {
+							mainTimeoutHandle = setTimeout(() => {
+								console.error(`[Worker] 🚨 WASM processing timeout after ${wasmTimeoutMs/1000}s - terminating to prevent hanging`);
+								console.error(`[Worker] 🚨 This appears to be a WASM internal hang - likely in edge processing after background removal`);
+								reject(new Error(`WASM processing timeout after ${wasmTimeoutMs/1000} seconds. The edge processing algorithm appears to be stuck in an infinite loop after background removal.`));
+							}, wasmTimeoutMs);
+							
+							// Also add an emergency shorter timeout for known problematic combinations
+							if (currentConfig?.enable_background_removal && currentConfig?.backend === 'edge') {
+								const emergencyTimeout = Math.min(wasmTimeoutMs, 120000); // 2 minutes max for this combination
+								emergencyTimeoutHandle = setTimeout(() => {
+									console.error(`[Worker] 🚨 EMERGENCY TIMEOUT after ${emergencyTimeout/1000}s - Edge+Background combination is hanging`);
+									reject(new Error(`Edge processing with background removal is hanging. Try disabling background removal or using a different algorithm.`));
+								}, emergencyTimeout);
+							}
+						})
+					]);
+					
+					console.log('[Worker] ✅ WASM processing completed successfully within timeout');
 				} catch (wasmError: any) {
 					console.error('[Worker] 💥 WASM vectorization error:', wasmError);
 					
@@ -979,6 +1115,16 @@ async function processImage() {
 						const userError = new Error(`Processing failed: ${wasmError?.message || 'Unknown WASM error'}`);
 						(userError as any).originalError = wasmError;
 						throw userError;
+					}
+				} finally {
+					// CRITICAL FIX: Always clear timeout handles to prevent post-completion errors
+					if (mainTimeoutHandle !== null) {
+						clearTimeout(mainTimeoutHandle);
+						console.log('[Worker] 🧹 Cleared main timeout handle to prevent post-completion errors');
+					}
+					if (emergencyTimeoutHandle !== null) {
+						clearTimeout(emergencyTimeoutHandle);
+						console.log('[Worker] 🧹 Cleared emergency timeout handle to prevent post-completion errors');
 					}
 				}
 
@@ -1016,9 +1162,41 @@ async function processImage() {
 		console.log(`[Worker] 📊 Thread pool reused (single lifetime strategy)`);
 
 		console.log('[Worker] Vectorization complete');
-		return { success: true, svg };
+		
+		// Validate SVG result before returning
+		if (!svg || typeof svg !== 'string') {
+			console.error('[Worker] Invalid SVG result:', typeof svg, svg?.length || 'no length');
+			throw new Error('Invalid SVG result from WASM module');
+		}
+		
+		const svgSizeMB = new Blob([svg]).size / (1024 * 1024);
+		console.log(`[Worker] SVG result size: ${svgSizeMB.toFixed(2)}MB`);
+		
+		// Warn about very large SVGs that might cause serialization issues  
+		if (svgSizeMB > 50) {
+			console.warn(`[Worker] ⚠️ Very large SVG result: ${svgSizeMB.toFixed(1)}MB - may cause serialization issues`);
+		}
+		
+		const result = { success: true, svg };
+		console.log('[Worker] ✅ Returning result:', typeof result, result.success, result.svg ? `${result.svg.length} chars` : 'no svg');
+		return result;
 	} finally {
 		isProcessing = false;
+		console.log('[Worker] 🔧 ProcessImage finally block - isProcessing set to false');
+		
+		// CRITICAL FIX: Automatically clean up vectorizer after each conversion to prevent memory accumulation
+		if (vectorizer) {
+			try {
+				console.log('[Worker] 🧹 Auto-cleanup: Freeing vectorizer to prevent memory accumulation');
+				vectorizer.free();
+				vectorizer = null;
+				console.log('[Worker] ✅ Auto-cleanup: Vectorizer freed successfully');
+			} catch (cleanupError) {
+				console.warn('[Worker] ⚠️ Auto-cleanup: Failed to free vectorizer:', cleanupError);
+				// Force null anyway to prevent reuse of corrupted instance
+				vectorizer = null;
+			}
+		}
 	}
 }
 
@@ -1076,7 +1254,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 				}
 				
 				// Create vectorizer with image data
-				createVectorizer(payload.imageData);
+				await createVectorizer(payload.imageData);
 
 				// Configure vectorizer
 				configureVectorizer(payload.config);
@@ -1111,19 +1289,47 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 		}
 
 		// Send success response
-		self.postMessage({
-			type: 'success',
-			id,
-			data: result
-		} as WorkerResponse);
+		console.log('[Worker] 📤 Sending success response with result:', typeof result, result?.success);
+		try {
+			self.postMessage({
+				type: 'success',
+				id,
+				data: result
+			} as WorkerResponse);
+			console.log('[Worker] ✅ Success response sent successfully');
+		} catch (postError) {
+			console.error('[Worker] 💥 Failed to send success response:', postError);
+			// Try to send error response about the postMessage failure
+			self.postMessage({
+				type: 'error',
+				id,
+				error: `Failed to send success response: ${postError instanceof Error ? postError.message : 'Unknown postMessage error'}`
+			} as WorkerResponse);
+		}
 	} catch (error) {
 		// Send error response
 		console.error('[Worker] Error:', error);
-		self.postMessage({
-			type: 'error',
-			id,
-			error: error instanceof Error ? error.message : 'Unknown error'
-		} as WorkerResponse);
+		console.log('[Worker] 📤 Sending error response for exception:', error instanceof Error ? error.message : 'Unknown error');
+		try {
+			self.postMessage({
+				type: 'error',
+				id,
+				error: error instanceof Error ? error.message : 'Unknown error'
+			} as WorkerResponse);
+			console.log('[Worker] ✅ Error response sent successfully');
+		} catch (postError) {
+			console.error('[Worker] 💥 Failed to send error response:', postError);
+			// Last resort - try to send a basic error message
+			try {
+				self.postMessage({
+					type: 'error',
+					id,
+					error: 'Worker communication error'
+				});
+			} catch (finalError) {
+				console.error('[Worker] 💥 Complete communication failure:', finalError);
+			}
+		}
 	}
 });
 

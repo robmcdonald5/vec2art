@@ -38,7 +38,6 @@
 	let expandedSections = $state({
 		backgroundFiltering: false,
 		multipass: false,
-		directional: false,
 		edgeDetection: false,
 		colorControls: false,
 		centerlineAdvanced: false,
@@ -484,147 +483,128 @@
 								{getPassCountDescription(config.pass_count || 1)}
 							</div>
 						</div>
-					</div>
-				{/if}
-			</div>
-		{/if}
 
-		<!-- Directional Processing (Edge backend only) -->
-		{#if config.backend === 'edge'}
-			<div
-				class="border-ferrari-200/30 border bg-white {expandedSections.directional
-					? 'rounded-t-lg'
-					: 'rounded-lg'}"
-			>
-				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.directional
-						? 'rounded-t-lg'
-						: 'rounded-lg'}"
-					onclick={() => toggleSection('directional')}
-					{disabled}
-					type="button"
-				>
-					<div class="flex items-center gap-2">
-						<Target class="text-ferrari-600 h-4 w-4" />
-						<span class="text-converter-primary font-medium">Directional Processing</span>
-						{#if config.reverse_pass || config.diagonal_pass}
-							<Check class="h-4 w-4 text-green-600" />
-						{/if}
-					</div>
-					<div class="flex-shrink-0">
-						{#if expandedSections.directional}
-							<ChevronUp class="text-ferrari-600 h-4 w-4" />
-						{:else}
-							<ChevronDown class="text-ferrari-600 h-4 w-4" />
-						{/if}
-					</div>
-				</button>
-
-				{#if expandedSections.directional}
-					<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
-						<!-- Reverse Pass -->
-						<div class="flex items-center space-x-3">
-							<input
-								type="checkbox"
-								id="reverse-pass"
-								checked={config.reverse_pass}
-								onchange={handleCheckboxChange('reverse_pass')}
-								{disabled}
-								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-							/>
-							<label
-								for="reverse-pass"
-								class="text-converter-primary cursor-pointer text-sm font-medium"
-							>
-								Enable Reverse Pass
-							</label>
-						</div>
-						<div class="text-converter-secondary ml-7 text-xs">
-							Right-to-left, bottom-to-top scan for shadows and lighting effects.
-						</div>
-						<div class="ml-7 text-xs font-medium text-blue-600">
-							Best for: portraits, objects with directional lighting
-						</div>
-
-						<!-- Diagonal Pass -->
-						<div class="flex items-center space-x-3">
-							<input
-								type="checkbox"
-								id="diagonal-pass"
-								checked={config.diagonal_pass}
-								onchange={handleCheckboxChange('diagonal_pass')}
-								{disabled}
-								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-							/>
-							<label
-								for="diagonal-pass"
-								class="text-converter-primary cursor-pointer text-sm font-medium"
-							>
-								Enable Diagonal Pass
-							</label>
-						</div>
-						<div class="text-converter-secondary ml-7 text-xs">
-							Diagonal scan (NW→SE, NE→SW) for architectural and angled features.
-						</div>
-						<div class="ml-7 text-xs font-medium text-blue-600">
-							Best for: buildings, geometric shapes, technical drawings
-						</div>
-
-						<!-- Directional Sensitivity -->
-						{#if config.reverse_pass || config.diagonal_pass}
-							<div class="border-ferrari-200/20 ml-7 space-y-3 border-t pt-4">
-								<div class="flex items-center justify-between">
-									<label
-										for="directional-threshold"
-										class="text-converter-primary text-sm font-medium"
-										>Directional Sensitivity</label
-									>
-									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-										{(config.directional_strength_threshold ?? 0.3).toFixed(1)}
-									</span>
+						<!-- Directional Processing (shown when pass count > 1) -->
+						{#if (config.pass_count || 1) > 1}
+							<div class="border-ferrari-200/20 space-y-4 border-t pt-4">
+								<div class="flex items-center gap-2">
+									<Target class="text-ferrari-600 h-4 w-4" />
+									<span class="text-converter-primary text-sm font-medium">Directional Enhancements</span>
+									{#if config.reverse_pass || config.diagonal_pass}
+										<Check class="h-4 w-4 text-green-600" />
+									{/if}
 								</div>
-								<input
-									type="range"
-									id="directional-threshold"
-									min="0.1"
-									max="0.8"
-									step="0.1"
-									value={config.directional_strength_threshold ?? 0.3}
-									oninput={handleRangeChange('directional_strength_threshold')}
-									{disabled}
-									class="slider-ferrari w-full"
-									use:initializeSliderFill
-								/>
-								<div class="space-y-1 text-xs">
-									<div class="text-converter-secondary">
-										Controls how selective the algorithm is about running directional passes:
+
+								<!-- Reverse Pass -->
+								<div class="space-y-2">
+									<div class="flex items-center space-x-3">
+										<input
+											type="checkbox"
+											id="reverse-pass"
+											checked={config.reverse_pass}
+											onchange={handleCheckboxChange('reverse_pass')}
+											{disabled}
+											class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+										/>
+										<label
+											for="reverse-pass"
+											class="text-converter-primary cursor-pointer text-sm font-medium"
+										>
+											Enable Reverse Pass
+										</label>
 									</div>
-									<div class="grid grid-cols-3 gap-2 text-xs">
-										<div class="text-center">
-											<span class="font-medium text-green-600">Low (0.1-0.3)</span>
-											<div class="text-converter-secondary">Run on most images</div>
-										</div>
-										<div class="text-center">
-											<span class="font-medium text-yellow-600">Med (0.4-0.6)</span>
-											<div class="text-converter-secondary">Run when beneficial</div>
-										</div>
-										<div class="text-center">
-											<span class="font-medium text-red-600">High (0.7-0.8)</span>
-											<div class="text-converter-secondary">Only when clearly beneficial</div>
-										</div>
+									<div class="text-converter-secondary ml-7 text-xs">
+										Right-to-left, bottom-to-top scan for shadows and lighting effects.
+									</div>
+									<div class="ml-7 text-xs font-medium text-blue-600">
+										Best for: portraits, objects with directional lighting
 									</div>
 								</div>
-								<div class="rounded-lg bg-amber-50 p-2">
-									<div class="text-xs text-amber-700">
-										⏱️ Each enabled pass adds ~30% processing time
+
+								<!-- Diagonal Pass -->
+								<div class="space-y-2">
+									<div class="flex items-center space-x-3">
+										<input
+											type="checkbox"
+											id="diagonal-pass"
+											checked={config.diagonal_pass}
+											onchange={handleCheckboxChange('diagonal_pass')}
+											{disabled}
+											class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+										/>
+										<label
+											for="diagonal-pass"
+											class="text-converter-primary cursor-pointer text-sm font-medium"
+										>
+											Enable Diagonal Pass
+										</label>
+									</div>
+									<div class="text-converter-secondary ml-7 text-xs">
+										Diagonal scan (NW→SE, NE→SW) for architectural and angled features.
+									</div>
+									<div class="ml-7 text-xs font-medium text-blue-600">
+										Best for: buildings, geometric shapes, technical drawings
 									</div>
 								</div>
+
+								<!-- Directional Sensitivity -->
+								{#if config.reverse_pass || config.diagonal_pass}
+									<div class="border-ferrari-200/20 ml-7 space-y-3 border-t pt-4">
+										<div class="flex items-center justify-between">
+											<label
+												for="directional-threshold"
+												class="text-converter-primary text-sm font-medium"
+												>Directional Sensitivity</label
+											>
+											<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+												{(config.directional_strength_threshold ?? 0.3).toFixed(1)}
+											</span>
+										</div>
+										<input
+											type="range"
+											id="directional-threshold"
+											min="0.1"
+											max="0.8"
+											step="0.1"
+											value={config.directional_strength_threshold ?? 0.3}
+											oninput={handleRangeChange('directional_strength_threshold')}
+											{disabled}
+											class="slider-ferrari w-full"
+											use:initializeSliderFill
+										/>
+										<div class="space-y-1 text-xs">
+											<div class="text-converter-secondary">
+												Controls how selective the algorithm is about running directional passes:
+											</div>
+											<div class="grid grid-cols-3 gap-2 text-xs">
+												<div class="text-center">
+													<span class="font-medium text-green-600">Low (0.1-0.3)</span>
+													<div class="text-converter-secondary">Run on most images</div>
+												</div>
+												<div class="text-center">
+													<span class="font-medium text-yellow-600">Med (0.4-0.6)</span>
+													<div class="text-converter-secondary">Run when beneficial</div>
+												</div>
+												<div class="text-center">
+													<span class="font-medium text-red-600">High (0.7-0.8)</span>
+													<div class="text-converter-secondary">Only when clearly beneficial</div>
+												</div>
+											</div>
+										</div>
+										<div class="rounded-lg bg-amber-50 p-2">
+											<div class="text-xs text-amber-700">
+												⏱️ Each enabled pass adds ~30% processing time
+											</div>
+										</div>
+									</div>
+								{/if}
 							</div>
 						{/if}
 					</div>
 				{/if}
 			</div>
 		{/if}
+
 
 		<!-- Unified Color Controls (All backends) -->
 		<div

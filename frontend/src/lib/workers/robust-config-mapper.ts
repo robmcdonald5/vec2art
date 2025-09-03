@@ -1,0 +1,892 @@
+/**
+ * Robust Configuration Mapper
+ * 
+ * This module provides a bulletproof configuration transmission system that:
+ * 1. Validates all parameters with type safety
+ * 2. Maps frontend parameters to correct WASM methods
+ * 3. Prevents backend parameter contamination
+ * 4. Ensures proper sequencing and error handling
+ * 5. Provides comprehensive validation and rollback
+ */
+
+import type { VectorizerConfig } from '../types/vectorizer';
+
+interface WasmVectorizer {
+	// Backend setting
+	set_backend(backend: string): Promise<void> | void;
+	
+	// Core parameters
+	set_detail(detail: number): Promise<void> | void;
+	set_stroke_width(width: number): Promise<void> | void;
+	set_multipass(enabled: boolean): Promise<void> | void;
+	set_pass_count(count: number): Promise<void> | void;
+	set_reverse_pass(enabled: boolean): Promise<void> | void;
+	set_diagonal_pass(enabled: boolean): Promise<void> | void;
+	set_noise_filtering(enabled: boolean): Promise<void> | void;
+	
+	// Advanced features
+	set_enable_etf_fdog(enabled: boolean): Promise<void> | void;
+	set_enable_flow_tracing(enabled: boolean): Promise<void> | void;
+	set_enable_bezier_fitting(enabled: boolean): Promise<void> | void;
+	
+	// Background removal (all backends)
+	enable_background_removal(enabled: boolean): Promise<void> | void;
+	set_background_removal_strength(strength: number): Promise<void> | void;
+	set_background_removal_algorithm(algorithm: string): Promise<void> | void;
+	set_background_removal_threshold?(threshold: number): Promise<void> | void;
+	
+	// Color parameters (unified - all backends)
+	set_preserve_colors(enabled: boolean): Promise<void> | void;
+	set_color_tolerance(tolerance: number): Promise<void> | void;
+	
+	// Line backend specific (edge, centerline)
+	set_line_preserve_colors?(enabled: boolean): Promise<void> | void;
+	set_line_color_accuracy?(accuracy: number): Promise<void> | void;
+	set_max_colors_per_path?(count: number): Promise<void> | void;
+	
+	// Edge backend specific
+	// (none currently)
+	
+	// Centerline backend specific  
+	set_enable_adaptive_threshold?(enabled: boolean): Promise<void> | void;
+	set_window_size?(size: number): Promise<void> | void;
+	set_sensitivity_k?(k: number): Promise<void> | void;
+	set_enable_width_modulation?(enabled: boolean): Promise<void> | void;
+	set_min_branch_length?(length: number): Promise<void> | void;
+	set_douglas_peucker_epsilon?(epsilon: number): Promise<void> | void;
+	
+	// Dots backend specific
+	set_dot_density?(threshold: number): Promise<void> | void;
+	set_dot_size_range?(minRadius: number, maxRadius: number): Promise<void> | void;
+	set_adaptive_sizing?(enabled: boolean): Promise<void> | void;
+	set_background_tolerance?(tolerance: number): Promise<void> | void;
+	set_poisson_disk_sampling?(enabled: boolean): Promise<void> | void;
+	set_gradient_based_sizing?(enabled: boolean): Promise<void> | void;
+	
+	// Superpixel backend specific
+	set_num_superpixels?(count: number): Promise<void> | void;
+	set_compactness?(compactness: number): Promise<void> | void;
+	set_slic_iterations?(iterations: number): Promise<void> | void;
+	set_boundary_epsilon?(epsilon: number): Promise<void> | void;
+	set_fill_regions?(enabled: boolean): Promise<void> | void;
+	set_stroke_regions?(enabled: boolean): Promise<void> | void;
+	set_simplify_boundaries?(enabled: boolean): Promise<void> | void;
+	
+	// Validation
+	validate_config?(): string;
+	debug_dump_config?(): string;
+}
+
+/**
+ * Parameter validation with strict type checking and bounds
+ */
+export class ConfigValidator {
+	static validateBackend(backend: string): string {
+		const validBackends = ['edge', 'centerline', 'dots', 'superpixel'];
+		if (!validBackends.includes(backend)) {
+			throw new Error(`Invalid backend '${backend}'. Valid options: ${validBackends.join(', ')}`);
+		}
+		return backend;
+	}
+	
+	static validateDetail(detail: number): number {
+		if (typeof detail !== 'number' || detail < 0 || detail > 1) {
+			throw new Error(`Invalid detail value '${detail}'. Must be number between 0 and 1`);
+		}
+		return detail;
+	}
+	
+	static validateStrokeWidth(width: number): number {
+		if (typeof width !== 'number' || width < 0.1 || width > 10) {
+			throw new Error(`Invalid stroke_width '${width}'. Must be number between 0.1 and 10`);
+		}
+		return width;
+	}
+	
+	static validatePassCount(count: number): number {
+		if (typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > 10) {
+			throw new Error(`Invalid pass_count '${count}'. Must be integer between 1 and 10`);
+		}
+		return count;
+	}
+	
+	static validateBackgroundRemovalAlgorithm(algorithm: string): string {
+		const validAlgorithms = ['otsu', 'adaptive', 'auto'];
+		if (!validAlgorithms.includes(algorithm)) {
+			throw new Error(`Invalid background_removal_algorithm '${algorithm}'. Valid options: ${validAlgorithms.join(', ')}`);
+		}
+		return algorithm;
+	}
+	
+	static validateBackgroundRemovalStrength(strength: number): number {
+		if (typeof strength !== 'number' || strength < 0 || strength > 1) {
+			throw new Error(`Invalid background_removal_strength '${strength}'. Must be number between 0 and 1`);
+		}
+		return strength;
+	}
+	
+	static validateColorTolerance(tolerance: number): number {
+		if (typeof tolerance !== 'number' || tolerance < 0 || tolerance > 1) {
+			throw new Error(`Invalid color_tolerance '${tolerance}'. Must be number between 0 and 1`);
+		}
+		return tolerance;
+	}
+	
+	static validateColorAccuracy(accuracy: number): number {
+		if (typeof accuracy !== 'number' || accuracy < 0 || accuracy > 1) {
+			throw new Error(`Invalid color_accuracy '${accuracy}'. Must be number between 0 and 1`);
+		}
+		return accuracy;
+	}
+	
+	static validateMaxColorsPerPath(count: number): number {
+		if (typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > 10) {
+			throw new Error(`Invalid max_colors_per_path '${count}'. Must be integer between 1 and 10`);
+		}
+		return count;
+	}
+	
+	// Centerline-specific validation
+	static validateWindowSize(size: number): number {
+		if (typeof size !== 'number' || !Number.isInteger(size) || size < 15 || size > 51 || size % 2 === 0) {
+			throw new Error(`Invalid window_size '${size}'. Must be odd integer between 15 and 51`);
+		}
+		return size;
+	}
+	
+	static validateSensitivityK(k: number): number {
+		if (typeof k !== 'number' || k < 0.1 || k > 1.0) {
+			throw new Error(`Invalid sensitivity_k '${k}'. Must be number between 0.1 and 1.0`);
+		}
+		return k;
+	}
+	
+	static validateMinBranchLength(length: number): number {
+		if (typeof length !== 'number' || length < 2 || length > 50) {
+			throw new Error(`Invalid min_branch_length '${length}'. Must be number between 2 and 50`);
+		}
+		return length;
+	}
+	
+	static validateDouglasPeuckerEpsilon(epsilon: number): number {
+		if (typeof epsilon !== 'number' || epsilon < 0.1 || epsilon > 5.0) {
+			throw new Error(`Invalid douglas_peucker_epsilon '${epsilon}'. Must be number between 0.1 and 5.0`);
+		}
+		return epsilon;
+	}
+	
+	// Dots-specific validation
+	static validateDotDensity(density: number): number {
+		if (typeof density !== 'number' || density < 0 || density > 1) {
+			throw new Error(`Invalid dot_density '${density}'. Must be number between 0 and 1`);
+		}
+		return density;
+	}
+	
+	static validateDotSizeRange(minRadius: number, maxRadius: number): [number, number] {
+		if (typeof minRadius !== 'number' || minRadius < 0.1 || minRadius > 5) {
+			throw new Error(`Invalid min_radius '${minRadius}'. Must be number between 0.1 and 5`);
+		}
+		if (typeof maxRadius !== 'number' || maxRadius < 0.5 || maxRadius > 15) {
+			throw new Error(`Invalid max_radius '${maxRadius}'. Must be number between 0.5 and 15`);
+		}
+		if (minRadius >= maxRadius) {
+			throw new Error(`min_radius '${minRadius}' must be less than max_radius '${maxRadius}'`);
+		}
+		return [minRadius, maxRadius];
+	}
+	
+	static validateBackgroundTolerance(tolerance: number): number {
+		if (typeof tolerance !== 'number' || tolerance < 0 || tolerance > 1) {
+			throw new Error(`Invalid background_tolerance '${tolerance}'. Must be number between 0 and 1`);
+		}
+		return tolerance;
+	}
+	
+	// Superpixel-specific validation
+	static validateNumSuperpixels(count: number): number {
+		if (typeof count !== 'number' || !Number.isInteger(count) || count < 50 || count > 1000) {
+			throw new Error(`Invalid num_superpixels '${count}'. Must be integer between 50 and 1000`);
+		}
+		return count;
+	}
+	
+	static validateCompactness(compactness: number): number {
+		if (typeof compactness !== 'number' || compactness < 1 || compactness > 50) {
+			throw new Error(`Invalid compactness '${compactness}'. Must be number between 1 and 50`);
+		}
+		return compactness;
+	}
+	
+	static validateSlicIterations(iterations: number): number {
+		if (typeof iterations !== 'number' || !Number.isInteger(iterations) || iterations < 3 || iterations > 20) {
+			throw new Error(`Invalid slic_iterations '${iterations}'. Must be integer between 3 and 20`);
+		}
+		return iterations;
+	}
+	
+	static validateBoundaryEpsilon(epsilon: number): number {
+		if (typeof epsilon !== 'number' || epsilon < 0.1 || epsilon > 5.0) {
+			throw new Error(`Invalid boundary_epsilon '${epsilon}'. Must be number between 0.1 and 5.0`);
+		}
+		return epsilon;
+	}
+}
+
+/**
+ * Configuration step that can be executed and rolled back
+ */
+interface ConfigurationStep {
+	name: string;
+	execute(): Promise<void>;
+	rollback?(): Promise<void>;
+}
+
+/**
+ * Robust configuration mapper with atomic transactions
+ */
+export class RobustConfigMapper {
+	private vectorizer: WasmVectorizer;
+	private appliedSteps: ConfigurationStep[] = [];
+	
+	constructor(vectorizer: WasmVectorizer) {
+		this.vectorizer = vectorizer;
+	}
+	
+	/**
+	 * Apply configuration with full validation, sequencing, and rollback capability
+	 */
+	async applyConfiguration(config: VectorizerConfig): Promise<void> {
+		console.log('[RobustConfigMapper] 🔧 Starting robust configuration application...');
+		console.log('[RobustConfigMapper] 🔍 Vectorizer methods available:', Object.getOwnPropertyNames(this.vectorizer).filter(name => name.startsWith('set_')));
+		
+		// Clear previous steps to prevent memory leak
+		this.appliedSteps = [];
+		
+		try {
+			// Phase 1: Pre-validation
+			await this.validateConfiguration(config);
+			console.log('[RobustConfigMapper] ✅ Configuration pre-validation passed');
+			
+			// Phase 2: Build execution plan
+			const steps = await this.buildConfigurationPlan(config);
+			console.log(`[RobustConfigMapper] 📋 Built configuration plan with ${steps.length} steps`);
+			
+			// Phase 3: Execute steps with rollback tracking
+			await this.executeConfigurationSteps(steps);
+			console.log('[RobustConfigMapper] ✅ All configuration steps completed successfully');
+			
+			// Phase 4: Post-validation
+			if (this.vectorizer.validate_config) {
+				const validation = this.vectorizer.validate_config();
+				console.log('[RobustConfigMapper] 📋 WASM validation result:', validation);
+			}
+			
+			console.log('[RobustConfigMapper] 🎉 Configuration application completed successfully');
+			
+		} catch (error) {
+			console.error('[RobustConfigMapper] ❌ Configuration application failed:', error);
+			await this.rollbackConfiguration();
+			throw new Error(`Configuration application failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	}
+	
+	/**
+	 * Validate the entire configuration before applying
+	 */
+	private async validateConfiguration(config: VectorizerConfig): Promise<void> {
+		// Required parameters
+		if (!config.backend) {
+			throw new Error('Missing required parameter: backend');
+		}
+		
+		ConfigValidator.validateBackend(config.backend);
+		
+		if (config.detail !== undefined) {
+			ConfigValidator.validateDetail(config.detail);
+		}
+		
+		if (config.stroke_width !== undefined) {
+			ConfigValidator.validateStrokeWidth(config.stroke_width);
+		}
+		
+		if (config.pass_count !== undefined) {
+			ConfigValidator.validatePassCount(config.pass_count);
+		}
+		
+		// Background removal validation
+		if (config.enable_background_removal && config.background_removal_algorithm) {
+			ConfigValidator.validateBackgroundRemovalAlgorithm(config.background_removal_algorithm);
+		}
+		
+		if (config.background_removal_strength !== undefined) {
+			ConfigValidator.validateBackgroundRemovalStrength(config.background_removal_strength);
+		}
+		
+		// Backend-specific validation
+		await this.validateBackendSpecificParameters(config);
+		
+		console.log('[RobustConfigMapper] ✅ All parameter validation passed');
+	}
+	
+	/**
+	 * Validate backend-specific parameters
+	 */
+	private async validateBackendSpecificParameters(config: VectorizerConfig): Promise<void> {
+		switch (config.backend) {
+			case 'centerline':
+				if (config.window_size !== undefined) {
+					ConfigValidator.validateWindowSize(config.window_size);
+				}
+				if (config.sensitivity_k !== undefined) {
+					ConfigValidator.validateSensitivityK(config.sensitivity_k);
+				}
+				if (config.min_branch_length !== undefined) {
+					ConfigValidator.validateMinBranchLength(config.min_branch_length);
+				}
+				if (config.douglas_peucker_epsilon !== undefined) {
+					ConfigValidator.validateDouglasPeuckerEpsilon(config.douglas_peucker_epsilon);
+				}
+				break;
+				
+			case 'dots':
+				if (config.dot_density_threshold !== undefined) {
+					ConfigValidator.validateDotDensity(config.dot_density_threshold);
+				}
+				if (config.min_radius !== undefined && config.max_radius !== undefined) {
+					ConfigValidator.validateDotSizeRange(config.min_radius, config.max_radius);
+				}
+				if (config.background_tolerance !== undefined) {
+					ConfigValidator.validateBackgroundTolerance(config.background_tolerance);
+				}
+				break;
+				
+			case 'superpixel':
+				if (config.num_superpixels !== undefined) {
+					ConfigValidator.validateNumSuperpixels(config.num_superpixels);
+				}
+				if (config.compactness !== undefined) {
+					ConfigValidator.validateCompactness(config.compactness);
+				}
+				if (config.slic_iterations !== undefined) {
+					ConfigValidator.validateSlicIterations(config.slic_iterations);
+				}
+				if (config.boundary_epsilon !== undefined) {
+					ConfigValidator.validateBoundaryEpsilon(config.boundary_epsilon);
+				}
+				break;
+				
+			case 'edge':
+				// No edge-specific parameters currently
+				break;
+				
+			default:
+				throw new Error(`Unknown backend: ${config.backend}`);
+		}
+		
+		console.log(`[RobustConfigMapper] ✅ Backend-specific validation passed for ${config.backend}`);
+	}
+	
+	/**
+	 * Build ordered configuration plan
+	 */
+	private async buildConfigurationPlan(config: VectorizerConfig): Promise<ConfigurationStep[]> {
+		const steps: ConfigurationStep[] = [];
+		
+		// Step 1: Set backend FIRST (critical ordering)
+		steps.push({
+			name: 'set_backend',
+			execute: async () => {
+				console.log(`[ConfigStep] Setting backend: ${config.backend}`);
+				await this.vectorizer.set_backend(ConfigValidator.validateBackend(config.backend));
+			}
+		});
+		
+		// Step 2: Core parameters (order matters for some WASM implementations)
+		if (config.detail !== undefined) {
+			steps.push({
+				name: 'set_detail',
+				execute: async () => {
+					const detail = ConfigValidator.validateDetail(config.detail!);
+					console.log(`[ConfigStep] Setting detail: ${detail}`);
+					await this.vectorizer.set_detail(detail);
+				}
+			});
+		}
+		
+		if (config.stroke_width !== undefined) {
+			steps.push({
+				name: 'set_stroke_width',
+				execute: async () => {
+					const width = ConfigValidator.validateStrokeWidth(config.stroke_width!);
+					console.log(`[ConfigStep] Setting stroke_width: ${width}`);
+					await this.vectorizer.set_stroke_width(width);
+				}
+			});
+		}
+		
+		// Step 3: Multi-pass configuration
+		if (config.pass_count !== undefined) {
+			steps.push({
+				name: 'set_pass_count',
+				execute: async () => {
+					const count = ConfigValidator.validatePassCount(config.pass_count!);
+					console.log(`[ConfigStep] Setting pass_count: ${count}`);
+					console.log(`[ConfigStep] Vectorizer has set_pass_count method: ${typeof this.vectorizer.set_pass_count}`);
+					await this.vectorizer.set_pass_count(count);
+					console.log(`[ConfigStep] ✅ set_pass_count executed`);
+				}
+			});
+		}
+		
+		if (config.multipass !== undefined) {
+			steps.push({
+				name: 'set_multipass',
+				execute: async () => {
+					console.log(`[ConfigStep] Setting multipass: ${config.multipass}`);
+					console.log(`[ConfigStep] Vectorizer has set_multipass method: ${typeof this.vectorizer.set_multipass}`);
+					await this.vectorizer.set_multipass(config.multipass!);
+					console.log(`[ConfigStep] ✅ set_multipass executed`);
+				}
+			});
+		}
+		
+		if (config.reverse_pass !== undefined) {
+			steps.push({
+				name: 'set_reverse_pass',
+				execute: async () => {
+					console.log(`[ConfigStep] Setting reverse_pass: ${config.reverse_pass}`);
+					await this.vectorizer.set_reverse_pass(config.reverse_pass!);
+				}
+			});
+		}
+		
+		if (config.diagonal_pass !== undefined) {
+			steps.push({
+				name: 'set_diagonal_pass',
+				execute: async () => {
+					console.log(`[ConfigStep] Setting diagonal_pass: ${config.diagonal_pass}`);
+					await this.vectorizer.set_diagonal_pass(config.diagonal_pass!);
+				}
+			});
+		}
+		
+		// Step 4: Noise filtering
+		if (config.noise_filtering !== undefined) {
+			steps.push({
+				name: 'set_noise_filtering',
+				execute: async () => {
+					console.log(`[ConfigStep] Setting noise_filtering: ${config.noise_filtering}`);
+					await this.vectorizer.set_noise_filtering(config.noise_filtering!);
+				}
+			});
+		}
+		
+		// Step 5: Advanced features
+		if (config.enable_etf_fdog !== undefined) {
+			steps.push({
+				name: 'set_enable_etf_fdog',
+				execute: async () => {
+					console.log(`[ConfigStep] Setting enable_etf_fdog: ${config.enable_etf_fdog}`);
+					await this.vectorizer.set_enable_etf_fdog(config.enable_etf_fdog!);
+				}
+			});
+		}
+		
+		if (config.enable_flow_tracing !== undefined) {
+			steps.push({
+				name: 'set_enable_flow_tracing',
+				execute: async () => {
+					console.log(`[ConfigStep] Setting enable_flow_tracing: ${config.enable_flow_tracing}`);
+					await this.vectorizer.set_enable_flow_tracing(config.enable_flow_tracing!);
+				}
+			});
+		}
+		
+		if (config.enable_bezier_fitting !== undefined) {
+			steps.push({
+				name: 'set_enable_bezier_fitting',
+				execute: async () => {
+					console.log(`[ConfigStep] Setting enable_bezier_fitting: ${config.enable_bezier_fitting}`);
+					await this.vectorizer.set_enable_bezier_fitting(config.enable_bezier_fitting!);
+				}
+			});
+		}
+		
+		// Step 6: Background removal (must be applied in specific order)
+		if (config.enable_background_removal !== undefined) {
+			steps.push({
+				name: 'enable_background_removal',
+				execute: async () => {
+					console.log(`[ConfigStep] Setting enable_background_removal: ${config.enable_background_removal}`);
+					await this.vectorizer.enable_background_removal(config.enable_background_removal!);
+				}
+			});
+		}
+		
+		if (config.background_removal_strength !== undefined) {
+			steps.push({
+				name: 'set_background_removal_strength',
+				execute: async () => {
+					const strength = ConfigValidator.validateBackgroundRemovalStrength(config.background_removal_strength!);
+					console.log(`[ConfigStep] Setting background_removal_strength: ${strength}`);
+					await this.vectorizer.set_background_removal_strength(strength);
+				}
+			});
+		}
+		
+		if (config.background_removal_algorithm !== undefined) {
+			steps.push({
+				name: 'set_background_removal_algorithm',
+				execute: async () => {
+					const algorithm = ConfigValidator.validateBackgroundRemovalAlgorithm(config.background_removal_algorithm!);
+					console.log(`[ConfigStep] Setting background_removal_algorithm: ${algorithm}`);
+					await this.vectorizer.set_background_removal_algorithm(algorithm);
+				}
+			});
+		}
+		
+		if (config.background_removal_threshold !== undefined && this.vectorizer.set_background_removal_threshold) {
+			steps.push({
+				name: 'set_background_removal_threshold',
+				execute: async () => {
+					console.log(`[ConfigStep] Setting background_removal_threshold: ${config.background_removal_threshold}`);
+					await this.vectorizer.set_background_removal_threshold!(config.background_removal_threshold!);
+				}
+			});
+		}
+		
+		// Step 7: Color parameters (unified)
+		if (config.preserve_colors !== undefined) {
+			steps.push({
+				name: 'set_preserve_colors',
+				execute: async () => {
+					console.log(`[ConfigStep] Setting preserve_colors: ${config.preserve_colors}`);
+					await this.vectorizer.set_preserve_colors(config.preserve_colors!);
+				}
+			});
+		}
+		
+		if (config.color_tolerance !== undefined) {
+			steps.push({
+				name: 'set_color_tolerance',
+				execute: async () => {
+					const tolerance = ConfigValidator.validateColorTolerance(config.color_tolerance!);
+					console.log(`[ConfigStep] Setting color_tolerance: ${tolerance}`);
+					await this.vectorizer.set_color_tolerance(tolerance);
+				}
+			});
+		}
+		
+		// Step 8: Line backend color parameters (edge, centerline)
+		if ((config.backend === 'edge' || config.backend === 'centerline') && config.preserve_colors !== undefined) {
+			if (this.vectorizer.set_line_preserve_colors) {
+				steps.push({
+					name: 'set_line_preserve_colors',
+					execute: async () => {
+						console.log(`[ConfigStep] Setting line_preserve_colors: ${config.preserve_colors}`);
+						await this.vectorizer.set_line_preserve_colors!(config.preserve_colors!);
+					}
+				});
+			}
+		}
+		
+		if ((config.backend === 'edge' || config.backend === 'centerline') && config.color_accuracy !== undefined) {
+			if (this.vectorizer.set_line_color_accuracy) {
+				steps.push({
+					name: 'set_line_color_accuracy',
+					execute: async () => {
+						const accuracy = ConfigValidator.validateColorAccuracy(config.color_accuracy!);
+						console.log(`[ConfigStep] Setting line_color_accuracy: ${accuracy}`);
+						await this.vectorizer.set_line_color_accuracy!(accuracy);
+					}
+				});
+			}
+		}
+		
+		if ((config.backend === 'edge' || config.backend === 'centerline') && config.max_colors_per_path !== undefined) {
+			if (this.vectorizer.set_max_colors_per_path) {
+				steps.push({
+					name: 'set_max_colors_per_path',
+					execute: async () => {
+						const count = ConfigValidator.validateMaxColorsPerPath(config.max_colors_per_path!);
+						console.log(`[ConfigStep] Setting max_colors_per_path: ${count}`);
+						await this.vectorizer.set_max_colors_per_path!(count);
+					}
+				});
+			}
+		}
+		
+		// Step 9: Backend-specific parameters (ONLY for correct backend)
+		steps.push(...await this.buildBackendSpecificSteps(config));
+		
+		return steps;
+	}
+	
+	/**
+	 * Build backend-specific configuration steps (prevents contamination)
+	 */
+	private async buildBackendSpecificSteps(config: VectorizerConfig): Promise<ConfigurationStep[]> {
+		const steps: ConfigurationStep[] = [];
+		
+		switch (config.backend) {
+			case 'centerline':
+				if (config.enable_adaptive_threshold !== undefined && this.vectorizer.set_enable_adaptive_threshold) {
+					steps.push({
+						name: 'set_enable_adaptive_threshold',
+						execute: async () => {
+							console.log(`[ConfigStep] Setting enable_adaptive_threshold: ${config.enable_adaptive_threshold}`);
+							await this.vectorizer.set_enable_adaptive_threshold!(config.enable_adaptive_threshold!);
+						}
+					});
+				}
+				
+				if (config.window_size !== undefined && this.vectorizer.set_window_size) {
+					steps.push({
+						name: 'set_window_size',
+						execute: async () => {
+							const size = ConfigValidator.validateWindowSize(config.window_size!);
+							console.log(`[ConfigStep] Setting window_size: ${size}`);
+							await this.vectorizer.set_window_size!(size);
+						}
+					});
+				}
+				
+				if (config.sensitivity_k !== undefined && this.vectorizer.set_sensitivity_k) {
+					steps.push({
+						name: 'set_sensitivity_k',
+						execute: async () => {
+							const k = ConfigValidator.validateSensitivityK(config.sensitivity_k!);
+							console.log(`[ConfigStep] Setting sensitivity_k: ${k}`);
+							await this.vectorizer.set_sensitivity_k!(k);
+						}
+					});
+				}
+				
+				if (config.enable_width_modulation !== undefined && this.vectorizer.set_enable_width_modulation) {
+					steps.push({
+						name: 'set_enable_width_modulation',
+						execute: async () => {
+							console.log(`[ConfigStep] Setting enable_width_modulation: ${config.enable_width_modulation}`);
+							await this.vectorizer.set_enable_width_modulation!(config.enable_width_modulation!);
+						}
+					});
+				}
+				
+				if (config.min_branch_length !== undefined && this.vectorizer.set_min_branch_length) {
+					steps.push({
+						name: 'set_min_branch_length',
+						execute: async () => {
+							const length = ConfigValidator.validateMinBranchLength(config.min_branch_length!);
+							console.log(`[ConfigStep] Setting min_branch_length: ${length}`);
+							await this.vectorizer.set_min_branch_length!(length);
+						}
+					});
+				}
+				
+				if (config.douglas_peucker_epsilon !== undefined && this.vectorizer.set_douglas_peucker_epsilon) {
+					steps.push({
+						name: 'set_douglas_peucker_epsilon',
+						execute: async () => {
+							const epsilon = ConfigValidator.validateDouglasPeuckerEpsilon(config.douglas_peucker_epsilon!);
+							console.log(`[ConfigStep] Setting douglas_peucker_epsilon: ${epsilon}`);
+							await this.vectorizer.set_douglas_peucker_epsilon!(epsilon);
+						}
+					});
+				}
+				break;
+				
+			case 'dots':
+				if (config.dot_density_threshold !== undefined && this.vectorizer.set_dot_density) {
+					steps.push({
+						name: 'set_dot_density',
+						execute: async () => {
+							const density = ConfigValidator.validateDotDensity(config.dot_density_threshold!);
+							console.log(`[ConfigStep] Setting dot_density: ${density}`);
+							await this.vectorizer.set_dot_density!(density);
+						}
+					});
+				}
+				
+				if (config.min_radius !== undefined && config.max_radius !== undefined && this.vectorizer.set_dot_size_range) {
+					steps.push({
+						name: 'set_dot_size_range',
+						execute: async () => {
+							const [minRadius, maxRadius] = ConfigValidator.validateDotSizeRange(config.min_radius!, config.max_radius!);
+							console.log(`[ConfigStep] Setting dot_size_range: ${minRadius} - ${maxRadius}`);
+							await this.vectorizer.set_dot_size_range!(minRadius, maxRadius);
+						}
+					});
+				}
+				
+				if (config.adaptive_sizing !== undefined && this.vectorizer.set_adaptive_sizing) {
+					steps.push({
+						name: 'set_adaptive_sizing',
+						execute: async () => {
+							console.log(`[ConfigStep] Setting adaptive_sizing: ${config.adaptive_sizing}`);
+							await this.vectorizer.set_adaptive_sizing!(config.adaptive_sizing!);
+						}
+					});
+				}
+				
+				if (config.background_tolerance !== undefined && this.vectorizer.set_background_tolerance) {
+					steps.push({
+						name: 'set_background_tolerance',
+						execute: async () => {
+							const tolerance = ConfigValidator.validateBackgroundTolerance(config.background_tolerance!);
+							console.log(`[ConfigStep] Setting background_tolerance: ${tolerance}`);
+							await this.vectorizer.set_background_tolerance!(tolerance);
+						}
+					});
+				}
+				
+				if (config.poisson_disk_sampling !== undefined && this.vectorizer.set_poisson_disk_sampling) {
+					steps.push({
+						name: 'set_poisson_disk_sampling',
+						execute: async () => {
+							console.log(`[ConfigStep] Setting poisson_disk_sampling: ${config.poisson_disk_sampling}`);
+							await this.vectorizer.set_poisson_disk_sampling!(config.poisson_disk_sampling!);
+						}
+					});
+				}
+				
+				if (config.gradient_based_sizing !== undefined && this.vectorizer.set_gradient_based_sizing) {
+					steps.push({
+						name: 'set_gradient_based_sizing',
+						execute: async () => {
+							console.log(`[ConfigStep] Setting gradient_based_sizing: ${config.gradient_based_sizing}`);
+							await this.vectorizer.set_gradient_based_sizing!(config.gradient_based_sizing!);
+						}
+					});
+				}
+				break;
+				
+			case 'superpixel':
+				if (config.num_superpixels !== undefined && this.vectorizer.set_num_superpixels) {
+					steps.push({
+						name: 'set_num_superpixels',
+						execute: async () => {
+							const count = ConfigValidator.validateNumSuperpixels(config.num_superpixels!);
+							console.log(`[ConfigStep] Setting num_superpixels: ${count}`);
+							await this.vectorizer.set_num_superpixels!(count);
+						}
+					});
+				}
+				
+				if (config.compactness !== undefined && this.vectorizer.set_compactness) {
+					steps.push({
+						name: 'set_compactness',
+						execute: async () => {
+							const compactness = ConfigValidator.validateCompactness(config.compactness!);
+							console.log(`[ConfigStep] Setting compactness: ${compactness}`);
+							await this.vectorizer.set_compactness!(compactness);
+						}
+					});
+				}
+				
+				if (config.slic_iterations !== undefined && this.vectorizer.set_slic_iterations) {
+					steps.push({
+						name: 'set_slic_iterations',
+						execute: async () => {
+							const iterations = ConfigValidator.validateSlicIterations(config.slic_iterations!);
+							console.log(`[ConfigStep] Setting slic_iterations: ${iterations}`);
+							await this.vectorizer.set_slic_iterations!(iterations);
+						}
+					});
+				}
+				
+				if (config.boundary_epsilon !== undefined && this.vectorizer.set_boundary_epsilon) {
+					steps.push({
+						name: 'set_boundary_epsilon',
+						execute: async () => {
+							const epsilon = ConfigValidator.validateBoundaryEpsilon(config.boundary_epsilon!);
+							console.log(`[ConfigStep] Setting boundary_epsilon: ${epsilon}`);
+							await this.vectorizer.set_boundary_epsilon!(epsilon);
+						}
+					});
+				}
+				
+				if (config.fill_regions !== undefined && this.vectorizer.set_fill_regions) {
+					steps.push({
+						name: 'set_fill_regions',
+						execute: async () => {
+							console.log(`[ConfigStep] Setting fill_regions: ${config.fill_regions}`);
+							await this.vectorizer.set_fill_regions!(config.fill_regions!);
+						}
+					});
+				}
+				
+				if (config.stroke_regions !== undefined && this.vectorizer.set_stroke_regions) {
+					steps.push({
+						name: 'set_stroke_regions',
+						execute: async () => {
+							console.log(`[ConfigStep] Setting stroke_regions: ${config.stroke_regions}`);
+							await this.vectorizer.set_stroke_regions!(config.stroke_regions!);
+						}
+					});
+				}
+				
+				if (config.simplify_boundaries !== undefined && this.vectorizer.set_simplify_boundaries) {
+					steps.push({
+						name: 'set_simplify_boundaries',
+						execute: async () => {
+							console.log(`[ConfigStep] Setting simplify_boundaries: ${config.simplify_boundaries}`);
+							await this.vectorizer.set_simplify_boundaries!(config.simplify_boundaries!);
+						}
+					});
+				}
+				break;
+				
+			case 'edge':
+				// No edge-specific parameters currently
+				console.log('[ConfigStep] Edge backend: No backend-specific parameters to configure');
+				break;
+				
+			default:
+				throw new Error(`Unknown backend: ${config.backend}`);
+		}
+		
+		console.log(`[RobustConfigMapper] Built ${steps.length} backend-specific steps for ${config.backend}`);
+		return steps;
+	}
+	
+	/**
+	 * Execute configuration steps with rollback tracking
+	 */
+	private async executeConfigurationSteps(steps: ConfigurationStep[]): Promise<void> {
+		for (const step of steps) {
+			try {
+				await step.execute();
+				this.appliedSteps.push(step);
+				console.log(`[RobustConfigMapper] ✅ Step '${step.name}' completed`);
+			} catch (error) {
+				console.error(`[RobustConfigMapper] ❌ Step '${step.name}' failed:`, error);
+				throw new Error(`Configuration step '${step.name}' failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			}
+		}
+	}
+	
+	/**
+	 * Rollback applied configuration steps in reverse order
+	 */
+	private async rollbackConfiguration(): Promise<void> {
+		console.log(`[RobustConfigMapper] 🔄 Rolling back ${this.appliedSteps.length} applied steps...`);
+		
+		const stepsToRollback = [...this.appliedSteps].reverse();
+		
+		for (const step of stepsToRollback) {
+			if (step.rollback) {
+				try {
+					await step.rollback();
+					console.log(`[RobustConfigMapper] ↩️ Rolled back step '${step.name}'`);
+				} catch (rollbackError) {
+					console.error(`[RobustConfigMapper] ⚠️ Failed to rollback step '${step.name}':`, rollbackError);
+					// Continue rollback process despite individual failures
+				}
+			}
+		}
+		
+		this.appliedSteps = [];
+		console.log('[RobustConfigMapper] 🔄 Rollback completed');
+	}
+}

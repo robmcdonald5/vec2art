@@ -149,8 +149,11 @@ export class WasmWorkerService {
 	private handleWorkerMessage(event: MessageEvent) {
 		const { type, id, data, error } = event.data;
 
+		console.log(`[WasmWorkerService] 📨 Received worker message: type=${type}, id=${id}`);
+
 		// Handle progress updates
 		if (type === 'progress') {
+			console.log(`[WasmWorkerService] 📊 Progress update:`, data);
 			if (this.progressCallback) {
 				this.progressCallback(data);
 			}
@@ -161,12 +164,17 @@ export class WasmWorkerService {
 		const pending = pendingRequests.get(id);
 		if (pending) {
 			pendingRequests.delete(id);
+			console.log(`[WasmWorkerService] 🔄 Resolving pending request ${id} with type ${type}`);
 
 			if (type === 'success') {
+				console.log(`[WasmWorkerService] ✅ Success response for ${id}:`, typeof data, data?.success);
 				pending.resolve(data);
 			} else if (type === 'error') {
+				console.log(`[WasmWorkerService] ❌ Error response for ${id}:`, error);
 				pending.reject(new Error(error || 'Unknown worker error'));
 			}
+		} else {
+			console.warn(`[WasmWorkerService] ⚠️ No pending request found for message ${id} (type: ${type})`);
 		}
 	}
 
@@ -713,7 +721,54 @@ export class WasmWorkerService {
 	 */
 	async abort(): Promise<void> {
 		if (this.worker) {
-			await this.sendMessage('abort');
+			try {
+				await this.sendMessage('abort');
+			} catch (error) {
+				console.warn('[WasmWorkerService] Abort message failed:', error);
+			}
+		}
+	}
+
+	/**
+	 * Force reset worker state - cancels all operations and clears queue
+	 * Use this when UI state is reset (like Clear All button)
+	 */
+	async forceReset(): Promise<void> {
+		console.log('[WasmWorkerService] 🔄 Force reset initiated - cancelling all operations');
+		
+		try {
+			// 1. Mark as restarting to prevent new operations
+			this.workerState = WorkerState.RESTARTING;
+			
+			// 2. Abort current processing if any
+			await this.abort();
+			
+			// 3. Reject all pending requests
+			const pendingCount = pendingRequests.size;
+			for (const [id, pending] of pendingRequests) {
+				pending.reject(new Error('Force reset - operation cancelled'));
+			}
+			pendingRequests.clear();
+			
+			// 4. Clear processing queue
+			this.processingQueue = [];
+			this.isProcessingQueue = false;
+			
+			// 5. Wait a moment for cleanup to propagate
+			await new Promise(resolve => setTimeout(resolve, 100));
+			
+			// 6. Reset to idle state
+			this.workerState = WorkerState.IDLE;
+			
+			console.log(`[WasmWorkerService] ✅ Force reset complete - cancelled ${pendingCount} operations`);
+			
+		} catch (error) {
+			console.error('[WasmWorkerService] Error during force reset:', error);
+			// Force reset state anyway
+			this.workerState = WorkerState.IDLE;
+			this.processingQueue = [];
+			this.isProcessingQueue = false;
+			pendingRequests.clear();
 		}
 	}
 

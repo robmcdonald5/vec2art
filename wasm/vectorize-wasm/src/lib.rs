@@ -22,7 +22,9 @@ use js_sys::Function;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use vectorize_core::{
-    algorithms::TraceBackend, config_builder::ConfigBuilder, vectorize_trace_low_rgba,
+    algorithms::{TraceBackend, tracing::trace_low::BackgroundRemovalAlgorithm}, 
+    config_builder::ConfigBuilder, 
+    vectorize_trace_low_rgba,
 };
 use wasm_bindgen::prelude::*;
 use web_sys::ImageData;
@@ -115,6 +117,7 @@ impl WasmVectorizer {
         }
     }
 
+
     /// Set the vectorization backend
     #[wasm_bindgen]
     pub fn set_backend(&mut self, backend: &str) -> Result<(), JsValue> {
@@ -128,20 +131,56 @@ impl WasmVectorizer {
             }
         };
         
+        log::info!("🔧 WASM: set_backend called with backend={:?}", backend);
+        
+        // DEBUGGING: Direct console.log to verify deployment
+        web_sys::console::log_1(&format!("🔧 DIRECT: set_backend called with {:?}", backend).into());
+        
         self.backend = backend;
         
-        // CRITICAL FIX: Apply backend to config_builder
-        self.config_builder = self.config_builder.clone().backend(backend);
+        // CRITICAL FIX: Preserve existing user settings when setting backend
+        // This prevents loss of previously configured parameters
+        match self.config_builder.clone().backend(backend).build() {
+            Ok(_) => {
+                // If current config is valid, apply backend setting to existing config
+                self.config_builder = self.config_builder.clone().backend(backend);
+                log::info!("✅ WASM: Backend set to {:?} (preserving existing settings)", backend);
+                web_sys::console::log_1(&format!("✅ DIRECT: Backend preserving settings for {:?}", backend).into());
+            }
+            Err(e) => {
+                // DEBUGGING: Show WHY validation failed
+                web_sys::console::log_1(&format!("❌ DIRECT: Config validation FAILED, error: {}", e).into());
+                web_sys::console::log_1(&"❌ DIRECT: Falling back to fresh builder - THIS LOSES USER SETTINGS!".into());
+                
+                // If invalid, create fresh builder with backend only (user will re-apply settings)
+                self.config_builder = ConfigBuilder::new().backend(backend);
+                log::info!("✅ WASM: Backend set to {:?} (fresh config - settings need re-application)", backend);
+            }
+        }
             
-        log::info!("Backend set to: {:?}", self.backend);
+        log::info!("✅ WASM: Backend set to: {:?} with config preservation strategy", self.backend);
         Ok(())
     }
 
     /// Set detail level (0.0 = low detail, 1.0 = high detail)
     #[wasm_bindgen]
     pub fn set_detail(&mut self, detail: f32) -> Result<(), JsValue> {
-        self.config_builder = self.config_builder.clone().detail(detail)
-            .map_err(|e| JsValue::from_str(&format!("Failed to set detail: {}", e)))?;
+        log::info!("🔧 WASM: set_detail called with detail={}", detail);
+        // Use try_build() to avoid recursive aliasing in clone operations
+        match self.config_builder.clone().build() {
+            Ok(_) => {
+                // If current config is valid, apply detail setting
+                self.config_builder = self.config_builder.clone().detail(detail)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to set detail: {}", e)))?;
+                log::info!("✅ WASM: Detail set to {}", detail);
+            }
+            Err(_) => {
+                // If invalid, preserve settings and retry
+                self.config_builder = self.config_builder.clone().detail(detail)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to set detail preserving settings: {}", e)))?;
+                log::info!("✅ WASM: Detail set to {} (preserving existing settings)", detail);
+            }
+        }
         Ok(())
     }
 
@@ -156,14 +195,41 @@ impl WasmVectorizer {
     /// Enable or disable multipass processing
     #[wasm_bindgen]
     pub fn set_multipass(&mut self, enabled: bool) {
-        self.config_builder = self.config_builder.clone().multipass(enabled);
+        log::info!("🔧 WASM: set_multipass called with enabled={}", enabled);
+        // Use try_build() to avoid recursive aliasing in clone operations
+        match self.config_builder.clone().build() {
+            Ok(_) => {
+                // If current config is valid, apply multipass setting
+                self.config_builder = self.config_builder.clone().multipass(enabled);
+                log::info!("✅ WASM: Multipass set to {} (cloned config)", enabled);
+            }
+            Err(_) => {
+                // If invalid, preserve settings and retry
+                self.config_builder = self.config_builder.clone().multipass(enabled);
+                log::info!("✅ WASM: Multipass set to {} (preserving existing settings)", enabled);
+            }
+        }
     }
 
     /// Set number of processing passes (1-10)
     #[wasm_bindgen]
     pub fn set_pass_count(&mut self, count: u32) -> Result<(), JsValue> {
-        self.config_builder = self.config_builder.clone().pass_count(count)
-            .map_err(|e| JsValue::from_str(&format!("Failed to set pass count: {}", e)))?;
+        log::info!("🔧 WASM: set_pass_count called with count={}", count);
+        // Use try_build() to avoid recursive aliasing in clone operations
+        match self.config_builder.clone().build() {
+            Ok(_) => {
+                // If current config is valid, apply pass count setting
+                self.config_builder = self.config_builder.clone().pass_count(count)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to set pass count: {}", e)))?;
+                log::info!("✅ WASM: Pass count set to {} (cloned config)", count);
+            }
+            Err(_) => {
+                // If invalid, preserve settings and retry
+                self.config_builder = self.config_builder.clone().pass_count(count)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to set pass count preserving settings: {}", e)))?;
+                log::info!("✅ WASM: Pass count set to {} (preserving existing settings)", count);
+            }
+        }
         Ok(())
     }
 
@@ -178,13 +244,39 @@ impl WasmVectorizer {
     /// Enable or disable reverse pass
     #[wasm_bindgen]
     pub fn set_reverse_pass(&mut self, enabled: bool) {
-        self.config_builder = self.config_builder.clone().reverse_pass(enabled);
+        log::info!("🔧 WASM: set_reverse_pass called with enabled={}", enabled);
+        // Use try_build() to avoid recursive aliasing in clone operations
+        match self.config_builder.clone().build() {
+            Ok(_) => {
+                // If current config is valid, apply reverse pass setting
+                self.config_builder = self.config_builder.clone().reverse_pass(enabled);
+                log::info!("✅ WASM: Reverse pass set to {} (cloned config)", enabled);
+            }
+            Err(_) => {
+                // If invalid, preserve settings and retry
+                self.config_builder = self.config_builder.clone().reverse_pass(enabled);
+                log::info!("✅ WASM: Reverse pass set to {} (preserving existing settings)", enabled);
+            }
+        }
     }
 
     /// Enable or disable diagonal pass
     #[wasm_bindgen]
     pub fn set_diagonal_pass(&mut self, enabled: bool) {
-        self.config_builder = self.config_builder.clone().diagonal_pass(enabled);
+        log::info!("🔧 WASM: set_diagonal_pass called with enabled={}", enabled);
+        // Use try_build() to avoid recursive aliasing in clone operations
+        match self.config_builder.clone().build() {
+            Ok(_) => {
+                // If current config is valid, apply diagonal pass setting
+                self.config_builder = self.config_builder.clone().diagonal_pass(enabled);
+                log::info!("✅ WASM: Diagonal pass set to {} (cloned config)", enabled);
+            }
+            Err(_) => {
+                // If invalid, preserve settings and retry
+                self.config_builder = self.config_builder.clone().diagonal_pass(enabled);
+                log::info!("✅ WASM: Diagonal pass set to {} (preserving existing settings)", enabled);
+            }
+        }
     }
 
     /// Enable or disable ETF/FDoG edge detection
@@ -375,6 +467,139 @@ impl WasmVectorizer {
         Ok(())
     }
 
+    // === LINE BACKEND COLOR METHODS (Edge, Centerline) ===
+    
+    /// Set line preserve colors (edge/centerline backends)
+    #[wasm_bindgen]
+    pub fn set_line_preserve_colors(&mut self, enabled: bool) {
+        log::info!("🔧 WASM: set_line_preserve_colors called with enabled={}", enabled);
+        self.config_builder = self.config_builder.clone().preserve_colors(enabled);
+        log::info!("✅ WASM: Line preserve colors set to {}", enabled);
+    }
+
+    /// Set line color accuracy (edge/centerline backends)
+    #[wasm_bindgen]
+    pub fn set_line_color_accuracy(&mut self, accuracy: f32) -> Result<(), JsValue> {
+        log::info!("🔧 WASM: set_line_color_accuracy called with accuracy={}", accuracy);
+        if accuracy < 0.0 || accuracy > 1.0 {
+            let error_msg = format!("Line color accuracy must be between 0.0 and 1.0, got: {}", accuracy);
+            log::error!("❌ WASM: {}", error_msg);
+            return Err(JsValue::from_str(&error_msg));
+        }
+        self.config_builder = self.config_builder.clone().line_color_accuracy(accuracy)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set line color accuracy: {}", e)))?;
+        log::info!("✅ WASM: Line color accuracy set to {}", accuracy);
+        Ok(())
+    }
+
+    /// Set max colors per path (edge/centerline backends)
+    #[wasm_bindgen]
+    pub fn set_max_colors_per_path(&mut self, count: u32) -> Result<(), JsValue> {
+        log::info!("🔧 WASM: set_max_colors_per_path called with count={}", count);
+        if count < 1 || count > 10 {
+            let error_msg = format!("Max colors per path must be between 1 and 10, got: {}", count);
+            log::error!("❌ WASM: {}", error_msg);
+            return Err(JsValue::from_str(&error_msg));
+        }
+        self.config_builder = self.config_builder.clone().max_colors_per_path(count)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set max colors per path: {}", e)))?;
+        log::info!("✅ WASM: Max colors per path set to {}", count);
+        Ok(())
+    }
+
+    // === BACKGROUND REMOVAL METHODS ===
+
+    /// Enable or disable background removal
+    #[wasm_bindgen]
+    pub fn enable_background_removal(&mut self, enabled: bool) {
+        log::info!("🔧 WASM: enable_background_removal called with enabled={}", enabled);
+        // CRITICAL FIX: Use try_build() to avoid recursive aliasing in clone operations
+        match self.config_builder.clone().build() {
+            Ok(_) => {
+                // If current config is valid, apply background removal to existing config
+                self.config_builder = self.config_builder.clone().background_removal(enabled);
+                log::info!("✅ WASM: Background removal enabled={} (preserving existing settings)", enabled);
+            }
+            Err(_) => {
+                // If invalid, preserve settings and retry
+                self.config_builder = self.config_builder.clone().background_removal(enabled);
+                log::info!("✅ WASM: Background removal enabled={} (preserving existing settings)", enabled);
+            }
+        }
+    }
+
+    /// Set background removal strength
+    #[wasm_bindgen]
+    pub fn set_background_removal_strength(&mut self, strength: f32) -> Result<(), JsValue> {
+        log::info!("🔧 WASM: set_background_removal_strength called with strength={}", strength);
+        // CRITICAL FIX: Preserve existing user settings when setting background removal strength
+        match self.config_builder.clone().build() {
+            Ok(_) => {
+                self.config_builder = self.config_builder.clone()
+                    .background_removal_strength(strength)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to set background removal strength: {}", e)))?;
+                log::info!("✅ WASM: Background removal strength set to {} (preserving existing settings)", strength);
+                Ok(())
+            }
+            Err(_) => {
+                self.config_builder = self.config_builder.clone().background_removal_strength(strength)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to set background removal strength: {}", e)))?;
+                log::info!("✅ WASM: Background removal strength set to {} (cloned config)", strength);
+                Ok(())
+            }
+        }
+    }
+
+    /// Set background removal algorithm
+    #[wasm_bindgen]
+    pub fn set_background_removal_algorithm(&mut self, algorithm: &str) -> Result<(), JsValue> {
+        log::info!("🔧 WASM: set_background_removal_algorithm called with algorithm='{}'", algorithm);
+        // CRITICAL FIX: Use fresh builder to avoid recursive aliasing
+        let algo = match algorithm.to_lowercase().as_str() {
+            "otsu" => BackgroundRemovalAlgorithm::Otsu,
+            "adaptive" => BackgroundRemovalAlgorithm::Adaptive,
+            "auto" => BackgroundRemovalAlgorithm::Auto,
+            _ => {
+                log::error!("❌ WASM: Invalid background removal algorithm: '{}'. Valid options: otsu, adaptive, auto", algorithm);
+                return Err(JsValue::from_str(&format!("Unknown background removal algorithm: {}. Valid options: otsu, adaptive, auto", algorithm)));
+            }
+        };
+        
+        match self.config_builder.clone().build() {
+            Ok(_) => {
+                self.config_builder = self.config_builder.clone().background_removal_algorithm(algo);
+                log::info!("✅ WASM: Background removal algorithm set to: {:?} (preserving existing settings)", algo);
+                Ok(())
+            }
+            Err(_) => {
+                self.config_builder = self.config_builder.clone().background_removal_algorithm(algo);
+                log::info!("✅ WASM: Background removal algorithm set to: {:?} (preserving existing settings)", algo);
+                Ok(())
+            }
+        }
+    }
+
+    /// Set background removal threshold
+    #[wasm_bindgen]
+    pub fn set_background_removal_threshold(&mut self, threshold: f32) -> Result<(), JsValue> {
+        log::info!("🔧 WASM: set_background_removal_threshold called with threshold={}", threshold);
+        // CRITICAL FIX: Use fresh builder to avoid recursive aliasing
+        let threshold_u8 = (threshold.clamp(0.0, 255.0)) as u8;
+        
+        match self.config_builder.clone().build() {
+            Ok(_) => {
+                self.config_builder = self.config_builder.clone().background_removal_threshold(Some(threshold_u8));
+                log::info!("✅ WASM: Background removal threshold set to {} (u8: {}) (preserving existing settings)", threshold, threshold_u8);
+                Ok(())
+            }
+            Err(_) => {
+                self.config_builder = self.config_builder.clone().background_removal_threshold(Some(threshold_u8));
+                log::info!("✅ WASM: Background removal threshold set to {} (u8: {}) (preserving existing settings)", threshold, threshold_u8);
+                Ok(())
+            }
+        }
+    }
+
     /// Process an image and return SVG
     #[wasm_bindgen]
     pub fn vectorize_with_progress(
@@ -429,6 +654,11 @@ impl WasmVectorizer {
         // Build configuration
         let config = self.config_builder.clone().build()
             .map_err(|e| JsValue::from_str(&format!("Configuration error: {}", e)))?;
+
+        // Log final configuration being used for processing
+        log::info!("🚀 WASM: Final config for processing - Backend: {:?}, Detail: {}, Multipass: {}, Background Removal: {} ({:?}, strength: {})", 
+            config.backend, config.detail, config.enable_multipass, config.enable_background_removal, 
+            config.background_removal_algorithm, config.background_removal_strength);
 
         // Perform vectorization (single-threaded)
         let result = vectorize_trace_low_rgba(&img_buffer, &config, None)
@@ -521,6 +751,133 @@ impl WasmVectorizer {
             TraceBackend::Centerline => "centerline".to_string(),
             TraceBackend::Superpixel => "superpixel".to_string(), 
             TraceBackend::Dots => "dots".to_string(),
+        }
+    }
+
+    /// Debug method to dump current configuration state
+    #[wasm_bindgen]
+    pub fn debug_dump_config(&self) -> String {
+        match self.config_builder.clone().build() {
+            Ok(config) => {
+                let debug_info = format!(
+                    "🔧 WASM Configuration Debug Dump\n\
+                     ================================\n\
+                     Backend: {:?}\n\
+                     Detail: {}\n\
+                     Stroke Width: {}\n\
+                     Multipass: {}\n\
+                     Pass Count: {}\n\
+                     Reverse Pass: {}\n\
+                     Diagonal Pass: {}\n\
+                     Noise Filtering: {}\n\
+                     Background Removal: {}\n\
+                     Background Algorithm: {:?}\n\
+                     Background Strength: {}\n\
+                     Background Threshold: {:?}\n\
+                     SVG Precision: {}\n\
+                     ================================",
+                    config.backend,
+                    config.detail,
+                    config.stroke_px_at_1080p,
+                    config.enable_multipass,
+                    config.pass_count,
+                    config.enable_reverse_pass,
+                    config.enable_diagonal_pass,
+                    config.noise_filtering,
+                    config.enable_background_removal,
+                    config.background_removal_algorithm,
+                    config.background_removal_strength,
+                    config.background_removal_threshold,
+                    config.svg_precision
+                );
+                log::info!("{}", debug_info);
+                debug_info
+            }
+            Err(e) => {
+                let error_msg = format!("❌ Configuration validation failed: {:?}", e);
+                log::error!("{}", error_msg);
+                error_msg
+            }
+        }
+    }
+
+    /// Validate current configuration and return validation results
+    #[wasm_bindgen]
+    pub fn validate_config(&self) -> String {
+        match self.config_builder.clone().build() {
+            Ok(config) => {
+                let mut warnings = Vec::new();
+                let mut info = Vec::new();
+
+                // Validate detail level
+                if config.detail < 0.1 || config.detail > 1.0 {
+                    warnings.push(format!("Detail level {} is outside recommended range 0.1-1.0", config.detail));
+                }
+
+                // Validate stroke width
+                if config.stroke_px_at_1080p <= 0.0 || config.stroke_px_at_1080p > 10.0 {
+                    warnings.push(format!("Stroke width {} is outside recommended range 0.1-10.0", config.stroke_px_at_1080p));
+                }
+
+                // Validate pass count with multipass
+                if config.enable_multipass && config.pass_count < 2 {
+                    warnings.push("Multipass enabled but pass count < 2".to_string());
+                }
+
+                // Check background removal configuration
+                if config.enable_background_removal {
+                    info.push(format!("Background removal enabled: {:?} algorithm, strength: {}", 
+                        config.background_removal_algorithm, config.background_removal_strength));
+                    
+                    if config.background_removal_strength < 0.0 || config.background_removal_strength > 1.0 {
+                        warnings.push(format!("Background removal strength {} outside valid range 0.0-1.0", 
+                            config.background_removal_strength));
+                    }
+                } else {
+                    info.push("Background removal disabled".to_string());
+                }
+
+                // Backend-specific validation
+                match config.backend {
+                    TraceBackend::Edge => {
+                        info.push("Using Edge backend - good for line art and detailed images".to_string());
+                    }
+                    TraceBackend::Centerline => {
+                        info.push("Using Centerline backend - good for bold shapes and logos".to_string());
+                    }
+                    TraceBackend::Superpixel => {
+                        info.push("Using Superpixel backend - good for stylized art".to_string());
+                    }
+                    TraceBackend::Dots => {
+                        info.push("Using Dots backend - good for artistic stippling effects".to_string());
+                    }
+                }
+
+                let mut result = String::new();
+                if warnings.is_empty() {
+                    result.push_str("✅ Configuration validation passed\n");
+                } else {
+                    result.push_str(&format!("⚠️  {} validation warnings:\n", warnings.len()));
+                    for warning in &warnings {
+                        result.push_str(&format!("  • {}\n", warning));
+                    }
+                }
+
+                if !info.is_empty() {
+                    result.push_str("\nℹ️  Configuration info:\n");
+                    for item in &info {
+                        result.push_str(&format!("  • {}\n", item));
+                    }
+                }
+
+                log::info!("Config validation: {} warnings, {} info items", warnings.len(), info.len());
+                result
+            }
+            Err(e) => {
+                let error_msg = format!("❌ Configuration build failed: {:?}", e);
+                log::error!("{}", error_msg);
+                error_msg
+            }
         }
     }
 }

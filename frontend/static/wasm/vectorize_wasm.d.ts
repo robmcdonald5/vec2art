@@ -420,6 +420,34 @@ export class WasmVectorizer {
    */
   set_color_tolerance(tolerance: number): void;
   /**
+   * Set line preserve colors (edge/centerline backends)
+   */
+  set_line_preserve_colors(enabled: boolean): void;
+  /**
+   * Set line color accuracy (edge/centerline backends)
+   */
+  set_line_color_accuracy(accuracy: number): void;
+  /**
+   * Set max colors per path (edge/centerline backends)
+   */
+  set_max_colors_per_path(count: number): void;
+  /**
+   * Enable or disable background removal
+   */
+  enable_background_removal(enabled: boolean): void;
+  /**
+   * Set background removal strength
+   */
+  set_background_removal_strength(strength: number): void;
+  /**
+   * Set background removal algorithm
+   */
+  set_background_removal_algorithm(algorithm: string): void;
+  /**
+   * Set background removal threshold
+   */
+  set_background_removal_threshold(threshold: number): void;
+  /**
    * Process an image and return SVG
    */
   vectorize_with_progress(image_data: ImageData, callback?: Function | null): string;
@@ -439,6 +467,14 @@ export class WasmVectorizer {
    * Get current backend as string
    */
   get_backend(): string;
+  /**
+   * Debug method to dump current configuration state
+   */
+  debug_dump_config(): string;
+  /**
+   * Validate current configuration and return validation results
+   */
+  validate_config(): string;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -447,6 +483,7 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly _ZN3ryu6pretty8format6417h6ad0ae7200794b51E: (a: number, b: number) => number;
   readonly _ZN4core6option13unwrap_failed17h7133f3b8ad3376bdE: (a: number) => void;
+  readonly _ZN4core3fmt9Formatter9write_str17h932d0930c4ad7d8eE: (a: number, b: number, c: number) => number;
   readonly _ZN4wgpu3api8instance8Instance3new17h335cd788d1bdc2f0E: (a: number, b: number) => void;
   readonly _ZN4wgpu3api8instance8Instance15request_adapter17h732a67cc4b6cc2f6E: (a: number, b: number, c: number) => void;
   readonly _ZN4core9panicking11panic_const28panic_const_async_fn_resumed17h75f6db5d0f1d2c79E: (a: number) => void;
@@ -488,7 +525,6 @@ export interface InitOutput {
   readonly _ZN3std9panicking8set_hook17h25a14f0d444c7f33E: (a: number, b: number) => void;
   readonly _ZN3std3sys4sync4once5futex4Once4call17h4b4834d523028c7fE: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN4core3fmt5write17hf3dbeaa21c9e46a1E: (a: number, b: number, c: number) => number;
-  readonly _ZN4core3fmt9Formatter9write_str17h932d0930c4ad7d8eE: (a: number, b: number, c: number) => number;
   readonly _ZN4core3fmt9Formatter25debug_tuple_field1_finish17hc8c085dab670456aE: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly _ZN4core3fmt9Formatter25debug_tuple_field2_finish17hfa2e91caca265e51E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
   readonly _ZN4core3fmt9Formatter26debug_struct_field5_finish17ha0929c67fee5a987E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number, p: number, q: number, r: number, s: number, t: number, u: number, v: number, w: number) => number;
@@ -596,6 +632,7 @@ export interface InitOutput {
   readonly __wbg_wasmvectorizer_free: (a: number, b: number) => void;
   readonly wasmvectorizer_new: () => number;
   readonly wasmvectorizer_set_backend: (a: number, b: number, c: number) => [number, number];
+  readonly _ZN7web_sys8features11gen_console7console5log_117h6e7522c42e412d8cE: (a: number) => void;
   readonly wasmvectorizer_set_detail: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder6detail17hc43b23971a86f232E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_stroke_width: (a: number, b: number) => [number, number];
@@ -647,6 +684,16 @@ export interface InitOutput {
   readonly wasmvectorizer_set_preserve_colors: (a: number, b: number) => void;
   readonly wasmvectorizer_set_color_tolerance: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder15color_tolerance17h831dd0de45d9598eE: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_line_preserve_colors: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_line_color_accuracy: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder19line_color_accuracy17hde03ae8cb75763a1E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_max_colors_per_path: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder19max_colors_per_path17h95237d18119e449cE: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_enable_background_removal: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_background_removal_strength: (a: number, b: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder27background_removal_strength17h4c14fed9440fa152E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_background_removal_algorithm: (a: number, b: number, c: number) => [number, number];
+  readonly wasmvectorizer_set_background_removal_threshold: (a: number, b: number) => [number, number];
   readonly _ZN7web_sys8features13gen_ImageData9ImageData5width17h888d221574a24bbaE: (a: number) => number;
   readonly _ZN7web_sys8features13gen_ImageData9ImageData6height17hcbb162ff433d4609E: (a: number) => number;
   readonly _ZN7web_sys8features13gen_ImageData9ImageData4data17hb8c2f8cdf4119a33E: (a: number, b: number) => void;
@@ -655,6 +702,8 @@ export interface InitOutput {
   readonly wasmvectorizer_vectorize_with_gpu: (a: number, b: any, c: number) => any;
   readonly wasmvectorizer_reset_config: (a: number) => void;
   readonly wasmvectorizer_get_backend: (a: number) => [number, number];
+  readonly wasmvectorizer_debug_dump_config: (a: number) => [number, number];
+  readonly wasmvectorizer_validate_config: (a: number) => [number, number];
   readonly get_available_backends: () => [number, number];
   readonly get_wasm_info: () => [number, number];
   readonly emergency_cleanup: () => [number, number];
@@ -704,7 +753,6 @@ export interface InitOutput {
   readonly _ZN7web_sys8features11gen_console7console7error_117hf20989e6350fdcf5E: (a: number) => void;
   readonly _ZN7web_sys8features11gen_console7console6warn_117hd9dc035697eb27c4E: (a: number) => void;
   readonly _ZN7web_sys8features11gen_console7console6info_117h55e143d29e849fdbE: (a: number) => void;
-  readonly _ZN7web_sys8features11gen_console7console5log_117h6e7522c42e412d8cE: (a: number) => void;
   readonly _ZN7web_sys8features11gen_console7console7debug_117hf3b83d8232100cb5E: (a: number) => void;
   readonly _ZN14regex_automata4util4iter8Searcher30handle_overlapping_empty_match17h4d1838081d634d93E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN10serde_json5error5Error2io17h78dd7cb349a27903E: (a: number) => number;
@@ -875,8 +923,6 @@ export interface InitOutput {
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder15backend_by_name17h803cd073c5853ae4E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder22max_processing_time_ms17h6504fdd38a7b5f1eE: (a: number, b: number, c: bigint) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder26dot_size_range_from_string17h09c959e0587a6991E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder19line_color_accuracy17hde03ae8cb75763a1E: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder19max_colors_per_path17h95237d18119e449cE: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder21palette_target_colors17h42ddbe222e911ea6E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder17hand_drawn_preset17h13a6a9f761254bf1E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder13custom_tremor17h05d3073ad72cad40E: (a: number, b: number, c: number) => void;
@@ -896,7 +942,6 @@ export interface InitOutput {
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder18available_backends17hb9dc53317f11f254E: (a: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder28available_hand_drawn_presets17h2f8f8e391e27fdc5E: (a: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder27get_backend_recommendations17h98b9d43eb87400f5E: (a: number, b: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder27background_removal_strength17h4c14fed9440fa152E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder36background_removal_algorithm_by_name17h4d499b5769c0dc61E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core5error10validation25validate_image_dimensions17h8b4aea7ca93044d4E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core5error10validation20validate_color_count17h56afd145141c87daE: (a: number, b: number) => void;
@@ -7414,26 +7459,26 @@ export interface InitOutput {
   readonly __externref_heap_live_count: () => number;
   readonly __externref_drop_slice: (a: number, b: number) => void;
   readonly __externref_table_dealloc: (a: number) => void;
-  readonly closure1955_externref_shim: (a: number, b: number, c: any) => void;
-  readonly closure2758_externref_shim: (a: number, b: number, c: any) => void;
-  readonly closure4393_externref_shim: (a: number, b: number, c: any, d: number, e: any) => number;
-  readonly closure4394_externref_shim_multivalue_shim: (a: number, b: number, c: any, d: number, e: any) => [number, number];
-  readonly closure4395_externref_shim: (a: number, b: number, c: any, d: number, e: any) => void;
-  readonly closure4396_externref_shim: (a: number, b: number, c: any, d: number, e: any) => any;
-  readonly closure4397_externref_shim: (a: number, b: number, c: any, d: any, e: number, f: any) => any;
-  readonly closure4398_externref_shim: (a: number, b: number, c: any) => number;
-  readonly closure4399_externref_shim: (a: number, b: number, c: any, d: any) => void;
-  readonly closure4395_externref_shim20: (a: number, b: number, c: any, d: any, e: any) => void;
-  readonly closure4400_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4401_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4395_externref_shim23: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4400_externref_shim24: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4401_externref_shim25: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4395_externref_shim26: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4402_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4403_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4404_externref_shim: (a: number, b: number, c: bigint, d: number, e: any) => void;
-  readonly closure4404_externref_shim30: (a: number, b: number, c: bigint, d: number, e: any) => void;
+  readonly closure1983_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure2786_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure4421_externref_shim: (a: number, b: number, c: any, d: number, e: any) => number;
+  readonly closure4422_externref_shim_multivalue_shim: (a: number, b: number, c: any, d: number, e: any) => [number, number];
+  readonly closure4423_externref_shim: (a: number, b: number, c: any, d: number, e: any) => void;
+  readonly closure4424_externref_shim: (a: number, b: number, c: any, d: number, e: any) => any;
+  readonly closure4425_externref_shim: (a: number, b: number, c: any, d: any, e: number, f: any) => any;
+  readonly closure4426_externref_shim: (a: number, b: number, c: any) => number;
+  readonly closure4427_externref_shim: (a: number, b: number, c: any, d: any) => void;
+  readonly closure4423_externref_shim20: (a: number, b: number, c: any, d: any, e: any) => void;
+  readonly closure4428_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4429_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4423_externref_shim23: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4428_externref_shim24: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4429_externref_shim25: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4423_externref_shim26: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4430_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4431_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4432_externref_shim: (a: number, b: number, c: bigint, d: number, e: any) => void;
+  readonly closure4432_externref_shim30: (a: number, b: number, c: bigint, d: number, e: any) => void;
   readonly __wbindgen_thread_destroy: (a?: number, b?: number, c?: number) => void;
   readonly __wbindgen_start: (a: number) => void;
 }

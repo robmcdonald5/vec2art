@@ -403,11 +403,26 @@
 			return;
 		}
 
+		// Emergency fallback: Reset isProcessing after timeout to prevent permanent UI lock
+		// Use shorter timeout for background removal since it can hang longer
+		let emergencyTimeout: ReturnType<typeof setTimeout> | null = null;
+		const emergencyTimeoutDuration = config.enable_background_removal ? 360000 : 300000; // 6min vs 5min
+		
 		try {
 			isProcessing = true;
 			completedImages = 0;
 			batchStartTime = new Date();
 			announceToScreenReader('Starting image conversion');
+			
+			emergencyTimeout = setTimeout(() => {
+				if (isProcessing) {
+					const timeoutMinutes = emergencyTimeoutDuration / 60000;
+					console.warn(`🚨 Emergency timeout: Forcing UI state reset after ${timeoutMinutes} minutes`);
+					isProcessing = false;
+					currentProgress = null;
+					toastStore.error(`Processing timeout after ${timeoutMinutes} minutes - UI state reset. Background removal on large images can be very slow. Try reducing image size or disabling background removal.`);
+				}
+			}, emergencyTimeoutDuration);
 
 			// Initialize WASM using Web Worker (prevents main thread blocking)
 			try {
@@ -624,6 +639,11 @@
 			isProcessing = false;
 			currentProgress = null;
 			processingImageIndex = currentImageIndex; // Reset to current index when done
+			
+			// Clear emergency timeout if processing completed normally
+			if (emergencyTimeout) {
+				clearTimeout(emergencyTimeout);
+			}
 		}
 	}
 
@@ -729,7 +749,7 @@
 		announceToScreenReader('Converter reset');
 	}
 
-	function handleClearAll() {
+	async function handleClearAll() {
 		// Step 1: Set flag to prevent auto-save during clear operation
 		isClearingAll = true;
 
@@ -750,8 +770,8 @@
 			// Step 5: Reset preset selection
 			selectedPreset = 'artistic';
 
-			// Step 6: Reset vectorizer store to clean state
-			vectorizerStore.reset();
+			// Step 6: Force reset vectorizer store AND cancel worker operations
+			await vectorizerStore.forceReset();
 
 			// Step 7: Clear parameter history
 			parameterHistory.clear();

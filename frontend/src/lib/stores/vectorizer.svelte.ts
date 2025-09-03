@@ -762,6 +762,30 @@ class VectorizerStore {
 	}
 
 	/**
+	 * Force reset all processing including worker operations
+	 * Use this when user performs full reset (Clear All)
+	 */
+	async forceReset(): Promise<void> {
+		try {
+			// First reset store state
+			this.reset();
+			
+			// Abort vectorizer service processing (this handles the Web Worker internally)
+			vectorizerService.abortProcessing();
+			
+			// Also force reset the worker service queue for thorough cleanup
+			const { wasmWorkerService } = await import('$lib/services/wasm-worker-service');
+			await wasmWorkerService.forceReset();
+			
+			console.log('[VectorizerStore] ✅ Force reset complete - all operations cancelled');
+		} catch (error) {
+			console.error('[VectorizerStore] Error during force reset:', error);
+			// Still reset store state even if worker reset fails
+			this.reset();
+		}
+	}
+
+	/**
 	 * Get user-friendly error message
 	 */
 	getErrorMessage(error?: VectorizerError): string {

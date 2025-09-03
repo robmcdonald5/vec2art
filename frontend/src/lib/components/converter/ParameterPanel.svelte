@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Sliders, Eye, PenTool, Filter, AlertTriangle, Grid3X3, Target, Puzzle } from 'lucide-svelte';
+	import { Sliders, Eye, PenTool, Filter, AlertTriangle, Grid3X3, Target, Puzzle, Droplets } from 'lucide-svelte';
 	import type { VectorizerConfig, HandDrawnPreset } from '$lib/types/vectorizer';
 	import { HAND_DRAWN_DESCRIPTIONS } from '$lib/types/vectorizer';
 	import { CustomSelect } from '$lib/components/ui/custom-select';
@@ -27,9 +27,10 @@
 		onParameterChange
 	}: ParameterPanelProps = $props();
 
-	// Convert internal 0.0-1.0 detail to 1-10 UI range
-	const detailToUI = (detail: number) => Math.round(detail * 9 + 1);
-	const detailFromUI = (uiValue: number) => (uiValue - 1) / 9;
+	// Convert internal 0.1-1.0 detail to 1-10 UI range  
+	// FIXED: Higher UI numbers = higher detail (higher internal values for proper mapping)
+	const detailToUI = (detail: number) => Math.round((detail - 0.1) / 0.9 * 9 + 1); // detail 0.1 → UI 1, detail 1.0 → UI 10  
+	const detailFromUI = (uiValue: number) => 0.1 + (uiValue - 1) / 9 * 0.9;         // UI 1 → detail 0.1, UI 10 → detail 1.0
 
 	// Validation state for dots backend
 	let dotsValidation = $state({ isValid: true, errors: [], warnings: [] });
@@ -59,6 +60,7 @@
 
 		// PROPER ARCHITECTURE: Always use generic parameters
 		// The WASM worker will handle backend-specific mapping using the architectural system
+		console.log(`🔧 Detail slider changed: UI=${uiValue} → internal=${internalValue}`);
 		onConfigChange({ detail: internalValue });
 		onParameterChange?.();
 	}
@@ -73,6 +75,22 @@
 		// PROPER ARCHITECTURE: Always use generic parameters
 		// The WASM worker will handle backend-specific mapping using the architectural system
 		onConfigChange({ stroke_width: value });
+		onParameterChange?.();
+	}
+
+	function handleDotDensityChange(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const uiValue = parseInt(target.value);
+		
+		// Convert UI value (1-10) to dot density threshold (0.4-0.02, inverted)
+		// UI: 1 = sparse dots (high threshold), 10 = dense dots (low threshold)
+		const threshold = 0.4 - ((uiValue - 1) / 9) * (0.4 - 0.02);
+
+		// Update progressive fill
+		updateSliderFill(target);
+
+		// Set dot density threshold directly
+		onConfigChange({ dot_density_threshold: threshold });
 		onParameterChange?.();
 	}
 
@@ -253,6 +271,7 @@
 
 	// Reactive effects to update slider fills when config changes externally
 	let detailSliderRef = $state<HTMLInputElement>();
+	let dotDensitySliderRef = $state<HTMLInputElement>();
 	let strokeWidthSliderRef = $state<HTMLInputElement>();
 	let regionComplexitySliderRef = $state<HTMLInputElement>();
 	let spatialSigmaSliderRef = $state<HTMLInputElement>();
@@ -265,6 +284,13 @@
 		// Update detail slider fill when config.detail changes
 		if (detailSliderRef && config.detail !== undefined) {
 			updateSliderFill(detailSliderRef);
+		}
+	});
+
+	$effect(() => {
+		// Update dot density slider fill when config.dot_density_threshold changes
+		if (dotDensitySliderRef && config.dot_density_threshold !== undefined) {
+			updateSliderFill(dotDensitySliderRef);
 		}
 	});
 
@@ -355,6 +381,42 @@
 				<div id="detail-level-desc" class="text-converter-muted text-xs">
 					Controls line density and sensitivity. Higher values capture more details but may include
 					noise.
+				</div>
+			</div>
+		{/if}
+
+		<!-- Dot Density (Dots backend only) -->
+		{#if config.backend === 'dots'}
+			<div class="space-y-2">
+				<div class="flex items-center justify-between">
+					<label
+						for="dot-density"
+						class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+					>
+						<Droplets class="text-converter-secondary h-4 w-4" aria-hidden="true" />
+						Dot Density
+					</label>
+					<span
+						class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
+						aria-live="polite">{dotDensityUI}/10</span
+					>
+				</div>
+				<input
+					bind:this={dotDensitySliderRef}
+					id="dot-density"
+					type="range"
+					min="1"
+					max="10"
+					value={dotDensityUI}
+					onchange={handleDotDensityChange}
+					oninput={handleDotDensityChange}
+					{disabled}
+					class="slider-ferrari w-full"
+					aria-describedby="dot-density-desc"
+					use:initializeSliderFill
+				/>
+				<div id="dot-density-desc" class="text-converter-muted text-xs">
+					Controls how many dots are placed. Higher values create denser stippling with more detail.
 				</div>
 			</div>
 		{/if}
