@@ -318,7 +318,7 @@
 							bind:this={strokeWidthSliderRef}
 							type="range"
 							min="0.5"
-							max="5"
+							max="10"
 							step="0.1"
 							value={config.stroke_width || 2.0}
 							oninput={updateConfig('stroke_width')}

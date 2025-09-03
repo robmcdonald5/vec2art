@@ -4080,10 +4080,10 @@ fn calculate_stroke_width(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, stroke_px_at_1
 fn clamp_stroke_width(width: f32, _config: &TraceLowConfig) -> f32 {
     // Define reasonable bounds for stroke widths
     let w_min = 0.5; // Minimum readable stroke width
-    let w_max = 3.0; // Maximum stroke width to prevent blob-like appearance
+    let w_max = 10.0; // Match UI maximum - allow user's full range
 
-    // Clamp to range without increasing original width
-    width.max(w_min).min(w_max).min(width * 1.0) // Never increase original width
+    // Clamp to reasonable range
+    width.max(w_min).min(w_max)
 }
 
 /// Create SVG stroke path from polyline

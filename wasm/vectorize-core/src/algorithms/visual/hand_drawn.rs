@@ -19,6 +19,12 @@ pub struct HandDrawnConfig {
     pub tapering: f32,
     /// Enable pressure simulation along paths (0.0-1.0)
     pub pressure_variation: f32,
+    /// Enable multi-pass strokes for sketchy effect (0.0-1.0)
+    pub multi_pass_intensity: f32,
+    /// Enable resolution-adaptive scaling
+    pub adaptive_scaling: bool,
+    /// Image resolution for adaptive scaling (pixels)
+    pub image_resolution: (u32, u32),
     /// Random seed for reproducible results
     pub seed: u64,
     /// Base stroke width multiplier
@@ -32,6 +38,9 @@ impl Default for HandDrawnConfig {
             tremor_strength: 0.1,
             tapering: 0.2,
             pressure_variation: 0.4,
+            multi_pass_intensity: 0.3,
+            adaptive_scaling: true,
+            image_resolution: (800, 600),
             seed: 42,
             base_width_multiplier: 1.0,
         }
@@ -44,16 +53,46 @@ pub fn apply_hand_drawn_aesthetics(paths: Vec<SvgPath>, config: &HandDrawnConfig
         && config.tremor_strength == 0.0
         && config.tapering == 0.0
         && config.pressure_variation == 0.0
+        && config.multi_pass_intensity == 0.0
     {
         return paths; // No enhancements requested
     }
 
     let mut rng = ChaCha8Rng::seed_from_u64(config.seed);
+    let mut enhanced_paths = Vec::new();
 
-    paths
-        .into_iter()
-        .map(|path| apply_path_aesthetics(path, config, &mut rng))
-        .collect()
+    // Calculate resolution scale factor for adaptive effects
+    let resolution_scale = if config.adaptive_scaling {
+        let total_pixels = config.image_resolution.0 * config.image_resolution.1;
+        (total_pixels as f32 / 480000.0).sqrt() // Normalize to 800x600 baseline
+    } else {
+        1.0
+    };
+
+    for path in paths {
+        // Create primary path with enhancements
+        let enhanced_path = apply_path_aesthetics(path.clone(), config, &mut rng, resolution_scale);
+        enhanced_paths.push(enhanced_path.clone());
+
+        // Add multi-pass strokes for sketchy effect
+        if config.multi_pass_intensity > 0.0 {
+            let pass_count = (1.0 + config.multi_pass_intensity * 2.0) as usize; // 1-3 passes
+            for pass in 1..pass_count {
+                let mut pass_config = config.clone();
+                pass_config.tremor_strength *= 0.7; // Reduce tremor for additional passes
+                pass_config.seed = config.seed + pass as u64; // Different seed for variation
+                
+                let mut pass_path = apply_path_aesthetics(path.clone(), &pass_config, &mut rng, resolution_scale);
+                // Reduce stroke width for overlay effect (simulates opacity)
+                pass_path.stroke_width *= 0.7 - (pass as f32 * 0.1);
+                // Slight offset for sketchy overlap
+                pass_path = apply_slight_offset(pass_path, pass as f32 * 0.8, &mut rng);
+                enhanced_paths.push(pass_path);
+            }
+        }
+    }
+
+    enhanced_paths
 }
 
 /// Apply aesthetic enhancements to a single path
@@ -61,23 +100,27 @@ fn apply_path_aesthetics(
     mut path: SvgPath,
     config: &HandDrawnConfig,
     rng: &mut ChaCha8Rng,
+    resolution_scale: f32,
 ) -> SvgPath {
     // Apply variable line weights
     if config.variable_weights > 0.0 {
-        path = apply_variable_weight(path, config, rng);
+        path = apply_variable_weight(path, config, rng, resolution_scale);
     }
 
     // Apply organic tremor to coordinates
     if config.tremor_strength > 0.0 {
-        path = apply_organic_tremor(path, config, rng);
+        path = apply_organic_tremor(path, config, rng, resolution_scale);
     }
 
-    // RESEARCH FIX: Skip tapering for now to preserve stroke-based effects
-    // TODO: Implement tapering that preserves stroke properties
-    // Apply line tapering (requires SVG 2.0 or custom implementation)
-    // if config.tapering > 0.0 {
-    //     path = apply_line_tapering(path, config, rng);
-    // }
+    // IMPLEMENT TAPERING: Apply line tapering using stroke-dasharray for natural endings
+    if config.tapering > 0.0 {
+        path = apply_stroke_tapering(path, config, rng);
+    }
+
+    // Apply pressure variation using stroke-width changes
+    if config.pressure_variation > 0.0 {
+        path = apply_pressure_variation(path, config, rng);
+    }
 
     path
 }
@@ -87,6 +130,7 @@ fn apply_variable_weight(
     mut path: SvgPath,
     config: &HandDrawnConfig,
     rng: &mut ChaCha8Rng,
+    _resolution_scale: f32,
 ) -> SvgPath {
     // Estimate "confidence" from path length and complexity
     let path_confidence = estimate_path_confidence(&path.data);
@@ -109,9 +153,10 @@ fn apply_organic_tremor(
     mut path: SvgPath,
     config: &HandDrawnConfig,
     rng: &mut ChaCha8Rng,
+    resolution_scale: f32,
 ) -> SvgPath {
-    // Parse path data and add subtle randomization to coordinates
-    let tremor_data = add_coordinate_jitter(&path.data, config.tremor_strength, rng);
+    // Parse path data and add resolution-adaptive randomization to coordinates
+    let tremor_data = add_coordinate_jitter(&path.data, config.tremor_strength, rng, resolution_scale);
     path.data = tremor_data;
     path
 }
@@ -131,8 +176,8 @@ fn estimate_path_confidence(path_data: &str) -> f32 {
     (coordinate_count as f32 / 20.0).clamp(0.0, 1.0)
 }
 
-/// Add subtle coordinate jitter for organic appearance
-fn add_coordinate_jitter(path_data: &str, tremor_strength: f32, rng: &mut ChaCha8Rng) -> String {
+/// Add subtle coordinate jitter for organic appearance with resolution-adaptive scaling
+fn add_coordinate_jitter(path_data: &str, tremor_strength: f32, rng: &mut ChaCha8Rng, resolution_scale: f32) -> String {
     let mut result = String::with_capacity(path_data.len() + 100);
     let tokens: Vec<&str> = path_data.split_whitespace().collect();
 
@@ -142,8 +187,13 @@ fn add_coordinate_jitter(path_data: &str, tremor_strength: f32, rng: &mut ChaCha
 
         // Check if this token is a coordinate (number)
         if let Ok(coord) = token.parse::<f32>() {
-            // Add highly visible tremor - ENHANCED: Use 50x multiplier for 25px max jitter (dramatic visibility)
-            let jitter = tremor_strength * 50.0 * (rng.gen::<f32>() - 0.5) * 2.0; // -tremor to +tremor
+            // Apply resolution-adaptive tremor with Rough.js-style circular uncertainty
+            let base_jitter = tremor_strength * 30.0 * resolution_scale; // Scale with resolution
+            
+            // Rough.js style: circular uncertainty with normal distribution
+            let angle = rng.gen::<f32>() * 2.0 * std::f32::consts::PI;
+            let radius = ((-2.0 * (rng.gen::<f32>()).ln()).sqrt() * rng.gen::<f32>()).min(1.0); // Box-Muller for normal distribution
+            let jitter = base_jitter * radius * angle.cos(); // Use cosine for x/y alternation
             let jittered = coord + jitter;
 
             if i > 0 {
@@ -165,8 +215,122 @@ fn add_coordinate_jitter(path_data: &str, tremor_strength: f32, rng: &mut ChaCha
     result
 }
 
+/// Apply stroke tapering by reducing stroke width at endpoints
+fn apply_stroke_tapering(mut path: SvgPath, config: &HandDrawnConfig, rng: &mut ChaCha8Rng) -> SvgPath {
+    // Apply tapering by reducing stroke width based on path position
+    // This is a simplified approach that works with the current SvgPath structure
+    let path_length = estimate_path_length(&path.data);
+    if path_length < 10.0 {
+        return path; // Skip very short paths
+    }
+    
+    // Reduce stroke width for tapering effect
+    let taper_factor = 1.0 - (config.tapering * 0.4); // Reduce up to 40%
+    let variation = 1.0 + (rng.gen::<f32>() - 0.5) * 0.2; // ±10% variation
+    path.stroke_width *= taper_factor * variation;
+    
+    // Ensure minimum width
+    path.stroke_width = path.stroke_width.max(0.3);
+    
+    path
+}
 
+/// Apply pressure variation using stroke-width modulation
+fn apply_pressure_variation(mut path: SvgPath, config: &HandDrawnConfig, rng: &mut ChaCha8Rng) -> SvgPath {
+    // Apply pressure variation by modifying stroke width
+    let pressure_factor = 1.0 + (config.pressure_variation * 0.4 * (rng.gen::<f32>() - 0.5));
+    path.stroke_width *= pressure_factor;
+    
+    // Ensure reasonable bounds
+    path.stroke_width = path.stroke_width.clamp(0.2, 10.0);
+    
+    path
+}
 
+/// Apply slight offset for multi-pass sketchy effect
+fn apply_slight_offset(mut path: SvgPath, offset_amount: f32, rng: &mut ChaCha8Rng) -> SvgPath {
+    // Add small random offset to entire path for sketchy overlap
+    let offset_x = (rng.gen::<f32>() - 0.5) * offset_amount * 2.0;
+    let offset_y = (rng.gen::<f32>() - 0.5) * offset_amount * 2.0;
+    
+    // Parse and offset all coordinates
+    let offset_data = offset_path_coordinates(&path.data, offset_x, offset_y);
+    path.data = offset_data;
+    path
+}
+
+/// Estimate path length from SVG path data
+fn estimate_path_length(path_data: &str) -> f32 {
+    let points = parse_path_to_points_simple(path_data);
+    if points.len() < 2 {
+        return 0.0;
+    }
+    
+    let mut total_length = 0.0;
+    for i in 1..points.len() {
+        let dx = points[i].0 - points[i-1].0;
+        let dy = points[i].1 - points[i-1].1;
+        total_length += (dx * dx + dy * dy).sqrt();
+    }
+    total_length
+}
+
+/// Parse SVG path data to extract coordinate points (simplified)
+fn parse_path_to_points_simple(path_data: &str) -> Vec<(f32, f32)> {
+    let mut points = Vec::new();
+    let tokens: Vec<&str> = path_data.split_whitespace().collect();
+    
+    let mut i = 0;
+    while i + 1 < tokens.len() {
+        if let Ok(x) = tokens[i].parse::<f32>() {
+            if let Ok(y) = tokens[i + 1].parse::<f32>() {
+                points.push((x, y));
+                i += 2;
+                continue;
+            }
+        }
+        i += 1;
+    }
+    points
+}
+
+/// Offset all coordinates in a path by given amounts
+fn offset_path_coordinates(path_data: &str, offset_x: f32, offset_y: f32) -> String {
+    let mut result = String::with_capacity(path_data.len() + 100);
+    let tokens: Vec<&str> = path_data.split_whitespace().collect();
+    
+    let mut i = 0;
+    let mut is_y_coord = false;
+    
+    while i < tokens.len() {
+        let token = tokens[i];
+        
+        if let Ok(coord) = token.parse::<f32>() {
+            let offset_coord = if is_y_coord {
+                coord + offset_y
+            } else {
+                coord + offset_x
+            };
+            
+            if i > 0 {
+                result.push(' ');
+            }
+            result.push_str(&format!("{offset_coord:.3}"));
+            is_y_coord = !is_y_coord; // Alternate between x and y
+        } else {
+            // Command letter - reset coordinate tracking
+            if i > 0 && !result.ends_with(' ') {
+                result.push(' ');
+            }
+            result.push_str(token);
+            is_y_coord = false; // Next coordinate will be x
+        }
+        
+        i += 1;
+    }
+    
+    result
+}
 
 
 
@@ -290,6 +454,9 @@ impl HandDrawnPresets {
             tremor_strength: 0.05,
             tapering: 0.1,
             pressure_variation: 0.2,
+            multi_pass_intensity: 0.1,
+            adaptive_scaling: true,
+            image_resolution: (800, 600),
             base_width_multiplier: 1.0,
             ..Default::default()
         }
@@ -299,9 +466,12 @@ impl HandDrawnPresets {
     pub fn medium() -> HandDrawnConfig {
         HandDrawnConfig {
             variable_weights: 0.3,
-            tremor_strength: 0.1,
-            tapering: 0.2,
+            tremor_strength: 0.15,
+            tapering: 0.3,
             pressure_variation: 0.4,
+            multi_pass_intensity: 0.3,
+            adaptive_scaling: true,
+            image_resolution: (800, 600),
             base_width_multiplier: 1.0,
             ..Default::default()
         }
@@ -310,11 +480,14 @@ impl HandDrawnPresets {
     /// Strong hand-drawn effect - obvious artistic style  
     pub fn strong() -> HandDrawnConfig {
         HandDrawnConfig {
-            variable_weights: 0.8,
-            tremor_strength: 0.35,
-            tapering: 0.6,
-            pressure_variation: 0.8,
-            base_width_multiplier: 1.3,
+            variable_weights: 0.6,
+            tremor_strength: 0.25,
+            tapering: 0.5,
+            pressure_variation: 0.6,
+            multi_pass_intensity: 0.5,
+            adaptive_scaling: true,
+            image_resolution: (800, 600),
+            base_width_multiplier: 1.2,
             ..Default::default()
         }
     }
@@ -322,11 +495,14 @@ impl HandDrawnPresets {
     /// Sketch-like effect - ENHANCED for maximum visibility with dramatic effects
     pub fn sketchy() -> HandDrawnConfig {
         HandDrawnConfig {
-            variable_weights: 1.0,      // Maximum variable weights (was 0.8)
-            tremor_strength: 0.5,       // Maximum tremor strength (was 0.4) = 25px max jitter
-            tapering: 0.7,              // Strong tapering (was 0.4)
-            pressure_variation: 1.0,    // Maximum pressure variation (was 0.7)
-            base_width_multiplier: 1.5, // Higher base width for visibility (was 1.2)
+            variable_weights: 0.8,      // High variable weights for dramatic width changes
+            tremor_strength: 0.4,       // Strong tremor for visible jitter
+            tapering: 0.7,              // Strong tapering for natural line endings
+            pressure_variation: 0.8,    // High pressure variation
+            multi_pass_intensity: 0.8,  // Maximum multi-pass for sketchy overlap
+            adaptive_scaling: true,
+            image_resolution: (800, 600),
+            base_width_multiplier: 1.4, // Higher base width for visibility
             ..Default::default()
         }
     }
@@ -356,7 +532,7 @@ mod tests {
         let path_data = "M 10.0 20.0 L 30.0 40.0";
         let mut rng = ChaCha8Rng::seed_from_u64(42);
 
-        let jittered = add_coordinate_jitter(path_data, 0.1, &mut rng);
+        let jittered = add_coordinate_jitter(path_data, 0.1, &mut rng, 1.0);
 
         // Should contain same structure but different coordinates
         assert!(jittered.contains('M'));

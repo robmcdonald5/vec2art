@@ -178,6 +178,9 @@ class VectorizerWorker {
 		if (config.tremor_strength) {
 			this.vectorizer.set_custom_tremor(config.tremor_strength);
 		}
+		if (config.tapering) {
+			this.vectorizer.set_custom_tapering(config.tapering);
+		}
 
 		this.vectorizer.set_enable_etf_fdog(config.enable_etf_fdog);
 		this.vectorizer.set_enable_flow_tracing(config.enable_flow_tracing);

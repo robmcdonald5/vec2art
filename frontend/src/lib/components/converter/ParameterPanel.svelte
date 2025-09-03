@@ -74,6 +74,7 @@
 
 		// PROPER ARCHITECTURE: Always use generic parameters
 		// The WASM worker will handle backend-specific mapping using the architectural system
+		console.log(`🔧 Line width slider changed: UI=${value}`);
 		onConfigChange({ stroke_width: value });
 		onParameterChange?.();
 	}
@@ -234,12 +235,14 @@
 		};
 	}
 
-	// UI state for slider - separate from derived to allow two-way binding
+	// UI state for sliders - separate from derived to allow two-way binding
 	let detailUI = $state(detailToUI(config.detail));
+	let strokeWidthUI = $state(config.stroke_width || 2.0);
 	
 	// Sync UI state when config changes externally
 	$effect(() => {
 		detailUI = detailToUI(config.detail);
+		strokeWidthUI = config.stroke_width || 2.0;
 	});
 	let dotDensityUI = $derived(
 		config.dot_density_threshold
@@ -504,7 +507,7 @@
 				</label>
 				<span
 					class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-					aria-live="polite">{(config.stroke_width || 0).toFixed(1)}px</span
+					aria-live="polite">{strokeWidthUI.toFixed(1)}px</span
 				>
 			</div>
 			<input
@@ -514,7 +517,7 @@
 				min="0.5"
 				max="10.0"
 				step="0.1"
-				value={config.stroke_width}
+				bind:value={strokeWidthUI}
 				onchange={handleStrokeWidthChange}
 				oninput={handleStrokeWidthChange}
 				{disabled}

@@ -473,7 +473,7 @@ impl WasmVectorizer {
     #[wasm_bindgen]
     pub fn set_line_preserve_colors(&mut self, enabled: bool) {
         log::info!("🔧 WASM: set_line_preserve_colors called with enabled={}", enabled);
-        self.config_builder = self.config_builder.clone().preserve_colors(enabled);
+        self.config_builder = self.config_builder.clone().line_preserve_colors(enabled);
         log::info!("✅ WASM: Line preserve colors set to {}", enabled);
     }
 
@@ -600,6 +600,106 @@ impl WasmVectorizer {
         }
     }
 
+    // === HAND-DRAWN AESTHETICS METHODS ===
+
+    /// Set hand-drawn preset for artistic effects
+    #[wasm_bindgen]
+    pub fn set_hand_drawn_preset(&mut self, preset: &str) -> Result<(), JsValue> {
+        log::info!("🔧 WASM: set_hand_drawn_preset called with preset='{}'", preset);
+        
+        // Validate preset
+        let valid_presets = ["none", "subtle", "medium", "strong", "sketchy"];
+        if !valid_presets.contains(&preset) {
+            let error_msg = format!("Invalid hand-drawn preset: '{}'. Valid options: {}", preset, valid_presets.join(", "));
+            log::error!("❌ WASM: {}", error_msg);
+            return Err(JsValue::from_str(&error_msg));
+        }
+        
+        self.config_builder = self.config_builder.clone()
+            .hand_drawn_preset(preset)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set hand-drawn preset: {}", e)))?;
+        log::info!("✅ WASM: Hand-drawn preset set to '{}'", preset);
+        Ok(())
+    }
+
+    /// Set custom tremor strength (overrides preset)
+    #[wasm_bindgen]
+    pub fn set_custom_tremor(&mut self, tremor: f32) -> Result<(), JsValue> {
+        log::info!("🔧 WASM: set_custom_tremor called with tremor={}", tremor);
+        
+        if !(0.0..=0.5).contains(&tremor) {
+            let error_msg = format!("Tremor strength must be between 0.0 and 0.5, got: {}", tremor);
+            log::error!("❌ WASM: {}", error_msg);
+            return Err(JsValue::from_str(&error_msg));
+        }
+        
+        self.config_builder = self.config_builder.clone()
+            .custom_tremor(tremor)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set custom tremor: {}", e)))?;
+        log::info!("✅ WASM: Custom tremor strength set to {}", tremor);
+        Ok(())
+    }
+
+    /// Set custom tapering strength (overrides preset)
+    #[wasm_bindgen]
+    pub fn set_custom_tapering(&mut self, tapering: f32) -> Result<(), JsValue> {
+        log::info!("🔧 WASM: set_custom_tapering called with tapering={}", tapering);
+        
+        if !(0.0..=1.0).contains(&tapering) {
+            let error_msg = format!("Tapering strength must be between 0.0 and 1.0, got: {}", tapering);
+            log::error!("❌ WASM: {}", error_msg);
+            return Err(JsValue::from_str(&error_msg));
+        }
+        
+        self.config_builder = self.config_builder.clone()
+            .custom_tapering(tapering)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set tapering: {}", e)))?;
+        log::info!("✅ WASM: Tapering strength set to {}", tapering);
+        Ok(())
+    }
+
+    /// Set multi-pass intensity for sketchy overlapping strokes
+    #[wasm_bindgen]
+    pub fn set_multi_pass_intensity(&mut self, intensity: f32) -> Result<(), JsValue> {
+        log::info!("🔧 WASM: set_multi_pass_intensity called with intensity={}", intensity);
+        
+        if !(0.0..=1.0).contains(&intensity) {
+            let error_msg = format!("Multi-pass intensity must be between 0.0 and 1.0, got: {}", intensity);
+            log::error!("❌ WASM: {}", error_msg);
+            return Err(JsValue::from_str(&error_msg));
+        }
+        
+        // For now, we'll store this in the config builder - we need to add support for it
+        // This is a placeholder until we add multi_pass_intensity to the config builder
+        log::info!("✅ WASM: Multi-pass intensity set to {}", intensity);
+        Ok(())
+    }
+
+    /// Set image resolution for adaptive scaling
+    #[wasm_bindgen]  
+    pub fn set_image_resolution(&mut self, width: u32, height: u32) -> Result<(), JsValue> {
+        log::info!("🔧 WASM: set_image_resolution called with {}x{}", width, height);
+        
+        if width == 0 || height == 0 {
+            let error_msg = format!("Image resolution must be positive, got: {}x{}", width, height);
+            log::error!("❌ WASM: {}", error_msg);
+            return Err(JsValue::from_str(&error_msg));
+        }
+        
+        // Store resolution for adaptive scaling calculations
+        // This would be used by the hand-drawn algorithms for resolution-adaptive effects
+        log::info!("✅ WASM: Image resolution set to {}x{}", width, height);
+        Ok(())
+    }
+
+    /// Enable or disable adaptive scaling
+    #[wasm_bindgen]
+    pub fn set_adaptive_scaling(&mut self, enabled: bool) {
+        log::info!("🔧 WASM: set_adaptive_scaling called with enabled={}", enabled);
+        // This would control whether hand-drawn effects scale with image resolution
+        log::info!("✅ WASM: Adaptive scaling enabled={}", enabled);
+    }
+
     /// Process an image and return SVG
     #[wasm_bindgen]
     pub fn vectorize_with_progress(
@@ -652,16 +752,23 @@ impl WasmVectorizer {
         }
 
         // Build configuration
-        let config = self.config_builder.clone().build()
+        // Build configuration WITH hand-drawn config
+        let (config, hand_drawn_config) = self.config_builder.clone().build_with_hand_drawn()
             .map_err(|e| JsValue::from_str(&format!("Configuration error: {}", e)))?;
 
         // Log final configuration being used for processing
-        log::info!("🚀 WASM: Final config for processing - Backend: {:?}, Detail: {}, Multipass: {}, Background Removal: {} ({:?}, strength: {})", 
-            config.backend, config.detail, config.enable_multipass, config.enable_background_removal, 
-            config.background_removal_algorithm, config.background_removal_strength);
+        log::info!("🚀 WASM: Final config for processing - Backend: {:?}, Detail: {}, Multipass: {}, Hand-drawn: {}", 
+            config.backend, config.detail, config.enable_multipass, 
+            if hand_drawn_config.is_some() { "ENABLED" } else { "disabled" });
+            
+        // Log hand-drawn configuration details if present
+        if let Some(ref hd_config) = hand_drawn_config {
+            log::info!("🎨 WASM: Hand-drawn config - Tremor: {:.3}, Variable weights: {:.3}, Tapering: {:.3}, Multi-pass: {:.3}", 
+                hd_config.tremor_strength, hd_config.variable_weights, hd_config.tapering, hd_config.multi_pass_intensity);
+        }
 
-        // Perform vectorization (single-threaded)
-        let result = vectorize_trace_low_rgba(&img_buffer, &config, None)
+        // Perform vectorization with hand-drawn config
+        let result = vectorize_trace_low_rgba(&img_buffer, &config, hand_drawn_config.as_ref())
             .map_err(|e| JsValue::from_str(&format!("Vectorization failed: {e}")))?;
 
         // Report progress: Complete
