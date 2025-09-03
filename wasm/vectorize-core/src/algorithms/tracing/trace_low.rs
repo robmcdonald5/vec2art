@@ -444,13 +444,15 @@ impl ThresholdMapping {
         let diag = ((image_width.pow(2) + image_height.pow(2)) as f32).sqrt().max(1.0);
 
         // Global knob mapping as specified in trace-low-spec.md
-        let dp_epsilon_px = ((0.003 + 0.012 * detail) * diag).clamp(0.003 * diag, 0.015 * diag);
-        let min_stroke_length_px = 10.0 + 40.0 * detail;
-        // FIXED: Scale thresholds to match actual gradient magnitude range
-        // Gradients are L1 norm of Sobel on 0-255 pixels, typical range 10-200
+        // FIXED: Invert post-processing parameters to match Canny threshold behavior
+        // Higher detail should mean less simplification and shorter minimum lengths for more detailed output
+        let dp_epsilon_px = ((0.003 + 0.012 * (1.0 - detail)) * diag).clamp(0.003 * diag, 0.015 * diag);
+        let min_stroke_length_px = 10.0 + 40.0 * (1.0 - detail);
+        // FIXED: Thresholds must match normalized gradient range [0, 1]
+        // The canny_edge_detection function normalizes gradients to [0, 1]
         // Higher detail (1.0) → Lower thresholds → More edges detected
         // Lower detail (0.1) → Higher thresholds → Fewer edges detected
-        let canny_high_threshold = 20.0 + 80.0 * (1.0 - detail); // Range: 100 (detail=0.1, few edges) to 20 (detail=1.0, many edges)
+        let canny_high_threshold = 0.1 + 0.4 * (1.0 - detail); // Range: 0.5 (detail=0.1, few edges) to 0.1 (detail=1.0, many edges)
         let canny_low_threshold = 0.4 * canny_high_threshold;
         let min_centerline_branch_px = 12.0 + 36.0 * detail;
         let slic_cell_size_px = (600.0 + 2400.0 * detail).clamp(600.0, 3000.0);
@@ -1163,7 +1165,13 @@ fn trace_edge(
         simplification_time.as_secs_f64() * 1000.0,
         svg_generation_time.as_secs_f64() * 1000.0
     );
-    log::info!("Edge backend generated {} stroke paths", svg_paths.len());
+    log::info!(
+        "Edge backend generated {} stroke paths (detail={:.2}, high_thresh={:.3}, low_thresh={:.3})",
+        svg_paths.len(),
+        config.detail,
+        thresholds.canny_high_threshold,
+        thresholds.canny_low_threshold
+    );
 
     Ok(svg_paths)
 }

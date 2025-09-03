@@ -234,8 +234,13 @@
 		};
 	}
 
-	// Derived values for UI display
-	let detailUI = $derived(detailToUI(config.detail));
+	// UI state for slider - separate from derived to allow two-way binding
+	let detailUI = $state(detailToUI(config.detail));
+	
+	// Sync UI state when config changes externally
+	$effect(() => {
+		detailUI = detailToUI(config.detail);
+	});
 	let dotDensityUI = $derived(
 		config.dot_density_threshold
 			? Math.round(((0.15 - config.dot_density_threshold) / 0.1) * 9 + 1)
@@ -370,7 +375,7 @@
 					type="range"
 					min="1"
 					max="10"
-					value={detailUI}
+					bind:value={detailUI}
 					onchange={handleDetailChange}
 					oninput={handleDetailChange}
 					{disabled}
