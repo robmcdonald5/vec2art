@@ -23,6 +23,8 @@ export interface PanZoomSyncStore {
 	syncStates: (sourceState: PanZoomState) => void;
 	toggleSync: () => void;
 	resetStates: () => void;
+	preserveStates: () => void;
+	restoreStates: () => void;
 }
 
 const defaultState: PanZoomState = { scale: 1, x: 0, y: 0 };
@@ -34,6 +36,10 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 	let originalState = $state<PanZoomState>({ ...defaultState });
 	let convertedState = $state<PanZoomState>({ ...defaultState });
 	let isSyncEnabled = $state(true);
+	
+	// Preserved states for maintaining zoom/pan during conversions
+	let preservedOriginalState: PanZoomState | null = null;
+	let preservedConvertedState: PanZoomState | null = null;
 
 	return {
 		get originalState() {
@@ -84,6 +90,45 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 		resetStates() {
 			originalState = { ...defaultState };
 			convertedState = { ...defaultState };
+		},
+		
+		preserveStates() {
+			// Save current states before conversion/re-render
+			preservedOriginalState = { ...originalState };
+			preservedConvertedState = { ...convertedState };
+			console.log('[PanZoomStore] States preserved:', {
+				original: preservedOriginalState,
+				converted: preservedConvertedState,
+				syncEnabled: isSyncEnabled
+			});
+		},
+		
+		restoreStates() {
+			// Restore saved states after conversion/re-render
+			if (preservedOriginalState) {
+				originalState = { ...preservedOriginalState };
+			}
+			
+			if (preservedConvertedState) {
+				// Handle different sync modes appropriately
+				if (isSyncEnabled) {
+					// In sync mode, use the original state for both
+					convertedState = { ...preservedOriginalState || preservedConvertedState };
+				} else {
+					// In independent mode, preserve each state separately
+					convertedState = { ...preservedConvertedState };
+				}
+			} else if (preservedOriginalState) {
+				// Pre-conversion state: inherit from original regardless of sync mode
+				// This handles the case where preview doesn't exist yet
+				convertedState = { ...preservedOriginalState };
+			}
+			
+			console.log('[PanZoomStore] States restored:', {
+				original: originalState,
+				converted: convertedState,
+				syncEnabled: isSyncEnabled
+			});
 		}
 	};
 }

@@ -77,14 +77,20 @@
 		}, 0);
 	}
 
-	// Reset pan/zoom store when changing images
-	function resetPanZoomState() {
-		panZoomStore.resetStates();
+	// Reset pan/zoom store when changing images (optional)
+	function resetPanZoomState(force = false) {
+		// Only reset if explicitly forced or user is switching between different images
+		// Don't reset during conversions
+		if (force) {
+			panZoomStore.resetStates();
+		}
 	}
 
 	function handleImageIndexChange(newIndex: number) {
 		onImageIndexChange(newIndex);
-		resetPanZoomState();
+		// Reset zoom when switching between different images in the gallery
+		// This is expected behavior - user wants fresh view of each image
+		resetPanZoomState(true);
 	}
 
 	// Legacy function for slider mode only - basic fit behavior

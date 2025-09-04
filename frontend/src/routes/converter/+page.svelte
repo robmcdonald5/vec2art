@@ -383,6 +383,9 @@
 			isProcessing,
 			hasFiles
 		});
+		
+		// IMPORTANT: Preserve pan/zoom states before conversion
+		panZoomStore.preserveStates();
 
 		if (!canConvert) {
 			// Enhanced validation with specific error messages
@@ -637,6 +640,12 @@
 			// This prevents the UI from unlocking before the SVG output is visible to users
 			// Small delay ensures blob URLs are resolved and DOM is updated
 			await new Promise(resolve => setTimeout(resolve, 100));
+			
+			// IMPORTANT: Restore pan/zoom states after results are updated and DOM is ready
+			// Use requestAnimationFrame to ensure the DOM has been updated
+			requestAnimationFrame(() => {
+				panZoomStore.restoreStates();
+			});
 		} catch (error) {
 			console.error('Conversion failed:', error);
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

@@ -222,9 +222,19 @@
 	// Proper object-fit: contain calculation for each image
 	$effect(() => {
 		if (imageUrl && containerElement) {
+			// Check if we should preserve existing zoom/pan (when external state is provided)
+			const shouldPreserveState = externalPanZoom && enableSync && 
+				(externalPanZoom.scale !== 1 || externalPanZoom.x !== 0 || externalPanZoom.y !== 0);
+			
+			if (shouldPreserveState) {
+				console.log('[ImageViewer] Preserving external pan/zoom state on image change:', externalPanZoom);
+				// Don't reset - external state will be applied by the sync effect
+				return;
+			}
+			
 			console.log('[ImageViewer] Image URL changed, calculating proper scale');
 
-			// Reset position immediately
+			// Reset position immediately only if not preserving state
 			targetOffsetX = 0;
 			targetOffsetY = 0;
 
