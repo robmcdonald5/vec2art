@@ -456,7 +456,7 @@
 						{isProcessing}
 						className="flex-1"
 						onDownloadOriginal={() => downloadOriginal(currentFile, currentImageUrl)}
-						externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.convertedState : undefined}
+						externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}
 						onPanZoomChange={(state) => panZoomStore.updateOriginalState(state)}
 						enableSync={panZoomStore.isSyncEnabled}
 					/>
@@ -500,7 +500,7 @@
 								className="flex-1"
 								showControls={true}
 								onDownload={onDownload}
-								externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}
+								externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.convertedState : undefined}
 								onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
 								enableSync={panZoomStore.isSyncEnabled}
 							/>
@@ -510,7 +510,7 @@
 								imageAlt="Converted SVG"
 								{isProcessing}
 								className="flex-1"
-								externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}
+								externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.convertedState : undefined}
 								onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
 								enableSync={panZoomStore.isSyncEnabled}
 							/>

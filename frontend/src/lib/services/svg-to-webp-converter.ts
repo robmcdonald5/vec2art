@@ -281,11 +281,11 @@ export class SvgToWebPConverter {
         const url = URL.createObjectURL(blob);
         console.log('[WebPConverter] Created blob URL:', url);
 
-        // Set up image loading with timeout
+        // Set up image loading with timeout (5 minutes for very large SVGs)
         const timeout = setTimeout(() => {
           URL.revokeObjectURL(url);
-          reject(new Error('SVG image loading timeout (10 seconds)'));
-        }, 10000);
+          reject(new Error('SVG image loading timeout (5 minutes)'));
+        }, 300000);
 
         img.onload = () => {
           clearTimeout(timeout);

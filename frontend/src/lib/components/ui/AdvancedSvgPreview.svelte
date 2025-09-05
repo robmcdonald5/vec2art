@@ -10,7 +10,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 -->
 
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, untrack } from 'svelte';
   import type { RenderStrategy, ViewportBounds, PreviewRenderOptions } from '$lib/services/svg-preview-renderer';
   import { svgPreviewRenderer } from '$lib/services/svg-preview-renderer';
   import { SvgToWebPConverter } from '$lib/services/svg-to-webp-converter';
@@ -72,7 +72,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
   // WebP converter instance
   let webpConverter = new SvgToWebPConverter();
 
-  // Sync external pan/zoom state
+  // Sync external pan/zoom state - simple approach without blocking
   $effect(() => {
     if (externalPanZoom && enableSync) {
       targetScale = externalPanZoom.scale;
@@ -81,7 +81,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
     }
   });
 
-  // Notify parent of pan/zoom changes
+  // Notify parent of pan/zoom changes - simple approach
   $effect(() => {
     if (onPanZoomChange) {
       onPanZoomChange({
@@ -449,8 +449,8 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
             bind:targetOffsetX
             bind:targetOffsetY
             minScale={0.1}
-            maxScale={10.0}
-            scaleSmoothing={200}
+            maxScale={5.0}
+            scaleSmoothing={800}
           />
         {:else if imgFallbackUrl}
           <!-- IMG fallback result -->
@@ -462,7 +462,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
             bind:targetOffsetY
             minScale={0.1}
             maxScale={5.0}
-            scaleSmoothing={400}
+            scaleSmoothing={800}
           />
         {:else if svgBlobUrl}
           <!-- SVG DOM result -->
@@ -474,7 +474,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
             bind:targetOffsetY
             minScale={0.1}
             maxScale={5.0}
-            scaleSmoothing={400}
+            scaleSmoothing={800}
           />
         {:else if canvasDataUrl}
           <!-- Canvas rendering result (static) -->
