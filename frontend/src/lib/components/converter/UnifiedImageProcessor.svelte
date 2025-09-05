@@ -17,6 +17,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
 	import type { ProcessingProgress, ProcessingResult } from '$lib/types/vectorizer';
+	import { createManagedObjectURL, releaseManagedObjectURL } from '$lib/utils/object-url-manager.js';
 
 	interface Props {
 		// Upload props
@@ -88,7 +89,34 @@
 	const hasFiles = $derived(currentFiles.length > 0);
 	const hasMultipleFiles = $derived(currentFiles.length > 1);
 	const currentFile = $derived(currentFiles[currentImageIndex]);
-	const currentImageUrl = $derived(currentFile ? URL.createObjectURL(currentFile) : null);
+	// Managed object URL state
+	let previousFile: File | null = null;
+	let managedObjectUrl: string | null = null;
+	
+	// Effect to manage object URL lifecycle
+	$effect(() => {
+		// If file changed, clean up previous URL and create new one
+		if (currentFile !== previousFile) {
+			// Clean up previous URL
+			if (managedObjectUrl && previousFile) {
+				releaseManagedObjectURL(managedObjectUrl);
+			}
+			
+			// Create new URL for current file
+			managedObjectUrl = currentFile ? createManagedObjectURL(currentFile) : null;
+			previousFile = currentFile;
+		}
+		
+		// Cleanup on component unmount
+		return () => {
+			if (managedObjectUrl) {
+				releaseManagedObjectURL(managedObjectUrl);
+				managedObjectUrl = null;
+			}
+		};
+	});
+	
+	const currentImageUrl = $derived(managedObjectUrl);
 	const currentSvgUrl = $derived(previewSvgUrls[currentImageIndex]);
 	const hasResult = $derived(Boolean(currentSvgUrl));
 	const currentResult = $derived(results[currentImageIndex]);

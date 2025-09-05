@@ -19,6 +19,8 @@
 	import { converterPersistence } from '$lib/stores/converter-persistence';
 	import type { FileMetadata } from '$lib/stores/converter-persistence';
 	import { devLog, devDebug, devWarn, devError, devSuccess } from '$lib/utils/dev-logger';
+	import DownloadFormatSelector from '$lib/components/ui/DownloadFormatSelector.svelte';
+	import { downloadService } from '$lib/services/download-service';
 
 	// Types and stores
 	import type {
@@ -60,6 +62,10 @@
 	let hasRecoveredState = $state(false);
 	let isRecoveringState = $state(false);
 	let isClearingAll = $state(false); // Flag to prevent auto-save during Clear All
+
+	// Download format selector state
+	let showDownloadSelector = $state(false);
+	let pendingDownloadData = $state<{ filename: string; svgContent: string } | null>(null);
 
 	// Component reset key to force remounting
 	let componentResetKey = $state(0);
@@ -702,20 +708,12 @@
 			}
 
 			if (result && result.svg) {
-				const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-				const url = URL.createObjectURL(blob);
-				const a = document.createElement('a');
-
-				a.href = url;
-				a.download = `${filename}.svg`;
-
-				document.body.appendChild(a);
-				a.click();
-				document.body.removeChild(a);
-				URL.revokeObjectURL(url);
-
-				announceToScreenReader(`Downloaded ${filename}.svg`);
-				console.log('✅ [DEBUG] Successfully downloaded:', `${filename}.svg`);
+				// Show format selector instead of immediate download
+				pendingDownloadData = {
+					filename,
+					svgContent: result.svg
+				};
+				showDownloadSelector = true;
 			} else {
 				console.warn('🔍 [DEBUG] No result available for download:', { result });
 				toastStore.error('No conversion result available for download');
@@ -725,6 +723,69 @@
 			toastStore.error('Download failed');
 			announceToScreenReader('Download failed', 'assertive');
 		}
+	}
+
+	// Download handler functions for format selector
+	function handleDownloadSvg() {
+		if (!pendingDownloadData) return;
+		
+		try {
+			downloadService.downloadSvg(pendingDownloadData.svgContent, {
+				format: 'svg',
+				filename: pendingDownloadData.filename
+			}).then((result) => {
+				if (result.success) {
+					announceToScreenReader(`Downloaded ${result.filename}`);
+					console.log('✅ [DEBUG] Successfully downloaded:', result.filename);
+					toastStore.success(`Downloaded ${result.filename} (${result.fileSizeKB}KB)`);
+				} else {
+					throw new Error(result.error || 'Download failed');
+				}
+			});
+		} catch (error) {
+			console.error('SVG download failed:', error);
+			toastStore.error('SVG download failed');
+			announceToScreenReader('SVG download failed', 'assertive');
+		} finally {
+			showDownloadSelector = false;
+			pendingDownloadData = null;
+		}
+	}
+
+	async function handleDownloadWebP() {
+		if (!pendingDownloadData) return;
+		
+		try {
+			const result = await downloadService.downloadSvg(pendingDownloadData.svgContent, {
+				format: 'webp',
+				filename: pendingDownloadData.filename,
+				webpOptions: {
+					quality: 0.9,
+					maxWidth: 4096,
+					maxHeight: 4096
+				}
+			});
+
+			if (result.success) {
+				announceToScreenReader(`Downloaded ${result.filename}`);
+				console.log('✅ [DEBUG] Successfully downloaded:', result.filename);
+				toastStore.success(`Downloaded ${result.filename} (${result.fileSizeKB}KB)`);
+			} else {
+				throw new Error(result.error || 'WebP download failed');
+			}
+		} catch (error) {
+			console.error('WebP download failed:', error);
+			toastStore.error('WebP download failed');
+			announceToScreenReader('WebP download failed', 'assertive');
+		} finally {
+			showDownloadSelector = false;
+			pendingDownloadData = null;
+		}
+	}
+
+	function handleDownloadCancel() {
+		showDownloadSelector = false;
+		pendingDownloadData = null;
 	}
 
 	function handleAbort() {
@@ -1218,6 +1279,30 @@
 				}
 			}
 
+			// Restore pan/zoom state
+			if (state.panZoomState) {
+				try {
+					panZoomStore.syncStates(state.panZoomState.originalState);
+					
+					if (!state.panZoomState.isSyncEnabled) {
+						// If sync was disabled, set the individual states and then disable sync
+						panZoomStore.updateOriginalState(state.panZoomState.originalState);
+						panZoomStore.updateConvertedState(state.panZoomState.convertedState);
+						if (panZoomStore.isSyncEnabled) {
+							panZoomStore.toggleSync(); // Disable sync to match saved state
+						}
+					}
+					
+					console.log('✅ [DEBUG] Pan/zoom state restored:', {
+						original: state.panZoomState.originalState,
+						converted: state.panZoomState.convertedState,
+						syncEnabled: state.panZoomState.isSyncEnabled
+					});
+				} catch (error) {
+					console.warn('⚠️ [DEBUG] Failed to restore pan/zoom state:', error);
+				}
+			}
+
 			// CRITICAL: Mark state recovery as complete
 			isRecoveringState = false;
 			// console.log('✅ [DEBUG] State recovery completed');
@@ -1248,6 +1333,32 @@
 		if (!pageLoaded) return;
 		// console.log('💾 [DEBUG] Saving current index:', currentImageIndex);
 		converterPersistence.saveCurrentIndex(currentImageIndex);
+	});
+
+	// Save pan/zoom state when it changes
+	$effect(() => {
+		if (!pageLoaded || isClearingAll) return;
+		
+		const panZoomState = {
+			originalState: panZoomStore.originalState,
+			convertedState: panZoomStore.convertedState,
+			isSyncEnabled: panZoomStore.isSyncEnabled
+		};
+		
+		// Only save if state has meaningful values (not default)
+		const hasNonDefaultState = 
+			panZoomState.originalState.scale !== 1 || 
+			panZoomState.originalState.x !== 0 || 
+			panZoomState.originalState.y !== 0 ||
+			panZoomState.convertedState.scale !== 1 || 
+			panZoomState.convertedState.x !== 0 || 
+			panZoomState.convertedState.y !== 0 ||
+			!panZoomState.isSyncEnabled;
+			
+		if (hasNonDefaultState) {
+			// console.log('💾 [DEBUG] Saving pan/zoom state:', panZoomState);
+			converterPersistence.savePanZoomState(panZoomState);
+		}
 	});
 
 	// Save files metadata when files change
@@ -1547,6 +1658,19 @@
 		{/if}
 	</div>
 </div>
+
+<!-- Download Format Selector Modal -->
+{#if pendingDownloadData}
+	<DownloadFormatSelector
+		filename={pendingDownloadData.filename}
+		svgContent={pendingDownloadData.svgContent}
+		onDownloadSvg={handleDownloadSvg}
+		onDownloadWebP={handleDownloadWebP}
+		onCancel={handleDownloadCancel}
+		show={showDownloadSelector}
+		isProcessing={isProcessing}
+	/>
+{/if}
 
 <style>
 	/* Screen reader only text */

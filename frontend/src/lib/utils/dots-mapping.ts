@@ -165,9 +165,9 @@ export function mapUIConfigToDotsConfig(
 		max_radius: adjustedMaxRadius,
 		preserve_colors: uiConfig.color_mode,
 		// Enable recommended features for better quality and stability
-		adaptive_sizing: true,
-		poisson_disk_sampling: false, // Disable for large images to reduce computation
-		gradient_based_sizing: true
+		adaptive_sizing: true, // Default: ON
+		poisson_disk_sampling: false, // Default: OFF for better performance and stability
+		gradient_based_sizing: true // Default: ON
 	};
 }
 

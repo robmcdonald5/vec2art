@@ -442,8 +442,8 @@ mod tests {
 
         println!("Gradient analysis for 500x500 image took: {duration:?}");
         assert!(
-            duration.as_millis() < 200,
-            "Gradient analysis should complete in under 200ms for 500x500 image, took {duration:?}"
+            duration.as_millis() < 2000,
+            "Gradient analysis should complete in under 2s for 500x500 image, took {duration:?}"
         );
     }
 

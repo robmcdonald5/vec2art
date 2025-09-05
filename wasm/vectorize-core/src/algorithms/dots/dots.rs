@@ -299,16 +299,39 @@ impl PoissonDiskSampler {
     }
 
     fn generate(&mut self) -> Vec<(f32, f32)> {
-        // Add initial sample
-        let initial_x = self.width * 0.5;
-        let initial_y = self.height * 0.5;
-        self.add_sample(initial_x, initial_y);
+        // Add multiple initial samples distributed across the image for better coverage
+        // This prevents the circular pattern issue where only the center gets filled
+        let grid_seeds = 3; // Create a 3x3 grid of seed points
+        for gy in 0..grid_seeds {
+            for gx in 0..grid_seeds {
+                let x = (gx as f32 + 0.5) * self.width / grid_seeds as f32;
+                let y = (gy as f32 + 0.5) * self.height / grid_seeds as f32;
+                // Add with some random offset to avoid perfect grid
+                let offset_x = (self.next_random() - 0.5) * self.min_distance;
+                let offset_y = (self.next_random() - 0.5) * self.min_distance;
+                let sample_x = (x + offset_x).clamp(0.0, self.width - 1.0);
+                let sample_y = (y + offset_y).clamp(0.0, self.height - 1.0);
+                
+                if self.is_valid_point(sample_x, sample_y) {
+                    self.add_sample(sample_x, sample_y);
+                }
+            }
+        }
+        
+        // If no seeds were added (shouldn't happen), add center as fallback
+        if self.samples.is_empty() {
+            self.add_sample(self.width * 0.5, self.height * 0.5);
+        }
 
         const K: usize = 30; // Number of attempts per active sample
-        const MAX_ITERATIONS: usize = 100_000; // Prevent infinite loops
+        // Scale max iterations based on image size to ensure full coverage
+        let pixels_to_cover = (self.width * self.height) as usize;
+        let expected_samples = (pixels_to_cover as f32 / (self.min_distance * self.min_distance)) as usize;
+        // Allow enough iterations for full coverage with safety margin
+        let max_iterations = expected_samples.saturating_mul(K).max(100_000).min(1_000_000);
         let mut iterations = 0;
 
-        while !self.active_list.is_empty() && iterations < MAX_ITERATIONS {
+        while !self.active_list.is_empty() && iterations < max_iterations {
             iterations += 1;
             let active_idx = (self.next_random() * self.active_list.len() as f32) as usize;
             // Ensure bounds safety: clamp to valid array index

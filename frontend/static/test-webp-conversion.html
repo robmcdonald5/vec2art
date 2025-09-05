@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebP Conversion Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .test-area { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; }
+        canvas, img { border: 1px solid #ddd; margin: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebP Conversion Test</h1>
+        
+        <div class="test-area">
+            <h2>Test SVG Input</h2>
+            <textarea id="svgInput" rows="10" cols="80" placeholder="Paste your SVG content here...">
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+    <rect width="400" height="300" fill="#f0f0f0"/>
+    <circle cx="200" cy="150" r="50" fill="red"/>
+    <rect x="100" y="100" width="200" height="100" fill="blue" opacity="0.7"/>
+    <text x="200" y="250" text-anchor="middle" font-size="20" fill="black">Test SVG</text>
+</svg>
+            </textarea>
+            <br><br>
+            <button onclick="testConversion()">Test WebP Conversion</button>
+            <button onclick="testWebPSupport()">Check WebP Support</button>
+        </div>
+        
+        <div class="test-area">
+            <h2>Results</h2>
+            <div id="results"></div>
+        </div>
+        
+        <div class="test-area">
+            <h2>Debug Log</h2>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.textContent += new Date().toISOString() + ': ' + message + '\n';
+            console.log(message);
+        }
+        
+        function testWebPSupport() {
+            const canvas = document.createElement('canvas');
+            const webpSupported = canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+            log('WebP support: ' + (webpSupported ? 'YES' : 'NO'));
+        }
+        
+        async function testConversion() {
+            const svgContent = document.getElementById('svgInput').value.trim();
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            document.getElementById('log').textContent = '';
+            
+            log('Starting WebP conversion test...');
+            log('SVG content length: ' + svgContent.length);
+            
+            if (!svgContent) {
+                log('ERROR: No SVG content provided');
+                return;
+            }
+            
+            try {
+                // Test WebP support first
+                testWebPSupport();
+                
+                // Create canvas
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                if (!ctx) {
+                    throw new Error('Canvas 2D context not available');
+                }
+                
+                log('Canvas created successfully');
+                
+                // Parse SVG dimensions
+                log('Parsing SVG dimensions...');
+                const dimensions = await getSvgDimensions(svgContent);
+                log('SVG dimensions: ' + JSON.stringify(dimensions));
+                
+                // Set canvas size
+                const maxSize = 1024;
+                const scale = Math.min(maxSize / dimensions.width, maxSize / dimensions.height);
+                canvas.width = Math.round(dimensions.width * scale);
+                canvas.height = Math.round(dimensions.height * scale);
+                
+                log('Canvas size: ' + canvas.width + 'x' + canvas.height + ' (scale: ' + scale + ')');
+                
+                // Clear canvas with white background
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                log('Canvas cleared with white background');
+                
+                // Load SVG as image
+                log('Loading SVG as image...');
+                const img = await loadSvgAsImage(svgContent);
+                log('SVG loaded as image: ' + img.naturalWidth + 'x' + img.naturalHeight);
+                
+                // Draw to canvas
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                log('SVG drawn to canvas');
+                
+                // Convert to WebP
+                const webpDataUrl = canvas.toDataURL('image/webp', 0.8);
+                log('WebP conversion complete');
+                log('WebP data URL length: ' + webpDataUrl.length);
+                log('WebP header valid: ' + webpDataUrl.startsWith('data:image/webp;base64,'));
+                
+                // Show results
+                const resultCanvas = document.createElement('canvas');
+                resultCanvas.width = canvas.width;
+                resultCanvas.height = canvas.height;
+                resultCanvas.style.maxWidth = '300px';
+                resultCanvas.style.height = 'auto';
+                const resultCtx = resultCanvas.getContext('2d');
+                resultCtx.drawImage(canvas, 0, 0);
+                
+                const webpImg = document.createElement('img');
+                webpImg.src = webpDataUrl;
+                webpImg.style.maxWidth = '300px';
+                webpImg.style.height = 'auto';
+                webpImg.onload = () => log('WebP image loaded successfully in DOM');
+                webpImg.onerror = () => log('ERROR: WebP image failed to load in DOM');
+                
+                resultsDiv.innerHTML = '<h3>Canvas Result:</h3>';
+                resultsDiv.appendChild(resultCanvas);
+                resultsDiv.innerHTML += '<h3>WebP Result:</h3>';
+                resultsDiv.appendChild(webpImg);
+                
+                log('Test completed successfully');
+                
+            } catch (error) {
+                log('ERROR: ' + error.message);
+                console.error('Conversion error:', error);
+            }
+        }
+        
+        async function getSvgDimensions(svgContent) {
+            // Try viewBox first
+            const viewBoxMatch = svgContent.match(/viewBox\s*=\s*['"]([^'"]+)['"]/i);
+            if (viewBoxMatch) {
+                const values = viewBoxMatch[1].split(/[\s,]+/).map(Number);
+                if (values.length >= 4) {
+                    const [x, y, width, height] = values;
+                    if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
+                        return { width, height };
+                    }
+                }
+            }
+            
+            // Try width/height attributes
+            const widthMatch = svgContent.match(/width\s*=\s*['"]([^'"]+)['"]/i);
+            const heightMatch = svgContent.match(/height\s*=\s*['"]([^'"]+)['"]/i);
+            
+            if (widthMatch && heightMatch) {
+                const width = parseFloat(widthMatch[1].replace(/px|pt|em|rem|%|mm|cm|in/gi, ''));
+                const height = parseFloat(heightMatch[1].replace(/px|pt|em|rem|%|mm|cm|in/gi, ''));
+                
+                if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
+                    return { width, height };
+                }
+            }
+            
+            // Fallback
+            return { width: 800, height: 600 };
+        }
+        
+        async function loadSvgAsImage(svgContent) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                
+                // Ensure namespace
+                let processedSvg = svgContent;
+                if (!processedSvg.includes('xmlns="http://www.w3.org/2000/svg"')) {
+                    processedSvg = processedSvg.replace(/<svg([^>]*?)>/i, '<svg xmlns="http://www.w3.org/2000/svg"$1>');
+                }
+                
+                const blob = new Blob([processedSvg], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                
+                const timeout = setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('SVG image loading timeout'));
+                }, 10000);
+                
+                img.onload = () => {
+                    clearTimeout(timeout);
+                    URL.revokeObjectURL(url);
+                    resolve(img);
+                };
+                
+                img.onerror = (error) => {
+                    clearTimeout(timeout);
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Failed to load SVG as image: ' + error));
+                };
+                
+                img.crossOrigin = 'anonymous';
+                img.src = url;
+            });
+        }
+        
+        // Auto-test on load
+        window.onload = function() {
+            log('Page loaded, ready for testing');
+            testWebPSupport();
+        };
+    </script>
+</body>
+</html>

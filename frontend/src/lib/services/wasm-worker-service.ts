@@ -65,21 +65,21 @@ export class WasmWorkerService {
 		}
 
 		// Allow re-initialization with threading configuration
-		console.log('[WasmWorkerService] 🔧 Initialize called with options:', options);
+		// Initialize called with options
 		
 		if (this.isInitialized && (!options?.threadCount || options.threadCount <= 1)) {
-			console.log('[WasmWorkerService] ✅ Already initialized, no threading config needed');
+			// Already initialized, no threading config needed
 			return;
 		}
 
 		if (this.initPromise && (!options?.threadCount || options.threadCount <= 1)) {
-			console.log('[WasmWorkerService] ✅ Initialization in progress, no threading config needed');
+			// Initialization in progress, no threading config needed
 			return this.initPromise;
 		}
 
 		// Handle threading configuration for existing worker
 		if (this.isInitialized && options?.threadCount && options.threadCount > 1) {
-			console.log(`[WasmWorkerService] 🚀 Configuring threading on existing worker: ${options.threadCount} threads`);
+			// Configuring threading on existing worker
 			
 			// Send threading configuration to existing worker
 			try {
@@ -89,7 +89,7 @@ export class WasmWorkerService {
 				});
 				
 				if (result.success) {
-					console.log('[WasmWorkerService] ✅ Threading configuration complete', result);
+					// Threading configuration complete
 				} else {
 					console.error('[WasmWorkerService] Threading configuration failed:', result.error);
 				}
@@ -109,7 +109,7 @@ export class WasmWorkerService {
 
 	private async _doInitialize(options?: { threadCount?: number; backend?: string }): Promise<void> {
 		try {
-			console.log('[WasmWorkerService] Initializing Web Worker...');
+			// Initializing Web Worker
 
 			// Create Web Worker
 			this.worker = new Worker(new URL('../workers/wasm-processor.worker.ts', import.meta.url), {
@@ -135,7 +135,7 @@ export class WasmWorkerService {
 			}
 
 			this.isInitialized = true;
-			console.log('[WasmWorkerService] ✅ Initialization complete', result);
+			// Initialization complete
 		} catch (error) {
 			console.error('[WasmWorkerService] Initialization failed:', error);
 			this.cleanup();
@@ -149,11 +149,11 @@ export class WasmWorkerService {
 	private handleWorkerMessage(event: MessageEvent) {
 		const { type, id, data, error } = event.data;
 
-		console.log(`[WasmWorkerService] 📨 Received worker message: type=${type}, id=${id}`);
+		// Received worker message
 
 		// Handle progress updates
 		if (type === 'progress') {
-			console.log(`[WasmWorkerService] 📊 Progress update:`, data);
+			// Progress update
 			if (this.progressCallback) {
 				this.progressCallback(data);
 			}
@@ -164,10 +164,10 @@ export class WasmWorkerService {
 		const pending = pendingRequests.get(id);
 		if (pending) {
 			pendingRequests.delete(id);
-			console.log(`[WasmWorkerService] 🔄 Resolving pending request ${id} with type ${type}`);
+			// Resolving pending request
 
 			if (type === 'success') {
-				console.log(`[WasmWorkerService] ✅ Success response for ${id}:`, typeof data, data?.success);
+				// Success response
 				pending.resolve(data);
 			} else if (type === 'error') {
 				console.log(`[WasmWorkerService] ❌ Error response for ${id}:`, error);
@@ -198,7 +198,7 @@ export class WasmWorkerService {
 			// Dynamic timeout: 60s base + 30s per megapixel, max 300s (5min)
 			timeout = Math.min(300000, 60000 + (megapixels * 30000));
 			
-			console.log(`[WasmWorkerService] 🕐 Dynamic timeout for ${megapixels.toFixed(1)}MP image: ${timeout/1000}s`);
+			// Dynamic timeout calculated
 		}
 
 		return new Promise((resolve, reject) => {
@@ -285,7 +285,7 @@ export class WasmWorkerService {
 			const isLargeImage = megapixels > 10; // 10MP+ is considered large
 			const isVeryLargeImage = megapixels > 20; // 20MP+ is very large
 
-			console.log(`[WasmWorkerService] 📊 Processing ${megapixels.toFixed(1)}MP image (${imageData.width}x${imageData.height})`);
+			// Processing image
 
 			// Check if GPU acceleration should be used
 			let preferGpu = false;
@@ -805,4 +805,17 @@ export class WasmWorkerService {
 }
 
 // Export singleton instance
-export const wasmWorkerService = WasmWorkerService.getInstance();
+// Lazy getter to avoid SSR instantiation - simple proxy approach
+let _wasmWorkerServiceInstance: WasmWorkerService | null = null;
+export const wasmWorkerService = new Proxy({} as WasmWorkerService, {
+	get(target, prop) {
+		if (!_wasmWorkerServiceInstance) {
+			_wasmWorkerServiceInstance = WasmWorkerService.getInstance();
+		}
+		const value = (_wasmWorkerServiceInstance as any)[prop];
+		if (typeof value === 'function') {
+			return value.bind(_wasmWorkerServiceInstance);
+		}
+		return value;
+	}
+});

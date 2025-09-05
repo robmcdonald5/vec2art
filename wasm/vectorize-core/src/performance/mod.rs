@@ -207,11 +207,11 @@ impl PerformanceUtils {
     /// Calculate optimal parallel threshold based on system capabilities
     pub fn calculate_optimal_parallel_threshold() -> usize {
         let _num_cpus = current_num_threads();
-        let _base_threshold = 1000;
+        let base_threshold = 1000;
 
         // Single-threaded WASM + Web Worker architecture
-        // Disable parallelization within WASM module
-        usize::MAX
+        // Return high threshold to effectively disable parallelization within WASM module
+        base_threshold * 100 // 100,000 - high enough to effectively disable but not MAX
     }
 }
 

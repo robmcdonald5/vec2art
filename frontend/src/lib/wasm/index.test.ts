@@ -10,9 +10,9 @@ vi.mock('$app/environment', () => ({
 	browser: true
 }));
 
-// Mock WASM module
+// Mock WASM module with better simulation
 const mockWasmModule = {
-	default: vi.fn(),
+	default: vi.fn().mockResolvedValue({}),
 	WasmVectorizer: vi.fn(),
 	WasmBackend: {
 		Edge: 'edge',
@@ -26,9 +26,11 @@ const mockWasmModule = {
 		Fast: 'fast',
 		Artistic: 'artistic'
 	},
-	initThreadPool: vi.fn(),
-	is_threading_supported: vi.fn(),
-	get_thread_count: vi.fn()
+	initThreadPool: vi.fn().mockResolvedValue({}),
+	is_threading_supported: vi.fn().mockReturnValue(true),
+	get_thread_count: vi.fn().mockReturnValue(8),
+	confirm_threading_success: vi.fn(),
+	mark_threading_failed: vi.fn()
 };
 
 // Mock dynamic import of WASM module
@@ -45,6 +47,9 @@ const mockNavigator = {
 
 // Setup global mocks
 beforeEach(() => {
+	// Reset mocks
+	vi.clearAllMocks();
+	
 	// Reset window and navigator properties
 	mockWindow.crossOriginIsolated = true;
 	mockNavigator.hardwareConcurrency = 8;

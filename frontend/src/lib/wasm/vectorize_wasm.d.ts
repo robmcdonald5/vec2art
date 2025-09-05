@@ -919,7 +919,7 @@ export interface InitOutput {
   readonly _ZN14vectorize_core10algorithms4dots8svg_dots10SvgElement8from_dot17h3a84a8cf183052a9E: (a: number, b: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots8svg_dots20dots_to_svg_elements17ha3d9d049b8d42ae3E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots8svg_dots16optimize_dot_svg17h78c663274b019da3E: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core10algorithms4dots8svg_dots23dots_to_svg_with_config17he2040f921033f531E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms4dots8svg_dots23dots_to_svg_with_config17hbfb292901924e02fE: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots8svg_dots17dots_to_svg_paths17h831bb253a472cc45E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots8svg_dots25generate_dot_svg_document17hf4d98188356a30c3E: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly _ZN14vectorize_core3svg21generate_svg_document17h5f99ff2b58568938E: (a: number, b: number, c: number, d: number, e: number, f: number) => void;

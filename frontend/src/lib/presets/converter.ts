@@ -316,7 +316,7 @@ function mapBackendSpecificParams(preset: StylePreset): Partial<VectorizerConfig
 		case 'dots':
 			// Dots backend specific parameters
 			if (preset.overrides?.dots) {
-				params.dot_density_threshold = preset.overrides.dots.density ?? 0.5;
+				params.dot_density_threshold = preset.overrides.dots.density ?? 0.105; // Default to UI value 8
 				params.min_radius = preset.overrides.dots.minSize ?? 0.5;
 				params.max_radius = preset.overrides.dots.maxSize ?? 3.0;
 				params.adaptive_sizing = true;
@@ -340,7 +340,7 @@ function mapBackendSpecificParams(preset: StylePreset): Partial<VectorizerConfig
 						params.max_radius = 2.0;
 						params.adaptive_sizing = true;
 						params.gradient_based_sizing = true;
-						params.poisson_disk_sampling = true; // Better distribution for fine art
+						params.poisson_disk_sampling = false; // Disabled by default for performance
 						break;
 					case 'artistic-stippling':
 						params.dot_density_threshold = 0.4; // Medium density for artistic effect
@@ -348,13 +348,15 @@ function mapBackendSpecificParams(preset: StylePreset): Partial<VectorizerConfig
 						params.max_radius = 3.5;
 						params.adaptive_sizing = true;
 						params.gradient_based_sizing = true;
-						params.poisson_disk_sampling = true; // Creative placement
+						params.poisson_disk_sampling = false; // Disabled by default for performance
 						break;
 					default:
-						params.dot_density_threshold = 0.5;
+						params.dot_density_threshold = 0.105; // UI value 8 as default
 						params.min_radius = 1.0;
 						params.max_radius = 3.0;
 						params.adaptive_sizing = true;
+						params.poisson_disk_sampling = false; // Disabled by default
+						params.gradient_based_sizing = true; // Enabled by default
 						break;
 				}
 			}
@@ -632,12 +634,12 @@ export function getAlgorithmDefaults(backend: VectorizerBackend): VectorizerConf
 				preserve_colors: true, // Dots look better with color
 				color_sampling: 'content-aware' as const,
 				// Dots-specific defaults
-				dot_density_threshold: 0.5,
+				dot_density_threshold: 0.105, // UI value 8 as default
 				min_radius: 1.0,
 				max_radius: 3.0,
 				adaptive_sizing: true,
 				background_tolerance: 0.1,
-				poisson_disk_sampling: false,
+				poisson_disk_sampling: false, // Disabled by default
 				gradient_based_sizing: true
 			};
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ImageViewer } from 'svelte-image-viewer';
-	import { ZoomIn, ZoomOut, Maximize2, Move } from 'lucide-svelte';
+	import { ZoomIn, ZoomOut, Maximize2, Move, Download } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 
 	interface Props {
@@ -11,6 +11,7 @@
 		showRemoveButton?: boolean;
 		isProcessing?: boolean;
 		className?: string;
+		onDownloadOriginal?: () => void;
 		// For synchronized pan/zoom (keeping interface for compatibility)
 		externalPanZoom?: { scale: number; x: number; y: number };
 		onPanZoomChange?: (state: { scale: number; x: number; y: number }) => void;
@@ -25,6 +26,7 @@
 		showRemoveButton = false,
 		isProcessing = false,
 		className = '',
+		onDownloadOriginal,
 		externalPanZoom,
 		onPanZoomChange,
 		enableSync = false
@@ -227,7 +229,7 @@
 				(externalPanZoom.scale !== 1 || externalPanZoom.x !== 0 || externalPanZoom.y !== 0);
 			
 			if (shouldPreserveState) {
-				console.log('[ImageViewer] Preserving external pan/zoom state on image change:', externalPanZoom);
+				console.log('[ImageViewer] Preserving external pan/zoom state on image change:', $state.snapshot(externalPanZoom));
 				// Don't reset - external state will be applied by the sync effect
 				return;
 			}
@@ -321,6 +323,19 @@
 			>
 				<Maximize2 class="h-4 w-4" />
 			</Button>
+			{#if onDownloadOriginal}
+				<Button
+					variant="outline"
+					size="icon"
+					class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+					onclick={onDownloadOriginal}
+					disabled={!isInitialized}
+					aria-label="Download original image"
+					title="Download original image"
+				>
+					<Download class="h-4 w-4" />
+				</Button>
+			{/if}
 		</div>
 	</div>
 

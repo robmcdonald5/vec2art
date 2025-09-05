@@ -455,6 +455,8 @@ mod logo_graphics_tests {
             color_similarity_threshold: 0.1,
             min_opacity_threshold: 0.1,
             precision: 2,
+            use_symbol_reuse: false,
+            symbol_reuse_threshold: 5,
         };
 
         let svg = dots_to_svg_with_config(&dots, &svg_config);
@@ -501,6 +503,8 @@ mod logo_graphics_tests {
             color_similarity_threshold: 0.1,
             min_opacity_threshold: 0.1,
             precision: 2,
+            use_symbol_reuse: false,
+            symbol_reuse_threshold: 5,
         };
 
         let svg = dots_to_svg_with_config(&dots, &svg_config);

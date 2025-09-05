@@ -8,7 +8,9 @@
 		Download,
 		X,
 		Link,
-		Unlink
+		Unlink,
+		Activity,
+		Image
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type { ProcessingProgress } from '$lib/types/vectorizer';
@@ -17,6 +19,9 @@
 	import InteractiveImagePanel from './InteractiveImagePanel.svelte';
 	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
 	import type { ConverterComponentProps } from '$lib/types/shared-props';
+	import AdvancedSvgPreview from '../ui/AdvancedSvgPreview.svelte';
+	import { analyzeSvgComplexity, assessPerformance } from '$lib/services/svg-performance-analyzer.js';
+	import { createManagedObjectURL, releaseManagedObjectURL } from '$lib/utils/object-url-manager.js';
 
 	interface Props extends ConverterComponentProps {}
 
@@ -58,13 +63,70 @@
 	// Derived states
 	const hasMultipleFiles = $derived(Math.max(files.length, originalImageUrls.length) > 1);
 	const currentFile = $derived(files[currentImageIndex]);
+	
+	// Managed object URL state
+	let previousFile: File | null = null;
+	let managedObjectUrl: string | null = null;
+	
+	// Effect to manage object URL lifecycle
+	$effect(() => {
+		// If file changed, clean up previous URL and create new one
+		if (currentFile !== previousFile) {
+			// Clean up previous URL
+			if (managedObjectUrl && previousFile) {
+				releaseManagedObjectURL(managedObjectUrl);
+			}
+			
+			// Create new URL for current file
+			managedObjectUrl = currentFile ? createManagedObjectURL(currentFile) : null;
+			previousFile = currentFile;
+		}
+		
+		// Cleanup on component unmount
+		return () => {
+			if (managedObjectUrl) {
+				releaseManagedObjectURL(managedObjectUrl);
+				managedObjectUrl = null;
+			}
+		};
+	});
+	
 	const currentImageUrl = $derived(
-		originalImageUrls[currentImageIndex] || (currentFile ? URL.createObjectURL(currentFile) : null)
+		originalImageUrls[currentImageIndex] || managedObjectUrl
 	);
 	const currentSvgUrl = $derived(previewSvgUrls[currentImageIndex]);
 	const hasResult = $derived(Boolean(currentSvgUrl));
 	const currentResult = $derived(results?.[currentImageIndex]);
 	const isError = $derived(currentResult?.svg?.includes('Failed to convert') ?? false);
+
+	// Performance analysis
+	const performanceAnalysis = $derived(() => {
+		if (!currentResult?.svg || isError) return null;
+		
+		try {
+			const metrics = analyzeSvgComplexity(currentResult.svg);
+			const backend = currentResult.config_used?.backend || 'edge';
+			const assessment = assessPerformance(metrics, backend as any);
+			return { metrics, assessment };
+		} catch (error) {
+			console.warn('Failed to analyze SVG performance:', error);
+			return null;
+		}
+	});
+
+
+	let dismissedWarning = $state(false);
+	let useAdvancedPreview = $state(true); // Default to advanced preview for performance
+
+	// Reset dismissed warning when image changes or new result arrives
+	$effect(() => {
+		// Reset when currentImageIndex changes or when we get a new result
+		if (currentResult) {
+			dismissedWarning = false;
+		}
+	});
+
+	// Performance analysis is handled by the PerformanceWarning component
 
 	// Zoom levels
 	const zoomLevels = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
@@ -173,6 +235,47 @@
 			document.removeEventListener('mouseup', handleGlobalMouseUp);
 		};
 	});
+
+	// Download original image functionality
+	function downloadOriginal(file: File | null, imageUrl: string | null) {
+		if (!file && !imageUrl) {
+			console.warn('No file or image URL available for download');
+			return;
+		}
+
+		// If we have the original file, download it directly
+		if (file) {
+			const link = document.createElement('a');
+			const url = URL.createObjectURL(file);
+			link.href = url;
+			link.download = file.name;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+			return;
+		}
+
+		// If we only have an image URL (like from originalImageUrls), 
+		// try to download it
+		if (imageUrl) {
+			try {
+				const link = document.createElement('a');
+				link.href = imageUrl;
+				// Try to extract filename from URL or use generic name
+				const urlPath = new URL(imageUrl).pathname;
+				const filename = urlPath.split('/').pop() || 'original-image';
+				link.download = filename;
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+			} catch (error) {
+				console.warn('Failed to download original image:', error);
+				// Fallback: open in new tab
+				window.open(imageUrl, '_blank');
+			}
+		}
+	}
 </script>
 
 <!-- Side-by-Side Preview -->
@@ -324,9 +427,9 @@
 					<!-- Sync Controls -->
 					<div class="mb-3 flex items-center justify-between px-2">
 						<div class="flex items-center gap-2">
-							<span class="text-converter-primary text-sm font-medium">Original</span>
+							<span class="text-converter-primary text-sm font-medium select-none">Original</span>
 							<button
-								class="text-converter-primary hover:text-ferrari-600 transition-colors duration-200 {panZoomStore.isSyncEnabled
+								class="text-converter-primary hover:text-ferrari-600 hover:scale-110 transition-all duration-200 {panZoomStore.isSyncEnabled
 									? 'text-ferrari-600'
 									: 'text-gray-400'}"
 								onclick={panZoomStore.toggleSync}
@@ -352,6 +455,7 @@
 						showRemoveButton={Boolean(currentFile)}
 						{isProcessing}
 						className="flex-1"
+						onDownloadOriginal={() => downloadOriginal(currentFile, currentImageUrl)}
 						externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.convertedState : undefined}
 						onPanZoomChange={(state) => panZoomStore.updateOriginalState(state)}
 						enableSync={panZoomStore.isSyncEnabled}
@@ -363,34 +467,54 @@
 			<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
 					<div class="mb-3 flex items-center justify-between px-2">
-						<div class="text-sm font-medium" class:text-red-600={isError} class:text-converter-primary={!isError}>
-							{isError ? 'Failed to convert' : 'Converted SVG'}
+						<div class="flex items-center gap-2">
+							<span class="text-sm font-medium select-none" class:text-red-600={isError} class:text-converter-primary={!isError}>
+								{isError ? 'Failed' : 'Converted'}
+							</span>
+							
+							<!-- Advanced Preview Toggle (only show when result is available) -->
+							{#if hasResult && !isError}
+								<button
+									class="text-converter-primary hover:text-ferrari-600 hover:scale-110 transition-all duration-200 {useAdvancedPreview ? 'text-ferrari-600' : 'text-gray-400'}"
+									onclick={() => useAdvancedPreview = !useAdvancedPreview}
+									disabled={isProcessing}
+									title={useAdvancedPreview ? 'Switch to standard preview' : 'Switch to optimized preview'}
+								>
+									{#if useAdvancedPreview}
+										<Activity class="h-4 w-4" />
+									{:else}
+										<Image class="h-4 w-4" />
+									{/if}
+								</button>
+							{/if}
 						</div>
-						<!-- Download Button (only show when result is available) -->
-						{#if hasResult && canDownload && !isError}
-							<Button
-								variant="ferrari"
-								size="sm"
-								class="transition-all duration-200 hover:-translate-y-0.5 hover:scale-105 hover:shadow-lg active:translate-y-0 active:scale-95"
-								onclick={onDownload}
-								disabled={isProcessing}
-							>
-								<Download class="h-4 w-4 transition-transform group-hover:scale-110" />
-								Download
-							</Button>
-						{/if}
+						
 					</div>
 
+
 					{#if hasResult && currentSvgUrl}
-						<InteractiveImagePanel
-							imageUrl={currentSvgUrl}
-							imageAlt="Converted SVG"
-							{isProcessing}
-							className="flex-1"
-							externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}
-							onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
-							enableSync={panZoomStore.isSyncEnabled}
-						/>
+						{#if useAdvancedPreview && currentResult?.svg}
+							<AdvancedSvgPreview
+								svgContent={currentResult.svg}
+								backend={currentResult.config_used?.backend || 'edge'}
+								className="flex-1"
+								showControls={true}
+								onDownload={onDownload}
+								externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}
+								onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
+								enableSync={panZoomStore.isSyncEnabled}
+							/>
+						{:else}
+							<InteractiveImagePanel
+								imageUrl={currentSvgUrl}
+								imageAlt="Converted SVG"
+								{isProcessing}
+								className="flex-1"
+								externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}
+								onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
+								enableSync={panZoomStore.isSyncEnabled}
+							/>
+						{/if}
 					{:else if currentProgress}
 						<div
 							class="dark:bg-ferrari-900 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-white"

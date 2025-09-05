@@ -108,7 +108,7 @@ export class VectorizerService {
 			this.vectorizer = await createVectorizer();
 
 			this.isInitialized = true;
-			console.log('✅ VectorizerService initialized successfully (lazy mode by default)');
+			// VectorizerService initialized successfully
 		} catch (error) {
 			const wasmError: VectorizerError = {
 				type: 'unknown',
@@ -152,7 +152,7 @@ export class VectorizerService {
 
 		try {
 			this.vectorizer[functionName](...args);
-			console.log(`[VectorizerService] Successfully called ${functionName} with args:`, args);
+			// WASM function called successfully
 			return true;
 		} catch (error) {
 			console.error(`[VectorizerService] Error calling ${functionName}:`, error);
@@ -202,7 +202,7 @@ export class VectorizerService {
 
 		// If this is a critical error and we haven't exceeded max failures, try to recover
 		if (this.isCriticalError(error) && this.failureCount <= this.maxFailureCount) {
-			console.log('[VectorizerService] Attempting automatic recovery...');
+			// Attempting automatic recovery
 
 			try {
 				// Mark as uninitialized
@@ -217,7 +217,7 @@ export class VectorizerService {
 				// Reinitialize WASM module
 				await this.initialize();
 
-				console.log('[VectorizerService] ✅ Automatic recovery successful');
+				// Automatic recovery successful
 
 				// Reset failure count on successful recovery
 				this.failureCount = 0;
@@ -1241,4 +1241,17 @@ export class VectorizerService {
 }
 
 // Export singleton instance
-export const vectorizerService = VectorizerService.getInstance();
+// Lazy getter to avoid SSR instantiation - simple proxy approach
+let _vectorizerServiceInstance: VectorizerService | null = null;
+export const vectorizerService = new Proxy({} as VectorizerService, {
+	get(target, prop) {
+		if (!_vectorizerServiceInstance) {
+			_vectorizerServiceInstance = VectorizerService.getInstance();
+		}
+		const value = (_vectorizerServiceInstance as any)[prop];
+		if (typeof value === 'function') {
+			return value.bind(_vectorizerServiceInstance);
+		}
+		return value;
+	}
+});

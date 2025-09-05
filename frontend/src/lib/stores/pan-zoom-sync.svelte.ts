@@ -125,8 +125,8 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 			}
 			
 			console.log('[PanZoomStore] States restored:', {
-				original: originalState,
-				converted: convertedState,
+				original: $state.snapshot(originalState),
+				converted: $state.snapshot(convertedState),
 				syncEnabled: isSyncEnabled
 			});
 		}

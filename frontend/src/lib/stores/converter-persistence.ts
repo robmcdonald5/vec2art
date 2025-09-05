@@ -7,6 +7,7 @@
 import { browser } from '$app/environment';
 import type { VectorizerConfig, ProcessingResult } from '$lib/types/vectorizer';
 import { DEFAULT_CONFIG } from '$lib/types/vectorizer';
+import type { PanZoomState } from './pan-zoom-sync.svelte';
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -20,7 +21,8 @@ const STORAGE_KEYS = {
 	RESULTS: 'vec2art_results', // Store SVG results (text, so efficient)
 	CURRENT_INDEX: 'vec2art_current_index',
 	AUTO_SAVE: 'vec2art_auto_save_enabled',
-	LAST_VISITED: 'vec2art_last_visited'
+	LAST_VISITED: 'vec2art_last_visited',
+	PAN_ZOOM_STATE: 'vec2art_pan_zoom_state' // Store pan/zoom states for viewport persistence
 } as const;
 
 // Configuration version for migration
@@ -59,6 +61,11 @@ interface StoredState {
 	results: (string | null)[]; // SVG strings or null
 	currentIndex: number;
 	timestamp: number;
+	panZoomState?: {
+		originalState: PanZoomState;
+		convertedState: PanZoomState;
+		isSyncEnabled: boolean;
+	};
 }
 
 class ConverterPersistence {
@@ -426,6 +433,62 @@ class ConverterPersistence {
 	}
 
 	/**
+	 * Save pan/zoom state for viewport persistence
+	 */
+	savePanZoomState(panZoomState: {
+		originalState: PanZoomState;
+		convertedState: PanZoomState;
+		isSyncEnabled: boolean;
+	}): boolean {
+		if (!browser) return false;
+
+		try {
+			const data = JSON.stringify(panZoomState);
+			localStorage.setItem(STORAGE_KEYS.PAN_ZOOM_STATE, data);
+			return true;
+		} catch (error) {
+			console.warn('Failed to save pan/zoom state:', error);
+			return false;
+		}
+	}
+
+	/**
+	 * Load pan/zoom state for viewport persistence
+	 */
+	loadPanZoomState(): {
+		originalState: PanZoomState;
+		convertedState: PanZoomState;
+		isSyncEnabled: boolean;
+	} | null {
+		if (!browser) return null;
+
+		try {
+			const stored = localStorage.getItem(STORAGE_KEYS.PAN_ZOOM_STATE);
+			if (!stored) return null;
+
+			const panZoomState = JSON.parse(stored);
+			
+			// Validate the structure
+			if (
+				panZoomState &&
+				typeof panZoomState === 'object' &&
+				panZoomState.originalState &&
+				panZoomState.convertedState &&
+				typeof panZoomState.isSyncEnabled === 'boolean'
+			) {
+				return panZoomState;
+			}
+			
+			return null;
+		} catch (error) {
+			console.warn('Failed to load pan/zoom state:', error);
+			// Clear corrupted data
+			localStorage.removeItem(STORAGE_KEYS.PAN_ZOOM_STATE);
+			return null;
+		}
+	}
+
+	/**
 	 * Save complete state (convenience method)
 	 */
 	saveCompleteState(state: {
@@ -436,6 +499,11 @@ class ConverterPersistence {
 		files: File[];
 		results: (ProcessingResult | null)[];
 		currentIndex: number;
+		panZoomState?: {
+			originalState: PanZoomState;
+			convertedState: PanZoomState;
+			isSyncEnabled: boolean;
+		};
 	}): boolean {
 		if (!browser || !this.autoSaveEnabled) return false;
 
@@ -447,6 +515,11 @@ class ConverterPersistence {
 			this.saveFilesMetadata(state.files);
 			const resultsSaved = this.saveResults(state.results);
 			this.saveCurrentIndex(state.currentIndex);
+
+			// Save pan/zoom state if provided
+			if (state.panZoomState) {
+				this.savePanZoomState(state.panZoomState);
+			}
 
 			// Update last visited timestamp
 			localStorage.setItem(STORAGE_KEYS.LAST_VISITED, Date.now().toString());
@@ -472,6 +545,7 @@ class ConverterPersistence {
 			const imageUrls = this.loadImageUrls();
 			const results = this.loadResults();
 			const currentIndex = this.loadCurrentIndex();
+			const panZoomState = this.loadPanZoomState();
 
 			// Check if we have any meaningful state to restore
 			if (!config && filesMetadata.length === 0) {
@@ -487,6 +561,7 @@ class ConverterPersistence {
 				imageUrls,
 				results: results.map((r) => r?.svg || null),
 				currentIndex,
+				panZoomState: panZoomState || undefined,
 				timestamp: parseInt(localStorage.getItem(STORAGE_KEYS.LAST_VISITED) || '0', 10)
 			};
 		} catch (error) {
@@ -552,6 +627,7 @@ class ConverterPersistence {
 		localStorage.removeItem(STORAGE_KEYS.IMAGE_URLS);
 		localStorage.removeItem(STORAGE_KEYS.RESULTS);
 		localStorage.removeItem(STORAGE_KEYS.CURRENT_INDEX);
+		localStorage.removeItem(STORAGE_KEYS.PAN_ZOOM_STATE);
 	}
 
 	/**

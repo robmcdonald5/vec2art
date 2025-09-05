@@ -244,7 +244,7 @@ export type WorkerMessageType =
 // Default configurations
 export const DEFAULT_CONFIG: VectorizerConfig = {
 	backend: 'edge',
-	detail: 0.8, // High detail (8/10) for better edge detection
+	detail: 0.8, // High detail (8/10) - consistent with dots density UI value 8
 	stroke_width: 1.5,
 	noise_filtering: false, // Off by default for cleaner raw processing
 	noise_filter_spatial_sigma: 1.2,
@@ -278,7 +278,15 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	num_superpixels: 250, // Higher detail for better region definition
 	compactness: 15, // Balanced shape regularity (reduced from previous 20 to avoid artifacts)
 	slic_iterations: 10, // Standard SLIC iteration count
-	initialization_pattern: 'poisson' // Poisson disk sampling shows least diagonal artifacts
+	initialization_pattern: 'poisson', // Poisson disk sampling shows least diagonal artifacts
+	// Dots backend defaults
+	dot_density_threshold: 0.105, // UI value 8: better balance of detail and performance
+	min_radius: 0.5,
+	max_radius: 3.0,
+	adaptive_sizing: true,
+	background_tolerance: 0.1,
+	poisson_disk_sampling: false, // Disabled by default for better performance and stability
+	gradient_based_sizing: true
 };
 
 // Preset configurations
@@ -332,12 +340,12 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		tremor_strength: 0.0,
 		tapering: 0.0,
 		// Dots-specific settings
-		dot_density_threshold: 0.15,
+		dot_density_threshold: 0.105, // UI value 8: better balance of detail and performance
 		adaptive_sizing: true,
 		min_radius: 0.5,
 		max_radius: 3.0,
 		background_tolerance: 0.1,
-		poisson_disk_sampling: true,
+		poisson_disk_sampling: false, // Disabled by default for better performance and stability
 		gradient_based_sizing: true,
 		// Unified color settings - Enable Color by default
 		preserve_colors: true,

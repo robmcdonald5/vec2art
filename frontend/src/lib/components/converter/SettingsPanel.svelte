@@ -64,19 +64,20 @@
 		const target = event.target as HTMLInputElement;
 		const uiValue = parseFloat(target.value); // UI slider value (0.1 to 1.0)
 
-		// INVERT for intuitive UX: Higher UI value = More dots = Lower density threshold
-		// Map UI range (0.1-1.0) to density threshold range (0.4-0.02)
-		const minThreshold = 0.02; // More dots
-		const maxThreshold = 0.4; // Fewer dots
-		const invertedValue =
-			maxThreshold - ((uiValue - 0.1) / (1.0 - 0.1)) * (maxThreshold - minThreshold);
+		// Convert to the 1-10 scale that matches Advanced Settings for consistency
+		// 0.1-1.0 → 1-10 (multiply by 10)
+		const advancedScaleValue = Math.round(uiValue * 10);
 
-		console.log(`🎯 Dot Density mapping: UI=${uiValue} → threshold=${invertedValue.toFixed(3)}`);
+		// Apply the same mapping as Advanced Settings (1-10 to 0.4-0.02)
+		// This ensures both Quick and Advanced Settings are perfectly synced
+		const threshold = 0.4 - ((advancedScaleValue - 1) / 9) * (0.4 - 0.02);
 
-		// Update both parameters for proper functionality
+		console.log(`🎯 Dot Density mapping (FIXED): UI=${uiValue} (${advancedScaleValue}/10) → threshold=${threshold.toFixed(3)}`);
+
+		// Update both parameters for consistency
 		onConfigChange({
 			detail: uiValue, // Keep detail in sync for other logic
-			dot_density_threshold: invertedValue
+			dot_density_threshold: threshold
 		});
 		onParameterChange();
 	}

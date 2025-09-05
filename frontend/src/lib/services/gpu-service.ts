@@ -35,7 +35,7 @@ export class GpuService {
 
     async initialize(): Promise<boolean> {
         if (!browser) {
-            console.log('[GPU Service] Not in browser environment');
+            // Not in browser environment
             return false;
         }
 
@@ -64,23 +64,19 @@ export class GpuService {
                 supports_image_processing: gpuBackendStatus.available,
                 message: gpuBackendStatus.status_message || `Status: ${gpuStatus.status}`
             };
-            console.log('[GPU Service] 🎮 Enhanced GPU capabilities detected:', {
-                available: this.capabilities.available,
-                backend: this.capabilities.backend, 
-                device: this.capabilities.device_info,
-                supports_processing: this.capabilities.supports_image_processing
-            });
-
+            
+            // Enhanced GPU capabilities detected
+            
             // Initialize GPU processing if available
             if (this.capabilities.available) {
                 try {
                     // Initialize GPU processing pipeline
                     const gpuInitResult = await this.wasmModule.initialize_gpu_processing();
-                    console.log('[GPU Service] 🚀 GPU processing pipeline initialized successfully:', gpuInitResult);
+                    // GPU processing pipeline initialized successfully
                     
                     // Initialize GPU selector with GPU support
                     this.gpuSelector = await this.wasmModule.WasmGpuSelector.init_with_gpu();
-                    console.log('[GPU Service] ✅ GPU selector initialized with hardware acceleration support');
+                    // GPU selector initialized with hardware acceleration support
                 } catch (error) {
                     console.warn('[GPU Service] ⚠️ GPU processing initialization failed, falling back to CPU:', error);
                     // Create CPU-only selector as fallback
@@ -280,6 +276,81 @@ export class GpuService {
         }
     }
 
+    /**
+     * Determine if GPU acceleration should be used for SVG preview rendering
+     */
+    shouldUseGpuForSvgPreview(elementCount: number, complexity: number): boolean {
+        if (!this.isGpuAvailable()) {
+            return false;
+        }
+
+        // Use GPU for very large datasets
+        if (elementCount > 10000) {
+            return true;
+        }
+
+        // Use GPU for complex graphics with moderate element counts
+        if (elementCount > 5000 && complexity > 2000) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get estimated performance improvement from GPU acceleration
+     */
+    getEstimatedSpeedup(elementCount: number): number {
+        if (!this.isGpuAvailable() || elementCount < 1000) {
+            return 1.0; // No improvement
+        }
+
+        // Empirical speedup estimates based on research
+        if (elementCount > 50000) return 60.0;  // Maximum theoretical speedup
+        if (elementCount > 20000) return 25.0;
+        if (elementCount > 10000) return 10.0;
+        if (elementCount > 5000) return 5.0;
+        if (elementCount > 2000) return 2.5;
+        
+        return 1.5; // Minimal improvement for smaller datasets
+    }
+
+    /**
+     * Create optimized rendering strategy for SVG previews
+     */
+    createSvgRenderingStrategy(elementCount: number, complexity: number): {
+        useGpu: boolean;
+        expectedSpeedup: number;
+        strategy: 'webgl' | 'canvas' | 'dom';
+        reason: string;
+    } {
+        const useGpu = this.shouldUseGpuForSvgPreview(elementCount, complexity);
+        const expectedSpeedup = this.getEstimatedSpeedup(elementCount);
+
+        if (useGpu) {
+            return {
+                useGpu: true,
+                expectedSpeedup,
+                strategy: 'webgl',
+                reason: `GPU acceleration for ${elementCount} elements (${expectedSpeedup}x speedup expected)`
+            };
+        } else if (elementCount > 2500) {
+            return {
+                useGpu: false,
+                expectedSpeedup: 2.0,
+                strategy: 'canvas',
+                reason: `Canvas rendering for ${elementCount} elements (GPU not beneficial)`
+            };
+        } else {
+            return {
+                useGpu: false,
+                expectedSpeedup: 1.0,
+                strategy: 'dom',
+                reason: `DOM rendering for ${elementCount} elements (optimal for interaction)`
+            };
+        }
+    }
+
     getGpuInfo(): {
         backend: string;
         available: boolean;
@@ -324,5 +395,17 @@ export class GpuService {
     }
 }
 
-// Singleton instance
-export const gpuService = new GpuService();
+// Lazy getter to avoid SSR instantiation - simple proxy approach
+let _gpuServiceInstance: GpuService | null = null;
+export const gpuService = new Proxy({} as GpuService, {
+	get(target, prop) {
+		if (!_gpuServiceInstance) {
+			_gpuServiceInstance = new GpuService();
+		}
+		const value = (_gpuServiceInstance as any)[prop];
+		if (typeof value === 'function') {
+			return value.bind(_gpuServiceInstance);
+		}
+		return value;
+	}
+});

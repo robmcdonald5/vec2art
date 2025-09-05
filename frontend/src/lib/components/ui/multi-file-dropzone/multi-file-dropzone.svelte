@@ -11,6 +11,7 @@
 		RotateCcw
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { createManagedObjectURL, releaseManagedObjectURL } from '$lib/utils/object-url-manager.js';
 
 	interface Props {
 		accept?: string;
@@ -51,6 +52,36 @@
 	let announceText = $state<string>('');
 	let errorMessage = $state<string>('');
 	let currentPreviewIndex = $state(0);
+	
+	// Managed object URL state
+	let previousPreviewFile: File | null = null;
+	let previewObjectUrl: string | null = null;
+	
+	// Derived current preview file
+	const currentPreviewFile = $derived(currentFiles[currentPreviewIndex] || null);
+	
+	// Effect to manage preview object URL lifecycle
+	$effect(() => {
+		// If preview file changed, clean up previous URL and create new one
+		if (currentPreviewFile !== previousPreviewFile) {
+			// Clean up previous URL
+			if (previewObjectUrl && previousPreviewFile) {
+				releaseManagedObjectURL(previewObjectUrl);
+			}
+			
+			// Create new URL for current preview file
+			previewObjectUrl = currentPreviewFile ? createManagedObjectURL(currentPreviewFile) : null;
+			previousPreviewFile = currentPreviewFile;
+		}
+		
+		// Cleanup on component unmount
+		return () => {
+			if (previewObjectUrl) {
+				releaseManagedObjectURL(previewObjectUrl);
+				previewObjectUrl = null;
+			}
+		};
+	});
 
 	// Accessibility functions
 	function announceToScreenReader(message: string) {
@@ -449,10 +480,10 @@
 					</div>
 
 					<div class="bg-muted/30 flex min-h-[200px] items-center justify-center rounded-lg p-4">
-						{#if currentFiles[currentPreviewIndex]}
+						{#if previewObjectUrl && currentPreviewFile}
 							<img
-								src={URL.createObjectURL(currentFiles[currentPreviewIndex])}
-								alt="Preview of {currentFiles[currentPreviewIndex].name}"
+								src={previewObjectUrl}
+								alt="Preview of {currentPreviewFile.name}"
 								class="max-h-48 max-w-full rounded object-contain"
 							/>
 						{/if}

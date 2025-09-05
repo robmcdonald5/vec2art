@@ -76,14 +76,14 @@ class VectorizerStore {
 		dots: { 
 			...defaultConfig, 
 			backend: 'dots' as const,
-			detail: 0.3,
+			detail: 0.8, // UI value 8 (consistent with dot density)
 			stroke_width: 1.0,
-			dot_density_threshold: 0.15,
+			dot_density_threshold: 0.105, // UI value 8: better balance of detail and performance
 			min_radius: 0.5,
 			max_radius: 3.0,
 			adaptive_sizing: true,
 			background_tolerance: 0.1,
-			poisson_disk_sampling: true,
+			poisson_disk_sampling: false, // Disabled by default for better performance and stability
 			gradient_based_sizing: true,
 			preserve_colors: true  // Enable colors by default for dots
 		}
@@ -417,14 +417,14 @@ class VectorizerStore {
 			case 'dots':
 				return {
 					...baseConfig,
-					detail: 0.3,
+					detail: 0.8, // UI value 8 (consistent with dot density)
 					stroke_width: 1.0,
-					dot_density_threshold: 0.15,
+					dot_density_threshold: 0.105, // UI value 8: better balance of detail and performance
 					min_radius: 0.5,
 					max_radius: 3.0,
 					adaptive_sizing: true,
 					background_tolerance: 0.1,
-					poisson_disk_sampling: true,
+					poisson_disk_sampling: false, // Disabled by default for better performance and stability
 					gradient_based_sizing: true,
 					preserve_colors: true
 				};

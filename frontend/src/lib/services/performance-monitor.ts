@@ -3,6 +3,7 @@
  * Comprehensive performance tracking and telemetry for vec2art application
  */
 
+import { browser } from '$app/environment';
 import type {
 	WebVitalsMetrics,
 	CustomMetrics,
@@ -44,12 +45,17 @@ export class PerformanceMonitor {
 		this.sessionId = this.generateSessionId();
 		this.sessionStartTime = new Date();
 		this.budgets = this.getDefaultBudgets(budgets);
+		
+		// Initialize session data (with safe defaults for SSR)
 		this.currentSession = this.initializeSession();
-
-		// Initialize performance tracking
-		this.initializeWebVitalsTracking();
-		this.initializeResourceMonitoring();
-		this.setupErrorTracking();
+		
+		// Only initialize browser-specific features in the browser
+		if (browser) {
+			// Initialize performance tracking
+			this.initializeWebVitalsTracking();
+			this.initializeResourceMonitoring();
+			this.setupErrorTracking();
+		}
 	}
 
 	/**
@@ -84,8 +90,8 @@ export class PerformanceMonitor {
 	 * Track Web Vitals metrics
 	 */
 	trackWebVitals(): void {
-		if (!('PerformanceObserver' in window)) {
-			console.warn('PerformanceObserver not supported');
+		if (!browser || !('PerformanceObserver' in window)) {
+			if (browser) console.warn('PerformanceObserver not supported');
 			return;
 		}
 
@@ -232,8 +238,8 @@ export class PerformanceMonitor {
 			errorType: this.classifyError(error, context),
 			errorMessage: error.message,
 			stackTrace: error.stack || '',
-			userAgent: navigator.userAgent,
-			url: window.location.href,
+			userAgent: browser ? navigator.userAgent : 'server',
+			url: browser ? window.location.href : 'server',
 			timestamp: new Date(),
 			sessionId: this.sessionId,
 			performanceImpact: this.calculatePerformanceImpact(error),
@@ -354,10 +360,10 @@ export class PerformanceMonitor {
 		return {
 			sessionId: this.sessionId,
 			startTime: this.sessionStartTime,
-			userAgent: navigator.userAgent,
+			userAgent: browser ? navigator.userAgent : 'server',
 			viewport: {
-				width: window.innerWidth,
-				height: window.innerHeight
+				width: browser ? window.innerWidth : 0,
+				height: browser ? window.innerHeight : 0
 			},
 			pageViews: [],
 			interactions: [],
@@ -367,6 +373,8 @@ export class PerformanceMonitor {
 	}
 
 	private initializeWebVitalsTracking(): void {
+		if (!browser) return;
+		
 		// Track page view
 		this.trackPageView();
 
@@ -375,6 +383,8 @@ export class PerformanceMonitor {
 	}
 
 	private initializeResourceMonitoring(): void {
+		if (!browser) return;
+		
 		if ('memory' in performance && !import.meta.env.DEV) {
 			// Monitor memory usage periodically (disabled in development to prevent high CPU usage)
 			setInterval(() => {
@@ -384,6 +394,8 @@ export class PerformanceMonitor {
 	}
 
 	private setupErrorTracking(): void {
+		if (!browser) return;
+		
 		// Global error handler
 		window.addEventListener('error', (event) => {
 			this.trackError(event.error, { type: 'javascript' });
@@ -399,6 +411,8 @@ export class PerformanceMonitor {
 		type: string,
 		callback: (entries: PerformanceEntry[]) => void
 	): void {
+		if (!browser || !('PerformanceObserver' in window)) return;
+		
 		try {
 			const observer = new PerformanceObserver((list) => {
 				callback(list.getEntries());
@@ -415,6 +429,8 @@ export class PerformanceMonitor {
 	}
 
 	private trackNavigationTiming(): void {
+		if (!browser) return;
+		
 		window.addEventListener('load', () => {
 			const navigation = performance.getEntriesByType(
 				'navigation'
@@ -434,7 +450,7 @@ export class PerformanceMonitor {
 
 	private trackPageView(): void {
 		const pageView: PageView = {
-			url: window.location.href,
+			url: browser ? window.location.href : 'server',
 			timestamp: new Date()
 		};
 
