@@ -98,16 +98,16 @@ class OffscreenSvgToWebPConverter {
 
       this.sendProgress(request.id, 'Loading SVG image', 40);
 
-      // Load SVG as ImageBitmap (faster than Image element)
-      const svgImageBitmap = await this.loadSvgAsImageBitmap(request.svgContent);
+      // Load SVG as Image element (reliable cross-browser support)
+      const svgImage = await this.loadSvgAsImage(request.svgContent);
       
       this.sendProgress(request.id, 'Rendering to canvas', 60);
 
       // Render using optimized method
       if (progressive && request.svgContent.length > 500000) {
-        await this.renderProgressively(svgImageBitmap, canvasSize, dimensions, request.id);
+        await this.renderProgressively(svgImage, canvasSize, dimensions, request.id);
       } else {
-        this.renderDirectly(svgImageBitmap, canvasSize, dimensions);
+        this.renderDirectly(svgImage, canvasSize, dimensions);
       }
 
       this.sendProgress(request.id, 'Converting to WebP', 90);
@@ -127,8 +127,7 @@ class OffscreenSvgToWebPConverter {
       const webpSizeBytes = webpBlob.size;
       const compressionRatio = originalSizeBytes / webpSizeBytes;
 
-      // Clean up ImageBitmap
-      svgImageBitmap.close();
+      // Image cleanup is handled automatically by GC
 
       this.sendProgress(request.id, 'Complete', 100);
 
@@ -227,44 +226,68 @@ class OffscreenSvgToWebPConverter {
     };
   }
 
-  private async loadSvgAsImageBitmap(svgContent: string): Promise<ImageBitmap> {
-    // Ensure SVG has proper namespace
-    let processedSvg = svgContent;
-    if (!processedSvg.includes('xmlns="http://www.w3.org/2000/svg"')) {
-      processedSvg = processedSvg.replace(
-        /<svg([^>]*?)>/i,
-        '<svg xmlns="http://www.w3.org/2000/svg"$1>'
-      );
-    }
+  private async loadSvgAsImage(svgContent: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      try {
+        // Ensure SVG has proper namespace
+        let processedSvg = svgContent;
+        if (!processedSvg.includes('xmlns="http://www.w3.org/2000/svg"')) {
+          processedSvg = processedSvg.replace(
+            /<svg([^>]*?)>/i,
+            '<svg xmlns="http://www.w3.org/2000/svg"$1>'
+          );
+        }
+        
+        // Create blob with proper MIME type
+        const blob = new Blob([processedSvg], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
 
-    // Create blob and convert to ImageBitmap (faster than Image element)
-    const blob = new Blob([processedSvg], { type: 'image/svg+xml;charset=utf-8' });
-    
-    try {
-      // createImageBitmap is faster and more memory-efficient
-      const imageBitmap = await createImageBitmap(blob);
-      return imageBitmap;
-    } catch (error) {
-      throw new Error(`Failed to create ImageBitmap from SVG: ${error}`);
-    }
+        // Set up image loading with timeout
+        const timeout = setTimeout(() => {
+          URL.revokeObjectURL(url);
+          reject(new Error('SVG image loading timeout (5 minutes)'));
+        }, 300000);
+
+        img.onload = () => {
+          clearTimeout(timeout);
+          URL.revokeObjectURL(url);
+          resolve(img);
+        };
+
+        img.onerror = (error) => {
+          clearTimeout(timeout);
+          URL.revokeObjectURL(url);
+          reject(new Error(`Failed to load SVG as image: ${error}`));
+        };
+
+        // Set CORS mode for potential external resources
+        img.crossOrigin = 'anonymous';
+        img.src = url;
+        
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   private renderDirectly(
-    imageBitmap: ImageBitmap,
+    image: HTMLImageElement,
     canvasSize: { width: number; height: number; scale: number },
     originalSize: { width: number; height: number }
   ): void {
     if (!this.ctx) throw new Error('Canvas context not available');
     
     this.ctx.drawImage(
-      imageBitmap,
+      image,
       0, 0, originalSize.width, originalSize.height,
       0, 0, canvasSize.width, canvasSize.height
     );
   }
 
   private async renderProgressively(
-    imageBitmap: ImageBitmap,
+    image: HTMLImageElement,
     canvasSize: { width: number; height: number; scale: number },
     originalSize: { width: number; height: number },
     requestId: string
@@ -292,7 +315,7 @@ class OffscreenSvgToWebPConverter {
         const srcH = (chunkH / canvasSize.height) * originalSize.height;
 
         this.ctx.drawImage(
-          imageBitmap,
+          image,
           srcX, srcY, srcW, srcH,
           chunkX, chunkY, chunkW, chunkH
         );

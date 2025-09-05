@@ -67,11 +67,10 @@ export class SvgToWebPConverter {
 
   private checkWorkerSupport(): boolean {
     try {
-      // Check for OffscreenCanvas, Web Workers, and createImageBitmap
+      // Check for OffscreenCanvas and Web Workers
       return (
         typeof OffscreenCanvas !== 'undefined' &&
         typeof Worker !== 'undefined' &&
-        typeof createImageBitmap !== 'undefined' &&
         'convertToBlob' in OffscreenCanvas.prototype
       );
     } catch {
@@ -629,7 +628,6 @@ export class SvgToWebPConverter {
       return (
         typeof OffscreenCanvas !== 'undefined' &&
         typeof Worker !== 'undefined' &&
-        typeof createImageBitmap !== 'undefined' &&
         'convertToBlob' in OffscreenCanvas.prototype
       );
     } catch {
