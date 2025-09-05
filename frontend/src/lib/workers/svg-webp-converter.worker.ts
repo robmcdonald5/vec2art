@@ -10,6 +10,8 @@
 interface WebPConversionRequest {
   id: string;
   svgContent: string;
+  imageData?: ImageData; // Pre-rendered image data from main thread
+  dimensions: { width: number; height: number };
   options: {
     quality?: number;
     maxWidth?: number;

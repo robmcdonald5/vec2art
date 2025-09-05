@@ -146,8 +146,8 @@ export class SvgToWebPConverter {
       onProgress
     } = options;
 
-    // Decide whether to use worker based on support and user preference
-    const shouldUseWorker = useWorker && this.workerSupported && this.worker;
+    // Disable worker for now due to Image API limitations in workers
+    const shouldUseWorker = false; // useWorker && this.workerSupported && this.worker;
     
     console.log('[WebPConverter] Starting conversion:', {
       contentLength: svgContent.length,
@@ -289,7 +289,8 @@ export class SvgToWebPConverter {
       
       onProgress?.('Rendering to canvas', 60);
       
-      if (progressive && svgContent.length > 500000) { // 500KB threshold
+      // Use progressive rendering for large SVGs to prevent blocking
+      if (progressive && svgContent.length > 200000) { // Lower threshold for better responsiveness
         await this.renderProgressively(svgImage, canvasSize, dimensions, onProgress);
       } else {
         await this.renderDirectly(svgImage, canvasSize, dimensions);
@@ -541,7 +542,7 @@ export class SvgToWebPConverter {
   ): Promise<void> {
     console.log('[WebPConverter] Using progressive rendering for large SVG');
     
-    const chunkSize = 512; // Render in 512x512 chunks
+    const chunkSize = 256; // Smaller chunks for better responsiveness
     const chunksX = Math.ceil(canvasSize.width / chunkSize);
     const chunksY = Math.ceil(canvasSize.height / chunkSize);
     const totalChunks = chunksX * chunksY;
@@ -568,8 +569,8 @@ export class SvgToWebPConverter {
           chunkX, chunkY, chunkW, chunkH
         );
 
-        // Yield control and send progress (every few chunks)
-        if (chunkIndex % 4 === 0) {
+        // Yield control more frequently for better UI responsiveness
+        if (chunkIndex % 2 === 0) {
           onProgress?.('Rendering progressively', progress);
           await new Promise(resolve => setTimeout(resolve, 0));
         }
@@ -593,13 +594,13 @@ export class SvgToWebPConverter {
     const size = svgContent.length;
     const isComplex = svgContent.includes('<path') && svgContent.includes('gradient');
     
-    if (size > 1000000) { // >1MB - Large files benefit most from worker processing
+    if (size > 1000000) { // >1MB - Use main thread for now due to Worker limitations
       return {
         quality: 0.75,
         maxWidth: 1920,
         maxHeight: 1920,
         progressive: true,
-        useWorker: true // Strongly recommend worker for large files
+        useWorker: false // Disable worker until we can solve Image availability in workers
       };
     } else if (size > 500000) { // >500KB
       return {
@@ -607,7 +608,7 @@ export class SvgToWebPConverter {
         maxWidth: 2048,
         maxHeight: 2048,
         progressive: true,
-        useWorker: true
+        useWorker: false
       };
     } else {
       return {
@@ -615,7 +616,7 @@ export class SvgToWebPConverter {
         maxWidth: 2560,
         maxHeight: 2560,
         progressive: false,
-        useWorker: false // Small files don't need worker overhead
+        useWorker: false
       };
     }
   }
