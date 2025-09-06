@@ -1443,7 +1443,7 @@
 
 			<!-- Status Display -->
 			{#if !pageLoaded}
-				<div class="mt-4">
+				<div class="mt-4 flex justify-center">
 					<LoadingState 
 						message="Loading converter..."
 						size="sm"
@@ -1452,7 +1452,7 @@
 					/>
 				</div>
 			{:else if initError}
-				<div class="mt-4">
+				<div class="mt-4 flex justify-center">
 					<ErrorState
 						message={initError}
 						size="sm"
