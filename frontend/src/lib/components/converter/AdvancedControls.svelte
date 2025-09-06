@@ -19,6 +19,7 @@
 
 	// Import dots backend parameter ranges (for dot size controls)
 	import { DOTS_PARAMETER_RANGES } from '$lib/types/dots-backend';
+	import FerrariSlider from '$lib/components/ui/FerrariSlider.svelte';
 
 	interface AdvancedControlsProps {
 		config: VectorizerConfig;
@@ -53,6 +54,18 @@
 		warnings: []
 	});
 
+	// Reactive state for FerrariSlider components
+	let backgroundStrengthValue = $state(0.5);
+	let passCountValue = $state(1);
+	let directionalThresholdValue = $state(0.3);
+	let colorAccuracyValue = $state(0.7);
+	let maxColorsPathValue = $state(3);
+	let colorToleranceValue = $state(0.15);
+	let minRadiusValue = $state(0.5);
+	let maxRadiusValue = $state(3.0);
+	let compactnessValue = $state(20);
+	let maxProcessingTimeValue = $state(30000);
+
 	// Update dots validation when config changes
 	$effect(() => {
 		if (config.backend === 'dots') {
@@ -61,33 +74,20 @@
 		}
 	});
 
-	// Update background removal strength slider fill when config changes
+	// Update reactive values when config changes
 	$effect(() => {
-		if (backgroundRemovalStrengthSliderRef && config.background_removal_strength !== undefined) {
-			updateSliderFill(backgroundRemovalStrengthSliderRef);
-		}
+		backgroundStrengthValue = config.background_removal_strength ?? 0.5;
+		passCountValue = config.pass_count || 1;
+		directionalThresholdValue = config.directional_strength_threshold ?? 0.3;
+		colorAccuracyValue = config.color_accuracy ?? 0.7;
+		maxColorsPathValue = config.max_colors_per_path ?? 3;
+		colorToleranceValue = config.color_tolerance ?? 0.15;
+		minRadiusValue = config.min_radius ?? 0.5;
+		maxRadiusValue = config.max_radius ?? 3.0;
+		compactnessValue = config.compactness ?? 20;
+		maxProcessingTimeValue = config.max_processing_time_ms ?? 30000;
 	});
 
-	// Update slider visual fills when radius values change reactively
-	$effect(() => {
-		if (config.backend === 'dots') {
-			// Update min radius slider fill when config changes
-			if (minRadiusSliderRef && config.min_radius !== undefined) {
-				if (minRadiusSliderRef.value !== config.min_radius.toString()) {
-					minRadiusSliderRef.value = config.min_radius.toString();
-					updateSliderFill(minRadiusSliderRef);
-				}
-			}
-
-			// Update max radius slider fill when config changes
-			if (maxRadiusSliderRef && config.max_radius !== undefined) {
-				if (maxRadiusSliderRef.value !== config.max_radius.toString()) {
-					maxRadiusSliderRef.value = config.max_radius.toString();
-					updateSliderFill(maxRadiusSliderRef);
-				}
-			}
-		}
-	});
 
 	// Simple section toggle with logging
 	function toggleSection(sectionName: keyof typeof expandedSections) {
@@ -105,100 +105,12 @@
 		};
 	}
 
-	// Simple range input handler
-	function handleRangeChange(configKey: keyof VectorizerConfig, scale = 1) {
-		return (event: Event) => {
-			const input = event.target as HTMLInputElement;
-			const value = parseFloat(input.value) * scale;
-
-			// Update progressive fill
-			updateSliderFill(input);
-
-			console.log(`🟡 Advanced Controls - Range change: ${configKey} = ${value}`);
-			onConfigChange({ [configKey]: value } as Partial<VectorizerConfig>);
-			onParameterChange?.();
-		};
-	}
 
 	// Dots-specific parameter handlers with architectural mapping
 
-	// Slider refs for radius controls
-	let minRadiusSliderRef = $state<HTMLInputElement>();
-	let maxRadiusSliderRef = $state<HTMLInputElement>();
-	let backgroundRemovalStrengthSliderRef = $state<HTMLInputElement>();
 
-	function handleDotRadiusRange(isMin: boolean) {
-		return (event: Event) => {
-			const target = event.target as HTMLInputElement;
-			const value = parseFloat(target.value);
-			updateSliderFill(target);
 
-			if (isMin) {
-				// Ensure max_radius is always larger than min_radius
-				const maxRadius = Math.max(value + 0.1, config.max_radius || value + 1.0);
-				console.log(`🎯 Advanced Controls - Min radius: ${value}, adjusted max: ${maxRadius}`);
-				onConfigChange({
-					min_radius: value,
-					max_radius: maxRadius
-				});
 
-				// Reactive effect will handle visual slider updates
-			} else {
-				// Ensure max_radius is always larger than min_radius
-				const minRadius = Math.min(value - 0.1, config.min_radius || value - 1.0);
-				const constrainedMinRadius = Math.max(0.3, minRadius);
-				console.log(
-					`🎯 Advanced Controls - Max radius: ${value}, adjusted min: ${constrainedMinRadius}`
-				);
-				onConfigChange({
-					min_radius: constrainedMinRadius,
-					max_radius: value
-				});
-
-				// Reactive effect will handle visual slider updates
-			}
-			onParameterChange?.();
-		};
-	}
-
-	// Progressive slider functionality
-	function updateSliderFill(slider: HTMLInputElement) {
-		const min = parseFloat(slider.min);
-		const max = parseFloat(slider.max);
-		const value = parseFloat(slider.value);
-		const percentage = ((value - min) / (max - min)) * 100;
-		slider.style.setProperty('--value', `${percentage}%`);
-	}
-
-	function initializeSliderFill(slider: HTMLInputElement) {
-		updateSliderFill(slider);
-		slider.addEventListener('input', () => updateSliderFill(slider));
-	}
-
-	// Slider refs for multipass controls
-	let passCountSliderRef = $state<HTMLInputElement>();
-
-	// Pass count slider handler
-	function handlePassCountSliderChange(event: Event) {
-		const slider = event.target as HTMLInputElement;
-		const passCount = parseInt(slider.value);
-
-		// Update progressive fill
-		updateSliderFill(slider);
-
-		console.log(`🟡 Advanced Controls - Pass count change: ${passCount}`);
-
-		// Calculate the new multipass configuration
-		const tempConfig = { ...config, pass_count: passCount };
-		const multipassConfig = calculateMultipassConfig(tempConfig);
-
-		// Update configuration with new pass count and computed multipass settings
-		onConfigChange({
-			pass_count: passCount,
-			multipass: multipassConfig.multipass
-		});
-		onParameterChange?.();
-	}
 
 	// Get description for pass count
 	function getPassCountDescription(passCount: number): string {
@@ -381,31 +293,19 @@
 										{Math.round((config.background_removal_strength ?? 0.5) * 100)}%
 									</span>
 								</div>
-								<input
-									bind:this={backgroundRemovalStrengthSliderRef}
+								<FerrariSlider
 									id="bg-strength-slider"
-									type="range"
-									min="0.0"
-									max="1.0"
-									step="0.1"
-									value={config.background_removal_strength ?? 0.5}
-									onchange={(e) => {
-										const value = parseFloat(e.currentTarget.value);
-										updateSliderFill(e.currentTarget);
-										console.log(`🟡 Advanced Controls - Background removal strength: ${value}`);
-										onConfigChange({ background_removal_strength: value });
-										onParameterChange?.();
-									}}
-									oninput={(e) => {
-										const value = parseFloat(e.currentTarget.value);
-										updateSliderFill(e.currentTarget);
+									bind:value={backgroundStrengthValue}
+									min={0.0}
+									max={1.0}
+									step={0.1}
+									oninput={(value) => {
 										console.log(`🟡 Advanced Controls - Background removal strength: ${value}`);
 										onConfigChange({ background_removal_strength: value });
 										onParameterChange?.();
 									}}
 									{disabled}
-									class="slider-ferrari w-full"
-									use:initializeSliderFill
+									class="w-full"
 								/>
 								<div class="text-converter-secondary text-xs">
 									Higher values remove more background (more aggressive), lower values are more
@@ -463,20 +363,27 @@
 									{config.pass_count || 1}/10
 								</span>
 							</div>
-							<input
-								bind:this={passCountSliderRef}
-								type="range"
+							<FerrariSlider
 								id="pass-count"
-								min="1"
-								max="10"
-								step="1"
-								value={config.pass_count || 1}
-								oninput={handlePassCountSliderChange}
-								onchange={handlePassCountSliderChange}
+								bind:value={passCountValue}
+								min={1}
+								max={10}
+								step={1}
+								oninput={(value) => {
+									const passCount = parseInt(value.toString());
+									console.log(`🟡 Advanced Controls - Pass count change: ${passCount}`);
+									// Calculate the new multipass configuration
+									const tempConfig = { ...config, pass_count: passCount };
+									const multipassConfig = calculateMultipassConfig(tempConfig);
+									// Update configuration with new pass count and computed multipass settings
+									onConfigChange({
+										pass_count: passCount,
+										multipass: multipassConfig.multipass
+									});
+									onParameterChange?.();
+								}}
 								{disabled}
-								class="slider-ferrari w-full"
-								aria-describedby="pass-count-desc"
-								use:initializeSliderFill
+								class="w-full"
 							/>
 							<div id="pass-count-desc" class="text-converter-secondary text-xs">
 								{getPassCountDescription(config.pass_count || 1)}
@@ -561,17 +468,19 @@
 												{(config.directional_strength_threshold ?? 0.3).toFixed(1)}
 											</span>
 										</div>
-										<input
-											type="range"
+										<FerrariSlider
 											id="directional-threshold"
-											min="0.1"
-											max="0.8"
-											step="0.1"
-											value={config.directional_strength_threshold ?? 0.3}
-											oninput={handleRangeChange('directional_strength_threshold')}
+											bind:value={directionalThresholdValue}
+											min={0.1}
+											max={0.8}
+											step={0.1}
+											oninput={(value) => {
+												console.log(`🟡 Advanced Controls - Range change: directional_strength_threshold = ${value}`);
+												onConfigChange({ directional_strength_threshold: value });
+												onParameterChange?.();
+											}}
 											{disabled}
-											class="slider-ferrari w-full"
-											use:initializeSliderFill
+											class="w-full"
 										/>
 										<div class="space-y-1 text-xs">
 											<div class="text-converter-secondary">
@@ -723,17 +632,19 @@
 									{Math.round((config.color_accuracy ?? 0.7) * 100)}%
 								</span>
 							</div>
-							<input
-								type="range"
+							<FerrariSlider
 								id="color-accuracy-unified"
-								min="0.3"
-								max="1.0"
-								step="0.1"
-								value={config.color_accuracy ?? 0.7}
-								oninput={handleRangeChange('color_accuracy')}
+								bind:value={colorAccuracyValue}
+								min={0.3}
+								max={1.0}
+								step={0.1}
+								oninput={(value) => {
+									console.log(`🟡 Advanced Controls - Range change: color_accuracy = ${value}`);
+									onConfigChange({ color_accuracy: value });
+									onParameterChange?.();
+								}}
 								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
+								class="w-full"
 							/>
 							<div class="text-converter-secondary text-xs">
 								Higher accuracy preserves more colors but increases processing time
@@ -751,17 +662,19 @@
 										{config.max_colors_per_path ?? 3}
 									</span>
 								</div>
-								<input
-									type="range"
+								<FerrariSlider
 									id="max-colors-path-unified"
-									min="1"
-									max="10"
-									step="1"
-									value={config.max_colors_per_path ?? 3}
-									oninput={handleRangeChange('max_colors_per_path')}
+									bind:value={maxColorsPathValue}
+									min={1}
+									max={10}
+									step={1}
+									oninput={(value) => {
+										console.log(`🟡 Advanced Controls - Range change: max_colors_per_path = ${value}`);
+										onConfigChange({ max_colors_per_path: value });
+										onParameterChange?.();
+									}}
 									{disabled}
-									class="slider-ferrari w-full"
-									use:initializeSliderFill
+									class="w-full"
 								/>
 								<div class="text-converter-secondary text-xs">
 									Limits the number of different colors per individual line path
@@ -779,17 +692,19 @@
 									{Math.round((config.color_tolerance ?? 0.15) * 100)}%
 								</span>
 							</div>
-							<input
-								type="range"
+							<FerrariSlider
 								id="color-tolerance-unified"
-								min="0.05"
-								max="0.4"
-								step="0.05"
-								value={config.color_tolerance ?? 0.15}
-								oninput={handleRangeChange('color_tolerance')}
+								bind:value={colorToleranceValue}
+								min={0.05}
+								max={0.4}
+								step={0.05}
+								oninput={(value) => {
+									console.log(`🟡 Advanced Controls - Range change: color_tolerance = ${value}`);
+									onConfigChange({ color_tolerance: value });
+									onParameterChange?.();
+								}}
 								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
+								class="w-full"
 							/>
 							<div class="text-converter-secondary text-xs">
 								Controls color clustering sensitivity (lower = more distinct colors, higher = more
@@ -982,19 +897,24 @@
 											{(config.min_radius ?? 0.5).toFixed(1)}px
 										</span>
 									</div>
-									<input
-										bind:this={minRadiusSliderRef}
+									<FerrariSlider
 										id="min-radius"
-										type="range"
+										bind:value={minRadiusValue}
 										min={DOTS_PARAMETER_RANGES.RADIUS.MIN_ALLOWED}
-										max="4.0"
-										step="0.1"
-										value={config.min_radius ?? 0.5}
-										onchange={handleDotRadiusRange(true)}
-										oninput={handleDotRadiusRange(true)}
+										max={4.0}
+										step={0.1}
+										oninput={(value) => {
+											// Ensure max_radius is always larger than min_radius
+											const maxRadius = Math.max(value + 0.1, config.max_radius || value + 1.0);
+											console.log(`🎯 Advanced Controls - Min radius: ${value}, adjusted max: ${maxRadius}`);
+											onConfigChange({
+												min_radius: value,
+												max_radius: maxRadius
+											});
+											onParameterChange?.();
+										}}
 										{disabled}
-										class="slider-ferrari w-full"
-										use:initializeSliderFill
+										class="w-full"
 									/>
 								</div>
 
@@ -1008,19 +928,27 @@
 											{(config.max_radius ?? 3.0).toFixed(1)}px
 										</span>
 									</div>
-									<input
-										bind:this={maxRadiusSliderRef}
+									<FerrariSlider
 										id="max-radius"
-										type="range"
-										min="1.0"
+										bind:value={maxRadiusValue}
+										min={1.0}
 										max={DOTS_PARAMETER_RANGES.RADIUS.MAX_ALLOWED}
-										step="0.1"
-										value={config.max_radius ?? 3.0}
-										onchange={handleDotRadiusRange(false)}
-										oninput={handleDotRadiusRange(false)}
+										step={0.1}
+										oninput={(value) => {
+											// Ensure max_radius is always larger than min_radius
+											const minRadius = Math.min(value - 0.1, config.min_radius || value - 1.0);
+											const constrainedMinRadius = Math.max(0.3, minRadius);
+											console.log(
+												`🎯 Advanced Controls - Max radius: ${value}, adjusted min: ${constrainedMinRadius}`
+											);
+											onConfigChange({
+												min_radius: constrainedMinRadius,
+												max_radius: value
+											});
+											onParameterChange?.();
+										}}
 										{disabled}
-										class="slider-ferrari w-full"
-										use:initializeSliderFill
+										class="w-full"
 									/>
 								</div>
 							</div>
@@ -1148,17 +1076,19 @@
 									{config.compactness ?? 20}
 								</span>
 							</div>
-							<input
-								type="range"
+							<FerrariSlider
 								id="compactness"
-								min="5"
-								max="30"
-								step="1"
-								value={config.compactness ?? 20}
-								oninput={handleRangeChange('compactness')}
+								bind:value={compactnessValue}
+								min={5}
+								max={30}
+								step={1}
+								oninput={(value) => {
+									console.log(`🟡 Advanced Controls - Range change: compactness = ${value}`);
+									onConfigChange({ compactness: value });
+									onParameterChange?.();
+								}}
 								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
+								class="w-full"
 							/>
 							<div class="text-converter-secondary text-xs">
 								Region regularity vs color fidelity (5=irregular/accurate, 30=regular/smooth).
@@ -1279,17 +1209,19 @@
 								{/if}
 							</span>
 						</div>
-						<input
-							type="range"
+						<FerrariSlider
 							id="max-time"
-							min="5000"
-							max="999999"
-							step="5000"
-							value={config.max_processing_time_ms ?? 30000}
-							oninput={handleRangeChange('max_processing_time_ms')}
+							bind:value={maxProcessingTimeValue}
+							min={5000}
+							max={999999}
+							step={5000}
+							oninput={(value) => {
+								console.log(`🟡 Advanced Controls - Range change: max_processing_time_ms = ${value}`);
+								onConfigChange({ max_processing_time_ms: value });
+								onParameterChange?.();
+							}}
 							{disabled}
-							class="slider-ferrari w-full"
-							use:initializeSliderFill
+							class="w-full"
 						/>
 						<div class="text-converter-secondary text-xs">
 							{#if (config.max_processing_time_ms ?? 30000) >= 999999}
@@ -1334,99 +1266,3 @@
 	</div>
 </section>
 
-<style>
-	/* Unified Progressive Ferrari Slider Styles */
-	.slider-ferrari {
-		-webkit-appearance: none;
-		appearance: none;
-		background: linear-gradient(
-			to right,
-			#dc143c 0%,
-			#dc143c var(--value, 0%),
-			#ffe5e0 var(--value, 0%),
-			#ffe5e0 100%
-		);
-		height: 8px;
-		border-radius: 4px;
-		cursor: pointer;
-		outline: none;
-		transition: all 0.2s ease;
-		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari:hover {
-		background: linear-gradient(
-			to right,
-			#ff2800 0%,
-			#ff2800 var(--value, 0%),
-			#ffb5b0 var(--value, 0%),
-			#ffb5b0 100%
-		);
-	}
-
-	.slider-ferrari::-webkit-slider-track {
-		background: transparent;
-	}
-
-	.slider-ferrari::-webkit-slider-thumb {
-		-webkit-appearance: none;
-		appearance: none;
-		background: linear-gradient(135deg, #ff2800, #dc2626);
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		border: 2px solid white;
-		box-shadow:
-			0 2px 4px rgba(0, 0, 0, 0.2),
-			0 1px 2px rgba(0, 0, 0, 0.1);
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		cursor: pointer;
-	}
-
-	.slider-ferrari::-webkit-slider-thumb:hover {
-		transform: scale(1.1);
-		box-shadow:
-			0 4px 8px rgba(255, 40, 0, 0.3),
-			0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari::-moz-range-track {
-		background: transparent;
-		height: 8px;
-		border-radius: 4px;
-	}
-
-	.slider-ferrari::-moz-range-thumb {
-		background: linear-gradient(135deg, #ff2800, #dc2626);
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		border: 2px solid white;
-		box-shadow:
-			0 2px 4px rgba(0, 0, 0, 0.2),
-			0 1px 2px rgba(0, 0, 0, 0.1);
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		cursor: pointer;
-		border: none;
-	}
-
-	.slider-ferrari::-moz-range-thumb:hover {
-		transform: scale(1.1);
-		box-shadow:
-			0 4px 8px rgba(255, 40, 0, 0.3),
-			0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.slider-ferrari:disabled::-webkit-slider-thumb {
-		cursor: not-allowed;
-	}
-</style>

@@ -10,6 +10,7 @@
 	import ParameterPanel from './ParameterPanel.svelte';
 	import AdvancedControls from './AdvancedControls.svelte';
 	import PortalTooltipFixed from '$lib/components/ui/tooltip/PortalTooltipFixed.svelte';
+	import FerrariSlider from '$lib/components/ui/FerrariSlider.svelte';
 
 	interface Props {
 		config: VectorizerConfig;
@@ -54,9 +55,8 @@
 	// Legacy mapping functions removed - using direct StylePreset ID tracking instead
 
 	// Special handler for dots backend detail/density mapping
-	function updateDotDensity(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const uiValue = parseFloat(target.value); // UI slider value (0.1 to 1.0)
+	function updateDotDensity(value: number) {
+		const uiValue = value; // UI slider value (0.1 to 1.0)
 
 		// Convert to the 1-10 scale that matches Advanced Settings for consistency
 		// 0.1-1.0 → 1-10 (multiply by 10)
@@ -78,44 +78,22 @@
 		onParameterChange();
 	}
 
-	// Progressive slider functionality
-	function updateSliderFill(slider: HTMLInputElement) {
-		const min = parseFloat(slider.min);
-		const max = parseFloat(slider.max);
-		const value = parseFloat(slider.value);
-		const percentage = ((value - min) / (max - min)) * 100;
-		slider.style.setProperty('--value', `${percentage}%`);
-	}
+	// Reactive values for FerrariSlider components
+	let detailValue = $state(config.detail || 0.6);
+	let strokeWidthValue = $state(config.stroke_width || 2.0);
+	let regionComplexityValue = $state(config.num_superpixels || 150);
 
-	function initializeSliderFill(slider: HTMLInputElement) {
-		updateSliderFill(slider);
-		slider.addEventListener('input', () => updateSliderFill(slider));
-	}
-
-	// Reactive effects to update slider fills when config changes externally
-	let detailSliderRef = $state<HTMLInputElement>();
-	let strokeWidthSliderRef = $state<HTMLInputElement>();
-	let regionComplexitySliderRef = $state<HTMLInputElement>();
-
+	// Update reactive values when config changes
 	$effect(() => {
-		// Update detail slider fill when config.detail changes
-		if (detailSliderRef && config.detail !== undefined) {
-			updateSliderFill(detailSliderRef);
-		}
+		detailValue = config.detail || 0.6;
 	});
 
 	$effect(() => {
-		// Update stroke width slider fill when config.stroke_width changes
-		if (strokeWidthSliderRef && config.stroke_width !== undefined) {
-			updateSliderFill(strokeWidthSliderRef);
-		}
+		strokeWidthValue = config.stroke_width || 2.0;
 	});
 
 	$effect(() => {
-		// Update region complexity slider fill when config.num_superpixels changes
-		if (regionComplexitySliderRef && config.num_superpixels !== undefined) {
-			updateSliderFill(regionComplexitySliderRef);
-		}
+		regionComplexityValue = config.num_superpixels || 150;
 	});
 </script>
 
@@ -234,27 +212,24 @@
 									/>
 								{/if}
 							</div>
-							<input
+							<FerrariSlider
 								id="detail-level-slider"
-								bind:this={detailSliderRef}
-								type="range"
-								min="0.1"
-								max="1"
-								step="0.1"
-								value={config.detail || 0.6}
-								oninput={config.backend === 'dots' ? updateDotDensity : updateConfig('detail')}
+								bind:value={detailValue}
+								min={0.1}
+								max={1}
+								step={0.1}
+								oninput={config.backend === 'dots' ? updateDotDensity : (value) => { onConfigChange({ detail: value }); onParameterChange(); }}
 								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
+								class="w-full"
 							/>
 							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
 								{#if config.backend === 'dots'}
 									<span>Sparse</span>
-									<span class="font-medium">{Math.round((config.detail || 0) * 10)}/10</span>
+									<span class="font-medium">{Math.round(detailValue * 10)}/10</span>
 									<span>Dense</span>
 								{:else}
 									<span>Simple</span>
-									<span class="font-medium">{Math.round((config.detail || 0) * 10)}/10</span>
+									<span class="font-medium">{Math.round(detailValue * 10)}/10</span>
 									<span>Detailed</span>
 								{/if}
 							</div>
@@ -277,22 +252,19 @@
 									size="md"
 								/>
 							</div>
-							<input
+							<FerrariSlider
 								id="region-complexity-slider"
-								bind:this={regionComplexitySliderRef}
-								type="range"
-								min="50"
-								max="500"
-								step="25"
-								value={config.num_superpixels || 150}
-								oninput={updateConfig('num_superpixels')}
+								bind:value={regionComplexityValue}
+								min={50}
+								max={500}
+								step={25}
+								oninput={(value) => { onConfigChange({ num_superpixels: value }); onParameterChange(); }}
 								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
+								class="w-full"
 							/>
 							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
 								<span>Simple</span>
-								<span class="font-medium">{config.num_superpixels || 150}</span>
+								<span class="font-medium">{regionComplexityValue}</span>
 								<span>Complex</span>
 							</div>
 						</div>
@@ -315,22 +287,19 @@
 								size="md"
 							/>
 						</div>
-						<input
+						<FerrariSlider
 							id="stroke-width-slider"
-							bind:this={strokeWidthSliderRef}
-							type="range"
-							min="0.5"
-							max="10"
-							step="0.1"
-							value={config.stroke_width || 2.0}
-							oninput={updateConfig('stroke_width')}
+							bind:value={strokeWidthValue}
+							min={0.5}
+							max={10}
+							step={0.1}
+							oninput={(value) => { onConfigChange({ stroke_width: value }); onParameterChange(); }}
 							{disabled}
-							class="slider-ferrari w-full"
-							use:initializeSliderFill
+							class="w-full"
 						/>
 						<div class="text-converter-secondary mt-1 flex justify-between text-xs">
 							<span>{config.backend === 'dots' ? 'Small' : 'Thin'}</span>
-							<span class="font-medium">{(config.stroke_width || 0).toFixed(1)}px</span>
+							<span class="font-medium">{strokeWidthValue.toFixed(1)}px</span>
 							<span>{config.backend === 'dots' ? 'Large' : 'Thick'}</span>
 						</div>
 					</div>
@@ -417,99 +386,3 @@
 	</div>
 </div>
 
-<style>
-	/* Unified Progressive Ferrari Slider Styles */
-	.slider-ferrari {
-		-webkit-appearance: none;
-		appearance: none;
-		background: linear-gradient(
-			to right,
-			#dc143c 0%,
-			#dc143c var(--value, 0%),
-			#ffe5e0 var(--value, 0%),
-			#ffe5e0 100%
-		);
-		height: 8px;
-		border-radius: 4px;
-		cursor: pointer;
-		outline: none;
-		transition: all 0.2s ease;
-		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari:hover {
-		background: linear-gradient(
-			to right,
-			#ff2800 0%,
-			#ff2800 var(--value, 0%),
-			#ffb5b0 var(--value, 0%),
-			#ffb5b0 100%
-		);
-	}
-
-	.slider-ferrari::-webkit-slider-track {
-		background: transparent;
-	}
-
-	.slider-ferrari::-webkit-slider-thumb {
-		-webkit-appearance: none;
-		appearance: none;
-		background: linear-gradient(135deg, #ff2800, #dc2626);
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		border: 2px solid white;
-		box-shadow:
-			0 2px 4px rgba(0, 0, 0, 0.2),
-			0 1px 2px rgba(0, 0, 0, 0.1);
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		cursor: pointer;
-	}
-
-	.slider-ferrari::-webkit-slider-thumb:hover {
-		transform: scale(1.1);
-		box-shadow:
-			0 4px 8px rgba(255, 40, 0, 0.3),
-			0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari::-moz-range-track {
-		background: transparent;
-		height: 8px;
-		border-radius: 4px;
-	}
-
-	.slider-ferrari::-moz-range-thumb {
-		background: linear-gradient(135deg, #ff2800, #dc2626);
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		border: 2px solid white;
-		box-shadow:
-			0 2px 4px rgba(0, 0, 0, 0.2),
-			0 1px 2px rgba(0, 0, 0, 0.1);
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		cursor: pointer;
-		border: none;
-	}
-
-	.slider-ferrari::-moz-range-thumb:hover {
-		transform: scale(1.1);
-		box-shadow:
-			0 4px 8px rgba(255, 40, 0, 0.3),
-			0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.slider-ferrari:disabled::-webkit-slider-thumb {
-		cursor: not-allowed;
-	}
-</style>

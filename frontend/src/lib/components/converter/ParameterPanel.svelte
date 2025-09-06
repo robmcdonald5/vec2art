@@ -3,6 +3,7 @@
 	import type { VectorizerConfig, HandDrawnPreset } from '$lib/types/vectorizer';
 	import { HAND_DRAWN_DESCRIPTIONS } from '$lib/types/vectorizer';
 	import { CustomSelect } from '$lib/components/ui/custom-select';
+	import FerrariSlider from '$lib/components/ui/FerrariSlider.svelte';
 
 	// Import dots backend architecture
 	import { mapUIConfigToDotsConfig, validateDotsConfig } from '$lib/utils/dots-mapping.js';
@@ -28,50 +29,8 @@
 	const detailToUI = (detail: number) => Math.round(((detail - 0.1) / 0.9) * 9 + 1); // detail 0.1 → UI 1, detail 1.0 → UI 10
 	const detailFromUI = (uiValue: number) => 0.1 + ((uiValue - 1) / 9) * 0.9; // UI 1 → detail 0.1, UI 10 → detail 1.0
 
-	function handleDetailChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const uiValue = parseInt(target.value);
-		const internalValue = detailFromUI(uiValue);
 
-		// Update progressive fill
-		updateSliderFill(target);
 
-		// PROPER ARCHITECTURE: Always use generic parameters
-		// The WASM worker will handle backend-specific mapping using the architectural system
-		console.log(`🔧 Detail slider changed: UI=${uiValue} → internal=${internalValue}`);
-		onConfigChange({ detail: internalValue });
-		onParameterChange?.();
-	}
-
-	function handleStrokeWidthChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const value = parseFloat(target.value);
-
-		// Update progressive fill
-		updateSliderFill(target);
-
-		// PROPER ARCHITECTURE: Always use generic parameters
-		// The WASM worker will handle backend-specific mapping using the architectural system
-		console.log(`🔧 Line width slider changed: UI=${value}`);
-		onConfigChange({ stroke_width: value });
-		onParameterChange?.();
-	}
-
-	function handleDotDensityChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const uiValue = parseInt(target.value);
-
-		// Convert UI value (1-10) to dot density threshold (0.4-0.02, inverted)
-		// UI: 1 = sparse dots (high threshold), 10 = dense dots (low threshold)
-		const threshold = 0.4 - ((uiValue - 1) / 9) * (0.4 - 0.02);
-
-		// Update progressive fill
-		updateSliderFill(target);
-
-		// Set dot density threshold directly
-		onConfigChange({ dot_density_threshold: threshold });
-		onParameterChange?.();
-	}
 
 	function handleInitializationPatternChange(value: string) {
 		console.log(`[ParameterPanel] Initialization pattern changed to: ${value}`);
@@ -119,33 +78,11 @@
 		onParameterChange?.();
 	}
 
-	function handleSpatialSigmaChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const value = parseFloat(target.value);
-		onConfigChange({ noise_filter_spatial_sigma: value });
-		onParameterChange?.();
-	}
 
-	function handleRangeSigmaChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const value = parseFloat(target.value);
-		onConfigChange({ noise_filter_range_sigma: value });
-		onParameterChange?.();
-	}
 
 	// REMOVED: Backend-specific parameter handlers are no longer needed
 	// The architectural system handles all parameter mapping in the WASM worker
 
-	function handleRegionComplexityChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const regions = parseInt(target.value);
-
-		// Update progressive fill
-		updateSliderFill(target);
-
-		onConfigChange({ num_superpixels: regions });
-		onParameterChange?.();
-	}
 
 	function handleAdaptiveThresholdChange(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -186,31 +123,6 @@
 		return 'custom';
 	}
 
-	// Generic range input handler for artistic effects
-	function handleRangeChange(configKey: keyof VectorizerConfig) {
-		return (event: Event) => {
-			const input = event.target as HTMLInputElement;
-			const value = parseFloat(input.value);
-
-			// Update progressive fill
-			updateSliderFill(input);
-
-			console.log(`🟡 Parameter Panel - Range change: ${configKey} = ${value}`);
-
-			// Update the config with the new value
-			const newConfig = { [configKey]: value } as Partial<VectorizerConfig>;
-
-			// Check if this change makes it a custom preset
-			if (['variable_weights', 'tremor_strength', 'tapering'].includes(configKey)) {
-				const detectedPreset = checkForCustomPreset(newConfig);
-				newConfig.hand_drawn_preset = detectedPreset;
-				console.log(`🟡 Parameter Panel - Detected preset: ${detectedPreset}`);
-			}
-
-			onConfigChange(newConfig);
-			onParameterChange?.();
-		};
-	}
 
 	// UI state for sliders - separate from derived to allow two-way binding
 	// Note: detailUI converted to derived value for better sync
@@ -233,92 +145,33 @@
 		}));
 	})();
 
-	// Progressive slider functionality
-	function updateSliderFill(slider: HTMLInputElement) {
-		const min = parseFloat(slider.min);
-		const max = parseFloat(slider.max);
-		const value = parseFloat(slider.value);
-		const percentage = ((value - min) / (max - min)) * 100;
-		slider.style.setProperty('--value', `${percentage}%`);
-	}
+	// Reactive state for FerrariSlider components
+	let detailValue = $state(0.6);
+	let dotDensityValue = $state(5);
+	let regionComplexityValue = $state(250);
+	let strokeWidthValue = $state(2.0);
+	let variableWeightsValue = $state(0.0);
+	let tremorStrengthValue = $state(0.0);
+	let taperingValue = $state(0.0);
+	let spatialSigmaValue = $state(1.2);
+	let rangeSigmaValue = $state(50.0);
 
-	function initializeSliderFill(slider: HTMLInputElement) {
-		updateSliderFill(slider);
-		slider.addEventListener('input', () => updateSliderFill(slider));
-	}
 
-	// Reactive effects to update slider fills when config changes externally
-	let detailSliderRef = $state<HTMLInputElement>();
-	let dotDensitySliderRef = $state<HTMLInputElement>();
-	let strokeWidthSliderRef = $state<HTMLInputElement>();
-	let regionComplexitySliderRef = $state<HTMLInputElement>();
-	let spatialSigmaSliderRef = $state<HTMLInputElement>();
-	let rangeSigmaSliderRef = $state<HTMLInputElement>();
-	let variableWeightsSliderRef = $state<HTMLInputElement>();
-	let tremorStrengthSliderRef = $state<HTMLInputElement>();
-	let taperingSliderRef = $state<HTMLInputElement>();
 
+
+	// Update reactive values when config changes
 	$effect(() => {
-		// Update detail slider fill when config.detail changes
-		if (detailSliderRef && config.detail !== undefined) {
-			updateSliderFill(detailSliderRef);
-		}
-	});
-
-	$effect(() => {
-		// Update dot density slider fill when config.dot_density_threshold changes
-		if (dotDensitySliderRef && config.dot_density_threshold !== undefined) {
-			updateSliderFill(dotDensitySliderRef);
-		}
-	});
-
-	$effect(() => {
-		// Update stroke width slider fill when config.stroke_width changes
-		if (strokeWidthSliderRef && config.stroke_width !== undefined) {
-			updateSliderFill(strokeWidthSliderRef);
-		}
-	});
-
-	$effect(() => {
-		// Update region complexity slider fill when config.num_superpixels changes
-		if (regionComplexitySliderRef && config.num_superpixels !== undefined) {
-			updateSliderFill(regionComplexitySliderRef);
-		}
-	});
-
-	$effect(() => {
-		// Update spatial sigma slider fill when config.noise_filter_spatial_sigma changes
-		if (spatialSigmaSliderRef && config.noise_filter_spatial_sigma !== undefined) {
-			updateSliderFill(spatialSigmaSliderRef);
-		}
-	});
-
-	$effect(() => {
-		// Update range sigma slider fill when config.noise_filter_range_sigma changes
-		if (rangeSigmaSliderRef && config.noise_filter_range_sigma !== undefined) {
-			updateSliderFill(rangeSigmaSliderRef);
-		}
-	});
-
-	$effect(() => {
-		// Update variable weights slider fill when config.variable_weights changes
-		if (variableWeightsSliderRef && config.variable_weights !== undefined) {
-			updateSliderFill(variableWeightsSliderRef);
-		}
-	});
-
-	$effect(() => {
-		// Update tremor strength slider fill when config.tremor_strength changes
-		if (tremorStrengthSliderRef && config.tremor_strength !== undefined) {
-			updateSliderFill(tremorStrengthSliderRef);
-		}
-	});
-
-	$effect(() => {
-		// Update tapering slider fill when config.tapering changes
-		if (taperingSliderRef && config.tapering !== undefined) {
-			updateSliderFill(taperingSliderRef);
-		}
+		detailValue = detailToUI(config.detail);
+		dotDensityValue = config.dot_density_threshold !== undefined
+			? Math.round(((0.4 - config.dot_density_threshold) / (0.4 - 0.02)) * 9 + 1)
+			: 5;
+		regionComplexityValue = config.num_superpixels || 250;
+		strokeWidthValue = config.stroke_width || 2.0;
+		variableWeightsValue = config.variable_weights ?? 0.0;
+		tremorStrengthValue = config.tremor_strength ?? 0.0;
+		taperingValue = config.tapering ?? 0.0;
+		spatialSigmaValue = config.noise_filter_spatial_sigma ?? 1.2;
+		rangeSigmaValue = config.noise_filter_range_sigma ?? 50.0;
 	});
 </script>
 
@@ -341,19 +194,23 @@
 						aria-live="polite">{detailUI}/10</span
 					>
 				</div>
-				<input
-					bind:this={detailSliderRef}
+				<FerrariSlider
 					id="detail-level"
-					type="range"
-					min="1"
-					max="10"
-					value={detailUI}
-					onchange={handleDetailChange}
-					oninput={handleDetailChange}
+					bind:value={detailValue}
+					min={1}
+					max={10}
+					step={1}
+					oninput={(value) => {
+						const uiValue = parseInt(value.toString());
+						const internalValue = detailFromUI(uiValue);
+						// PROPER ARCHITECTURE: Always use generic parameters
+						// The WASM worker will handle backend-specific mapping using the architectural system
+						console.log(`🔧 Detail slider changed: UI=${uiValue} → internal=${internalValue}`);
+						onConfigChange({ detail: internalValue });
+						onParameterChange?.();
+					}}
 					{disabled}
-					class="slider-ferrari w-full"
-					aria-describedby="detail-level-desc"
-					use:initializeSliderFill
+					class="w-full"
 				/>
 				<div id="detail-level-desc" class="text-converter-muted text-xs">
 					Controls line density and sensitivity. Higher values capture more details but may include
@@ -378,19 +235,23 @@
 						aria-live="polite">{dotDensityUI}/10</span
 					>
 				</div>
-				<input
-					bind:this={dotDensitySliderRef}
+				<FerrariSlider
 					id="dot-density"
-					type="range"
-					min="1"
-					max="10"
-					value={dotDensityUI}
-					onchange={handleDotDensityChange}
-					oninput={handleDotDensityChange}
+					bind:value={dotDensityValue}
+					min={1}
+					max={10}
+					step={1}
+					oninput={(value) => {
+						const uiValue = parseInt(value.toString());
+						// Convert UI value (1-10) to dot density threshold (0.4-0.02, inverted)
+						// UI: 1 = sparse dots (high threshold), 10 = dense dots (low threshold)
+						const threshold = 0.4 - ((uiValue - 1) / 9) * (0.4 - 0.02);
+						// Set dot density threshold directly
+						onConfigChange({ dot_density_threshold: threshold });
+						onParameterChange?.();
+					}}
 					{disabled}
-					class="slider-ferrari w-full"
-					aria-describedby="dot-density-desc"
-					use:initializeSliderFill
+					class="w-full"
 				/>
 				<div id="dot-density-desc" class="text-converter-muted text-xs">
 					Controls how many dots are placed. Higher values create denser stippling with more detail.
@@ -414,20 +275,19 @@
 						aria-live="polite">{config.num_superpixels || 250}</span
 					>
 				</div>
-				<input
-					bind:this={regionComplexitySliderRef}
+				<FerrariSlider
 					id="region-complexity"
-					type="range"
-					min="50"
-					max="500"
-					step="25"
-					value={config.num_superpixels || 250}
-					onchange={handleRegionComplexityChange}
-					oninput={handleRegionComplexityChange}
+					bind:value={regionComplexityValue}
+					min={50}
+					max={500}
+					step={25}
+					oninput={(value) => {
+						const regions = parseInt(value.toString());
+						onConfigChange({ num_superpixels: regions });
+						onParameterChange?.();
+					}}
 					{disabled}
-					class="slider-ferrari w-full"
-					aria-describedby="region-complexity-desc"
-					use:initializeSliderFill
+					class="w-full"
 				/>
 				<div id="region-complexity-desc" class="text-converter-muted text-xs">
 					Controls the number of regions in the superpixel segmentation. Higher values create more
@@ -499,20 +359,21 @@
 					aria-live="polite">{(config.stroke_width || 2.0).toFixed(1)}px</span
 				>
 			</div>
-			<input
-				bind:this={strokeWidthSliderRef}
+			<FerrariSlider
 				id="stroke-width"
-				type="range"
-				min="0.5"
-				max="10.0"
-				step="0.1"
-				value={config.stroke_width || 2.0}
-				onchange={handleStrokeWidthChange}
-				oninput={handleStrokeWidthChange}
+				bind:value={strokeWidthValue}
+				min={0.5}
+				max={10.0}
+				step={0.1}
+				oninput={(value) => {
+					// PROPER ARCHITECTURE: Always use generic parameters
+					// The WASM worker will handle backend-specific mapping using the architectural system
+					console.log(`🔧 Line width slider changed: UI=${value}`);
+					onConfigChange({ stroke_width: value });
+					onParameterChange?.();
+				}}
 				{disabled}
-				class="slider-ferrari w-full"
-				aria-describedby="stroke-width-desc"
-				use:initializeSliderFill
+				class="w-full"
 			/>
 			<div id="stroke-width-desc" class="text-converter-muted text-xs">
 				{config.backend === 'dots'
@@ -539,18 +400,25 @@
 							{(config.variable_weights ?? 0).toFixed(1)}
 						</span>
 					</div>
-					<input
-						bind:this={variableWeightsSliderRef}
-						type="range"
+					<FerrariSlider
 						id="variable-weights"
-						min="0"
-						max="1"
-						step="0.1"
-						value={config.variable_weights ?? 0}
-						oninput={handleRangeChange('variable_weights')}
+						bind:value={variableWeightsValue}
+						min={0}
+						max={1}
+						step={0.1}
+						oninput={(value) => {
+							console.log(`🟡 Parameter Panel - Range change: variable_weights = ${value}`);
+							// Update the config with the new value
+							const newConfig = { variable_weights: value };
+							// Check if this change makes it a custom preset
+							const detectedPreset = checkForCustomPreset(newConfig);
+							newConfig.hand_drawn_preset = detectedPreset;
+							console.log(`🟡 Parameter Panel - Detected preset: ${detectedPreset}`);
+							onConfigChange(newConfig);
+							onParameterChange?.();
+						}}
 						{disabled}
-						class="slider-ferrari w-full"
-						use:initializeSliderFill
+						class="w-full"
 					/>
 					<div class="text-converter-muted text-xs">
 						Line thickness variation based on image features and curvature.
@@ -567,18 +435,25 @@
 							{(config.tremor_strength ?? 0).toFixed(1)}
 						</span>
 					</div>
-					<input
-						bind:this={tremorStrengthSliderRef}
-						type="range"
+					<FerrariSlider
 						id="tremor-strength"
-						min="0"
-						max="0.5"
-						step="0.1"
-						value={config.tremor_strength ?? 0}
-						oninput={handleRangeChange('tremor_strength')}
+						bind:value={tremorStrengthValue}
+						min={0}
+						max={0.5}
+						step={0.1}
+						oninput={(value) => {
+							console.log(`🟡 Parameter Panel - Range change: tremor_strength = ${value}`);
+							// Update the config with the new value
+							const newConfig = { tremor_strength: value };
+							// Check if this change makes it a custom preset
+							const detectedPreset = checkForCustomPreset(newConfig);
+							newConfig.hand_drawn_preset = detectedPreset;
+							console.log(`🟡 Parameter Panel - Detected preset: ${detectedPreset}`);
+							onConfigChange(newConfig);
+							onParameterChange?.();
+						}}
 						{disabled}
-						class="slider-ferrari w-full"
-						use:initializeSliderFill
+						class="w-full"
 					/>
 					<div class="text-converter-muted text-xs">
 						Subtle hand-drawn irregularities for organic line appearance.
@@ -593,18 +468,25 @@
 							{(config.tapering ?? 0).toFixed(1)}
 						</span>
 					</div>
-					<input
-						bind:this={taperingSliderRef}
-						type="range"
+					<FerrariSlider
 						id="tapering"
-						min="0"
-						max="1"
-						step="0.1"
-						value={config.tapering ?? 0}
-						oninput={handleRangeChange('tapering')}
+						bind:value={taperingValue}
+						min={0}
+						max={1}
+						step={0.1}
+						oninput={(value) => {
+							console.log(`🟡 Parameter Panel - Range change: tapering = ${value}`);
+							// Update the config with the new value
+							const newConfig = { tapering: value };
+							// Check if this change makes it a custom preset
+							const detectedPreset = checkForCustomPreset(newConfig);
+							newConfig.hand_drawn_preset = detectedPreset;
+							console.log(`🟡 Parameter Panel - Detected preset: ${detectedPreset}`);
+							onConfigChange(newConfig);
+							onParameterChange?.();
+						}}
 						{disabled}
-						class="slider-ferrari w-full"
-						use:initializeSliderFill
+						class="w-full"
 					/>
 					<div class="text-converter-muted text-xs">
 						Natural line endpoint tapering for smoother line endings.
@@ -702,20 +584,18 @@
 								aria-live="polite">{config.noise_filter_spatial_sigma?.toFixed(1) ?? '1.2'}</span
 							>
 						</div>
-						<input
-							bind:this={spatialSigmaSliderRef}
+						<FerrariSlider
 							id="spatial-sigma"
-							type="range"
-							min="0.5"
-							max="1.5"
-							step="0.1"
-							value={config.noise_filter_spatial_sigma ?? 1.2}
-							onchange={handleSpatialSigmaChange}
-							oninput={handleSpatialSigmaChange}
+							bind:value={spatialSigmaValue}
+							min={0.5}
+							max={1.5}
+							step={0.1}
+							oninput={(value) => {
+								onConfigChange({ noise_filter_spatial_sigma: value });
+								onParameterChange?.();
+							}}
 							{disabled}
-							class="slider-ferrari w-full"
-							aria-describedby="spatial-sigma-desc"
-							use:initializeSliderFill
+							class="w-full"
 						/>
 						<div id="spatial-sigma-desc" class="text-converter-muted text-xs">
 							Higher values provide more smoothing but may blur fine details.
@@ -737,20 +617,18 @@
 								aria-live="polite">{config.noise_filter_range_sigma?.toFixed(0) ?? '50'}</span
 							>
 						</div>
-						<input
-							bind:this={rangeSigmaSliderRef}
+						<FerrariSlider
 							id="range-sigma"
-							type="range"
-							min="10"
-							max="100"
-							step="5"
-							value={config.noise_filter_range_sigma ?? 50.0}
-							onchange={handleRangeSigmaChange}
-							oninput={handleRangeSigmaChange}
+							bind:value={rangeSigmaValue}
+							min={10}
+							max={100}
+							step={5}
+							oninput={(value) => {
+								onConfigChange({ noise_filter_range_sigma: value });
+								onParameterChange?.();
+							}}
 							{disabled}
-							class="slider-ferrari w-full"
-							aria-describedby="range-sigma-desc"
-							use:initializeSliderFill
+							class="w-full"
 						/>
 						<div id="range-sigma-desc" class="text-converter-muted text-xs">
 							Higher values preserve fewer edges (less selective filtering).
@@ -762,99 +640,3 @@
 	{/if}
 </section>
 
-<style>
-	/* Unified Progressive Ferrari Slider Styles */
-	.slider-ferrari {
-		-webkit-appearance: none;
-		appearance: none;
-		background: linear-gradient(
-			to right,
-			#dc143c 0%,
-			#dc143c var(--value, 0%),
-			#ffe5e0 var(--value, 0%),
-			#ffe5e0 100%
-		);
-		height: 8px;
-		border-radius: 4px;
-		cursor: pointer;
-		outline: none;
-		transition: all 0.2s ease;
-		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari:hover {
-		background: linear-gradient(
-			to right,
-			#ff2800 0%,
-			#ff2800 var(--value, 0%),
-			#ffb5b0 var(--value, 0%),
-			#ffb5b0 100%
-		);
-	}
-
-	.slider-ferrari::-webkit-slider-track {
-		background: transparent;
-	}
-
-	.slider-ferrari::-webkit-slider-thumb {
-		-webkit-appearance: none;
-		appearance: none;
-		background: linear-gradient(135deg, #ff2800, #dc2626);
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		border: 2px solid white;
-		box-shadow:
-			0 2px 4px rgba(0, 0, 0, 0.2),
-			0 1px 2px rgba(0, 0, 0, 0.1);
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		cursor: pointer;
-	}
-
-	.slider-ferrari::-webkit-slider-thumb:hover {
-		transform: scale(1.1);
-		box-shadow:
-			0 4px 8px rgba(255, 40, 0, 0.3),
-			0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari::-moz-range-track {
-		background: transparent;
-		height: 8px;
-		border-radius: 4px;
-	}
-
-	.slider-ferrari::-moz-range-thumb {
-		background: linear-gradient(135deg, #ff2800, #dc2626);
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		border: 2px solid white;
-		box-shadow:
-			0 2px 4px rgba(0, 0, 0, 0.2),
-			0 1px 2px rgba(0, 0, 0, 0.1);
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		cursor: pointer;
-		border: none;
-	}
-
-	.slider-ferrari::-moz-range-thumb:hover {
-		transform: scale(1.1);
-		box-shadow:
-			0 4px 8px rgba(255, 40, 0, 0.3),
-			0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.slider-ferrari:disabled::-webkit-slider-thumb {
-		cursor: not-allowed;
-	}
-</style>
