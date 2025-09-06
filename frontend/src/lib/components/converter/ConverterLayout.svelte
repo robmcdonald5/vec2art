@@ -14,6 +14,8 @@
 		RefreshCw
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { lockBodyScroll } from '$lib/utils/scroll-lock';
+	import { onDestroy } from 'svelte';
 	import type {
 		VectorizerConfig,
 		VectorizerBackend,
@@ -76,6 +78,7 @@
 	let isQuickSettingsExpanded = $state(true);
 	let isAdvancedSettingsExpanded = $state(false);
 	let isMobileMenuOpen = $state(false);
+	let unlockScroll: (() => void) | null = null;
 
 	// Performance state
 	let currentPerformanceMode = $state<PerformanceMode>(performanceMode);
@@ -109,6 +112,40 @@
 		console.log('🔵 Close Mobile Menu button clicked!');
 		isMobileMenuOpen = false;
 	}
+
+	// Manage scroll lock when mobile settings overlay state changes
+	$effect(() => {
+		console.debug('[ConverterLayout] Mobile menu effect triggered - isMobileMenuOpen:', isMobileMenuOpen);
+		
+		if (isMobileMenuOpen && !unlockScroll) {
+			// Lock body scroll when mobile settings opens
+			console.debug('[ConverterLayout] Locking scroll for mobile settings');
+			unlockScroll = lockBodyScroll();
+		} else if (!isMobileMenuOpen && unlockScroll) {
+			// Unlock body scroll when mobile settings closes
+			console.debug('[ConverterLayout] Unlocking scroll for mobile settings');
+			unlockScroll();
+			unlockScroll = null;
+		}
+
+		// Return cleanup function for when effect re-runs or component unmounts
+		return () => {
+			if (unlockScroll) {
+				console.debug('[ConverterLayout] Effect cleanup - unlocking scroll');
+				unlockScroll();
+				unlockScroll = null;
+			}
+		};
+	});
+
+	// Safety cleanup: ensure body scroll is restored when component unmounts
+	onDestroy(() => {
+		console.debug('[ConverterLayout] Component destroying - cleaning up scroll lock');
+		if (unlockScroll) {
+			unlockScroll();
+			unlockScroll = null;
+		}
+	});
 
 	// Thread count handler
 	function updateThreadCount(event: Event) {

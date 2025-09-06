@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { fade, scale } from 'svelte/transition';
-	import { tick } from 'svelte';
+	import { tick, onDestroy } from 'svelte';
 	import { X } from 'lucide-svelte';
+	import { lockBodyScroll } from '$lib/utils/scroll-lock';
 
 	interface Props {
 		open: boolean;
@@ -23,6 +24,19 @@
 
 	let dialogElement = $state<HTMLElement>();
 	let lastFocusedElement = $state<HTMLElement | null>(null);
+	let unlockScroll: (() => void) | null = null;
+
+	// Manage scroll lock when modal state changes
+	$effect(() => {
+		if (open && !unlockScroll) {
+			// Lock body scroll when modal opens
+			unlockScroll = lockBodyScroll();
+		} else if (!open && unlockScroll) {
+			// Unlock body scroll when modal closes
+			unlockScroll();
+			unlockScroll = null;
+		}
+	});
 
 	// Focus management
 	$effect(() => {
@@ -41,6 +55,14 @@
 			// Restore focus when modal closes
 			lastFocusedElement.focus();
 			lastFocusedElement = null;
+		}
+	});
+
+	// Safety cleanup: ensure body scroll is restored when component unmounts
+	onDestroy(() => {
+		if (unlockScroll) {
+			unlockScroll();
+			unlockScroll = null;
 		}
 	});
 

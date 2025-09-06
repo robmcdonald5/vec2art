@@ -6,6 +6,8 @@ Helps users diagnose and fix "GPU: Unavailable" issues
 <script lang="ts">
   import { AlertCircle, CheckCircle, ExternalLink, Cpu, Monitor } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
+  import { lockBodyScroll } from '$lib/utils/scroll-lock';
+  import { onDestroy } from 'svelte';
 
   interface Props {
     showTroubleshooting?: boolean;
@@ -18,10 +20,31 @@ Helps users diagnose and fix "GPU: Unavailable" issues
   let gpuInfo = $state<any>(null);
   let webglSupported = $state(false);
   let webgpuSupported = $state(false);
+  let unlockScroll: (() => void) | null = null;
+
+  // Manage scroll lock when modal state changes
+  $effect(() => {
+    if (showTroubleshooting && !unlockScroll) {
+      // Lock body scroll when modal opens
+      unlockScroll = lockBodyScroll();
+    } else if (!showTroubleshooting && unlockScroll) {
+      // Unlock body scroll when modal closes
+      unlockScroll();
+      unlockScroll = null;
+    }
+  });
 
   $effect(() => {
     if (showTroubleshooting) {
       detectGpuCapabilities();
+    }
+  });
+
+  // Safety cleanup: ensure body scroll is restored when component unmounts
+  onDestroy(() => {
+    if (unlockScroll) {
+      unlockScroll();
+      unlockScroll = null;
     }
   });
 

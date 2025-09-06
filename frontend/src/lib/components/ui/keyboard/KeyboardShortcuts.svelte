@@ -35,6 +35,7 @@
 	}: Props = $props();
 
 	let showHelp = $state(false);
+	// No scroll lock needed - modal uses fixed positioning
 
 	// Define keyboard shortcuts
 	const shortcuts = $derived<Shortcut[]>([
@@ -105,7 +106,7 @@
 		// Toggle help with H key
 		if (event.key === 'h' && !event.shiftKey) {
 			event.preventDefault();
-			onToggleHelp?.();
+			showHelp = !showHelp;
 		}
 	}
 

@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { X, Settings, ChevronUp, ChevronDown } from 'lucide-svelte';
+	import { lockBodyScroll } from '$lib/utils/scroll-lock';
 	import type {
 		VectorizerConfig,
 		VectorizerPreset,
@@ -105,13 +107,25 @@
 		}
 	}
 
-	// Prevent body scroll when sheet is open
+	// Prevent body scroll when sheet is open using robust scroll lock utility
+	let unlockScroll: (() => void) | null = null;
+	
 	$effect(() => {
-		if (isOpen) {
-			document.body.style.overflow = 'hidden';
-			return () => {
-				document.body.style.overflow = '';
-			};
+		if (isOpen && !unlockScroll) {
+			// Lock body scroll and store unlock function
+			unlockScroll = lockBodyScroll();
+		} else if (!isOpen && unlockScroll) {
+			// Unlock body scroll when sheet closes
+			unlockScroll();
+			unlockScroll = null;
+		}
+	});
+
+	// Safety cleanup: ensure body scroll is restored when component unmounts
+	onDestroy(() => {
+		if (unlockScroll) {
+			unlockScroll();
+			unlockScroll = null;
 		}
 	});
 </script>

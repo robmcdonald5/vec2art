@@ -125,9 +125,3 @@
 	</nav>
 {/if}
 
-<style>
-	/* Prevent body scroll when menu is open */
-	:global(body.menu-open) {
-		overflow: hidden;
-	}
-</style>
