@@ -1,41 +1,43 @@
 <script lang="ts">
 	import '../app.css';
 	import { browser } from '$app/environment';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { Button } from '$lib/components/ui/button';
 	import MobileMenu from '$lib/components/navigation/MobileMenu.svelte';
 	import ToastContainer from '$lib/components/ui/toast/ToastContainer.svelte';
 	import { inject } from '@vercel/analytics';
 	import { preload } from '$lib/utils/preload';
+	// Removed scroll-lock - mobile menu uses proper CSS
+	import { beforeNavigate, afterNavigate } from '$app/navigation';
 
 	let { children } = $props();
 	let mobileMenuOpen = $state(false);
 
+	// No scroll lock tracking needed
+
 	// Toggle mobile menu
 	function toggleMobileMenu() {
 		mobileMenuOpen = !mobileMenuOpen;
-		// Prevent body scroll when menu is open
-		if (browser) {
-			document.body.classList.toggle('menu-open', mobileMenuOpen);
-		}
 	}
+
+	// Mobile menu scroll is handled by CSS (fixed positioning)
 
 	// Close menu on navigation
 	$effect(() => {
-		$page.url.pathname;
+		const pathname = $page.url.pathname;
 		if (mobileMenuOpen) {
 			mobileMenuOpen = false;
-			if (browser) {
-				document.body.classList.remove('menu-open');
-			}
 		}
 	});
+
+	// No cleanup needed
 
 	onMount(() => {
 		if (browser) {
 			// Initialize Vercel Analytics
 			inject();
+
 
 			// Set initial theme based on system preference
 			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;

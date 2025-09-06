@@ -107,8 +107,8 @@
 		
 		// Memory (approximate, in GB)
 		let memory = 'Unknown';
-		if (nav.deviceMemory) {
-			memory = `~${nav.deviceMemory}GB`;
+		if ((nav as any).deviceMemory) {
+			memory = `~${(nav as any).deviceMemory}GB`;
 		}
 		
 		// WebAssembly support
@@ -655,7 +655,7 @@
 									<select
 										id="bugType"
 										bind:value={formData.bugType}
-										onchange={(e) => selectBugType(e.target.value)}
+										onchange={(e) => selectBugType((e.target as HTMLSelectElement).value)}
 										class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-ferrari-500 focus:ring-2 focus:ring-ferrari-500/20 focus:outline-none {errors.bugType ? 'border-red-500' : ''}"
 										required
 									>
