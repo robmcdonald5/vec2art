@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Download, FileText, Image, X } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { lockBodyScroll } from '$lib/utils/scroll-lock';
+	import { onDestroy } from 'svelte';
 
 	interface Props {
 		filename: string;
@@ -23,6 +25,27 @@
 	}: Props = $props();
 
 	let isGeneratingWebP = $state(false);
+	let unlockScroll: (() => void) | null = null;
+
+	// Manage scroll lock when modal state changes
+	$effect(() => {
+		if (show && !unlockScroll) {
+			// Lock body scroll when modal opens
+			unlockScroll = lockBodyScroll();
+		} else if (!show && unlockScroll) {
+			// Unlock body scroll when modal closes
+			unlockScroll();
+			unlockScroll = null;
+		}
+	});
+
+	// Safety cleanup: ensure body scroll is restored when component unmounts
+	onDestroy(() => {
+		if (unlockScroll) {
+			unlockScroll();
+			unlockScroll = null;
+		}
+	});
 
 	// Estimate SVG file size
 	const svgSizeKB = $derived(Math.round(new Blob([svgContent]).size / 1024));
@@ -156,8 +179,7 @@
 {/if}
 
 <style>
-	/* Ensure modal is always on top */
-	:global(body) {
-		overflow: hidden;
-	}
+	/* Remove the global body overflow hidden - this was breaking scroll on all pages!
+	   The scroll locking is now properly handled by the lockBodyScroll() utility function
+	   in the $effect hook above, which only locks scroll when the modal is actually open */
 </style>

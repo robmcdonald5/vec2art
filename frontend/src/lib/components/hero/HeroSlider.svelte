@@ -105,9 +105,11 @@
 	function handleMove(e: MouseEvent | TouchEvent) {
 		if (!isDragging) return;
 
-		// Don't prevent default on interactive elements
+		// Don't prevent default on interactive elements or touch events (passive listeners)
 		const target = e.target as HTMLElement;
+		const isTouchEvent = 'touches' in e;
 		if (
+			!isTouchEvent && // Don't preventDefault on touch events (passive listeners)
 			!target.closest('.before-after-slider') &&
 			!target.closest('button') &&
 			!target.closest('a') &&
@@ -180,7 +182,7 @@
 		// Add global mouse/touch listeners
 		document.addEventListener('mousemove', handleMove as EventListener);
 		document.addEventListener('mouseup', handleEnd);
-		document.addEventListener('touchmove', handleMove as EventListener, { passive: false });
+		document.addEventListener('touchmove', handleMove as EventListener, { passive: true });
 		document.addEventListener('touchend', handleEnd);
 
 		// Start autoplay if on showcase panel

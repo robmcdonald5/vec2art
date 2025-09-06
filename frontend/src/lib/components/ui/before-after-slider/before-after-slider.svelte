@@ -33,7 +33,12 @@
 	function handleMove(e: MouseEvent | TouchEvent) {
 		if (!isDragging || !containerRect) return;
 
-		e.preventDefault();
+		// Only preventDefault on mouse events, not touch events (passive listeners)
+		const isTouchEvent = 'touches' in e;
+		if (!isTouchEvent) {
+			e.preventDefault();
+		}
+		
 		const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
 		const position = ((clientX - containerRect.left) / containerRect.width) * 100;
 		sliderPosition = Math.max(0, Math.min(100, position));
@@ -46,7 +51,7 @@
 	onMount(() => {
 		document.addEventListener('mousemove', handleMove as EventListener);
 		document.addEventListener('mouseup', handleEnd);
-		document.addEventListener('touchmove', handleMove as EventListener);
+		document.addEventListener('touchmove', handleMove as EventListener, { passive: true });
 		document.addEventListener('touchend', handleEnd);
 
 		return () => {
