@@ -57,6 +57,7 @@
 	let initError = $state<string | null>(null);
 	let isRecoveringState = $state(false);
 	let isClearingAll = $state(false); // Flag to prevent auto-save during Clear All
+	let hasRecoveredState = $state(false); // Tracks whether state recovery was successful
 
 	// Download format selector state
 	let showDownloadSelector = $state(false);

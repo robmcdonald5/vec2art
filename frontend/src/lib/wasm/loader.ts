@@ -136,7 +136,7 @@ async function initializeChromeGPU(wasmJs: any): Promise<void> {
 		}
 	} catch (coordinationError) {
 		console.log('[WASM Loader] ℹ️ WebGPU coordination not available, using CPU processing');
-		return;
+		canUseGPU = false; // Set flag instead of returning
 	}
 
 	// Only proceed with GPU initialization if coordination succeeded
