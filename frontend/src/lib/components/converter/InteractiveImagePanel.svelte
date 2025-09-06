@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ImageViewer } from 'svelte-image-viewer';
+	import ScrollFriendlyImageViewer from '$lib/components/ui/ScrollFriendlyImageViewer.svelte';
 	import { ZoomIn, ZoomOut, Maximize2, Move, Download } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 
@@ -43,13 +43,24 @@
 	let initialFitScale = $state(1);
 	let hasCalculatedInitialFit = $state(false);
 
-	// Sync external pan/zoom state when provided
+	// Track previous sync state to detect changes
+	let prevEnableSync = enableSync;
+	
+	// Sync external pan/zoom state when provided, preserve state when sync is disabled
 	$effect(() => {
 		if (externalPanZoom && enableSync) {
 			targetScale = externalPanZoom.scale;
 			targetOffsetX = externalPanZoom.x;
 			targetOffsetY = externalPanZoom.y;
 		}
+		
+		// Detect when sync is being disabled - preserve current internal state
+		if (prevEnableSync && !enableSync) {
+			// Sync was just disabled - keep current internal state unchanged
+			// (targetScale, targetOffsetX, targetOffsetY retain their current values)
+		}
+		
+		prevEnableSync = enableSync;
 	});
 
 	// Notify parent of pan/zoom changes when callback is provided
@@ -224,13 +235,20 @@
 	// Proper object-fit: contain calculation for each image
 	$effect(() => {
 		if (imageUrl && containerElement) {
-			// Check if we should preserve existing zoom/pan (when external state is provided)
-			const shouldPreserveState = externalPanZoom && enableSync && 
-				(externalPanZoom.scale !== 1 || externalPanZoom.x !== 0 || externalPanZoom.y !== 0);
+			// Check if we should preserve existing zoom/pan state
+			const shouldPreserveState = (externalPanZoom && enableSync && 
+				(externalPanZoom.scale !== 1 || externalPanZoom.x !== 0 || externalPanZoom.y !== 0)) ||
+				// Also preserve state if sync was just disabled and we have non-default values
+				(!enableSync && (targetScale !== 1 || targetOffsetX !== 0 || targetOffsetY !== 0));
 			
 			if (shouldPreserveState) {
-				console.log('[ImageViewer] Preserving external pan/zoom state on image change:', $state.snapshot(externalPanZoom));
-				// Don't reset - external state will be applied by the sync effect
+				console.log('[ImageViewer] Preserving current pan/zoom state on image change:', {
+					scale: targetScale,
+					x: targetOffsetX,
+					y: targetOffsetY,
+					syncEnabled: enableSync
+				});
+				// Don't reset - preserve current state
 				return;
 			}
 			
@@ -339,18 +357,19 @@
 		</div>
 	</div>
 
-	<!-- Interactive image container with svelte-image-viewer -->
+	<!-- Interactive image container with svelte-image-viewer and scroll fix -->
 	<div
 		bind:this={containerElement}
 		class="dark:bg-ferrari-900 group relative flex-1 overflow-hidden rounded-lg bg-white"
 		tabindex="0"
 		role="application"
-		aria-label="Interactive {imageAlt} viewer - Use mouse wheel to zoom, drag to pan"
+		aria-label="Interactive {imageAlt} viewer - Hold Ctrl/Cmd + scroll to zoom, drag to pan"
+		style="touch-action: pan-x pan-y; /* Allow page scrolling but enable pan */"
 	>
 		{#if imageUrl}
 			<!-- svelte-image-viewer component with programmatic controls -->
 			<div class="h-full w-full">
-				<ImageViewer
+				<ScrollFriendlyImageViewer
 					src={imageUrl}
 					alt={imageAlt}
 					bind:targetScale
@@ -367,7 +386,7 @@
 				class="pointer-events-none absolute bottom-2 left-2 rounded bg-black/75 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
 			>
 				<Move class="mr-1 inline h-3 w-3" />
-				Drag to pan • Wheel to zoom
+				Drag to pan • Ctrl+Wheel to zoom
 			</div>
 		{:else}
 			<div class="flex h-full items-center justify-center text-gray-400">

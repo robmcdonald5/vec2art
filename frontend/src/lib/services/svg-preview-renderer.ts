@@ -9,9 +9,9 @@
  * 5. WebGL acceleration for extremely large datasets
  */
 
-import type { SvgPerformanceMetrics } from './svg-performance-analyzer';
+import type { SvgComplexityMetrics } from './svg-performance-analyzer';
 import { analyzeSvgComplexity, assessPerformance } from './svg-performance-analyzer';
-import { createManagedObjectURL, releaseManagedObjectURL } from '$lib/utils/object-url-manager';
+// Object URL management handled with native browser API
 import { gpuService } from './gpu-service';
 import { SpatialIndex, type SpatialItem, type BoundingBox } from '$lib/utils/spatial-index';
 
@@ -47,7 +47,7 @@ export class SvgPreviewRenderer {
   private canvas?: HTMLCanvasElement;
   private ctx?: CanvasRenderingContext2D;
   private spatialIndex: SpatialIndex<SVGElement> = new SpatialIndex();
-  private lastMetrics?: SvgPerformanceMetrics;
+  private lastMetrics?: SvgComplexityMetrics;
   private cachedUrls: Map<string, string> = new Map();
 
   constructor() {}
@@ -85,7 +85,7 @@ export class SvgPreviewRenderer {
 
     // Performance-based decision matrix
     const elementCount = metrics.elementCount;
-    const complexity = metrics.complexityScore;
+    const complexity = metrics.estimatedRenderComplexity;
 
     // WebGL for extremely large datasets
     if (elementCount > 10000 && gpuService.isGpuAvailable()) {
@@ -122,7 +122,7 @@ export class SvgPreviewRenderer {
       mode: 'svg-dom' as const,
       detailLevel: 'high' as const,
       reason: `SVG DOM for ${elementCount} elements (optimal for interaction)`,
-      estimatedPerformance: (assessment.severity === 'good' ? 'excellent' : 'good') as const
+      estimatedPerformance: assessment.severity === 'good' ? 'excellent' as const : 'good' as const
     };
     
     console.log('[SvgPreviewRenderer] Selected strategy:', strategy);
@@ -159,7 +159,7 @@ export class SvgPreviewRenderer {
     if (!this.canvas) {
       console.log('[SvgPreviewRenderer] Creating new canvas element');
       this.canvas = document.createElement('canvas');
-      this.ctx = this.canvas.getContext('2d');
+      this.ctx = this.canvas.getContext('2d') || undefined;
     }
 
     if (!this.ctx) {
@@ -232,12 +232,12 @@ export class SvgPreviewRenderer {
         return cachedUrl;
       }
 
-      // Create managed blob URL
+      // Create blob URL
       const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
       console.log('[SvgPreviewRenderer] SVG blob created, size:', svgBlob.size);
       
-      const url = createManagedObjectURL(svgBlob);
-      console.log('[SvgPreviewRenderer] Managed URL created:', !!url);
+      const url = URL.createObjectURL(svgBlob);
+      console.log('[SvgPreviewRenderer] URL created:', !!url);
       
       // Cache for reuse
       this.cachedUrls.set(svgHash, url);
@@ -335,7 +335,7 @@ export class SvgPreviewRenderer {
    * Get performance statistics
    */
   getPerformanceStats(): {
-    lastMetrics?: SvgPerformanceMetrics;
+    lastMetrics?: SvgComplexityMetrics;
     spatialIndex: any;
     cachedUrls: number;
     gpuAvailable: boolean;
@@ -365,7 +365,7 @@ export class SvgPreviewRenderer {
   cleanup(): void {
     // Release cached URLs
     for (const url of this.cachedUrls.values()) {
-      releaseManagedObjectURL(url);
+      URL.revokeObjectURL(url);
     }
     this.cachedUrls.clear();
     

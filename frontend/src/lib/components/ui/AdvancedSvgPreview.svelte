@@ -14,7 +14,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
   import type { RenderStrategy, ViewportBounds, PreviewRenderOptions } from '$lib/services/svg-preview-renderer';
   import { svgPreviewRenderer } from '$lib/services/svg-preview-renderer';
   import { SvgToWebPConverter } from '$lib/services/svg-to-webp-converter';
-  import { ImageViewer } from 'svelte-image-viewer';
+  import ScrollFriendlyImageViewer from '$lib/components/ui/ScrollFriendlyImageViewer.svelte';
   import { ZoomIn, ZoomOut, Maximize2, Move, Activity, Cpu, Monitor, Download } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import GpuTroubleshootingGuide from './GpuTroubleshootingGuide.svelte';
@@ -81,9 +81,10 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
     }
   });
 
-  // Notify parent of pan/zoom changes - simple approach
+  // Notify parent of pan/zoom changes - allow reactive updates but prevent infinite loops
   $effect(() => {
     if (onPanZoomChange) {
+      // Don't use untrack here - we need the callback to update reactive state
       onPanZoomChange({
         scale: targetScale,
         x: targetOffsetX,
@@ -92,10 +93,10 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
     }
   });
 
-  // Render SVG when content or settings change
+  // Render SVG when content or settings change - use untrack to prevent infinite loops
   $effect(() => {
     if (svgContent) {
-      renderSvg();
+      untrack(() => renderSvg());
     }
   });
 
@@ -442,7 +443,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
       <div class="h-full w-full">
         {#if webpDataUrl}
           <!-- WebP optimized result with full pan/zoom -->
-          <ImageViewer
+          <ScrollFriendlyImageViewer
             src={webpDataUrl}
             alt="WebP Optimized SVG Preview"
             bind:targetScale
@@ -454,7 +455,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
           />
         {:else if imgFallbackUrl}
           <!-- IMG fallback result -->
-          <ImageViewer
+          <ScrollFriendlyImageViewer
             src={imgFallbackUrl}
             alt="IMG Fallback SVG"
             bind:targetScale
@@ -466,7 +467,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
           />
         {:else if svgBlobUrl}
           <!-- SVG DOM result -->
-          <ImageViewer
+          <ScrollFriendlyImageViewer
             src={svgBlobUrl}
             alt="SVG DOM Preview"
             bind:targetScale
