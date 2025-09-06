@@ -88,24 +88,10 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 				console.log('[Worker] Single-threaded mode (threadCount <= 1)');
 			}
 			
-			// Step 3: Initialize GPU backend if available
-			console.log('[Worker] 🎮 Initializing GPU backend...');
-			if (typeof wasmModule.initialize_gpu_backend === 'function') {
-				try {
-					const gpuResult = await wasmModule.initialize_gpu_backend();
-					console.log('[Worker] ✅ GPU backend initialization result:', gpuResult);
-					
-					// Log GPU status for debugging
-					if (typeof wasmModule.get_gpu_backend_status === 'function') {
-						const gpuStatus = wasmModule.get_gpu_backend_status();
-						console.log('[Worker] 🎮 GPU Status:', gpuStatus);
-					}
-				} catch (gpuError) {
-					console.warn('[Worker] ⚠️ GPU backend initialization failed, continuing with CPU-only:', gpuError);
-				}
-			} else {
-				console.log('[Worker] ℹ️ GPU backend functions not available');
-			}
+			// Step 3: Skip GPU initialization in Web Worker context
+			// GPU operations require main thread context and cannot run in Web Workers
+			console.log('[Worker] ℹ️ Skipping GPU initialization (Web Worker uses CPU processing)');
+			console.log('[Worker] ✅ CPU-only processing enabled for Web Worker compatibility');
 
 			wasmInitialized = true;
 		} catch (error) {
