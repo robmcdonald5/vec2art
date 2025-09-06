@@ -16,6 +16,7 @@
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
+	import ErrorState from '$lib/components/ui/ErrorState.svelte';
 	import type { ProcessingProgress, ProcessingResult } from '$lib/types/vectorizer';
 	import {
 		createManagedObjectURL,
@@ -376,14 +377,13 @@
 <div>
 	<!-- Error display -->
 	{#if errorMessage}
-		<div
-			class="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950"
-			role="alert"
-		>
-			<div class="flex items-center gap-2">
-				<AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
-				<span class="text-sm text-red-700 dark:text-red-300">{errorMessage}</span>
-			</div>
+		<div class="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
+			<ErrorState
+				message={errorMessage}
+				size="sm"
+				inline={true}
+				center={false}
+			/>
 		</div>
 	{/if}
 

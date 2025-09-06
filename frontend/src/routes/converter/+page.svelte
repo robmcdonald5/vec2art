@@ -20,6 +20,8 @@
 	import { devDebug, devWarn, devError } from '$lib/utils/dev-logger';
 	import DownloadFormatSelector from '$lib/components/ui/DownloadFormatSelector.svelte';
 	import { downloadService } from '$lib/services/download-service';
+	import LoadingState from '$lib/components/ui/LoadingState.svelte';
+	import ErrorState from '$lib/components/ui/ErrorState.svelte';
 
 	// Types and stores
 	import type {
@@ -1441,22 +1443,22 @@
 
 			<!-- Status Display -->
 			{#if !pageLoaded}
-				<div
-					class="text-ferrari-600 mt-4 flex items-center justify-center gap-2 text-sm"
-					role="status"
-					aria-label="Loading converter"
-				>
-					<Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
-					Loading converter...
+				<div class="mt-4">
+					<LoadingState 
+						message="Loading converter..."
+						size="sm"
+						inline={true}
+						center={true}
+					/>
 				</div>
 			{:else if initError}
-				<div
-					class="mt-4 flex items-center justify-center gap-2 text-sm text-red-600"
-					role="alert"
-					aria-label="Converter error"
-				>
-					<AlertCircle class="h-4 w-4" aria-hidden="true" />
-					<span>{initError}</span>
+				<div class="mt-4">
+					<ErrorState
+						message={initError}
+						size="sm"
+						inline={true}
+						center={true}
+					/>
 				</div>
 			{/if}
 		</header>
@@ -1594,42 +1596,33 @@
 			/>
 		{:else if initError}
 			<!-- Error State -->
-			<div class="card-ferrari-static rounded-3xl p-8 text-center" role="alert">
-				<div class="mb-4">
-					<AlertCircle class="mx-auto h-16 w-16 text-red-500" />
-				</div>
-				<h2 class="mb-4 text-xl font-bold text-red-700 dark:text-red-400">
-					Failed to Load Converter
-				</h2>
-				<p class="mb-6 text-gray-600 dark:text-gray-300">
-					{initError}
-				</p>
-				<div class="flex justify-center gap-4">
-					<button class="btn-ferrari-secondary px-6 py-2 text-sm" onclick={() => location.reload()}>
-						Reload Page
-					</button>
-					<button
-						class="btn-ferrari-primary px-6 py-2 text-sm"
-						onclick={() => {
-							initError = null;
-							handleReset();
-							pageLoaded = true;
-						}}
-					>
-						Try Again
-					</button>
-				</div>
+			<div class="card-ferrari-static rounded-3xl p-8">
+				<ErrorState 
+					title="Failed to Load Converter"
+					message={initError}
+					size="lg"
+					showRetry={true}
+					showReload={true}
+					onRetry={() => {
+						initError = null;
+						handleReset();
+						pageLoaded = true;
+					}}
+					onReload={() => location.reload()}
+				/>
 			</div>
 		{:else}
 			<!-- Loading State -->
-			<div class="card-ferrari-static rounded-3xl p-8 text-center" role="status">
-				<div class="mb-4">
-					<Loader2 class="text-ferrari-600 mx-auto h-16 w-16 animate-spin" />
-				</div>
-				<h2 class="mb-2 text-xl font-bold">Loading Converter...</h2>
-				<p class="text-gray-600 dark:text-gray-300">
-					Initializing high-performance image processing engine
-				</p>
+			<div class="card-ferrari-static rounded-3xl p-8">
+				<LoadingState 
+					message="Loading Converter..." 
+					size="lg"
+					center={true}
+				>
+					<svelte:fragment slot="subtitle">
+						Initializing high-performance image processing engine
+					</svelte:fragment>
+				</LoadingState>
 			</div>
 		{/if}
 	</div>
