@@ -267,8 +267,7 @@
 			{#if expandedSections.backgroundFiltering}
 				<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 					<div class="text-converter-secondary text-xs">
-						Automatically remove distracting backgrounds to improve line tracing quality for all
-						algorithms.
+						Extra background removal pass to further try to isolate larger elements in the image.
 					</div>
 
 					<!-- Enable Background Filtering Toggle -->

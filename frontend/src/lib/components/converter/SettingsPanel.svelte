@@ -156,7 +156,7 @@
 							Algorithm
 						</label>
 						<PortalTooltipFixed
-							content="Choose the line tracing algorithm. Edge is best for detailed drawings, Centerline for simple shapes, Superpixel for stylized art, and Dots for stippling effects."
+							content="Choose the line tracing algorithm. Edge Tracing is best for line art, Centerline for simple shapes, Superpixel for stylized art, and Stippling for highest detail."
 							position="right"
 							size="md"
 						/>
