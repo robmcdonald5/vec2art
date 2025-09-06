@@ -213,14 +213,8 @@
 	}
 
 	// UI state for sliders - separate from derived to allow two-way binding
-	let detailUI = $state(detailToUI(config.detail));
-	let strokeWidthUI = $state(config.stroke_width || 2.0);
-
-	// Sync UI state when config changes externally
-	$effect(() => {
-		detailUI = detailToUI(config.detail);
-		strokeWidthUI = config.stroke_width || 2.0;
-	});
+	// Note: detailUI converted to derived value for better sync
+	let detailUI = $derived(detailToUI(config.detail));
 	let dotDensityUI = $derived(
 		config.dot_density_threshold !== undefined
 			? Math.round(((0.4 - config.dot_density_threshold) / (0.4 - 0.02)) * 9 + 1)
@@ -353,7 +347,7 @@
 					type="range"
 					min="1"
 					max="10"
-					bind:value={detailUI}
+					value={detailUI}
 					onchange={handleDetailChange}
 					oninput={handleDetailChange}
 					{disabled}
@@ -502,7 +496,7 @@
 				</label>
 				<span
 					class="text-converter-secondary bg-muted rounded px-2 py-1 font-mono text-sm"
-					aria-live="polite">{strokeWidthUI.toFixed(1)}px</span
+					aria-live="polite">{(config.stroke_width || 2.0).toFixed(1)}px</span
 				>
 			</div>
 			<input
@@ -512,7 +506,7 @@
 				min="0.5"
 				max="10.0"
 				step="0.1"
-				bind:value={strokeWidthUI}
+				value={config.stroke_width || 2.0}
 				onchange={handleStrokeWidthChange}
 				oninput={handleStrokeWidthChange}
 				{disabled}
