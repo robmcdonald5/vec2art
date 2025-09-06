@@ -483,7 +483,7 @@
 							{#if currentResult?.svg}
 								<div class="absolute inset-0 {useAdvancedPreview ? 'hidden' : 'flex flex-col'}">
 									<!-- Controls Header for Raw SVG View -->
-									<div class="mb-3 flex items-center justify-between px-2">
+									<div class="relative z-[60] mb-3 flex items-center justify-between px-2">
 										<div class="flex items-center gap-2">
 											<!-- Empty space for alignment -->
 										</div>
