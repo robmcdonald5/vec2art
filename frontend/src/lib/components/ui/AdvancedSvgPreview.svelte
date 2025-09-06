@@ -15,6 +15,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
   import { svgPreviewRenderer } from '$lib/services/svg-preview-renderer';
   import { SvgToWebPConverter } from '$lib/services/svg-to-webp-converter';
   import ScrollFriendlyImageViewer from '$lib/components/ui/ScrollFriendlyImageViewer.svelte';
+  import SvgImageViewer from '$lib/components/ui/SvgImageViewer.svelte';
   import { ZoomIn, ZoomOut, Maximize2, Move, Activity, Cpu, Monitor, Download } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import GpuTroubleshootingGuide from './GpuTroubleshootingGuide.svelte';
@@ -32,6 +33,9 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
     externalPanZoom?: { scale: number; x: number; y: number };
     onPanZoomChange?: (state: { scale: number; x: number; y: number }) => void;
     enableSync?: boolean;
+    // Performance options
+    forceImageMode?: boolean;
+    imageRenderMethod?: 'blob' | 'dataurl' | 'canvas';
   }
 
   let {
@@ -45,7 +49,9 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
     onDownload,
     externalPanZoom,
     onPanZoomChange,
-    enableSync = false
+    enableSync = false,
+    forceImageMode = false,
+    imageRenderMethod = 'blob'
   }: Props = $props();
 
   // Component state
@@ -57,6 +63,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
   let renderError = $state<string | null>(null);
   let performanceStats = $state<any>(null);
   let showGpuTroubleshooting = $state(false);
+  let useImageMode = $state(forceImageMode);
 
   // Pan/zoom state for ImageViewer
   let targetScale = $state(1);
@@ -392,6 +399,8 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
           <Maximize2 class="h-4 w-4" />
         </Button>
         
+        <!-- Image Mode Toggle -->
+        
         {#if onDownload}
           <Button
             variant="outline"
@@ -437,6 +446,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
           {/if}
         </div>
       </div>
+      
       
     {:else if displayUrl}
       <!-- Optimized Preview -->
@@ -501,7 +511,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
       <!-- Interactive Cursor Hint -->
       <div class="pointer-events-none absolute bottom-2 left-2 rounded bg-black/75 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
         <Move class="mr-1 inline h-3 w-3" />
-        Drag to pan • Wheel to zoom
+        Drag to pan • Scroll wheel to zoom
       </div>
 
       <!-- Zoom Level Indicator -->

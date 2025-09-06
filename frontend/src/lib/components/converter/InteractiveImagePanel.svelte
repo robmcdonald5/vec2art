@@ -386,7 +386,7 @@
 				class="pointer-events-none absolute bottom-2 left-2 rounded bg-black/75 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
 			>
 				<Move class="mr-1 inline h-3 w-3" />
-				Drag to pan • Ctrl+Wheel to zoom
+				Drag to pan • Scroll wheel to zoom
 			</div>
 		{:else}
 			<div class="flex h-full items-center justify-center text-gray-400">

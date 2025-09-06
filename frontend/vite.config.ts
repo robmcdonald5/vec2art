@@ -6,7 +6,7 @@ import topLevelAwait from 'vite-plugin-top-level-await';
 
 export default defineConfig({
 	plugins: [
-		wasm(), // Re-enabled with proper exclusions
+		wasm(),
 		topLevelAwait(),
 		tailwindcss(),
 		{
@@ -26,6 +26,7 @@ export default defineConfig({
 			__wbindgen_placeholder__: '/wasm/__wbindgen_placeholder__.js'
 		}
 	},
+	assetsInclude: ['**/*.wasm'],
 	optimizeDeps: {
 		include: ['class-variance-authority', 'tailwind-merge', 'clsx', 'svelte-image-viewer'],
 		exclude: [
@@ -74,5 +75,10 @@ export default defineConfig({
 				}
 			}
 		}
+	},
+	// Ensure build process exits properly
+	esbuild: {
+		// Prevent esbuild from hanging
+		keepNames: false
 	}
 });
