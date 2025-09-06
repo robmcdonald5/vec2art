@@ -31,8 +31,9 @@
 		const baseClasses = inline ? 'inline-flex' : 'flex';
 		const alignClasses = center ? 'items-center justify-center' : 'items-center';
 		const spacingClasses = size === 'lg' ? 'gap-4' : 'gap-2';
+		const directionClasses = size === 'lg' ? 'flex-col text-center' : '';
 		
-		return `${baseClasses} ${alignClasses} ${spacingClasses}`;
+		return `${baseClasses} ${alignClasses} ${spacingClasses} ${directionClasses}`;
 	});
 </script>
 
@@ -46,14 +47,12 @@
 		aria-hidden="true" 
 	/>
 	{#if size === 'lg'}
-		<div class="text-center">
-			<h2 class="mb-2 font-bold text-gray-800 {textSizes[size]}">{message}</h2>
-			<p class="text-gray-600">
-				<slot name="subtitle">
-					Please wait while we process your request
-				</slot>
-			</p>
-		</div>
+		<h2 class="mb-2 font-bold text-gray-800 {textSizes[size]}">{message}</h2>
+		<p class="text-gray-600">
+			<slot name="subtitle">
+				Please wait while we process your request
+			</slot>
+		</p>
 	{:else}
 		<span class="font-medium text-gray-700 {textSizes[size]}">
 			{message}
