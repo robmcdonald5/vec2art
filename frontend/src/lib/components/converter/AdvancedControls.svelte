@@ -15,14 +15,14 @@
 		Filter
 	} from 'lucide-svelte';
 	import type { VectorizerConfig } from '$lib/types/vectorizer';
-	import { calculateMultipassConfig, PASS_COUNT_DESCRIPTIONS } from '$lib/types/vectorizer';
+	import { calculateMultipassConfig } from '$lib/types/vectorizer';
 
 	// Import dots backend parameter ranges (for dot size controls)
 	import { DOTS_PARAMETER_RANGES } from '$lib/types/dots-backend';
 
 	interface AdvancedControlsProps {
 		config: VectorizerConfig;
-		onConfigChange: (updates: Partial<VectorizerConfig>) => void;
+		onConfigChange: (config: Partial<VectorizerConfig>) => void;
 		disabled?: boolean;
 		onParameterChange?: () => void;
 	}
@@ -489,7 +489,9 @@
 							<div class="border-ferrari-200/20 space-y-4 border-t pt-4">
 								<div class="flex items-center gap-2">
 									<Target class="text-ferrari-600 h-4 w-4" />
-									<span class="text-converter-primary text-sm font-medium">Directional Enhancements</span>
+									<span class="text-converter-primary text-sm font-medium"
+										>Directional Enhancements</span
+									>
 									{#if config.reverse_pass || config.diagonal_pass}
 										<Check class="h-4 w-4 text-green-600" />
 									{/if}
@@ -604,7 +606,6 @@
 				{/if}
 			</div>
 		{/if}
-
 
 		<!-- Unified Color Controls (All backends) -->
 		<div
@@ -947,7 +948,7 @@
 										Configuration Issues
 									</div>
 									<ul class="space-y-1 text-xs text-red-600">
-										{#each dotsValidation.errors as error}
+										{#each dotsValidation.errors as error, index (index)}
 											<li>• {error.message}</li>
 										{/each}
 									</ul>
@@ -958,7 +959,7 @@
 								<div class="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
 									<div class="mb-2 text-sm font-medium text-yellow-700">Recommendations</div>
 									<ul class="space-y-1 text-xs text-yellow-600">
-										{#each dotsValidation.warnings as warning}
+										{#each dotsValidation.warnings as warning, index (index)}
 											<li>• {warning}</li>
 										{/each}
 									</ul>
@@ -1141,7 +1142,9 @@
 						<!-- Compactness -->
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
-								<label for="compactness" class="text-converter-primary text-sm">Shape Regularity</label>
+								<label for="compactness" class="text-converter-primary text-sm"
+									>Shape Regularity</label
+								>
 								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
 									{config.compactness ?? 20}
 								</span>
@@ -1238,7 +1241,6 @@
 
 			{#if expandedSections.performance}
 				<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
-
 					<!-- Include Metadata (NOT YET IMPLEMENTED) -->
 					<div class="cursor-not-allowed opacity-50" title="This feature is coming soon">
 						<div class="flex items-center space-x-3">

@@ -45,10 +45,10 @@ export class PerformanceMonitor {
 		this.sessionId = this.generateSessionId();
 		this.sessionStartTime = new Date();
 		this.budgets = this.getDefaultBudgets(budgets);
-		
+
 		// Initialize session data (with safe defaults for SSR)
 		this.currentSession = this.initializeSession();
-		
+
 		// Only initialize browser-specific features in the browser
 		if (browser) {
 			// Initialize performance tracking
@@ -374,7 +374,7 @@ export class PerformanceMonitor {
 
 	private initializeWebVitalsTracking(): void {
 		if (!browser) return;
-		
+
 		// Track page view
 		this.trackPageView();
 
@@ -384,7 +384,7 @@ export class PerformanceMonitor {
 
 	private initializeResourceMonitoring(): void {
 		if (!browser) return;
-		
+
 		if ('memory' in performance && !import.meta.env.DEV) {
 			// Monitor memory usage periodically (disabled in development to prevent high CPU usage)
 			setInterval(() => {
@@ -395,7 +395,7 @@ export class PerformanceMonitor {
 
 	private setupErrorTracking(): void {
 		if (!browser) return;
-		
+
 		// Global error handler
 		window.addEventListener('error', (event) => {
 			this.trackError(event.error, { type: 'javascript' });
@@ -412,7 +412,7 @@ export class PerformanceMonitor {
 		callback: (entries: PerformanceEntry[]) => void
 	): void {
 		if (!browser || !('PerformanceObserver' in window)) return;
-		
+
 		try {
 			const observer = new PerformanceObserver((list) => {
 				callback(list.getEntries());
@@ -430,7 +430,7 @@ export class PerformanceMonitor {
 
 	private trackNavigationTiming(): void {
 		if (!browser) return;
-		
+
 		window.addEventListener('load', () => {
 			const navigation = performance.getEntriesByType(
 				'navigation'

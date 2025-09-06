@@ -66,7 +66,7 @@ export class WasmWorkerService {
 
 		// Allow re-initialization with threading configuration
 		// Initialize called with options
-		
+
 		if (this.isInitialized && (!options?.threadCount || options.threadCount <= 1)) {
 			// Already initialized, no threading config needed
 			return;
@@ -80,14 +80,14 @@ export class WasmWorkerService {
 		// Handle threading configuration for existing worker
 		if (this.isInitialized && options?.threadCount && options.threadCount > 1) {
 			// Configuring threading on existing worker
-			
+
 			// Send threading configuration to existing worker
 			try {
 				const result = await this.sendMessage('init', {
 					threadCount: options.threadCount,
 					backend: options.backend
 				});
-				
+
 				if (result.success) {
 					// Threading configuration complete
 				} else {
@@ -174,7 +174,9 @@ export class WasmWorkerService {
 				pending.reject(new Error(error || 'Unknown worker error'));
 			}
 		} else {
-			console.warn(`[WasmWorkerService] ⚠️ No pending request found for message ${id} (type: ${type})`);
+			console.warn(
+				`[WasmWorkerService] ⚠️ No pending request found for message ${id} (type: ${type})`
+			);
 		}
 	}
 
@@ -190,14 +192,14 @@ export class WasmWorkerService {
 
 		// Calculate dynamic timeout based on operation type and image size
 		let timeout = 60000; // Default 60 seconds
-		
+
 		if (type === 'process' && payload?.imageData) {
 			const pixelCount = payload.imageData.width * payload.imageData.height;
 			const megapixels = pixelCount / 1_000_000;
-			
+
 			// Dynamic timeout: 60s base + 30s per megapixel, max 300s (5min)
-			timeout = Math.min(300000, 60000 + (megapixels * 30000));
-			
+			timeout = Math.min(300000, 60000 + megapixels * 30000);
+
 			// Dynamic timeout calculated
 		}
 
@@ -212,7 +214,7 @@ export class WasmWorkerService {
 			setTimeout(() => {
 				if (pendingRequests.has(id)) {
 					pendingRequests.delete(id);
-					reject(new Error(`Worker timeout for message ${type} after ${timeout/1000}s`));
+					reject(new Error(`Worker timeout for message ${type} after ${timeout / 1000}s`));
 				}
 			}, timeout);
 		});
@@ -292,9 +294,16 @@ export class WasmWorkerService {
 			try {
 				const { gpuService } = await import('./gpu-service');
 				await gpuService.initialize();
-				
-				if (gpuService.isGpuAvailable() && gpuService.shouldUseGpu(imageData.width, imageData.height)) {
-					const strategy = gpuService.getProcessingStrategy(imageData.width, imageData.height, config.backend);
+
+				if (
+					gpuService.isGpuAvailable() &&
+					gpuService.shouldUseGpu(imageData.width, imageData.height)
+				) {
+					const strategy = gpuService.getProcessingStrategy(
+						imageData.width,
+						imageData.height,
+						config.backend
+					);
 					if (strategy.includes('gpu-preferred')) {
 						preferGpu = true;
 						console.log(`[WasmWorkerService] 🚀 GPU acceleration enabled: ${strategy}`);
@@ -309,13 +318,15 @@ export class WasmWorkerService {
 			// Apply optimizations for large images
 			if (isLargeImage) {
 				console.log('[WasmWorkerService] 🔧 Large image detected, applying optimizations...');
-				
+
 				// For very large images, reduce detail automatically to prevent memory issues
 				if (isVeryLargeImage && config.backend === 'dots' && config.detail && config.detail > 0.4) {
-					console.log(`[WasmWorkerService] ⚡ Very large image: reducing detail from ${config.detail} to 0.4 for stability`);
+					console.log(
+						`[WasmWorkerService] ⚡ Very large image: reducing detail from ${config.detail} to 0.4 for stability`
+					);
 					config = { ...config, detail: 0.4 };
 				}
-				
+
 				// Increase max processing time for large images
 				if (!config.max_processing_time_ms || config.max_processing_time_ms < 180000) {
 					console.log('[WasmWorkerService] ⏱️ Extending processing timeout for large image');
@@ -363,7 +374,7 @@ export class WasmWorkerService {
 
 			// Serialize config to plain object (removes Proxy wrapper from Svelte stores)
 			const plainConfig = JSON.parse(JSON.stringify(config));
-			
+
 			// Ensure critical defaults are included (in case they got lost in serialization)
 			if (plainConfig.pass_count === undefined) {
 				plainConfig.pass_count = 1;
@@ -388,17 +399,17 @@ export class WasmWorkerService {
 			// Check for large result and add memory management
 			const svgSize = new Blob([result.svg]).size;
 			const sizeMB = svgSize / (1024 * 1024);
-			
+
 			if (sizeMB > 10) {
 				console.warn(`[WasmWorkerService] 📊 Large SVG result: ${sizeMB.toFixed(1)}MB`);
-				
+
 				// Trigger garbage collection hint for large results
 				if ('gc' in window && typeof window.gc === 'function') {
 					window.gc();
 				}
-				
+
 				// Add processing delay for memory stability
-				await new Promise(resolve => setTimeout(resolve, 100));
+				await new Promise((resolve) => setTimeout(resolve, 100));
 			}
 
 			// Return successful result
@@ -426,10 +437,18 @@ export class WasmWorkerService {
 			const megapixels = pixelCount / 1_000_000;
 			const isLargeImage = megapixels > 10;
 			const errorMsg = error instanceof Error ? error.message : String(error);
-			
-			if (isLargeImage && retryAttempt === 0 && (errorMsg.includes('timeout') || errorMsg.includes('memory') || errorMsg.includes('out of bounds'))) {
-				console.warn(`[WasmWorkerService] 🔄 Large image (${megapixels.toFixed(1)}MP) failed, attempting recovery with reduced settings...`);
-				
+
+			if (
+				isLargeImage &&
+				retryAttempt === 0 &&
+				(errorMsg.includes('timeout') ||
+					errorMsg.includes('memory') ||
+					errorMsg.includes('out of bounds'))
+			) {
+				console.warn(
+					`[WasmWorkerService] 🔄 Large image (${megapixels.toFixed(1)}MP) failed, attempting recovery with reduced settings...`
+				);
+
 				// Try again with simplified settings for large images
 				const fallbackConfig = {
 					...config,
@@ -438,25 +457,33 @@ export class WasmWorkerService {
 					max_processing_time_ms: 600000, // 10 minutes maximum
 					pass_count: 1 // Single pass only
 				};
-				
+
 				try {
 					console.log('[WasmWorkerService] 🎯 Retrying with fallback config:', {
 						detail: fallbackConfig.detail,
 						threads: fallbackConfig.thread_count,
 						timeout: fallbackConfig.max_processing_time_ms / 1000 + 's'
 					});
-					
+
 					// Force worker restart for clean state
 					await this.handleCriticalError(error);
-					
+
 					// Recursive call with fallback config (prevent infinite recursion)
-					return await this.processImageInternal(imageData, fallbackConfig, onProgress, retryAttempt + 1, preferGpu);
+					return await this.processImageInternal(
+						imageData,
+						fallbackConfig,
+						onProgress,
+						retryAttempt + 1,
+						preferGpu
+					);
 				} catch (fallbackError) {
 					console.error('[WasmWorkerService] Fallback processing also failed:', fallbackError);
 					// Fall through to throw the original error
 				}
 			} else if (retryAttempt > 0) {
-				console.warn(`[WasmWorkerService] 🚫 Already attempted fallback for large image, not retrying again`);
+				console.warn(
+					`[WasmWorkerService] 🚫 Already attempted fallback for large image, not retrying again`
+				);
 			}
 
 			// Check if this is a critical WASM error that requires worker restart
@@ -465,13 +492,17 @@ export class WasmWorkerService {
 				await this.handleCriticalError(error);
 			} else if ((error as any)?.message?.includes?.('Processing failed due to internal error')) {
 				// Additional fallback for masked critical errors
-				console.warn('[WasmWorkerService] Suspected critical error based on message, forcing restart...');
+				console.warn(
+					'[WasmWorkerService] Suspected critical error based on message, forcing restart...'
+				);
 				await this.handleCriticalError(error);
 			}
 
 			const processingError: VectorizerError = {
 				type: 'processing',
-				message: isLargeImage ? 'Failed to process large image - try reducing detail level or image size' : 'Failed to process image',
+				message: isLargeImage
+					? 'Failed to process large image - try reducing detail level or image size'
+					: 'Failed to process image',
 				details: error instanceof Error ? error.message : String(error)
 			};
 
@@ -480,7 +511,6 @@ export class WasmWorkerService {
 			this.progressCallback = null;
 		}
 	}
-
 
 	/**
 	 * Process image with isolated worker for high-intensity operations
@@ -493,8 +523,11 @@ export class WasmWorkerService {
 		preferGpu: boolean = false
 	): Promise<ProcessingResult> {
 		let isolatedWorker: Worker | null = null;
-		const pendingMessages = new Map<string, { resolve: (value: any) => void; reject: (reason: any) => void }>();
-		
+		const pendingMessages = new Map<
+			string,
+			{ resolve: (value: any) => void; reject: (reason: any) => void }
+		>();
+
 		// GPU preference is passed as parameter to avoid duplicate detection
 		if (preferGpu) {
 			console.log('[WasmWorkerService] 🚀 GPU acceleration enabled for isolated worker');
@@ -504,7 +537,7 @@ export class WasmWorkerService {
 
 		try {
 			console.log('[WasmWorkerService] 🚀 Creating isolated worker for high-intensity operation');
-			
+
 			// Create fresh isolated worker
 			isolatedWorker = new Worker(new URL('../workers/wasm-processor.worker.ts', import.meta.url), {
 				type: 'module'
@@ -545,17 +578,17 @@ export class WasmWorkerService {
 				return new Promise((resolve, reject) => {
 					const id = generateMessageId();
 					pendingMessages.set(id, { resolve, reject });
-					
+
 					isolatedWorker!.postMessage({ type, id, payload });
-					
+
 					// Dynamic timeout for isolated worker operations
 					const pixelCount = imageData.width * imageData.height;
 					const megapixels = pixelCount / 1_000_000;
 					let timeout = 60000; // Base 1 minute
-					
+
 					// Increase timeout for multi-pass processing
 					if (config.pass_count >= 8) timeout = 120000; // 2 minutes for 8+ passes
-					
+
 					// Further increase timeout for very large images
 					if (megapixels > 20) {
 						timeout = Math.max(timeout, 300000); // 5 minutes minimum for 20MP+
@@ -581,13 +614,15 @@ export class WasmWorkerService {
 			// Process with isolated worker
 			console.log('[WasmWorkerService] 🎯 Processing with isolated worker');
 			const plainConfig = JSON.parse(JSON.stringify(config));
-			
+
 			// Ensure critical defaults are included for isolated worker too
 			if (plainConfig.pass_count === undefined) {
 				plainConfig.pass_count = 1;
-				console.log('[WasmWorkerService] 🔧 Adding missing pass_count default=1 to isolated config');
+				console.log(
+					'[WasmWorkerService] 🔧 Adding missing pass_count default=1 to isolated config'
+				);
 			}
-			
+
 			const result = await sendIsolatedMessage('process', {
 				imageData: {
 					data: Array.from(imageData.data),
@@ -600,7 +635,6 @@ export class WasmWorkerService {
 
 			console.log('[WasmWorkerService] ✅ Isolated worker processing complete');
 			return result;
-
 		} catch (error) {
 			console.error('[WasmWorkerService] Isolated worker processing failed:', error);
 			throw error;
@@ -679,18 +713,22 @@ export class WasmWorkerService {
 				'memory access out of bounds'
 			];
 			if (criticalWasmTypes.includes(error.wasmErrorType)) {
-				console.log(`[WasmWorkerService] Critical WASM error detected via wasmErrorType: ${error.wasmErrorType}`);
+				console.log(
+					`[WasmWorkerService] Critical WASM error detected via wasmErrorType: ${error.wasmErrorType}`
+				);
 				return true;
 			}
 		}
-		
+
 		// Check original error if available
 		if (error?.originalError?.message) {
 			const originalMessage = String(error.originalError.message);
 			console.log(`[WasmWorkerService] Checking original error message: ${originalMessage}`);
-			if (originalMessage.includes('unreachable executed') || 
-				originalMessage.includes('RuntimeError') || 
-				originalMessage.includes('memory access out of bounds')) {
+			if (
+				originalMessage.includes('unreachable executed') ||
+				originalMessage.includes('RuntimeError') ||
+				originalMessage.includes('memory access out of bounds')
+			) {
 				return true;
 			}
 		}
@@ -735,33 +773,34 @@ export class WasmWorkerService {
 	 */
 	async forceReset(): Promise<void> {
 		console.log('[WasmWorkerService] 🔄 Force reset initiated - cancelling all operations');
-		
+
 		try {
 			// 1. Mark as restarting to prevent new operations
 			this.workerState = WorkerState.RESTARTING;
-			
+
 			// 2. Abort current processing if any
 			await this.abort();
-			
+
 			// 3. Reject all pending requests
 			const pendingCount = pendingRequests.size;
 			for (const [id, pending] of pendingRequests) {
 				pending.reject(new Error('Force reset - operation cancelled'));
 			}
 			pendingRequests.clear();
-			
+
 			// 4. Clear processing queue
 			this.processingQueue = [];
 			this.isProcessingQueue = false;
-			
+
 			// 5. Wait a moment for cleanup to propagate
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
 			// 6. Reset to idle state
 			this.workerState = WorkerState.IDLE;
-			
-			console.log(`[WasmWorkerService] ✅ Force reset complete - cancelled ${pendingCount} operations`);
-			
+
+			console.log(
+				`[WasmWorkerService] ✅ Force reset complete - cancelled ${pendingCount} operations`
+			);
 		} catch (error) {
 			console.error('[WasmWorkerService] Error during force reset:', error);
 			// Force reset state anyway

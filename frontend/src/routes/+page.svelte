@@ -306,10 +306,16 @@
 				<div class="flex flex-col items-center justify-between gap-4 md:flex-row">
 					<p class="text-sm text-gray-400">© 2025 vec2art. Powered by Rust + WebAssembly.</p>
 					<div class="flex gap-6">
-						<a href="/info#privacy-policy" class="text-sm text-gray-400 hover:text-gray-300 transition-colors">
+						<a
+							href="/info#privacy-policy"
+							class="text-sm text-gray-400 transition-colors hover:text-gray-300"
+						>
 							Privacy Policy
 						</a>
-						<a href="/info#terms-of-service" class="text-sm text-gray-400 hover:text-gray-300 transition-colors">
+						<a
+							href="/info#terms-of-service"
+							class="text-sm text-gray-400 transition-colors hover:text-gray-300"
+						>
 							Terms of Service
 						</a>
 					</div>

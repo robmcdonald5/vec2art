@@ -5,9 +5,6 @@
 		VectorizerBackend,
 		VectorizerPreset
 	} from '$lib/types/vectorizer';
-	import { getPresetById } from '$lib/presets/presets';
-	import { presetToVectorizerConfig, getAlgorithmDefaults } from '$lib/presets/converter';
-	import type { StylePreset } from '$lib/presets/types';
 	import BackendSelector from './BackendSelector.svelte';
 	import PresetSelector from './PresetSelector.svelte';
 	import ParameterPanel from './ParameterPanel.svelte';
@@ -18,18 +15,16 @@
 		config: VectorizerConfig;
 		selectedPreset: VectorizerPreset | 'custom';
 		disabled?: boolean;
-		onConfigChange: (updates: Partial<VectorizerConfig>) => void;
-		onPresetChange: (preset: VectorizerPreset | 'custom') => void;
-		onBackendChange: (backend: VectorizerBackend) => void;
+		onConfigChange: (config: Partial<VectorizerConfig>) => void;
+		onPresetChange: (presetValue: VectorizerPreset | 'custom') => void;
+		onBackendChange: (backendValue: VectorizerBackend) => void;
 		onParameterChange: () => void;
 	}
 
 	let {
 		config,
-		selectedPreset,
 		disabled = false,
 		onConfigChange,
-		onPresetChange,
 		onBackendChange,
 		onParameterChange
 	}: Props = $props();
@@ -37,7 +32,6 @@
 	// UI state management
 	let isQuickSettingsExpanded = $state(true);
 	let isAdvancedSettingsExpanded = $state(false);
-
 
 	// Parameter update handler
 	function updateConfig(key: keyof VectorizerConfig) {
@@ -72,7 +66,9 @@
 		// This ensures both Quick and Advanced Settings are perfectly synced
 		const threshold = 0.4 - ((advancedScaleValue - 1) / 9) * (0.4 - 0.02);
 
-		console.log(`🎯 Dot Density mapping (FIXED): UI=${uiValue} (${advancedScaleValue}/10) → threshold=${threshold.toFixed(3)}`);
+		console.log(
+			`🎯 Dot Density mapping (FIXED): UI=${uiValue} (${advancedScaleValue}/10) → threshold=${threshold.toFixed(3)}`
+		);
 
 		// Update both parameters for consistency
 		onConfigChange({
@@ -176,10 +172,15 @@
 				<!-- Style Preset (Disabled - Coming Soon) -->
 				<div>
 					<div class="mb-3 flex items-center gap-2">
-						<label for="preset-selector" class="text-converter-secondary block text-sm font-medium opacity-60">
+						<label
+							for="preset-selector"
+							class="text-converter-secondary block text-sm font-medium opacity-60"
+						>
 							Style Preset
 						</label>
-						<span class="text-ferrari-600 text-xs font-semibold px-2 py-1 bg-ferrari-50 border border-ferrari-200 rounded-md">
+						<span
+							class="text-ferrari-600 bg-ferrari-50 border-ferrari-200 rounded-md border px-2 py-1 text-xs font-semibold"
+						>
 							COMING SOON
 						</span>
 						<PortalTooltipFixed
@@ -191,13 +192,13 @@
 					<div class="relative">
 						<PresetSelector
 							selectedPresetId={undefined}
-							onPresetSelect={(preset) => {
+							onPresetSelect={() => {
 								// Disabled - no action
 							}}
 							disabled={true}
 							selectedAlgorithm={config.backend}
 						/>
-						<div class="absolute inset-0 bg-gray-100/50 rounded-md cursor-not-allowed"></div>
+						<div class="absolute inset-0 cursor-not-allowed rounded-md bg-gray-100/50"></div>
 					</div>
 				</div>
 
@@ -406,7 +407,6 @@
 
 		{#if isAdvancedSettingsExpanded}
 			<div class="space-y-6 bg-white/50 p-4 backdrop-blur-sm">
-
 				<!-- Parameter Panel -->
 				<ParameterPanel {config} {onConfigChange} {disabled} {onParameterChange} />
 

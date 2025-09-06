@@ -38,7 +38,7 @@
 		if (!isTouchEvent) {
 			e.preventDefault();
 		}
-		
+
 		const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
 		const position = ((clientX - containerRect.left) / containerRect.width) * 100;
 		sliderPosition = Math.max(0, Math.min(100, position));

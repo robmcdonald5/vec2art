@@ -42,41 +42,48 @@ interface WorkerResponse {
 async function initializeWasm(config?: { threadCount?: number; backend?: string }) {
 	console.log('[Worker] 🔧 initializeWasm called with config:', config);
 	console.log('[Worker] 🔧 Current wasmInitialized status:', wasmInitialized);
-	
+
 	// Always attempt threading setup, even if WASM was previously initialized
 	let wasmInitializationNeeded = !wasmInitialized;
-	
+
 	// Check if threading is available (used in return statement)
-	const hasThreadSupport = typeof wasmModule.initThreadPool === 'function' && typeof SharedArrayBuffer !== 'undefined';
-	
+	const hasThreadSupport =
+		typeof wasmModule.initThreadPool === 'function' && typeof SharedArrayBuffer !== 'undefined';
+
 	if (wasmInitializationNeeded) {
 		try {
 			devLog('wasm_operations', 'Initializing WASM module');
-			
+
 			// Step 1: Initialize WASM module (proper wasm-bindgen-rayon pattern)
 			await init();
 			console.log('[Worker] ✅ WASM module initialized');
-			
+
 			// Step 2: IMMEDIATELY initialize thread pool (critical timing from working examples)
 			if (config?.threadCount && config.threadCount > 1) {
-				console.log(`[Worker] 🚀 Following proper wasm-bindgen-rayon pattern: init() → initThreadPool(${config.threadCount})`);
-				
+				console.log(
+					`[Worker] 🚀 Following proper wasm-bindgen-rayon pattern: init() → initThreadPool(${config.threadCount})`
+				);
+
 				if (hasThreadSupport) {
 					try {
 						// This is the critical sequence from working examples
 						await wasmModule.initThreadPool(config.threadCount);
-						console.log(`[Worker] ✅ Thread pool initialized successfully with ${config.threadCount} threads`);
-						
+						console.log(
+							`[Worker] ✅ Thread pool initialized successfully with ${config.threadCount} threads`
+						);
+
 						// Confirm success
 						if (typeof wasmModule.confirm_threading_success === 'function') {
 							wasmModule.confirm_threading_success();
 						}
-						
-						console.log(`[Worker] 🧵 Active threads: ${wasmModule.get_thread_count ? wasmModule.get_thread_count() : 'Unknown'}`);
+
+						console.log(
+							`[Worker] 🧵 Active threads: ${wasmModule.get_thread_count ? wasmModule.get_thread_count() : 'Unknown'}`
+						);
 					} catch (threadError) {
 						console.error(`[Worker] ❌ Thread pool initialization failed:`, threadError);
 						console.log('[Worker] 🔧 Falling back to single-threaded mode');
-						
+
 						if (typeof wasmModule.mark_threading_failed === 'function') {
 							wasmModule.mark_threading_failed();
 						}
@@ -87,7 +94,7 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 			} else {
 				console.log('[Worker] Single-threaded mode (threadCount <= 1)');
 			}
-			
+
 			// Step 3: Skip GPU initialization in Web Worker context
 			// GPU operations require main thread context and cannot run in Web Workers
 			console.log('[Worker] ℹ️ Skipping GPU initialization (Web Worker uses CPU processing)');
@@ -103,7 +110,7 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 		}
 	} else {
 		console.log('[Worker] 🔧 WASM already initialized, attempting threading reconfiguration');
-		
+
 		// For already-initialized WASM, attempt threading reconfiguration
 		console.log('[Worker] 🔍 Threading reconfiguration check:');
 		console.log('  config?.threadCount:', config?.threadCount);
@@ -111,14 +118,14 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 		console.log('  hasThreadSupport:', hasThreadSupport);
 		console.log('  typeof wasmModule.initThreadPool:', typeof wasmModule.initThreadPool);
 		console.log('  typeof SharedArrayBuffer:', typeof SharedArrayBuffer);
-		
+
 		if (config?.threadCount && config.threadCount > 1) {
 			if (hasThreadSupport) {
 				try {
 					console.log(`[Worker] 🔄 Reconfiguring threading: ${config.threadCount} threads`);
 					await wasmModule.initThreadPool(config.threadCount);
 					console.log(`[Worker] ✅ Threading reconfigured successfully`);
-					
+
 					if (typeof wasmModule.confirm_threading_success === 'function') {
 						wasmModule.confirm_threading_success();
 					}
@@ -134,10 +141,11 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 
 	// Return success
 	try {
-		
 		return {
 			success: true,
-			message: wasmInitializationNeeded ? 'WASM and threading initialized successfully' : 'Threading configured successfully',
+			message: wasmInitializationNeeded
+				? 'WASM and threading initialized successfully'
+				: 'Threading configured successfully',
 			threading: hasThreadSupport && config?.threadCount ? config.threadCount : 1
 		};
 	} catch (threadError) {
@@ -152,7 +160,11 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 /**
  * Create vectorizer instance with image data
  */
-async function createVectorizer(imageDataPayload: { data: number[]; width: number; height: number }) {
+async function createVectorizer(imageDataPayload: {
+	data: number[];
+	width: number;
+	height: number;
+}) {
 	if (!wasmInitialized || !wasmModule.WasmVectorizer) {
 		throw new Error('WASM not initialized or WasmVectorizer not available');
 	}
@@ -166,12 +178,12 @@ async function createVectorizer(imageDataPayload: { data: number[]; width: numbe
 			console.warn('[Worker] ⚠️ Failed to free previous vectorizer (may be corrupted):', e);
 		}
 	}
-	
+
 	// ALWAYS force null to ensure fresh instance, even if cleanup failed
 	vectorizer = null;
-	
+
 	// Small delay to ensure WASM cleanup is complete (helps with memory corruption)
-	await new Promise(resolve => setTimeout(resolve, 10));
+	await new Promise((resolve) => setTimeout(resolve, 10));
 
 	// Create a proper ImageData object from the serialized data
 	console.log('[Worker] Creating ImageData object:', {
@@ -222,23 +234,25 @@ async function configureVectorizer(config: any) {
 
 	// Store config globally for timeout handling
 	currentConfig = config;
-	
+
 	console.log('[Worker] 🚀 Using robust configuration mapper for bulletproof config transmission');
-	
+
 	// TEMPORARILY DISABLED: Robust config mapper has interface issues
 	// The vectorizer instance has no methods available, suggesting type mismatch
 	// Using legacy configuration until interface is fixed
-	console.log('[Worker] 🔧 Using legacy configuration (robust mapper temporarily disabled for debugging)');
-	
+	console.log(
+		'[Worker] 🔧 Using legacy configuration (robust mapper temporarily disabled for debugging)'
+	);
+
 	// Robust config mapper attempt (disabled for now)
 	// try {
 	//     const { RobustConfigMapper } = await import('./robust-config-mapper');
 	//     const configMapper = new RobustConfigMapper(vectorizer as any);
-	//     
+	//
 	//     await configMapper.applyConfiguration(config);
 	//     console.log('[Worker] ✅ Robust configuration application completed successfully');
 	//     return;
-	//     
+	//
 	// } catch (robustConfigError) {
 	//     console.error('[Worker] ❌ Robust config mapper failed, falling back to legacy configuration:', robustConfigError);
 	//     // Fall through to legacy configuration as backup
@@ -249,8 +263,10 @@ async function configureVectorizer(config: any) {
 		config.pass_count = 1; // Default to single pass
 		console.log('[Worker] 🔧 Setting default pass_count=1');
 	}
-	
-	console.log(`[Worker] 🔍 Current pass_count value: ${config.pass_count} (type: ${typeof config.pass_count})`);
+
+	console.log(
+		`[Worker] 🔍 Current pass_count value: ${config.pass_count} (type: ${typeof config.pass_count})`
+	);
 
 	// Calculate multipass configuration from pass_count and multipass_mode
 	if (config.pass_count !== undefined || config.multipass_mode !== undefined) {
@@ -268,10 +284,10 @@ async function configureVectorizer(config: any) {
 	if (config.thread_count > 1 && typeof wasmModule.get_thread_count === 'function') {
 		const currentThreads = wasmModule.get_thread_count();
 		console.log('[Worker] 🧵 Current thread count:', currentThreads);
-		
+
 		if (currentThreads === 1) {
 			console.log('[Worker] 🔄 Initializing threading with', config.thread_count, 'threads...');
-			
+
 			try {
 				await initializeWasm({
 					threadCount: config.thread_count,
@@ -298,7 +314,7 @@ async function configureVectorizer(config: any) {
 	if (config.backend) {
 		console.log('[Worker] Setting backend to:', config.backend);
 		vectorizer.set_backend(config.backend);
-		
+
 		// Phase 2: Enhanced threading system supports all algorithms including dots
 		console.log('[Worker] ✅ Enhanced threading system supports all backends including dots');
 	}
@@ -318,7 +334,10 @@ async function configureVectorizer(config: any) {
 				console.log(`[Worker] ✅ Detail level set successfully: ${config.detail}`);
 			} catch (detailError) {
 				console.error(`[Worker] ❌ Failed to set detail level ${config.detail}:`, detailError);
-				console.error(`[Worker] ❌ Vectorizer methods available:`, Object.getOwnPropertyNames(vectorizer));
+				console.error(
+					`[Worker] ❌ Vectorizer methods available:`,
+					Object.getOwnPropertyNames(vectorizer)
+				);
 			}
 		}
 	}
@@ -346,7 +365,10 @@ async function configureVectorizer(config: any) {
 				vectorizer.set_stroke_width(config.stroke_width);
 				console.log(`[Worker] ✅ Stroke width set successfully: ${config.stroke_width}`);
 			} catch (strokeError) {
-				console.error(`[Worker] ❌ Failed to set stroke width ${config.stroke_width}:`, strokeError);
+				console.error(
+					`[Worker] ❌ Failed to set stroke width ${config.stroke_width}:`,
+					strokeError
+				);
 			}
 		}
 	}
@@ -367,7 +389,9 @@ async function configureVectorizer(config: any) {
 	if ((config.reverse_pass || config.diagonal_pass) && !config.multipass) {
 		// Check if backend supports multipass
 		if (config.backend === 'edge') {
-			console.log('[Worker] 🔧 Auto-enabling multipass for reverse/diagonal passes (WASM requirement)');
+			console.log(
+				'[Worker] 🔧 Auto-enabling multipass for reverse/diagonal passes (WASM requirement)'
+			);
 			config.multipass = true;
 			// Ensure pass_count is > 1 when multipass is enabled
 			if (!config.pass_count || config.pass_count <= 1) {
@@ -376,7 +400,9 @@ async function configureVectorizer(config: any) {
 			}
 		} else {
 			// Backend doesn't support multipass - disable the conflicting settings
-			console.log(`[Worker] ⚠️ Backend '${config.backend}' doesn't support multipass - disabling reverse/diagonal passes`);
+			console.log(
+				`[Worker] ⚠️ Backend '${config.backend}' doesn't support multipass - disabling reverse/diagonal passes`
+			);
 			config.reverse_pass = false;
 			config.diagonal_pass = false;
 		}
@@ -384,11 +410,13 @@ async function configureVectorizer(config: any) {
 
 	// General validation: multipass enabled but pass_count is missing or <= 1
 	if (config.multipass && (!config.pass_count || config.pass_count <= 1)) {
-		console.log('[Worker] 🔧 Auto-correcting pass_count to 2 for multipass consistency (WASM requirement)');
+		console.log(
+			'[Worker] 🔧 Auto-correcting pass_count to 2 for multipass consistency (WASM requirement)'
+		);
 		config.pass_count = 2;
 	}
 
-	// Validate pass count is within supported range 
+	// Validate pass count is within supported range
 	if (config.pass_count && config.pass_count > 10) {
 		console.log('[Worker] 🔧 Auto-limiting pass_count to 10 (maximum supported)');
 		config.pass_count = 10;
@@ -437,7 +465,7 @@ async function configureVectorizer(config: any) {
 		) {
 			console.log(`[Worker] 🔧 Setting ${key} to ${config[key]} via ${method}()`);
 			vectorizer[method](config[key]);
-			
+
 			// Special debug logging for pass_count
 			if (key === 'pass_count') {
 				console.log(`[Worker] 📊 Debug: pass_count=${config[key]}, multipass=${config.multipass}`);
@@ -458,7 +486,8 @@ async function configureVectorizer(config: any) {
 	if (typeof config.hand_drawn_preset === 'string') {
 		if (typeof vectorizer.set_hand_drawn_preset === 'function') {
 			// Handle 'custom' preset - map to 'medium' to satisfy validation, then override with custom params
-			const wasmPreset = config.hand_drawn_preset === 'custom' ? 'medium' : config.hand_drawn_preset;
+			const wasmPreset =
+				config.hand_drawn_preset === 'custom' ? 'medium' : config.hand_drawn_preset;
 			console.log(
 				'[Worker] Setting hand-drawn preset:',
 				config.hand_drawn_preset,
@@ -475,7 +504,9 @@ async function configureVectorizer(config: any) {
 				vectorizer.set_hand_drawn_preset('medium');
 			}
 		} else {
-			console.log(`[Worker] ℹ️ Hand-drawn preset "${config.hand_drawn_preset}" requested but WASM method not available - using current single-threaded architecture parameters`);
+			console.log(
+				`[Worker] ℹ️ Hand-drawn preset "${config.hand_drawn_preset}" requested but WASM method not available - using current single-threaded architecture parameters`
+			);
 			// Since the method isn't available, we're using the simplified single-threaded architecture
 			// where hand-drawn effects are achieved through the existing parameters (detail, stroke_width, multipass)
 		}
@@ -649,7 +680,7 @@ async function configureVectorizer(config: any) {
 				vectorizer[method](config[key]);
 			}
 		}
-		
+
 		// Initialization pattern configuration
 		if (
 			typeof config.initialization_pattern === 'string' &&
@@ -658,7 +689,7 @@ async function configureVectorizer(config: any) {
 			console.log('[Worker] Setting initialization_pattern:', config.initialization_pattern);
 			vectorizer.set_initialization_pattern(config.initialization_pattern);
 		}
-		
+
 		// Unified color configuration for superpixel backend
 		if (
 			typeof config.preserve_colors === 'boolean' &&
@@ -833,7 +864,9 @@ async function configureVectorizer(config: any) {
 		}
 	}
 	if (config.background_removal_strength !== undefined) {
-		console.log(`[Worker] Setting background removal strength: ${config.background_removal_strength}`);
+		console.log(
+			`[Worker] Setting background removal strength: ${config.background_removal_strength}`
+		);
 		if (typeof vectorizer.set_background_removal_strength === 'function') {
 			try {
 				vectorizer.set_background_removal_strength(config.background_removal_strength);
@@ -843,11 +876,16 @@ async function configureVectorizer(config: any) {
 		}
 	}
 	if (config.background_removal_algorithm !== undefined) {
-		console.log(`[Worker] Setting background removal algorithm: ${config.background_removal_algorithm}`);
+		console.log(
+			`[Worker] Setting background removal algorithm: ${config.background_removal_algorithm}`
+		);
 		if (typeof vectorizer.set_background_removal_algorithm === 'function') {
 			try {
 				// Map any remaining 'auto' values to 'otsu' as fallback
-				const algorithm = config.background_removal_algorithm === 'auto' ? 'otsu' : config.background_removal_algorithm;
+				const algorithm =
+					config.background_removal_algorithm === 'auto'
+						? 'otsu'
+						: config.background_removal_algorithm;
 				vectorizer.set_background_removal_algorithm(algorithm);
 			} catch (error) {
 				console.error('[Worker] Error setting background removal algorithm:', error);
@@ -855,7 +893,9 @@ async function configureVectorizer(config: any) {
 		}
 	}
 	if (config.background_removal_threshold !== undefined) {
-		console.log(`[Worker] Setting background removal threshold: ${config.background_removal_threshold}`);
+		console.log(
+			`[Worker] Setting background removal threshold: ${config.background_removal_threshold}`
+		);
 		if (typeof vectorizer.set_background_removal_threshold === 'function') {
 			vectorizer.set_background_removal_threshold(config.background_removal_threshold);
 		}
@@ -899,12 +939,12 @@ async function processImage() {
 
 		// Process with progress callback and dynamic JavaScript-based timeout
 		let timeoutMs = currentConfig.max_processing_time_ms || 30000;
-		
+
 		// CRITICAL FIX: Extend timeout for background removal to prevent race condition
 		if (currentConfig.enable_background_removal) {
 			const pixelCount = currentImageData.width * currentImageData.height;
 			const megapixels = pixelCount / 1_000_000;
-			
+
 			// Match the WASM timeout extensions to prevent conflicting timeouts
 			if (megapixels > 8) {
 				timeoutMs = Math.max(timeoutMs, 300000); // 5 minutes minimum for 8MP+
@@ -913,10 +953,12 @@ async function processImage() {
 			} else {
 				timeoutMs = Math.max(timeoutMs, 180000); // 3 minutes minimum for smaller images
 			}
-			
-			console.log(`[Worker] Background removal: Extended JS timeout to ${timeoutMs/1000}s for ${megapixels.toFixed(1)}MP image`);
+
+			console.log(
+				`[Worker] Background removal: Extended JS timeout to ${timeoutMs / 1000}s for ${megapixels.toFixed(1)}MP image`
+			);
 		}
-		
+
 		const isUnlimited = timeoutMs >= 999999; // 999999ms+ considered unlimited
 
 		if (isUnlimited) {
@@ -974,74 +1016,96 @@ async function processImage() {
 				let result;
 				let mainTimeoutHandle: number | null = null;
 				let emergencyTimeoutHandle: number | null = null;
-				
+
 				try {
 					// Set up dynamic timeout based on image size and background removal
 					let wasmTimeoutMs = 180000; // 3 minutes base timeout
-					
+
 					// Adjust timeout for background removal (which is very CPU intensive)
-					if (currentConfig?.enable_background_removal) {
+					if (currentConfig?.enable_background_removal && processedImageData) {
 						const pixelCount = processedImageData.width * processedImageData.height;
 						const megapixels = pixelCount / 1_000_000;
-						
+
 						if (megapixels > 8) {
 							wasmTimeoutMs = 300000; // 5 minutes for 8MP+ with background removal
 						} else if (megapixels > 5) {
-							wasmTimeoutMs = 240000; // 4 minutes for 5-8MP with background removal  
+							wasmTimeoutMs = 240000; // 4 minutes for 5-8MP with background removal
 						} else {
 							wasmTimeoutMs = 180000; // Keep 3 minutes for smaller images
 						}
-						
-						console.log(`[Worker] 🕐 Background removal enabled: Extended WASM timeout to ${wasmTimeoutMs/1000}s for ${megapixels.toFixed(1)}MP image`);
+
+						console.log(
+							`[Worker] 🕐 Background removal enabled: Extended WASM timeout to ${wasmTimeoutMs / 1000}s for ${megapixels.toFixed(1)}MP image`
+						);
 					} else {
-						console.log(`[Worker] 🕐 Setting WASM processing timeout: ${wasmTimeoutMs/1000}s`);
+						console.log(`[Worker] 🕐 Setting WASM processing timeout: ${wasmTimeoutMs / 1000}s`);
 					}
-					
+
 					// Wrap WASM call in a Promise race with timeout
 					result = await Promise.race([
 						// WASM processing promise
 						new Promise((resolve, reject) => {
 							try {
 								// Check if GPU acceleration is preferred and available
-								if (currentConfig?.preferGpu && typeof wasmModule.vectorize_with_gpu_acceleration === 'function') {
+								if (
+									currentConfig?.preferGpu &&
+									typeof wasmModule.vectorize_with_gpu_acceleration === 'function'
+								) {
 									console.log('[Worker] 🚀 Using GPU-accelerated vectorization...');
-									const gpuResult = wasmModule.vectorize_with_gpu_acceleration(vectorizer, processedImageData!, true);
+									const gpuResult = wasmModule.vectorize_with_gpu_acceleration(
+										vectorizer,
+										processedImageData!,
+										true
+									);
 									resolve(gpuResult);
 								} else {
 									// Fallback to standard CPU vectorization
 									if (currentConfig?.preferGpu) {
-										console.log('[Worker] 💻 GPU preferred but not available, using CPU fallback...');
+										console.log(
+											'[Worker] 💻 GPU preferred but not available, using CPU fallback...'
+										);
 									}
-									
+
 									console.log('[Worker] 🚀 Starting WASM vectorize_with_progress call...');
 									try {
-										const cpuResult = vectorizer.vectorize_with_progress(processedImageData, (progress: any) => {
-											console.log('[Worker] Progress callback received:', progress);
-											// Send progress updates to main thread
-											self.postMessage({
-												type: 'progress',
-												id: 'current',
-												data: {
-													stage: progress.stage || 'processing',
-													progress: progress.progress || 0,
-													message: progress.message || 'Processing...'
-												}
-											} as WorkerResponse);
-										});
-										
-										console.log('[Worker] ✅ WASM vectorize_with_progress completed, result type:', typeof cpuResult, 'length:', cpuResult?.length || 'no length');
-										
+										const cpuResult = vectorizer.vectorize_with_progress(
+											processedImageData,
+											(progress: any) => {
+												console.log('[Worker] Progress callback received:', progress);
+												// Send progress updates to main thread
+												self.postMessage({
+													type: 'progress',
+													id: 'current',
+													data: {
+														stage: progress.stage || 'processing',
+														progress: progress.progress || 0,
+														message: progress.message || 'Processing...'
+													}
+												} as WorkerResponse);
+											}
+										);
+
+										console.log(
+											'[Worker] ✅ WASM vectorize_with_progress completed, result type:',
+											typeof cpuResult,
+											'length:',
+											cpuResult?.length || 'no length'
+										);
+
 										// Add explicit timeout check
 										if (!cpuResult) {
 											console.error('[Worker] ❌ WASM returned null/undefined result');
 											reject(new Error('WASM processing returned null result'));
 											return;
 										}
-										
+
 										console.log('[Worker] ✅ About to resolve with result');
 										resolve(cpuResult);
 									} catch (wasmCallError) {
-										console.error('[Worker] ❌ WASM vectorize_with_progress threw error:', wasmCallError);
+										console.error(
+											'[Worker] ❌ WASM vectorize_with_progress threw error:',
+											wasmCallError
+										);
 										reject(wasmCallError);
 									}
 								}
@@ -1050,54 +1114,76 @@ async function processImage() {
 								reject(wasmError);
 							}
 						}),
-						
+
 						// Timeout promise with proper cleanup tracking
 						new Promise((_, reject) => {
 							mainTimeoutHandle = setTimeout(() => {
-								console.error(`[Worker] 🚨 WASM processing timeout after ${wasmTimeoutMs/1000}s - terminating to prevent hanging`);
-								console.error(`[Worker] 🚨 This appears to be a WASM internal hang - likely in edge processing after background removal`);
-								reject(new Error(`WASM processing timeout after ${wasmTimeoutMs/1000} seconds. The edge processing algorithm appears to be stuck in an infinite loop after background removal.`));
-							}, wasmTimeoutMs);
-							
+								console.error(
+									`[Worker] 🚨 WASM processing timeout after ${wasmTimeoutMs / 1000}s - terminating to prevent hanging`
+								);
+								console.error(
+									`[Worker] 🚨 This appears to be a WASM internal hang - likely in edge processing after background removal`
+								);
+								reject(
+									new Error(
+										`WASM processing timeout after ${wasmTimeoutMs / 1000} seconds. The edge processing algorithm appears to be stuck in an infinite loop after background removal.`
+									)
+								);
+							}, wasmTimeoutMs) as any;
+
 							// Also add an emergency shorter timeout for known problematic combinations
 							if (currentConfig?.enable_background_removal && currentConfig?.backend === 'edge') {
 								const emergencyTimeout = Math.min(wasmTimeoutMs, 120000); // 2 minutes max for this combination
 								emergencyTimeoutHandle = setTimeout(() => {
-									console.error(`[Worker] 🚨 EMERGENCY TIMEOUT after ${emergencyTimeout/1000}s - Edge+Background combination is hanging`);
-									reject(new Error(`Edge processing with background removal is hanging. Try disabling background removal or using a different algorithm.`));
-								}, emergencyTimeout);
+									console.error(
+										`[Worker] 🚨 EMERGENCY TIMEOUT after ${emergencyTimeout / 1000}s - Edge+Background combination is hanging`
+									);
+									reject(
+										new Error(
+											`Edge processing with background removal is hanging. Try disabling background removal or using a different algorithm.`
+										)
+									);
+								}, emergencyTimeout) as any;
 							}
 						})
 					]);
-					
+
 					console.log('[Worker] ✅ WASM processing completed successfully within timeout');
 				} catch (wasmError: any) {
 					console.error('[Worker] 💥 WASM vectorization error:', wasmError);
-					
+
 					// Check for specific WASM errors and provide user-friendly messages
 					// IMPORTANT: Preserve original error message for critical error detection
 					if (wasmError?.message?.includes?.('unreachable executed')) {
 						console.error('[Worker] 🚨 WASM unreachable error detected - backend bug');
-						const userError = new Error('Processing failed due to internal error. Try a different algorithm or image.');
+						const userError = new Error(
+							'Processing failed due to internal error. Try a different algorithm or image.'
+						);
 						// Add original error as property for service layer critical error detection
 						(userError as any).originalError = wasmError;
 						(userError as any).wasmErrorType = 'unreachable executed';
 						throw userError;
 					} else if (wasmError?.message?.includes?.('memory access out of bounds')) {
 						console.error('[Worker] 🚨 WASM memory bounds error detected');
-						const userError = new Error('Image processing failed due to memory constraints. Try a smaller image.');
+						const userError = new Error(
+							'Image processing failed due to memory constraints. Try a smaller image.'
+						);
 						(userError as any).originalError = wasmError;
 						(userError as any).wasmErrorType = 'memory access out of bounds';
 						throw userError;
 					} else if (wasmError?.message?.includes?.('RuntimeError')) {
 						console.error('[Worker] 🚨 WASM runtime error detected');
-						const userError = new Error('Processing engine error. Try refreshing the page or using a different algorithm.');
+						const userError = new Error(
+							'Processing engine error. Try refreshing the page or using a different algorithm.'
+						);
 						(userError as any).originalError = wasmError;
 						(userError as any).wasmErrorType = 'RuntimeError';
 						throw userError;
 					} else {
 						// Re-throw with enhanced error message and preserve original
-						const userError = new Error(`Processing failed: ${wasmError?.message || 'Unknown WASM error'}`);
+						const userError = new Error(
+							`Processing failed: ${wasmError?.message || 'Unknown WASM error'}`
+						);
 						(userError as any).originalError = wasmError;
 						throw userError;
 					}
@@ -1105,11 +1191,15 @@ async function processImage() {
 					// CRITICAL FIX: Always clear timeout handles to prevent post-completion errors
 					if (mainTimeoutHandle !== null) {
 						clearTimeout(mainTimeoutHandle);
-						console.log('[Worker] 🧹 Cleared main timeout handle to prevent post-completion errors');
+						console.log(
+							'[Worker] 🧹 Cleared main timeout handle to prevent post-completion errors'
+						);
 					}
 					if (emergencyTimeoutHandle !== null) {
 						clearTimeout(emergencyTimeoutHandle);
-						console.log('[Worker] 🧹 Cleared emergency timeout handle to prevent post-completion errors');
+						console.log(
+							'[Worker] 🧹 Cleared emergency timeout handle to prevent post-completion errors'
+						);
 					}
 				}
 
@@ -1122,9 +1212,9 @@ async function processImage() {
 					console.log(
 						'[Worker] vectorize_with_progress returned:',
 						typeof result,
-						result?.length || 'no length'
+						typeof result === 'string' ? result.length : 'no length'
 					);
-					resolve(result);
+					resolve(result as string);
 				}
 			} catch (error) {
 				// Clear timeout on error
@@ -1140,35 +1230,42 @@ async function processImage() {
 		});
 
 		// REMOVED: Thread pool cleanup was causing the "every other failure" corruption
-		// Research shows wasm-bindgen-rayon provides no proper cleanup mechanism  
+		// Research shows wasm-bindgen-rayon provides no proper cleanup mechanism
 		// Multiple init_thread_pool() calls create corrupted global state in .build_global()
 		// Solution: Single thread pool lifetime - initialize once, reuse throughout app
 		console.log(`[Worker] ✅ ${currentConfig.pass_count}-pass operation completed without reset`);
 		console.log(`[Worker] 📊 Thread pool reused (single lifetime strategy)`);
 
 		console.log('[Worker] Vectorization complete');
-		
+
 		// Validate SVG result before returning
 		if (!svg || typeof svg !== 'string') {
 			console.error('[Worker] Invalid SVG result:', typeof svg, svg?.length || 'no length');
 			throw new Error('Invalid SVG result from WASM module');
 		}
-		
+
 		const svgSizeMB = new Blob([svg]).size / (1024 * 1024);
 		console.log(`[Worker] SVG result size: ${svgSizeMB.toFixed(2)}MB`);
-		
-		// Warn about very large SVGs that might cause serialization issues  
+
+		// Warn about very large SVGs that might cause serialization issues
 		if (svgSizeMB > 50) {
-			console.warn(`[Worker] ⚠️ Very large SVG result: ${svgSizeMB.toFixed(1)}MB - may cause serialization issues`);
+			console.warn(
+				`[Worker] ⚠️ Very large SVG result: ${svgSizeMB.toFixed(1)}MB - may cause serialization issues`
+			);
 		}
-		
+
 		const result = { success: true, svg };
-		console.log('[Worker] ✅ Returning result:', typeof result, result.success, result.svg ? `${result.svg.length} chars` : 'no svg');
+		console.log(
+			'[Worker] ✅ Returning result:',
+			typeof result,
+			result.success,
+			result.svg ? `${result.svg.length} chars` : 'no svg'
+		);
 		return result;
 	} finally {
 		isProcessing = false;
 		console.log('[Worker] 🔧 ProcessImage finally block - isProcessing set to false');
-		
+
 		// CRITICAL FIX: Automatically clean up vectorizer after each conversion to prevent memory accumulation
 		if (vectorizer) {
 			try {
@@ -1190,7 +1287,7 @@ async function processImage() {
  */
 self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 	const { type, id, payload } = event.data;
-	
+
 	console.log(`[Worker] 📨 Received message: ${type}`, payload);
 
 	try {
@@ -1212,15 +1309,16 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 				if (typeof wasmModule.get_thread_count === 'function') {
 					console.log('  wasmModule.get_thread_count():', wasmModule.get_thread_count());
 				}
-				
+
 				// Check if we need to reinitialize with threading
 				const wasmNotInit = !wasmInitialized;
 				const hasThreadCount = payload.config?.thread_count > 1;
 				const hasThreadCountFunc = typeof wasmModule.get_thread_count === 'function';
 				const currentThreadCount = hasThreadCountFunc ? wasmModule.get_thread_count() : 0;
 				const isSingleThreaded = currentThreadCount === 1;
-				const needsThreadInit = wasmNotInit || (hasThreadCount && hasThreadCountFunc && isSingleThreaded);
-				
+				const needsThreadInit =
+					wasmNotInit || (hasThreadCount && hasThreadCountFunc && isSingleThreaded);
+
 				console.log('[Worker] 🔍 Threading condition breakdown:');
 				console.log('  !wasmInitialized:', wasmNotInit);
 				console.log('  thread_count > 1:', hasThreadCount);
@@ -1228,7 +1326,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 				console.log('  current threads:', currentThreadCount);
 				console.log('  is single threaded:', isSingleThreaded);
 				console.log('[Worker] 🔍 Needs thread initialization:', needsThreadInit);
-				
+
 				if (needsThreadInit) {
 					console.log('[Worker] 🔄 Reinitializing WASM with threading support...');
 					const reinitResult = await initializeWasm({
@@ -1237,7 +1335,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 					});
 					console.log('[Worker] 🔄 Reinitialization result:', reinitResult);
 				}
-				
+
 				// Create vectorizer with image data
 				await createVectorizer(payload.imageData);
 
@@ -1274,7 +1372,11 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 		}
 
 		// Send success response
-		console.log('[Worker] 📤 Sending success response with result:', typeof result, result?.success);
+		console.log(
+			'[Worker] 📤 Sending success response with result:',
+			typeof result,
+			result?.success
+		);
 		try {
 			self.postMessage({
 				type: 'success',
@@ -1294,7 +1396,10 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 	} catch (error) {
 		// Send error response
 		console.error('[Worker] Error:', error);
-		console.log('[Worker] 📤 Sending error response for exception:', error instanceof Error ? error.message : 'Unknown error');
+		console.log(
+			'[Worker] 📤 Sending error response for exception:',
+			error instanceof Error ? error.message : 'Unknown error'
+		);
 		try {
 			self.postMessage({
 				type: 'error',

@@ -89,7 +89,7 @@
 				left: 'border-t-transparent border-b-transparent border-l-gray-900 border-r-0',
 				right: 'border-t-transparent border-b-transparent border-r-gray-900 border-l-0'
 			};
-			
+
 			arrowElement.className = `absolute w-0 h-0 border-4 ${arrowClasses[side as keyof typeof arrowClasses]}`;
 		}
 	}
@@ -98,7 +98,7 @@
 		if (disabled) return;
 		isVisible = true;
 		// Wait for DOM update, then position
-		await new Promise(resolve => setTimeout(resolve, 1));
+		await new Promise((resolve) => setTimeout(resolve, 1));
 		await positionTooltip();
 	}
 
@@ -178,11 +178,15 @@
 
 				<!-- Content -->
 				<div class="relative z-10">
-					${title ? `
+					${
+						title
+							? `
 						<div class="mb-2 border-b border-gray-600 pb-2">
 							<h4 class="text-sm font-semibold text-white">${title}</h4>
 						</div>
-					` : ''}
+					`
+							: ''
+					}
 
 					<p
 						class="m-0 text-sm text-white"

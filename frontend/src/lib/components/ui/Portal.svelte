@@ -12,13 +12,13 @@
 
 	onMount(async () => {
 		await tick();
-		
+
 		if (typeof target === 'string') {
 			portal = document.querySelector(target) ?? document.body;
 		} else {
 			portal = target;
 		}
-		
+
 		mounted = true;
 	});
 </script>

@@ -17,13 +17,16 @@
 	import { Button } from '$lib/components/ui/button';
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
 	import type { ProcessingProgress, ProcessingResult } from '$lib/types/vectorizer';
-	import { createManagedObjectURL, releaseManagedObjectURL } from '$lib/utils/object-url-manager.js';
+	import {
+		createManagedObjectURL,
+		releaseManagedObjectURL
+	} from '$lib/utils/object-url-manager.js';
 
 	interface Props {
 		// Upload props
 		accept?: string;
 		maxSize?: number;
-		onFilesSelect: (files: File[]) => void;
+		onFilesSelect: (selectedFiles: File[]) => void;
 		disabled?: boolean;
 		currentFiles?: File[];
 		// Preview props
@@ -32,7 +35,7 @@
 		currentProgress?: ProcessingProgress;
 		results: ProcessingResult[];
 		previewSvgUrls: (string | null)[];
-		onImageIndexChange: (index: number) => void;
+		onImageIndexChange: (newIndex: number) => void;
 		// Action callbacks - required
 		onConvert: () => void;
 		onDownload: () => void;
@@ -50,7 +53,6 @@
 		onFilesSelect,
 		disabled = false,
 		currentFiles = [],
-		inputImages,
 		currentImageIndex = 0,
 		currentProgress,
 		results = [],
@@ -62,8 +64,7 @@
 		onReset,
 		canConvert = false,
 		canDownload = false,
-		isProcessing = false,
-		...restProps
+		isProcessing = false
 	}: Props = $props();
 
 	// Upload state
@@ -80,8 +81,6 @@
 	let convertedPanOffset = $state({ x: 0, y: 0 });
 	let convertedAutoFitZoom = $state(1);
 
-	let isDragging = $state(false);
-	let dragStart = $state({ x: 0, y: 0 });
 	let imageElement = $state<HTMLImageElement>();
 	let imageContainer = $state<HTMLDivElement>();
 
@@ -92,7 +91,7 @@
 	// Managed object URL state
 	let previousFile: File | null = null;
 	let managedObjectUrl: string | null = null;
-	
+
 	// Effect to manage object URL lifecycle
 	$effect(() => {
 		// If file changed, clean up previous URL and create new one
@@ -101,12 +100,12 @@
 			if (managedObjectUrl && previousFile) {
 				releaseManagedObjectURL(managedObjectUrl);
 			}
-			
+
 			// Create new URL for current file
 			managedObjectUrl = currentFile ? createManagedObjectURL(currentFile) : null;
 			previousFile = currentFile;
 		}
-		
+
 		// Cleanup on component unmount
 		return () => {
 			if (managedObjectUrl) {
@@ -115,7 +114,7 @@
 			}
 		};
 	});
-	
+
 	const currentImageUrl = $derived(managedObjectUrl);
 	const currentSvgUrl = $derived(previewSvgUrls[currentImageIndex]);
 	const hasResult = $derived(Boolean(currentSvgUrl));
@@ -248,14 +247,6 @@
 			onAbort();
 		} else {
 			console.error('UnifiedImageProcessor: onAbort callback not provided');
-		}
-	}
-
-	function clickReset() {
-		if (onReset) {
-			onReset();
-		} else {
-			console.error('UnifiedImageProcessor: onReset callback not provided');
 		}
 	}
 
@@ -427,9 +418,7 @@
 					<p class="text-converter-secondary text-sm">
 						Drag and drop your images here, or click to browse
 					</p>
-					<p class="text-ferrari-600 text-xs">
-						Supports JPG, PNG, WebP, TIFF, BMP, GIF
-					</p>
+					<p class="text-ferrari-600 text-xs">Supports JPG, PNG, WebP, TIFF, BMP, GIF</p>
 				</div>
 			</div>
 		</div>
@@ -585,7 +574,11 @@
 					<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 						<div class="absolute inset-2 flex flex-col">
 							<div class="mb-2 flex items-center justify-between px-2">
-								<div class="text-xs font-medium" class:text-red-600={isError} class:text-converter-secondary={!isError}>
+								<div
+									class="text-xs font-medium"
+									class:text-red-600={isError}
+									class:text-converter-secondary={!isError}
+								>
 									{isError ? 'Failed to convert' : 'Converted SVG'}
 								</div>
 								<!-- Zoom Controls for Converted SVG -->

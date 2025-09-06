@@ -9,14 +9,19 @@ import { analytics, getBrowserInfo, getDeviceType } from '$lib/utils/analytics';
 /**
  * Detect browser type for GPU optimization
  */
-function detectBrowser(): { name: string; version: string | null; isFirefox: boolean; isChrome: boolean } {
+function detectBrowser(): {
+	name: string;
+	version: string | null;
+	isFirefox: boolean;
+	isChrome: boolean;
+} {
 	const userAgent = navigator.userAgent;
 	const isFirefox = userAgent.includes('Firefox');
 	const isChrome = userAgent.includes('Chrome') && !userAgent.includes('Edge');
-	
+
 	let name = 'Unknown';
 	let version: string | null = null;
-	
+
 	if (isFirefox) {
 		name = 'Firefox';
 		version = userAgent.match(/Firefox\/(\d+)/)?.[1] || null;
@@ -24,7 +29,7 @@ function detectBrowser(): { name: string; version: string | null; isFirefox: boo
 		name = 'Chrome';
 		version = userAgent.match(/Chrome\/(\d+)/)?.[1] || null;
 	}
-	
+
 	return { name, version, isFirefox, isChrome };
 }
 
@@ -33,21 +38,20 @@ function detectBrowser(): { name: string; version: string | null; isFirefox: boo
  */
 async function initializeGPUWithBrowserSupport(wasmJs: any): Promise<void> {
 	const browser = detectBrowser();
-	
+
 	try {
 		console.log('[WASM Loader] 🎮 Checking GPU acceleration status...');
-		
+
 		// Firefox: Skip WebGPU coordination due to limitations
 		if (browser.isFirefox) {
 			console.log('[WASM Loader] 🦊 Firefox detected - using optimized GPU handling');
 			await initializeFirefoxGPU(wasmJs);
 			return;
 		}
-		
+
 		// Chrome/Other browsers: Full WebGPU coordination
 		console.log('[WASM Loader] 🚀 Chrome/WebKit detected - using full WebGPU coordination');
 		await initializeChromeGPU(wasmJs);
-		
 	} catch (error) {
 		// Suppress all GPU errors - CPU fallback is always available
 		console.log('[WASM Loader] ℹ️ GPU initialization skipped, CPU processing available');
@@ -61,15 +65,14 @@ async function initializeFirefoxGPU(wasmJs: any): Promise<void> {
 	try {
 		// Firefox: Skip WebGPU coordination entirely, just check basic GPU status
 		const gpuStatus = await getGpuStatus();
-		
+
 		if (gpuStatus.accelerationSupported) {
 			console.log('[WASM Loader] ✅ GPU Acceleration Available: CPU fallback with GPU detection');
 		}
-		
+
 		// Firefox: Don't attempt WASM GPU initialization - it will fail
 		// WASM module will use CPU processing which is faster and more reliable in Firefox
 		console.log('[WASM Loader] ℹ️ Firefox: Using optimized CPU processing (recommended)');
-		
 	} catch (error) {
 		// Firefox: Completely suppress GPU errors
 		console.log('[WASM Loader] ℹ️ GPU detection completed, CPU processing ready');
@@ -81,17 +84,17 @@ async function initializeFirefoxGPU(wasmJs: any): Promise<void> {
  */
 async function initializeChromeGPU(wasmJs: any): Promise<void> {
 	let canUseGPU = false;
-	
+
 	try {
 		console.log('[WASM Loader] 🤝 Coordinating with WebGPU device manager...');
-		
+
 		// Import WebGPU Device Manager dynamically
 		const { webgpuDeviceManager } = await import('$lib/services/webgpu-device-manager');
-		
+
 		// Check memory pressure and availability
 		const memoryStatus = await webgpuDeviceManager.assessMemoryPressure();
 		console.log('[WASM Loader] Memory pressure assessment:', memoryStatus);
-		
+
 		if (memoryStatus.canAllocate && memoryStatus.pressure < 0.65) {
 			// Try to get a WebGPU device for WASM
 			const device = await webgpuDeviceManager.getDevice('wasm-vectorizer', {
@@ -101,11 +104,11 @@ async function initializeChromeGPU(wasmJs: any): Promise<void> {
 					maxBufferSize: memoryStatus.recommendedBufferSize
 				}
 			});
-			
+
 			if (device) {
 				console.log('[WASM Loader] ✅ Coordinated WebGPU device reserved for WASM');
 				canUseGPU = true;
-				
+
 				// Store device info safely (avoiding read-only error)
 				try {
 					const deviceInfo = { available: true, source: 'webgpu-manager' };
@@ -116,7 +119,7 @@ async function initializeChromeGPU(wasmJs: any): Promise<void> {
 					});
 					Object.defineProperty(wasmJs, '_deviceManager', {
 						value: webgpuDeviceManager,
-						writable: false,  
+						writable: false,
 						configurable: true
 					});
 				} catch (propertyError) {
@@ -126,21 +129,26 @@ async function initializeChromeGPU(wasmJs: any): Promise<void> {
 				console.log('[WASM Loader] 🚫 Could not reserve coordinated WebGPU device');
 			}
 		} else {
-			console.log('[WASM Loader] 🚫 High memory pressure detected, skipping GPU for WASM:', memoryStatus.reason);
+			console.log(
+				'[WASM Loader] 🚫 High memory pressure detected, skipping GPU for WASM:',
+				memoryStatus.reason
+			);
 		}
 	} catch (coordinationError) {
 		console.log('[WASM Loader] ℹ️ WebGPU coordination not available, using CPU processing');
 		return;
 	}
-	
+
 	// Only proceed with GPU initialization if coordination succeeded
 	if (canUseGPU) {
 		try {
 			const gpuStatus = await getGpuStatus();
 			if (gpuStatus.accelerationSupported) {
-				console.log(`[WASM Loader] ✅ GPU Acceleration Available: ${gpuStatus.gpuBackend.toUpperCase()} backend detected`);
+				console.log(
+					`[WASM Loader] ✅ GPU Acceleration Available: ${gpuStatus.gpuBackend.toUpperCase()} backend detected`
+				);
 				console.log(`[WASM Loader] 🚀 GPU Status: ${gpuStatus.message}`);
-				
+
 				// Initialize GPU processing if possible (with error suppression)
 				if (wasmJs.initialize_gpu_processing) {
 					try {
@@ -151,7 +159,9 @@ async function initializeChromeGPU(wasmJs: any): Promise<void> {
 						if (wasmJs._deviceManager) {
 							wasmJs._deviceManager.releaseDevice('wasm-vectorizer');
 						}
-						console.log('[WASM Loader] ℹ️ GPU initialization fallback complete, CPU processing ready');
+						console.log(
+							'[WASM Loader] ℹ️ GPU initialization fallback complete, CPU processing ready'
+						);
 					}
 				}
 			} else {
@@ -215,7 +225,9 @@ export async function loadVectorizer(options?: {
 			// Call default export to initialize wasm-bindgen glue
 			// This loads the .wasm file and sets up the proper bindings
 			// Use new object parameter format to avoid deprecated parameters warning
-			await wasmJs.default({ module_or_path: new URL('./vectorize_wasm_bg.wasm', import.meta.url) });
+			await wasmJs.default({
+				module_or_path: new URL('./vectorize_wasm_bg.wasm', import.meta.url)
+			});
 			console.log('[WASM Loader] WASM module initialized');
 
 			// Store module reference
@@ -239,8 +251,10 @@ export async function loadVectorizer(options?: {
 
 			// Note: Native WASM threading is no longer used - we use Web Workers for parallelization
 			// This section has been simplified since threading is now handled at the Web Worker level
-			console.log('[WASM Loader] Using Web Worker-based parallelization (native threading disabled)');
-			
+			console.log(
+				'[WASM Loader] Using Web Worker-based parallelization (native threading disabled)'
+			);
+
 			// Track successful initialization (Web Worker mode)
 			analytics.wasmInitSuccess({
 				threadCount: navigator.hardwareConcurrency || 1, // Available cores for Web Workers
@@ -249,7 +263,7 @@ export async function loadVectorizer(options?: {
 				browserInfo: getBrowserInfo()
 			});
 
-			// Verify key exports are available  
+			// Verify key exports are available
 			const exports = {
 				WasmVectorizer: !!wasmJs.WasmVectorizer,
 				// Note: WasmBackend and WasmPreset might not be available in current WASM build
@@ -339,7 +353,11 @@ export async function getCapabilities() {
  * Check if coordinated WebGPU is available for WASM operations
  */
 export function isCoordinatedGPUAvailable(): boolean {
-	return !!(wasmModule && (wasmModule as any)._coordinatedDeviceInfo && (wasmModule as any)._deviceManager);
+	return !!(
+		wasmModule &&
+		(wasmModule as any)._coordinatedDeviceInfo &&
+		(wasmModule as any)._deviceManager
+	);
 }
 
 /**
@@ -423,7 +441,9 @@ export async function initializeThreadPool(threadCount?: number): Promise<boolea
 
 	// Web Worker mode: no native thread pool initialization needed
 	console.log('[WASM Loader] Using Web Worker parallelization (no native threading)');
-	console.log(`[WASM Loader] Available cores for Web Workers: ${navigator.hardwareConcurrency || 1}`);
+	console.log(
+		`[WASM Loader] Available cores for Web Workers: ${navigator.hardwareConcurrency || 1}`
+	);
 	return true;
 
 	// If already initialized, check if we need to resize
@@ -715,12 +735,12 @@ export async function getGpuStatus(): Promise<{
 	try {
 		// Ensure WASM is loaded
 		const wasm = await loadVectorizer();
-		
+
 		// Coordinate with WebGPU Manager for comprehensive status
 		let webgpuManagerStatus: any = null;
 		try {
 			const { webgpuDeviceManager } = await import('$lib/services/webgpu-device-manager');
-			webgpuManagerStatus = await webgpuDeviceManager.getStatus();
+			webgpuManagerStatus = await webgpuDeviceManager.getSystemStatus();
 			console.log('[WASM Loader] WebGPU Manager status:', webgpuManagerStatus);
 		} catch (error) {
 			console.log('[WASM Loader] WebGPU Manager not available:', error);
@@ -729,35 +749,38 @@ export async function getGpuStatus(): Promise<{
 		// Use GPU backend status function if available
 		if (wasm.get_gpu_backend_status) {
 			console.log('[WASM Loader] Using GPU backend status detection...');
-			
+
 			const capabilitiesJson = wasm.get_gpu_backend_status();
 			console.log('[WASM Loader] GPU capabilities JSON:', capabilitiesJson);
-			
+
 			// Parse JSON response
 			const capabilities = JSON.parse(capabilitiesJson);
 			console.log('[WASM Loader] Parsed GPU capabilities:', capabilities);
-			
+
 			let status: 'enabled' | 'disabled' | 'not-available' | 'loading' | 'error';
 			// Enhanced logic: Consider WebGPU Manager software fallback as valid GPU backend
 			const hasHardwareGPU = capabilities.webgpu_supported || capabilities.webgl2_supported;
-			const hasSoftwareFallback = webgpuManagerStatus?.hasSoftwareFallback && webgpuManagerStatus?.canAllocate;
-			
+			const hasSoftwareFallback =
+				webgpuManagerStatus?.hasSoftwareFallback && webgpuManagerStatus?.canAllocate;
+
 			// Override WASM module response if we have WebGPU Manager coordination
 			if (!hasHardwareGPU && hasSoftwareFallback) {
-				console.log('[WASM Loader] 🔧 Overriding WASM GPU detection with WebGPU Manager software fallback');
+				console.log(
+					'[WASM Loader] 🔧 Overriding WASM GPU detection with WebGPU Manager software fallback'
+				);
 			}
-			
+
 			if (hasHardwareGPU || hasSoftwareFallback) {
-				status = 'enabled';  // GPU is available for use (hardware or software fallback)
+				status = 'enabled'; // GPU is available for use (hardware or software fallback)
 			} else {
-				status = 'not-available';  // No GPU support at all
+				status = 'not-available'; // No GPU support at all
 			}
-			
+
 			// Generate appropriate message for single-threaded + Web Worker architecture
 			let message: string;
 			let backendType: string;
 			let available: boolean;
-			
+
 			if (capabilities.webgpu_supported) {
 				message = 'WebGPU available - GPU acceleration ready for use';
 				backendType = 'webgpu';
@@ -775,7 +798,7 @@ export async function getGpuStatus(): Promise<{
 				backendType = 'none';
 				available = false;
 			}
-			
+
 			// Return format that matches WASM module's GPU status output
 			return {
 				webgpuAvailable: capabilities.webgpu_supported,
@@ -792,10 +815,10 @@ export async function getGpuStatus(): Promise<{
 				message
 			};
 		}
-		
+
 		// Fallback to individual detection functions
 		console.log('[WASM Loader] Falling back to individual GPU detection functions...');
-		
+
 		if (!wasm.is_webgpu_available || !wasm.detect_best_gpu_backend) {
 			return {
 				webgpuAvailable: false,

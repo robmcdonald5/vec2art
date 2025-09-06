@@ -3,8 +3,8 @@
  * Each preset is designed for specific algorithms based on research of their strengths
  */
 
-import type { 
-	StylePreset, 
+import type {
+	StylePreset,
 	PresetCollection,
 	EdgePreset,
 	CenterlinePreset,
@@ -26,7 +26,8 @@ const corporateLogoPreset: CenterlinePreset = {
 		id: 'corporate-logo',
 		name: 'Corporate Logo',
 		category: 'professional',
-		description: 'Clean, precise logo extraction using centerline skeleton tracing. Perfect for brand assets and simple graphics.',
+		description:
+			'Clean, precise logo extraction using centerline skeleton tracing. Perfect for brand assets and simple graphics.',
 		icon: 'Building2',
 		bestFor: ['Company logos', 'Brand marks', 'Simple icons', 'Letterheads'],
 		features: ['Skeleton extraction', 'Clean paths', 'High precision', 'Scalable vectors'],
@@ -62,7 +63,7 @@ const corporateLogoPreset: CenterlinePreset = {
 };
 
 /**
- * Technical Drawing Preset - CENTERLINE ALGORITHM  
+ * Technical Drawing Preset - CENTERLINE ALGORITHM
  * Optimized for CAD drawings, blueprints, and technical documentation
  */
 const technicalDrawingPreset: CenterlinePreset = {
@@ -70,7 +71,8 @@ const technicalDrawingPreset: CenterlinePreset = {
 		id: 'technical-drawing',
 		name: 'Technical Drawing',
 		category: 'professional',
-		description: 'Precise line extraction for engineering drawings, CAD files, and technical documentation.',
+		description:
+			'Precise line extraction for engineering drawings, CAD files, and technical documentation.',
 		icon: 'Ruler',
 		bestFor: ['CAD drawings', 'Blueprints', 'Technical diagrams', 'Engineering schematics'],
 		features: ['High precision', 'Uniform lines', 'Technical accuracy', 'Clean extraction'],
@@ -113,7 +115,7 @@ const textTypographyPreset: CenterlinePreset = {
 	metadata: {
 		id: 'text-typography',
 		name: 'Text & Typography',
-		category: 'professional', 
+		category: 'professional',
 		description: 'Precise text and typography extraction with optimal character recognition.',
 		icon: 'Type',
 		bestFor: ['Text extraction', 'Typography', 'Signage', 'Document conversion'],
@@ -150,7 +152,7 @@ const textTypographyPreset: CenterlinePreset = {
 };
 
 // ==============================================
-// EDGE ALGORITHM PRESETS  
+// EDGE ALGORITHM PRESETS
 // Best for: Photos, detailed illustrations, complex line art
 // ==============================================
 
@@ -163,10 +165,16 @@ const photoToSketchPreset: EdgePreset = {
 		id: 'photo-to-sketch',
 		name: 'Photo to Sketch',
 		category: 'artistic',
-		description: 'Transform photos into detailed pencil sketches using advanced edge detection. Perfect for portraits and complex images.',
+		description:
+			'Transform photos into detailed pencil sketches using advanced edge detection. Perfect for portraits and complex images.',
 		icon: 'Image',
 		bestFor: ['Portrait photos', 'Landscape photos', 'Complex images', 'Realistic sketches'],
-		features: ['Photo optimization', 'Natural shading', 'Detail preservation', 'Multi-pass processing'],
+		features: [
+			'Photo optimization',
+			'Natural shading',
+			'Detail preservation',
+			'Multi-pass processing'
+		],
 		marketSegment: 'general',
 		complexity: 'medium',
 		estimatedTime: '<2s'
@@ -181,7 +189,7 @@ const photoToSketchPreset: EdgePreset = {
 	},
 	overrides: {
 		edgeDetection: {
-			lowThreshold: 0.10,
+			lowThreshold: 0.1,
 			highThreshold: 0.25,
 			multiPass: true,
 			passes: ['standard', 'reverse']
@@ -210,10 +218,16 @@ const handDrawnIllustrationPreset: EdgePreset = {
 		id: 'hand-drawn-illustration',
 		name: 'Hand-Drawn Illustration',
 		category: 'artistic',
-		description: 'Natural, artistic line work with organic variations that mimics hand-drawn illustrations. Great for creative projects.',
+		description:
+			'Natural, artistic line work with organic variations that mimics hand-drawn illustrations. Great for creative projects.',
 		icon: 'Pencil',
 		bestFor: ['Illustrations', 'Artistic portraits', 'Creative artwork', 'Expressive sketches'],
-		features: ['Natural tremor', 'Variable line weights', 'Organic tapering', 'Artistic expression'],
+		features: [
+			'Natural tremor',
+			'Variable line weights',
+			'Organic tapering',
+			'Artistic expression'
+		],
 		marketSegment: 'creative',
 		complexity: 'medium',
 		estimatedTime: '<1.5s'
@@ -229,7 +243,7 @@ const handDrawnIllustrationPreset: EdgePreset = {
 	overrides: {
 		edgeDetection: {
 			lowThreshold: 0.08,
-			highThreshold: 0.20,
+			highThreshold: 0.2,
 			multiPass: true,
 			passes: ['standard', 'reverse', 'diagonal']
 		},
@@ -249,7 +263,7 @@ const handDrawnIllustrationPreset: EdgePreset = {
 };
 
 /**
- * Detailed Line Art Preset - EDGE ALGORITHM  
+ * Detailed Line Art Preset - EDGE ALGORITHM
  * Maximum detail extraction for complex artwork and detailed drawings
  */
 const detailedLineArtPreset: EdgePreset = {
@@ -257,7 +271,8 @@ const detailedLineArtPreset: EdgePreset = {
 		id: 'detailed-line-art',
 		name: 'Detailed Line Art',
 		category: 'artistic',
-		description: 'Maximum detail extraction for complex artwork. Uses multi-pass edge detection for comprehensive line capture.',
+		description:
+			'Maximum detail extraction for complex artwork. Uses multi-pass edge detection for comprehensive line capture.',
 		icon: 'Pen',
 		bestFor: ['Complex drawings', 'Detailed artwork', 'Intricate designs', 'Fine illustrations'],
 		features: ['Maximum detail', 'Multi-pass processing', 'Comprehensive lines', 'High precision'],
@@ -297,7 +312,7 @@ const detailedLineArtPreset: EdgePreset = {
 
 // ==============================================
 // DOTS ALGORITHM PRESETS
-// Best for: Stippling, pointillism, artistic textures, vintage effects  
+// Best for: Stippling, pointillism, artistic textures, vintage effects
 // ==============================================
 
 /**
@@ -309,7 +324,8 @@ const finePointillismPreset: DotsPreset = {
 		id: 'fine-pointillism',
 		name: 'Fine Pointillism',
 		category: 'artistic',
-		description: 'Neo-impressionist pointillism effect with fine dots and color mixing. Perfect for artistic prints and fine art.',
+		description:
+			'Neo-impressionist pointillism effect with fine dots and color mixing. Perfect for artistic prints and fine art.',
 		icon: 'Sparkles',
 		bestFor: ['Fine art', 'Portraits', 'Landscapes', 'Artistic prints'],
 		features: ['Color preservation', 'Fine dots', 'Artistic texture', 'Impressionist style'],
@@ -350,7 +366,8 @@ const vintageStipplingPreset: DotsPreset = {
 		id: 'vintage-stippling',
 		name: 'Vintage Stippling',
 		category: 'vintage',
-		description: 'Classic stippling and halftone effects reminiscent of vintage newspaper prints. Great for retro designs.',
+		description:
+			'Classic stippling and halftone effects reminiscent of vintage newspaper prints. Great for retro designs.',
 		icon: 'Newspaper',
 		bestFor: ['Retro designs', 'Print production', 'Vintage aesthetics', 'Screen printing'],
 		features: ['Halftone patterns', 'Vintage feel', 'Print-ready', 'Monochrome optimization'],
@@ -390,7 +407,8 @@ const artisticStipplingPreset: DotsPreset = {
 		id: 'artistic-stippling',
 		name: 'Artistic Stippling',
 		category: 'artistic',
-		description: 'Modern artistic stippling with adaptive dot placement. Creates unique textural effects with variable dot sizes.',
+		description:
+			'Modern artistic stippling with adaptive dot placement. Creates unique textural effects with variable dot sizes.',
 		icon: 'Circle',
 		bestFor: ['Modern art', 'Textural effects', 'Creative projects', 'Artistic expression'],
 		features: ['Adaptive sizing', 'Variable density', 'Creative placement', 'Modern aesthetic'],
@@ -435,7 +453,8 @@ const modernAbstractPreset: SuperpixelPreset = {
 		id: 'modern-abstract',
 		name: 'Modern Abstract',
 		category: 'modern',
-		description: 'Bold, geometric shapes perfect for modern posters and contemporary art. Creates stylized regions with color preservation.',
+		description:
+			'Bold, geometric shapes perfect for modern posters and contemporary art. Creates stylized regions with color preservation.',
 		icon: 'Shapes',
 		bestFor: ['Posters', 'Modern art', 'Album covers', 'Digital graphics'],
 		features: ['Geometric shapes', 'Bold regions', 'Color preservation', 'Stylized output'],
@@ -474,7 +493,8 @@ const minimalistPosterPreset: SuperpixelPreset = {
 		id: 'minimalist-poster',
 		name: 'Minimalist Poster',
 		category: 'modern',
-		description: 'Ultra-simplified shapes and limited colors for striking minimalist designs. Perfect for clean, impactful visuals.',
+		description:
+			'Ultra-simplified shapes and limited colors for striking minimalist designs. Perfect for clean, impactful visuals.',
 		icon: 'Square',
 		bestFor: ['Minimalist art', 'Posters', 'App icons', 'Brand graphics'],
 		features: ['Minimal detail', 'Bold shapes', 'Limited colors', 'High impact'],
@@ -513,7 +533,8 @@ const organicAbstractPreset: SuperpixelPreset = {
 		id: 'organic-abstract',
 		name: 'Organic Abstract',
 		category: 'modern',
-		description: 'Natural, flowing regions that create organic abstract compositions. Great for nature-inspired digital art.',
+		description:
+			'Natural, flowing regions that create organic abstract compositions. Great for nature-inspired digital art.',
 		icon: 'Waves',
 		bestFor: ['Abstract art', 'Nature photos', 'Organic designs', 'Fluid compositions'],
 		features: ['Organic shapes', 'Natural flow', 'Smooth regions', 'Artistic interpretation'],
@@ -558,35 +579,41 @@ export const presetCollection: PresetCollection = {
 		corporateLogoPreset,
 		technicalDrawingPreset,
 		textTypographyPreset,
-		
+
 		// EDGE Algorithm Presets (3 total)
 		photoToSketchPreset,
 		handDrawnIllustrationPreset,
 		detailedLineArtPreset,
-		
+
 		// DOTS Algorithm Presets (3 total)
 		finePointillismPreset,
 		vintageStipplingPreset,
 		artisticStipplingPreset,
-		
+
 		// SUPERPIXEL Algorithm Presets (3 total)
 		modernAbstractPreset,
 		minimalistPosterPreset,
 		organicAbstractPreset
 	],
-	
+
 	// Algorithm-based organization for UI filtering
 	byAlgorithm: {
-		'centerline': ['corporate-logo', 'technical-drawing', 'text-typography'],
-		'edge': ['photo-to-sketch', 'hand-drawn-illustration', 'detailed-line-art'],
-		'dots': ['fine-pointillism', 'vintage-stippling', 'artistic-stippling'],
-		'superpixel': ['modern-abstract', 'minimalist-poster', 'organic-abstract']
+		centerline: ['corporate-logo', 'technical-drawing', 'text-typography'],
+		edge: ['photo-to-sketch', 'hand-drawn-illustration', 'detailed-line-art'],
+		dots: ['fine-pointillism', 'vintage-stippling', 'artistic-stippling'],
+		superpixel: ['modern-abstract', 'minimalist-poster', 'organic-abstract']
 	},
-	
+
 	// Category-based organization for traditional UI grouping
 	categories: {
 		professional: ['corporate-logo', 'technical-drawing', 'text-typography'],
-		artistic: ['photo-to-sketch', 'hand-drawn-illustration', 'detailed-line-art', 'fine-pointillism', 'artistic-stippling'],
+		artistic: [
+			'photo-to-sketch',
+			'hand-drawn-illustration',
+			'detailed-line-art',
+			'fine-pointillism',
+			'artistic-stippling'
+		],
 		vintage: ['vintage-stippling'],
 		modern: ['modern-abstract', 'minimalist-poster', 'organic-abstract'],
 		experimental: []
@@ -599,17 +626,17 @@ export {
 	corporateLogoPreset,
 	technicalDrawingPreset,
 	textTypographyPreset,
-	
+
 	// EDGE Algorithm Presets
 	photoToSketchPreset,
 	handDrawnIllustrationPreset,
 	detailedLineArtPreset,
-	
+
 	// DOTS Algorithm Presets
 	finePointillismPreset,
 	vintageStipplingPreset,
 	artisticStipplingPreset,
-	
+
 	// SUPERPIXEL Algorithm Presets
 	modernAbstractPreset,
 	minimalistPosterPreset,
@@ -618,17 +645,21 @@ export {
 
 // Helper function to get preset by ID
 export function getPresetById(id: string): StylePreset | undefined {
-	return presetCollection.presets.find(p => p.metadata.id === id);
+	return presetCollection.presets.find((p) => p.metadata.id === id);
 }
 
 // Get presets by algorithm (new primary access method)
-export function getPresetsByAlgorithm(algorithm: 'centerline' | 'edge' | 'dots' | 'superpixel'): StylePreset[] {
+export function getPresetsByAlgorithm(
+	algorithm: 'centerline' | 'edge' | 'dots' | 'superpixel'
+): StylePreset[] {
 	const presetIds = presetCollection.byAlgorithm[algorithm] || [];
-	return presetCollection.presets.filter(p => presetIds.includes(p.metadata.id));
+	return presetCollection.presets.filter((p) => presetIds.includes(p.metadata.id));
 }
 
 // Get recommended presets for an image type (cross-algorithm recommendations)
-export function getRecommendedPresets(imageType: 'photo' | 'logo' | 'drawing' | 'text'): StylePreset[] {
+export function getRecommendedPresets(
+	imageType: 'photo' | 'logo' | 'drawing' | 'text'
+): StylePreset[] {
 	switch (imageType) {
 		case 'photo':
 			// Photos work best with EDGE algorithms, also DOTS for artistic effects

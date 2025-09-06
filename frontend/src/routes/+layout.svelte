@@ -1,15 +1,13 @@
 <script lang="ts">
 	import '../app.css';
 	import { browser } from '$app/environment';
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { Button } from '$lib/components/ui/button';
 	import MobileMenu from '$lib/components/navigation/MobileMenu.svelte';
 	import ToastContainer from '$lib/components/ui/toast/ToastContainer.svelte';
 	import { inject } from '@vercel/analytics';
 	import { preload } from '$lib/utils/preload';
 	// Removed scroll-lock - mobile menu uses proper CSS
-	import { beforeNavigate, afterNavigate } from '$app/navigation';
 
 	let { children } = $props();
 	let mobileMenuOpen = $state(false);
@@ -25,7 +23,8 @@
 
 	// Close menu on navigation
 	$effect(() => {
-		const pathname = $page.url.pathname;
+		// Track pathname changes to close mobile menu
+		$page.url.pathname;
 		if (mobileMenuOpen) {
 			mobileMenuOpen = false;
 		}
@@ -37,7 +36,6 @@
 		if (browser) {
 			// Initialize Vercel Analytics
 			inject();
-
 
 			// Set initial theme based on system preference
 			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;

@@ -228,7 +228,9 @@
 				Drag and drop your image here, or click to browse
 			</p>
 			<p class="text-muted-foreground mt-1 text-xs" id="file-upload-instructions">
-				Supports PNG, JPG, WebP, TIFF, BMP, GIF, AVIF up to {maxSize >= 1024 * 1024 * 1024 ? Math.round(maxSize / (1024 * 1024 * 1024)) + 'GB' : Math.round(maxSize / (1024 * 1024)) + 'MB'}
+				Supports PNG, JPG, WebP, TIFF, BMP, GIF, AVIF up to {maxSize >= 1024 * 1024 * 1024
+					? Math.round(maxSize / (1024 * 1024 * 1024)) + 'GB'
+					: Math.round(maxSize / (1024 * 1024)) + 'MB'}
 			</p>
 			<Button
 				class="mt-4"

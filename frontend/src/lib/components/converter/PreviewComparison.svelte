@@ -6,23 +6,26 @@
 		Maximize2,
 		ArrowLeftRight,
 		Download,
-		X,
 		Link,
 		Unlink,
 		Activity,
 		Image
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
-	import type { ProcessingProgress } from '$lib/types/vectorizer';
-	import type { FileMetadata } from '$lib/stores/converter-persistence';
 	import ConverterHeader from './ConverterHeader.svelte';
 	import InteractiveImagePanel from './InteractiveImagePanel.svelte';
 	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
 	import type { ConverterComponentProps } from '$lib/types/shared-props';
 	import AdvancedSvgPreview from '../ui/AdvancedSvgPreview.svelte';
 	import SvgImageViewer from '../ui/SvgImageViewer.svelte';
-	import { analyzeSvgComplexity, assessPerformance } from '$lib/services/svg-performance-analyzer.js';
-	import { createManagedObjectURL, releaseManagedObjectURL } from '$lib/utils/object-url-manager.js';
+	import {
+		analyzeSvgComplexity,
+		assessPerformance
+	} from '$lib/services/svg-performance-analyzer.js';
+	import {
+		createManagedObjectURL,
+		releaseManagedObjectURL
+	} from '$lib/utils/object-url-manager.js';
 
 	interface Props extends ConverterComponentProps {}
 
@@ -35,7 +38,6 @@
 		results,
 		previewSvgUrls,
 		canConvert,
-		canDownload,
 		isProcessing,
 		onImageIndexChange,
 		onConvert,
@@ -50,10 +52,6 @@
 		onSettingsModeChange
 	}: Props = $props();
 
-	// Legacy state for slider comparison mode only
-	let imageElement = $state<HTMLImageElement>();
-	let imageContainer = $state<HTMLDivElement>();
-
 	// Comparison slider state
 	let viewMode = $state<'side-by-side' | 'slider'>('side-by-side');
 	let sliderPosition = $state(50); // Percentage from left
@@ -62,13 +60,12 @@
 	let isVerticalSplit = $state(false);
 
 	// Derived states
-	const hasMultipleFiles = $derived(Math.max(files.length, originalImageUrls.length) > 1);
 	const currentFile = $derived(files[currentImageIndex]);
-	
+
 	// Managed object URL state
 	let previousFile: File | null = null;
 	let managedObjectUrl: string | null = null;
-	
+
 	// Effect to manage object URL lifecycle
 	$effect(() => {
 		// If file changed, clean up previous URL and create new one
@@ -77,12 +74,12 @@
 			if (managedObjectUrl && previousFile) {
 				releaseManagedObjectURL(managedObjectUrl);
 			}
-			
+
 			// Create new URL for current file
 			managedObjectUrl = currentFile ? createManagedObjectURL(currentFile) : null;
 			previousFile = currentFile;
 		}
-		
+
 		// Cleanup on component unmount
 		return () => {
 			if (managedObjectUrl) {
@@ -91,57 +88,22 @@
 			}
 		};
 	});
-	
-	const currentImageUrl = $derived(
-		originalImageUrls[currentImageIndex] || managedObjectUrl
-	);
+
+	const currentImageUrl = $derived(originalImageUrls[currentImageIndex] || managedObjectUrl);
 	const currentSvgUrl = $derived(previewSvgUrls[currentImageIndex]);
 	const hasResult = $derived(Boolean(currentSvgUrl));
 	const currentResult = $derived(results?.[currentImageIndex]);
 	const isError = $derived(currentResult?.svg?.includes('Failed to convert') ?? false);
 
-	// Performance analysis
-	const performanceAnalysis = $derived(() => {
-		if (!currentResult?.svg || isError) return null;
-		
-		try {
-			const metrics = analyzeSvgComplexity(currentResult.svg);
-			const backend = currentResult.config_used?.backend || 'edge';
-			const assessment = assessPerformance(metrics, backend as any);
-			return { metrics, assessment };
-		} catch (error) {
-			console.warn('Failed to analyze SVG performance:', error);
-			return null;
-		}
-	});
-
-
-	let dismissedWarning = $state(false);
 	let useAdvancedPreview = $state(true); // Default to advanced preview for performance
-	
+
 	// Reference to SvgImageViewer for control buttons
 	let svgImageViewer: any;
-
-	// Reset dismissed warning when image changes or new result arrives
-	$effect(() => {
-		// Reset when currentImageIndex changes or when we get a new result
-		if (currentResult) {
-			dismissedWarning = false;
-		}
-	});
 
 	// Performance analysis is handled by the PerformanceWarning component
 
 	// Zoom levels
 	const zoomLevels = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
-
-	function findClosestZoomIndex(currentZoom: number): number {
-		return zoomLevels.reduce((closest, level, index) => {
-			return Math.abs(level - currentZoom) < Math.abs(zoomLevels[closest] - currentZoom)
-				? index
-				: closest;
-		}, 0);
-	}
 
 	// Reset pan/zoom store when changing images (optional)
 	function resetPanZoomState(force = false) {
@@ -157,12 +119,6 @@
 		// Reset zoom when switching between different images in the gallery
 		// This is expected behavior - user wants fresh view of each image
 		resetPanZoomState(true);
-	}
-
-	// Legacy function for slider mode only - basic fit behavior
-	function fitToSliderContainer() {
-		// This is only used for slider comparison mode
-		// The intelligent scaling is now handled by InteractiveImagePanel
 	}
 
 	// Slider comparison functions
@@ -260,7 +216,7 @@
 			return;
 		}
 
-		// If we only have an image URL (like from originalImageUrls), 
+		// If we only have an image URL (like from originalImageUrls),
 		// try to download it
 		if (imageUrl) {
 			try {
@@ -433,7 +389,7 @@
 						<div class="flex items-center gap-2">
 							<span class="text-converter-primary text-sm font-medium select-none">Original</span>
 							<button
-								class="text-converter-primary hover:text-ferrari-600 hover:scale-110 transition-all duration-200 {panZoomStore.isSyncEnabled
+								class="text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {panZoomStore.isSyncEnabled
 									? 'text-ferrari-600'
 									: 'text-gray-400'}"
 								onclick={panZoomStore.toggleSync}
@@ -472,17 +428,25 @@
 				<div class="absolute inset-4 flex flex-col">
 					<div class="mb-3 flex items-center justify-between px-2">
 						<div class="flex items-center gap-2">
-							<span class="text-sm font-medium select-none" class:text-red-600={isError} class:text-converter-primary={!isError}>
+							<span
+								class="text-sm font-medium select-none"
+								class:text-red-600={isError}
+								class:text-converter-primary={!isError}
+							>
 								{isError ? 'Failed' : 'Converted'}
 							</span>
-							
+
 							<!-- Preview Mode Toggle next to title -->
 							{#if hasResult && !isError && currentResult?.svg}
 								<button
-									class="text-converter-primary hover:text-ferrari-600 hover:scale-110 transition-all duration-200 {useAdvancedPreview ? 'text-ferrari-600' : 'text-gray-400'}"
-									onclick={() => useAdvancedPreview = !useAdvancedPreview}
+									class="text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {useAdvancedPreview
+										? 'text-ferrari-600'
+										: 'text-gray-400'}"
+									onclick={() => (useAdvancedPreview = !useAdvancedPreview)}
 									disabled={isProcessing}
-									title={useAdvancedPreview ? 'Switch to raw SVG view' : 'Switch to optimized WebP view'}
+									title={useAdvancedPreview
+										? 'Switch to raw SVG view'
+										: 'Switch to optimized WebP view'}
 								>
 									{#if useAdvancedPreview}
 										<Activity class="h-4 w-4" />
@@ -492,13 +456,11 @@
 								</button>
 							{/if}
 						</div>
-						
 					</div>
-
 
 					{#if hasResult && currentSvgUrl}
 						<!-- Keep both components mounted to preserve state -->
-						<div class="flex-1 relative">
+						<div class="relative flex-1">
 							<!-- Advanced Preview (WebP optimized) -->
 							{#if currentResult?.svg}
 								<div class="absolute inset-0 {useAdvancedPreview ? 'block' : 'hidden'}">
@@ -507,20 +469,22 @@
 										backend={currentResult.config_used?.backend || 'edge'}
 										className="flex-1"
 										showControls={true}
-										onDownload={onDownload}
-										externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.convertedState : undefined}
+										{onDownload}
+										externalPanZoom={panZoomStore.isSyncEnabled
+											? panZoomStore.convertedState
+											: undefined}
 										onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
 										enableSync={panZoomStore.isSyncEnabled}
 									/>
 								</div>
 							{/if}
-							
+
 							<!-- Raw SVG View (Blob optimized) -->
 							{#if currentResult?.svg}
 								<div class="absolute inset-0 {useAdvancedPreview ? 'hidden' : 'flex flex-col'}">
 									<!-- Controls Header for Raw SVG View -->
 									<div class="mb-3 flex items-center justify-between px-2">
-										<div class="flex items-center gap-2">        
+										<div class="flex items-center gap-2">
 											<!-- Empty space for alignment -->
 										</div>
 										<!-- Control buttons matching AdvancedSvgPreview style -->
@@ -573,10 +537,10 @@
 											{/if}
 										</div>
 									</div>
-									
+
 									<!-- SvgImageViewer -->
 									<div class="flex-1">
-										<SvgImageViewer 
+										<SvgImageViewer
 											bind:this={svgImageViewer}
 											svgContent={currentResult.svg}
 											renderMethod="blob"
@@ -584,7 +548,9 @@
 											minScale={0.1}
 											maxScale={5.0}
 											scaleSmoothing={800}
-											externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.convertedState : undefined}
+											externalPanZoom={panZoomStore.isSyncEnabled
+												? panZoomStore.convertedState
+												: undefined}
 											onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
 											enableSync={panZoomStore.isSyncEnabled}
 										/>
@@ -598,7 +564,9 @@
 										imageAlt="Converted SVG"
 										{isProcessing}
 										className="flex-1"
-										externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.convertedState : undefined}
+										externalPanZoom={panZoomStore.isSyncEnabled
+											? panZoomStore.convertedState
+											: undefined}
 										onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
 										enableSync={panZoomStore.isSyncEnabled}
 									/>

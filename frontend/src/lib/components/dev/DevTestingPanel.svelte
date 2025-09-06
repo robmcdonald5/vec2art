@@ -886,7 +886,7 @@
 									<div class="mt-2">
 										<div class="text-xs font-medium text-red-400">Missing Functions:</div>
 										<div class="max-h-20 overflow-y-auto text-xs text-slate-300">
-											{#each introspectionResults.functions.missing.slice(0, 5) as missing}
+											{#each introspectionResults.functions.missing.slice(0, 5) as missing, index (index)}
 												<div>• {missing.name} ({missing.backend})</div>
 											{/each}
 											{#if introspectionResults.functions.missing.length > 5}
@@ -906,7 +906,7 @@
 						<div class="space-y-2">
 							<h4 class="text-xs font-medium text-slate-400">Quick Tests</h4>
 							<div class="space-y-1 text-xs">
-								{#each validationResults as result}
+								{#each validationResults as result (result.name)}
 									<div class="flex items-center justify-between">
 										<span>{result.name}:</span>
 										<span
@@ -934,7 +934,7 @@
 						<div class="space-y-2">
 							<h4 class="text-xs font-medium text-slate-400">Function Tests</h4>
 							<div class="max-h-32 space-y-1 overflow-y-auto text-xs">
-								{#each functionTestResults as result}
+								{#each functionTestResults as result (result.name)}
 									<div class="flex items-center justify-between">
 										<span class="truncate">{result.name}:</span>
 										<span

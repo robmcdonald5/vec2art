@@ -18,37 +18,37 @@ export function presetToProcessConfig(preset: StylePreset): VectorizerConfig {
 		backend: preset.backend,
 		detail: mapDetailsLevel(preset.config.details),
 		stroke_width: mapStrokeWidth(preset),
-		
+
 		// Processing settings
 		noise_filtering: preset.config.blur !== undefined && preset.config.blur > 0.5,
 		noise_filter_spatial_sigma: 1.2,
 		noise_filter_range_sigma: 50.0,
-		
+
 		// Multi-pass configuration
 		multipass: shouldEnableMultipass(preset),
 		pass_count: getPassCount(preset),
 		multipass_mode: 'auto',
-		
+
 		// Hand-drawn aesthetics from preset
 		hand_drawn_preset: mapHandDrawnPreset(preset),
 		variable_weights: mapVariableWeights(preset),
 		tremor_strength: mapTremorStrength(preset),
 		tapering: mapTapering(preset),
-		
+
 		// Directional processing
 		reverse_pass: shouldEnableReversePass(preset),
 		diagonal_pass: shouldEnableDiagonalPass(preset),
-		
+
 		// Advanced features (disabled by default for stability)
 		enable_etf_fdog: false,
 		enable_flow_tracing: false,
 		enable_bezier_fitting: false,
-		
+
 		// Color settings
 		preserve_colors: shouldPreserveColors(preset),
 		color_sampling: getColorSampling(preset),
 		color_accuracy: 0.7,
-		
+
 		// Backend-specific parameters
 		...mapBackendSpecificParams(preset)
 	};
@@ -68,11 +68,16 @@ export function presetToVectorizerConfig(preset: StylePreset): VectorizerConfig 
  */
 function mapDetailsLevel(details?: string): number {
 	switch (details) {
-		case 'low': return 0.3;
-		case 'medium': return 0.5;
-		case 'high': return 0.7;
-		case 'very-high': return 0.9;
-		default: return 0.5;
+		case 'low':
+			return 0.3;
+		case 'medium':
+			return 0.5;
+		case 'high':
+			return 0.7;
+		case 'very-high':
+			return 0.9;
+		default:
+			return 0.5;
 	}
 }
 
@@ -84,15 +89,15 @@ function mapStrokeWidth(preset: StylePreset): number {
 	if (preset.overrides?.handDrawn?.minWeight) {
 		return preset.overrides.handDrawn.minWeight;
 	}
-	
+
 	// Use config value or default based on backend
 	const defaults = {
-		'edge': 1.5,
-		'centerline': 0.8,
-		'dots': 1.0,
-		'superpixel': 1.5
+		edge: 1.5,
+		centerline: 0.8,
+		dots: 1.0,
+		superpixel: 1.5
 	};
-	
+
 	return preset.config.strokeWidth || defaults[preset.backend];
 }
 
@@ -102,12 +107,12 @@ function mapStrokeWidth(preset: StylePreset): number {
 function shouldEnableMultipass(preset: StylePreset): boolean {
 	// Enable multipass for edge backend with specific presets
 	if (preset.backend !== 'edge') return false;
-	
+
 	// Check overrides first
 	if (preset.overrides?.edgeDetection?.multiPass !== undefined) {
 		return preset.overrides.edgeDetection.multiPass;
 	}
-	
+
 	// Enable for edge backend artistic and complex presets only
 	const edgeMultipassPresets = ['hand-drawn-illustration', 'photo-to-sketch', 'detailed-line-art'];
 	return edgeMultipassPresets.includes(preset.metadata.id);
@@ -118,18 +123,22 @@ function shouldEnableMultipass(preset: StylePreset): boolean {
  */
 function getPassCount(preset: StylePreset): number {
 	if (!shouldEnableMultipass(preset)) return 1;
-	
+
 	// Check overrides
 	if (preset.overrides?.edgeDetection?.passes) {
 		return preset.overrides.edgeDetection.passes.length;
 	}
-	
+
 	// Default based on complexity
 	switch (preset.metadata.complexity) {
-		case 'simple': return 1;
-		case 'medium': return 2;
-		case 'complex': return 3;
-		default: return 2;
+		case 'simple':
+			return 1;
+		case 'medium':
+			return 2;
+		case 'complex':
+			return 3;
+		default:
+			return 2;
 	}
 }
 
@@ -151,7 +160,7 @@ function mapHandDrawnPreset(preset: StylePreset): HandDrawnPreset {
 		}
 		return 'subtle';
 	}
-	
+
 	// Map based on preset category and intent
 	switch (preset.metadata.category) {
 		case 'professional':
@@ -175,16 +184,22 @@ function mapVariableWeights(preset: StylePreset): number {
 	if (preset.overrides?.handDrawn?.variableWeight === true) {
 		return preset.overrides.handDrawn.tremor || 0.3;
 	}
-	
+
 	// Default based on hand-drawn preset
 	const handDrawnPreset = mapHandDrawnPreset(preset);
 	switch (handDrawnPreset) {
-		case 'none': return 0.0;
-		case 'subtle': return 0.1;
-		case 'medium': return 0.3;
-		case 'strong': return 0.5;
-		case 'sketchy': return 0.7;
-		default: return 0.0;
+		case 'none':
+			return 0.0;
+		case 'subtle':
+			return 0.1;
+		case 'medium':
+			return 0.3;
+		case 'strong':
+			return 0.5;
+		case 'sketchy':
+			return 0.7;
+		default:
+			return 0.0;
 	}
 }
 
@@ -195,15 +210,21 @@ function mapTremorStrength(preset: StylePreset): number {
 	if (preset.overrides?.handDrawn?.tremor !== undefined) {
 		return Math.max(0.0, Math.min(0.5, preset.overrides.handDrawn.tremor));
 	}
-	
+
 	const handDrawnPreset = mapHandDrawnPreset(preset);
 	switch (handDrawnPreset) {
-		case 'none': return 0.0;
-		case 'subtle': return 0.1;
-		case 'medium': return 0.2;
-		case 'strong': return 0.3;
-		case 'sketchy': return 0.4;
-		default: return 0.0;
+		case 'none':
+			return 0.0;
+		case 'subtle':
+			return 0.1;
+		case 'medium':
+			return 0.2;
+		case 'strong':
+			return 0.3;
+		case 'sketchy':
+			return 0.4;
+		default:
+			return 0.0;
 	}
 }
 
@@ -213,15 +234,21 @@ function mapTremorStrength(preset: StylePreset): number {
 function mapTapering(preset: StylePreset): number {
 	if (preset.overrides?.handDrawn?.tapering === false) return 0.0;
 	if (preset.overrides?.handDrawn?.tapering === true) return 0.2;
-	
+
 	const handDrawnPreset = mapHandDrawnPreset(preset);
 	switch (handDrawnPreset) {
-		case 'none': return 0.0;
-		case 'subtle': return 0.1;
-		case 'medium': return 0.2;
-		case 'strong': return 0.3;
-		case 'sketchy': return 0.4;
-		default: return 0.0;
+		case 'none':
+			return 0.0;
+		case 'subtle':
+			return 0.1;
+		case 'medium':
+			return 0.2;
+		case 'strong':
+			return 0.3;
+		case 'sketchy':
+			return 0.4;
+		default:
+			return 0.0;
 	}
 }
 
@@ -230,12 +257,12 @@ function mapTapering(preset: StylePreset): number {
  */
 function shouldEnableReversePass(preset: StylePreset): boolean {
 	if (preset.backend !== 'edge') return false;
-	
+
 	// Check overrides
 	if (preset.overrides?.edgeDetection?.passes) {
 		return preset.overrides.edgeDetection.passes.includes('reverse');
 	}
-	
+
 	// Enable for complex artistic presets
 	return preset.metadata.id === 'hand-drawn-illustration';
 }
@@ -245,14 +272,16 @@ function shouldEnableReversePass(preset: StylePreset): boolean {
  */
 function shouldEnableDiagonalPass(preset: StylePreset): boolean {
 	if (preset.backend !== 'edge') return false;
-	
+
 	// Check overrides
 	if (preset.overrides?.edgeDetection?.passes) {
 		return preset.overrides.edgeDetection.passes.includes('diagonal');
 	}
-	
+
 	// Enable for highly detailed presets
-	return preset.metadata.id === 'hand-drawn-illustration' && preset.metadata.complexity === 'medium';
+	return (
+		preset.metadata.id === 'hand-drawn-illustration' && preset.metadata.complexity === 'medium'
+	);
 }
 
 /**
@@ -261,14 +290,14 @@ function shouldEnableDiagonalPass(preset: StylePreset): boolean {
 function shouldPreserveColors(preset: StylePreset): boolean {
 	// Dots backend often uses colors
 	if (preset.backend === 'dots') return true;
-	
+
 	// Superpixel backend typically preserves colors
 	if (preset.backend === 'superpixel') return true;
-	
+
 	// Check preset intent
 	if (preset.overrides?.dots?.colorMode === 'color') return true;
 	if (preset.overrides?.dots?.colorMode === 'monochrome') return false;
-	
+
 	// Default based on market segment
 	switch (preset.metadata.marketSegment) {
 		case 'creative':
@@ -286,9 +315,11 @@ function shouldPreserveColors(preset: StylePreset): boolean {
 /**
  * Get color sampling method
  */
-function getColorSampling(preset: StylePreset): 'dominant' | 'gradient' | 'content-aware' | 'adaptive' {
+function getColorSampling(
+	preset: StylePreset
+): 'dominant' | 'gradient' | 'content-aware' | 'adaptive' {
 	if (!shouldPreserveColors(preset)) return 'dominant';
-	
+
 	switch (preset.backend) {
 		case 'dots':
 			return preset.metadata.id === 'fine-pointillism' ? 'adaptive' : 'content-aware';
@@ -306,13 +337,13 @@ function getColorSampling(preset: StylePreset): 'dominant' | 'gradient' | 'conte
  */
 function mapBackendSpecificParams(preset: StylePreset): Partial<VectorizerConfig> {
 	const params: Partial<VectorizerConfig> = {};
-	
+
 	switch (preset.backend) {
 		case 'edge':
 			// Edge detection parameters - these are not exposed in current WASM interface
 			// But we can set related parameters that affect edge detection
 			break;
-			
+
 		case 'dots':
 			// Dots backend specific parameters
 			if (preset.overrides?.dots) {
@@ -361,7 +392,7 @@ function mapBackendSpecificParams(preset: StylePreset): Partial<VectorizerConfig
 				}
 			}
 			break;
-			
+
 		case 'superpixel':
 			// Superpixel backend parameters
 			if (preset.overrides?.superpixel) {
@@ -412,7 +443,7 @@ function mapBackendSpecificParams(preset: StylePreset): Partial<VectorizerConfig
 				params.boundary_epsilon = 1.0;
 			}
 			break;
-			
+
 		case 'centerline':
 			// Centerline backend parameters
 			if (preset.overrides?.centerline) {
@@ -427,9 +458,10 @@ function mapBackendSpecificParams(preset: StylePreset): Partial<VectorizerConfig
 					params.enable_adaptive_threshold = false;
 					params.min_branch_length = 12;
 				}
-				
-				params.douglas_peucker_epsilon = preset.overrides.centerline.smoothing ? 
-					(1.0 - preset.overrides.centerline.smoothing) * 2.0 : 1.0;
+
+				params.douglas_peucker_epsilon = preset.overrides.centerline.smoothing
+					? (1.0 - preset.overrides.centerline.smoothing) * 2.0
+					: 1.0;
 			} else {
 				// Default centerline parameters based on preset - optimized for each use case
 				switch (preset.metadata.id) {
@@ -469,43 +501,44 @@ function mapBackendSpecificParams(preset: StylePreset): Partial<VectorizerConfig
 			}
 			break;
 	}
-	
+
 	return params;
 }
 
 /**
  * Get optimal preset for image characteristics
  */
-export function getOptimalPreset(
-	imageAnalysis: {
-		hasText?: boolean;
-		isPhoto?: boolean;
-		isLogo?: boolean;
-		isDrawing?: boolean;
-		colorCount?: number;
-		contrast?: number;
-	}
-): string {
+export function getOptimalPreset(imageAnalysis: {
+	hasText?: boolean;
+	isPhoto?: boolean;
+	isLogo?: boolean;
+	isDrawing?: boolean;
+	colorCount?: number;
+	contrast?: number;
+}): string {
 	// Logo detection
-	if (imageAnalysis.isLogo || (imageAnalysis.hasText && imageAnalysis.colorCount && imageAnalysis.colorCount < 10)) {
+	if (
+		imageAnalysis.isLogo ||
+		(imageAnalysis.hasText && imageAnalysis.colorCount && imageAnalysis.colorCount < 10)
+	) {
 		return 'corporate-logo';
 	}
-	
+
 	// Photo detection
 	if (imageAnalysis.isPhoto) {
 		return 'photo-to-sketch';
 	}
-	
+
 	// Drawing detection
 	if (imageAnalysis.isDrawing) {
 		return 'hand-drawn-illustration';
 	}
-	
+
 	// High contrast technical drawings
 	if (imageAnalysis.contrast && imageAnalysis.contrast > 0.8) {
 		return 'technical-drawing';
 	}
-	
+
 	// Default to hand-drawn for general use
 	return 'hand-drawn-illustration';
 }
@@ -522,28 +555,28 @@ export function isPresetCompatible(
 	}
 ): { compatible: boolean; warnings: string[] } {
 	const warnings: string[] = [];
-	
+
 	// Check image size for complex presets
 	const pixelCount = imageInfo.width * imageInfo.height;
 	if (preset.metadata.complexity === 'medium' && pixelCount > 4000 * 4000) {
 		warnings.push('Large image may take longer to process with this preset');
 	}
-	
+
 	// Check format compatibility
 	if (preset.backend === 'centerline' && imageInfo.format === 'jpeg') {
 		warnings.push('JPEG compression may affect line quality - PNG recommended');
 	}
-	
+
 	// Dots backend works better with smaller images for optimal detail
 	if (preset.backend === 'dots' && pixelCount > 2000 * 2000) {
 		warnings.push('Consider reducing image size for optimal stippling effect');
 	}
-	
+
 	// Multipass processing performance warning
 	if (shouldEnableMultipass(preset) && pixelCount > 3000 * 3000) {
 		warnings.push('Multi-pass processing may take additional time for large images');
 	}
-	
+
 	return {
 		compatible: true, // All presets are technically compatible
 		warnings

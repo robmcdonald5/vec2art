@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
+import { resolve } from 'path';
 
 export default defineConfig({
 	plugins: [
@@ -23,7 +24,8 @@ export default defineConfig({
 	],
 	resolve: {
 		alias: {
-			__wbindgen_placeholder__: '/wasm/__wbindgen_placeholder__.js'
+			__wbindgen_placeholder__: '/wasm/__wbindgen_placeholder__.js',
+			'@tests': resolve('./tests')
 		}
 	},
 	assetsInclude: ['**/*.wasm'],

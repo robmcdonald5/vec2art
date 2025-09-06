@@ -1,364 +1,364 @@
 /**
  * SVG to WebP Conversion Web Worker
- * 
+ *
  * Handles large SVG to WebP conversion using OffscreenCanvas
  * to prevent main thread blocking and improve performance.
- * 
+ *
  * Based on 2024-2025 browser optimization research.
  */
 
 interface WebPConversionRequest {
-  id: string;
-  svgContent: string;
-  imageData?: ImageData; // Pre-rendered image data from main thread
-  dimensions: { width: number; height: number };
-  options: {
-    quality?: number;
-    maxWidth?: number;
-    maxHeight?: number;
-    scaleFactor?: number;
-    progressive?: boolean;
-  };
+	id: string;
+	svgContent: string;
+	imageData?: ImageData; // Pre-rendered image data from main thread
+	dimensions: { width: number; height: number };
+	options: {
+		quality?: number;
+		maxWidth?: number;
+		maxHeight?: number;
+		scaleFactor?: number;
+		progressive?: boolean;
+	};
 }
 
 interface WebPConversionResponse {
-  id: string;
-  success: boolean;
-  result?: {
-    webpDataUrl: string;
-    originalWidth: number;
-    originalHeight: number;
-    compressionRatio: number;
-    conversionTimeMs: number;
-  };
-  error?: string;
-  progress?: {
-    stage: string;
-    percent: number;
-  };
+	id: string;
+	success: boolean;
+	result?: {
+		webpDataUrl: string;
+		originalWidth: number;
+		originalHeight: number;
+		compressionRatio: number;
+		conversionTimeMs: number;
+	};
+	error?: string;
+	progress?: {
+		stage: string;
+		percent: number;
+	};
 }
 
 class OffscreenSvgToWebPConverter {
-  private canvas: OffscreenCanvas | null = null;
-  private ctx: OffscreenCanvasRenderingContext2D | null = null;
+	private canvas: OffscreenCanvas | null = null;
+	private ctx: OffscreenCanvasRenderingContext2D | null = null;
 
-  constructor() {
-    // Initialize OffscreenCanvas if supported
-    if (typeof OffscreenCanvas !== 'undefined') {
-      this.canvas = new OffscreenCanvas(1, 1);
-      this.ctx = this.canvas.getContext('2d');
-    }
-  }
+	constructor() {
+		// Initialize OffscreenCanvas if supported
+		if (typeof OffscreenCanvas !== 'undefined') {
+			this.canvas = new OffscreenCanvas(1, 1);
+			this.ctx = this.canvas.getContext('2d');
+		}
+	}
 
-  async convertSvgToWebP(request: WebPConversionRequest): Promise<WebPConversionResponse> {
-    const startTime = performance.now();
-    
-    try {
-      // Check OffscreenCanvas support
-      if (!this.canvas || !this.ctx) {
-        throw new Error('OffscreenCanvas not supported in this environment');
-      }
+	async convertSvgToWebP(request: WebPConversionRequest): Promise<WebPConversionResponse> {
+		const startTime = performance.now();
 
-      const {
-        quality = 0.8,
-        maxWidth = 2048,
-        maxHeight = 2048,
-        scaleFactor = 1,
-        progressive = true
-      } = request.options;
+		try {
+			// Check OffscreenCanvas support
+			if (!this.canvas || !this.ctx) {
+				throw new Error('OffscreenCanvas not supported in this environment');
+			}
 
-      // Send progress update
-      this.sendProgress(request.id, 'Parsing SVG dimensions', 10);
+			const {
+				quality = 0.8,
+				maxWidth = 2048,
+				maxHeight = 2048,
+				scaleFactor = 1,
+				progressive = true
+			} = request.options;
 
-      // Get SVG dimensions using optimized parsing
-      const dimensions = await this.getSvgDimensions(request.svgContent);
-      
-      this.sendProgress(request.id, 'Calculating optimal size', 20);
+			// Send progress update
+			this.sendProgress(request.id, 'Parsing SVG dimensions', 10);
 
-      // Calculate optimal canvas size
-      const canvasSize = this.calculateOptimalSize(
-        dimensions.width,
-        dimensions.height,
-        maxWidth,
-        maxHeight,
-        scaleFactor
-      );
+			// Get SVG dimensions using optimized parsing
+			const dimensions = await this.getSvgDimensions(request.svgContent);
 
-      // Resize OffscreenCanvas
-      this.canvas.width = canvasSize.width;
-      this.canvas.height = canvasSize.height;
+			this.sendProgress(request.id, 'Calculating optimal size', 20);
 
-      this.sendProgress(request.id, 'Preparing canvas', 30);
+			// Calculate optimal canvas size
+			const canvasSize = this.calculateOptimalSize(
+				dimensions.width,
+				dimensions.height,
+				maxWidth,
+				maxHeight,
+				scaleFactor
+			);
 
-      // Set high-quality rendering
-      this.ctx.imageSmoothingEnabled = true;
-      this.ctx.imageSmoothingQuality = 'high';
+			// Resize OffscreenCanvas
+			this.canvas.width = canvasSize.width;
+			this.canvas.height = canvasSize.height;
 
-      // Clear canvas with white background
-      this.ctx.fillStyle = '#ffffff';
-      this.ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+			this.sendProgress(request.id, 'Preparing canvas', 30);
 
-      this.sendProgress(request.id, 'Loading SVG image', 40);
+			// Set high-quality rendering
+			this.ctx.imageSmoothingEnabled = true;
+			this.ctx.imageSmoothingQuality = 'high';
 
-      // Load SVG as Image element (reliable cross-browser support)
-      const svgImage = await this.loadSvgAsImage(request.svgContent);
-      
-      this.sendProgress(request.id, 'Rendering to canvas', 60);
+			// Clear canvas with white background
+			this.ctx.fillStyle = '#ffffff';
+			this.ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
 
-      // Render using optimized method
-      if (progressive && request.svgContent.length > 500000) {
-        await this.renderProgressively(svgImage, canvasSize, dimensions, request.id);
-      } else {
-        this.renderDirectly(svgImage, canvasSize, dimensions);
-      }
+			this.sendProgress(request.id, 'Loading SVG image', 40);
 
-      this.sendProgress(request.id, 'Converting to WebP', 90);
+			// Load SVG as Image element (reliable cross-browser support)
+			const svgImage = await this.loadSvgAsImage(request.svgContent);
 
-      // Convert to WebP using OffscreenCanvas
-      const webpBlob = await this.canvas.convertToBlob({
-        type: 'image/webp',
-        quality: quality
-      });
+			this.sendProgress(request.id, 'Rendering to canvas', 60);
 
-      // Convert blob to data URL
-      const webpDataUrl = await this.blobToDataUrl(webpBlob);
-      const conversionTime = performance.now() - startTime;
+			// Render using optimized method
+			if (progressive && request.svgContent.length > 500000) {
+				await this.renderProgressively(svgImage, canvasSize, dimensions, request.id);
+			} else {
+				this.renderDirectly(svgImage, canvasSize, dimensions);
+			}
 
-      // Calculate compression ratio
-      const originalSizeBytes = request.svgContent.length * 2;
-      const webpSizeBytes = webpBlob.size;
-      const compressionRatio = originalSizeBytes / webpSizeBytes;
+			this.sendProgress(request.id, 'Converting to WebP', 90);
 
-      // Image cleanup is handled automatically by GC
+			// Convert to WebP using OffscreenCanvas
+			const webpBlob = await this.canvas.convertToBlob({
+				type: 'image/webp',
+				quality: quality
+			});
 
-      this.sendProgress(request.id, 'Complete', 100);
+			// Convert blob to data URL
+			const webpDataUrl = await this.blobToDataUrl(webpBlob);
+			const conversionTime = performance.now() - startTime;
 
-      return {
-        id: request.id,
-        success: true,
-        result: {
-          webpDataUrl,
-          originalWidth: dimensions.width,
-          originalHeight: dimensions.height,
-          compressionRatio: Number(compressionRatio.toFixed(2)),
-          conversionTimeMs: Math.round(conversionTime)
-        }
-      };
+			// Calculate compression ratio
+			const originalSizeBytes = request.svgContent.length * 2;
+			const webpSizeBytes = webpBlob.size;
+			const compressionRatio = originalSizeBytes / webpSizeBytes;
 
-    } catch (error) {
-      const conversionTime = performance.now() - startTime;
-      console.error('[WebPWorker] Conversion failed:', error);
-      
-      return {
-        id: request.id,
-        success: false,
-        error: `WebP conversion failed after ${Math.round(conversionTime)}ms: ${error}`
-      };
-    }
-  }
+			// Image cleanup is handled automatically by GC
 
-  private sendProgress(id: string, stage: string, percent: number) {
-    self.postMessage({
-      id,
-      success: true,
-      progress: { stage, percent }
-    } as WebPConversionResponse);
-  }
+			this.sendProgress(request.id, 'Complete', 100);
 
-  private async getSvgDimensions(svgContent: string): Promise<{ width: number; height: number }> {
-    // Optimized dimension parsing using regex first (fastest)
-    const viewBoxMatch = svgContent.match(/viewBox\s*=\s*['"]([^'"]+)['"]/i);
-    const widthMatch = svgContent.match(/width\s*=\s*['"]([^'"]+)['"]/i);
-    const heightMatch = svgContent.match(/height\s*=\s*['"]([^'"]+)['"]/i);
+			return {
+				id: request.id,
+				success: true,
+				result: {
+					webpDataUrl,
+					originalWidth: dimensions.width,
+					originalHeight: dimensions.height,
+					compressionRatio: Number(compressionRatio.toFixed(2)),
+					conversionTimeMs: Math.round(conversionTime)
+				}
+			};
+		} catch (error) {
+			const conversionTime = performance.now() - startTime;
+			console.error('[WebPWorker] Conversion failed:', error);
 
-    if (viewBoxMatch) {
-      const viewBoxValues = viewBoxMatch[1].split(/[\s,]+/).map(Number);
-      if (viewBoxValues.length >= 4) {
-        const [x, y, width, height] = viewBoxValues;
-        if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
-          return { width, height };
-        }
-      }
-    }
+			return {
+				id: request.id,
+				success: false,
+				error: `WebP conversion failed after ${Math.round(conversionTime)}ms: ${error}`
+			};
+		}
+	}
 
-    if (widthMatch && heightMatch) {
-      const width = this.parseNumericValue(widthMatch[1]);
-      const height = this.parseNumericValue(heightMatch[1]);
-      if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
-        return { width, height };
-      }
-    }
+	private sendProgress(id: string, stage: string, percent: number) {
+		self.postMessage({
+			id,
+			success: true,
+			progress: { stage, percent }
+		} as WebPConversionResponse);
+	}
 
-    // Fallback dimensions
-    return { width: 1024, height: 768 };
-  }
+	private async getSvgDimensions(svgContent: string): Promise<{ width: number; height: number }> {
+		// Optimized dimension parsing using regex first (fastest)
+		const viewBoxMatch = svgContent.match(/viewBox\s*=\s*['"]([^'"]+)['"]/i);
+		const widthMatch = svgContent.match(/width\s*=\s*['"]([^'"]+)['"]/i);
+		const heightMatch = svgContent.match(/height\s*=\s*['"]([^'"]+)['"]/i);
 
-  private parseNumericValue(value: string): number {
-    if (!value) return NaN;
-    const cleaned = value.toString().replace(/px|pt|em|rem|%|mm|cm|in/gi, '');
-    return parseFloat(cleaned);
-  }
+		if (viewBoxMatch) {
+			const viewBoxValues = viewBoxMatch[1].split(/[\s,]+/).map(Number);
+			if (viewBoxValues.length >= 4) {
+				const [x, y, width, height] = viewBoxValues;
+				if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
+					return { width, height };
+				}
+			}
+		}
 
-  private calculateOptimalSize(
-    svgWidth: number,
-    svgHeight: number,
-    maxWidth: number,
-    maxHeight: number,
-    scaleFactor: number
-  ): { width: number; height: number; scale: number } {
-    const targetWidth = svgWidth * scaleFactor;
-    const targetHeight = svgHeight * scaleFactor;
+		if (widthMatch && heightMatch) {
+			const width = this.parseNumericValue(widthMatch[1]);
+			const height = this.parseNumericValue(heightMatch[1]);
+			if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
+				return { width, height };
+			}
+		}
 
-    let scale = 1;
-    let width = targetWidth;
-    let height = targetHeight;
+		// Fallback dimensions
+		return { width: 1024, height: 768 };
+	}
 
-    if (width > maxWidth || height > maxHeight) {
-      const scaleX = maxWidth / width;
-      const scaleY = maxHeight / height;
-      scale = Math.min(scaleX, scaleY);
-      width = width * scale;
-      height = height * scale;
-    }
+	private parseNumericValue(value: string): number {
+		if (!value) return NaN;
+		const cleaned = value.toString().replace(/px|pt|em|rem|%|mm|cm|in/gi, '');
+		return parseFloat(cleaned);
+	}
 
-    return {
-      width: Math.round(width),
-      height: Math.round(height),
-      scale: scale * scaleFactor
-    };
-  }
+	private calculateOptimalSize(
+		svgWidth: number,
+		svgHeight: number,
+		maxWidth: number,
+		maxHeight: number,
+		scaleFactor: number
+	): { width: number; height: number; scale: number } {
+		const targetWidth = svgWidth * scaleFactor;
+		const targetHeight = svgHeight * scaleFactor;
 
-  private async loadSvgAsImage(svgContent: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      
-      try {
-        // Ensure SVG has proper namespace
-        let processedSvg = svgContent;
-        if (!processedSvg.includes('xmlns="http://www.w3.org/2000/svg"')) {
-          processedSvg = processedSvg.replace(
-            /<svg([^>]*?)>/i,
-            '<svg xmlns="http://www.w3.org/2000/svg"$1>'
-          );
-        }
-        
-        // Create blob with proper MIME type
-        const blob = new Blob([processedSvg], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
+		let scale = 1;
+		let width = targetWidth;
+		let height = targetHeight;
 
-        // Set up image loading with timeout
-        const timeout = setTimeout(() => {
-          URL.revokeObjectURL(url);
-          reject(new Error('SVG image loading timeout (5 minutes)'));
-        }, 300000);
+		if (width > maxWidth || height > maxHeight) {
+			const scaleX = maxWidth / width;
+			const scaleY = maxHeight / height;
+			scale = Math.min(scaleX, scaleY);
+			width = width * scale;
+			height = height * scale;
+		}
 
-        img.onload = () => {
-          clearTimeout(timeout);
-          URL.revokeObjectURL(url);
-          resolve(img);
-        };
+		return {
+			width: Math.round(width),
+			height: Math.round(height),
+			scale: scale * scaleFactor
+		};
+	}
 
-        img.onerror = (error) => {
-          clearTimeout(timeout);
-          URL.revokeObjectURL(url);
-          reject(new Error(`Failed to load SVG as image: ${error}`));
-        };
+	private async loadSvgAsImage(svgContent: string): Promise<HTMLImageElement> {
+		return new Promise((resolve, reject) => {
+			const img = new Image();
 
-        // Set CORS mode for potential external resources
-        img.crossOrigin = 'anonymous';
-        img.src = url;
-        
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
+			try {
+				// Ensure SVG has proper namespace
+				let processedSvg = svgContent;
+				if (!processedSvg.includes('xmlns="http://www.w3.org/2000/svg"')) {
+					processedSvg = processedSvg.replace(
+						/<svg([^>]*?)>/i,
+						'<svg xmlns="http://www.w3.org/2000/svg"$1>'
+					);
+				}
 
-  private renderDirectly(
-    image: HTMLImageElement,
-    canvasSize: { width: number; height: number; scale: number },
-    originalSize: { width: number; height: number }
-  ): void {
-    if (!this.ctx) throw new Error('Canvas context not available');
-    
-    this.ctx.drawImage(
-      image,
-      0, 0, originalSize.width, originalSize.height,
-      0, 0, canvasSize.width, canvasSize.height
-    );
-  }
+				// Create blob with proper MIME type
+				const blob = new Blob([processedSvg], { type: 'image/svg+xml;charset=utf-8' });
+				const url = URL.createObjectURL(blob);
 
-  private async renderProgressively(
-    image: HTMLImageElement,
-    canvasSize: { width: number; height: number; scale: number },
-    originalSize: { width: number; height: number },
-    requestId: string
-  ): Promise<void> {
-    if (!this.ctx) throw new Error('Canvas context not available');
+				// Set up image loading with timeout
+				const timeout = setTimeout(() => {
+					URL.revokeObjectURL(url);
+					reject(new Error('SVG image loading timeout (5 minutes)'));
+				}, 300000);
 
-    const chunkSize = 512;
-    const chunksX = Math.ceil(canvasSize.width / chunkSize);
-    const chunksY = Math.ceil(canvasSize.height / chunkSize);
-    const totalChunks = chunksX * chunksY;
+				img.onload = () => {
+					clearTimeout(timeout);
+					URL.revokeObjectURL(url);
+					resolve(img);
+				};
 
-    for (let y = 0; y < chunksY; y++) {
-      for (let x = 0; x < chunksX; x++) {
-        const chunkIndex = y * chunksX + x;
-        const progress = 60 + Math.round((chunkIndex / totalChunks) * 25); // 60-85% range
-        
-        const chunkX = x * chunkSize;
-        const chunkY = y * chunkSize;
-        const chunkW = Math.min(chunkSize, canvasSize.width - chunkX);
-        const chunkH = Math.min(chunkSize, canvasSize.height - chunkY);
+				img.onerror = (error) => {
+					clearTimeout(timeout);
+					URL.revokeObjectURL(url);
+					reject(new Error(`Failed to load SVG as image: ${error}`));
+				};
 
-        const srcX = (chunkX / canvasSize.width) * originalSize.width;
-        const srcY = (chunkY / canvasSize.height) * originalSize.height;
-        const srcW = (chunkW / canvasSize.width) * originalSize.width;
-        const srcH = (chunkH / canvasSize.height) * originalSize.height;
+				// Set CORS mode for potential external resources
+				img.crossOrigin = 'anonymous';
+				img.src = url;
+			} catch (error) {
+				reject(error);
+			}
+		});
+	}
 
-        this.ctx.drawImage(
-          image,
-          srcX, srcY, srcW, srcH,
-          chunkX, chunkY, chunkW, chunkH
-        );
+	private renderDirectly(
+		image: HTMLImageElement,
+		canvasSize: { width: number; height: number; scale: number },
+		originalSize: { width: number; height: number }
+	): void {
+		if (!this.ctx) throw new Error('Canvas context not available');
 
-        // Send progress update and yield control
-        if (chunkIndex % 4 === 0) {
-          this.sendProgress(requestId, 'Rendering progressively', progress);
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-      }
-    }
-  }
+		this.ctx.drawImage(
+			image,
+			0,
+			0,
+			originalSize.width,
+			originalSize.height,
+			0,
+			0,
+			canvasSize.width,
+			canvasSize.height
+		);
+	}
 
-  private async blobToDataUrl(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error('Failed to convert blob to data URL'));
-      reader.readAsDataURL(blob);
-    });
-  }
+	private async renderProgressively(
+		image: HTMLImageElement,
+		canvasSize: { width: number; height: number; scale: number },
+		originalSize: { width: number; height: number },
+		requestId: string
+	): Promise<void> {
+		if (!this.ctx) throw new Error('Canvas context not available');
+
+		const chunkSize = 512;
+		const chunksX = Math.ceil(canvasSize.width / chunkSize);
+		const chunksY = Math.ceil(canvasSize.height / chunkSize);
+		const totalChunks = chunksX * chunksY;
+
+		for (let y = 0; y < chunksY; y++) {
+			for (let x = 0; x < chunksX; x++) {
+				const chunkIndex = y * chunksX + x;
+				const progress = 60 + Math.round((chunkIndex / totalChunks) * 25); // 60-85% range
+
+				const chunkX = x * chunkSize;
+				const chunkY = y * chunkSize;
+				const chunkW = Math.min(chunkSize, canvasSize.width - chunkX);
+				const chunkH = Math.min(chunkSize, canvasSize.height - chunkY);
+
+				const srcX = (chunkX / canvasSize.width) * originalSize.width;
+				const srcY = (chunkY / canvasSize.height) * originalSize.height;
+				const srcW = (chunkW / canvasSize.width) * originalSize.width;
+				const srcH = (chunkH / canvasSize.height) * originalSize.height;
+
+				this.ctx.drawImage(image, srcX, srcY, srcW, srcH, chunkX, chunkY, chunkW, chunkH);
+
+				// Send progress update and yield control
+				if (chunkIndex % 4 === 0) {
+					this.sendProgress(requestId, 'Rendering progressively', progress);
+					await new Promise((resolve) => setTimeout(resolve, 0));
+				}
+			}
+		}
+	}
+
+	private async blobToDataUrl(blob: Blob): Promise<string> {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => resolve(reader.result as string);
+			reader.onerror = () => reject(new Error('Failed to convert blob to data URL'));
+			reader.readAsDataURL(blob);
+		});
+	}
 }
 
 // Worker message handling
 const converter = new OffscreenSvgToWebPConverter();
 
 self.onmessage = async (event: MessageEvent<WebPConversionRequest>) => {
-  const request = event.data;
-  console.log('[WebPWorker] Starting conversion for request:', request.id);
-  
-  try {
-    const response = await converter.convertSvgToWebP(request);
-    self.postMessage(response);
-  } catch (error) {
-    console.error('[WebPWorker] Unexpected error:', error);
-    self.postMessage({
-      id: request.id,
-      success: false,
-      error: `Unexpected worker error: ${error}`
-    } as WebPConversionResponse);
-  }
+	const request = event.data;
+	console.log('[WebPWorker] Starting conversion for request:', request.id);
+
+	try {
+		const response = await converter.convertSvgToWebP(request);
+		self.postMessage(response);
+	} catch (error) {
+		console.error('[WebPWorker] Unexpected error:', error);
+		self.postMessage({
+			id: request.id,
+			success: false,
+			error: `Unexpected worker error: ${error}`
+		} as WebPConversionResponse);
+	}
 };
 
 // Export types for main thread

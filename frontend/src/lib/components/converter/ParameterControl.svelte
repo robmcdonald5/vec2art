@@ -1,29 +1,31 @@
 <script lang="ts">
-	import { RotateCcw, Info } from 'lucide-svelte';
-	import { Button } from '$lib/components/ui/button';
+	import { Info } from 'lucide-svelte';
 	import type { VectorizerConfig } from '$lib/types/vectorizer';
-	
+
 	interface Props {
 		parameter: keyof VectorizerConfig;
 		value: any;
-		onChange: (value: any) => void;
+		onChange: (newValue: any) => void;
 		disabled?: boolean;
 		showOverride?: boolean;
 	}
-	
+
 	let { parameter, value, onChange, disabled = false, showOverride = false }: Props = $props();
-	
+
 	// Parameter metadata for UI generation
-	const parameterMeta: Record<string, {
-		label: string;
-		description: string;
-		type: 'number' | 'boolean' | 'select' | 'range';
-		min?: number;
-		max?: number;
-		step?: number;
-		options?: { value: any; label: string }[];
-		unit?: string;
-	}> = {
+	const parameterMeta: Record<
+		string,
+		{
+			label: string;
+			description: string;
+			type: 'number' | 'boolean' | 'select' | 'range';
+			min?: number;
+			max?: number;
+			step?: number;
+			options?: { value: any; label: string }[];
+			unit?: string;
+		}
+	> = {
 		// Core parameters
 		detail: {
 			label: 'Detail Level',
@@ -48,7 +50,7 @@
 			description: 'Apply noise reduction preprocessing',
 			type: 'boolean'
 		},
-		
+
 		// Multi-pass processing
 		multipass: {
 			label: 'Multi-pass Processing',
@@ -76,7 +78,7 @@
 			description: 'Process diagonally for complex geometries',
 			type: 'boolean'
 		},
-		
+
 		// Hand-drawn effects
 		hand_drawn_preset: {
 			label: 'Hand-drawn Style',
@@ -115,7 +117,7 @@
 			max: 1.0,
 			step: 0.1
 		},
-		
+
 		// Dots backend
 		dot_density_threshold: {
 			label: 'Dot Density',
@@ -153,7 +155,7 @@
 			description: 'Use Poisson disk sampling for dot placement',
 			type: 'boolean'
 		},
-		
+
 		// Superpixel backend
 		num_superpixels: {
 			label: 'Number of Regions',
@@ -181,7 +183,7 @@
 			description: 'Draw outlines around regions',
 			type: 'boolean'
 		},
-		
+
 		// Centerline backend
 		enable_adaptive_threshold: {
 			label: 'Adaptive Thresholding',
@@ -215,7 +217,7 @@
 			step: 0.1,
 			unit: 'px'
 		},
-		
+
 		// Color processing
 		preserve_colors: {
 			label: 'Preserve Colors',
@@ -242,13 +244,15 @@
 			step: 0.1
 		}
 	};
-	
-	let meta = $derived(parameterMeta[parameter] || {
-		label: parameter,
-		description: 'Parameter description not available',
-		type: 'number' as const
-	});
-	
+
+	let meta = $derived(
+		parameterMeta[parameter] || {
+			label: parameter,
+			description: 'Parameter description not available',
+			type: 'number' as const
+		}
+	);
+
 	// Format display value
 	let displayValue = $derived(() => {
 		if (meta.type === 'range' && meta.unit === '%') {
@@ -264,89 +268,83 @@
 <div class="space-y-2">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-2">
-			<label class="text-sm font-medium text-foreground" for={parameter}>
+			<label class="text-foreground text-sm font-medium" for={parameter}>
 				{meta.label}
 			</label>
 			{#if showOverride}
-				<span class="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded border">
+				<span class="rounded border bg-purple-100 px-1.5 py-0.5 text-xs text-purple-700">
 					Override
 				</span>
 			{/if}
 		</div>
-		
+
 		<div class="flex items-center gap-2">
-			<span class="text-xs text-muted-foreground font-mono">
+			<span class="text-muted-foreground font-mono text-xs">
 				{displayValue}
 			</span>
-			<button 
-				class="text-muted-foreground hover:text-foreground"
-				title={meta.description}
-			>
+			<button class="text-muted-foreground hover:text-foreground" title={meta.description}>
 				<Info class="h-3 w-3" />
 			</button>
 		</div>
 	</div>
-	
+
 	<!-- Control based on parameter type -->
 	{#if meta.type === 'boolean'}
-		<label class="flex items-center gap-2 cursor-pointer">
-			<input 
-				type="checkbox" 
+		<label class="flex cursor-pointer items-center gap-2">
+			<input
+				type="checkbox"
 				id={parameter}
 				checked={value}
 				onchange={(e) => onChange(e.currentTarget.checked)}
-				disabled={disabled}
-				class="rounded border-input"
+				{disabled}
+				class="border-input rounded"
 			/>
-			<span class="text-xs text-muted-foreground">{meta.description}</span>
+			<span class="text-muted-foreground text-xs">{meta.description}</span>
 		</label>
-		
 	{:else if meta.type === 'select'}
-		<select 
+		<select
 			id={parameter}
-			value={value}
+			{value}
 			onchange={(e) => {
 				const val = e.currentTarget.value;
 				// Try to parse as number if it looks numeric
 				const numericVal = Number(val);
 				onChange(isNaN(numericVal) ? val : numericVal);
 			}}
-			disabled={disabled}
-			class="w-full px-2 py-1 rounded border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+			{disabled}
+			class="border-input bg-background focus:ring-ring w-full rounded border px-2 py-1 text-sm focus:ring-1 focus:outline-none"
 		>
 			{#each meta.options || [] as option (option.value)}
 				<option value={option.value}>{option.label}</option>
 			{/each}
 		</select>
-		
 	{:else if meta.type === 'range'}
 		<div class="space-y-1">
-			<input 
+			<input
 				type="range"
 				id={parameter}
 				min={meta.min}
 				max={meta.max}
 				step={meta.step}
-				value={value}
+				{value}
 				oninput={(e) => onChange(Number(e.currentTarget.value))}
-				disabled={disabled}
-				class="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer slider"
+				{disabled}
+				class="bg-muted slider h-2 w-full cursor-pointer appearance-none rounded-lg"
 			/>
-			<div class="flex justify-between text-xs text-muted-foreground">
+			<div class="text-muted-foreground flex justify-between text-xs">
 				<span>{meta.min}{meta.unit || ''}</span>
 				<span>{meta.max}{meta.unit || ''}</span>
 			</div>
 		</div>
-		
 	{:else}
 		<!-- Fallback numeric input -->
-		<input 
+		<input
 			type="number"
 			id={parameter}
-			value={value}
+			{value}
 			onchange={(e) => onChange(Number(e.currentTarget.value))}
-			disabled={disabled}
-			class="w-full px-2 py-1 rounded border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+			{disabled}
+			class="border-input bg-background focus:ring-ring w-full rounded border px-2 py-1 text-sm focus:ring-1 focus:outline-none"
 		/>
 	{/if}
 </div>
@@ -360,7 +358,7 @@
 		background: hsl(var(--primary));
 		cursor: pointer;
 	}
-	
+
 	.slider::-moz-range-thumb {
 		height: 16px;
 		width: 16px;

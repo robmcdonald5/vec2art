@@ -43,19 +43,19 @@ export interface PerformanceAssessment {
  */
 export const BACKEND_PERFORMANCE_THRESHOLDS: BackendThresholds = {
 	dots: {
-		warning: 1500,  // Dots are simple circles but numerous
+		warning: 1500, // Dots are simple circles but numerous
 		critical: 2500
 	},
 	edge: {
-		warning: 2000,  // Paths are more complex but fewer
+		warning: 2000, // Paths are more complex but fewer
 		critical: 3000
 	},
 	centerline: {
-		warning: 2000,  // Similar complexity to edge
+		warning: 2000, // Similar complexity to edge
 		critical: 3000
 	},
 	superpixel: {
-		warning: 1800,  // Polygonal paths, moderate complexity
+		warning: 1800, // Polygonal paths, moderate complexity
 		critical: 2800
 	}
 };
@@ -71,7 +71,7 @@ export class SvgPerformanceAnalyzer {
 		// Parse SVG to count elements
 		const parser = new DOMParser();
 		const doc = parser.parseFromString(svg, 'image/svg+xml');
-		
+
 		// Check for parser errors
 		const parserError = doc.querySelector('parsererror');
 		if (parserError) {
@@ -81,7 +81,7 @@ export class SvgPerformanceAnalyzer {
 		}
 
 		const svgElement = doc.documentElement;
-		
+
 		// Count different element types
 		const pathCount = svgElement.querySelectorAll('path').length;
 		const circleCount = svgElement.querySelectorAll('circle').length;
@@ -95,21 +95,21 @@ export class SvgPerformanceAnalyzer {
 		const ellipseCount = svgElement.querySelectorAll('ellipse').length;
 
 		// Calculate element counts
-		const elementCount = pathCount + circleCount + rectCount + lineCount + 
-			polylineCount + polygonCount + ellipseCount;
+		const elementCount =
+			pathCount + circleCount + rectCount + lineCount + polylineCount + polygonCount + ellipseCount;
 		const totalElements = elementCount + groupCount + symbolCount + useCount;
 
 		// Estimate render complexity (weighted by element type complexity)
-		const estimatedRenderComplexity = 
-			pathCount * 3 +        // Paths are most complex
-			circleCount * 1 +      // Circles are simple
-			rectCount * 1 +        // Rectangles are simple
-			lineCount * 1 +        // Lines are simple
-			polylineCount * 2 +    // Polylines are moderately complex
-			polygonCount * 2 +     // Polygons are moderately complex
-			ellipseCount * 1.5 +   // Ellipses are slightly more complex than circles
-			groupCount * 0.1 +     // Groups add minimal complexity
-			useCount * 0.5;        // Use elements are efficient
+		const estimatedRenderComplexity =
+			pathCount * 3 + // Paths are most complex
+			circleCount * 1 + // Circles are simple
+			rectCount * 1 + // Rectangles are simple
+			lineCount * 1 + // Lines are simple
+			polylineCount * 2 + // Polylines are moderately complex
+			polygonCount * 2 + // Polygons are moderately complex
+			ellipseCount * 1.5 + // Ellipses are slightly more complex than circles
+			groupCount * 0.1 + // Groups add minimal complexity
+			useCount * 0.5; // Use elements are efficient
 
 		return {
 			elementCount,
@@ -140,14 +140,20 @@ export class SvgPerformanceAnalyzer {
 		const polygonCount = (svg.match(/<polygon\s/g) || []).length;
 		const ellipseCount = (svg.match(/<ellipse\s/g) || []).length;
 
-		const elementCount = pathCount + circleCount + rectCount + lineCount + 
-			polylineCount + polygonCount + ellipseCount;
+		const elementCount =
+			pathCount + circleCount + rectCount + lineCount + polylineCount + polygonCount + ellipseCount;
 		const totalElements = elementCount + groupCount + symbolCount + useCount;
 
-		const estimatedRenderComplexity = 
-			pathCount * 3 + circleCount * 1 + rectCount * 1 + lineCount * 1 +
-			polylineCount * 2 + polygonCount * 2 + ellipseCount * 1.5 +
-			groupCount * 0.1 + useCount * 0.5;
+		const estimatedRenderComplexity =
+			pathCount * 3 +
+			circleCount * 1 +
+			rectCount * 1 +
+			lineCount * 1 +
+			polylineCount * 2 +
+			polygonCount * 2 +
+			ellipseCount * 1.5 +
+			groupCount * 0.1 +
+			useCount * 0.5;
 
 		return {
 			elementCount,
@@ -193,8 +199,8 @@ export class SvgPerformanceAnalyzer {
 		);
 
 		// Calculate optimization potential
-		const optimizationPotential = severity === 'critical' ? 0.8 :
-			severity === 'warning' ? 0.5 : 0.2;
+		const optimizationPotential =
+			severity === 'critical' ? 0.8 : severity === 'warning' ? 0.5 : 0.2;
 
 		return {
 			severity,
@@ -254,13 +260,15 @@ export class SvgPerformanceAnalyzer {
 		// General recommendations
 		if (severity === 'critical') {
 			recommendations.push('Preview may be very slow - consider lower quality settings');
-			if (metrics.fileSizeBytes > 1024 * 1024) { // > 1MB
+			if (metrics.fileSizeBytes > 1024 * 1024) {
+				// > 1MB
 				recommendations.push('Large file size may cause memory issues');
 			}
 		}
 
 		// File size recommendations
-		if (metrics.fileSizeBytes > 512 * 1024) { // > 512KB
+		if (metrics.fileSizeBytes > 512 * 1024) {
+			// > 512KB
 			recommendations.push('Consider enabling SVG minification');
 		}
 
@@ -294,7 +302,7 @@ export class SvgPerformanceAnalyzer {
 		// This is a simplified estimate for performance warnings
 		const domElementMemory = metrics.totalElements * 1024; // 1KB per element
 		const svgDataMemory = metrics.fileSizeBytes;
-		
+
 		return domElementMemory + svgDataMemory;
 	}
 
@@ -303,9 +311,12 @@ export class SvgPerformanceAnalyzer {
 	 */
 	static getPerformanceStatusColor(severity: 'good' | 'warning' | 'critical'): string {
 		switch (severity) {
-			case 'good': return 'text-green-600';
-			case 'warning': return 'text-yellow-600';
-			case 'critical': return 'text-red-600';
+			case 'good':
+				return 'text-green-600';
+			case 'warning':
+				return 'text-yellow-600';
+			case 'critical':
+				return 'text-red-600';
 		}
 	}
 
@@ -320,7 +331,10 @@ export class SvgPerformanceAnalyzer {
 }
 
 // Export convenience functions
-export const analyzeSvgComplexity = SvgPerformanceAnalyzer.analyzeSvgComplexity.bind(SvgPerformanceAnalyzer);
-export const assessPerformance = SvgPerformanceAnalyzer.assessPerformance.bind(SvgPerformanceAnalyzer);
+export const analyzeSvgComplexity =
+	SvgPerformanceAnalyzer.analyzeSvgComplexity.bind(SvgPerformanceAnalyzer);
+export const assessPerformance =
+	SvgPerformanceAnalyzer.assessPerformance.bind(SvgPerformanceAnalyzer);
 export const getThresholds = SvgPerformanceAnalyzer.getThresholds.bind(SvgPerformanceAnalyzer);
-export const exceedsPerformanceBudget = SvgPerformanceAnalyzer.exceedsPerformanceBudget.bind(SvgPerformanceAnalyzer);
+export const exceedsPerformanceBudget =
+	SvgPerformanceAnalyzer.exceedsPerformanceBudget.bind(SvgPerformanceAnalyzer);

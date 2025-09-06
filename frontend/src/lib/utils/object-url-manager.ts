@@ -31,12 +31,12 @@ class ObjectURLManager {
 		if (!browser) return '';
 
 		// Check if we already have a URL for this file
-		const existingEntry = Array.from(this.urls.values()).find(entry => 
-			entry.file === file || (
-				entry.file.name === file.name && 
-				entry.file.size === file.size &&
-				entry.file.lastModified === file.lastModified
-			)
+		const existingEntry = Array.from(this.urls.values()).find(
+			(entry) =>
+				entry.file === file ||
+				(entry.file.name === file.name &&
+					entry.file.size === file.size &&
+					entry.file.lastModified === file.lastModified)
 		);
 
 		if (existingEntry) {
@@ -91,18 +91,19 @@ class ObjectURLManager {
 		if (!browser) return;
 
 		const urlsToRevoke: string[] = [];
-		
+
 		for (const [url, entry] of this.urls.entries()) {
-			if (entry.file === file || (
-				entry.file.name === file.name && 
-				entry.file.size === file.size &&
-				entry.file.lastModified === file.lastModified
-			)) {
+			if (
+				entry.file === file ||
+				(entry.file.name === file.name &&
+					entry.file.size === file.size &&
+					entry.file.lastModified === file.lastModified)
+			) {
 				urlsToRevoke.push(url);
 			}
 		}
 
-		urlsToRevoke.forEach(url => this.revokeURL(url));
+		urlsToRevoke.forEach((url) => this.revokeURL(url));
 	}
 
 	/**
@@ -121,7 +122,7 @@ class ObjectURLManager {
 			}
 		}
 
-		urlsToRevoke.forEach(url => this.revokeURL(url));
+		urlsToRevoke.forEach((url) => this.revokeURL(url));
 	}
 
 	/**
@@ -156,7 +157,7 @@ class ObjectURLManager {
 	getStats() {
 		return {
 			totalUrls: this.urls.size,
-			urls: Array.from(this.urls.values()).map(entry => ({
+			urls: Array.from(this.urls.values()).map((entry) => ({
 				fileName: entry.file.name,
 				fileSize: entry.file.size,
 				refCount: entry.refCount,

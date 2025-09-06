@@ -42,10 +42,10 @@
 	let imageUrl = $state<string | null>(null);
 	let error = $state<string | null>(null);
 	let blobUrl: string | null = null;
-	
+
 	// Zoom control functions - use discrete zoom levels like InteractiveImagePanel
 	const zoomLevels = [0.1, 0.2, 0.3, 0.5, 0.67, 0.8, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
-	
+
 	function findClosestZoomIndex(currentZoom: number): number {
 		return zoomLevels.reduce((closest, level, index) => {
 			return Math.abs(level - currentZoom) < Math.abs(zoomLevels[closest] - currentZoom)
@@ -53,28 +53,28 @@
 				: closest;
 		}, 0);
 	}
-	
+
 	export function zoomIn() {
 		const currentIndex = findClosestZoomIndex(targetScale);
 		const nextIndex = Math.min(currentIndex + 1, zoomLevels.length - 1);
 		targetScale = zoomLevels[nextIndex];
 	}
-	
+
 	export function zoomOut() {
 		const currentIndex = findClosestZoomIndex(targetScale);
 		const prevIndex = Math.max(currentIndex - 1, 0);
 		targetScale = zoomLevels[prevIndex];
 	}
-	
+
 	export function resetView() {
 		targetScale = 1;
 		targetOffsetX = 0;
 		targetOffsetY = 0;
 	}
-	
+
 	// Track previous sync state to detect changes
 	let prevEnableSync = enableSync;
-	
+
 	// Sync external pan/zoom state when provided, preserve state when sync is disabled
 	$effect(() => {
 		if (externalPanZoom && enableSync) {
@@ -82,13 +82,13 @@
 			targetOffsetX = externalPanZoom.x;
 			targetOffsetY = externalPanZoom.y;
 		}
-		
+
 		// Detect when sync is being disabled - preserve current internal state
 		if (prevEnableSync && !enableSync) {
 			// Sync was just disabled - keep current internal state unchanged
 			// (targetScale, targetOffsetX, targetOffsetY retain their current values)
 		}
-		
+
 		prevEnableSync = enableSync;
 	});
 
@@ -104,7 +104,10 @@
 	});
 
 	// Convert SVG content to image URL
-	async function convertSvgToImageUrl(svgContent: string, method: 'blob' | 'dataurl' | 'canvas'): Promise<string> {
+	async function convertSvgToImageUrl(
+		svgContent: string,
+		method: 'blob' | 'dataurl' | 'canvas'
+	): Promise<string> {
 		if (!svgContent.trim()) {
 			throw new Error('SVG content is empty');
 		}
@@ -112,13 +115,13 @@
 		switch (method) {
 			case 'blob':
 				return createBlobUrl(svgContent);
-			
+
 			case 'dataurl':
 				return createDataUrl(svgContent);
-			
+
 			case 'canvas':
 				return await createCanvasUrl(svgContent);
-			
+
 			default:
 				throw new Error(`Unknown render method: ${method}`);
 		}
@@ -136,7 +139,7 @@
 		if (!cleanSvg.startsWith('<?xml')) {
 			cleanSvg = `<?xml version="1.0" encoding="UTF-8"?>\n${cleanSvg}`;
 		}
-		
+
 		// Ensure SVG has proper namespace
 		if (!cleanSvg.includes('xmlns=')) {
 			cleanSvg = cleanSvg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
@@ -154,7 +157,7 @@
 		if (!cleanSvg.startsWith('<?xml')) {
 			cleanSvg = `<?xml version="1.0" encoding="UTF-8"?>\n${cleanSvg}`;
 		}
-		
+
 		if (!cleanSvg.includes('xmlns=')) {
 			cleanSvg = cleanSvg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
 		}
@@ -171,35 +174,35 @@
 			// Create a temporary image to get SVG dimensions
 			const tempImg = new Image();
 			const tempSvgUrl = createDataUrl(svgContent);
-			
+
 			tempImg.onload = () => {
 				try {
 					const canvas = document.createElement('canvas');
 					const ctx = canvas.getContext('2d');
-					
+
 					if (!ctx) {
 						throw new Error('Could not get canvas context');
 					}
 
 					// Set canvas size (respect max dimensions if provided)
 					let { width, height } = tempImg;
-					
+
 					if (maxWidth && width > maxWidth) {
 						height = (height * maxWidth) / width;
 						width = maxWidth;
 					}
-					
+
 					if (maxHeight && height > maxHeight) {
 						width = (width * maxHeight) / height;
 						height = maxHeight;
 					}
-					
+
 					canvas.width = width;
 					canvas.height = height;
 
 					// Draw SVG to canvas
 					ctx.drawImage(tempImg, 0, 0, width, height);
-					
+
 					// Convert canvas to blob URL
 					canvas.toBlob((blob) => {
 						if (blob) {
@@ -209,16 +212,15 @@
 							reject(new Error('Failed to create blob from canvas'));
 						}
 					}, 'image/png');
-					
 				} catch (err) {
 					reject(err);
 				}
 			};
-			
+
 			tempImg.onerror = () => {
 				reject(new Error('Failed to load SVG for canvas conversion'));
 			};
-			
+
 			tempImg.src = tempSvgUrl;
 		});
 	}
@@ -227,12 +229,12 @@
 	$effect(() => {
 		if (svgContent) {
 			error = null;
-			
+
 			convertSvgToImageUrl(svgContent, renderMethod)
-				.then(url => {
+				.then((url) => {
 					imageUrl = url;
 				})
-				.catch(err => {
+				.catch((err) => {
 					console.error('[SvgImageViewer] Failed to convert SVG:', err);
 					error = `Failed to render SVG: ${err.message}`;
 					imageUrl = null;
@@ -248,7 +250,7 @@
 		if (blobUrl) {
 			URL.revokeObjectURL(blobUrl);
 		}
-		
+
 		// Also cleanup if imageUrl is a blob URL from canvas method
 		if (imageUrl && imageUrl.startsWith('blob:')) {
 			URL.revokeObjectURL(imageUrl);
@@ -260,7 +262,7 @@
 	<div class="flex h-full items-center justify-center text-red-500">
 		<div class="text-center">
 			<p class="text-sm font-medium">SVG Rendering Error</p>
-			<p class="text-xs text-gray-500 mt-1">{error}</p>
+			<p class="mt-1 text-xs text-gray-500">{error}</p>
 		</div>
 	</div>
 {:else if imageUrl}
@@ -278,7 +280,9 @@
 {:else if svgContent}
 	<div class="flex h-full items-center justify-center text-gray-400">
 		<div class="text-center">
-			<div class="animate-spin h-8 w-8 border-2 border-gray-300 border-t-blue-500 rounded-full mx-auto mb-2"></div>
+			<div
+				class="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500"
+			></div>
 			<p class="text-sm">Converting SVG...</p>
 		</div>
 	</div>

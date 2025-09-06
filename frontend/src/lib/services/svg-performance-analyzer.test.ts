@@ -140,7 +140,9 @@ describe('SvgPerformanceAnalyzer', () => {
 			const assessment = SvgPerformanceAnalyzer.assessPerformance(metrics, 'dots');
 
 			expect(assessment.severity).toBe('critical');
-			expect(assessment.recommendations).toContain('Preview may be very slow - consider lower quality settings');
+			expect(assessment.recommendations).toContain(
+				'Preview may be very slow - consider lower quality settings'
+			);
 			expect(assessment.optimizationPotential).toBe(0.8);
 		});
 
@@ -162,8 +164,8 @@ describe('SvgPerformanceAnalyzer', () => {
 			const dotsAssessment = SvgPerformanceAnalyzer.assessPerformance(metrics, 'dots');
 
 			// Edge backend should have path-specific recommendations
-			expect(edgeAssessment.recommendations.some(r => r.includes('detail level'))).toBe(true);
-			expect(edgeAssessment.recommendations.some(r => r.includes('stroke width'))).toBe(true);
+			expect(edgeAssessment.recommendations.some((r) => r.includes('detail level'))).toBe(true);
+			expect(edgeAssessment.recommendations.some((r) => r.includes('stroke width'))).toBe(true);
 
 			// Dots assessment would be warning (2000 > 1500 but < 2500), edge is also warning (2000 = 2000)
 			expect(edgeAssessment.severity).toBe('warning');
@@ -175,7 +177,7 @@ describe('SvgPerformanceAnalyzer', () => {
 		it('should have correct thresholds for each backend', () => {
 			expect(BACKEND_PERFORMANCE_THRESHOLDS.dots.warning).toBe(1500);
 			expect(BACKEND_PERFORMANCE_THRESHOLDS.dots.critical).toBe(2500);
-			
+
 			expect(BACKEND_PERFORMANCE_THRESHOLDS.edge.warning).toBe(2000);
 			expect(BACKEND_PERFORMANCE_THRESHOLDS.edge.critical).toBe(3000);
 		});
@@ -204,7 +206,7 @@ describe('SvgPerformanceAnalyzer', () => {
 			};
 
 			const memoryEstimate = SvgPerformanceAnalyzer.estimateMemoryUsage(metrics);
-			
+
 			// Should be approximately: (110 * 1024) + 1024 = 113,664 bytes
 			expect(memoryEstimate).toBeGreaterThan(110000);
 			expect(memoryEstimate).toBeLessThan(120000);

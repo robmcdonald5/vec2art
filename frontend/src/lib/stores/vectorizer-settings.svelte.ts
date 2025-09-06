@@ -15,34 +15,32 @@ export class VectorizerSettingsStore {
 	mode = $state<SettingsMode>('preset');
 	selectedPreset = $state<StylePreset | null>(null);
 	manualOverrides = $state<Partial<VectorizerConfig>>({});
-	
+
 	// Derived final configuration
 	finalConfig = $derived.by((): VectorizerConfig => {
 		switch (this.mode) {
 			case 'preset':
-				return this.selectedPreset 
-					? presetToVectorizerConfig(this.selectedPreset)
-					: DEFAULT_CONFIG;
-					
+				return this.selectedPreset ? presetToVectorizerConfig(this.selectedPreset) : DEFAULT_CONFIG;
+
 			case 'manual':
 				return { ...DEFAULT_CONFIG, ...this.manualOverrides };
-				
+
 			case 'hybrid':
 				if (this.selectedPreset) {
 					const baseConfig = presetToVectorizerConfig(this.selectedPreset);
 					return mergeWithUserConfig(baseConfig, this.manualOverrides);
 				}
 				return { ...DEFAULT_CONFIG, ...this.manualOverrides };
-				
+
 			default:
 				return DEFAULT_CONFIG;
 		}
 	});
-	
+
 	// UI state
 	showAdvancedSettings = $state(false);
 	expandedSections = $state<Set<string>>(new Set(['core']));
-	
+
 	/**
 	 * Select a preset and switch to preset mode
 	 */
@@ -56,7 +54,7 @@ export class VectorizerSettingsStore {
 			this.mode = 'manual';
 		}
 	}
-	
+
 	/**
 	 * Switch to hybrid mode (preset base + manual overrides)
 	 */
@@ -65,7 +63,7 @@ export class VectorizerSettingsStore {
 			this.mode = 'hybrid';
 		}
 	}
-	
+
 	/**
 	 * Switch to full manual mode
 	 */
@@ -73,19 +71,16 @@ export class VectorizerSettingsStore {
 		this.mode = 'manual';
 		this.selectedPreset = null;
 	}
-	
+
 	/**
 	 * Update a specific parameter (triggers hybrid mode if preset selected)
 	 */
-	updateParameter<K extends keyof VectorizerConfig>(
-		key: K, 
-		value: VectorizerConfig[K]
-	) {
+	updateParameter<K extends keyof VectorizerConfig>(key: K, value: VectorizerConfig[K]) {
 		this.manualOverrides = {
 			...this.manualOverrides,
 			[key]: value
 		};
-		
+
 		// Auto-switch to hybrid mode if we have a preset selected
 		if (this.selectedPreset && this.mode === 'preset') {
 			this.mode = 'hybrid';
@@ -93,7 +88,7 @@ export class VectorizerSettingsStore {
 			this.mode = 'manual';
 		}
 	}
-	
+
 	/**
 	 * Batch update multiple parameters
 	 */
@@ -102,7 +97,7 @@ export class VectorizerSettingsStore {
 			...this.manualOverrides,
 			...updates
 		};
-		
+
 		// Auto-switch modes as needed
 		if (this.selectedPreset && this.mode === 'preset') {
 			this.mode = 'hybrid';
@@ -110,7 +105,7 @@ export class VectorizerSettingsStore {
 			this.mode = 'manual';
 		}
 	}
-	
+
 	/**
 	 * Reset to preset defaults (clears manual overrides)
 	 */
@@ -118,14 +113,14 @@ export class VectorizerSettingsStore {
 		this.manualOverrides = {};
 		this.mode = this.selectedPreset ? 'preset' : 'manual';
 	}
-	
+
 	/**
 	 * Toggle advanced settings visibility
 	 */
 	toggleAdvancedSettings() {
 		this.showAdvancedSettings = !this.showAdvancedSettings;
 	}
-	
+
 	/**
 	 * Toggle section expansion
 	 */
@@ -138,7 +133,7 @@ export class VectorizerSettingsStore {
 		}
 		this.expandedSections = newExpanded;
 	}
-	
+
 	/**
 	 * Get parameter sections based on current backend
 	 */
@@ -165,7 +160,7 @@ export class VectorizerSettingsStore {
 				parameters: ['hand_drawn_preset', 'variable_weights', 'tremor_strength', 'tapering']
 			}
 		];
-		
+
 		// Add backend-specific sections
 		switch (backend) {
 			case 'dots':
@@ -173,10 +168,16 @@ export class VectorizerSettingsStore {
 					id: 'dots',
 					title: 'Stippling & Dots',
 					description: 'Dot placement and sizing parameters',
-					parameters: ['dot_density_threshold', 'min_radius', 'max_radius', 'adaptive_sizing', 'poisson_disk_sampling']
+					parameters: [
+						'dot_density_threshold',
+						'min_radius',
+						'max_radius',
+						'adaptive_sizing',
+						'poisson_disk_sampling'
+					]
 				});
 				break;
-				
+
 			case 'superpixel':
 				sections.push({
 					id: 'superpixel',
@@ -185,17 +186,22 @@ export class VectorizerSettingsStore {
 					parameters: ['num_superpixels', 'compactness', 'fill_regions', 'stroke_regions']
 				});
 				break;
-				
+
 			case 'centerline':
 				sections.push({
 					id: 'centerline',
 					title: 'Centerline Extraction',
 					description: 'Skeleton tracing parameters',
-					parameters: ['enable_adaptive_threshold', 'window_size', 'min_branch_length', 'douglas_peucker_epsilon']
+					parameters: [
+						'enable_adaptive_threshold',
+						'window_size',
+						'min_branch_length',
+						'douglas_peucker_epsilon'
+					]
 				});
 				break;
 		}
-		
+
 		// Color settings section
 		sections.push({
 			id: 'color',
@@ -203,8 +209,8 @@ export class VectorizerSettingsStore {
 			description: 'Color preservation and sampling settings',
 			parameters: ['preserve_colors', 'color_sampling', 'color_accuracy']
 		});
-		
-		return sections.filter(section => !section.condition || section.condition);
+
+		return sections.filter((section) => !section.condition || section.condition);
 	}
 }
 

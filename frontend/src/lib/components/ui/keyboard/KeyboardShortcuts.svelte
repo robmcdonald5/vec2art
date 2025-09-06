@@ -152,7 +152,7 @@
 
 			<!-- Shortcuts list -->
 			<div class="space-y-3">
-				{#each shortcuts as shortcut}
+				{#each shortcuts as shortcut (shortcut.id)}
 					<div
 						class="flex items-center justify-between rounded-lg px-3 py-2 {shortcut.enabled
 							? 'bg-gray-50 dark:bg-gray-800'

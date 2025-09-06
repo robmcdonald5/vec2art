@@ -1,119 +1,135 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <title>Final WASM Threading Test</title>
-    <style>
-        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #e0e0e0; }
-        .pass { color: #4caf50; font-weight: bold; }
-        .fail { color: #f44336; font-weight: bold; }
-        .info { color: #2196f3; }
-        .warn { color: #ff9800; }
-    </style>
-</head>
-<body>
-    <h1>Final WASM Threading Test</h1>
-    <div id="results"></div>
-    
-    <script type="module">
-        const log = (msg, type = 'info') => {
-            const div = document.createElement('div');
-            div.className = type;
-            div.textContent = msg;
-            document.getElementById('results').appendChild(div);
-        };
-        
-        // Environment check
-        log('=== Environment Check ===', 'info');
-        const crossOrigin = window.crossOriginIsolated;
-        const sharedArray = typeof SharedArrayBuffer !== 'undefined';
-        
-        log(`crossOriginIsolated: ${crossOrigin}`, crossOrigin ? 'pass' : 'fail');
-        log(`SharedArrayBuffer: ${sharedArray}`, sharedArray ? 'pass' : 'fail');
-        log(`CPU cores: ${navigator.hardwareConcurrency}`, 'info');
-        
-        if (!crossOrigin || !sharedArray) {
-            log('⚠️ Threading will not be available without cross-origin isolation', 'warn');
-        }
-        
-        // Direct WASM loading test - using absolute paths
-        log('', 'info');
-        log('=== Direct WASM Loading Test ===', 'info');
-        
-        try {
-            // First, let's try a simple fetch to verify the file exists
-            const checkResponse = await fetch('/wasm/vectorize_wasm.js');
-            if (checkResponse.ok) {
-                log('✓ WASM JS file is accessible', 'pass');
-            } else {
-                log(`✗ WASM JS file not accessible: ${checkResponse.status}`, 'fail');
-            }
-            
-            // Try to import as a module with dynamic import
-            // We'll create a simple script that re-exports with absolute paths
-            const scriptContent = `
+	<head>
+		<title>Final WASM Threading Test</title>
+		<style>
+			body {
+				font-family: monospace;
+				padding: 20px;
+				background: #1a1a1a;
+				color: #e0e0e0;
+			}
+			.pass {
+				color: #4caf50;
+				font-weight: bold;
+			}
+			.fail {
+				color: #f44336;
+				font-weight: bold;
+			}
+			.info {
+				color: #2196f3;
+			}
+			.warn {
+				color: #ff9800;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Final WASM Threading Test</h1>
+		<div id="results"></div>
+
+		<script type="module">
+			const log = (msg, type = 'info') => {
+				const div = document.createElement('div');
+				div.className = type;
+				div.textContent = msg;
+				document.getElementById('results').appendChild(div);
+			};
+
+			// Environment check
+			log('=== Environment Check ===', 'info');
+			const crossOrigin = window.crossOriginIsolated;
+			const sharedArray = typeof SharedArrayBuffer !== 'undefined';
+
+			log(`crossOriginIsolated: ${crossOrigin}`, crossOrigin ? 'pass' : 'fail');
+			log(`SharedArrayBuffer: ${sharedArray}`, sharedArray ? 'pass' : 'fail');
+			log(`CPU cores: ${navigator.hardwareConcurrency}`, 'info');
+
+			if (!crossOrigin || !sharedArray) {
+				log('⚠️ Threading will not be available without cross-origin isolation', 'warn');
+			}
+
+			// Direct WASM loading test - using absolute paths
+			log('', 'info');
+			log('=== Direct WASM Loading Test ===', 'info');
+
+			try {
+				// First, let's try a simple fetch to verify the file exists
+				const checkResponse = await fetch('/wasm/vectorize_wasm.js');
+				if (checkResponse.ok) {
+					log('✓ WASM JS file is accessible', 'pass');
+				} else {
+					log(`✗ WASM JS file not accessible: ${checkResponse.status}`, 'fail');
+				}
+
+				// Try to import as a module with dynamic import
+				// We'll create a simple script that re-exports with absolute paths
+				const scriptContent = `
                 import init, * as wasm from '${window.location.origin}/wasm/vectorize_wasm.js';
                 window.wasmTest = { init, ...wasm };
             `;
-            
-            const script = document.createElement('script');
-            script.type = 'module';
-            script.textContent = scriptContent;
-            document.body.appendChild(script);
-            
-            // Wait a bit for the script to load
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            if (window.wasmTest) {
-                log('✓ WASM module loaded into window', 'pass');
-                
-                // Try to initialize
-                const wasmUrl = new URL('/wasm/vectorize_wasm_bg.wasm', window.location.origin);
-                await window.wasmTest.init(wasmUrl);
-                log('✓ WASM initialized successfully', 'pass');
-                
-                // Check for threading
-                if (window.wasmTest.is_threading_supported) {
-                    const supported = window.wasmTest.is_threading_supported();
-                    log(`Threading supported: ${supported}`, supported ? 'pass' : 'warn');
-                }
-                
-                // Try to initialize thread pool
-                if (crossOrigin && window.wasmTest.initThreadPool) {
-                    try {
-                        await window.wasmTest.initThreadPool(navigator.hardwareConcurrency || 4);
-                        log(`✓ Thread pool initialized with ${navigator.hardwareConcurrency} threads`, 'pass');
-                    } catch (e) {
-                        log(`✗ Thread pool init failed: ${e.message}`, 'fail');
-                    }
-                }
-                
-                // Test vectorizer
-                if (window.wasmTest.WasmVectorizer) {
-                    log('✓ WasmVectorizer class available', 'pass');
-                    
-                    // Try a simple vectorization
-                    const pixels = new Uint8ClampedArray(16);
-                    pixels.fill(255);
-                    const imageData = new ImageData(pixels, 2, 2);
-                    
-                    const vectorizer = new window.wasmTest.WasmVectorizer();
-                    const svg = vectorizer.vectorize(imageData);
-                    vectorizer.free();
-                    
-                    log(`✓ Vectorization successful, output: ${svg.length} chars`, 'pass');
-                }
-                
-                log('', 'info');
-                log('🎉 All tests passed! WASM with threading is ready.', 'pass');
-                
-            } else {
-                log('✗ Failed to load WASM module into window', 'fail');
-            }
-            
-        } catch (error) {
-            log(`✗ Error: ${error.message}`, 'fail');
-            console.error('Full error:', error);
-        }
-    </script>
-</body>
+
+				const script = document.createElement('script');
+				script.type = 'module';
+				script.textContent = scriptContent;
+				document.body.appendChild(script);
+
+				// Wait a bit for the script to load
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+
+				if (window.wasmTest) {
+					log('✓ WASM module loaded into window', 'pass');
+
+					// Try to initialize
+					const wasmUrl = new URL('/wasm/vectorize_wasm_bg.wasm', window.location.origin);
+					await window.wasmTest.init(wasmUrl);
+					log('✓ WASM initialized successfully', 'pass');
+
+					// Check for threading
+					if (window.wasmTest.is_threading_supported) {
+						const supported = window.wasmTest.is_threading_supported();
+						log(`Threading supported: ${supported}`, supported ? 'pass' : 'warn');
+					}
+
+					// Try to initialize thread pool
+					if (crossOrigin && window.wasmTest.initThreadPool) {
+						try {
+							await window.wasmTest.initThreadPool(navigator.hardwareConcurrency || 4);
+							log(
+								`✓ Thread pool initialized with ${navigator.hardwareConcurrency} threads`,
+								'pass'
+							);
+						} catch (e) {
+							log(`✗ Thread pool init failed: ${e.message}`, 'fail');
+						}
+					}
+
+					// Test vectorizer
+					if (window.wasmTest.WasmVectorizer) {
+						log('✓ WasmVectorizer class available', 'pass');
+
+						// Try a simple vectorization
+						const pixels = new Uint8ClampedArray(16);
+						pixels.fill(255);
+						const imageData = new ImageData(pixels, 2, 2);
+
+						const vectorizer = new window.wasmTest.WasmVectorizer();
+						const svg = vectorizer.vectorize(imageData);
+						vectorizer.free();
+
+						log(`✓ Vectorization successful, output: ${svg.length} chars`, 'pass');
+					}
+
+					log('', 'info');
+					log('🎉 All tests passed! WASM with threading is ready.', 'pass');
+				} else {
+					log('✗ Failed to load WASM module into window', 'fail');
+				}
+			} catch (error) {
+				log(`✗ Error: ${error.message}`, 'fail');
+				console.error('Full error:', error);
+			}
+		</script>
+	</body>
 </html>

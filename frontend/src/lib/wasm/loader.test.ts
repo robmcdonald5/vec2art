@@ -11,6 +11,23 @@ vi.mock('$app/environment', () => ({
 	browser: true
 }));
 
+// Mock analytics to prevent Vercel server environment issues
+vi.mock('$lib/utils/analytics', () => ({
+	analytics: {
+		wasmInitSuccess: vi.fn(),
+		wasmInitFailure: vi.fn(),
+		vectorizationStart: vi.fn(),
+		vectorizationComplete: vi.fn(),
+		vectorizationError: vi.fn(),
+		performanceMetrics: vi.fn(),
+		featureUsage: vi.fn(),
+		errorOccurred: vi.fn(),
+		userBehavior: vi.fn()
+	},
+	getBrowserInfo: vi.fn().mockReturnValue('chrome'),
+	getDeviceType: vi.fn().mockReturnValue('desktop')
+}));
+
 // Mock WASM module
 const mockWasmModule = {
 	default: vi.fn(),
@@ -28,6 +45,7 @@ const mockWasmModule = {
 		Artistic: 'artistic'
 	},
 	initThreadPool: vi.fn(),
+	destroy_thread_pool: vi.fn(),
 	confirm_threading_success: vi.fn(),
 	mark_threading_failed: vi.fn(),
 	is_threading_supported: vi.fn(),
@@ -42,11 +60,31 @@ vi.mock('./vectorize_wasm.js', () => mockWasmModule);
 
 // Mock browser APIs
 const mockWindow = {
-	crossOriginIsolated: true
+	crossOriginIsolated: true,
+	addEventListener: vi.fn(),
+	removeEventListener: vi.fn(),
+	location: {
+		href: 'http://localhost:3000',
+		origin: 'http://localhost:3000'
+	}
 };
 
 const mockNavigator = {
-	hardwareConcurrency: 8
+	hardwareConcurrency: 8,
+	userAgent:
+		'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+};
+
+// Mock WebAssembly API
+const mockWebAssembly = {
+	Memory: vi.fn().mockImplementation(() => ({
+		buffer: new ArrayBuffer(1024)
+	})),
+	validate: vi.fn().mockReturnValue(true),
+	instantiate: vi.fn().mockResolvedValue({
+		module: {},
+		instance: { exports: {} }
+	})
 };
 
 // Setup global mocks
@@ -55,10 +93,17 @@ beforeEach(() => {
 	mockWindow.crossOriginIsolated = true;
 	mockNavigator.hardwareConcurrency = 8;
 
+	// Reset WebAssembly mocks
+	mockWebAssembly.Memory = vi.fn().mockImplementation(() => ({
+		buffer: new ArrayBuffer(1024)
+	}));
+	mockWebAssembly.validate = vi.fn().mockReturnValue(true);
+
 	vi.stubGlobal('window', mockWindow);
 	vi.stubGlobal('navigator', mockNavigator);
 	vi.stubGlobal('SharedArrayBuffer', SharedArrayBuffer);
 	vi.stubGlobal('URL', URL);
+	vi.stubGlobal('WebAssembly', mockWebAssembly);
 
 	// Reset all mocks
 	vi.clearAllMocks();
@@ -66,6 +111,7 @@ beforeEach(() => {
 	// Ensure all mock functions exist and are properly reset
 	mockWasmModule.default = vi.fn().mockResolvedValue(undefined);
 	mockWasmModule.initThreadPool = vi.fn().mockResolvedValue(undefined);
+	mockWasmModule.destroy_thread_pool = vi.fn();
 	mockWasmModule.confirm_threading_success = vi.fn();
 	mockWasmModule.mark_threading_failed = vi.fn();
 	mockWasmModule.is_threading_supported = vi.fn().mockReturnValue(false);

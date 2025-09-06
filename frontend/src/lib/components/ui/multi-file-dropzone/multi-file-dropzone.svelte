@@ -11,7 +11,10 @@
 		RotateCcw
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { createManagedObjectURL, releaseManagedObjectURL } from '$lib/utils/object-url-manager.js';
+	import {
+		createManagedObjectURL,
+		releaseManagedObjectURL
+	} from '$lib/utils/object-url-manager.js';
 
 	interface Props {
 		accept?: string;
@@ -52,14 +55,14 @@
 	let announceText = $state<string>('');
 	let errorMessage = $state<string>('');
 	let currentPreviewIndex = $state(0);
-	
+
 	// Managed object URL state
 	let previousPreviewFile: File | null = null;
-	let previewObjectUrl: string | null = null;
-	
+	let previewObjectUrl = $state<string | null>(null);
+
 	// Derived current preview file
 	const currentPreviewFile = $derived(currentFiles[currentPreviewIndex] || null);
-	
+
 	// Effect to manage preview object URL lifecycle
 	$effect(() => {
 		// If preview file changed, clean up previous URL and create new one
@@ -68,12 +71,12 @@
 			if (previewObjectUrl && previousPreviewFile) {
 				releaseManagedObjectURL(previewObjectUrl);
 			}
-			
+
 			// Create new URL for current preview file
 			previewObjectUrl = currentPreviewFile ? createManagedObjectURL(currentPreviewFile) : null;
 			previousPreviewFile = currentPreviewFile;
 		}
-		
+
 		// Cleanup on component unmount
 		return () => {
 			if (previewObjectUrl) {
@@ -403,7 +406,7 @@
 
 				<!-- File List -->
 				<div class="bg-muted/10 max-h-32 space-y-1 overflow-y-auto rounded-md border p-2">
-					{#each currentFiles as file, index}
+					{#each currentFiles as file, index (index)}
 						<div
 							class="flex items-center justify-between rounded p-2 {index === currentPreviewIndex
 								? 'bg-primary/10 border-primary/20 border'
@@ -511,7 +514,9 @@
 				Drag and drop your images here, or click to browse
 			</p>
 			<p class="text-muted-foreground mt-1 text-xs" id="file-upload-instructions">
-				Supports PNG, JPG, WebP, TIFF, BMP, GIF, AVIF up to {maxSize >= 1024 * 1024 * 1024 ? Math.round(maxSize / (1024 * 1024 * 1024)) + 'GB' : Math.round(maxSize / (1024 * 1024)) + 'MB'} per file • Maximum {maxFiles}
+				Supports PNG, JPG, WebP, TIFF, BMP, GIF, AVIF up to {maxSize >= 1024 * 1024 * 1024
+					? Math.round(maxSize / (1024 * 1024 * 1024)) + 'GB'
+					: Math.round(maxSize / (1024 * 1024)) + 'MB'} per file • Maximum {maxFiles}
 				files
 			</p>
 			<Button

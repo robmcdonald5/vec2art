@@ -93,7 +93,7 @@
 >
 	<div class="p-6">
 		<div class="space-y-8">
-			{#each shortcuts as category}
+			{#each shortcuts as category (category.category)}
 				<section aria-labelledby="category-{category.category.replace(/\s+/g, '-').toLowerCase()}">
 					<h3
 						id="category-{category.category.replace(/\s+/g, '-').toLowerCase()}"
@@ -104,7 +104,7 @@
 					</h3>
 
 					<div class="space-y-3">
-						{#each category.shortcuts as shortcut}
+						{#each category.shortcuts as shortcut (shortcut.description)}
 							<div
 								class="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50
 									{shortcut.disabled ? 'opacity-50' : ''}"
@@ -120,13 +120,13 @@
 								</div>
 
 								<div class="ml-4 flex items-center gap-1">
-									{#each shortcut.keys as key}
+									{#each shortcut.keys as key, index (index)}
 										{@const icons = getKeyIcon(key)}
 										<kbd
 											class="inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-2 py-1 font-mono text-xs font-semibold text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300"
 											aria-label="Press {key}"
 										>
-											{#each icons as Icon}
+											{#each icons as Icon, iconIndex (iconIndex)}
 												<Icon class="h-3 w-3" aria-hidden="true" />
 											{/each}
 											{#if icons.length === 0}

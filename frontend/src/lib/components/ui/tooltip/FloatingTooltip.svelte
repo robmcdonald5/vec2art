@@ -83,7 +83,7 @@
 				left: 'border-t-transparent border-b-transparent border-l-gray-900 border-r-0',
 				right: 'border-t-transparent border-b-transparent border-r-gray-900 border-l-0'
 			};
-			
+
 			arrowElement.className = `absolute w-0 h-0 border-4 ${arrowClasses[side as keyof typeof arrowClasses]}`;
 		}
 	}
@@ -92,7 +92,7 @@
 		if (disabled) return;
 		isVisible = true;
 		// Wait for DOM update, then position
-		await new Promise(resolve => setTimeout(resolve, 1));
+		await new Promise((resolve) => setTimeout(resolve, 1));
 		await positionTooltip();
 	}
 
@@ -176,7 +176,9 @@
 	<div
 		bind:this={tooltipElement}
 		id="floating-tooltip-content"
-		class="fixed z-[9999] {sizeClasses[size]} rounded-lg bg-gray-900 text-white shadow-2xl border border-gray-700"
+		class="fixed z-[9999] {sizeClasses[
+			size
+		]} rounded-lg border border-gray-700 bg-gray-900 text-white shadow-2xl"
 		style="top: 0; left: 0; width: max-content;"
 		role="tooltip"
 		transition:fade={{ duration: 200 }}

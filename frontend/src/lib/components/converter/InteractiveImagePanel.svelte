@@ -45,7 +45,7 @@
 
 	// Track previous sync state to detect changes
 	let prevEnableSync = enableSync;
-	
+
 	// Sync external pan/zoom state when provided, preserve state when sync is disabled
 	$effect(() => {
 		if (externalPanZoom && enableSync) {
@@ -53,13 +53,13 @@
 			targetOffsetX = externalPanZoom.x;
 			targetOffsetY = externalPanZoom.y;
 		}
-		
+
 		// Detect when sync is being disabled - preserve current internal state
 		if (prevEnableSync && !enableSync) {
 			// Sync was just disabled - keep current internal state unchanged
 			// (targetScale, targetOffsetX, targetOffsetY retain their current values)
 		}
-		
+
 		prevEnableSync = enableSync;
 	});
 
@@ -236,11 +236,13 @@
 	$effect(() => {
 		if (imageUrl && containerElement) {
 			// Check if we should preserve existing zoom/pan state
-			const shouldPreserveState = (externalPanZoom && enableSync && 
-				(externalPanZoom.scale !== 1 || externalPanZoom.x !== 0 || externalPanZoom.y !== 0)) ||
+			const shouldPreserveState =
+				(externalPanZoom &&
+					enableSync &&
+					(externalPanZoom.scale !== 1 || externalPanZoom.x !== 0 || externalPanZoom.y !== 0)) ||
 				// Also preserve state if sync was just disabled and we have non-default values
 				(!enableSync && (targetScale !== 1 || targetOffsetX !== 0 || targetOffsetY !== 0));
-			
+
 			if (shouldPreserveState) {
 				console.log('[ImageViewer] Preserving current pan/zoom state on image change:', {
 					scale: targetScale,
@@ -251,7 +253,7 @@
 				// Don't reset - preserve current state
 				return;
 			}
-			
+
 			console.log('[ImageViewer] Image URL changed, calculating proper scale');
 
 			// Reset position immediately only if not preserving state

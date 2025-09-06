@@ -6,19 +6,18 @@
 	 */
 
 	import { onMount } from 'svelte';
-	import { Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-svelte';
+	import { Loader2, AlertCircle, RefreshCw } from 'lucide-svelte';
 
 	// Import new layered components
 	import UploadArea from '$lib/components/converter/UploadArea.svelte';
 	import ConverterInterface from '$lib/components/converter/ConverterInterface.svelte';
 	import SettingsPanel from '$lib/components/converter/SettingsPanel.svelte';
-	import SettingsModeSelector from '$lib/components/converter/SettingsModeSelector.svelte';
 	import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
 	import { toastStore } from '$lib/stores/toast.svelte';
 	import { parameterHistory } from '$lib/stores/parameter-history.svelte';
 	import { converterPersistence } from '$lib/stores/converter-persistence';
 	import type { FileMetadata } from '$lib/stores/converter-persistence';
-	import { devLog, devDebug, devWarn, devError, devSuccess } from '$lib/utils/dev-logger';
+	import { devDebug, devWarn, devError } from '$lib/utils/dev-logger';
 	import DownloadFormatSelector from '$lib/components/ui/DownloadFormatSelector.svelte';
 	import { downloadService } from '$lib/services/download-service';
 
@@ -37,8 +36,7 @@
 	import type { SettingsSyncMode } from '$lib/types/settings-sync';
 	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
 	import { getPresetById } from '$lib/presets/presets';
-	import { presetToVectorizerConfig, getAlgorithmDefaults } from '$lib/presets/converter';
-	import type { StylePreset } from '$lib/presets/types';
+	import { presetToVectorizerConfig } from '$lib/presets/converter';
 
 	// UI State Management - Using Svelte 5 runes
 	let files = $state<File[]>([]);
@@ -46,20 +44,16 @@
 	let filesMetadata = $state<FileMetadata[]>([]); // Metadata for original files (for persistence)
 	let pendingFilesMetadata = $state<FileMetadata[] | null>(null); // Temporary storage for metadata restoration
 	let currentImageIndex = $state(0);
-	let processingImageIndex = $state(0); // Separate state for processing that doesn't trigger zoom reset
 	let currentProgress = $state<ProcessingProgress | null>(null);
 	let results = $state<(ProcessingResult | null)[]>([]);
 	let previewSvgUrls = $state<(string | null)[]>([]);
 	let isProcessing = $state(false);
-
-	// Batch processing state
-	let completedImages = $state(0);
-	let batchStartTime = $state<Date | null>(null);
+	let processingImageIndex = $state(0); // Needed for progress tracking
+	let completedImages = $state(0); // Needed for batch tracking
 
 	// Page initialization state
 	let pageLoaded = $state(false);
 	let initError = $state<string | null>(null);
-	let hasRecoveredState = $state(false);
 	let isRecoveringState = $state(false);
 	let isClearingAll = $state(false); // Flag to prevent auto-save during Clear All
 
@@ -92,17 +86,14 @@
 	const hasFiles = $derived(files.length > 0 || originalImageUrls.length > 0);
 	// Enhanced conversion readiness check - prevents race conditions
 	const canConvert = $derived(
-		hasFiles && 
-		!isProcessing && 
-		vectorizerStore.isInitialized &&
-		!vectorizerStore.hasError
+		hasFiles && !isProcessing && vectorizerStore.isInitialized && !vectorizerStore.hasError
 	);
 	const canDownload = $derived(results.length > 0 && !isProcessing);
 
 	// Accessibility announcements
 	let announceText = $state('');
 
-	function announceToScreenReader(message: string, priority: 'polite' | 'assertive' = 'polite') {
+	function announceToScreenReader(message: string) {
 		announceText = message;
 		setTimeout(() => {
 			announceText = '';
@@ -389,7 +380,7 @@
 			isProcessing,
 			hasFiles
 		});
-		
+
 		// IMPORTANT: Preserve pan/zoom states before conversion
 		panZoomStore.preserveStates();
 
@@ -415,20 +406,24 @@
 		// Use shorter timeout for background removal since it can hang longer
 		let emergencyTimeout: ReturnType<typeof setTimeout> | null = null;
 		const emergencyTimeoutDuration = config.enable_background_removal ? 360000 : 300000; // 6min vs 5min
-		
+
 		try {
 			isProcessing = true;
 			completedImages = 0;
 			batchStartTime = new Date();
 			announceToScreenReader('Starting image conversion');
-			
+
 			emergencyTimeout = setTimeout(() => {
 				if (isProcessing) {
 					const timeoutMinutes = emergencyTimeoutDuration / 60000;
-					console.warn(`🚨 Emergency timeout: Forcing UI state reset after ${timeoutMinutes} minutes`);
+					console.warn(
+						`🚨 Emergency timeout: Forcing UI state reset after ${timeoutMinutes} minutes`
+					);
 					isProcessing = false;
 					currentProgress = null;
-					toastStore.error(`Processing timeout after ${timeoutMinutes} minutes - UI state reset. Background removal on large images can be very slow. Try reducing image size or disabling background removal.`);
+					toastStore.error(
+						`Processing timeout after ${timeoutMinutes} minutes - UI state reset. Background removal on large images can be very slow. Try reducing image size or disabling background removal.`
+					);
 				}
 			}, emergencyTimeoutDuration);
 
@@ -493,7 +488,6 @@
 				// DEFENSIVE FALLBACK: If settings sync is broken, try to process available files directly
 				if (files.length > 0) {
 					console.log('🔧 [DEBUG] Attempting fallback processing with available files');
-					const fallbackIndices = Array.from({ length: files.length }, (_, i) => i);
 
 					// Process all available files with current config
 					await vectorizerStore.setInputFiles(files);
@@ -523,7 +517,7 @@
 					);
 
 					// CRITICAL: Wait for SVG URLs to be fully ready before unlocking UI (fallback path)
-					await new Promise(resolve => setTimeout(resolve, 100));
+					await new Promise((resolve) => setTimeout(resolve, 100));
 					return;
 				} else {
 					toastStore.error(
@@ -645,8 +639,8 @@
 			// CRITICAL: Wait for SVG URLs to be fully ready before unlocking UI
 			// This prevents the UI from unlocking before the SVG output is visible to users
 			// Small delay ensures blob URLs are resolved and DOM is updated
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
 			// IMPORTANT: Restore pan/zoom states after results are updated and DOM is ready
 			// Use requestAnimationFrame to ensure the DOM has been updated
 			requestAnimationFrame(() => {
@@ -661,7 +655,7 @@
 			isProcessing = false;
 			currentProgress = null;
 			processingImageIndex = currentImageIndex; // Reset to current index when done
-			
+
 			// Clear emergency timeout if processing completed normally
 			if (emergencyTimeout) {
 				clearTimeout(emergencyTimeout);
@@ -728,20 +722,22 @@
 	// Download handler functions for format selector
 	function handleDownloadSvg() {
 		if (!pendingDownloadData) return;
-		
+
 		try {
-			downloadService.downloadSvg(pendingDownloadData.svgContent, {
-				format: 'svg',
-				filename: pendingDownloadData.filename
-			}).then((result) => {
-				if (result.success) {
-					announceToScreenReader(`Downloaded ${result.filename}`);
-					console.log('✅ [DEBUG] Successfully downloaded:', result.filename);
-					toastStore.success(`Downloaded ${result.filename} (${result.fileSizeKB}KB)`);
-				} else {
-					throw new Error(result.error || 'Download failed');
-				}
-			});
+			downloadService
+				.downloadSvg(pendingDownloadData.svgContent, {
+					format: 'svg',
+					filename: pendingDownloadData.filename
+				})
+				.then((result) => {
+					if (result.success) {
+						announceToScreenReader(`Downloaded ${result.filename}`);
+						console.log('✅ [DEBUG] Successfully downloaded:', result.filename);
+						toastStore.success(`Downloaded ${result.filename} (${result.fileSizeKB}KB)`);
+					} else {
+						throw new Error(result.error || 'Download failed');
+					}
+				});
 		} catch (error) {
 			console.error('SVG download failed:', error);
 			toastStore.error('SVG download failed');
@@ -754,7 +750,7 @@
 
 	async function handleDownloadWebP() {
 		if (!pendingDownloadData) return;
-		
+
 		try {
 			const result = await downloadService.downloadSvg(pendingDownloadData.svgContent, {
 				format: 'webp',
@@ -911,45 +907,43 @@
 		parameterHistory.push(newConfig, description);
 	}
 
-	function handleConfigReplace(newConfig: VectorizerConfig) {
-		settingsSyncStore.updateConfig(newConfig, currentImageIndex);
-	}
-
 	function handlePresetChange(preset: VectorizerPreset | 'custom') {
 		selectedPreset = preset;
-		
+
 		// Convert preset to actual configuration and apply it
 		if (preset !== 'custom') {
 			// Try to map legacy preset to new StylePreset system
 			const legacyToStylePresetMapping: Record<VectorizerPreset, string> = {
-				'sketch': 'photo-to-sketch',           // Edge backend - photos to sketches
-				'technical': 'technical-drawing',     // Centerline backend - technical drawings  
-				'artistic': 'artistic-stippling',     // Dots backend - artistic effects
-				'poster': 'modern-abstract',          // Superpixel backend - poster-style
-				'comic': 'hand-drawn-illustration'    // Edge backend - hand-drawn style
+				sketch: 'photo-to-sketch', // Edge backend - photos to sketches
+				technical: 'technical-drawing', // Centerline backend - technical drawings
+				artistic: 'artistic-stippling', // Dots backend - artistic effects
+				poster: 'modern-abstract', // Superpixel backend - poster-style
+				comic: 'hand-drawn-illustration' // Edge backend - hand-drawn style
 			};
-			
+
 			const stylePresetId = legacyToStylePresetMapping[preset];
 			const stylePreset = getPresetById(stylePresetId);
-			
+
 			if (stylePreset) {
 				// Convert StylePreset to VectorizerConfig to check against current config
 				const presetConfig = presetToVectorizerConfig(stylePreset);
-				
+
 				// Check if current config already matches this preset (to avoid double-application)
-				const configMatches = 
+				const configMatches =
 					config.backend === presetConfig.backend &&
 					config.detail === presetConfig.detail &&
 					config.stroke_width === presetConfig.stroke_width;
-				
+
 				if (configMatches) {
-					console.log(`🎯 Config already matches ${stylePreset.metadata.name}, skipping re-application`);
+					console.log(
+						`🎯 Config already matches ${stylePreset.metadata.name}, skipping re-application`
+					);
 				} else {
 					console.log(`🎨 Applying preset: ${stylePreset.metadata.name} (${stylePreset.backend})`);
-					
+
 					// Apply the preset configuration to the settings store
 					settingsSyncStore.updateConfig(presetConfig, currentImageIndex);
-					
+
 					console.log(`✅ Preset config applied:`, {
 						backend: presetConfig.backend,
 						detail: presetConfig.detail,
@@ -963,12 +957,11 @@
 			}
 		} else {
 			console.log(`🔧 Switching to custom settings - preserving current parameters`);
-			
+
 			// Custom mode - no reset, just switch the preset state
 			// The current parameters remain as they were
 		}
 	}
-
 
 	function handleBackendChange(backend: VectorizerBackend) {
 		console.log(`🔧 Backend change: switching to ${backend}`);
@@ -976,11 +969,11 @@
 		// SIMPLIFIED: Let the vectorizer store handle backend switching with proper defaults
 		// The vectorizer store has per-algorithm configurations that handle all the complexity
 		vectorizerStore.updateConfig({ backend });
-		
-		// Sync the vectorizer store config to the settings sync store 
+
+		// Sync the vectorizer store config to the settings sync store
 		const updatedConfig = vectorizerStore.config;
 		settingsSyncStore.updateConfig(updatedConfig, currentImageIndex);
-		
+
 		console.log(`✅ Backend switched to ${backend} using store defaults:`, {
 			backend: updatedConfig.backend,
 			detail: updatedConfig.detail,
@@ -1023,30 +1016,11 @@
 		);
 	}
 
-
-	async function handleRetryInitialization() {
-		try {
-			console.log('🔄 Retrying WASM initialization...');
-			toastStore.info('🔄 Retrying WASM initialization...', 3000);
-
-			// Reset the vectorizer store and reinitialize
-			await vectorizerStore.reset();
-			await vectorizerStore.initialize({ 
-				autoInitThreads: true
-			});
-
-			toastStore.success('✅ WASM initialization successful!', 3000);
-		} catch (error) {
-			console.error('❌ Retry initialization failed:', error);
-			toastStore.error('❌ Retry failed. Please refresh the page.', 5000);
-		}
-	}
-
 	// Initialize page
 	onMount(async () => {
 		try {
 			// Initialize WASM module
-			await vectorizerStore.initialize({ 
+			await vectorizerStore.initialize({
 				autoInitThreads: true
 			});
 
@@ -1283,7 +1257,7 @@
 			if (state.panZoomState) {
 				try {
 					panZoomStore.syncStates(state.panZoomState.originalState);
-					
+
 					if (!state.panZoomState.isSyncEnabled) {
 						// If sync was disabled, set the individual states and then disable sync
 						panZoomStore.updateOriginalState(state.panZoomState.originalState);
@@ -1292,7 +1266,7 @@
 							panZoomStore.toggleSync(); // Disable sync to match saved state
 						}
 					}
-					
+
 					console.log('✅ [DEBUG] Pan/zoom state restored:', {
 						original: state.panZoomState.originalState,
 						converted: state.panZoomState.convertedState,
@@ -1317,8 +1291,8 @@
 	$effect(() => {
 		if (!pageLoaded || isClearingAll) return;
 		// console.log('💾 [DEBUG] Saving config:', config);
-		const saved = converterPersistence.saveConfig(config);
-		// console.log('💾 [DEBUG] Config save result:', saved);
+		converterPersistence.saveConfig(config);
+		// console.log('💾 [DEBUG] Config saved');
 	});
 
 	$effect(() => {
@@ -1338,23 +1312,23 @@
 	// Save pan/zoom state when it changes
 	$effect(() => {
 		if (!pageLoaded || isClearingAll) return;
-		
+
 		const panZoomState = {
 			originalState: panZoomStore.originalState,
 			convertedState: panZoomStore.convertedState,
 			isSyncEnabled: panZoomStore.isSyncEnabled
 		};
-		
+
 		// Only save if state has meaningful values (not default)
-		const hasNonDefaultState = 
-			panZoomState.originalState.scale !== 1 || 
-			panZoomState.originalState.x !== 0 || 
+		const hasNonDefaultState =
+			panZoomState.originalState.scale !== 1 ||
+			panZoomState.originalState.x !== 0 ||
 			panZoomState.originalState.y !== 0 ||
-			panZoomState.convertedState.scale !== 1 || 
-			panZoomState.convertedState.x !== 0 || 
+			panZoomState.convertedState.scale !== 1 ||
+			panZoomState.convertedState.x !== 0 ||
 			panZoomState.convertedState.y !== 0 ||
 			!panZoomState.isSyncEnabled;
-			
+
 		if (hasNonDefaultState) {
 			// console.log('💾 [DEBUG] Saving pan/zoom state:', panZoomState);
 			converterPersistence.savePanZoomState(panZoomState);
@@ -1374,8 +1348,8 @@
 		// console.log('💾 [DEBUG] Saving image URLs:', files.length, 'files');
 		converterPersistence
 			.saveImageUrls(files)
-			.then((success) => {
-				// console.log('💾 [DEBUG] Image URLs save result:', success);
+			.then(() => {
+				// console.log('💾 [DEBUG] Image URLs saved');
 			})
 			.catch((error) => {
 				console.error('❌ [DEBUG] Failed to save image URLs:', error);
@@ -1668,7 +1642,7 @@
 		onDownloadWebP={handleDownloadWebP}
 		onCancel={handleDownloadCancel}
 		show={showDownloadSelector}
-		isProcessing={isProcessing}
+		{isProcessing}
 	/>
 {/if}
 

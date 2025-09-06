@@ -78,7 +78,7 @@ const PRESET_TEST_CASES: PresetTestCase[] = [
 		}
 	},
 
-	// Centerline Algorithm Presets  
+	// Centerline Algorithm Presets
 	{
 		algorithm: 'centerline',
 		preset: 'technical',
@@ -168,11 +168,11 @@ class PresetValidator {
 
 	async uploadTestImage(imageName: string) {
 		const imagePath = path.join(__dirname, 'fixtures', 'images', imageName);
-		
+
 		// Upload via file input
 		const fileInput = this.page.locator('input[type="file"]');
 		await fileInput.setInputFiles(imagePath);
-		
+
 		// Wait for image to load
 		await this.page.waitForSelector('[data-testid="uploaded-image"]', { timeout: 15000 });
 		await this.page.waitForTimeout(1000); // Allow image processing
@@ -182,7 +182,7 @@ class PresetValidator {
 		// Click algorithm dropdown/selector
 		await this.page.click('[data-testid="algorithm-selector"]');
 		await this.page.click(`[data-testid="algorithm-option-${algorithm}"]`);
-		
+
 		// Wait for algorithm change to take effect
 		await this.page.waitForTimeout(500);
 	}
@@ -191,15 +191,17 @@ class PresetValidator {
 		// Click preset dropdown
 		await this.page.click('[data-testid="preset-selector"]');
 		await this.page.click(`[data-testid="preset-option-${preset}"]`);
-		
+
 		// Wait for preset to apply
 		await this.page.waitForTimeout(1000);
 	}
 
-	async validatePresetParameters(expectedParams: Array<{ setting: string; expectedValue: string | number }>) {
+	async validatePresetParameters(
+		expectedParams: Array<{ setting: string; expectedValue: string | number }>
+	) {
 		for (const param of expectedParams) {
 			const settingSelector = `[data-testid="setting-${param.setting.toLowerCase().replace(/\s+/g, '-')}"]`;
-			
+
 			try {
 				if (typeof param.expectedValue === 'boolean') {
 					// For checkboxes
@@ -223,13 +225,13 @@ class PresetValidator {
 	async processImage() {
 		// Click process/convert button
 		await this.page.click('[data-testid="process-button"]');
-		
+
 		// Wait for processing to start
 		await this.page.waitForSelector('[data-testid="processing-indicator"]', { timeout: 5000 });
-		
+
 		// Wait for processing to complete (with generous timeout for WASM)
 		await this.page.waitForSelector('[data-testid="svg-preview"]', { timeout: 60000 });
-		
+
 		// Additional wait for SVG to fully render
 		await this.page.waitForTimeout(2000);
 	}
@@ -237,11 +239,11 @@ class PresetValidator {
 	async captureSVGOutput() {
 		// Get the SVG content
 		const svgContent = await this.page.textContent('[data-testid="svg-output"]');
-		
+
 		// Take screenshot of the preview
 		const previewElement = this.page.locator('[data-testid="svg-preview"]');
 		const screenshot = await previewElement.screenshot();
-		
+
 		return {
 			svgContent,
 			screenshot
@@ -273,7 +275,7 @@ test.describe('Preset Validation Suite', () => {
 		for (const testImage of TEST_IMAGES) {
 			test(`${testCase.algorithm}-${testCase.preset} with ${testImage.name}`, async ({ page }) => {
 				test.setTimeout(120000); // 2 minute timeout for complex processing
-				
+
 				console.log(`Testing ${testCase.algorithm} algorithm with ${testCase.preset} preset`);
 				console.log(`Image: ${testImage.description}`);
 				console.log(`Expected: ${testCase.expectedCharacteristics.description}`);
@@ -328,9 +330,9 @@ test.describe('Preset Validation Suite', () => {
 
 				// Store outputs for comparison (in CI/test artifacts)
 				const testId = `${testCase.algorithm}-${testCase.preset}-${testImage.name}`;
-				await page.screenshot({ 
+				await page.screenshot({
 					path: `test-results/preset-validation/${testId}-screenshot.png`,
-					fullPage: true 
+					fullPage: true
 				});
 			});
 		}
@@ -347,26 +349,26 @@ test.describe('Preset Validation Suite', () => {
 			await validator.selectAlgorithm('edge');
 			await validator.selectPreset(preset);
 			await validator.processImage();
-			
+
 			const output = await validator.captureSVGOutput();
 			outputs.set(`edge-${preset}`, output.svgContent);
 		}
 
 		// Validate that outputs are different
 		const edgePresets = Array.from(outputs.entries()).filter(([key]) => key.startsWith('edge-'));
-		
+
 		for (let i = 0; i < edgePresets.length; i++) {
 			for (let j = i + 1; j < edgePresets.length; j++) {
 				const [preset1Name, svg1] = edgePresets[i];
 				const [preset2Name, svg2] = edgePresets[j];
-				
+
 				// SVGs should be different
 				expect(svg1).not.toBe(svg2);
-				
+
 				// Calculate rough difference metric
 				const similarity = svg1.length / svg2.length;
 				expect(similarity).not.toBeCloseTo(1.0, 0.95); // Should be less than 95% similar
-				
+
 				console.log(`✅ ${preset1Name} vs ${preset2Name}: Different outputs confirmed`);
 			}
 		}
@@ -390,7 +392,7 @@ test.describe('Preset Validation Suite', () => {
 			await validator.selectAlgorithm(algorithm);
 			await validator.selectPreset(preset);
 			await validator.processImage();
-			
+
 			const output = await validator.captureSVGOutput();
 			algorithmOutputs.set(algorithm, output.svgContent);
 		}
@@ -410,34 +412,35 @@ test.describe('Preset Performance Validation', () => {
 	test('All presets complete within reasonable time', async ({ page }) => {
 		const validator = new PresetValidator(page);
 		await validator.navigateToConverter();
-		
+
 		const performanceResults: Array<{ preset: string; algorithm: string; timeMs: number }> = [];
-		
+
 		for (const testCase of PRESET_TEST_CASES) {
 			const startTime = Date.now();
-			
+
 			await validator.uploadTestImage('medium-test.jpg');
 			await validator.selectAlgorithm(testCase.algorithm);
 			await validator.selectPreset(testCase.preset);
 			await validator.processImage();
-			
+
 			const endTime = Date.now();
 			const processingTime = endTime - startTime;
-			
+
 			performanceResults.push({
 				preset: testCase.preset,
 				algorithm: testCase.algorithm,
 				timeMs: processingTime
 			});
-			
+
 			// Each preset should complete within 60 seconds
 			expect(processingTime).toBeLessThan(60000);
-			
+
 			console.log(`⏱️ ${testCase.algorithm}-${testCase.preset}: ${processingTime}ms`);
 		}
-		
+
 		// Log performance summary
-		const avgTime = performanceResults.reduce((sum, r) => sum + r.timeMs, 0) / performanceResults.length;
+		const avgTime =
+			performanceResults.reduce((sum, r) => sum + r.timeMs, 0) / performanceResults.length;
 		console.log(`📊 Average processing time: ${Math.round(avgTime)}ms`);
 	});
 });

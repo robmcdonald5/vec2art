@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { AlertTriangle, Info, XCircle } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
-	
+
 	interface Props {
 		elementCount: number;
 		backend: 'dots' | 'edge' | 'centerline' | 'superpixel';
@@ -11,29 +11,24 @@
 		className?: string;
 	}
 
-	let {
-		elementCount,
-		backend,
-		svgSize,
-		onOptimize,
-		onDismiss,
-		className = ''
-	}: Props = $props();
+	let { elementCount, backend, svgSize, onOptimize, onDismiss, className = '' }: Props = $props();
 
 	// Performance thresholds based on research
 	const PERFORMANCE_THRESHOLDS = {
 		// Conservative thresholds for different backends
 		dots: { warning: 1500, critical: 2500 },
-		edge: { warning: 2000, critical: 3000 }, 
+		edge: { warning: 2000, critical: 3000 },
 		centerline: { warning: 2000, critical: 3000 },
 		superpixel: { warning: 1800, critical: 2800 }
 	};
 
 	const threshold = $derived(PERFORMANCE_THRESHOLDS[backend]);
 	const severity = $derived(
-		elementCount >= threshold.critical ? 'critical' :
-		elementCount >= threshold.warning ? 'warning' :
-		'info'
+		elementCount >= threshold.critical
+			? 'critical'
+			: elementCount >= threshold.warning
+				? 'warning'
+				: 'info'
 	);
 
 	const shouldShow = $derived(elementCount >= threshold.warning);
@@ -71,7 +66,7 @@
 
 	const recommendations = $derived(() => {
 		const recs = [];
-		
+
 		if (severity === 'critical' || severity === 'warning') {
 			if (backend === 'dots') {
 				recs.push('Increase dot density threshold to reduce dot count');
@@ -89,12 +84,12 @@
 				recs.push('Reduce superpixel count for fewer regions');
 				recs.push('Increase compactness for simpler shapes');
 			}
-			
+
 			if (severity === 'critical') {
 				recs.push('Consider using lower quality settings for preview');
 			}
 		}
-		
+
 		return recs;
 	});
 
@@ -111,13 +106,16 @@
 	<div class="rounded-lg border p-4 {config.bgColor} {className}">
 		<div class="flex items-start gap-3">
 			<!-- svelte-ignore svelte_component_deprecated -->
-			<svelte:component this={config.icon} class="h-5 w-5 {config.iconColor} flex-shrink-0 mt-0.5" />
-			
-			<div class="flex-1 min-w-0">
+			<svelte:component
+				this={config.icon}
+				class="h-5 w-5 {config.iconColor} mt-0.5 flex-shrink-0"
+			/>
+
+			<div class="min-w-0 flex-1">
 				<h4 class="font-semibold {config.textColor}">
 					{config.title}
 				</h4>
-				
+
 				<p class="text-sm {config.textColor} mt-1">
 					{config.description}
 				</p>
@@ -130,11 +128,11 @@
 
 				{#if recs.length > 0}
 					<details class="mt-2">
-						<summary class="text-xs {config.textColor} cursor-pointer hover:underline font-medium">
+						<summary class="text-xs {config.textColor} cursor-pointer font-medium hover:underline">
 							Optimization suggestions ({recs.length})
 						</summary>
 						<ul class="mt-2 text-xs {config.textColor} space-y-1 pl-4">
-							{#each recs as rec}
+							{#each recs as rec, index (index)}
 								<li class="flex items-start gap-1">
 									<span class="text-xs opacity-60">•</span>
 									<span>{rec}</span>
@@ -144,23 +142,23 @@
 					</details>
 				{/if}
 
-				<div class="flex items-center gap-2 mt-3">
+				<div class="mt-3 flex items-center gap-2">
 					{#if onOptimize && (severity === 'critical' || severity === 'warning')}
-						<Button 
-							variant="outline" 
-							size="sm" 
-							class="text-xs h-7 {config.textColor} border-current hover:bg-current/10"
+						<Button
+							variant="outline"
+							size="sm"
+							class="h-7 text-xs {config.textColor} border-current hover:bg-current/10"
 							onclick={onOptimize}
 						>
 							Optimize Settings
 						</Button>
 					{/if}
-					
+
 					{#if onDismiss}
-						<Button 
-							variant="ghost" 
-							size="sm" 
-							class="text-xs h-7 {config.textColor} hover:bg-current/10"
+						<Button
+							variant="ghost"
+							size="sm"
+							class="h-7 text-xs {config.textColor} hover:bg-current/10"
 							onclick={onDismiss}
 						>
 							Dismiss

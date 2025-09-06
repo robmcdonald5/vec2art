@@ -1,334 +1,376 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <title>🎯 Complete Integration Test</title>
-    <style>
-        body { 
-            font-family: monospace; 
-            padding: 20px; 
-            background: #1a1a1a; 
-            color: #e0e0e0; 
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .pass { color: #4caf50; }
-        .fail { color: #f44336; }
-        .warn { color: #ff9800; }
-        .info { color: #2196f3; }
-        .status { 
-            margin: 8px 0; 
-            padding: 4px 8px; 
-            border-radius: 4px;
-            border-left: 4px solid;
-        }
-        .status.pass { border-left-color: #4caf50; background: rgba(76, 175, 80, 0.1); }
-        .status.fail { border-left-color: #f44336; background: rgba(244, 67, 54, 0.1); }
-        .status.warn { border-left-color: #ff9800; background: rgba(255, 152, 0, 0.1); }
-        .status.info { border-left-color: #2196f3; background: rgba(33, 150, 243, 0.1); }
-        .summary {
-            margin: 20px 0;
-            padding: 15px;
-            background: #2a2a2a;
-            border-radius: 8px;
-        }
-        pre { 
-            background: #333; 
-            padding: 10px; 
-            border-radius: 4px; 
-            overflow-x: auto;
-            font-size: 0.9em;
-        }
-        .progress {
-            width: 100%;
-            height: 6px;
-            background: #333;
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        .progress-bar {
-            height: 100%;
-            background: #4caf50;
-            transition: width 0.3s ease;
-        }
-    </style>
-</head>
-<body>
-    <h1>🎯 Complete Integration Test</h1>
-    <p>Final verification of all WASM multithreading fixes</p>
-    
-    <div id="progress-container">
-        <div class="progress">
-            <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
-        </div>
-        <div id="progress-text">Starting tests...</div>
-    </div>
-    
-    <div id="results"></div>
-    
-    <script type="module">
-        let testResults = {};
-        let currentStep = 0;
-        let totalSteps = 8;
+	<head>
+		<title>🎯 Complete Integration Test</title>
+		<style>
+			body {
+				font-family: monospace;
+				padding: 20px;
+				background: #1a1a1a;
+				color: #e0e0e0;
+				max-width: 800px;
+				margin: 0 auto;
+			}
+			.pass {
+				color: #4caf50;
+			}
+			.fail {
+				color: #f44336;
+			}
+			.warn {
+				color: #ff9800;
+			}
+			.info {
+				color: #2196f3;
+			}
+			.status {
+				margin: 8px 0;
+				padding: 4px 8px;
+				border-radius: 4px;
+				border-left: 4px solid;
+			}
+			.status.pass {
+				border-left-color: #4caf50;
+				background: rgba(76, 175, 80, 0.1);
+			}
+			.status.fail {
+				border-left-color: #f44336;
+				background: rgba(244, 67, 54, 0.1);
+			}
+			.status.warn {
+				border-left-color: #ff9800;
+				background: rgba(255, 152, 0, 0.1);
+			}
+			.status.info {
+				border-left-color: #2196f3;
+				background: rgba(33, 150, 243, 0.1);
+			}
+			.summary {
+				margin: 20px 0;
+				padding: 15px;
+				background: #2a2a2a;
+				border-radius: 8px;
+			}
+			pre {
+				background: #333;
+				padding: 10px;
+				border-radius: 4px;
+				overflow-x: auto;
+				font-size: 0.9em;
+			}
+			.progress {
+				width: 100%;
+				height: 6px;
+				background: #333;
+				border-radius: 3px;
+				overflow: hidden;
+				margin: 10px 0;
+			}
+			.progress-bar {
+				height: 100%;
+				background: #4caf50;
+				transition: width 0.3s ease;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>🎯 Complete Integration Test</h1>
+		<p>Final verification of all WASM multithreading fixes</p>
 
-        function updateProgress() {
-            currentStep++;
-            const percentage = (currentStep / totalSteps) * 100;
-            document.getElementById('progress-bar').style.width = percentage + '%';
-            document.getElementById('progress-text').textContent = 
-                `Step ${currentStep}/${totalSteps} (${Math.round(percentage)}%)`;
-        }
+		<div id="progress-container">
+			<div class="progress">
+				<div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+			</div>
+			<div id="progress-text">Starting tests...</div>
+		</div>
 
-        function log(message, type = 'info') {
-            const div = document.getElementById('results');
-            const timestamp = new Date().toLocaleTimeString();
-            div.innerHTML += `<div class="status ${type}">[${timestamp}] ${message}</div>`;
-            console.log(`[${type.toUpperCase()}] ${message}`);
-            return { type, message, timestamp };
-        }
+		<div id="results"></div>
 
-        async function runCompleteTest() {
-            const startTime = performance.now();
-            let passed = 0, failed = 0, warnings = 0;
+		<script type="module">
+			let testResults = {};
+			let currentStep = 0;
+			let totalSteps = 8;
 
-            try {
-                log('🎯 Complete Integration Test Started', 'info');
-                log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
-                updateProgress();
-                
-                // Step 1: Environment Check
-                log('🔍 Step 1: Environment Prerequisites', 'info');
-                const crossOriginIsolated = self.crossOriginIsolated;
-                const hasSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
-                const hardwareConcurrency = navigator.hardwareConcurrency || 1;
-                
-                log(`Cross-Origin Isolation: ${crossOriginIsolated}`, crossOriginIsolated ? 'pass' : 'warn');
-                log(`SharedArrayBuffer: ${hasSharedArrayBuffer}`, hasSharedArrayBuffer ? 'pass' : 'fail');
-                log(`Hardware Cores: ${hardwareConcurrency}`, 'pass');
-                
-                testResults.environment = { crossOriginIsolated, hasSharedArrayBuffer, hardwareConcurrency };
-                if (crossOriginIsolated) passed++; else warnings++;
-                if (hasSharedArrayBuffer) passed++; else failed++;
-                passed++;
-                updateProgress();
-                
-                // Step 2: WASM Module Import (Critical Fix Test)
-                log('📦 Step 2: WASM Module Import', 'info');
-                let wasmModule;
-                try {
-                    wasmModule = await import('/wasm/vectorize_wasm.js');
-                    log('✅ WASM module imported (all import issues resolved!)', 'pass');
-                    testResults.moduleImport = 'success';
-                    passed++;
-                } catch (importError) {
-                    log(`❌ Module import failed: ${importError.message}`, 'fail');
-                    testResults.moduleImport = 'failed';
-                    testResults.importError = importError.message;
-                    failed++;
-                    throw importError;
-                }
-                updateProgress();
-                
-                // Step 3: wasm-bindgen Initialization  
-                log('🔧 Step 3: WASM Initialization', 'info');
-                try {
-                    await wasmModule.default('/wasm/vectorize_wasm_bg.wasm');
-                    log('✅ WASM initialized (LinkError completely resolved!)', 'pass');
-                    testResults.initialization = 'success';
-                    passed++;
-                } catch (initError) {
-                    log(`❌ WASM init failed: ${initError.message}`, 'fail');
-                    testResults.initialization = 'failed';
-                    testResults.initError = initError.message;
-                    failed++;
-                    throw initError;
-                }
-                updateProgress();
-                
-                // Step 4: Threading Functions Available
-                log('🧵 Step 4: Threading Functions', 'info');
-                const threadingFunctions = ['start', 'get_thread_count', 'is_threading_active', 'get_threading_info'];
-                let threadingScore = 0;
-                
-                for (const funcName of threadingFunctions) {
-                    if (typeof wasmModule[funcName] === 'function') {
-                        log(`✅ ${funcName}(): Available`, 'pass');
-                        threadingScore++;
-                    } else {
-                        log(`⚠️ ${funcName}(): Missing`, 'warn');
-                    }
-                }
-                
-                testResults.threading = { available: threadingScore, total: threadingFunctions.length };
-                passed += Math.floor(threadingScore * 0.5); // Partial credit
-                if (threadingScore < threadingFunctions.length) warnings++;
-                updateProgress();
-                
-                // Step 5: Thread Pool Initialization
-                log('⚙️ Step 5: Thread Pool Initialization', 'info');
-                if (typeof wasmModule.start === 'function') {
-                    try {
-                        await wasmModule.start();
-                        log('✅ Thread pool initialized successfully!', 'pass');
-                        testResults.threadPool = 'initialized';
-                        passed++;
-                        
-                        // Test threading info
-                        if (typeof wasmModule.get_thread_count === 'function') {
-                            const threadCount = wasmModule.get_thread_count();
-                            log(`✅ Active threads: ${threadCount}`, 'pass');
-                            testResults.activeThreads = threadCount;
-                            passed++;
-                        }
-                        
-                    } catch (threadError) {
-                        if (threadError.message.includes('cross-origin') || 
-                            threadError.message.includes('SharedArrayBuffer')) {
-                            log('⚠️ Threading requires cross-origin isolation (fallback active)', 'warn');
-                            testResults.threadPool = 'fallback';
-                            warnings++;
-                        } else {
-                            log(`❌ Thread pool init failed: ${threadError.message}`, 'fail');
-                            testResults.threadPool = 'failed';
-                            failed++;
-                        }
-                    }
-                } else {
-                    log('⚠️ Threading initialization not available', 'warn');
-                    testResults.threadPool = 'unavailable';
-                    warnings++;
-                }
-                updateProgress();
-                
-                // Step 6: Core Classes
-                log('🏗️ Step 6: Core Classes', 'info');
-                if (typeof wasmModule.WasmVectorizer === 'function') {
-                    log('✅ WasmVectorizer class available', 'pass');
-                    testResults.vectorizerClass = true;
-                    passed++;
-                } else {
-                    log('❌ WasmVectorizer class missing', 'fail');
-                    testResults.vectorizerClass = false;
-                    failed++;
-                }
-                updateProgress();
-                
-                // Step 7: Basic Vectorization Test
-                log('🎨 Step 7: Vectorization Test', 'info');
-                if (wasmModule.WasmVectorizer) {
-                    try {
-                        // Create test image
-                        const canvas = document.createElement('canvas');
-                        canvas.width = canvas.height = 32;
-                        const ctx = canvas.getContext('2d');
-                        ctx.fillStyle = 'white';
-                        ctx.fillRect(0, 0, 32, 32);
-                        ctx.fillStyle = 'black';
-                        ctx.fillRect(8, 8, 16, 16);
-                        
-                        const imageData = ctx.getImageData(0, 0, 32, 32);
-                        
-                        const vectorizer = new wasmModule.WasmVectorizer();
-                        const vectorizeStart = performance.now();
-                        const svg = vectorizer.vectorize(imageData);
-                        const vectorizeEnd = performance.now();
-                        
-                        const processingTime = vectorizeEnd - vectorizeStart;
-                        log(`✅ Vectorization successful: ${svg.length} chars in ${processingTime.toFixed(1)}ms`, 'pass');
-                        
-                        vectorizer.free();
-                        log('✅ Memory cleanup successful', 'pass');
-                        
-                        testResults.vectorization = {
-                            success: true,
-                            outputSize: svg.length,
-                            processingTime: processingTime
-                        };
-                        passed += 2;
-                        
-                    } catch (vecError) {
-                        log(`❌ Vectorization failed: ${vecError.message}`, 'fail');
-                        testResults.vectorization = { success: false, error: vecError.message };
-                        failed++;
-                    }
-                } else {
-                    log('❌ Cannot test vectorization (WasmVectorizer unavailable)', 'fail');
-                    failed++;
-                }
-                updateProgress();
-                
-                // Step 8: Final Results
-                const endTime = performance.now();
-                const totalTime = endTime - startTime;
-                
-                log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
-                log('📊 Final Test Results', 'info');
-                log(`⏱️ Total Time: ${totalTime.toFixed(1)}ms`, 'info');
-                log(`✅ Passed: ${passed}`, 'pass');
-                log(`⚠️ Warnings: ${warnings}`, warnings > 0 ? 'warn' : 'info');
-                log(`❌ Failed: ${failed}`, failed > 0 ? 'fail' : 'info');
-                
-                // Overall Assessment
-                if (failed === 0) {
-                    if (warnings <= 2) {
-                        log('🎉 EXCELLENT! Multithreaded WASM integration working perfectly!', 'pass');
-                        if (crossOriginIsolated) {
-                            log('🚀 Full threading performance available!', 'pass');
-                        } else {
-                            log('💡 Single-threaded fallback working (enable COOP/COEP for threading)', 'info');
-                        }
-                    } else {
-                        log('✅ GOOD! Core functionality working with minor issues', 'pass');
-                    }
-                } else if (failed <= 2) {
-                    log('⚠️ PARTIAL SUCCESS! Most features working', 'warn');
-                } else {
-                    log('❌ ISSUES DETECTED! Review failed tests', 'fail');
-                }
-                
-                updateProgress();
-                
-                // Technical Summary
-                const summary = document.createElement('div');
-                summary.className = 'summary';
-                summary.innerHTML = `
+			function updateProgress() {
+				currentStep++;
+				const percentage = (currentStep / totalSteps) * 100;
+				document.getElementById('progress-bar').style.width = percentage + '%';
+				document.getElementById('progress-text').textContent =
+					`Step ${currentStep}/${totalSteps} (${Math.round(percentage)}%)`;
+			}
+
+			function log(message, type = 'info') {
+				const div = document.getElementById('results');
+				const timestamp = new Date().toLocaleTimeString();
+				div.innerHTML += `<div class="status ${type}">[${timestamp}] ${message}</div>`;
+				console.log(`[${type.toUpperCase()}] ${message}`);
+				return { type, message, timestamp };
+			}
+
+			async function runCompleteTest() {
+				const startTime = performance.now();
+				let passed = 0,
+					failed = 0,
+					warnings = 0;
+
+				try {
+					log('🎯 Complete Integration Test Started', 'info');
+					log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
+					updateProgress();
+
+					// Step 1: Environment Check
+					log('🔍 Step 1: Environment Prerequisites', 'info');
+					const crossOriginIsolated = self.crossOriginIsolated;
+					const hasSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
+					const hardwareConcurrency = navigator.hardwareConcurrency || 1;
+
+					log(
+						`Cross-Origin Isolation: ${crossOriginIsolated}`,
+						crossOriginIsolated ? 'pass' : 'warn'
+					);
+					log(`SharedArrayBuffer: ${hasSharedArrayBuffer}`, hasSharedArrayBuffer ? 'pass' : 'fail');
+					log(`Hardware Cores: ${hardwareConcurrency}`, 'pass');
+
+					testResults.environment = {
+						crossOriginIsolated,
+						hasSharedArrayBuffer,
+						hardwareConcurrency
+					};
+					if (crossOriginIsolated) passed++;
+					else warnings++;
+					if (hasSharedArrayBuffer) passed++;
+					else failed++;
+					passed++;
+					updateProgress();
+
+					// Step 2: WASM Module Import (Critical Fix Test)
+					log('📦 Step 2: WASM Module Import', 'info');
+					let wasmModule;
+					try {
+						wasmModule = await import('/wasm/vectorize_wasm.js');
+						log('✅ WASM module imported (all import issues resolved!)', 'pass');
+						testResults.moduleImport = 'success';
+						passed++;
+					} catch (importError) {
+						log(`❌ Module import failed: ${importError.message}`, 'fail');
+						testResults.moduleImport = 'failed';
+						testResults.importError = importError.message;
+						failed++;
+						throw importError;
+					}
+					updateProgress();
+
+					// Step 3: wasm-bindgen Initialization
+					log('🔧 Step 3: WASM Initialization', 'info');
+					try {
+						await wasmModule.default('/wasm/vectorize_wasm_bg.wasm');
+						log('✅ WASM initialized (LinkError completely resolved!)', 'pass');
+						testResults.initialization = 'success';
+						passed++;
+					} catch (initError) {
+						log(`❌ WASM init failed: ${initError.message}`, 'fail');
+						testResults.initialization = 'failed';
+						testResults.initError = initError.message;
+						failed++;
+						throw initError;
+					}
+					updateProgress();
+
+					// Step 4: Threading Functions Available
+					log('🧵 Step 4: Threading Functions', 'info');
+					const threadingFunctions = [
+						'start',
+						'get_thread_count',
+						'is_threading_active',
+						'get_threading_info'
+					];
+					let threadingScore = 0;
+
+					for (const funcName of threadingFunctions) {
+						if (typeof wasmModule[funcName] === 'function') {
+							log(`✅ ${funcName}(): Available`, 'pass');
+							threadingScore++;
+						} else {
+							log(`⚠️ ${funcName}(): Missing`, 'warn');
+						}
+					}
+
+					testResults.threading = { available: threadingScore, total: threadingFunctions.length };
+					passed += Math.floor(threadingScore * 0.5); // Partial credit
+					if (threadingScore < threadingFunctions.length) warnings++;
+					updateProgress();
+
+					// Step 5: Thread Pool Initialization
+					log('⚙️ Step 5: Thread Pool Initialization', 'info');
+					if (typeof wasmModule.start === 'function') {
+						try {
+							await wasmModule.start();
+							log('✅ Thread pool initialized successfully!', 'pass');
+							testResults.threadPool = 'initialized';
+							passed++;
+
+							// Test threading info
+							if (typeof wasmModule.get_thread_count === 'function') {
+								const threadCount = wasmModule.get_thread_count();
+								log(`✅ Active threads: ${threadCount}`, 'pass');
+								testResults.activeThreads = threadCount;
+								passed++;
+							}
+						} catch (threadError) {
+							if (
+								threadError.message.includes('cross-origin') ||
+								threadError.message.includes('SharedArrayBuffer')
+							) {
+								log('⚠️ Threading requires cross-origin isolation (fallback active)', 'warn');
+								testResults.threadPool = 'fallback';
+								warnings++;
+							} else {
+								log(`❌ Thread pool init failed: ${threadError.message}`, 'fail');
+								testResults.threadPool = 'failed';
+								failed++;
+							}
+						}
+					} else {
+						log('⚠️ Threading initialization not available', 'warn');
+						testResults.threadPool = 'unavailable';
+						warnings++;
+					}
+					updateProgress();
+
+					// Step 6: Core Classes
+					log('🏗️ Step 6: Core Classes', 'info');
+					if (typeof wasmModule.WasmVectorizer === 'function') {
+						log('✅ WasmVectorizer class available', 'pass');
+						testResults.vectorizerClass = true;
+						passed++;
+					} else {
+						log('❌ WasmVectorizer class missing', 'fail');
+						testResults.vectorizerClass = false;
+						failed++;
+					}
+					updateProgress();
+
+					// Step 7: Basic Vectorization Test
+					log('🎨 Step 7: Vectorization Test', 'info');
+					if (wasmModule.WasmVectorizer) {
+						try {
+							// Create test image
+							const canvas = document.createElement('canvas');
+							canvas.width = canvas.height = 32;
+							const ctx = canvas.getContext('2d');
+							ctx.fillStyle = 'white';
+							ctx.fillRect(0, 0, 32, 32);
+							ctx.fillStyle = 'black';
+							ctx.fillRect(8, 8, 16, 16);
+
+							const imageData = ctx.getImageData(0, 0, 32, 32);
+
+							const vectorizer = new wasmModule.WasmVectorizer();
+							const vectorizeStart = performance.now();
+							const svg = vectorizer.vectorize(imageData);
+							const vectorizeEnd = performance.now();
+
+							const processingTime = vectorizeEnd - vectorizeStart;
+							log(
+								`✅ Vectorization successful: ${svg.length} chars in ${processingTime.toFixed(1)}ms`,
+								'pass'
+							);
+
+							vectorizer.free();
+							log('✅ Memory cleanup successful', 'pass');
+
+							testResults.vectorization = {
+								success: true,
+								outputSize: svg.length,
+								processingTime: processingTime
+							};
+							passed += 2;
+						} catch (vecError) {
+							log(`❌ Vectorization failed: ${vecError.message}`, 'fail');
+							testResults.vectorization = { success: false, error: vecError.message };
+							failed++;
+						}
+					} else {
+						log('❌ Cannot test vectorization (WasmVectorizer unavailable)', 'fail');
+						failed++;
+					}
+					updateProgress();
+
+					// Step 8: Final Results
+					const endTime = performance.now();
+					const totalTime = endTime - startTime;
+
+					log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
+					log('📊 Final Test Results', 'info');
+					log(`⏱️ Total Time: ${totalTime.toFixed(1)}ms`, 'info');
+					log(`✅ Passed: ${passed}`, 'pass');
+					log(`⚠️ Warnings: ${warnings}`, warnings > 0 ? 'warn' : 'info');
+					log(`❌ Failed: ${failed}`, failed > 0 ? 'fail' : 'info');
+
+					// Overall Assessment
+					if (failed === 0) {
+						if (warnings <= 2) {
+							log('🎉 EXCELLENT! Multithreaded WASM integration working perfectly!', 'pass');
+							if (crossOriginIsolated) {
+								log('🚀 Full threading performance available!', 'pass');
+							} else {
+								log('💡 Single-threaded fallback working (enable COOP/COEP for threading)', 'info');
+							}
+						} else {
+							log('✅ GOOD! Core functionality working with minor issues', 'pass');
+						}
+					} else if (failed <= 2) {
+						log('⚠️ PARTIAL SUCCESS! Most features working', 'warn');
+					} else {
+						log('❌ ISSUES DETECTED! Review failed tests', 'fail');
+					}
+
+					updateProgress();
+
+					// Technical Summary
+					const summary = document.createElement('div');
+					summary.className = 'summary';
+					summary.innerHTML = `
                     <h3>📋 Technical Summary:</h3>
-                    <pre>${JSON.stringify({
-                        testResults,
-                        performance: {
-                            totalTestTime: totalTime,
-                            testsPassed: passed,
-                            testsWarned: warnings,
-                            testsFailed: failed,
-                            successRate: Math.round((passed / (passed + failed + warnings)) * 100)
-                        }
-                    }, null, 2)}</pre>
+                    <pre>${JSON.stringify(
+											{
+												testResults,
+												performance: {
+													totalTestTime: totalTime,
+													testsPassed: passed,
+													testsWarned: warnings,
+													testsFailed: failed,
+													successRate: Math.round((passed / (passed + failed + warnings)) * 100)
+												}
+											},
+											null,
+											2
+										)}</pre>
                 `;
-                document.getElementById('results').appendChild(summary);
-                
-                // Enable copy-paste for debugging
-                window.testResults = testResults;
-                log('💡 Test results available in window.testResults', 'info');
-                
-            } catch (error) {
-                log(`💥 Test suite failed: ${error.message}`, 'fail');
-                console.error('Full error:', error);
-                
-                // Error diagnostics
-                if (error.message.includes('__wbindgen_placeholder__')) {
-                    log('🔍 DIAGNOSIS: Bare specifier issue detected', 'fail');
-                } else if (error.message.includes('__wbindgen_describe')) {
-                    log('🔍 DIAGNOSIS: LinkError detected', 'fail');
-                } else if (error.message.includes('loading dynamically imported module')) {
-                    log('🔍 DIAGNOSIS: Module loading issue detected', 'fail');
-                } else {
-                    log('🔍 DIAGNOSIS: Different error - check console for details', 'warn');
-                }
-            }
-        }
+					document.getElementById('results').appendChild(summary);
 
-        // Auto-run when page loads
-        window.addEventListener('load', runCompleteTest);
-    </script>
-</body>
+					// Enable copy-paste for debugging
+					window.testResults = testResults;
+					log('💡 Test results available in window.testResults', 'info');
+				} catch (error) {
+					log(`💥 Test suite failed: ${error.message}`, 'fail');
+					console.error('Full error:', error);
+
+					// Error diagnostics
+					if (error.message.includes('__wbindgen_placeholder__')) {
+						log('🔍 DIAGNOSIS: Bare specifier issue detected', 'fail');
+					} else if (error.message.includes('__wbindgen_describe')) {
+						log('🔍 DIAGNOSIS: LinkError detected', 'fail');
+					} else if (error.message.includes('loading dynamically imported module')) {
+						log('🔍 DIAGNOSIS: Module loading issue detected', 'fail');
+					} else {
+						log('🔍 DIAGNOSIS: Different error - check console for details', 'warn');
+					}
+				}
+			}
+
+			// Auto-run when page loads
+			window.addEventListener('load', runCompleteTest);
+		</script>
+	</body>
 </html>

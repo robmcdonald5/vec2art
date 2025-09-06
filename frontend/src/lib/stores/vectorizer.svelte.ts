@@ -12,7 +12,8 @@ import type {
 	ProcessingResult,
 	ProcessingProgress,
 	WasmCapabilityReport,
-	VectorizerPreset
+	VectorizerPreset,
+	VectorizerBackend
 } from '$lib/types/vectorizer';
 import { DEFAULT_CONFIG as defaultConfig, PRESET_CONFIGS } from '$lib/types/vectorizer';
 
@@ -42,8 +43,8 @@ class VectorizerStore {
 
 	// Per-algorithm configuration state to prevent slider overlap/sharing
 	private _algorithmConfigs = $state<Record<VectorizerBackend, VectorizerConfig>>({
-		edge: { 
-			...defaultConfig, 
+		edge: {
+			...defaultConfig,
 			backend: 'edge' as const,
 			detail: 0.8,
 			stroke_width: 1.5,
@@ -52,8 +53,8 @@ class VectorizerStore {
 			tremor_strength: 0.0,
 			tapering: 0.0
 		},
-		centerline: { 
-			...defaultConfig, 
+		centerline: {
+			...defaultConfig,
 			backend: 'centerline' as const,
 			detail: 0.3,
 			stroke_width: 0.8,
@@ -63,18 +64,18 @@ class VectorizerStore {
 			min_branch_length: 8,
 			douglas_peucker_epsilon: 1.0
 		},
-		superpixel: { 
-			...defaultConfig, 
+		superpixel: {
+			...defaultConfig,
 			backend: 'superpixel' as const,
-			detail: 0.2,  // Not used by superpixel but kept for consistency
+			detail: 0.2, // Not used by superpixel but kept for consistency
 			stroke_width: 1.5,
 			num_superpixels: 250,
 			compactness: 15,
 			slic_iterations: 10,
 			initialization_pattern: 'poisson' as const
 		},
-		dots: { 
-			...defaultConfig, 
+		dots: {
+			...defaultConfig,
 			backend: 'dots' as const,
 			detail: 0.8, // UI value 8 (consistent with dot density)
 			stroke_width: 1.0,
@@ -85,7 +86,7 @@ class VectorizerStore {
 			background_tolerance: 0.1,
 			poisson_disk_sampling: false, // Disabled by default for better performance and stability
 			gradient_based_sizing: true,
-			preserve_colors: true  // Enable colors by default for dots
+			preserve_colors: true // Enable colors by default for dots
 		}
 	});
 
@@ -329,26 +330,29 @@ class VectorizerStore {
 	updateConfig(updates: Partial<VectorizerConfig>): void {
 		// Apply parameter normalization before updating config
 		const normalizedUpdates = this.normalizeConfig(updates);
-		
+
 		// If backend is changing, switch to the appropriate per-algorithm config
 		if (normalizedUpdates.backend && normalizedUpdates.backend !== this._state.config.backend) {
 			// Save current config state to the current algorithm
 			this._algorithmConfigs[this._state.config.backend] = { ...this._state.config };
-			
+
 			// Switch to the new algorithm's config
 			const newAlgorithmConfig = { ...this._algorithmConfigs[normalizedUpdates.backend] };
 			// Apply any additional updates from the current call
 			const otherUpdates = { ...normalizedUpdates };
 			delete otherUpdates.backend; // Remove backend from other updates
-			
+
 			this._state.config = { ...newAlgorithmConfig, ...otherUpdates };
-			console.log(`[VectorizerStore] Switched to ${normalizedUpdates.backend} algorithm config:`, this._state.config);
+			console.log(
+				`[VectorizerStore] Switched to ${normalizedUpdates.backend} algorithm config:`,
+				this._state.config
+			);
 		} else {
 			// Same algorithm, just update the current config and save to algorithm state
 			this._state.config = { ...this._state.config, ...normalizedUpdates };
 			this._algorithmConfigs[this._state.config.backend] = { ...this._state.config };
 		}
-		
+
 		this.clearError(); // Clear any previous config errors
 	}
 
@@ -381,7 +385,7 @@ class VectorizerStore {
 	 */
 	private _getDefaultConfigForBackend(backend: VectorizerBackend): VectorizerConfig {
 		const baseConfig = { ...defaultConfig, backend };
-		
+
 		switch (backend) {
 			case 'edge':
 				return {
@@ -427,6 +431,17 @@ class VectorizerStore {
 					poisson_disk_sampling: false, // Disabled by default for better performance and stability
 					gradient_based_sizing: true,
 					preserve_colors: true
+				};
+			default:
+				// Fallback to edge backend configuration for any unexpected backend value
+				return {
+					...baseConfig,
+					detail: 0.8,
+					stroke_width: 1.5,
+					hand_drawn_preset: 'none',
+					variable_weights: 0.0,
+					tremor_strength: 0.0,
+					tapering: 0.0
 				};
 		}
 	}
@@ -694,17 +709,20 @@ class VectorizerStore {
 				const pixelCount = imageData.width * imageData.height;
 				const megapixels = pixelCount / 1_000_000;
 				const isLargeImage = megapixels > 10;
-				
+
 				if (isLargeImage) {
-					console.log(`[VectorizerStore] 📊 Processing large image: ${megapixels.toFixed(1)}MP (${imageData.width}x${imageData.height})`);
-					
+					console.log(
+						`[VectorizerStore] 📊 Processing large image: ${megapixels.toFixed(1)}MP (${imageData.width}x${imageData.height})`
+					);
+
 					// Update progress to show optimization notice
 					this._state.current_progress = {
-						percent: 0,
+						progress: 0,
 						stage: 'initialization' as const,
+						elapsed_ms: 0,
 						message: `Optimizing ${megapixels.toFixed(1)}MP image for processing...`
 					};
-					onProgress?.(i, images.length, this._state.current_progress);
+					onProgress?.(i, images.length, this._state.current_progress!);
 				}
 
 				try {
@@ -915,14 +933,14 @@ class VectorizerStore {
 		try {
 			// First reset store state
 			this.reset();
-			
+
 			// Abort vectorizer service processing (this handles the Web Worker internally)
 			vectorizerService.abortProcessing();
-			
+
 			// Also force reset the worker service queue for thorough cleanup
 			const { wasmWorkerService } = await import('$lib/services/wasm-worker-service');
 			await wasmWorkerService.forceReset();
-			
+
 			console.log('[VectorizerStore] ✅ Force reset complete - all operations cancelled');
 		} catch (error) {
 			console.error('[VectorizerStore] Error during force reset:', error);

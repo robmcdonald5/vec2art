@@ -1,15 +1,11 @@
 <script lang="ts">
-	import { Sliders, Eye, PenTool, Filter, AlertTriangle, Grid3X3, Target, Puzzle, Droplets } from 'lucide-svelte';
+	import { Eye, PenTool, Filter, Target, Puzzle, Droplets } from 'lucide-svelte';
 	import type { VectorizerConfig, HandDrawnPreset } from '$lib/types/vectorizer';
 	import { HAND_DRAWN_DESCRIPTIONS } from '$lib/types/vectorizer';
 	import { CustomSelect } from '$lib/components/ui/custom-select';
 
 	// Import dots backend architecture
-	import {
-		mapUIConfigToDotsConfig,
-		validateDotsConfig,
-		describeDotsConfig
-	} from '$lib/utils/dots-mapping.js';
+	import { mapUIConfigToDotsConfig, validateDotsConfig } from '$lib/utils/dots-mapping.js';
 	import type { UISliderConfig } from '$lib/types/dots-backend.js';
 
 	interface ParameterPanelProps {
@@ -27,28 +23,10 @@
 		onParameterChange
 	}: ParameterPanelProps = $props();
 
-	// Convert internal 0.1-1.0 detail to 1-10 UI range  
+	// Convert internal 0.1-1.0 detail to 1-10 UI range
 	// FIXED: Higher UI numbers = higher detail (higher internal values for proper mapping)
-	const detailToUI = (detail: number) => Math.round((detail - 0.1) / 0.9 * 9 + 1); // detail 0.1 → UI 1, detail 1.0 → UI 10  
-	const detailFromUI = (uiValue: number) => 0.1 + (uiValue - 1) / 9 * 0.9;         // UI 1 → detail 0.1, UI 10 → detail 1.0
-
-	// Validation state for dots backend
-	let dotsValidation = $state({ isValid: true, errors: [], warnings: [] });
-
-	// Update dots validation when config changes
-	$effect(() => {
-		if (config.backend === 'dots') {
-			const uiConfig: UISliderConfig = {
-				detail_level: config.detail || 0.5,
-				dot_width: config.stroke_width || 2.0,
-				color_mode: config.preserve_colors || true
-			};
-
-			// Note: We don't have image dimensions in the UI panel, but the WASM worker will handle size-aware adjustment
-			const dotsConfig = mapUIConfigToDotsConfig(uiConfig);
-			dotsValidation = validateDotsConfig(dotsConfig);
-		}
-	});
+	const detailToUI = (detail: number) => Math.round(((detail - 0.1) / 0.9) * 9 + 1); // detail 0.1 → UI 1, detail 1.0 → UI 10
+	const detailFromUI = (uiValue: number) => 0.1 + ((uiValue - 1) / 9) * 0.9; // UI 1 → detail 0.1, UI 10 → detail 1.0
 
 	function handleDetailChange(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -82,7 +60,7 @@
 	function handleDotDensityChange(event: Event) {
 		const target = event.target as HTMLInputElement;
 		const uiValue = parseInt(target.value);
-		
+
 		// Convert UI value (1-10) to dot density threshold (0.4-0.02, inverted)
 		// UI: 1 = sparse dots (high threshold), 10 = dense dots (low threshold)
 		const threshold = 0.4 - ((uiValue - 1) / 9) * (0.4 - 0.02);
@@ -175,7 +153,6 @@
 		onParameterChange?.();
 	}
 
-
 	// Check if current artistic effect values match a preset
 	function checkForCustomPreset(newConfig: Partial<VectorizerConfig>): HandDrawnPreset {
 		const currentConfig = { ...config, ...newConfig };
@@ -238,7 +215,7 @@
 	// UI state for sliders - separate from derived to allow two-way binding
 	let detailUI = $state(detailToUI(config.detail));
 	let strokeWidthUI = $state(config.stroke_width || 2.0);
-	
+
 	// Sync UI state when config changes externally
 	$effect(() => {
 		detailUI = detailToUI(config.detail);
@@ -261,7 +238,6 @@
 			label: preset.charAt(0).toUpperCase() + preset.slice(1)
 		}));
 	})();
-
 
 	// Progressive slider functionality
 	function updateSliderFill(slider: HTMLInputElement) {
@@ -350,7 +326,6 @@
 			updateSliderFill(taperingSliderRef);
 		}
 	});
-
 </script>
 
 <section class="space-y-6">
@@ -468,7 +443,10 @@
 
 			<!-- Initialization Pattern for Superpixel -->
 			<div class="space-y-2">
-				<label for="initialization-pattern" class="text-converter-primary flex items-center gap-2 text-sm font-medium">
+				<label
+					for="initialization-pattern"
+					class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+				>
 					<Target class="text-converter-secondary h-4 w-4" aria-hidden="true" />
 					Initialization Pattern
 				</label>
@@ -478,19 +456,36 @@
 					onchange={handleInitializationPatternChange}
 					{disabled}
 					options={[
-						{ value: 'square', label: 'Square Grid', description: 'Traditional grid pattern - may create diagonal artifacts' },
-						{ value: 'hexagonal', label: 'Hexagonal', description: 'Reduces diagonal artifacts, more natural clustering' },
-						{ value: 'poisson', label: 'Poisson Disk', description: 'Random distribution, eliminates grid artifacts' }
+						{
+							value: 'square',
+							label: 'Square Grid',
+							description: 'Traditional grid pattern - may create diagonal artifacts'
+						},
+						{
+							value: 'hexagonal',
+							label: 'Hexagonal',
+							description: 'Reduces diagonal artifacts, more natural clustering'
+						},
+						{
+							value: 'poisson',
+							label: 'Poisson Disk',
+							description: 'Random distribution, eliminates grid artifacts'
+						}
 					]}
 				>
 					<span slot="selectedLabel">
-						{config.initialization_pattern === 'square' ? 'Square Grid' : 
-						 config.initialization_pattern === 'hexagonal' ? 'Hexagonal' :
-						 config.initialization_pattern === 'poisson' ? 'Poisson Disk' : 'Poisson Disk'}
+						{config.initialization_pattern === 'square'
+							? 'Square Grid'
+							: config.initialization_pattern === 'hexagonal'
+								? 'Hexagonal'
+								: config.initialization_pattern === 'poisson'
+									? 'Poisson Disk'
+									: 'Poisson Disk'}
 					</span>
 				</CustomSelect>
 				<div class="text-converter-muted text-xs">
-					Controls how superpixel centers are initially placed. Poisson disk sampling provides the best artifact reduction.
+					Controls how superpixel centers are initially placed. Poisson disk sampling provides the
+					best artifact reduction.
 				</div>
 			</div>
 		{/if}
@@ -771,7 +766,6 @@
 			{/if}
 		</div>
 	{/if}
-
 </section>
 
 <style>

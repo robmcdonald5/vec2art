@@ -16,10 +16,10 @@
 		isOpen: boolean;
 		onClose: () => void;
 		config: VectorizerConfig;
-		onConfigChange: (config: Partial<VectorizerConfig>) => void;
+		onConfigChange: (configUpdates: Partial<VectorizerConfig>) => void;
 		selectedPreset: VectorizerPreset | 'custom';
-		onPresetChange: (preset: VectorizerPreset | 'custom') => void;
-		onBackendChange: (backend: VectorizerBackend) => void;
+		onPresetChange: (presetValue: VectorizerPreset | 'custom') => void;
+		onBackendChange: (backendValue: VectorizerBackend) => void;
 		disabled?: boolean;
 		onParameterChange?: () => void;
 	}
@@ -109,7 +109,7 @@
 
 	// Prevent body scroll when sheet is open using robust scroll lock utility
 	let unlockScroll: (() => void) | null = null;
-	
+
 	$effect(() => {
 		if (isOpen && !unlockScroll) {
 			// Lock body scroll and store unlock function

@@ -19,23 +19,23 @@ class SimplePresetValidator {
 
 	async uploadTestImage(imageName: string) {
 		const imagePath = path.join(__dirname, 'fixtures', 'images', imageName);
-		
+
 		// Upload via file input - simplified selector
 		const fileInput = this.page.locator('input[type="file"]').first();
 		await fileInput.setInputFiles(imagePath);
-		
+
 		// Wait for image to load and converter interface to appear
 		await this.page.waitForTimeout(2000);
-		
+
 		// Check if we transitioned to the converter interface
 		const uploadArea = this.page.locator('text="Upload Images"');
 		const isUploaded = await uploadArea.isVisible({ timeout: 5000 }).catch(() => false);
-		
+
 		if (isUploaded) {
 			console.log('Image upload may not have worked correctly');
 			throw new Error('Upload area still visible - image may not have uploaded');
 		}
-		
+
 		console.log('✅ Image appears to be uploaded successfully');
 	}
 
@@ -121,7 +121,7 @@ class SimplePresetValidator {
 		// Look for process/convert button
 		const processSelectors = [
 			'button:has-text("Convert")',
-			'button:has-text("Process")', 
+			'button:has-text("Process")',
 			'button:has-text("Generate")',
 			'[aria-label*="process"]',
 			'[aria-label*="convert"]'
@@ -142,7 +142,7 @@ class SimplePresetValidator {
 
 		await processButton.click();
 		console.log('✅ Clicked process button');
-		
+
 		// Wait for processing to start (look for loading indicators)
 		const processingIndicators = [
 			'text="Processing"',
@@ -154,7 +154,12 @@ class SimplePresetValidator {
 
 		let processingStarted = false;
 		for (const indicator of processingIndicators) {
-			if (await this.page.locator(indicator).isVisible({ timeout: 2000 }).catch(() => false)) {
+			if (
+				await this.page
+					.locator(indicator)
+					.isVisible({ timeout: 2000 })
+					.catch(() => false)
+			) {
 				processingStarted = true;
 				console.log('✅ Processing started');
 				break;
@@ -163,7 +168,7 @@ class SimplePresetValidator {
 
 		// Wait for processing to complete (generous timeout for WASM)
 		await this.page.waitForTimeout(10000); // 10 second timeout for processing
-		
+
 		// Look for completion indicators
 		const completionIndicators = [
 			'text="Complete"',
@@ -175,7 +180,12 @@ class SimplePresetValidator {
 
 		let completed = false;
 		for (const indicator of completionIndicators) {
-			if (await this.page.locator(indicator).isVisible({ timeout: 5000 }).catch(() => false)) {
+			if (
+				await this.page
+					.locator(indicator)
+					.isVisible({ timeout: 5000 })
+					.catch(() => false)
+			) {
 				completed = true;
 				console.log('✅ Processing appears to have completed');
 				break;
@@ -189,16 +199,16 @@ class SimplePresetValidator {
 
 	async checkForOutput() {
 		// Look for signs of SVG output
-		const outputIndicators = [
-			'svg',
-			'text="Download"',
-			'.preview',
-			'[data-testid*="preview"]'
-		];
+		const outputIndicators = ['svg', 'text="Download"', '.preview', '[data-testid*="preview"]'];
 
 		let hasOutput = false;
 		for (const indicator of outputIndicators) {
-			if (await this.page.locator(indicator).isVisible({ timeout: 2000 }).catch(() => false)) {
+			if (
+				await this.page
+					.locator(indicator)
+					.isVisible({ timeout: 2000 })
+					.catch(() => false)
+			) {
 				hasOutput = true;
 				break;
 			}
@@ -212,13 +222,13 @@ class SimplePresetValidator {
 const BASIC_TEST_CASES = [
 	{
 		algorithm: 'edge',
-		preset: 'sketch', 
+		preset: 'sketch',
 		description: 'Edge algorithm with sketch preset'
 	},
 	{
 		algorithm: 'edge',
 		preset: 'comic',
-		description: 'Edge algorithm with comic preset'  
+		description: 'Edge algorithm with comic preset'
 	},
 	{
 		algorithm: 'dots',
@@ -239,7 +249,7 @@ test.describe('Simplified Preset Validation', () => {
 	for (const testCase of BASIC_TEST_CASES) {
 		test(`${testCase.algorithm}-${testCase.preset} basic functionality`, async ({ page }) => {
 			test.setTimeout(120000); // 2 minute timeout
-			
+
 			console.log(`Testing: ${testCase.description}`);
 
 			try {
@@ -247,7 +257,7 @@ test.describe('Simplified Preset Validation', () => {
 				await validator.uploadTestImage('medium-test.jpg');
 				console.log('✅ Image uploaded');
 
-				// Step 2: Select algorithm  
+				// Step 2: Select algorithm
 				await validator.selectAlgorithm(testCase.algorithm);
 				console.log('✅ Algorithm selected');
 
@@ -261,7 +271,7 @@ test.describe('Simplified Preset Validation', () => {
 
 				// Step 5: Check for output
 				const hasOutput = await validator.checkForOutput();
-				
+
 				if (hasOutput) {
 					console.log('✅ Output detected - test passed');
 				} else {
@@ -269,20 +279,19 @@ test.describe('Simplified Preset Validation', () => {
 				}
 
 				// Take screenshot for manual review
-				await page.screenshot({ 
+				await page.screenshot({
 					path: `test-results/preset-basic/${testCase.algorithm}-${testCase.preset}.png`,
-					fullPage: true 
+					fullPage: true
 				});
-
 			} catch (error) {
 				console.log(`❌ Test failed: ${error.message}`);
-				
+
 				// Take screenshot of failure state
-				await page.screenshot({ 
+				await page.screenshot({
 					path: `test-results/preset-failures/${testCase.algorithm}-${testCase.preset}-failure.png`,
-					fullPage: true 
+					fullPage: true
 				});
-				
+
 				throw error;
 			}
 		});
@@ -291,15 +300,15 @@ test.describe('Simplified Preset Validation', () => {
 	// UI exploration test
 	test('UI structure exploration', async ({ page }) => {
 		console.log('🔍 Exploring UI structure...');
-		
+
 		try {
 			// Upload an image first
 			await validator.uploadTestImage('medium-test.jpg');
-			
+
 			// Get all visible buttons and their text
 			const buttons = await page.locator('button:visible').allTextContents();
 			console.log('Available buttons:', buttons);
-			
+
 			// Get all input elements
 			const inputs = await page.locator('input:visible').all();
 			for (let i = 0; i < inputs.length; i++) {
@@ -307,9 +316,11 @@ test.describe('Simplified Preset Validation', () => {
 				const type = await input.getAttribute('type');
 				const placeholder = await input.getAttribute('placeholder');
 				const ariaLabel = await input.getAttribute('aria-label');
-				console.log(`Input ${i}: type=${type}, placeholder=${placeholder}, aria-label=${ariaLabel}`);
+				console.log(
+					`Input ${i}: type=${type}, placeholder=${placeholder}, aria-label=${ariaLabel}`
+				);
 			}
-			
+
 			// Get all select elements
 			const selects = await page.locator('select:visible').all();
 			for (let i = 0; i < selects.length; i++) {
@@ -317,13 +328,12 @@ test.describe('Simplified Preset Validation', () => {
 				const options = await select.locator('option').allTextContents();
 				console.log(`Select ${i}: options=[${options.join(', ')}]`);
 			}
-			
+
 			// Take a screenshot of the UI
-			await page.screenshot({ 
+			await page.screenshot({
 				path: 'test-results/ui-exploration.png',
-				fullPage: true 
+				fullPage: true
 			});
-			
 		} catch (error) {
 			console.log('UI exploration error:', error);
 		}
@@ -334,28 +344,32 @@ test.describe('Simplified Preset Validation', () => {
 		try {
 			// Upload image to activate converter interface
 			await validator.uploadTestImage('simple-shapes.png');
-			
+
 			// Look for algorithm/backend options
 			const algorithms = ['edge', 'centerline', 'dots', 'superpixel'];
 			const availableAlgorithms: string[] = [];
-			
+
 			for (const algorithm of algorithms) {
 				const selectors = [
 					`text="${algorithm}"`,
 					`text="${algorithm.charAt(0).toUpperCase() + algorithm.slice(1)}"`
 				];
-				
+
 				for (const selector of selectors) {
-					if (await page.locator(selector).isVisible({ timeout: 1000 }).catch(() => false)) {
+					if (
+						await page
+							.locator(selector)
+							.isVisible({ timeout: 1000 })
+							.catch(() => false)
+					) {
 						availableAlgorithms.push(algorithm);
 						break;
 					}
 				}
 			}
-			
+
 			console.log('Available algorithms:', availableAlgorithms);
 			expect(availableAlgorithms.length).toBeGreaterThan(0);
-			
 		} catch (error) {
 			console.log('Algorithm availability check failed:', error);
 			throw error;

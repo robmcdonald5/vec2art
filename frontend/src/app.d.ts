@@ -58,7 +58,7 @@ declare global {
 		readonly limits: Record<string, number>;
 		readonly queue: GPUQueue;
 		readonly lost: Promise<GPUDeviceLostInfo>;
-		
+
 		destroy(): void;
 		createBuffer(descriptor: GPUBufferDescriptor): GPUBuffer;
 		createShaderModule(descriptor: GPUShaderModuleDescriptor): GPUShaderModule;
@@ -76,14 +76,20 @@ declare global {
 
 	interface GPUQueue {
 		submit(commandBuffers: Iterable<GPUCommandBuffer>): void;
-		writeBuffer(buffer: GPUBuffer, bufferOffset: number, data: BufferSource, dataOffset?: number, size?: number): void;
+		writeBuffer(
+			buffer: GPUBuffer,
+			bufferOffset: number,
+			data: BufferSource,
+			dataOffset?: number,
+			size?: number
+		): void;
 	}
 
 	interface GPUBuffer {
 		readonly size: number;
 		readonly usage: number;
 		readonly mapState: GPUBufferMapState;
-		
+
 		destroy(): void;
 		mapAsync(mode: number, offset?: number, size?: number): Promise<void>;
 		getMappedRange(offset?: number, size?: number): ArrayBuffer;
@@ -109,14 +115,14 @@ declare global {
 		UNIFORM = 0x0040,
 		STORAGE = 0x0080,
 		INDIRECT = 0x0100,
-		QUERY_RESOLVE = 0x0200,
+		QUERY_RESOLVE = 0x0200
 	}
 
 	type GPUBufferUsageFlags = number;
 
 	enum GPUMapMode {
 		READ = 0x0001,
-		write = 0x0002,
+		write = 0x0002
 	}
 
 	interface GPUShaderModule {
@@ -204,7 +210,13 @@ declare global {
 	interface GPUCommandEncoder {
 		readonly label: string | null;
 		beginComputePass(descriptor?: GPUComputePassDescriptor): GPUComputePass;
-		copyBufferToBuffer(source: GPUBuffer, sourceOffset: number, destination: GPUBuffer, destinationOffset: number, size: number): void;
+		copyBufferToBuffer(
+			source: GPUBuffer,
+			sourceOffset: number,
+			destination: GPUBuffer,
+			destinationOffset: number,
+			size: number
+		): void;
 		finish(descriptor?: GPUCommandBufferDescriptor): GPUCommandBuffer;
 	}
 
@@ -216,7 +228,11 @@ declare global {
 		readonly label: string | null;
 		setPipeline(pipeline: GPUComputePipeline): void;
 		setBindGroup(index: number, bindGroup: GPUBindGroup, dynamicOffsets?: Iterable<number>): void;
-		dispatchWorkgroups(workgroupCountX: number, workgroupCountY?: number, workgroupCountZ?: number): void;
+		dispatchWorkgroups(
+			workgroupCountX: number,
+			workgroupCountY?: number,
+			workgroupCountZ?: number
+		): void;
 		end(): void;
 	}
 

@@ -36,7 +36,7 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 	let originalState = $state<PanZoomState>({ ...defaultState });
 	let convertedState = $state<PanZoomState>({ ...defaultState });
 	let isSyncEnabled = $state(true);
-	
+
 	// Preserved states for maintaining zoom/pan during conversions
 	let preservedOriginalState: PanZoomState | null = null;
 	let preservedConvertedState: PanZoomState | null = null;
@@ -91,7 +91,7 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 			originalState = { ...defaultState };
 			convertedState = { ...defaultState };
 		},
-		
+
 		preserveStates() {
 			// Save current states before conversion/re-render
 			preservedOriginalState = { ...originalState };
@@ -102,18 +102,18 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 				syncEnabled: isSyncEnabled
 			});
 		},
-		
+
 		restoreStates() {
 			// Restore saved states after conversion/re-render
 			if (preservedOriginalState) {
 				originalState = { ...preservedOriginalState };
 			}
-			
+
 			if (preservedConvertedState) {
 				// Handle different sync modes appropriately
 				if (isSyncEnabled) {
 					// In sync mode, use the original state for both
-					convertedState = { ...preservedOriginalState || preservedConvertedState };
+					convertedState = { ...(preservedOriginalState || preservedConvertedState) };
 				} else {
 					// In independent mode, preserve each state separately
 					convertedState = { ...preservedConvertedState };
@@ -123,7 +123,7 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 				// This handles the case where preview doesn't exist yet
 				convertedState = { ...preservedOriginalState };
 			}
-			
+
 			console.log('[PanZoomStore] States restored:', {
 				original: $state.snapshot(originalState),
 				converted: $state.snapshot(convertedState),

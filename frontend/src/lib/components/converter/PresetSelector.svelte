@@ -1,22 +1,18 @@
 <script lang="ts">
-	import { 
-		presetCollection, 
-		getPresetById, 
-		getPresetsByAlgorithm 
-	} from '$lib/presets/presets';
+	import { presetCollection, getPresetById, getPresetsByAlgorithm } from '$lib/presets/presets';
 	import type { StylePreset } from '$lib/presets/types';
 	import type { VectorizerBackend } from '$lib/types/vectorizer';
 	import { CustomSelect } from '$lib/components/ui/custom-select';
 
 	interface Props {
 		selectedPresetId?: string;
-		onPresetSelect: (preset: StylePreset | null) => void;
+		onPresetSelect: (selectedPreset: StylePreset | null) => void;
 		disabled?: boolean;
 		// New prop for algorithm-specific filtering
 		selectedAlgorithm?: VectorizerBackend;
 	}
 
-	let { 
+	let {
 		selectedPresetId = '',
 		onPresetSelect,
 		disabled = false,
@@ -35,57 +31,59 @@
 
 	// Algorithm display names
 	const algorithmNames: Record<VectorizerBackend, string> = {
-		'centerline': 'Centerline',
-		'edge': 'Edge Detection', 
-		'dots': 'Dots & Stippling',
-		'superpixel': 'Superpixel Regions'
+		centerline: 'Centerline',
+		edge: 'Edge Detection',
+		dots: 'Dots & Stippling',
+		superpixel: 'Superpixel Regions'
 	};
 
 	// Create options for CustomSelect dropdown
 	const dropdownOptions = $derived.by(() => {
 		if (selectedAlgorithm) {
 			// Show algorithm-specific presets without grouping
-			return availablePresets.map(preset => ({
+			return availablePresets.map((preset) => ({
 				value: preset.metadata.id,
 				label: preset.metadata.name,
 				disabled: false
 			}));
 		}
-		
+
 		// Show all presets grouped by algorithm
 		const options: { value: string; label: string; disabled: boolean }[] = [];
-		
-		// Group by algorithm 
+
+		// Group by algorithm
 		const algorithmGroups: Record<VectorizerBackend, StylePreset[]> = {
-			'centerline': [],
-			'edge': [],
-			'dots': [],
-			'superpixel': []
+			centerline: [],
+			edge: [],
+			dots: [],
+			superpixel: []
 		};
-		
-		availablePresets.forEach(preset => {
+
+		availablePresets.forEach((preset) => {
 			algorithmGroups[preset.backend].push(preset);
 		});
-		
+
 		Object.entries(algorithmGroups).forEach(([backend, presets]) => {
 			if (presets.length > 0) {
-				presets.forEach(preset => {
+				presets.forEach((preset) => {
 					options.push({
 						value: preset.metadata.id,
-						label: selectedAlgorithm ? preset.metadata.name : `${algorithmNames[backend as VectorizerBackend]}: ${preset.metadata.name}`,
+						label: selectedAlgorithm
+							? preset.metadata.name
+							: `${algorithmNames[backend as VectorizerBackend]}: ${preset.metadata.name}`,
 						disabled: false
 					});
 				});
 			}
 		});
-		
+
 		return options;
 	});
 
 	// Handle preset selection
 	function handlePresetChange(presetId: string) {
 		if (disabled) return;
-		
+
 		if (presetId === 'custom') {
 			onPresetSelect(null); // Custom option
 		} else {
@@ -106,7 +104,8 @@
 		options={[...dropdownOptions, { value: 'custom', label: 'Custom Settings', disabled: false }]}
 		onchange={handlePresetChange}
 		{disabled}
-		placeholder={selectedAlgorithm ? `Select ${algorithmNames[selectedAlgorithm]} preset` : 'Select a preset'}
+		placeholder={selectedAlgorithm
+			? `Select ${algorithmNames[selectedAlgorithm]} preset`
+			: 'Select a preset'}
 	/>
 </div>
-

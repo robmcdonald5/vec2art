@@ -49,7 +49,7 @@ const mockNavigator = {
 beforeEach(() => {
 	// Reset mocks
 	vi.clearAllMocks();
-	
+
 	// Reset window and navigator properties
 	mockWindow.crossOriginIsolated = true;
 	mockNavigator.hardwareConcurrency = 8;

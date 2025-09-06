@@ -3,7 +3,6 @@
 		Settings,
 		Play,
 		Download,
-		RotateCcw,
 		ChevronDown,
 		ChevronUp,
 		Sliders,
@@ -115,8 +114,11 @@
 
 	// Manage scroll lock when mobile settings overlay state changes
 	$effect(() => {
-		console.debug('[ConverterLayout] Mobile menu effect triggered - isMobileMenuOpen:', isMobileMenuOpen);
-		
+		console.debug(
+			'[ConverterLayout] Mobile menu effect triggered - isMobileMenuOpen:',
+			isMobileMenuOpen
+		);
+
 		if (isMobileMenuOpen && !unlockScroll) {
 			// Lock body scroll when mobile settings opens
 			console.debug('[ConverterLayout] Locking scroll for mobile settings');

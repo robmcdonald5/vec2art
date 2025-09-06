@@ -18,20 +18,20 @@ export interface PresetMetadata {
 	estimatedTime: string; // e.g., "<1.5s", "<2s"
 }
 
-export type PresetCategory = 
-	| 'professional'    // Corporate, technical, precision-focused
-	| 'artistic'        // Creative, expressive, stylized
-	| 'vintage'         // Retro, classic effects
-	| 'modern'          // Contemporary, digital art
-	| 'experimental';   // Advanced, unique effects
+export type PresetCategory =
+	| 'professional' // Corporate, technical, precision-focused
+	| 'artistic' // Creative, expressive, stylized
+	| 'vintage' // Retro, classic effects
+	| 'modern' // Contemporary, digital art
+	| 'experimental'; // Advanced, unique effects
 
-export type MarketSegment = 
-	| 'corporate'       // Business, branding, logos
-	| 'technical'       // Engineering, CAD, architecture
-	| 'creative'        // Artists, illustrators, designers
-	| 'print'           // Print production, screen printing
-	| 'digital'         // Web, apps, digital media
-	| 'general';        // General purpose, all users
+export type MarketSegment =
+	| 'corporate' // Business, branding, logos
+	| 'technical' // Engineering, CAD, architecture
+	| 'creative' // Artists, illustrators, designers
+	| 'print' // Print production, screen printing
+	| 'digital' // Web, apps, digital media
+	| 'general'; // General purpose, all users
 
 // Preset configuration interface (separate from WASM config)
 export interface PresetConfig {
@@ -40,12 +40,12 @@ export interface PresetConfig {
 	strokeWidth?: number;
 	blur?: number;
 	edgeEnhancement?: number;
-	
+
 	// Processing settings
 	multipass?: boolean;
 	passCount?: number;
-	
-	// Output settings  
+
+	// Output settings
 	outputFormat?: 'svg';
 	scale?: number;
 }
@@ -112,7 +112,7 @@ export interface PresetCollection {
 // Algorithm-specific preset organization
 export type AlgorithmPresets = {
 	edge: EdgePreset[];
-	centerline: CenterlinePreset[];  
+	centerline: CenterlinePreset[];
 	dots: DotsPreset[];
 	superpixel: SuperpixelPreset[];
 };
@@ -160,12 +160,12 @@ export function validatePreset(preset: StylePreset): boolean {
 	if (!preset.metadata?.id || !preset.backend || !preset.config) {
 		return false;
 	}
-	
+
 	// Backend-specific validation
 	switch (preset.backend) {
 		case 'edge':
 		case 'centerline':
-		case 'dots':  
+		case 'dots':
 		case 'superpixel':
 			return true; // All backends are supported
 		default:
@@ -179,13 +179,10 @@ export function getPresetsByCategory(
 	category: PresetCategory
 ): StylePreset[] {
 	const presetIds = collection.categories[category] || [];
-	return collection.presets.filter(p => presetIds.includes(p.metadata.id));
+	return collection.presets.filter((p) => presetIds.includes(p.metadata.id));
 }
 
 // Get presets by market segment
-export function getPresetsByMarket(
-	presets: StylePreset[],
-	segment: MarketSegment
-): StylePreset[] {
-	return presets.filter(p => p.metadata.marketSegment === segment);
+export function getPresetsByMarket(presets: StylePreset[], segment: MarketSegment): StylePreset[] {
+	return presets.filter((p) => p.metadata.marketSegment === segment);
 }

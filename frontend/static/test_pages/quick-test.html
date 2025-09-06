@@ -1,25 +1,32 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <title>Quick Test</title>
-    <style>body { font-family: monospace; background: #1a1a1a; color: #e0e0e0; padding: 20px; }</style>
-</head>
-<body>
-    <h1>Quick Test</h1>
-    <div id="result"></div>
-    
-    <script type="module">
-        async function test() {
-            try {
-                const wasm = await import('/wasm/vectorize_wasm.js');
-                document.getElementById('result').innerHTML = '✅ SUCCESS: WASM imported!';
-                console.log('WASM module:', wasm);
-            } catch (e) {
-                document.getElementById('result').innerHTML = `❌ FAILED: ${e.message}`;
-                console.error('Error:', e);
-            }
-        }
-        test();
-    </script>
-</body>
+	<head>
+		<title>Quick Test</title>
+		<style>
+			body {
+				font-family: monospace;
+				background: #1a1a1a;
+				color: #e0e0e0;
+				padding: 20px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Quick Test</h1>
+		<div id="result"></div>
+
+		<script type="module">
+			async function test() {
+				try {
+					const wasm = await import('/wasm/vectorize_wasm.js');
+					document.getElementById('result').innerHTML = '✅ SUCCESS: WASM imported!';
+					console.log('WASM module:', wasm);
+				} catch (e) {
+					document.getElementById('result').innerHTML = `❌ FAILED: ${e.message}`;
+					console.error('Error:', e);
+				}
+			}
+			test();
+		</script>
+	</body>
 </html>

@@ -17,13 +17,11 @@
 	import type { PerformanceMode } from '$lib/utils/performance-monitor';
 	import {
 		performanceMonitor,
-		getOptimalThreadCount as getOptimalThreadCountOld,
-		isLowEndDevice
+		getOptimalThreadCount as getOptimalThreadCountOld
 	} from '$lib/utils/performance-monitor';
 	import {
 		detectCPUCapabilities,
 		generatePerformanceRecommendations,
-		getDefaultRecommendation,
 		type CPUCapabilities,
 		type PerformanceRecommendation
 	} from '$lib/utils/cpu-detection';
@@ -32,8 +30,8 @@
 		currentMode: PerformanceMode;
 		currentThreadCount?: number;
 		isProcessing?: boolean;
-		onModeChange: (mode: PerformanceMode, threadCount: number) => void;
-		onAdvancedSettingsToggle?: (show: boolean) => void;
+		onModeChange: (selectedMode: PerformanceMode, selectedThreadCount: number) => void;
+		onAdvancedSettingsToggle?: (shouldShow: boolean) => void;
 	}
 
 	let {
@@ -230,7 +228,7 @@
 
 		<!-- Mode Buttons -->
 		<div class="grid grid-cols-2 gap-2">
-			{#each Object.entries(modeConfigs) as [mode, config]}
+			{#each Object.entries(modeConfigs) as [mode, config] (mode)}
 				{@const isSelected = currentMode === mode}
 				{@const Icon = config.icon}
 				{@const threadCount = optimalThreads[mode as PerformanceMode]}

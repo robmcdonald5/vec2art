@@ -2,7 +2,15 @@
  * File validation utilities for image uploads
  */
 
-export const ALLOWED_IMAGE_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/tiff', 'image/bmp', 'image/gif', 'image/avif'];
+export const ALLOWED_IMAGE_FORMATS = [
+	'image/jpeg',
+	'image/png',
+	'image/webp',
+	'image/tiff',
+	'image/bmp',
+	'image/gif',
+	'image/avif'
+];
 export const BLOCKED_FORMATS = ['image/svg+xml'];
 export const MAX_FILE_SIZE = 1 * 1024 * 1024 * 1024; // 1GB
 export const LARGE_FILE_WARNING_SIZE = 10 * 1024 * 1024; // 10MB

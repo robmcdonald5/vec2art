@@ -1,204 +1,298 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <title>🎉 Final Multithreading Test</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f8f9fa; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        .result { padding: 10px; margin: 5px 0; border-radius: 5px; }
-        .success { background: #d4edda; color: #155724; border-left: 5px solid #28a745; }
-        .error { background: #f8d7da; color: #721c24; border-left: 5px solid #dc3545; }
-        .warning { background: #fff3cd; color: #856404; border-left: 5px solid #ffc107; }
-        .info { background: #d1ecf1; color: #0c5460; border-left: 5px solid #17a2b8; }
-        button { padding: 12px 24px; margin: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-primary { background: #007bff; color: white; }
-        .btn-success { background: #28a745; color: white; }
-        .btn-danger { background: #dc3545; color: white; }
-        .btn-primary:hover { background: #0056b3; }
-        .btn-success:hover { background: #218838; }
-        h1 { color: #333; text-align: center; }
-        .status { font-size: 1.2em; font-weight: bold; text-align: center; margin: 20px 0; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🎉 WASM Multithreading - Final Test</h1>
-        <div class="status" id="status">Ready to test multithreading implementation</div>
-        <div style="text-align: center; margin: 20px 0;">
-            <button class="btn-primary" onclick="runFullTest()" id="testBtn">🚀 Test Multithreading</button>
-            <button class="btn-danger" onclick="clearResults()" id="clearBtn">🗑️ Clear Results</button>
-        </div>
-        <div id="results"></div>
-    </div>
+	<head>
+		<title>🎉 Final Multithreading Test</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 20px;
+				background: #f8f9fa;
+			}
+			.container {
+				max-width: 800px;
+				margin: 0 auto;
+				background: white;
+				padding: 20px;
+				border-radius: 8px;
+			}
+			.result {
+				padding: 10px;
+				margin: 5px 0;
+				border-radius: 5px;
+			}
+			.success {
+				background: #d4edda;
+				color: #155724;
+				border-left: 5px solid #28a745;
+			}
+			.error {
+				background: #f8d7da;
+				color: #721c24;
+				border-left: 5px solid #dc3545;
+			}
+			.warning {
+				background: #fff3cd;
+				color: #856404;
+				border-left: 5px solid #ffc107;
+			}
+			.info {
+				background: #d1ecf1;
+				color: #0c5460;
+				border-left: 5px solid #17a2b8;
+			}
+			button {
+				padding: 12px 24px;
+				margin: 10px;
+				border: none;
+				border-radius: 4px;
+				cursor: pointer;
+				font-weight: bold;
+			}
+			.btn-primary {
+				background: #007bff;
+				color: white;
+			}
+			.btn-success {
+				background: #28a745;
+				color: white;
+			}
+			.btn-danger {
+				background: #dc3545;
+				color: white;
+			}
+			.btn-primary:hover {
+				background: #0056b3;
+			}
+			.btn-success:hover {
+				background: #218838;
+			}
+			h1 {
+				color: #333;
+				text-align: center;
+			}
+			.status {
+				font-size: 1.2em;
+				font-weight: bold;
+				text-align: center;
+				margin: 20px 0;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>🎉 WASM Multithreading - Final Test</h1>
+			<div class="status" id="status">Ready to test multithreading implementation</div>
+			<div style="text-align: center; margin: 20px 0">
+				<button class="btn-primary" onclick="runFullTest()" id="testBtn">
+					🚀 Test Multithreading
+				</button>
+				<button class="btn-danger" onclick="clearResults()" id="clearBtn">🗑️ Clear Results</button>
+			</div>
+			<div id="results"></div>
+		</div>
 
-    <script type="module">
-        let testRunning = false;
+		<script type="module">
+			let testRunning = false;
 
-        function addResult(message, type = 'info', details = null) {
-            const div = document.createElement('div');
-            div.className = `result ${type}`;
-            div.innerHTML = message + (details ? `<pre style="margin-top: 10px; font-size: 0.9em;">${details}</pre>` : '');
-            document.getElementById('results').appendChild(div);
-            console.log(`[${type.toUpperCase()}]`, message, details || '');
-        }
+			function addResult(message, type = 'info', details = null) {
+				const div = document.createElement('div');
+				div.className = `result ${type}`;
+				div.innerHTML =
+					message +
+					(details ? `<pre style="margin-top: 10px; font-size: 0.9em;">${details}</pre>` : '');
+				document.getElementById('results').appendChild(div);
+				console.log(`[${type.toUpperCase()}]`, message, details || '');
+			}
 
-        function updateStatus(message, type = 'info') {
-            const statusEl = document.getElementById('status');
-            statusEl.textContent = message;
-            statusEl.className = `status ${type}`;
-        }
+			function updateStatus(message, type = 'info') {
+				const statusEl = document.getElementById('status');
+				statusEl.textContent = message;
+				statusEl.className = `status ${type}`;
+			}
 
-        window.clearResults = function() {
-            document.getElementById('results').innerHTML = '';
-            updateStatus('Ready to test multithreading implementation');
-        };
+			window.clearResults = function () {
+				document.getElementById('results').innerHTML = '';
+				updateStatus('Ready to test multithreading implementation');
+			};
 
-        window.runFullTest = async function() {
-            if (testRunning) {
-                addResult('⚠️ Test already running, please wait...', 'warning');
-                return;
-            }
+			window.runFullTest = async function () {
+				if (testRunning) {
+					addResult('⚠️ Test already running, please wait...', 'warning');
+					return;
+				}
 
-            testRunning = true;
-            document.getElementById('testBtn').disabled = true;
-            clearResults();
+				testRunning = true;
+				document.getElementById('testBtn').disabled = true;
+				clearResults();
 
-            try {
-                updateStatus('🔄 Testing WASM multithreading implementation...', 'info');
+				try {
+					updateStatus('🔄 Testing WASM multithreading implementation...', 'info');
 
-                // STEP 1: Environment Check
-                addResult('🔍 STEP 1: Environment Detection', 'info');
-                const crossOriginIsolated = window.crossOriginIsolated;
-                const sabSupported = typeof SharedArrayBuffer !== 'undefined';
-                const cores = navigator.hardwareConcurrency || 1;
+					// STEP 1: Environment Check
+					addResult('🔍 STEP 1: Environment Detection', 'info');
+					const crossOriginIsolated = window.crossOriginIsolated;
+					const sabSupported = typeof SharedArrayBuffer !== 'undefined';
+					const cores = navigator.hardwareConcurrency || 1;
 
-                addResult(`Cross-Origin Isolation: ${crossOriginIsolated ? '✅ Enabled' : '❌ Disabled'}`, 
-                    crossOriginIsolated ? 'success' : 'error');
-                addResult(`SharedArrayBuffer: ${sabSupported ? '✅ Available' : '❌ Not available'}`, 
-                    sabSupported ? 'success' : 'error');
-                addResult(`Hardware Concurrency: ${cores} cores`, cores > 1 ? 'success' : 'warning');
+					addResult(
+						`Cross-Origin Isolation: ${crossOriginIsolated ? '✅ Enabled' : '❌ Disabled'}`,
+						crossOriginIsolated ? 'success' : 'error'
+					);
+					addResult(
+						`SharedArrayBuffer: ${sabSupported ? '✅ Available' : '❌ Not available'}`,
+						sabSupported ? 'success' : 'error'
+					);
+					addResult(`Hardware Concurrency: ${cores} cores`, cores > 1 ? 'success' : 'warning');
 
-                if (!crossOriginIsolated || !sabSupported) {
-                    addResult('❌ Environment not suitable for multithreading. Missing requirements above.', 'error');
-                    updateStatus('❌ Environment test failed', 'error');
-                    return;
-                }
+					if (!crossOriginIsolated || !sabSupported) {
+						addResult(
+							'❌ Environment not suitable for multithreading. Missing requirements above.',
+							'error'
+						);
+						updateStatus('❌ Environment test failed', 'error');
+						return;
+					}
 
-                // STEP 2: WASM Loading
-                addResult('📦 STEP 2: WASM Module Loading', 'info');
-                updateStatus('🔄 Loading WASM module...', 'info');
+					// STEP 2: WASM Loading
+					addResult('📦 STEP 2: WASM Module Loading', 'info');
+					updateStatus('🔄 Loading WASM module...', 'info');
 
-                const wasm = await import('/wasm/vectorize_wasm.js');
-                await wasm.default();
-                addResult('✅ WASM module loaded successfully', 'success');
+					const wasm = await import('/wasm/vectorize_wasm.js');
+					await wasm.default();
+					addResult('✅ WASM module loaded successfully', 'success');
 
-                // Check functions
-                const requiredFunctions = ['WasmVectorizer', 'get_thread_count', 'is_threading_supported', 'initThreadPool', 'get_threading_info'];
-                const missingFunctions = requiredFunctions.filter(fn => typeof wasm[fn] === 'undefined');
-                
-                if (missingFunctions.length > 0) {
-                    addResult(`❌ Missing functions: ${missingFunctions.join(', ')}`, 'error');
-                    updateStatus('❌ WASM loading failed', 'error');
-                    return;
-                }
-                
-                addResult(`✅ All required functions available (${requiredFunctions.length}/5)`, 'success');
+					// Check functions
+					const requiredFunctions = [
+						'WasmVectorizer',
+						'get_thread_count',
+						'is_threading_supported',
+						'initThreadPool',
+						'get_threading_info'
+					];
+					const missingFunctions = requiredFunctions.filter(
+						(fn) => typeof wasm[fn] === 'undefined'
+					);
 
-                // STEP 3: Threading Initialization  
-                addResult('🧵 STEP 3: Threading Initialization', 'info');
-                updateStatus('🔄 Initializing thread pool...', 'info');
+					if (missingFunctions.length > 0) {
+						addResult(`❌ Missing functions: ${missingFunctions.join(', ')}`, 'error');
+						updateStatus('❌ WASM loading failed', 'error');
+						return;
+					}
 
-                const initialThreadCount = wasm.get_thread_count();
-                const initialSupport = wasm.is_threading_supported();
-                addResult(`Initial state - Threads: ${initialThreadCount}, Supported: ${initialSupport}`, 'info');
+					addResult(
+						`✅ All required functions available (${requiredFunctions.length}/5)`,
+						'success'
+					);
 
-                // Try initializing with a reasonable thread count
-                const targetThreads = Math.min(4, cores); // Conservative approach
-                addResult(`🔄 Attempting to initialize ${targetThreads} threads...`, 'info');
+					// STEP 3: Threading Initialization
+					addResult('🧵 STEP 3: Threading Initialization', 'info');
+					updateStatus('🔄 Initializing thread pool...', 'info');
 
-                try {
-                    const initResult = await wasm.initThreadPool(targetThreads);
-                    addResult(`✅ Thread pool initialization completed: ${initResult}`, 'success');
+					const initialThreadCount = wasm.get_thread_count();
+					const initialSupport = wasm.is_threading_supported();
+					addResult(
+						`Initial state - Threads: ${initialThreadCount}, Supported: ${initialSupport}`,
+						'info'
+					);
 
-                    // Check new state
-                    const newThreadCount = wasm.get_thread_count();
-                    const newSupport = wasm.is_threading_supported();
-                    const threadingInfo = wasm.get_threading_info();
+					// Try initializing with a reasonable thread count
+					const targetThreads = Math.min(4, cores); // Conservative approach
+					addResult(`🔄 Attempting to initialize ${targetThreads} threads...`, 'info');
 
-                    addResult(`Threading state after init:`, 'info', 
-                        `Threads: ${newThreadCount}\nSupported: ${newSupport}\nDetails: ${threadingInfo}`);
+					try {
+						const initResult = await wasm.initThreadPool(targetThreads);
+						addResult(`✅ Thread pool initialization completed: ${initResult}`, 'success');
 
-                    if (newThreadCount > 1) {
-                        addResult(`🎉 SUCCESS! Multithreading is working with ${newThreadCount} threads!`, 'success');
-                        updateStatus(`🎉 SUCCESS! ${newThreadCount} threads active`, 'success');
-                    } else {
-                        addResult(`⚠️ Threading initialized but using single thread (may be fallback)`, 'warning');
-                        updateStatus('⚠️ Single-threaded fallback active', 'warning');
-                    }
+						// Check new state
+						const newThreadCount = wasm.get_thread_count();
+						const newSupport = wasm.is_threading_supported();
+						const threadingInfo = wasm.get_threading_info();
 
-                } catch (initError) {
-                    addResult(`❌ Thread pool initialization failed: ${initError.message}`, 'error');
-                    addResult('📝 This may indicate threading is not fully supported in this environment', 'warning');
-                    updateStatus('❌ Threading initialization failed', 'error');
-                    return;
-                }
+						addResult(
+							`Threading state after init:`,
+							'info',
+							`Threads: ${newThreadCount}\nSupported: ${newSupport}\nDetails: ${threadingInfo}`
+						);
 
-                // STEP 4: Functionality Test
-                addResult('⚡ STEP 4: Basic Functionality Test', 'info');
-                updateStatus('🔄 Testing vectorization functionality...', 'info');
+						if (newThreadCount > 1) {
+							addResult(
+								`🎉 SUCCESS! Multithreading is working with ${newThreadCount} threads!`,
+								'success'
+							);
+							updateStatus(`🎉 SUCCESS! ${newThreadCount} threads active`, 'success');
+						} else {
+							addResult(
+								`⚠️ Threading initialized but using single thread (may be fallback)`,
+								'warning'
+							);
+							updateStatus('⚠️ Single-threaded fallback active', 'warning');
+						}
+					} catch (initError) {
+						addResult(`❌ Thread pool initialization failed: ${initError.message}`, 'error');
+						addResult(
+							'📝 This may indicate threading is not fully supported in this environment',
+							'warning'
+						);
+						updateStatus('❌ Threading initialization failed', 'error');
+						return;
+					}
 
-                try {
-                    // Create tiny test image
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 16;
-                    canvas.height = 16;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#000';
-                    ctx.fillRect(4, 4, 8, 8);
+					// STEP 4: Functionality Test
+					addResult('⚡ STEP 4: Basic Functionality Test', 'info');
+					updateStatus('🔄 Testing vectorization functionality...', 'info');
 
-                    const imageData = ctx.getImageData(0, 0, 16, 16);
-                    const vectorizer = new wasm.WasmVectorizer();
-                    
-                    const startTime = performance.now();
-                    const result = vectorizer.vectorize(imageData);
-                    const processingTime = performance.now() - startTime;
+					try {
+						// Create tiny test image
+						const canvas = document.createElement('canvas');
+						canvas.width = 16;
+						canvas.height = 16;
+						const ctx = canvas.getContext('2d');
+						ctx.fillStyle = '#000';
+						ctx.fillRect(4, 4, 8, 8);
 
-                    addResult(`✅ Vectorization successful in ${processingTime.toFixed(2)}ms`, 'success');
-                    addResult(`📊 SVG output: ${result.length} characters`, 'info');
-                    
-                    updateStatus('🎉 All tests passed! Multithreading implementation complete!', 'success');
+						const imageData = ctx.getImageData(0, 0, 16, 16);
+						const vectorizer = new wasm.WasmVectorizer();
 
-                } catch (procError) {
-                    addResult(`❌ Vectorization failed: ${procError.message}`, 'error');
-                    updateStatus('❌ Functionality test failed', 'error');
-                    return;
-                }
+						const startTime = performance.now();
+						const result = vectorizer.vectorize(imageData);
+						const processingTime = performance.now() - startTime;
 
-                // Final Summary
-                addResult('📋 FINAL SUMMARY', 'success', 
-                    `✅ Environment: Compatible
+						addResult(`✅ Vectorization successful in ${processingTime.toFixed(2)}ms`, 'success');
+						addResult(`📊 SVG output: ${result.length} characters`, 'info');
+
+						updateStatus('🎉 All tests passed! Multithreading implementation complete!', 'success');
+					} catch (procError) {
+						addResult(`❌ Vectorization failed: ${procError.message}`, 'error');
+						updateStatus('❌ Functionality test failed', 'error');
+						return;
+					}
+
+					// Final Summary
+					addResult(
+						'📋 FINAL SUMMARY',
+						'success',
+						`✅ Environment: Compatible
 ✅ WASM Loading: Success  
 ✅ Threading: ${wasm.get_thread_count()} threads active
 ✅ Functionality: Working
-🎉 MULTITHREADING IMPLEMENTATION COMPLETE!`);
+🎉 MULTITHREADING IMPLEMENTATION COMPLETE!`
+					);
+				} catch (error) {
+					addResult(`❌ Test failed: ${error.message}`, 'error');
+					updateStatus('❌ Test failed', 'error');
+					console.error('Full test error:', error);
+				} finally {
+					testRunning = false;
+					document.getElementById('testBtn').disabled = false;
+				}
+			};
 
-            } catch (error) {
-                addResult(`❌ Test failed: ${error.message}`, 'error');
-                updateStatus('❌ Test failed', 'error');
-                console.error('Full test error:', error);
-
-            } finally {
-                testRunning = false;
-                document.getElementById('testBtn').disabled = false;
-            }
-        };
-
-        // Auto-run test on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                addResult('🔄 Page loaded, ready to test multithreading implementation', 'info');
-            }, 500);
-        });
-    </script>
-</body>
+			// Auto-run test on page load
+			document.addEventListener('DOMContentLoaded', () => {
+				setTimeout(() => {
+					addResult('🔄 Page loaded, ready to test multithreading implementation', 'info');
+				}, 500);
+			});
+		</script>
+	</body>
 </html>

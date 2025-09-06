@@ -38,11 +38,7 @@ export {
 } from './presets';
 
 // Export utility functions
-export {
-	validatePreset,
-	getPresetsByCategory,
-	getPresetsByMarket
-} from './types';
+export { validatePreset, getPresetsByCategory, getPresetsByMarket } from './types';
 
 // Export converter utilities
 export {

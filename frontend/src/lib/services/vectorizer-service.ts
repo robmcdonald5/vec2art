@@ -835,10 +835,16 @@ export class VectorizerService {
 				this.safeCall('set_background_removal_strength', workingConfig.background_removal_strength);
 			}
 			if (workingConfig.background_removal_algorithm !== undefined) {
-				this.safeCall('set_background_removal_algorithm', workingConfig.background_removal_algorithm);
+				this.safeCall(
+					'set_background_removal_algorithm',
+					workingConfig.background_removal_algorithm
+				);
 			}
 			if (workingConfig.background_removal_threshold !== undefined) {
-				this.safeCall('set_background_removal_threshold', workingConfig.background_removal_threshold);
+				this.safeCall(
+					'set_background_removal_threshold',
+					workingConfig.background_removal_threshold
+				);
 			}
 
 			// Configure global output settings (using safeCall for potentially missing functions)

@@ -1,14 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		Zap,
-		ZapOff,
-		XCircle,
-		Loader2,
-		AlertTriangle,
-		HelpCircle,
-		Info
-	} from 'lucide-svelte';
+	import { Zap, ZapOff, XCircle, Loader2, AlertTriangle, HelpCircle, Info } from 'lucide-svelte';
 	import { checkGpuStatus, getGpuStatusMessage, getGpuStatusColor } from '$lib/utils/gpu-detection';
 	import type { GpuStatus } from '$lib/utils/gpu-detection';
 
@@ -21,11 +13,7 @@
 		class?: string;
 	}
 
-	let {
-		showDetails = false,
-		size = 'md',
-		class: className = ''
-	}: Props = $props();
+	let { showDetails = false, size = 'md', class: className = '' }: Props = $props();
 
 	// State
 	let gpuStatus = $state<GpuStatus>({
@@ -154,9 +142,7 @@
 
 			<!-- Tooltip Content -->
 			<div class="space-y-2">
-				<div class="font-semibold text-gray-900 dark:text-gray-100">
-					GPU Acceleration Status
-				</div>
+				<div class="font-semibold text-gray-900 dark:text-gray-100">GPU Acceleration Status</div>
 
 				<div class="grid grid-cols-2 gap-2 text-xs">
 					<div class="space-y-1">
@@ -167,7 +153,7 @@
 					</div>
 					<div class="space-y-1">
 						<div class="font-medium text-gray-700 dark:text-gray-300">Backend:</div>
-						<div class="text-gray-600 dark:text-gray-400 capitalize">
+						<div class="text-gray-600 capitalize dark:text-gray-400">
 							{gpuStatus.gpuBackend}
 						</div>
 					</div>

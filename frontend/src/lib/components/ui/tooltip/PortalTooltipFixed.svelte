@@ -67,11 +67,11 @@
 		const rect = triggerElement.getBoundingClientRect();
 		const x = rect.right + 8;
 		const y = rect.bottom + 8;
-		
+
 		// Ensure tooltip stays in viewport
 		const maxX = window.innerWidth - tooltipElement.offsetWidth - 16;
 		const maxY = window.innerHeight - tooltipElement.offsetHeight - 16;
-		
+
 		Object.assign(tooltipElement.style, {
 			left: `${Math.min(x, maxX)}px`,
 			top: `${Math.min(y, maxY)}px`
@@ -80,12 +80,12 @@
 
 	function showTooltip() {
 		if (disabled || !portalContainer) return;
-		
+
 		// Hide any existing tooltip
 		if (globalCurrentTooltip) {
 			globalCurrentTooltip();
 		}
-		
+
 		globalCurrentTooltip = hideTooltip;
 		isVisible = true;
 		mouseInside = true;
@@ -105,11 +105,15 @@
 
 		const contentHtml = `
 			<div class="relative">
-				${title ? `
+				${
+					title
+						? `
 					<div class="mb-2 border-b border-gray-600 pb-2">
 						<h4 class="text-sm font-semibold text-white">${title}</h4>
 					</div>
-				` : ''}
+				`
+						: ''
+				}
 				<p class="m-0 text-sm text-white leading-relaxed" style="white-space: normal; text-align: left; word-wrap: break-word; line-height: 1.4;">
 					${(content || '').replace(/\t/g, '').trim()}
 				</p>
@@ -123,7 +127,7 @@
 		tooltipElement.addEventListener('mouseenter', () => {
 			mouseInside = true;
 		});
-		
+
 		tooltipElement.addEventListener('mouseleave', () => {
 			mouseInside = false;
 			setTimeout(() => {
@@ -141,19 +145,19 @@
 
 	function hideTooltip() {
 		if (!isVisible) return;
-		
+
 		isVisible = false;
 		mouseInside = false;
-		
+
 		// Clear global state if this is the current tooltip
 		if (globalCurrentTooltip === hideTooltip) {
 			globalCurrentTooltip = null;
 		}
-		
+
 		// Remove listeners
 		window.removeEventListener('scroll', updatePosition, true);
 		window.removeEventListener('resize', updatePosition);
-		
+
 		// Remove tooltip element
 		if (tooltipElement && portalContainer?.contains(tooltipElement)) {
 			portalContainer.removeChild(tooltipElement);

@@ -1,42 +1,49 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <title>Test Alternate Path</title>
-    <style>body { font-family: monospace; background: #1a1a1a; color: #e0e0e0; padding: 20px; }</style>
-</head>
-<body>
-    <h1>Test Alternate Path</h1>
-    <div id="log"></div>
-    
-    <script type="module">
-        const log = (msg) => {
-            document.getElementById('log').innerHTML += '<div>' + msg + '</div>';
-            console.log(msg);
-        };
-        
-        async function testAlternatePaths() {
-            log('Testing alternate paths...');
-            
-            // Test 1: Original problematic path
-            try {
-                log('1. Testing /wasm/ path...');
-                const wasm1 = await import('/wasm/vectorize_wasm.js');
-                log('✅ /wasm/ path works!');
-            } catch (e) {
-                log('❌ /wasm/ path failed: ' + e.message);
-            }
-            
-            // Test 2: Alternate path
-            try {
-                log('2. Testing /wasm-files/ path...');
-                const wasm2 = await import('/wasm-files/vectorize_wasm.js');
-                log('✅ /wasm-files/ path works!');
-            } catch (e) {
-                log('❌ /wasm-files/ path failed: ' + e.message);
-            }
-        }
-        
-        testAlternatePaths();
-    </script>
-</body>
+	<head>
+		<title>Test Alternate Path</title>
+		<style>
+			body {
+				font-family: monospace;
+				background: #1a1a1a;
+				color: #e0e0e0;
+				padding: 20px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Test Alternate Path</h1>
+		<div id="log"></div>
+
+		<script type="module">
+			const log = (msg) => {
+				document.getElementById('log').innerHTML += '<div>' + msg + '</div>';
+				console.log(msg);
+			};
+
+			async function testAlternatePaths() {
+				log('Testing alternate paths...');
+
+				// Test 1: Original problematic path
+				try {
+					log('1. Testing /wasm/ path...');
+					const wasm1 = await import('/wasm/vectorize_wasm.js');
+					log('✅ /wasm/ path works!');
+				} catch (e) {
+					log('❌ /wasm/ path failed: ' + e.message);
+				}
+
+				// Test 2: Alternate path
+				try {
+					log('2. Testing /wasm-files/ path...');
+					const wasm2 = await import('/wasm-files/vectorize_wasm.js');
+					log('✅ /wasm-files/ path works!');
+				} catch (e) {
+					log('❌ /wasm-files/ path failed: ' + e.message);
+				}
+			}
+
+			testAlternatePaths();
+		</script>
+	</body>
 </html>

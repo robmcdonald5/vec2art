@@ -30,7 +30,16 @@ export function validateImageFile(
 ): FileValidationResult {
 	const {
 		maxSize = 1 * 1024 * 1024 * 1024, // 1GB default
-		allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/tiff', 'image/bmp', 'image/gif', 'image/avif'],
+		allowedTypes = [
+			'image/png',
+			'image/jpeg',
+			'image/jpg',
+			'image/webp',
+			'image/tiff',
+			'image/bmp',
+			'image/gif',
+			'image/avif'
+		],
 		allowedExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.tiff', '.tif', '.bmp', '.gif', '.avif']
 	} = options;
 
@@ -68,7 +77,9 @@ export function validateImageFile(
 
 	if (file.size > 10 * 1024 * 1024) {
 		const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-		warnings.push(`Large file detected (${sizeMB}MB). Processing time may be significantly longer than usual.`);
+		warnings.push(
+			`Large file detected (${sizeMB}MB). Processing time may be significantly longer than usual.`
+		);
 	}
 
 	return {
@@ -424,6 +435,14 @@ export const FILE_SIZE_LIMITS = {
  * Supported image formats
  */
 export const SUPPORTED_IMAGE_FORMATS = {
-	types: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/tiff', 'image/bmp', 'image/gif'],
+	types: [
+		'image/png',
+		'image/jpeg',
+		'image/jpg',
+		'image/webp',
+		'image/tiff',
+		'image/bmp',
+		'image/gif'
+	],
 	extensions: ['.png', '.jpg', '.jpeg', '.webp', '.tiff', '.tif', '.bmp', '.gif']
 } as const;

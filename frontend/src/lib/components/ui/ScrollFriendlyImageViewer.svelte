@@ -59,16 +59,16 @@
 		// Always handle scroll when over the image viewer for better UX
 		// Users expect scroll zoom to work in image viewers
 		e.preventDefault(); // Prevent page scrolling when zooming image
-		
+
 		const delta = -e.deltaY;
 		const scaleChange = 1 + delta / scaleSmoothing;
 		const newScale = Math.max(minScale, Math.min(maxScale, targetScale * scaleChange));
-		
+
 		// Zoom towards mouse position
 		const rect = containerEl.getBoundingClientRect();
 		const x = e.clientX - rect.left - rect.width / 2;
 		const y = e.clientY - rect.top - rect.height / 2;
-		
+
 		const scaleRatio = newScale / targetScale;
 		targetOffsetX = x - scaleRatio * (x - targetOffsetX);
 		targetOffsetY = y - scaleRatio * (y - targetOffsetY);
@@ -79,7 +79,7 @@
 		// Add global mouse listeners for drag
 		document.addEventListener('mousemove', handleMouseMove);
 		document.addEventListener('mouseup', handleMouseUp);
-		
+
 		return () => {
 			document.removeEventListener('mousemove', handleMouseMove);
 			document.removeEventListener('mouseup', handleMouseUp);
@@ -87,11 +87,7 @@
 	});
 </script>
 
-<div 
-	bind:this={containerEl}
-	class="relative h-full w-full overflow-hidden"
-	on:wheel={handleWheel}
->
+<div bind:this={containerEl} class="relative h-full w-full overflow-hidden" on:wheel={handleWheel}>
 	<img
 		bind:this={imgEl}
 		{src}

@@ -3,11 +3,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { 
-	presetCollection, 
-	getPresetById, 
+import {
+	presetCollection,
+	getPresetById,
 	getPresetsByAlgorithm,
-	getRecommendedPresets 
+	getRecommendedPresets
 } from './presets';
 import { presetToVectorizerConfig } from './converter';
 
@@ -20,9 +20,11 @@ describe('Algorithm-Specific Preset System', () => {
 		expect(presetCollection.byAlgorithm.superpixel.length).toBeGreaterThan(0);
 
 		// Verify all preset IDs can be found
-		Object.values(presetCollection.byAlgorithm).flat().forEach(presetId => {
-			expect(getPresetById(presetId)).toBeDefined();
-		});
+		Object.values(presetCollection.byAlgorithm)
+			.flat()
+			.forEach((presetId) => {
+				expect(getPresetById(presetId)).toBeDefined();
+			});
 	});
 
 	it('should return algorithm-specific presets correctly', () => {
@@ -38,27 +40,27 @@ describe('Algorithm-Specific Preset System', () => {
 		expect(superpixelPresets.length).toBeGreaterThanOrEqual(2);
 
 		// Verify all presets have correct backend
-		centerlinePresets.forEach(preset => expect(preset.backend).toBe('centerline'));
-		edgePresets.forEach(preset => expect(preset.backend).toBe('edge'));
-		dotsPresets.forEach(preset => expect(preset.backend).toBe('dots'));
-		superpixelPresets.forEach(preset => expect(preset.backend).toBe('superpixel'));
+		centerlinePresets.forEach((preset) => expect(preset.backend).toBe('centerline'));
+		edgePresets.forEach((preset) => expect(preset.backend).toBe('edge'));
+		dotsPresets.forEach((preset) => expect(preset.backend).toBe('dots'));
+		superpixelPresets.forEach((preset) => expect(preset.backend).toBe('superpixel'));
 	});
 
 	it('should convert presets to WASM config correctly', () => {
 		const testPresets = [
-			'corporate-logo',      // CENTERLINE
-			'photo-to-sketch',     // EDGE
-			'artistic-stippling',  // DOTS
-			'modern-abstract'      // SUPERPIXEL
+			'corporate-logo', // CENTERLINE
+			'photo-to-sketch', // EDGE
+			'artistic-stippling', // DOTS
+			'modern-abstract' // SUPERPIXEL
 		];
 
-		testPresets.forEach(presetId => {
+		testPresets.forEach((presetId) => {
 			const preset = getPresetById(presetId);
 			expect(preset).toBeDefined();
-			
+
 			if (preset) {
 				const config = presetToVectorizerConfig(preset);
-				
+
 				// Verify basic required fields
 				expect(config.backend).toBe(preset.backend);
 				expect(typeof config.detail).toBe('number');
@@ -81,17 +83,17 @@ describe('Algorithm-Specific Preset System', () => {
 		expect(textRecommendations.length).toBeGreaterThan(0);
 
 		// Verify photo recommendations include edge-based presets
-		expect(photoRecommendations.some(p => p.backend === 'edge')).toBe(true);
+		expect(photoRecommendations.some((p) => p.backend === 'edge')).toBe(true);
 
 		// Verify logo recommendations include centerline presets
-		expect(logoRecommendations.some(p => p.backend === 'centerline')).toBe(true);
+		expect(logoRecommendations.some((p) => p.backend === 'centerline')).toBe(true);
 
 		// Verify text recommendations include centerline presets
-		expect(textRecommendations.some(p => p.backend === 'centerline')).toBe(true);
+		expect(textRecommendations.some((p) => p.backend === 'centerline')).toBe(true);
 	});
 
 	it('should have valid preset metadata', () => {
-		presetCollection.presets.forEach(preset => {
+		presetCollection.presets.forEach((preset) => {
 			// Verify required metadata fields
 			expect(preset.metadata.id).toBeTruthy();
 			expect(preset.metadata.name).toBeTruthy();
@@ -117,7 +119,7 @@ describe('Algorithm-Specific Preset System', () => {
 		const superpixelPresets = getPresetsByAlgorithm('superpixel');
 
 		// Verify centerline-specific presets have the right algorithm-specific fields
-		centerlinePresets.forEach(preset => {
+		centerlinePresets.forEach((preset) => {
 			if ('centerlineSpecific' in preset) {
 				expect(preset.centerlineSpecific.precision).toBeTruthy();
 				expect(preset.centerlineSpecific.contentType).toBeTruthy();
@@ -126,7 +128,7 @@ describe('Algorithm-Specific Preset System', () => {
 		});
 
 		// Verify edge-specific presets have the right algorithm-specific fields
-		edgePresets.forEach(preset => {
+		edgePresets.forEach((preset) => {
 			if ('edgeSpecific' in preset) {
 				expect(preset.edgeSpecific.complexity).toBeTruthy();
 				expect(typeof preset.edgeSpecific.multiPassOptimal).toBe('boolean');
@@ -135,7 +137,7 @@ describe('Algorithm-Specific Preset System', () => {
 		});
 
 		// Similar checks for dots and superpixel presets
-		dotsPresets.forEach(preset => {
+		dotsPresets.forEach((preset) => {
 			if ('dotsSpecific' in preset) {
 				expect(preset.dotsSpecific.style).toBeTruthy();
 				expect(preset.dotsSpecific.density).toBeTruthy();
@@ -143,7 +145,7 @@ describe('Algorithm-Specific Preset System', () => {
 			}
 		});
 
-		superpixelPresets.forEach(preset => {
+		superpixelPresets.forEach((preset) => {
 			if ('superpixelSpecific' in preset) {
 				expect(preset.superpixelSpecific.style).toBeTruthy();
 				expect(preset.superpixelSpecific.regionSize).toBeTruthy();

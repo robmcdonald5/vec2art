@@ -48,6 +48,30 @@ export function get_threading_requirements_summary(): string;
  */
 export function get_threading_recommendations(): any[];
 /**
+ * Initialize thread pool for multi-threaded processing
+ */
+export function initThreadPool(thread_count?: number): Promise<void>;
+/**
+ * Destroy thread pool and clean up resources
+ */
+export function destroy_thread_pool(): void;
+/**
+ * Get current thread count
+ */
+export function get_thread_count(): number;
+/**
+ * Check if threading is currently supported and active
+ */
+export function is_threading_supported(): boolean;
+/**
+ * Mark threading as successfully initialized
+ */
+export function confirm_threading_success(): void;
+/**
+ * Mark threading initialization as failed
+ */
+export function mark_threading_failed(): void;
+/**
  * Initialize GPU backend with automatic detection and fallback
  */
 export function initialize_gpu_backend(): Promise<GpuBackendInfo>;

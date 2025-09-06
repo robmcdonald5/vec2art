@@ -467,7 +467,7 @@ class ConverterPersistence {
 			if (!stored) return null;
 
 			const panZoomState = JSON.parse(stored);
-			
+
 			// Validate the structure
 			if (
 				panZoomState &&
@@ -478,7 +478,7 @@ class ConverterPersistence {
 			) {
 				return panZoomState;
 			}
-			
+
 			return null;
 		} catch (error) {
 			console.warn('Failed to load pan/zoom state:', error);

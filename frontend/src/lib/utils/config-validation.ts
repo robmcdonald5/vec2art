@@ -1,6 +1,6 @@
 /**
  * Configuration validation utilities for vectorizer settings
- * 
+ *
  * This module provides comprehensive validation that matches the Rust backend validation
  * constraints defined in config_builder.rs. All validation rules here must stay synchronized
  * with the backend validation to prevent runtime errors.
@@ -178,8 +178,10 @@ export function validateDependencies(config: VectorizerConfig): DependencyError[
 	}
 
 	// Conservative/aggressive detail requires multipass
-	if ((config.conservative_detail !== undefined || config.aggressive_detail !== undefined) 
-		&& !config.multipass) {
+	if (
+		(config.conservative_detail !== undefined || config.aggressive_detail !== undefined) &&
+		!config.multipass
+	) {
 		errors.push({
 			field: 'conservative_detail',
 			message: 'Conservative/aggressive detail settings require multipass processing',
@@ -188,7 +190,7 @@ export function validateDependencies(config: VectorizerConfig): DependencyError[
 		});
 	}
 
-	// Reverse and diagonal passes require multipass processing  
+	// Reverse and diagonal passes require multipass processing
 	if ((config.reverse_pass || config.diagonal_pass) && !config.multipass) {
 		errors.push({
 			field: 'reverse_pass',
@@ -202,7 +204,8 @@ export function validateDependencies(config: VectorizerConfig): DependencyError[
 	if (config.multipass && config.pass_count <= 1) {
 		errors.push({
 			field: 'pass_count',
-			message: 'Multipass enabled but pass count is 1 - either disable multipass or increase pass count',
+			message:
+				'Multipass enabled but pass count is 1 - either disable multipass or increase pass count',
 			requiredFields: ['pass_count'],
 			severity: 'error'
 		});
@@ -231,14 +234,15 @@ export function validateBackendSpecificSettings(config: VectorizerConfig): Valid
 		if (config.enable_etf_fdog || config.enable_flow_tracing || config.enable_bezier_fitting) {
 			errors.push({
 				field: 'backend',
-				message: 'ETF/FDoG, flow tracing, and Bézier fitting are not supported by the Superpixel backend',
+				message:
+					'ETF/FDoG, flow tracing, and Bézier fitting are not supported by the Superpixel backend',
 				severity: 'error'
 			});
 		}
 	}
 
 	// Reverse/diagonal passes only for supported backends
-	if ((config.reverse_pass || config.diagonal_pass)) {
+	if (config.reverse_pass || config.diagonal_pass) {
 		if (config.backend === 'dots' || config.backend === 'superpixel') {
 			errors.push({
 				field: 'reverse_pass',
@@ -305,7 +309,11 @@ export function validateNumericRanges(config: VectorizerConfig): ValidationError
 	}
 
 	// NMS threshold relationship
-	if (config.nms_low !== undefined && config.nms_high !== undefined && config.nms_low >= config.nms_high) {
+	if (
+		config.nms_low !== undefined &&
+		config.nms_high !== undefined &&
+		config.nms_low >= config.nms_high
+	) {
 		errors.push({
 			field: 'nms_low',
 			message: 'NMS low threshold must be less than high threshold',
@@ -314,8 +322,11 @@ export function validateNumericRanges(config: VectorizerConfig): ValidationError
 	}
 
 	// Dot size relationship
-	if (config.min_radius !== undefined && config.max_radius !== undefined 
-		&& config.min_radius >= config.max_radius) {
+	if (
+		config.min_radius !== undefined &&
+		config.max_radius !== undefined &&
+		config.min_radius >= config.max_radius
+	) {
 		errors.push({
 			field: 'min_radius',
 			message: 'Minimum dot radius must be less than maximum dot radius',
@@ -324,8 +335,7 @@ export function validateNumericRanges(config: VectorizerConfig): ValidationError
 	}
 
 	// Adaptive threshold window size must be odd
-	if (config.window_size !== undefined 
-		&& config.window_size % 2 === 0) {
+	if (config.window_size !== undefined && config.window_size % 2 === 0) {
 		errors.push({
 			field: 'window_size',
 			message: 'Adaptive threshold window size must be odd',
@@ -367,7 +377,7 @@ export function validateNumericRanges(config: VectorizerConfig): ValidationError
 		});
 	}
 
-	// Pass count validation - now supports full range with optimized deduplication  
+	// Pass count validation - now supports full range with optimized deduplication
 	if (config.pass_count && config.pass_count > 10) {
 		errors.push({
 			field: 'pass_count',
@@ -398,8 +408,7 @@ export function sanitizeConfig(config: VectorizerConfig): VectorizerConfig {
 	}
 
 	// Auto-correct window size to be odd
-	if (sanitized.window_size !== undefined 
-		&& sanitized.window_size % 2 === 0) {
+	if (sanitized.window_size !== undefined && sanitized.window_size % 2 === 0) {
 		sanitized.window_size += 1;
 	}
 
@@ -432,11 +441,11 @@ export function validateConfig(config: VectorizerConfig): {
 	const dependencyErrors = validateDependencies(config);
 	const backendErrors = validateBackendSpecificSettings(config);
 	const numericErrors = validateNumericRanges(config);
-	
+
 	const allErrors = [...artisticErrors, ...backendErrors, ...numericErrors];
-	const errors = allErrors.filter(e => e.severity !== 'warning');
-	const warnings = allErrors.filter(e => e.severity === 'warning');
-	
+	const errors = allErrors.filter((e) => e.severity !== 'warning');
+	const warnings = allErrors.filter((e) => e.severity === 'warning');
+
 	const sanitizedConfig = sanitizeConfig(config);
 
 	return {
@@ -452,7 +461,7 @@ export function validateConfig(config: VectorizerConfig): {
  * Get user-friendly error messages for UI display
  */
 export function getValidationSummary(
-	errors: ValidationError[], 
+	errors: ValidationError[],
 	dependencyErrors: DependencyError[]
 ): string {
 	if (errors.length === 0 && dependencyErrors.length === 0) {

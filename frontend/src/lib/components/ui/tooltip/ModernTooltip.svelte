@@ -37,26 +37,22 @@
 	function startPositioning() {
 		if (!triggerElement || !tooltipElement) return;
 
-		cleanupAutoUpdate = autoUpdate(
-			triggerElement,
-			tooltipElement,
-			async () => {
-				const { x, y } = await computePosition(triggerElement!, tooltipElement!, {
-					placement: position,
-					middleware: [
-						offset(8), // 8px gap
-						flip(), // Flip when there's no space
-						shift({ padding: 8 }) // Shift to stay in viewport
-					]
-				});
+		cleanupAutoUpdate = autoUpdate(triggerElement, tooltipElement, async () => {
+			const { x, y } = await computePosition(triggerElement!, tooltipElement!, {
+				placement: position,
+				middleware: [
+					offset(8), // 8px gap
+					flip(), // Flip when there's no space
+					shift({ padding: 8 }) // Shift to stay in viewport
+				]
+			});
 
-				// Apply position to tooltip
-				Object.assign(tooltipElement!.style, {
-					left: `${x}px`,
-					top: `${y}px`
-				});
-			}
-		);
+			// Apply position to tooltip
+			Object.assign(tooltipElement!.style, {
+				left: `${x}px`,
+				top: `${y}px`
+			});
+		});
 	}
 
 	function stopPositioning() {
@@ -70,7 +66,7 @@
 		if (disabled) return;
 		isVisible = true;
 		// Wait for DOM update, then start positioning
-		await new Promise(resolve => setTimeout(resolve, 1));
+		await new Promise((resolve) => setTimeout(resolve, 1));
 		startPositioning();
 	}
 
@@ -151,7 +147,9 @@
 	<div
 		bind:this={tooltipElement}
 		id="modern-tooltip-content"
-		class="fixed z-[99999] {sizeClasses[size]} rounded-lg bg-gray-900 text-white shadow-2xl border border-gray-700/50 backdrop-blur-sm"
+		class="fixed z-[99999] {sizeClasses[
+			size
+		]} rounded-lg border border-gray-700/50 bg-gray-900 text-white shadow-2xl backdrop-blur-sm"
 		style="top: 0; left: 0; width: max-content; max-width: 300px; pointer-events: none;"
 		role="tooltip"
 		transition:fade={{ duration: 150 }}
@@ -165,7 +163,7 @@
 			{/if}
 
 			<p
-				class="m-0 text-sm text-white leading-relaxed"
+				class="m-0 text-sm leading-relaxed text-white"
 				style="white-space: pre-wrap; text-wrap: balance; word-wrap: break-word;"
 			>
 				{content || ''}
@@ -173,7 +171,9 @@
 		</div>
 
 		<!-- Arrow indicator (simplified) -->
-		<div class="absolute w-2 h-2 bg-gray-900 border border-gray-700/50 rotate-45" 
-			 style="top: -1px; left: 50%; transform: translateX(-50%) rotate(45deg);"></div>
+		<div
+			class="absolute h-2 w-2 rotate-45 border border-gray-700/50 bg-gray-900"
+			style="top: -1px; left: 50%; transform: translateX(-50%) rotate(45deg);"
+		></div>
 	</div>
 {/if}

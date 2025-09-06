@@ -1,6 +1,6 @@
 /**
  * Download Service
- * 
+ *
  * Handles downloading converted images in multiple formats (SVG, WebP)
  * with proper filename handling and error management.
  */
@@ -48,10 +48,7 @@ export class DownloadService {
 	/**
 	 * Download SVG content in the specified format
 	 */
-	async downloadSvg(
-		svgContent: string, 
-		options: DownloadOptions
-	): Promise<DownloadResult> {
+	async downloadSvg(svgContent: string, options: DownloadOptions): Promise<DownloadResult> {
 		try {
 			const { format, filename, webpOptions } = options;
 
@@ -81,9 +78,9 @@ export class DownloadService {
 		const filename = this.ensureExtension(baseFilename, 'svg');
 		const blob = new Blob([svgContent], { type: 'image/svg+xml' });
 		const fileSizeKB = Math.round(blob.size / 1024);
-		
+
 		this.triggerDownload(blob, filename);
-		
+
 		return {
 			success: true,
 			filename,
@@ -96,8 +93,8 @@ export class DownloadService {
 	 * Download as WebP file
 	 */
 	private async downloadAsWebP(
-		svgContent: string, 
-		baseFilename: string, 
+		svgContent: string,
+		baseFilename: string,
 		webpOptions?: WebPConversionOptions
 	): Promise<DownloadResult> {
 		const filename = this.ensureExtension(baseFilename, 'webp');
@@ -113,14 +110,14 @@ export class DownloadService {
 
 		const webpConverter = this.ensureWebPConverter();
 		const result = await webpConverter.convertSvgToWebP(svgContent, options);
-		
+
 		// Convert data URL to blob
 		const response = await fetch(result.webpDataUrl);
 		const blob = await response.blob();
 		const fileSizeKB = Math.round(blob.size / 1024);
-		
+
 		this.triggerDownload(blob, filename);
-		
+
 		return {
 			success: true,
 			filename,
@@ -136,18 +133,18 @@ export class DownloadService {
 		if (!browser) {
 			throw new Error('Download is only available in browser environment');
 		}
-		
+
 		const url = URL.createObjectURL(blob);
 		const link = document.createElement('a');
-		
+
 		link.href = url;
 		link.download = filename;
-		
+
 		// Temporarily add to DOM to trigger download
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
-		
+
 		// Clean up object URL
 		URL.revokeObjectURL(url);
 	}
@@ -166,11 +163,11 @@ export class DownloadService {
 	 */
 	getFileSizeEstimates(svgContent: string): { svgKB: number; estimatedWebPKB: number } {
 		const svgKB = Math.round(new Blob([svgContent]).size / 1024);
-		
+
 		// WebP is typically 60-80% smaller than SVG for typical line art
 		// But can vary greatly depending on SVG complexity
 		const estimatedWebPKB = Math.max(1, Math.round(svgKB * 0.25));
-		
+
 		return { svgKB, estimatedWebPKB };
 	}
 
@@ -179,7 +176,7 @@ export class DownloadService {
 	 */
 	static isWebPSupported(): boolean {
 		if (!browser) return false;
-		
+
 		const canvas = document.createElement('canvas');
 		canvas.width = 1;
 		canvas.height = 1;

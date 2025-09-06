@@ -133,7 +133,7 @@ export async function checkCapabilities() {
  * Re-export threading functions needed by workers
  * These are required by wasm-bindgen-rayon worker helpers
  */
-export { initSync, wbg_rayon_start_worker } from './vectorize_wasm.js';
+export { initSync } from './vectorize_wasm.js';
 
 /**
  * Export the main initialization function as default

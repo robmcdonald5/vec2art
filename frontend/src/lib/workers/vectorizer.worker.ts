@@ -188,19 +188,27 @@ class VectorizerWorker {
 
 		// Configure background removal preprocessing
 		if (config.enable_background_removal !== undefined) {
-			console.log(`[VectorizerWorker] Setting background removal: ${config.enable_background_removal}`);
+			console.log(
+				`[VectorizerWorker] Setting background removal: ${config.enable_background_removal}`
+			);
 			this.vectorizer.enable_background_removal(config.enable_background_removal);
 		}
 		if (config.background_removal_strength !== undefined) {
-			console.log(`[VectorizerWorker] Setting background removal strength: ${config.background_removal_strength}`);
+			console.log(
+				`[VectorizerWorker] Setting background removal strength: ${config.background_removal_strength}`
+			);
 			this.vectorizer.set_background_removal_strength(config.background_removal_strength);
 		}
 		if (config.background_removal_algorithm !== undefined) {
-			console.log(`[VectorizerWorker] Setting background removal algorithm: ${config.background_removal_algorithm}`);
+			console.log(
+				`[VectorizerWorker] Setting background removal algorithm: ${config.background_removal_algorithm}`
+			);
 			this.vectorizer.set_background_removal_algorithm(config.background_removal_algorithm);
 		}
 		if (config.background_removal_threshold !== undefined) {
-			console.log(`[VectorizerWorker] Setting background removal threshold: ${config.background_removal_threshold}`);
+			console.log(
+				`[VectorizerWorker] Setting background removal threshold: ${config.background_removal_threshold}`
+			);
 			this.vectorizer.set_background_removal_threshold(config.background_removal_threshold);
 		}
 

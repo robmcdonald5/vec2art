@@ -76,7 +76,7 @@
 
 			<!-- Navigation Links -->
 			<ul class="space-y-2">
-				{#each navItems as item}
+				{#each navItems as item (item.href)}
 					{@const IconComponent = item.icon}
 					<li>
 						<a
@@ -124,4 +124,3 @@
 		</div>
 	</nav>
 {/if}
-

@@ -361,7 +361,7 @@
 						Key Features
 					</h4>
 					<div class="space-y-3">
-						{#each selectedAlgorithm.features as feature}
+						{#each selectedAlgorithm.features as feature, index (index)}
 							<div class="flex items-center gap-3">
 								<div
 									class="h-8 w-8 flex-shrink-0 rounded-full {selectedAlgorithm.bgGradient} flex items-center justify-center"

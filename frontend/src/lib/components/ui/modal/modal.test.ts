@@ -71,15 +71,14 @@ describe('Modal Component', () => {
 
 		it('should render children content', () => {
 			const onClose = vi.fn();
-			const TestModal = () => {
-				return Modal({
+			const { container } = render(Modal, {
+				props: {
 					open: true,
 					onClose,
 					children: () => 'Test modal content'
-				});
-			};
+				}
+			});
 
-			render(TestModal);
 			expect(screen.getByText('Test modal content')).toBeInTheDocument();
 		});
 
@@ -228,8 +227,9 @@ describe('Modal Component', () => {
 
 		it('should trap focus within modal', async () => {
 			const onClose = vi.fn();
-			const TestModal = () => {
-				return Modal({
+
+			render(Modal, {
+				props: {
 					open: true,
 					onClose,
 					children: () => `
@@ -237,10 +237,8 @@ describe('Modal Component', () => {
 						<button data-testid="middle-button">Middle</button>
 						<input type="text" data-testid="last-input" />
 					`
-				});
-			};
-
-			render(TestModal);
+				}
+			});
 
 			const closeButton = screen.getByRole('button', { name: /close modal/i });
 			const firstInput = screen.getByTestId('first-input');
@@ -378,8 +376,9 @@ describe('Modal Component', () => {
 	describe('Keyboard Navigation', () => {
 		it('should handle Tab navigation correctly', async () => {
 			const onClose = vi.fn();
-			const TestModal = () => {
-				return Modal({
+
+			render(Modal, {
+				props: {
 					open: true,
 					onClose,
 					children: () => `
@@ -387,10 +386,8 @@ describe('Modal Component', () => {
 						<input data-testid="input1" type="text" />
 						<button data-testid="button2">Button 2</button>
 					`
-				});
-			};
-
-			render(TestModal);
+				}
+			});
 
 			const closeButton = screen.getByRole('button', { name: /close modal/i });
 			const button1 = screen.getByTestId('button1');
@@ -419,18 +416,17 @@ describe('Modal Component', () => {
 
 		it('should handle Shift+Tab navigation correctly', async () => {
 			const onClose = vi.fn();
-			const TestModal = () => {
-				return Modal({
+
+			render(Modal, {
+				props: {
 					open: true,
 					onClose,
 					children: () => `
 						<button data-testid="button1">Button 1</button>
 						<button data-testid="button2">Button 2</button>
 					`
-				});
-			};
-
-			render(TestModal);
+				}
+			});
 
 			const closeButton = screen.getByRole('button', { name: /close modal/i });
 			const button2 = screen.getByTestId('button2');
@@ -575,15 +571,14 @@ describe('Modal Component', () => {
 
 		it('should prevent event bubbling on content clicks', async () => {
 			const onClose = vi.fn();
-			const TestModal = () => {
-				return Modal({
+
+			render(Modal, {
+				props: {
 					open: true,
 					onClose,
 					children: () => `<button data-testid="inner-button">Inner Button</button>`
-				});
-			};
-
-			render(TestModal);
+				}
+			});
 
 			const innerButton = screen.getByTestId('inner-button');
 			await fireEvent.click(innerButton);
@@ -656,16 +651,15 @@ describe('Modal Component', () => {
 
 		it('should handle modal opening with no focusable elements', async () => {
 			const onClose = vi.fn();
-			const TestModal = () => {
-				return Modal({
-					open: true,
-					onClose,
-					children: () => `<div>No focusable content</div>`
-				});
-			};
 
 			expect(() => {
-				render(TestModal);
+				render(Modal, {
+					props: {
+						open: true,
+						onClose,
+						children: () => `<div>No focusable content</div>`
+					}
+				});
 			}).not.toThrow();
 
 			// Should still focus the dialog itself
@@ -679,15 +673,13 @@ describe('Modal Component', () => {
 			const onClose = vi.fn();
 			const longContent = 'Very long content. '.repeat(1000);
 
-			const TestModal = () => {
-				return Modal({
+			render(Modal, {
+				props: {
 					open: true,
 					onClose,
 					children: () => `<div>${longContent}</div>`
-				});
-			};
-
-			render(TestModal);
+				}
+			});
 
 			const contentArea = document.querySelector('[role="document"]');
 			expect(contentArea).toHaveClass('overflow-auto');

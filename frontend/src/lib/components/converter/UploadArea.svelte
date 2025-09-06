@@ -163,9 +163,7 @@
 					Drag and drop your images here, or click to browse
 				</p>
 				<div class="space-y-2">
-					<p class="text-ferrari-600 text-sm">
-						Supports JPG, PNG, WebP, TIFF, BMP, GIF, AVIF
-					</p>
+					<p class="text-ferrari-600 text-sm">Supports JPG, PNG, WebP, TIFF, BMP, GIF, AVIF</p>
 				</div>
 			</div>
 

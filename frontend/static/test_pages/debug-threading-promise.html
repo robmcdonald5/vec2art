@@ -1,95 +1,145 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <title>Debug Threading Promise</title>
-    <style>
-        body { font-family: monospace; margin: 20px; background: #f0f0f0; }
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; }
-        .result { padding: 10px; margin: 5px 0; border-radius: 5px; }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
-        .warning { background: #fff3cd; color: #856404; }
-        .info { background: #d1ecf1; color: #0c5460; }
-        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🔍 Threading Promise Debug Test</h1>
-        <div id="results"></div>
-    </div>
+	<head>
+		<title>Debug Threading Promise</title>
+		<style>
+			body {
+				font-family: monospace;
+				margin: 20px;
+				background: #f0f0f0;
+			}
+			.container {
+				max-width: 1000px;
+				margin: 0 auto;
+				background: white;
+				padding: 20px;
+			}
+			.result {
+				padding: 10px;
+				margin: 5px 0;
+				border-radius: 5px;
+			}
+			.success {
+				background: #d4edda;
+				color: #155724;
+			}
+			.error {
+				background: #f8d7da;
+				color: #721c24;
+			}
+			.warning {
+				background: #fff3cd;
+				color: #856404;
+			}
+			.info {
+				background: #d1ecf1;
+				color: #0c5460;
+			}
+			pre {
+				background: #f8f9fa;
+				padding: 10px;
+				border-radius: 4px;
+				overflow-x: auto;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>🔍 Threading Promise Debug Test</h1>
+			<div id="results"></div>
+		</div>
 
-    <script type="module">
-        function addResult(message, type = 'info', details = null) {
-            const div = document.createElement('div');
-            div.className = `result ${type}`;
-            div.innerHTML = message + (details ? `<pre>${details}</pre>` : '');
-            document.getElementById('results').appendChild(div);
-            console.log(`[${type.toUpperCase()}]`, message, details || '');
-        }
+		<script type="module">
+			function addResult(message, type = 'info', details = null) {
+				const div = document.createElement('div');
+				div.className = `result ${type}`;
+				div.innerHTML = message + (details ? `<pre>${details}</pre>` : '');
+				document.getElementById('results').appendChild(div);
+				console.log(`[${type.toUpperCase()}]`, message, details || '');
+			}
 
-        async function debugThreadingPromise() {
-            try {
-                addResult('🔄 Starting detailed threading promise debug...', 'info');
-                
-                // Load WASM
-                const wasm = await import('/wasm/vectorize_wasm.js');
-                await wasm.default();
-                addResult('✅ WASM loaded successfully', 'success');
+			async function debugThreadingPromise() {
+				try {
+					addResult('🔄 Starting detailed threading promise debug...', 'info');
 
-                // Get initial state
-                const initialThreads = wasm.get_thread_count();
-                const initialSupported = wasm.is_threading_supported();
-                const initialInfo = wasm.get_threading_info();
-                
-                addResult('📊 Initial State:', 'info', 
-                    `Threads: ${initialThreads}\\nSupported: ${initialSupported}\\n\\n${initialInfo}`);
+					// Load WASM
+					const wasm = await import('/wasm/vectorize_wasm.js');
+					await wasm.default();
+					addResult('✅ WASM loaded successfully', 'success');
 
-                // Try to initialize with explicit error handling
-                addResult('🧵 Calling initThreadPool(2) with full error capture...', 'info');
-                
-                try {
-                    // Call initThreadPool and explicitly await the promise
-                    const promise = wasm.initThreadPool(2);
-                    addResult('📝 initThreadPool returned:', 'info', `Type: ${typeof promise}\\nValue: ${promise}`);
-                    
-                    if (promise && typeof promise.then === 'function') {
-                        addResult('⏳ Awaiting promise resolution...', 'info');
-                        
-                        const result = await promise;
-                        addResult('✅ Promise resolved successfully!', 'success', `Result: ${result}`);
-                        
-                    } else {
-                        addResult('⚠️ initThreadPool did not return a promise', 'warning', `Returned: ${promise}`);
-                    }
-                    
-                } catch (promiseError) {
-                    addResult('❌ Promise REJECTED with error:', 'error', 
-                        `Name: ${promiseError.name}\\nMessage: ${promiseError.message}\\nStack: ${promiseError.stack}`);
-                }
+					// Get initial state
+					const initialThreads = wasm.get_thread_count();
+					const initialSupported = wasm.is_threading_supported();
+					const initialInfo = wasm.get_threading_info();
 
-                // Check final state
-                const finalThreads = wasm.get_thread_count();
-                const finalSupported = wasm.is_threading_supported();
-                const finalInfo = wasm.get_threading_info();
-                
-                addResult('📊 Final State:', 'info', 
-                    `Threads: ${finalThreads}\\nSupported: ${finalSupported}\\n\\n${finalInfo}`);
+					addResult(
+						'📊 Initial State:',
+						'info',
+						`Threads: ${initialThreads}\\nSupported: ${initialSupported}\\n\\n${initialInfo}`
+					);
 
-                // Compare states
-                addResult('🔄 State Comparison:', 'info',
-                    `Initial Threads: ${initialThreads} → Final Threads: ${finalThreads}\\nInitial Supported: ${initialSupported} → Final Supported: ${finalSupported}`);
+					// Try to initialize with explicit error handling
+					addResult('🧵 Calling initThreadPool(2) with full error capture...', 'info');
 
-            } catch (error) {
-                addResult('💥 Critical error in debug test:', 'error', 
-                    `Name: ${error.name}\\nMessage: ${error.message}\\nStack: ${error.stack}`);
-            }
-        }
+					try {
+						// Call initThreadPool and explicitly await the promise
+						const promise = wasm.initThreadPool(2);
+						addResult(
+							'📝 initThreadPool returned:',
+							'info',
+							`Type: ${typeof promise}\\nValue: ${promise}`
+						);
 
-        // Auto-run test
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(debugThreadingPromise, 500);
-        });
-    </script>
-</body>
+						if (promise && typeof promise.then === 'function') {
+							addResult('⏳ Awaiting promise resolution...', 'info');
+
+							const result = await promise;
+							addResult('✅ Promise resolved successfully!', 'success', `Result: ${result}`);
+						} else {
+							addResult(
+								'⚠️ initThreadPool did not return a promise',
+								'warning',
+								`Returned: ${promise}`
+							);
+						}
+					} catch (promiseError) {
+						addResult(
+							'❌ Promise REJECTED with error:',
+							'error',
+							`Name: ${promiseError.name}\\nMessage: ${promiseError.message}\\nStack: ${promiseError.stack}`
+						);
+					}
+
+					// Check final state
+					const finalThreads = wasm.get_thread_count();
+					const finalSupported = wasm.is_threading_supported();
+					const finalInfo = wasm.get_threading_info();
+
+					addResult(
+						'📊 Final State:',
+						'info',
+						`Threads: ${finalThreads}\\nSupported: ${finalSupported}\\n\\n${finalInfo}`
+					);
+
+					// Compare states
+					addResult(
+						'🔄 State Comparison:',
+						'info',
+						`Initial Threads: ${initialThreads} → Final Threads: ${finalThreads}\\nInitial Supported: ${initialSupported} → Final Supported: ${finalSupported}`
+					);
+				} catch (error) {
+					addResult(
+						'💥 Critical error in debug test:',
+						'error',
+						`Name: ${error.name}\\nMessage: ${error.message}\\nStack: ${error.stack}`
+					);
+				}
+			}
+
+			// Auto-run test
+			document.addEventListener('DOMContentLoaded', () => {
+				setTimeout(debugThreadingPromise, 500);
+			});
+		</script>
+	</body>
 </html>

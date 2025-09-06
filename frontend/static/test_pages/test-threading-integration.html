@@ -1,152 +1,168 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <title>🧵 Threading Integration Test</title>
-    <style>
-        body { 
-            font-family: monospace; 
-            padding: 20px; 
-            background: #1a1a1a; 
-            color: #e0e0e0; 
-        }
-        .pass { color: #4caf50; }
-        .fail { color: #f44336; }
-        .warn { color: #ff9800; }
-        .info { color: #2196f3; }
-        pre { 
-            background: #333; 
-            padding: 10px; 
-            border-radius: 4px; 
-            overflow-x: auto;
-        }
-        .status { margin: 10px 0; padding: 5px; }
-    </style>
-</head>
-<body>
-    <h1>🧵 Threading Integration Test</h1>
-    <p>Testing the new multithreaded WASM integration implementation.</p>
-    <div id="results"></div>
-    
-    <script type="module">
-        function log(message, type = 'info') {
-            const div = document.getElementById('results');
-            div.innerHTML += `<div class="status ${type}">[${new Date().toLocaleTimeString()}] ${message}</div>`;
-            console.log(`[${type.toUpperCase()}] ${message}`);
-        }
+	<head>
+		<title>🧵 Threading Integration Test</title>
+		<style>
+			body {
+				font-family: monospace;
+				padding: 20px;
+				background: #1a1a1a;
+				color: #e0e0e0;
+			}
+			.pass {
+				color: #4caf50;
+			}
+			.fail {
+				color: #f44336;
+			}
+			.warn {
+				color: #ff9800;
+			}
+			.info {
+				color: #2196f3;
+			}
+			pre {
+				background: #333;
+				padding: 10px;
+				border-radius: 4px;
+				overflow-x: auto;
+			}
+			.status {
+				margin: 10px 0;
+				padding: 5px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>🧵 Threading Integration Test</h1>
+		<p>Testing the new multithreaded WASM integration implementation.</p>
+		<div id="results"></div>
 
-        async function testThreadingIntegration() {
-            try {
-                log('🚀 Starting Threading Integration Test (v2 - Fixed Placeholder)', 'info');
-                
-                // Test 1: Environment Check
-                log('📋 Checking Environment...', 'info');
-                log(`Cross-Origin Isolated: ${self.crossOriginIsolated}`, 
-                    self.crossOriginIsolated ? 'pass' : 'fail');
-                log(`SharedArrayBuffer: ${typeof SharedArrayBuffer !== 'undefined'}`, 
-                    typeof SharedArrayBuffer !== 'undefined' ? 'pass' : 'fail');
-                log(`Hardware Concurrency: ${navigator.hardwareConcurrency || 'unknown'}`, 'info');
-                
-                // Test 2: Import WASM Module  
-                log('📦 Importing WASM Module...', 'info');
-                const wasmModule = await import('/wasm/vectorize_wasm.js');
-                log('✓ WASM module imported successfully', 'pass');
-                
-                // Test 3: Initialize with proper wasm-bindgen pattern
-                log('🔧 Initializing WASM with wasm-bindgen pattern...', 'info');
-                await wasmModule.default('/wasm/vectorize_wasm_bg.wasm');
-                log('✓ WASM module initialized (LinkError should be resolved!)', 'pass');
-                
-                // Test 4: Check if start function exists (new threading init)
-                if (typeof wasmModule.start === 'function') {
-                    log('🧵 Initializing thread pool...', 'info');
-                    try {
-                        await wasmModule.start();
-                        log('✓ Thread pool initialized successfully', 'pass');
-                    } catch (e) {
-                        log(`⚠️ Thread pool init failed: ${e.message}`, 'warn');
-                        log('(This is expected if not cross-origin isolated)', 'info');
-                    }
-                } else {
-                    log('⚠️ No start() function found - using single-threaded mode', 'warn');
-                }
-                
-                // Test 5: Test threading functions (should be real, not stubs)
-                log('🔍 Testing threading functions...', 'info');
-                
-                const threadingFunctions = [
-                    'get_thread_count',
-                    'is_threading_active', 
-                    'get_threading_info'
-                ];
-                
-                for (const funcName of threadingFunctions) {
-                    if (typeof wasmModule[funcName] === 'function') {
-                        try {
-                            const result = wasmModule[funcName]();
-                            log(`✓ ${funcName}(): ${result}`, 'pass');
-                        } catch (e) {
-                            log(`❌ ${funcName}() error: ${e.message}`, 'fail');
-                        }
-                    } else {
-                        log(`❌ ${funcName} not found`, 'fail');
-                    }
-                }
-                
-                // Test 6: Test basic vectorization
-                log('🎯 Testing basic vectorization...', 'info');
-                try {
-                    // Create test image data
-                    const canvas = document.createElement('canvas');
-                    canvas.width = canvas.height = 100;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(0, 0, 100, 100);
-                    ctx.fillStyle = 'black';
-                    ctx.fillRect(25, 25, 50, 50);
-                    
-                    const imageData = ctx.getImageData(0, 0, 100, 100);
-                    
-                    if (wasmModule.WasmVectorizer) {
-                        const vectorizer = new wasmModule.WasmVectorizer();
-                        const startTime = performance.now();
-                        const svg = vectorizer.vectorize(imageData);
-                        const endTime = performance.now();
-                        
-                        log(`✓ Vectorization successful: ${svg.length} chars in ${(endTime - startTime).toFixed(1)}ms`, 'pass');
-                        vectorizer.free();
-                    } else {
-                        log('❌ WasmVectorizer class not found', 'fail');
-                    }
-                    
-                } catch (e) {
-                    log(`❌ Vectorization failed: ${e.message}`, 'fail');
-                }
-                
-                // Test 7: Summary
-                log('📊 Test Summary', 'info');
-                log('🎉 Threading Integration Test Complete!', 'pass');
-                
-                if (self.crossOriginIsolated) {
-                    log('✅ Full multithreading support available', 'pass');
-                } else {
-                    log('⚠️ Single-threaded mode (add COOP/COEP headers for threading)', 'warn');
-                }
-                
-            } catch (error) {
-                log(`💥 Integration test failed: ${error.message}`, 'fail');
-                log(`Stack: ${error.stack}`, 'fail');
-                
-                // Check for specific LinkError
-                if (error.message.includes('__wbindgen_describe')) {
-                    log('❌ LinkError still present - wasm-bindgen integration issue', 'fail');
-                } else {
-                    log('ℹ️ Different error type - LinkError appears to be resolved', 'info');
-                }
-            }
-        }
+		<script type="module">
+			function log(message, type = 'info') {
+				const div = document.getElementById('results');
+				div.innerHTML += `<div class="status ${type}">[${new Date().toLocaleTimeString()}] ${message}</div>`;
+				console.log(`[${type.toUpperCase()}] ${message}`);
+			}
 
-        // Run test when page loads
-        window.addEventListener('load', testThreadingIntegration);
-    </script>
-</body>
+			async function testThreadingIntegration() {
+				try {
+					log('🚀 Starting Threading Integration Test (v2 - Fixed Placeholder)', 'info');
+
+					// Test 1: Environment Check
+					log('📋 Checking Environment...', 'info');
+					log(
+						`Cross-Origin Isolated: ${self.crossOriginIsolated}`,
+						self.crossOriginIsolated ? 'pass' : 'fail'
+					);
+					log(
+						`SharedArrayBuffer: ${typeof SharedArrayBuffer !== 'undefined'}`,
+						typeof SharedArrayBuffer !== 'undefined' ? 'pass' : 'fail'
+					);
+					log(`Hardware Concurrency: ${navigator.hardwareConcurrency || 'unknown'}`, 'info');
+
+					// Test 2: Import WASM Module
+					log('📦 Importing WASM Module...', 'info');
+					const wasmModule = await import('/wasm/vectorize_wasm.js');
+					log('✓ WASM module imported successfully', 'pass');
+
+					// Test 3: Initialize with proper wasm-bindgen pattern
+					log('🔧 Initializing WASM with wasm-bindgen pattern...', 'info');
+					await wasmModule.default('/wasm/vectorize_wasm_bg.wasm');
+					log('✓ WASM module initialized (LinkError should be resolved!)', 'pass');
+
+					// Test 4: Check if start function exists (new threading init)
+					if (typeof wasmModule.start === 'function') {
+						log('🧵 Initializing thread pool...', 'info');
+						try {
+							await wasmModule.start();
+							log('✓ Thread pool initialized successfully', 'pass');
+						} catch (e) {
+							log(`⚠️ Thread pool init failed: ${e.message}`, 'warn');
+							log('(This is expected if not cross-origin isolated)', 'info');
+						}
+					} else {
+						log('⚠️ No start() function found - using single-threaded mode', 'warn');
+					}
+
+					// Test 5: Test threading functions (should be real, not stubs)
+					log('🔍 Testing threading functions...', 'info');
+
+					const threadingFunctions = [
+						'get_thread_count',
+						'is_threading_active',
+						'get_threading_info'
+					];
+
+					for (const funcName of threadingFunctions) {
+						if (typeof wasmModule[funcName] === 'function') {
+							try {
+								const result = wasmModule[funcName]();
+								log(`✓ ${funcName}(): ${result}`, 'pass');
+							} catch (e) {
+								log(`❌ ${funcName}() error: ${e.message}`, 'fail');
+							}
+						} else {
+							log(`❌ ${funcName} not found`, 'fail');
+						}
+					}
+
+					// Test 6: Test basic vectorization
+					log('🎯 Testing basic vectorization...', 'info');
+					try {
+						// Create test image data
+						const canvas = document.createElement('canvas');
+						canvas.width = canvas.height = 100;
+						const ctx = canvas.getContext('2d');
+						ctx.fillStyle = 'white';
+						ctx.fillRect(0, 0, 100, 100);
+						ctx.fillStyle = 'black';
+						ctx.fillRect(25, 25, 50, 50);
+
+						const imageData = ctx.getImageData(0, 0, 100, 100);
+
+						if (wasmModule.WasmVectorizer) {
+							const vectorizer = new wasmModule.WasmVectorizer();
+							const startTime = performance.now();
+							const svg = vectorizer.vectorize(imageData);
+							const endTime = performance.now();
+
+							log(
+								`✓ Vectorization successful: ${svg.length} chars in ${(endTime - startTime).toFixed(1)}ms`,
+								'pass'
+							);
+							vectorizer.free();
+						} else {
+							log('❌ WasmVectorizer class not found', 'fail');
+						}
+					} catch (e) {
+						log(`❌ Vectorization failed: ${e.message}`, 'fail');
+					}
+
+					// Test 7: Summary
+					log('📊 Test Summary', 'info');
+					log('🎉 Threading Integration Test Complete!', 'pass');
+
+					if (self.crossOriginIsolated) {
+						log('✅ Full multithreading support available', 'pass');
+					} else {
+						log('⚠️ Single-threaded mode (add COOP/COEP headers for threading)', 'warn');
+					}
+				} catch (error) {
+					log(`💥 Integration test failed: ${error.message}`, 'fail');
+					log(`Stack: ${error.stack}`, 'fail');
+
+					// Check for specific LinkError
+					if (error.message.includes('__wbindgen_describe')) {
+						log('❌ LinkError still present - wasm-bindgen integration issue', 'fail');
+					} else {
+						log('ℹ️ Different error type - LinkError appears to be resolved', 'info');
+					}
+				}
+			}
+
+			// Run test when page loads
+			window.addEventListener('load', testThreadingIntegration);
+		</script>
+	</body>
 </html>

@@ -27,8 +27,8 @@
 			ActionHandlerProps,
 			SettingsSyncProps {
 		// Required callbacks for this component
-		onImageIndexChange: (index: number) => void;
-		onRemoveFile: (index: number) => void;
+		onImageIndexChange: (newIndex: number) => void;
+		onRemoveFile: (fileIndex: number) => void;
 		// Component-specific props
 		viewMode: 'side-by-side' | 'slider';
 		hasResult: boolean;
@@ -42,7 +42,6 @@
 		originalImageUrls,
 		filesMetadata,
 		currentImageIndex,
-		currentProgress,
 		viewMode,
 		hasResult,
 		canConvert,
@@ -68,7 +67,6 @@
 		Math.max(files.length, originalImageUrls.length, filesMetadata.length)
 	);
 	const currentFile = $derived(files[currentImageIndex]);
-	const currentFilename = $derived(currentFile?.name || '');
 
 	// Create unified file info for dropdown display
 	const fileDisplayInfo = $derived.by(() => {
@@ -126,14 +124,6 @@
 			// Keep dropdown open to allow removing more files
 		}
 	}
-
-	function truncateFilename(filename: string, maxLength = 25): string {
-		if (filename.length <= maxLength) return filename;
-		const extension = filename.split('.').pop() || '';
-		const nameWithoutExt = filename.slice(0, filename.lastIndexOf('.'));
-		const truncatedName = nameWithoutExt.slice(0, maxLength - extension.length - 4);
-		return `${truncatedName}...${extension}`;
-	}
 </script>
 
 <!-- Unified Header with consistent height -->
@@ -166,7 +156,7 @@
 							<div
 								class="dark:bg-ferrari-900 border-ferrari-200 dark:border-ferrari-800 absolute top-full left-0 z-50 mt-1 max-h-60 w-80 overflow-y-auto rounded-lg border bg-white shadow-lg"
 							>
-								{#each fileDisplayInfo as fileInfo, index}
+								{#each fileDisplayInfo as fileInfo, index (index)}
 									<div class="group relative flex items-center">
 										<button
 											onclick={() => selectFile(index)}
