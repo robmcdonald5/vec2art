@@ -312,7 +312,7 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 	technical: {
 		// Centerline backend - precise skeleton extraction
 		backend: 'centerline',
-		detail: 0.3,
+		detail: 0.8, // Higher detail (UI value 8) for better centerline quality
 		stroke_width: 0.8,
 		hand_drawn_preset: 'none',
 		pass_count: 1, // Single pass for precise technical drawings
@@ -401,12 +401,12 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 };
 
 export const BACKEND_DESCRIPTIONS: Record<VectorizerBackend, string> = {
-	edge: 'Advanced edge detection with Canny algorithm. Best for detailed line art, drawings, and complex imagery.',
+	edge: 'Edge detection with Canny algorithm. Best for line art and low contrast drawings.',
 	centerline:
 		'Zhang-Suen skeleton-based tracing. Ideal for bold shapes, logos, text, and high-contrast imagery.',
 	superpixel:
-		'SLIC region-based approach. Perfect for stylized art, abstract representations, and color-rich images.',
-	dots: 'Adaptive stippling with content-aware placement. Great for artistic effects, texture emphasis, and vintage styles.'
+		'SLIC region-based approach. Perfect for stylized art and bold abstract shapes.',
+	dots: 'Adaptive stippling with content-aware placement. Great for cinematic images, texture emphasis, and vintage styles.'
 };
 
 export const PRESET_DESCRIPTIONS: Record<VectorizerPreset, string> = {
