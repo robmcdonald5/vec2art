@@ -493,7 +493,7 @@
 												size="icon"
 												class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
 												onclick={() => svgImageViewer?.zoomOut()}
-												disabled={isProcessing}
+												disabled={false}
 												aria-label="Zoom out"
 												title="Zoom out (- key)"
 											>
@@ -504,7 +504,7 @@
 												size="icon"
 												class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
 												onclick={() => svgImageViewer?.zoomIn()}
-												disabled={isProcessing}
+												disabled={false}
 												aria-label="Zoom in"
 												title="Zoom in (+ key)"
 											>
@@ -515,7 +515,7 @@
 												size="icon"
 												class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
 												onclick={() => svgImageViewer?.resetView()}
-												disabled={isProcessing}
+												disabled={false}
 												aria-label="Reset view"
 												title="Reset view (0 key)"
 											>
