@@ -496,7 +496,7 @@
 												onclick={() => svgImageViewer?.zoomOut()}
 												disabled={isProcessing}
 												aria-label="Zoom out"
-												title="Zoom out"
+												title="Zoom out (- key)"
 											>
 												<ZoomOut class="h-4 w-4" />
 											</Button>
@@ -507,7 +507,7 @@
 												onclick={() => svgImageViewer?.zoomIn()}
 												disabled={isProcessing}
 												aria-label="Zoom in"
-												title="Zoom in"
+												title="Zoom in (+ key)"
 											>
 												<ZoomIn class="h-4 w-4" />
 											</Button>
@@ -518,7 +518,7 @@
 												onclick={() => svgImageViewer?.resetView()}
 												disabled={isProcessing}
 												aria-label="Reset view"
-												title="Reset view"
+												title="Reset view (0 key)"
 											>
 												<Maximize2 class="h-4 w-4" />
 											</Button>
