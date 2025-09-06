@@ -379,19 +379,26 @@ class ConverterPersistence {
 
 			// Check size before saving (localStorage has ~5-10MB limit)
 			if (data.length > this.maxStorageSize) {
-				console.warn('Results too large for localStorage, saving partial');
-				// Save only first few results that fit
-				const partial = svgs.slice(0, Math.floor(svgs.length / 2));
-				localStorage.setItem(STORAGE_KEYS.RESULTS, JSON.stringify(partial));
+				console.warn(`Results too large for localStorage (${data.length} bytes), skipping save`);
 				return false;
 			}
 
-			localStorage.setItem(STORAGE_KEYS.RESULTS, data);
-			return true;
+			// Try to save, but handle quota exceeded gracefully
+			try {
+				localStorage.setItem(STORAGE_KEYS.RESULTS, data);
+				return true;
+			} catch (quotaError) {
+				if (quotaError instanceof DOMException && quotaError.name === 'QuotaExceededError') {
+					console.warn('Storage quota exceeded, clearing old data and skipping save');
+					// Clear old results to free up space
+					this.clearResults();
+					return false;
+				}
+				throw quotaError; // Re-throw if it's a different error
+			}
 		} catch (error) {
 			console.warn('Failed to save results:', error);
-			// Try to save at least config if results are too large
-			this.clearResults();
+			// Don't clear results on other errors, just skip save
 			return false;
 		}
 	}

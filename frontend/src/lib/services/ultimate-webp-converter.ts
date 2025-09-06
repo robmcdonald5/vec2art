@@ -652,16 +652,31 @@ export class UltimateWebPConverter {
 			streamingOptions
 		);
 
-		// Consume stream safely with error handling
-		const reader = stream.getReader();
+		// Consume stream safely with error handling and stream state checks
+		let reader: ReadableStreamDefaultReader<any> | null = null;
 		try {
-			while (true) {
-				const { done } = await reader.read();
-				if (done) break;
+			// Check if stream is already locked
+			if (stream.locked) {
+				console.warn('[UltimateWebP] Stream already locked, skipping stream consumption');
+			} else {
+				reader = stream.getReader();
+				while (true) {
+					const { done } = await reader.read();
+					if (done) break;
+				}
 			}
+		} catch (readerError) {
+			console.warn('[UltimateWebP] Stream reading error:', readerError);
+			// Continue with promise resolution even if stream reading fails
 		} finally {
 			// Always release the reader to prevent locks
-			reader.releaseLock();
+			if (reader) {
+				try {
+					reader.releaseLock();
+				} catch (releaseError) {
+					console.warn('[UltimateWebP] Error releasing reader:', releaseError);
+				}
+			}
 		}
 
 		const progressiveResult = await promise;
