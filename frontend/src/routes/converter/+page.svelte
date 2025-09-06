@@ -50,6 +50,7 @@
 	let isProcessing = $state(false);
 	let processingImageIndex = $state(0); // Needed for progress tracking
 	let completedImages = $state(0); // Needed for batch tracking
+	let batchStartTime = $state<Date | null>(null); // Tracks batch processing start time
 
 	// Page initialization state
 	let pageLoaded = $state(false);
