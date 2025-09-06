@@ -481,14 +481,13 @@
 
 							<!-- Raw SVG View (Blob optimized) -->
 							{#if currentResult?.svg}
-								<div class="absolute inset-0 {useAdvancedPreview ? 'hidden' : 'flex flex-col'}">
-									<!-- Controls Header for Raw SVG View -->
-									<div class="relative z-[60] mb-3 flex items-center justify-between px-2">
-										<div class="flex items-center gap-2">
-											<!-- Empty space for alignment -->
-										</div>
-										<!-- Control buttons matching AdvancedSvgPreview style -->
-										<div class="flex gap-1">
+								<!-- Controls Header for Raw SVG View - moved outside absolute container -->
+								<div class="mb-3 flex items-center justify-between px-2 {useAdvancedPreview ? 'hidden' : 'flex'}">
+									<div class="flex items-center gap-2">
+										<!-- Empty space for alignment -->
+									</div>
+									<!-- Control buttons matching AdvancedSvgPreview style -->
+									<div class="flex gap-1">
 											<Button
 												variant="outline"
 												size="icon"
@@ -536,11 +535,11 @@
 												</Button>
 											{/if}
 										</div>
-									</div>
-
-									<!-- SvgImageViewer -->
-									<div class="flex-1">
-										<SvgImageViewer
+								</div>
+								
+								<!-- SvgImageViewer in absolute container -->
+								<div class="absolute inset-0 {useAdvancedPreview ? 'hidden' : 'block'}">
+									<SvgImageViewer
 											bind:this={svgImageViewer}
 											svgContent={currentResult.svg}
 											renderMethod="blob"
@@ -554,7 +553,6 @@
 											onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
 											enableSync={panZoomStore.isSyncEnabled}
 										/>
-									</div>
 								</div>
 							{:else}
 								<!-- Fallback for when no SVG content is available -->
