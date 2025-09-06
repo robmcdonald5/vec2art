@@ -56,8 +56,8 @@ class VectorizerStore {
 		centerline: {
 			...defaultConfig,
 			backend: 'centerline' as const,
-			detail: 0.3,
-			stroke_width: 0.8,
+			detail: 0.6, // UI value 6 - moderate detail for skeleton extraction
+			stroke_width: 1.0, // Standard line width
 			enable_adaptive_threshold: true,
 			window_size: 25,
 			sensitivity_k: 0.4,
@@ -69,6 +69,7 @@ class VectorizerStore {
 			backend: 'superpixel' as const,
 			detail: 0.2, // Not used by superpixel but kept for consistency
 			stroke_width: 1.5,
+			preserve_colors: true, // Enable colors by default for superpixel
 			num_superpixels: 250,
 			compactness: 15,
 			slic_iterations: 10,
