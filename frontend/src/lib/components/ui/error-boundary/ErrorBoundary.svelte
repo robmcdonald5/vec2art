@@ -17,9 +17,11 @@
 	let { handleError = () => {}, class: className = '', children, ...restProps }: Props = $props();
 
 	// Error handling function
-	function onError(error: Error) {
+	function onError(error: unknown, reset: () => void) {
 		console.error('ErrorBoundary caught error:', error);
-		handleError(error);
+		// Convert unknown error to Error type for handleError
+		const errorObj = error instanceof Error ? error : new Error(String(error));
+		handleError(errorObj);
 	}
 </script>
 

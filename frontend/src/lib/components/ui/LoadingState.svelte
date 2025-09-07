@@ -6,9 +6,10 @@
 		size?: 'sm' | 'md' | 'lg';
 		inline?: boolean;
 		center?: boolean;
+		subtitle?: import('svelte').Snippet;
 	}
 
-	let { message = 'Loading...', size = 'md', inline = false, center = true }: Props = $props();
+	let { message = 'Loading...', size = 'md', inline = false, center = true, subtitle }: Props = $props();
 
 	const iconSizes = {
 		sm: 'h-4 w-4',
@@ -40,7 +41,11 @@
 	{#if size === 'lg'}
 		<h2 class="mb-2 text-center font-bold text-gray-800 {textSizes[size]}">{message}</h2>
 		<p class="text-center text-gray-600">
-			<slot name="subtitle">Please wait while we process your request</slot>
+			{#if subtitle}
+				{@render subtitle()}
+			{:else}
+				Please wait while we process your request
+			{/if}
 		</p>
 	{:else}
 		<span class="font-medium text-gray-700 {textSizes[size]}">

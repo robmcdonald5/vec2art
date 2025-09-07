@@ -3,9 +3,10 @@
 
 	interface Props {
 		target?: Element | string;
+		children?: import('svelte').Snippet;
 	}
 
-	let { target = 'body' }: Props = $props();
+	let { target = 'body', children }: Props = $props();
 
 	let portal = $state<Element>();
 	let mounted = $state(false);
@@ -26,5 +27,3 @@
 {#if mounted && portal}
 	{@render children?.()}
 {/if}
-
-{#snippet children()}<slot />{/snippet}

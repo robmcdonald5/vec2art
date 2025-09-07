@@ -365,8 +365,36 @@
 		class="dark:bg-ferrari-900 group relative flex-1 overflow-hidden rounded-lg bg-white"
 		tabindex="0"
 		role="application"
-		aria-label="Interactive {imageAlt} viewer - Hold Ctrl/Cmd + scroll to zoom, drag to pan"
+		aria-label="Interactive {imageAlt} viewer - Use arrow keys to pan, +/- to zoom, 0 to reset, or mouse drag and scroll"
 		style="touch-action: pan-x pan-y; /* Allow page scrolling but enable pan */"
+		onkeydown={(e) => {
+			// Handle keyboard navigation for the image viewer
+			if (e.key === 'ArrowLeft') {
+				e.preventDefault();
+				targetOffsetX += 20;
+			} else if (e.key === 'ArrowRight') {
+				e.preventDefault();
+				targetOffsetX -= 20;
+			} else if (e.key === 'ArrowUp') {
+				e.preventDefault();
+				targetOffsetY += 20;
+			} else if (e.key === 'ArrowDown') {
+				e.preventDefault();
+				targetOffsetY -= 20;
+			} else if (e.key === '=' || e.key === '+') {
+				e.preventDefault();
+				targetScale = Math.min(5.0, targetScale * 1.2);
+			} else if (e.key === '-' || e.key === '_') {
+				e.preventDefault();
+				targetScale = Math.max(0.1, targetScale / 1.2);
+			} else if (e.key === '0' || e.key === 'Home') {
+				e.preventDefault();
+				// Reset to center
+				targetScale = 1;
+				targetOffsetX = 0;
+				targetOffsetY = 0;
+			}
+		}}
 	>
 		{#if imageUrl}
 			<!-- svelte-image-viewer component with programmatic controls -->

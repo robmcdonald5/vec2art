@@ -95,6 +95,18 @@
 		class="absolute inset-0 m-auto max-h-full max-w-full origin-center transition-transform duration-0"
 		style="cursor: {isDragging ? 'grabbing' : 'grab'};"
 		onmousedown={handleMouseDown}
+		onkeydown={(e) => {
+			// Allow keyboard interaction - Enter/Space to start drag mode or reset position
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				// Reset to center position
+				targetOffsetX = 0;
+				targetOffsetY = 0;
+				targetScale = 1;
+			}
+		}}
+		tabindex="0"
+		aria-label="{alt ? alt + ' - ' : ''}Pannable and zoomable image. Use mouse to drag and scroll to zoom, or press Enter to reset."
 		draggable="false"
 	/>
 </div>
