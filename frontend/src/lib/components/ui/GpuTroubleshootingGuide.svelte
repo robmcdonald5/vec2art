@@ -98,10 +98,18 @@ Helps users diagnose and fix "GPU: Unavailable" issues
 </script>
 
 {#if showTroubleshooting}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onClose}>
+	<div 
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" 
+		onclick={onClose}
+		onkeydown={(e) => e.key === 'Escape' && onClose()}
+		role="button"
+		tabindex="-1"
+		aria-label="Close troubleshooting guide">
+	
 		<div
 			class="mx-4 w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-gray-900"
 			onclick={(e) => e.stopPropagation()}
+			role="document"
 		>
 			<!-- Header -->
 			<div class="mb-6 flex items-center justify-between">

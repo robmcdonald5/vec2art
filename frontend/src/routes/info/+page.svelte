@@ -399,13 +399,13 @@
 	<!-- Back to Top -->
 	<section class="bg-white py-8">
 		<div class="mx-auto max-w-4xl px-4 text-center md:px-6 lg:px-8">
-			<a
-				href="#"
+			<button
+				onclick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
 				class="text-ferrari-600 hover:text-ferrari-700 inline-flex items-center gap-2 transition-colors"
 			>
 				<Shield class="h-4 w-4" />
 				Back to Top
-			</a>
+			</button>
 		</div>
 	</section>
 </div>

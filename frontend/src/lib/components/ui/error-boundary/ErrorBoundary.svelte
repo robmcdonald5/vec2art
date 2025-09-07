@@ -24,7 +24,7 @@
 </script>
 
 <div class="error-boundary {className}" {...restProps}>
-	<svelte:boundary {onError}>
+	<svelte:boundary onerror={onError}>
 		{#if children}
 			{@render children()}
 		{/if}

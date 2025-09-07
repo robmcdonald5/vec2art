@@ -265,10 +265,11 @@
 					<div class="space-y-4">
 						<!-- Quality -->
 						<div>
-							<label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+							<label for="quality-slider" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
 								Quality: {quality.toFixed(2)}
 							</label>
 							<input
+								id="quality-slider"
 								type="range"
 								bind:value={quality}
 								min="0.1"
@@ -280,10 +281,11 @@
 
 						<!-- Optimization Mode -->
 						<div>
-							<label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+							<label for="optimization-mode" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
 								Optimization Mode
 							</label>
 							<select
+								id="optimization-mode"
 								bind:value={optimizationMode}
 								class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
 							>

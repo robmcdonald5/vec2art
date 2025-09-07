@@ -132,13 +132,16 @@
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
 		onclick={() => (showHelp = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showHelp = false)}
 		role="dialog"
 		aria-labelledby="shortcuts-title"
 		aria-modal="true"
+		tabindex="-1"
 	>
 		<div
 			class="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-gray-900"
 			onclick={(e) => e.stopPropagation()}
+			role="document"
 		>
 			<!-- Header -->
 			<div class="mb-4 flex items-center justify-between">
