@@ -9,7 +9,13 @@
 		subtitle?: import('svelte').Snippet;
 	}
 
-	let { message = 'Loading...', size = 'md', inline = false, center = true, subtitle }: Props = $props();
+	let {
+		message = 'Loading...',
+		size = 'md',
+		inline = false,
+		center = true,
+		subtitle
+	}: Props = $props();
 
 	const iconSizes = {
 		sm: 'h-4 w-4',

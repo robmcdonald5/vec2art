@@ -319,12 +319,12 @@
 
 <!-- Click outside to close dropdown -->
 {#if showFileDropdown}
-	<div 
-		class="fixed inset-0 z-40" 
+	<div
+		class="fixed inset-0 z-40"
 		onclick={() => (showFileDropdown = false)}
 		onkeydown={(e) => e.key === 'Escape' && (showFileDropdown = false)}
 		role="button"
 		tabindex="-1"
-		aria-label="Close dropdown">
-	</div>
+		aria-label="Close dropdown"
+	></div>
 {/if}

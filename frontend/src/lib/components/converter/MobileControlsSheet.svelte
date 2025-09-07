@@ -161,8 +161,8 @@
 			ontouchend={handleTouchEnd}
 		>
 			<!-- Handle Bar -->
-			<div 
-				class="flex cursor-pointer touch-none justify-center py-3" 
+			<div
+				class="flex cursor-pointer touch-none justify-center py-3"
 				onclick={toggleSheetHeight}
 				onkeydown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
@@ -232,7 +232,8 @@
 						<!-- Style Preset Selection -->
 						<PresetSelector
 							selectedPresetId={selectedPreset}
-							onPresetSelect={(preset: StylePreset | null) => onPresetChange(preset?.metadata.id as VectorizerPreset || 'custom')}
+							onPresetSelect={(preset: StylePreset | null) =>
+								onPresetChange((preset?.metadata.id as VectorizerPreset) || 'custom')}
 							{disabled}
 						/>
 

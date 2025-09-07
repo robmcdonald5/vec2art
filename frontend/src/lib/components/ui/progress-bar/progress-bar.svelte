@@ -9,7 +9,15 @@
 		class?: string;
 	}
 
-	let { value, label, size = 'md', variant = 'default', showValue = true, id, class: className = '' }: Props = $props();
+	let {
+		value,
+		label,
+		size = 'md',
+		variant = 'default',
+		showValue = true,
+		id,
+		class: className = ''
+	}: Props = $props();
 
 	const sizeClasses = {
 		sm: 'h-2',

@@ -543,7 +543,7 @@ export class VectorizerService {
 		try {
 			// Try to use the WASM module's capability detection first
 			await this.initialize();
-			
+
 			if (this.wasmModule && typeof this.wasmModule.check_threading_requirements === 'function') {
 				return this.wasmModule.check_threading_requirements();
 			}
@@ -588,7 +588,8 @@ export class VectorizerService {
 			};
 		} catch (error) {
 			// Fallback to basic check if loader fails
-			const crossOriginIsolated = typeof window !== 'undefined' ? window.crossOriginIsolated : false;
+			const crossOriginIsolated =
+				typeof window !== 'undefined' ? window.crossOriginIsolated : false;
 			const sharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
 
 			return {

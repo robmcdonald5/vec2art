@@ -33,7 +33,7 @@ on:
           - cross-platform
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   RUST_VERSION: 'stable'
 
 jobs:

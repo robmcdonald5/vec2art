@@ -231,7 +231,10 @@
 					<div class="space-y-4">
 						<!-- Quality -->
 						<div>
-							<label for="ultimate-quality-slider" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+							<label
+								for="ultimate-quality-slider"
+								class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+							>
 								Quality: {quality.toFixed(2)}
 							</label>
 							<input

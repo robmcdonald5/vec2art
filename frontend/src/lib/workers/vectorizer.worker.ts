@@ -136,9 +136,10 @@ class VectorizerWorker {
 					: false;
 
 			const shared_array_buffer = typeof SharedArrayBuffer !== 'undefined';
-			const cross_origin_isolated = typeof self !== 'undefined' && 'crossOriginIsolated' in self
-				? self.crossOriginIsolated
-				: false;
+			const cross_origin_isolated =
+				typeof self !== 'undefined' && 'crossOriginIsolated' in self
+					? self.crossOriginIsolated
+					: false;
 
 			return {
 				threading_supported,
@@ -156,14 +157,16 @@ class VectorizerWorker {
 				diagnostics: [],
 				// Legacy compatibility
 				shared_array_buffer_available: shared_array_buffer,
-				hardware_concurrency: typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 1 : 1,
+				hardware_concurrency:
+					typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 1 : 1,
 				recommendations: threading_supported ? [] : ['Single-threaded mode']
 			};
 		} catch (error) {
 			const shared_array_buffer = typeof SharedArrayBuffer !== 'undefined';
-			const cross_origin_isolated = typeof self !== 'undefined' && 'crossOriginIsolated' in self
-				? self.crossOriginIsolated
-				: false;
+			const cross_origin_isolated =
+				typeof self !== 'undefined' && 'crossOriginIsolated' in self
+					? self.crossOriginIsolated
+					: false;
 
 			return {
 				threading_supported: false,
@@ -181,7 +184,8 @@ class VectorizerWorker {
 				diagnostics: [{ error: String(error) }],
 				// Legacy compatibility
 				shared_array_buffer_available: shared_array_buffer,
-				hardware_concurrency: typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 1 : 1,
+				hardware_concurrency:
+					typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 1 : 1,
 				recommendations: ['Check browser support and CORS headers']
 			};
 		}
