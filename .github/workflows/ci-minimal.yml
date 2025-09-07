@@ -100,9 +100,10 @@ jobs:
         continue-on-error: true # Don't fail on warnings initially
       
       - name: Build application
-        run: npm run build:frontend-only
+        run: npm run build:ci
         env:
           NODE_ENV: production
+        timeout-minutes: 5
       
       - name: Verify build output
         run: |

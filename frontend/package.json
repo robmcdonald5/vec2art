@@ -8,6 +8,7 @@
 		"build": "npm run build:wasm && vite build",
 		"build:clean": "npm run build:wasm && vite build && echo Build completed successfully",
 		"build:frontend-only": "vite build",
+		"build:ci": "vite build && echo 'Build completed successfully'",
 		"build:wasm": "cd .. && bash ./rebuild-wasm.sh",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
