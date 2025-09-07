@@ -81,7 +81,7 @@ jobs:
         run: npx playwright install chromium firefox --with-deps
         
       - name: Build application
-        run: npm run build
+        run: npm run build:frontend-only
         env:
           NODE_ENV: production
         

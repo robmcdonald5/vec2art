@@ -88,7 +88,7 @@ jobs:
         continue-on-error: true # Don't fail on warnings initially
       
       - name: Build application
-        run: npm run build
+        run: npm run build:frontend-only
         env:
           NODE_ENV: production
       

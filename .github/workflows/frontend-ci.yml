@@ -248,7 +248,7 @@ jobs:
         continue-on-error: true # Allow failure while we stabilize
       
       - name: Build SvelteKit application
-        run: npm run build
+        run: npm run build:frontend-only
         env:
           # Optimize build for production
           NODE_ENV: production
