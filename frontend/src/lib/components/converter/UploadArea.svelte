@@ -40,7 +40,7 @@
 
 		if (validFiles.length > 0) {
 			successMessage = `${validFiles.length} file(s) ready for conversion`;
-			onFilesSelect(validFiles);
+			onFilesSelect?.(validFiles);
 		}
 	}
 

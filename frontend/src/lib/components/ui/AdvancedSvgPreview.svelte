@@ -466,7 +466,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 					{/if}
 				</div>
 			</div>
-		{:else if displayUrl}
+		{:else if displayUrl()}
 			<!-- Optimized Preview -->
 			<div class="h-full w-full">
 				{#if webpDataUrl}
@@ -552,7 +552,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 
 <!-- GPU Troubleshooting Guide -->
 <GpuTroubleshootingGuide
-	{showGpuTroubleshooting}
+	showTroubleshooting={showGpuTroubleshooting}
 	onClose={() => (showGpuTroubleshooting = false)}
 />
 

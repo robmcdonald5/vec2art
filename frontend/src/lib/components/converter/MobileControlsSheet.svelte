@@ -7,6 +7,7 @@
 		VectorizerPreset,
 		VectorizerBackend
 	} from '$lib/types/vectorizer';
+	import type { StylePreset } from '$lib/presets/types';
 	import BackendSelector from './BackendSelector.svelte';
 	import PresetSelector from './PresetSelector.svelte';
 	import ParameterPanel from './ParameterPanel.svelte';
@@ -135,9 +136,15 @@
 	<div
 		class="fixed inset-0 z-50 lg:hidden"
 		onclick={handleBackdropClick}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') {
+				handleBackdropClick(e as any);
+			}
+		}}
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="mobile-controls-title"
+		tabindex="-1"
 	>
 		<!-- Backdrop -->
 		<div class="absolute inset-0 bg-black/50 transition-opacity duration-300"></div>
@@ -154,7 +161,19 @@
 			ontouchend={handleTouchEnd}
 		>
 			<!-- Handle Bar -->
-			<div class="flex cursor-pointer touch-none justify-center py-3" onclick={toggleSheetHeight}>
+			<div 
+				class="flex cursor-pointer touch-none justify-center py-3" 
+				onclick={toggleSheetHeight}
+				onkeydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						toggleSheetHeight();
+					}
+				}}
+				tabindex="0"
+				role="button"
+				aria-label="Toggle sheet height"
+			>
 				<div class="bg-muted-foreground/30 h-1 w-12 rounded-full"></div>
 			</div>
 
@@ -212,10 +231,9 @@
 
 						<!-- Style Preset Selection -->
 						<PresetSelector
-							{selectedPreset}
-							{onPresetChange}
+							selectedPresetId={selectedPreset}
+							onPresetSelect={(preset: StylePreset | null) => onPresetChange(preset?.metadata.id as VectorizerPreset || 'custom')}
 							{disabled}
-							isCustom={selectedPreset === 'custom'}
 						/>
 
 						<!-- Essential Parameters -->

@@ -90,6 +90,7 @@
 		<div
 			class="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-gray-900"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 			role="document"
 		>
 			<!-- Header -->

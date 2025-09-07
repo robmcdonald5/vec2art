@@ -20,6 +20,7 @@
 		VectorizerBackend,
 		VectorizerPreset
 	} from '$lib/types/vectorizer';
+	import type { StylePreset } from '$lib/presets/types';
 	import type { PerformanceMode } from '$lib/utils/performance-monitor';
 	import { performanceMonitor, getOptimalThreadCount } from '$lib/utils/performance-monitor';
 	import BackendSelector from './BackendSelector.svelte';
@@ -213,7 +214,7 @@
 				<div class="mt-4 space-y-4">
 					<!-- Algorithm Selection -->
 					<div>
-						<label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<label id="algorithm-label" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
 							Algorithm
 						</label>
 						<BackendSelector
@@ -221,20 +222,20 @@
 							{onBackendChange}
 							disabled={isProcessing}
 							compact={true}
+							aria-labelledby="algorithm-label"
 						/>
 					</div>
 
 					<!-- Style Preset -->
 					<div>
-						<label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<label id="preset-label" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
 							Style Preset
 						</label>
 						<PresetSelector
-							{selectedPreset}
-							{onPresetChange}
+							selectedPresetId={selectedPreset}
+							onPresetSelect={(preset: StylePreset | null) => onPresetChange(preset?.metadata.id as VectorizerPreset || 'custom')}
 							disabled={isProcessing}
-							isCustom={selectedPreset === 'custom'}
-							compact={true}
+							aria-labelledby="preset-label"
 						/>
 					</div>
 
@@ -242,10 +243,11 @@
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<!-- Detail Level -->
 						<div>
-							<label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+							<label for="detail-level" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
 								Detail Level
 							</label>
 							<input
+								id="detail-level"
 								type="range"
 								min="0.1"
 								max="1"
@@ -264,10 +266,11 @@
 
 						<!-- Line Width / Dot Width -->
 						<div>
-							<label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+							<label for="stroke-width" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
 								{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
 							</label>
 							<input
+								id="stroke-width"
 								type="range"
 								min="0.5"
 								max="5"
@@ -338,11 +341,13 @@
 						</div>
 
 						<!-- Performance Mode Buttons -->
-						<div class="space-y-3">
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<fieldset class="space-y-3">
+							<legend class="block text-sm font-medium text-gray-700 dark:text-gray-300">
 								Performance Mode
-							</label>
+							</legend>
 							<div
+								role="radiogroup"
+								aria-labelledby="performance-mode-legend"
 								class="grid grid-cols-2 gap-2 rounded-md bg-gray-100 p-1 lg:grid-cols-4 dark:bg-gray-800"
 							>
 								<button
@@ -413,7 +418,7 @@
 						{#if currentPerformanceMode === 'custom'}
 							<div class="mt-4 space-y-2">
 								<div class="flex items-center justify-between">
-									<label class="text-sm font-medium text-gray-700 dark:text-gray-300"
+									<label for="thread-count" class="text-sm font-medium text-gray-700 dark:text-gray-300"
 										>Thread Count</label
 									>
 									<span
@@ -422,6 +427,7 @@
 									>
 								</div>
 								<input
+									id="thread-count"
 									type="range"
 									min="1"
 									max={systemCapabilities.cores}
@@ -436,6 +442,7 @@
 								</p>
 							</div>
 						{/if}
+					</fieldset>
 					</div>
 
 					<!-- Parameter Panel -->
@@ -520,10 +527,9 @@
 
 					<!-- Style Preset Selection -->
 					<PresetSelector
-						{selectedPreset}
-						{onPresetChange}
+						selectedPresetId={selectedPreset}
+						onPresetSelect={(preset: StylePreset | null) => onPresetChange(preset?.metadata.id as VectorizerPreset || 'custom')}
 						disabled={isProcessing}
-						isCustom={selectedPreset === 'custom'}
 					/>
 
 					<!-- Essential Parameters -->

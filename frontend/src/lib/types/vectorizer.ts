@@ -94,12 +94,13 @@ export interface VectorizerConfig {
 	local_variance_scaling?: boolean;
 	color_clustering?: boolean;
 	opacity_variation?: number; // 0.5-1.0
+	dot_initialization_pattern?: 'square' | 'hexagonal' | 'poisson'; // Dot pattern initialization
 
 	// Superpixel backend specific
 	num_superpixels?: number; // 50-500
 	compactness?: number; // 5-30
 	slic_iterations?: number; // 5-15
-	initialization_pattern?: 'square' | 'hexagonal' | 'triangular' | 'poisson'; // Cluster initialization pattern
+	superpixel_initialization_pattern?: 'square' | 'hexagonal' | 'triangular' | 'poisson'; // Cluster initialization pattern
 	min_region_size?: number; // 10-100 px²
 	color_distance?: number; // 10-50
 	spatial_distance_weight?: number; // 0.5-2.0
@@ -297,7 +298,7 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	num_superpixels: 250, // Higher detail for better region definition
 	compactness: 15, // Balanced shape regularity (reduced from previous 20 to avoid artifacts)
 	slic_iterations: 10, // Standard SLIC iteration count
-	initialization_pattern: 'poisson', // Poisson disk sampling shows least diagonal artifacts
+	superpixel_initialization_pattern: 'poisson', // Poisson disk sampling shows least diagonal artifacts
 	// Dots backend defaults
 	dot_density_threshold: 0.105, // UI value 8: better balance of detail and performance
 	min_radius: 0.5,
@@ -385,7 +386,7 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		num_superpixels: 150,
 		compactness: 20,
 		slic_iterations: 10,
-		initialization_pattern: 'poisson', // Best artifact reduction
+		superpixel_initialization_pattern: 'poisson', // Best artifact reduction
 		fill_regions: true,
 		stroke_regions: true,
 		simplify_boundaries: true,

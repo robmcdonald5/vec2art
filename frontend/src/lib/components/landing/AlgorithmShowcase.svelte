@@ -324,6 +324,15 @@
 	<div
 		class="algorithm-showcase-container shadow-elegant overflow-hidden rounded-3xl border border-gray-200 bg-white"
 		onclick={handleSceneClick}
+		onkeydown={(e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				handleSceneClick(e as any);
+			}
+		}}
+		tabindex="0"
+		role="button"
+		aria-label="Interactive algorithm preview"
 	>
 		<div class="grid gap-0 lg:grid-cols-2">
 			<!-- Preview Panel -->

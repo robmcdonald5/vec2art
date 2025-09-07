@@ -199,8 +199,12 @@
 			// Backend-specific core settings
 			if (backend === 'edge') {
 				minimalConfig.multipass = true;
+				minimalConfig.pass_count = 2; // Default 2 passes for edge backend
+				minimalConfig.multipass_mode = 'auto';
 			} else {
 				minimalConfig.multipass = false; // Other backends don't use multipass
+				minimalConfig.pass_count = 1; // Single pass for other backends
+				minimalConfig.multipass_mode = 'auto';
 			}
 
 			configs.push(minimalConfig);
@@ -218,6 +222,8 @@
 			// Add backend-specific features only if available
 			if (backend === 'edge') {
 				enhancedConfig.multipass = true;
+				enhancedConfig.pass_count = 3; // More passes for enhanced config
+				enhancedConfig.multipass_mode = 'auto';
 				if (availableFunctions.has('set_reverse_pass')) {
 					enhancedConfig.reverse_pass = true;
 				}
@@ -232,6 +238,8 @@
 				}
 			} else if (backend === 'dots') {
 				enhancedConfig.multipass = false;
+				enhancedConfig.pass_count = 1;
+				enhancedConfig.multipass_mode = 'auto';
 				enhancedConfig.hand_drawn_preset = 'none'; // Dots don't benefit from hand-drawn
 				if (availableFunctions.has('set_dot_density')) {
 					enhancedConfig.dot_density = 0.15;
@@ -244,11 +252,15 @@
 				}
 			} else if (backend === 'centerline') {
 				enhancedConfig.multipass = false;
+				enhancedConfig.pass_count = 1;
+				enhancedConfig.multipass_mode = 'auto';
 				if (availableFunctions.has('set_enable_adaptive_threshold')) {
 					enhancedConfig.enable_adaptive_threshold = true;
 				}
 			} else if (backend === 'superpixel') {
 				enhancedConfig.multipass = false;
+				enhancedConfig.pass_count = 1;
+				enhancedConfig.multipass_mode = 'auto';
 				if (availableFunctions.has('set_num_superpixels')) {
 					enhancedConfig.num_superpixels = 150;
 				}
@@ -276,6 +288,8 @@
 				stroke_width: 1.0,
 				noise_filtering: true,
 				multipass: true,
+				pass_count: 2,
+				multipass_mode: 'auto',
 				hand_drawn_preset: 'none'
 				// IMPORTANT: No variable_weights, tremor_strength, or tapering when preset is 'none'
 			},
@@ -286,6 +300,8 @@
 				stroke_width: 1.5,
 				noise_filtering: true,
 				multipass: true,
+				pass_count: 3,
+				multipass_mode: 'auto',
 				reverse_pass: true,
 				diagonal_pass: true,
 				enable_flow_tracing: true,
@@ -303,6 +319,8 @@
 				stroke_width: 0.8,
 				noise_filtering: true,
 				multipass: false, // centerline doesn't use multipass
+				pass_count: 1,
+				multipass_mode: 'auto',
 				hand_drawn_preset: 'none'
 				// IMPORTANT: No hand-drawn parameters when preset is 'none'
 			},
@@ -315,6 +333,8 @@
 				stroke_width: 1.0,
 				noise_filtering: true,
 				multipass: false, // dots doesn't use multipass
+				pass_count: 1,
+				multipass_mode: 'auto',
 				hand_drawn_preset: 'none'
 				// IMPORTANT: Only core parameters, absolutely no hand-drawn effects
 			},
@@ -327,6 +347,8 @@
 				stroke_width: 1.5,
 				noise_filtering: true,
 				multipass: false, // superpixel doesn't use multipass
+				pass_count: 1,
+				multipass_mode: 'auto',
 				hand_drawn_preset: 'none'
 				// IMPORTANT: Only core parameters - all superpixel functions are missing
 			}
@@ -363,6 +385,8 @@
 					stroke_width: 1.0,
 					noise_filtering: true,
 					multipass: true,
+					pass_count: 2,
+					multipass_mode: 'auto',
 					hand_drawn_preset: 'none',
 					// Required boolean fields
 					reverse_pass: false,
@@ -545,6 +569,8 @@
 				stroke_width: 1.0,
 				noise_filtering: true,
 				multipass: true,
+				pass_count: 2,
+				multipass_mode: 'auto',
 				hand_drawn_preset: 'none',
 				// Required boolean fields
 				reverse_pass: false,

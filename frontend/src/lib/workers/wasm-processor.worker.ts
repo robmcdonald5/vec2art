@@ -595,13 +595,14 @@ async function configureVectorizer(config: any) {
 			}
 		}
 
-		// Initialization pattern configuration
+		// Initialization pattern configuration (superpixel backend)
+		const initPattern = config.superpixel_initialization_pattern || config.initialization_pattern;
 		if (
-			typeof config.initialization_pattern === 'string' &&
+			typeof initPattern === 'string' &&
 			typeof vectorizer.set_initialization_pattern === 'function'
 		) {
-			console.log('[Worker] Setting initialization_pattern:', config.initialization_pattern);
-			vectorizer.set_initialization_pattern(config.initialization_pattern);
+			console.log('[Worker] Setting initialization_pattern:', initPattern);
+			vectorizer.set_initialization_pattern(initPattern);
 		}
 
 		// Unified color configuration for superpixel backend

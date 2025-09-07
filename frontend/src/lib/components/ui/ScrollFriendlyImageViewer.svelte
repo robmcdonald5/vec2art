@@ -24,7 +24,7 @@
 	}: Props = $props();
 
 	let containerEl: HTMLDivElement = $state()!;
-	let imgEl: HTMLImageElement = $state()!;
+	let imgEl: HTMLButtonElement = $state()!;
 	let isDragging = $state(false);
 	let startX = 0;
 	let startY = 0;
@@ -88,11 +88,10 @@
 </script>
 
 <div bind:this={containerEl} class="relative h-full w-full overflow-hidden" onwheel={handleWheel}>
-	<img
+	<!-- Interactive button wrapper for keyboard accessibility -->
+	<button
 		bind:this={imgEl}
-		{src}
-		{alt}
-		class="absolute inset-0 m-auto max-h-full max-w-full origin-center transition-transform duration-0"
+		class="absolute inset-0 m-auto max-h-full max-w-full origin-center transition-transform duration-0 border-0 bg-transparent p-0"
 		style="cursor: {isDragging ? 'grabbing' : 'grab'};"
 		onmousedown={handleMouseDown}
 		onkeydown={(e) => {
@@ -105,10 +104,16 @@
 				targetScale = 1;
 			}
 		}}
-		tabindex="0"
 		aria-label="{alt ? alt + ' - ' : ''}Pannable and zoomable image. Use mouse to drag and scroll to zoom, or press Enter to reset."
-		draggable="false"
-	/>
+		type="button"
+	>
+		<img
+			{src}
+			{alt}
+			class="h-full w-full max-h-full max-w-full object-contain"
+			draggable="false"
+		/>
+	</button>
 </div>
 
 <style>

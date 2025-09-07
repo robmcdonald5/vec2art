@@ -73,7 +73,7 @@ class VectorizerStore {
 			num_superpixels: 250,
 			compactness: 15,
 			slic_iterations: 10,
-			initialization_pattern: 'poisson' as const
+			superpixel_initialization_pattern: 'poisson' as const
 		},
 		dots: {
 			...defaultConfig,
@@ -417,7 +417,7 @@ class VectorizerStore {
 					num_superpixels: 250,
 					compactness: 15,
 					slic_iterations: 10,
-					initialization_pattern: 'poisson'
+					superpixel_initialization_pattern: 'poisson'
 				};
 			case 'dots':
 				return {

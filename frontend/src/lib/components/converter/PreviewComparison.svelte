@@ -38,6 +38,7 @@
 		results,
 		previewSvgUrls,
 		canConvert,
+		canDownload,
 		isProcessing,
 		onImageIndexChange,
 		onConvert,
@@ -90,7 +91,7 @@
 	});
 
 	const currentImageUrl = $derived(originalImageUrls[currentImageIndex] || managedObjectUrl);
-	const currentSvgUrl = $derived(previewSvgUrls[currentImageIndex]);
+	const currentSvgUrl = $derived(previewSvgUrls?.[currentImageIndex]);
 	const hasResult = $derived(Boolean(currentSvgUrl));
 	const currentResult = $derived(results?.[currentImageIndex]);
 	const isError = $derived(currentResult?.svg?.includes('Failed to convert') ?? false);
@@ -98,7 +99,7 @@
 	let useAdvancedPreview = $state(true); // Default to advanced preview for performance
 
 	// Reference to SvgImageViewer for control buttons
-	let svgImageViewer: any;
+	let svgImageViewer = $state<any>();
 
 	// Performance analysis is handled by the PerformanceWarning component
 
@@ -115,7 +116,7 @@
 	}
 
 	function handleImageIndexChange(newIndex: number) {
-		onImageIndexChange(newIndex);
+		onImageIndexChange?.(newIndex);
 		// Reset zoom when switching between different images in the gallery
 		// This is expected behavior - user wants fresh view of each image
 		resetPanZoomState(true);
@@ -250,6 +251,7 @@
 		{viewMode}
 		{hasResult}
 		{canConvert}
+		{canDownload}
 		{isProcessing}
 		onImageIndexChange={handleImageIndexChange}
 		onViewModeToggle={toggleViewMode}
@@ -257,7 +259,7 @@
 		{onAbort}
 		{onReset}
 		{onAddMore}
-		{onRemoveFile}
+		onRemoveFile={onRemoveFile || ((index: number) => {})}
 		{isPanicked}
 		{onEmergencyRecovery}
 		{settingsSyncMode}
@@ -270,7 +272,7 @@
 		<div
 			bind:this={sliderContainer}
 			class="relative aspect-video overflow-hidden bg-gray-50"
-			role="img"
+			role="application"
 			aria-label="Interactive image comparison slider"
 			tabindex="0"
 			onkeydown={handleKeydown}
@@ -411,7 +413,7 @@
 						imageUrl={currentImageUrl}
 						imageAlt={currentFile?.name || 'Original image'}
 						title={currentFile?.name || 'Original'}
-						onRemove={currentFile ? () => onRemoveFile(currentImageIndex) : undefined}
+						onRemove={currentFile ? () => onRemoveFile?.(currentImageIndex) : undefined}
 						showRemoveButton={Boolean(currentFile)}
 						{isProcessing}
 						className="flex-1"
@@ -564,6 +566,7 @@
 									<InteractiveImagePanel
 										imageUrl={currentSvgUrl}
 										imageAlt="Converted SVG"
+										title="Converted Preview"
 										{isProcessing}
 										className="flex-1"
 										externalPanZoom={panZoomStore.isSyncEnabled
@@ -602,13 +605,3 @@
 	{/if}
 </div>
 
-<style>
-	.filename-display {
-		word-break: break-all;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-		max-width: 200px;
-	}
-</style>

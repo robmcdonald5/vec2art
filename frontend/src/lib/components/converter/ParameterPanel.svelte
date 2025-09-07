@@ -31,7 +31,7 @@
 
 	function handleInitializationPatternChange(value: string) {
 		console.log(`[ParameterPanel] Initialization pattern changed to: ${value}`);
-		onConfigChange({ initialization_pattern: value });
+		onConfigChange({ dot_initialization_pattern: value as 'square' | 'hexagonal' | 'poisson' });
 		onParameterChange?.();
 	}
 
@@ -296,38 +296,24 @@
 					Initialization Pattern
 				</label>
 				<CustomSelect
-					id="initialization-pattern"
-					value={config.initialization_pattern || 'poisson'}
+					value={config.dot_initialization_pattern || 'poisson'}
 					onchange={handleInitializationPatternChange}
 					{disabled}
 					options={[
 						{
 							value: 'square',
-							label: 'Square Grid',
-							description: 'Traditional grid pattern - may create diagonal artifacts'
+							label: 'Square Grid'
 						},
 						{
 							value: 'hexagonal',
-							label: 'Hexagonal',
-							description: 'Reduces diagonal artifacts, more natural clustering'
+							label: 'Hexagonal'
 						},
 						{
 							value: 'poisson',
-							label: 'Poisson Disk',
-							description: 'Random distribution, eliminates grid artifacts'
+							label: 'Poisson Disk'
 						}
 					]}
-				>
-					<span slot="selectedLabel">
-						{config.initialization_pattern === 'square'
-							? 'Square Grid'
-							: config.initialization_pattern === 'hexagonal'
-								? 'Hexagonal'
-								: config.initialization_pattern === 'poisson'
-									? 'Poisson Disk'
-									: 'Poisson Disk'}
-					</span>
-				</CustomSelect>
+				/>
 				<div class="text-converter-muted text-xs">
 					Controls how superpixel centers are initially placed. Poisson disk sampling provides the
 					best artifact reduction.
@@ -400,10 +386,8 @@
 						oninput={(value) => {
 							console.log(`🟡 Parameter Panel - Range change: variable_weights = ${value}`);
 							// Update the config with the new value
-							const newConfig = { variable_weights: value };
-							// Check if this change makes it a custom preset
-							const detectedPreset = checkForCustomPreset(newConfig);
-							newConfig.hand_drawn_preset = detectedPreset;
+							const detectedPreset = checkForCustomPreset({ variable_weights: value });
+							const newConfig = { variable_weights: value, hand_drawn_preset: detectedPreset };
 							console.log(`🟡 Parameter Panel - Detected preset: ${detectedPreset}`);
 							onConfigChange(newConfig);
 							onParameterChange?.();
@@ -435,10 +419,8 @@
 						oninput={(value) => {
 							console.log(`🟡 Parameter Panel - Range change: tremor_strength = ${value}`);
 							// Update the config with the new value
-							const newConfig = { tremor_strength: value };
-							// Check if this change makes it a custom preset
-							const detectedPreset = checkForCustomPreset(newConfig);
-							newConfig.hand_drawn_preset = detectedPreset;
+							const detectedPreset = checkForCustomPreset({ tremor_strength: value });
+							const newConfig = { tremor_strength: value, hand_drawn_preset: detectedPreset };
 							console.log(`🟡 Parameter Panel - Detected preset: ${detectedPreset}`);
 							onConfigChange(newConfig);
 							onParameterChange?.();
@@ -468,10 +450,8 @@
 						oninput={(value) => {
 							console.log(`🟡 Parameter Panel - Range change: tapering = ${value}`);
 							// Update the config with the new value
-							const newConfig = { tapering: value };
-							// Check if this change makes it a custom preset
-							const detectedPreset = checkForCustomPreset(newConfig);
-							newConfig.hand_drawn_preset = detectedPreset;
+							const detectedPreset = checkForCustomPreset({ tapering: value });
+							const newConfig = { tapering: value, hand_drawn_preset: detectedPreset };
 							console.log(`🟡 Parameter Panel - Detected preset: ${detectedPreset}`);
 							onConfigChange(newConfig);
 							onParameterChange?.();
