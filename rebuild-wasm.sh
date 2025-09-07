@@ -26,7 +26,14 @@ if [ $? -eq 0 ]; then
     cp pkg/vectorize_wasm.d.ts ../../frontend/src/lib/wasm/
     cp pkg/vectorize_wasm_bg.wasm ../../frontend/src/lib/wasm/
     cp pkg/vectorize_wasm_bg.wasm.d.ts ../../frontend/src/lib/wasm/
-    cp -r pkg/snippets/ ../../frontend/src/lib/wasm/
+    
+    # Copy snippets directory if it exists (conditional for different WASM builds)
+    if [ -d "pkg/snippets" ]; then
+        echo "📁 Copying snippets directory..."
+        cp -r pkg/snippets/ ../../frontend/src/lib/wasm/
+    else
+        echo "ℹ️  No snippets directory found - continuing without it"
+    fi
     
     echo "🔧 CRITICAL: Applying all required import fixes..."
     cd ../../frontend/src/lib/wasm
@@ -39,13 +46,16 @@ if [ $? -eq 0 ]; then
     echo "  → Fixing import object keys..."
     sed -i "s|imports\\['\\./__wbindgen_placeholder__\\.js'\\]|imports['__wbindgen_placeholder__']|g" vectorize_wasm.js
     
-    # Fix 2: Worker helper imports
-    echo "  → Fixing worker helper imports..."
-    find snippets/ -name "workerHelpers.js" -exec sed -i "s|from '\\.\\.\\/\\.\\.\\/\\.\\.'|from '../../../vectorize_wasm.js'|g" {} \;
-    
-    # Fix 3: Worker context check
-    echo "  → Fixing worker context check..."
-    find snippets/ -name "workerHelpers.js" -exec sed -i 's|if (name === "wasm_bindgen_worker")|if (typeof self !== '\''undefined'\'' \&\& self.name === "wasm_bindgen_worker")|g' {} \;
+    # Fix 2: Worker helper imports (if snippets directory exists)
+    if [ -d "snippets" ]; then
+        echo "  → Fixing worker helper imports..."
+        find snippets/ -name "workerHelpers.js" -exec sed -i "s|from '\\.\\.\\/\\.\\.\\/\\.\\.'|from '../../../vectorize_wasm.js'|g" {} \;
+        
+        echo "  → Fixing worker context check..."
+        find snippets/ -name "workerHelpers.js" -exec sed -i 's|if (name === "wasm_bindgen_worker")|if (typeof self !== '\''undefined'\'' \&\& self.name === "wasm_bindgen_worker")|g' {} \;
+    else
+        echo "  → No snippets directory, skipping worker helper fixes"
+    fi
     
     # Fix 4: Clean up corrupted TypeScript definitions (wasm-bindgen bug with complex symbols)
     echo "  → Cleaning TypeScript definitions..."
