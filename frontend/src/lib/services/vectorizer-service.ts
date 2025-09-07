@@ -521,16 +521,34 @@ export class VectorizerService {
 		if (!browser) {
 			return {
 				threading_supported: false,
-				shared_array_buffer_available: false,
+				shared_array_buffer: false,
 				cross_origin_isolated: false,
-				hardware_concurrency: 1,
+				web_workers: false,
+				proper_headers: false,
+				environment_type: 'server',
+				is_node_js: true,
+				atomics_supported: false,
+				webgpu_supported: false,
+				webgl2_supported: false,
+				gpu_backend: 'none',
 				missing_requirements: ['Browser environment required'],
+				diagnostics: [],
+				// Legacy compatibility
+				shared_array_buffer_available: false,
+				hardware_concurrency: 1,
 				recommendations: ['Run in browser environment']
 			};
 		}
 
 		try {
-			// Use the new capabilities function from loader
+			// Try to use the WASM module's capability detection first
+			await this.initialize();
+			
+			if (this.wasmModule && typeof this.wasmModule.check_threading_requirements === 'function') {
+				return this.wasmModule.check_threading_requirements();
+			}
+
+			// Use the capabilities function from loader as fallback
 			const capabilities = await getCapabilities();
 
 			const missingRequirements: string[] = [];
@@ -546,26 +564,50 @@ export class VectorizerService {
 				recommendations.push('Ensure secure context and proper headers');
 			}
 
+			const shared_array_buffer = capabilities.sharedArrayBuffer;
+			const cross_origin_isolated = capabilities.crossOriginIsolated;
+
 			return {
 				threading_supported: capabilities.threading,
-				shared_array_buffer_available: capabilities.sharedArrayBuffer,
-				cross_origin_isolated: capabilities.crossOriginIsolated,
-				hardware_concurrency: navigator.hardwareConcurrency || 1,
+				shared_array_buffer,
+				cross_origin_isolated,
+				web_workers: typeof Worker !== 'undefined',
+				proper_headers: cross_origin_isolated,
+				environment_type: 'browser',
+				is_node_js: false,
+				atomics_supported: typeof Atomics !== 'undefined',
+				webgpu_supported: false, // Will be detected by GPU service
+				webgl2_supported: false, // Will be detected by GPU service
+				gpu_backend: 'none',
 				missing_requirements: missingRequirements,
+				diagnostics: [],
+				// Legacy compatibility
+				shared_array_buffer_available: shared_array_buffer,
+				hardware_concurrency: navigator.hardwareConcurrency || 1,
 				recommendations: recommendations
 			};
 		} catch (error) {
 			// Fallback to basic check if loader fails
-			const crossOriginIsolated =
-				typeof window !== 'undefined' ? window.crossOriginIsolated : false;
+			const crossOriginIsolated = typeof window !== 'undefined' ? window.crossOriginIsolated : false;
 			const sharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
 
 			return {
 				threading_supported: false,
-				shared_array_buffer_available: sharedArrayBuffer,
+				shared_array_buffer: sharedArrayBuffer,
 				cross_origin_isolated: crossOriginIsolated,
-				hardware_concurrency: navigator.hardwareConcurrency || 1,
+				web_workers: typeof Worker !== 'undefined',
+				proper_headers: crossOriginIsolated,
+				environment_type: 'browser-error',
+				is_node_js: false,
+				atomics_supported: typeof Atomics !== 'undefined',
+				webgpu_supported: false,
+				webgl2_supported: false,
+				gpu_backend: 'none',
 				missing_requirements: ['WASM initialization failed'],
+				diagnostics: [{ error: String(error) }],
+				// Legacy compatibility
+				shared_array_buffer_available: sharedArrayBuffer,
+				hardware_concurrency: navigator.hardwareConcurrency || 1,
 				recommendations: ['Check console for errors']
 			};
 		}

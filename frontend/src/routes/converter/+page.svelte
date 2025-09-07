@@ -1593,10 +1593,14 @@
 		{:else}
 			<!-- Loading State -->
 			<div class="card-ferrari-static rounded-3xl p-8">
-				<LoadingState message="Loading Converter..." size="lg" center={true}>
-					<svelte:fragment slot="subtitle">
+				<LoadingState 
+					message="Loading Converter..." 
+					size="lg" 
+					center={true}
+				>
+					{#snippet subtitle()}
 						Initializing high-performance image processing engine
-					</svelte:fragment>
+					{/snippet}
 				</LoadingState>
 			</div>
 		{/if}

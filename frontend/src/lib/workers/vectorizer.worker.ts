@@ -104,42 +104,84 @@ class VectorizerWorker {
 		if (!this.wasmModule) {
 			return {
 				threading_supported: false,
-				shared_array_buffer_available: false,
+				shared_array_buffer: false,
 				cross_origin_isolated: false,
-				hardware_concurrency: 1,
+				web_workers: typeof Worker !== 'undefined',
+				proper_headers: false,
+				environment_type: 'unknown',
+				is_node_js: false,
+				atomics_supported: typeof Atomics !== 'undefined',
+				webgpu_supported: false,
+				webgl2_supported: false,
+				gpu_backend: 'none',
 				missing_requirements: ['WASM module not initialized'],
+				diagnostics: [],
+				// Legacy compatibility
+				shared_array_buffer_available: false,
+				hardware_concurrency: 1,
 				recommendations: ['Initialize WASM module first']
 			};
 		}
 
 		try {
-			// Use basic capability detection since many methods don't exist
+			// Use WASM module's capability detection if available
+			if (typeof this.wasmModule.check_threading_requirements === 'function') {
+				return this.wasmModule.check_threading_requirements();
+			}
+
+			// Fallback to basic capability detection
 			const threading_supported =
 				typeof this.wasmModule.is_threading_supported === 'function'
 					? this.wasmModule.is_threading_supported()
 					: false;
 
+			const shared_array_buffer = typeof SharedArrayBuffer !== 'undefined';
+			const cross_origin_isolated = typeof self !== 'undefined' && 'crossOriginIsolated' in self
+				? self.crossOriginIsolated
+				: false;
+
 			return {
 				threading_supported,
-				shared_array_buffer_available: typeof SharedArrayBuffer !== 'undefined',
-				cross_origin_isolated:
-					typeof self !== 'undefined' && 'crossOriginIsolated' in self
-						? self.crossOriginIsolated
-						: false,
-				hardware_concurrency:
-					typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 1 : 1,
+				shared_array_buffer,
+				cross_origin_isolated,
+				web_workers: typeof Worker !== 'undefined',
+				proper_headers: cross_origin_isolated,
+				environment_type: 'web-worker',
+				is_node_js: false,
+				atomics_supported: typeof Atomics !== 'undefined',
+				webgpu_supported: false, // Will be detected later
+				webgl2_supported: false, // Will be detected later
+				gpu_backend: 'none',
 				missing_requirements: [],
+				diagnostics: [],
+				// Legacy compatibility
+				shared_array_buffer_available: shared_array_buffer,
+				hardware_concurrency: typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 1 : 1,
 				recommendations: threading_supported ? [] : ['Single-threaded mode']
 			};
 		} catch (error) {
+			const shared_array_buffer = typeof SharedArrayBuffer !== 'undefined';
+			const cross_origin_isolated = typeof self !== 'undefined' && 'crossOriginIsolated' in self
+				? self.crossOriginIsolated
+				: false;
+
 			return {
 				threading_supported: false,
-				shared_array_buffer_available: typeof SharedArrayBuffer !== 'undefined',
-				cross_origin_isolated:
-					typeof crossOriginIsolated !== 'undefined' ? crossOriginIsolated : false,
-				hardware_concurrency:
-					typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 1 : 1,
+				shared_array_buffer,
+				cross_origin_isolated,
+				web_workers: typeof Worker !== 'undefined',
+				proper_headers: cross_origin_isolated,
+				environment_type: 'web-worker-error',
+				is_node_js: false,
+				atomics_supported: typeof Atomics !== 'undefined',
+				webgpu_supported: false,
+				webgl2_supported: false,
+				gpu_backend: 'none',
 				missing_requirements: ['WASM capability check failed'],
+				diagnostics: [{ error: String(error) }],
+				// Legacy compatibility
+				shared_array_buffer_available: shared_array_buffer,
+				hardware_concurrency: typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 1 : 1,
 				recommendations: ['Check browser support and CORS headers']
 			};
 		}

@@ -164,12 +164,31 @@ export interface VectorizerError {
 }
 
 export interface WasmCapabilityReport {
+	// Core threading support
 	threading_supported: boolean;
-	shared_array_buffer_available: boolean;
+	shared_array_buffer: boolean; // Updated to match WASM property name
 	cross_origin_isolated: boolean;
-	hardware_concurrency: number;
-	missing_requirements: string[];
-	recommendations: string[];
+	web_workers: boolean;
+	proper_headers: boolean;
+	
+	// Environment information
+	environment_type: string;
+	is_node_js: boolean;
+	atomics_supported: boolean;
+	
+	// GPU capabilities
+	webgpu_supported: boolean;
+	webgl2_supported: boolean;
+	gpu_backend: string;
+	
+	// Diagnostics and requirements
+	missing_requirements: any[];
+	diagnostics: any[];
+	
+	// Legacy compatibility (for backward compatibility with existing code)
+	shared_array_buffer_available?: boolean; // Maps to shared_array_buffer
+	hardware_concurrency?: number; // Can be derived from navigator.hardwareConcurrency
+	recommendations?: string[]; // Can be derived from diagnostics
 }
 
 export interface VectorizerState {
