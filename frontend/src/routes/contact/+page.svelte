@@ -11,7 +11,9 @@
 		CheckCircle
 	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
-	import { PUBLIC_FORMSPARK_ENDPOINT_ID, PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
+	// Import environment variables with fallback for CI/build environments
+	const PUBLIC_FORMSPARK_ENDPOINT_ID = import.meta.env.PUBLIC_FORMSPARK_ENDPOINT_ID || '';
+	const PUBLIC_TURNSTILE_SITE_KEY = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
 
 	// Form state management
 	let selectedCategory = 'general';
