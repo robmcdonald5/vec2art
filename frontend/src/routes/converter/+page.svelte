@@ -1440,7 +1440,6 @@
 			<p class="text-premium mx-auto mt-6 max-w-3xl">
 				Transform any raster image into expressive line art SVGs using advanced algorithms
 			</p>
-
 		</header>
 
 		<!-- Dev Tools - Clear Persistence Button (TOP RIGHT) -->
@@ -1577,7 +1576,7 @@
 		{:else if initError}
 			<!-- Error State -->
 			<div class="card-ferrari-static rounded-3xl p-8">
-				<ErrorState 
+				<ErrorState
 					title="Failed to Load Converter"
 					message={initError}
 					size="lg"
@@ -1594,11 +1593,7 @@
 		{:else}
 			<!-- Loading State -->
 			<div class="card-ferrari-static rounded-3xl p-8">
-				<LoadingState 
-					message="Loading Converter..." 
-					size="lg"
-					center={true}
-				>
+				<LoadingState message="Loading Converter..." size="lg" center={true}>
 					<svelte:fragment slot="subtitle">
 						Initializing high-performance image processing engine
 					</svelte:fragment>

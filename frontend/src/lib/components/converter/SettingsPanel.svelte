@@ -218,7 +218,12 @@
 								min={0.1}
 								max={1}
 								step={0.1}
-								oninput={config.backend === 'dots' ? updateDotDensity : (value) => { onConfigChange({ detail: value }); onParameterChange(); }}
+								oninput={config.backend === 'dots'
+									? updateDotDensity
+									: (value) => {
+											onConfigChange({ detail: value });
+											onParameterChange();
+										}}
 								{disabled}
 								class="w-full"
 							/>
@@ -258,7 +263,10 @@
 								min={50}
 								max={500}
 								step={25}
-								oninput={(value) => { onConfigChange({ num_superpixels: value }); onParameterChange(); }}
+								oninput={(value) => {
+									onConfigChange({ num_superpixels: value });
+									onParameterChange();
+								}}
 								{disabled}
 								class="w-full"
 							/>
@@ -293,7 +301,10 @@
 							min={0.5}
 							max={10}
 							step={0.1}
-							oninput={(value) => { onConfigChange({ stroke_width: value }); onParameterChange(); }}
+							oninput={(value) => {
+								onConfigChange({ stroke_width: value });
+								onParameterChange();
+							}}
 							{disabled}
 							class="w-full"
 						/>
@@ -385,4 +396,3 @@
 		{/if}
 	</div>
 </div>
-

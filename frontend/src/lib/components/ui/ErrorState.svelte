@@ -47,11 +47,11 @@
 		const baseClasses = inline ? 'inline-flex' : 'flex';
 		const alignClasses = center ? 'items-center justify-center' : 'items-center';
 		const spacingClasses = size === 'lg' ? 'gap-4' : 'gap-2';
-		
+
 		if (size === 'lg') {
 			return `${baseClasses} ${alignClasses} flex-col text-center`;
 		}
-		
+
 		return `${baseClasses} ${alignClasses} ${spacingClasses}`;
 	});
 
@@ -68,11 +68,7 @@
 	}
 </script>
 
-<div 
-	class={containerClasses}
-	role="alert" 
-	aria-label="Error: {message}"
->
+<div class={containerClasses} role="alert" aria-label="Error: {message}">
 	{#if size === 'lg'}
 		<div class="mb-4">
 			<AlertCircle class="mx-auto text-red-500 {iconSizes[size]}" />
@@ -83,23 +79,17 @@
 		<p class="mb-6 text-gray-600 dark:text-gray-300 {messageSizes[size]}">
 			{message}
 		</p>
-		
+
 		{#if showRetry || showReload}
 			<div class="flex justify-center gap-4">
 				{#if showReload}
-					<button 
-						class="btn-ferrari-secondary px-6 py-2 text-sm"
-						onclick={handleReload}
-					>
+					<button class="btn-ferrari-secondary px-6 py-2 text-sm" onclick={handleReload}>
 						<RefreshCw class="mr-2 h-4 w-4" />
 						Reload Page
 					</button>
 				{/if}
 				{#if showRetry}
-					<button 
-						class="btn-ferrari-primary px-6 py-2 text-sm"
-						onclick={handleRetry}
-					>
+					<button class="btn-ferrari-primary px-6 py-2 text-sm" onclick={handleRetry}>
 						Try Again
 					</button>
 				{/if}
@@ -117,22 +107,16 @@
 				{message}
 			</span>
 		</div>
-		
+
 		{#if showRetry || showReload}
-			<div class="flex gap-2 ml-auto">
+			<div class="ml-auto flex gap-2">
 				{#if showRetry}
-					<button 
-						class="text-sm text-red-600 hover:text-red-800 underline"
-						onclick={handleRetry}
-					>
+					<button class="text-sm text-red-600 underline hover:text-red-800" onclick={handleRetry}>
 						Retry
 					</button>
 				{/if}
 				{#if showReload}
-					<button 
-						class="text-sm text-red-600 hover:text-red-800 underline"
-						onclick={handleReload}
-					>
+					<button class="text-sm text-red-600 underline hover:text-red-800" onclick={handleReload}>
 						Reload
 					</button>
 				{/if}

@@ -11,7 +11,7 @@ import ErrorState from '$lib/components/ui/ErrorState.svelte';
 describe('LoadingState Component', () => {
 	it('renders loading state with default message', () => {
 		render(LoadingState);
-		
+
 		expect(screen.getByText('Loading...')).toBeInTheDocument();
 		expect(screen.getByRole('status')).toBeInTheDocument();
 	});
@@ -23,7 +23,7 @@ describe('LoadingState Component', () => {
 				message: customMessage
 			}
 		});
-		
+
 		expect(screen.getByText(customMessage)).toBeInTheDocument();
 	});
 
@@ -34,7 +34,7 @@ describe('LoadingState Component', () => {
 				size: 'lg'
 			}
 		});
-		
+
 		expect(screen.getByText('Processing...')).toBeInTheDocument();
 		expect(screen.getByText('Please wait while we process your request')).toBeInTheDocument();
 	});
@@ -46,11 +46,11 @@ describe('LoadingState Component', () => {
 				inline: true
 			}
 		});
-		
+
 		const statusElement = screen.getByRole('status');
 		// Check that the element has inline styling (either inline-flex class or style attribute)
-		const hasInlineClass = statusElement.className.includes('inline-flex') || 
-							   statusElement.className.includes('inline');
+		const hasInlineClass =
+			statusElement.className.includes('inline-flex') || statusElement.className.includes('inline');
 		expect(hasInlineClass).toBe(true);
 	});
 });
@@ -64,7 +64,7 @@ describe('ErrorState Component', () => {
 				title: 'Processing Error'
 			}
 		});
-		
+
 		expect(screen.getByText('Processing Error')).toBeInTheDocument();
 		expect(screen.getByText(errorMessage)).toBeInTheDocument();
 	});
@@ -76,7 +76,7 @@ describe('ErrorState Component', () => {
 				message: errorMessage
 			}
 		});
-		
+
 		expect(screen.getByText('Error')).toBeInTheDocument();
 		expect(screen.getByText(errorMessage)).toBeInTheDocument();
 	});
@@ -90,7 +90,7 @@ describe('ErrorState Component', () => {
 				onRetry: mockRetry
 			}
 		});
-		
+
 		const retryButton = screen.getByRole('button', { name: /retry|try again/i });
 		expect(retryButton).toBeInTheDocument();
 	});
@@ -104,7 +104,7 @@ describe('ErrorState Component', () => {
 				onReload: mockReload
 			}
 		});
-		
+
 		const reloadButton = screen.getByRole('button', { name: /reload/i });
 		expect(reloadButton).toBeInTheDocument();
 	});
@@ -117,11 +117,11 @@ describe('ErrorState Component', () => {
 				size: 'lg'
 			}
 		});
-		
+
 		const alertElement = screen.getByRole('alert');
 		// Check for centered layout (text-center class or flex-col layout)
-		const hasCenteredClass = alertElement.className.includes('text-center') || 
-								 alertElement.className.includes('flex-col');
+		const hasCenteredClass =
+			alertElement.className.includes('text-center') || alertElement.className.includes('flex-col');
 		expect(hasCenteredClass).toBe(true);
 	});
 
@@ -132,7 +132,7 @@ describe('ErrorState Component', () => {
 				message: errorMessage
 			}
 		});
-		
+
 		const alertElement = screen.getByRole('alert');
 		expect(alertElement).toHaveAttribute('aria-label', `Error: ${errorMessage}`);
 	});
@@ -145,17 +145,17 @@ describe('LoadingState and ErrorState Integration', () => {
 				message: 'Processing...'
 			}
 		});
-		
+
 		expect(screen.getByRole('status')).toBeInTheDocument();
-		
+
 		unmount();
-		
+
 		render(ErrorState, {
 			props: {
 				message: 'Processing failed'
 			}
 		});
-		
+
 		expect(screen.getByRole('alert')).toBeInTheDocument();
 	});
 
@@ -166,19 +166,19 @@ describe('LoadingState and ErrorState Integration', () => {
 				size: 'sm'
 			}
 		});
-		
+
 		let statusElement = screen.getByRole('status');
 		expect(statusElement.querySelector('.h-4')).toBeInTheDocument(); // Small icon
-		
+
 		unmount();
-		
+
 		render(ErrorState, {
 			props: {
 				message: 'Error occurred',
 				size: 'sm'
 			}
 		});
-		
+
 		let alertElement = screen.getByRole('alert');
 		expect(alertElement.querySelector('.h-4')).toBeInTheDocument(); // Small icon
 	});

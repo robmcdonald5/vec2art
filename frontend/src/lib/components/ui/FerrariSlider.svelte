@@ -28,8 +28,10 @@
 	let sliderRef: HTMLInputElement;
 
 	function updateSliderFill(element: HTMLInputElement) {
-		const percent = ((parseFloat(element.value) - parseFloat(element.min)) / 
-			(parseFloat(element.max) - parseFloat(element.min))) * 100;
+		const percent =
+			((parseFloat(element.value) - parseFloat(element.min)) /
+				(parseFloat(element.max) - parseFloat(element.min))) *
+			100;
 		element.style.setProperty('--value', `${percent}%`);
 	}
 

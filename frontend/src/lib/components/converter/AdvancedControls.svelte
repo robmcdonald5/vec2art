@@ -88,7 +88,6 @@
 		maxProcessingTimeValue = config.max_processing_time_ms ?? 30000;
 	});
 
-
 	// Simple section toggle with logging
 	function toggleSection(sectionName: keyof typeof expandedSections) {
 		console.log(`🟡 Advanced Controls - Toggle section: ${sectionName}`);
@@ -105,12 +104,7 @@
 		};
 	}
 
-
 	// Dots-specific parameter handlers with architectural mapping
-
-
-
-
 
 	// Get description for pass count
 	function getPassCountDescription(passCount: number): string {
@@ -475,7 +469,9 @@
 											max={0.8}
 											step={0.1}
 											oninput={(value) => {
-												console.log(`🟡 Advanced Controls - Range change: directional_strength_threshold = ${value}`);
+												console.log(
+													`🟡 Advanced Controls - Range change: directional_strength_threshold = ${value}`
+												);
 												onConfigChange({ directional_strength_threshold: value });
 												onParameterChange?.();
 											}}
@@ -669,7 +665,9 @@
 									max={10}
 									step={1}
 									oninput={(value) => {
-										console.log(`🟡 Advanced Controls - Range change: max_colors_per_path = ${value}`);
+										console.log(
+											`🟡 Advanced Controls - Range change: max_colors_per_path = ${value}`
+										);
 										onConfigChange({ max_colors_per_path: value });
 										onParameterChange?.();
 									}}
@@ -906,7 +904,9 @@
 										oninput={(value) => {
 											// Ensure max_radius is always larger than min_radius
 											const maxRadius = Math.max(value + 0.1, config.max_radius || value + 1.0);
-											console.log(`🎯 Advanced Controls - Min radius: ${value}, adjusted max: ${maxRadius}`);
+											console.log(
+												`🎯 Advanced Controls - Min radius: ${value}, adjusted max: ${maxRadius}`
+											);
 											onConfigChange({
 												min_radius: value,
 												max_radius: maxRadius
@@ -1216,7 +1216,9 @@
 							max={999999}
 							step={5000}
 							oninput={(value) => {
-								console.log(`🟡 Advanced Controls - Range change: max_processing_time_ms = ${value}`);
+								console.log(
+									`🟡 Advanced Controls - Range change: max_processing_time_ms = ${value}`
+								);
 								onConfigChange({ max_processing_time_ms: value });
 								onParameterChange?.();
 							}}
@@ -1265,4 +1267,3 @@
 		</div>
 	</div>
 </section>
-

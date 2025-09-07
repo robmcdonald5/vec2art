@@ -482,77 +482,81 @@
 							<!-- Raw SVG View (Blob optimized) -->
 							{#if currentResult?.svg}
 								<!-- Controls Header for Raw SVG View - moved outside absolute container -->
-								<div class="mb-3 flex items-center justify-between px-2 {useAdvancedPreview ? 'hidden' : 'flex'}">
+								<div
+									class="mb-3 flex items-center justify-between px-2 {useAdvancedPreview
+										? 'hidden'
+										: 'flex'}"
+								>
 									<div class="flex items-center gap-2">
 										<!-- Empty space for alignment -->
 									</div>
 									<!-- Control buttons matching AdvancedSvgPreview style -->
 									<div class="flex gap-1">
+										<Button
+											variant="outline"
+											size="icon"
+											class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+											onclick={() => svgImageViewer?.zoomOut()}
+											disabled={false}
+											aria-label="Zoom out"
+											title="Zoom out (- key)"
+										>
+											<ZoomOut class="h-4 w-4" />
+										</Button>
+										<Button
+											variant="outline"
+											size="icon"
+											class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+											onclick={() => svgImageViewer?.zoomIn()}
+											disabled={false}
+											aria-label="Zoom in"
+											title="Zoom in (+ key)"
+										>
+											<ZoomIn class="h-4 w-4" />
+										</Button>
+										<Button
+											variant="outline"
+											size="icon"
+											class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+											onclick={() => svgImageViewer?.resetView()}
+											disabled={false}
+											aria-label="Reset view"
+											title="Reset view (0 key)"
+										>
+											<Maximize2 class="h-4 w-4" />
+										</Button>
+										{#if onDownload}
 											<Button
 												variant="outline"
 												size="icon"
 												class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-												onclick={() => svgImageViewer?.zoomOut()}
-												disabled={false}
-												aria-label="Zoom out"
-												title="Zoom out (- key)"
+												onclick={onDownload}
+												disabled={isProcessing}
+												aria-label="Download SVG"
+												title="Download SVG"
 											>
-												<ZoomOut class="h-4 w-4" />
+												<Download class="h-4 w-4" />
 											</Button>
-											<Button
-												variant="outline"
-												size="icon"
-												class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-												onclick={() => svgImageViewer?.zoomIn()}
-												disabled={false}
-												aria-label="Zoom in"
-												title="Zoom in (+ key)"
-											>
-												<ZoomIn class="h-4 w-4" />
-											</Button>
-											<Button
-												variant="outline"
-												size="icon"
-												class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-												onclick={() => svgImageViewer?.resetView()}
-												disabled={false}
-												aria-label="Reset view"
-												title="Reset view (0 key)"
-											>
-												<Maximize2 class="h-4 w-4" />
-											</Button>
-											{#if onDownload}
-												<Button
-													variant="outline"
-													size="icon"
-													class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-													onclick={onDownload}
-													disabled={isProcessing}
-													aria-label="Download SVG"
-													title="Download SVG"
-												>
-													<Download class="h-4 w-4" />
-												</Button>
-											{/if}
-										</div>
+										{/if}
+									</div>
 								</div>
-								
+
 								<!-- SvgImageViewer in absolute container -->
 								<div class="absolute inset-0 {useAdvancedPreview ? 'hidden' : 'block'}">
 									<SvgImageViewer
-											bind:this={svgImageViewer}
-											svgContent={currentResult.svg}
-											renderMethod="blob"
-											alt="Raw SVG Preview"
-											minScale={0.1}
-											maxScale={5.0}
-											scaleSmoothing={800}
-											externalPanZoom={panZoomStore.isSyncEnabled
-												? panZoomStore.convertedState
-												: undefined}
-											onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
-											enableSync={panZoomStore.isSyncEnabled}
-										/>
+										bind:this={svgImageViewer}
+										svgContent={currentResult.svg}
+										renderMethod="blob"
+										alt="Raw SVG Preview"
+										minScale={0.1}
+										maxScale={5.0}
+										scaleSmoothing={800}
+										externalPanZoom={panZoomStore.isSyncEnabled
+											? panZoomStore.convertedState
+											: undefined}
+										onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
+										enableSync={panZoomStore.isSyncEnabled}
+									/>
 								</div>
 							{:else}
 								<!-- Fallback for when no SVG content is available -->

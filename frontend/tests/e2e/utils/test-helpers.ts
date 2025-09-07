@@ -4,7 +4,12 @@
  */
 
 import { Page, Locator, expect } from '@playwright/test';
-import { TEST_IMAGES, INVALID_FILES, TestImageFixture, getExpectedProcessingTime } from '../fixtures/test-data';
+import {
+	TEST_IMAGES,
+	INVALID_FILES,
+	TestImageFixture,
+	getExpectedProcessingTime
+} from '../fixtures/test-data';
 import path from 'path';
 
 /**

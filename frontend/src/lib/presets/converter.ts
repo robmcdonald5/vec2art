@@ -645,7 +645,7 @@ export function getAlgorithmDefaults(backend: VectorizerBackend): VectorizerConf
 			return {
 				...baseConfig,
 				backend: 'centerline',
-				detail: 0.6, // UI value 6 - moderate detail for skeleton extraction  
+				detail: 0.6, // UI value 6 - moderate detail for skeleton extraction
 				stroke_width: 1.0, // Standard line width
 				preserve_colors: false, // Always monochrome for centerline
 				color_sampling: 'dominant' as const,

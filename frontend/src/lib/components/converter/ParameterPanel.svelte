@@ -29,9 +29,6 @@
 	const detailToUI = (detail: number) => Math.round(((detail - 0.1) / 0.9) * 9 + 1); // detail 0.1 → UI 1, detail 1.0 → UI 10
 	const detailFromUI = (uiValue: number) => 0.1 + ((uiValue - 1) / 9) * 0.9; // UI 1 → detail 0.1, UI 10 → detail 1.0
 
-
-
-
 	function handleInitializationPatternChange(value: string) {
 		console.log(`[ParameterPanel] Initialization pattern changed to: ${value}`);
 		onConfigChange({ initialization_pattern: value });
@@ -78,11 +75,8 @@
 		onParameterChange?.();
 	}
 
-
-
 	// REMOVED: Backend-specific parameter handlers are no longer needed
 	// The architectural system handles all parameter mapping in the WASM worker
-
 
 	function handleAdaptiveThresholdChange(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -123,7 +117,6 @@
 		return 'custom';
 	}
 
-
 	// UI state for sliders - separate from derived to allow two-way binding
 	// Note: detailUI converted to derived value for better sync
 	let detailUI = $derived(detailToUI(config.detail));
@@ -156,15 +149,13 @@
 	let spatialSigmaValue = $state(1.2);
 	let rangeSigmaValue = $state(50.0);
 
-
-
-
 	// Update reactive values when config changes
 	$effect(() => {
 		detailValue = detailToUI(config.detail);
-		dotDensityValue = config.dot_density_threshold !== undefined
-			? Math.round(((0.4 - config.dot_density_threshold) / (0.4 - 0.02)) * 9 + 1)
-			: 5;
+		dotDensityValue =
+			config.dot_density_threshold !== undefined
+				? Math.round(((0.4 - config.dot_density_threshold) / (0.4 - 0.02)) * 9 + 1)
+				: 5;
 		regionComplexityValue = config.num_superpixels || 250;
 		strokeWidthValue = config.stroke_width || 2.0;
 		variableWeightsValue = config.variable_weights ?? 0.0;
@@ -639,4 +630,3 @@
 		</div>
 	{/if}
 </section>
-

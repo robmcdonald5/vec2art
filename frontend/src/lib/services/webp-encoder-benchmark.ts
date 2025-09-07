@@ -321,7 +321,8 @@ export class WebPEncoderBenchmark {
 		let compressionRatio = 0;
 		let successCount = 0;
 
-		const wasmImageType = imageType === 'complex' ? 'mixed' : imageType as 'line-art' | 'photo' | 'mixed';
+		const wasmImageType =
+			imageType === 'complex' ? 'mixed' : (imageType as 'line-art' | 'photo' | 'mixed');
 		const wasmOptions = WasmWebPEncoder.getOptimalOptions(wasmImageType, imageData.data.length);
 
 		for (let i = 0; i < config.iterations; i++) {

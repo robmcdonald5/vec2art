@@ -377,13 +377,10 @@
 <div>
 	<!-- Error display -->
 	{#if errorMessage}
-		<div class="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
-			<ErrorState
-				message={errorMessage}
-				size="sm"
-				inline={true}
-				center={false}
-			/>
+		<div
+			class="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950"
+		>
+			<ErrorState message={errorMessage} size="sm" inline={true} center={false} />
 		</div>
 	{/if}
 

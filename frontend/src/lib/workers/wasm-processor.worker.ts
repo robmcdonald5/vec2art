@@ -1214,8 +1214,10 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 				break;
 
 			case 'process':
-				console.log('[Worker] 🚨 Processing image with single-threaded WASM + Web Worker architecture');
-				
+				console.log(
+					'[Worker] 🚨 Processing image with single-threaded WASM + Web Worker architecture'
+				);
+
 				// Initialize WASM if not already initialized
 				if (!wasmInitialized) {
 					console.log('[Worker] 🔄 Initializing WASM module...');

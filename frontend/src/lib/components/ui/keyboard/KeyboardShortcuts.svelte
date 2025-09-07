@@ -15,6 +15,7 @@
 	}
 
 	interface Shortcut {
+		id: string;
 		key: string;
 		description: string;
 		action: () => void;
@@ -40,6 +41,7 @@
 	// Define keyboard shortcuts
 	const shortcuts = $derived<Shortcut[]>([
 		{
+			id: 'convert',
 			key: 'c',
 			displayKey: 'C',
 			description: 'Convert images',
@@ -47,6 +49,7 @@
 			enabled: canConvert && !isProcessing
 		},
 		{
+			id: 'download',
 			key: 'd',
 			displayKey: 'D',
 			description: 'Download current SVG',
@@ -54,6 +57,7 @@
 			enabled: canDownload && !isProcessing
 		},
 		{
+			id: 'reset',
 			key: 'r',
 			displayKey: 'R',
 			description: 'Reset converter',
@@ -61,6 +65,7 @@
 			enabled: !isProcessing
 		},
 		{
+			id: 'abort',
 			key: 'escape',
 			displayKey: 'Esc',
 			description: 'Abort processing',
@@ -68,6 +73,7 @@
 			enabled: isProcessing
 		},
 		{
+			id: 'add-more',
 			key: 'a',
 			displayKey: 'A',
 			description: 'Add more images',
@@ -75,6 +81,7 @@
 			enabled: !isProcessing
 		},
 		{
+			id: 'help',
 			key: 'h',
 			displayKey: 'H',
 			description: 'Show/hide keyboard shortcuts',
