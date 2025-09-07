@@ -1441,26 +1441,6 @@
 				Transform any raster image into expressive line art SVGs using advanced algorithms
 			</p>
 
-			<!-- Status Display -->
-			{#if !pageLoaded}
-				<div class="mt-4 flex justify-center">
-					<LoadingState 
-						message="Loading converter..."
-						size="sm"
-						inline={true}
-						center={true}
-					/>
-				</div>
-			{:else if initError}
-				<div class="mt-4 flex justify-center">
-					<ErrorState
-						message={initError}
-						size="sm"
-						inline={true}
-						center={true}
-					/>
-				</div>
-			{/if}
 		</header>
 
 		<!-- Dev Tools - Clear Persistence Button (TOP RIGHT) -->

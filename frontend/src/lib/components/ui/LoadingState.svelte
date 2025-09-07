@@ -43,12 +43,12 @@
 	aria-label={message}
 >
 	<Loader2 
-		class="text-ferrari-600 animate-spin {iconSizes[size]}" 
+		class="text-ferrari-600 animate-spin {iconSizes[size]} {size === 'lg' ? 'mx-auto' : ''}" 
 		aria-hidden="true" 
 	/>
 	{#if size === 'lg'}
-		<h2 class="mb-2 font-bold text-gray-800 {textSizes[size]}">{message}</h2>
-		<p class="text-gray-600">
+		<h2 class="mb-2 font-bold text-gray-800 text-center {textSizes[size]}">{message}</h2>
+		<p class="text-gray-600 text-center">
 			<slot name="subtitle">
 				Please wait while we process your request
 			</slot>

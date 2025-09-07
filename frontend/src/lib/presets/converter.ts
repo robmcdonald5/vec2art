@@ -93,7 +93,7 @@ function mapStrokeWidth(preset: StylePreset): number {
 	// Use config value or default based on backend
 	const defaults = {
 		edge: 1.5,
-		centerline: 0.8,
+		centerline: 1.0, // Updated to match new default
 		dots: 1.0,
 		superpixel: 1.5
 	};
