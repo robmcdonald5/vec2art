@@ -7,7 +7,8 @@
 		User,
 		MessageSquare,
 		Bug,
-		AlertTriangle
+		AlertTriangle,
+		CheckCircle
 	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { PUBLIC_FORMSPARK_ENDPOINT_ID, PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';

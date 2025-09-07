@@ -46,56 +46,14 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 	// Always attempt threading setup, even if WASM was previously initialized
 	let wasmInitializationNeeded = !wasmInitialized;
 
-	// Check if threading is available (used in return statement)
-	const hasThreadSupport =
-		typeof wasmModule.initThreadPool === 'function' && typeof SharedArrayBuffer !== 'undefined';
-
 	if (wasmInitializationNeeded) {
 		try {
-			devLog('wasm_operations', 'Initializing WASM module');
+			devLog('wasm_operations', 'Initializing WASM module (single-threaded + Web Worker)');
 
-			// Step 1: Initialize WASM module (proper wasm-bindgen-rayon pattern)
+			// Initialize WASM module (single-threaded architecture)
 			await init();
-			console.log('[Worker] ✅ WASM module initialized');
+			console.log('[Worker] ✅ WASM module initialized (single-threaded + Web Worker)');
 
-			// Step 2: IMMEDIATELY initialize thread pool (critical timing from working examples)
-			if (config?.threadCount && config.threadCount > 1) {
-				console.log(
-					`[Worker] 🚀 Following proper wasm-bindgen-rayon pattern: init() → initThreadPool(${config.threadCount})`
-				);
-
-				if (hasThreadSupport) {
-					try {
-						// This is the critical sequence from working examples
-						await wasmModule.initThreadPool(config.threadCount);
-						console.log(
-							`[Worker] ✅ Thread pool initialized successfully with ${config.threadCount} threads`
-						);
-
-						// Confirm success
-						if (typeof wasmModule.confirm_threading_success === 'function') {
-							wasmModule.confirm_threading_success();
-						}
-
-						console.log(
-							`[Worker] 🧵 Active threads: ${wasmModule.get_thread_count ? wasmModule.get_thread_count() : 'Unknown'}`
-						);
-					} catch (threadError) {
-						console.error(`[Worker] ❌ Thread pool initialization failed:`, threadError);
-						console.log('[Worker] 🔧 Falling back to single-threaded mode');
-
-						if (typeof wasmModule.mark_threading_failed === 'function') {
-							wasmModule.mark_threading_failed();
-						}
-					}
-				} else {
-					console.log('[Worker] ⚠️ Threading not supported, using single-threaded mode');
-				}
-			} else {
-				console.log('[Worker] Single-threaded mode (threadCount <= 1)');
-			}
-
-			// Step 3: Skip GPU initialization in Web Worker context
 			// GPU operations require main thread context and cannot run in Web Workers
 			console.log('[Worker] ℹ️ Skipping GPU initialization (Web Worker uses CPU processing)');
 			console.log('[Worker] ✅ CPU-only processing enabled for Web Worker compatibility');
@@ -109,34 +67,7 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 			};
 		}
 	} else {
-		console.log('[Worker] 🔧 WASM already initialized, attempting threading reconfiguration');
-
-		// For already-initialized WASM, attempt threading reconfiguration
-		console.log('[Worker] 🔍 Threading reconfiguration check:');
-		console.log('  config?.threadCount:', config?.threadCount);
-		console.log('  threadCount > 1:', config?.threadCount && config.threadCount > 1);
-		console.log('  hasThreadSupport:', hasThreadSupport);
-		console.log('  typeof wasmModule.initThreadPool:', typeof wasmModule.initThreadPool);
-		console.log('  typeof SharedArrayBuffer:', typeof SharedArrayBuffer);
-
-		if (config?.threadCount && config.threadCount > 1) {
-			if (hasThreadSupport) {
-				try {
-					console.log(`[Worker] 🔄 Reconfiguring threading: ${config.threadCount} threads`);
-					await wasmModule.initThreadPool(config.threadCount);
-					console.log(`[Worker] ✅ Threading reconfigured successfully`);
-
-					if (typeof wasmModule.confirm_threading_success === 'function') {
-						wasmModule.confirm_threading_success();
-					}
-				} catch (threadError) {
-					console.error(`[Worker] ❌ Threading reconfiguration failed:`, threadError);
-					if (typeof wasmModule.mark_threading_failed === 'function') {
-						wasmModule.mark_threading_failed();
-					}
-				}
-			}
-		}
+		console.log('[Worker] 🔧 WASM already initialized (single-threaded + Web Worker)');
 	}
 
 	// Return success
@@ -144,9 +75,9 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 		return {
 			success: true,
 			message: wasmInitializationNeeded
-				? 'WASM and threading initialized successfully'
-				: 'Threading configured successfully',
-			threading: hasThreadSupport && config?.threadCount ? config.threadCount : 1
+				? 'WASM module initialized successfully (single-threaded + Web Worker)'
+				: 'WASM already initialized (single-threaded + Web Worker)',
+			threading: 1 // Single-threaded architecture
 		};
 	} catch (threadError) {
 		console.error('[Worker] Threading setup failed:', threadError);
@@ -280,25 +211,8 @@ async function configureVectorizer(config: any) {
 
 	console.log('[Worker] Configuring vectorizer with:', JSON.stringify(config, null, 2));
 
-	// Check if we need to initialize threading
-	if (config.thread_count > 1 && typeof wasmModule.get_thread_count === 'function') {
-		const currentThreads = wasmModule.get_thread_count();
-		console.log('[Worker] 🧵 Current thread count:', currentThreads);
-
-		if (currentThreads === 1) {
-			console.log('[Worker] 🔄 Initializing threading with', config.thread_count, 'threads...');
-
-			try {
-				await initializeWasm({
-					threadCount: config.thread_count,
-					backend: config.backend
-				});
-				console.log('[Worker] ✅ Threading initialization completed');
-			} catch (error) {
-				console.warn('[Worker] ⚠️ Threading initialization failed:', error);
-			}
-		}
-	}
+	// Single-threaded architecture - no threading configuration needed
+	console.log('[Worker] 🧵 Using single-threaded architecture with Web Worker');
 
 	// Apply dots backend configuration
 	if (config.backend === 'dots') {
@@ -1300,40 +1214,13 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 				break;
 
 			case 'process':
-				console.log('[Worker] 🚨 PROCESS CASE ENTERED - STARTING THREADING DEBUG');
-				// Debug threading check
-				console.log('[Worker] 🔍 Threading check debug:');
-				console.log('  wasmInitialized:', wasmInitialized);
-				console.log('  payload.config?.thread_count:', payload.config?.thread_count);
-				console.log('  typeof wasmModule.get_thread_count:', typeof wasmModule.get_thread_count);
-				if (typeof wasmModule.get_thread_count === 'function') {
-					console.log('  wasmModule.get_thread_count():', wasmModule.get_thread_count());
-				}
-
-				// Check if we need to reinitialize with threading
-				const wasmNotInit = !wasmInitialized;
-				const hasThreadCount = payload.config?.thread_count > 1;
-				const hasThreadCountFunc = typeof wasmModule.get_thread_count === 'function';
-				const currentThreadCount = hasThreadCountFunc ? wasmModule.get_thread_count() : 0;
-				const isSingleThreaded = currentThreadCount === 1;
-				const needsThreadInit =
-					wasmNotInit || (hasThreadCount && hasThreadCountFunc && isSingleThreaded);
-
-				console.log('[Worker] 🔍 Threading condition breakdown:');
-				console.log('  !wasmInitialized:', wasmNotInit);
-				console.log('  thread_count > 1:', hasThreadCount);
-				console.log('  has get_thread_count:', hasThreadCountFunc);
-				console.log('  current threads:', currentThreadCount);
-				console.log('  is single threaded:', isSingleThreaded);
-				console.log('[Worker] 🔍 Needs thread initialization:', needsThreadInit);
-
-				if (needsThreadInit) {
-					console.log('[Worker] 🔄 Reinitializing WASM with threading support...');
-					const reinitResult = await initializeWasm({
-						threadCount: payload.config?.thread_count || 4,
-						backend: payload.config?.backend
-					});
-					console.log('[Worker] 🔄 Reinitialization result:', reinitResult);
+				console.log('[Worker] 🚨 Processing image with single-threaded WASM + Web Worker architecture');
+				
+				// Initialize WASM if not already initialized
+				if (!wasmInitialized) {
+					console.log('[Worker] 🔄 Initializing WASM module...');
+					const initResult = await initializeWasm(payload.config);
+					console.log('[Worker] 🔄 Initialization result:', initResult);
 				}
 
 				// Create vectorizer with image data

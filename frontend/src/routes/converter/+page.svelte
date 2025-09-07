@@ -97,7 +97,7 @@
 	// Accessibility announcements
 	let announceText = $state('');
 
-	function announceToScreenReader(message: string) {
+	function announceToScreenReader(message: string, priority?: 'polite' | 'assertive') {
 		announceText = message;
 		setTimeout(() => {
 			announceText = '';

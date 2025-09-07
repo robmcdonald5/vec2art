@@ -21,9 +21,9 @@
 	let isOpen = $state(false);
 	let showTooltip = $state(false);
 	let hoveredMode: SettingsSyncMode | null = $state(null);
-	let dropdownElement: HTMLDivElement;
-	let triggerElement: HTMLButtonElement;
-	let tooltipElement: HTMLDivElement;
+	let dropdownElement: HTMLDivElement = $state()!;
+	let triggerElement: HTMLButtonElement = $state()!;
+	let tooltipElement: HTMLDivElement = $state()!;
 
 	// Get the selected mode info
 	const selectedMode = $derived(SETTINGS_SYNC_MODES[currentMode]);

@@ -23,9 +23,9 @@
 		scaleSmoothing = 1200
 	}: Props = $props();
 
-	let containerEl: HTMLDivElement;
-	let imgEl: HTMLImageElement;
-	let isDragging = false;
+	let containerEl: HTMLDivElement = $state()!;
+	let imgEl: HTMLImageElement = $state()!;
+	let isDragging = $state(false);
 	let startX = 0;
 	let startY = 0;
 
@@ -87,14 +87,14 @@
 	});
 </script>
 
-<div bind:this={containerEl} class="relative h-full w-full overflow-hidden" on:wheel={handleWheel}>
+<div bind:this={containerEl} class="relative h-full w-full overflow-hidden" onwheel={handleWheel}>
 	<img
 		bind:this={imgEl}
 		{src}
 		{alt}
 		class="absolute inset-0 m-auto max-h-full max-w-full origin-center transition-transform duration-0"
 		style="cursor: {isDragging ? 'grabbing' : 'grab'};"
-		on:mousedown={handleMouseDown}
+		onmousedown={handleMouseDown}
 		draggable="false"
 	/>
 </div>
