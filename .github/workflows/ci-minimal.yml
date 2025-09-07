@@ -74,6 +74,7 @@ jobs:
           export PATH="$HOME/.cargo/bin:$PATH"
           chmod +x ./rebuild-wasm.sh
           ./rebuild-wasm.sh
+          echo "✅ WASM build completed successfully"
         shell: bash
         working-directory: .
       
