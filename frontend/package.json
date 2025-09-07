@@ -5,8 +5,10 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
-		"build:clean": "vite build && echo Build completed successfully",
+		"build": "npm run build:wasm && vite build",
+		"build:clean": "npm run build:wasm && vite build && echo Build completed successfully",
+		"build:frontend-only": "vite build",
+		"build:wasm": "cd .. && bash ./rebuild-wasm.sh",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

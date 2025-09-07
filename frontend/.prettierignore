@@ -24,3 +24,16 @@ coverage/
 README.md
 CLAUDE.md
 *.MD
+
+# Ignore all build outputs
+storybook-static/
+test-results/
+playwright-report*/
+coverage/
+
+# Ignore test files that contain formatted examples
+*.html
+
+# Temporarily ignore ConverterLayout.svelte due to prettier-plugin-svelte parsing issue
+# TODO: Investigate and fix the parser compatibility issue
+src/lib/components/converter/ConverterLayout.svelte

@@ -177,6 +177,15 @@
 			onParameterChange();
 		};
 	}
+
+	// Helper function to generate performance button classes
+	function getPerformanceButtonClass(mode: PerformanceMode): string {
+		const baseClass = 'rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none';
+		const activeClass = 'bg-blue-600 text-white';
+		const inactiveClass = 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600';
+		
+		return `${baseClass} ${currentPerformanceMode === mode ? activeClass : inactiveClass}`;
+	}
 </script>
 
 <!-- Screen reader announcements -->
@@ -351,10 +360,7 @@
 								class="grid grid-cols-2 gap-2 rounded-md bg-gray-100 p-1 lg:grid-cols-4 dark:bg-gray-800"
 							>
 								<button
-									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
-									'economy'
-										? 'bg-blue-600 text-white'
-										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class={getPerformanceButtonClass('economy')}
 									onclick={() => clickPerformanceMode('economy')}
 									disabled={isProcessing}
 									type="button"
@@ -362,10 +368,7 @@
 									Economy
 								</button>
 								<button
-									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
-									'balanced'
-										? 'bg-blue-600 text-white'
-										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class={getPerformanceButtonClass('balanced')}
 									onclick={() => clickPerformanceMode('balanced')}
 									disabled={isProcessing}
 									type="button"
@@ -373,10 +376,7 @@
 									Balanced
 								</button>
 								<button
-									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
-									'performance'
-										? 'bg-blue-600 text-white'
-										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class={getPerformanceButtonClass('performance')}
 									onclick={() => clickPerformanceMode('performance')}
 									disabled={isProcessing}
 									type="button"
@@ -385,14 +385,12 @@
 									Performance
 								</button>
 								<button
-									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
-									'custom'
-										? 'bg-blue-600 text-white'
-										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class={getPerformanceButtonClass('custom')}
 									onclick={() => clickPerformanceMode('custom')}
 									disabled={isProcessing}
 									type="button"
 								>
+									<Cpu class="mr-1 inline h-3 w-3" />
 									Custom
 								</button>
 							</div>
@@ -443,7 +441,6 @@
 							</div>
 						{/if}
 					</fieldset>
-					</div>
 
 					<!-- Parameter Panel -->
 					<ParameterPanel {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />

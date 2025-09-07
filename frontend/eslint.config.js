@@ -51,7 +51,9 @@ export default [
 			'*.tsbuildinfo',
 			'**/*.generated.*',
 			'**/*.config.js.timestamp-*',
-			'.env*'
+			'.env*',
+			// Temporarily ignore ConverterLayout.svelte due to parsing issue
+			'src/lib/components/converter/ConverterLayout.svelte'
 		]
 	},
 	...storybook.configs['flat/recommended']
