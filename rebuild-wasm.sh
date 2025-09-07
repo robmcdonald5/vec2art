@@ -27,6 +27,53 @@ if [ $? -eq 0 ]; then
     cp pkg/vectorize_wasm_bg.wasm ../../frontend/src/lib/wasm/
     cp pkg/vectorize_wasm_bg.wasm.d.ts ../../frontend/src/lib/wasm/
     
+    # Ensure __wbindgen_placeholder__.js exists (critical for imports)
+    if [ ! -f "../../frontend/src/lib/wasm/__wbindgen_placeholder__.js" ]; then
+        echo "  → Creating __wbindgen_placeholder__.js..."
+        cp ../../frontend/src/lib/wasm/__wbindgen_placeholder__.js ../../frontend/src/lib/wasm/__wbindgen_placeholder__.js 2>/dev/null || \
+        echo "// wasm-bindgen placeholder file
+// This file provides stub implementations for wasm-bindgen functions when not using a bundler
+// Required for direct browser usage with --target web builds
+
+// Core wasm-bindgen functions that WASM modules expect
+export function __wbindgen_describe() {
+    // Stub implementation - returns empty descriptor
+    return 0;
+}
+
+export function __wbindgen_describe_closure() {
+    // Stub implementation for closure descriptions
+    return 0;
+}
+
+export function __wbindgen_string_new() {
+    // Stub implementation for string creation
+    return 0;
+}
+
+export function __wbindgen_number_new() {
+    // Stub implementation for number creation  
+    return 0;
+}
+
+export function __wbindgen_boolean_new() {
+    // Stub implementation for boolean creation
+    return 0;
+}
+
+export function __wbindgen_object_drop_ref() {
+    // Stub implementation for object cleanup
+}
+
+export function __wbindgen_cb_drop() {
+    // Stub implementation for callback cleanup
+    return 0;
+}
+
+// Export empty default for compatibility
+export default {};" > ../../frontend/src/lib/wasm/__wbindgen_placeholder__.js
+    fi
+    
     # Copy snippets directory if it exists (conditional for different WASM builds)
     if [ -d "pkg/snippets" ]; then
         echo "📁 Copying snippets directory..."
