@@ -122,7 +122,7 @@ struct CachedPathData {
 }
 
 /// Available tracing backends for low-detail vectorization
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum TraceBackend {
     /// Canny edge detection + contour following (sparse outlines)
     Edge,
@@ -621,7 +621,7 @@ pub fn vectorize_trace_low_multipass(
         let mut pass_config = config.clone();
         // Use base detail of 0.1 if config.detail is 0.0 to avoid multiplication by zero
         let base_detail = if config.detail < 0.01 { 0.1 } else { config.detail };
-        pass_config.detail = (base_detail * detail_multiplier).clamp(0.1, 2.0);
+        pass_config.detail = (base_detail * detail_multiplier).clamp(0.1, 1.0);
         pass_config.enable_multipass = false; // Prevent recursion
         pass_config.pass_count = 1; // Each individual pass is single-pass
         // Disable directional passes for individual multipass iterations to avoid conflicts
@@ -876,8 +876,7 @@ fn trace_edge(
         let phase_start = Instant::now();
 
         // Use configurable bilateral filter parameters
-        // Optimize spatial sigma for performance while maintaining quality
-        let spatial_sigma = config.noise_filter_spatial_sigma.min(1.5); // Force fast path for better performance
+        let spatial_sigma = config.noise_filter_spatial_sigma; // Respect user configuration
         let range_sigma = config.noise_filter_range_sigma;
 
         let filtered = bilateral_filter(&preprocessed_gray, spatial_sigma, range_sigma);
@@ -2837,15 +2836,11 @@ fn trace_dots(
     log::info!("Running dots backend");
     let total_start = Instant::now();
 
-    // Create DotConfig from TraceLowConfig with safety validation
-    let safe_min_radius = config.dot_min_radius.clamp(0.1, 10.0);
-    let safe_max_radius = config.dot_max_radius.clamp(safe_min_radius, 50.0);
-    let safe_density = config.dot_density_threshold.clamp(0.001, 0.999); // Avoid extreme values
-    
+    // Create DotConfig from TraceLowConfig - trust parameter validation
     let dot_config = DotConfig {
-        min_radius: safe_min_radius,
-        max_radius: safe_max_radius,
-        density_threshold: safe_density,
+        min_radius: config.dot_min_radius,
+        max_radius: config.dot_max_radius, 
+        density_threshold: config.dot_density_threshold,
         preserve_colors: config.dot_preserve_colors,
         adaptive_sizing: config.dot_adaptive_sizing,
         spacing_factor: 1.5, // Fixed reasonable default
@@ -2887,8 +2882,8 @@ fn trace_dots(
         // Convert to grayscale for noise filtering
         let gray = DynamicImage::ImageRgba8(image.clone()).to_luma8();
 
-        // Use configurable bilateral filter parameters
-        let spatial_sigma = config.noise_filter_spatial_sigma.min(1.5); // Force fast path for better performance
+        // Use configurable bilateral filter parameters  
+        let spatial_sigma = config.noise_filter_spatial_sigma; // Respect user configuration
         let range_sigma = config.noise_filter_range_sigma;
 
         let filtered_gray = bilateral_filter(&gray, spatial_sigma, range_sigma);
