@@ -9,6 +9,15 @@
 	import { mapUIConfigToDotsConfig, validateDotsConfig } from '$lib/utils/dots-mapping.js';
 	import type { UISliderConfig } from '$lib/types/dots-backend.js';
 
+	// Import generated parameter types and validation
+	import { 
+		validateLegacyConfig,
+		processConfigWithGenerated,
+		type ValidationResult,
+		type EnhancedConfigResult
+	} from '$lib/types/parameter-adapter';
+	import { getParameterMetadata } from '$lib/types/generated-parameters';
+
 	interface ParameterPanelProps {
 		config: VectorizerConfig;
 		// eslint-disable-next-line no-unused-vars
@@ -24,10 +33,29 @@
 		onParameterChange
 	}: ParameterPanelProps = $props();
 
-	// Convert internal 0.1-1.0 detail to 1-10 UI range
-	// FIXED: Higher UI numbers = higher detail (higher internal values for proper mapping)
-	const detailToUI = (detail: number) => Math.round(((detail - 0.1) / 0.9) * 9 + 1); // detail 0.1 → UI 1, detail 1.0 → UI 10
-	const detailFromUI = (uiValue: number) => 0.1 + ((uiValue - 1) / 9) * 0.9; // UI 1 → detail 0.1, UI 10 → detail 1.0
+	// Enhanced validation using generated parameter registry
+	let validationResult: EnhancedConfigResult = $derived(processConfigWithGenerated(config));
+	let hasValidationErrors = $derived(validationResult.errors.length > 0);
+	let hasValidationWarnings = $derived(validationResult.warnings.length > 0);
+
+	// Get parameter metadata for dynamic ranges and validation
+	const detailMetadata = $derived(getParameterMetadata('detail'));
+	const strokeMetadata = $derived(getParameterMetadata('stroke_px_at_1080p'));
+	const noiseFilterSpatialMetadata = $derived(getParameterMetadata('noise_filter_spatial_sigma'));
+	const noiseFilterRangeMetadata = $derived(getParameterMetadata('noise_filter_range_sigma'));
+
+	// Convert detail using metadata ranges instead of hardcoded values
+	// UI: 1-10 scale, Internal: uses metadata min/max
+	const detailToUI = (detail: number) => {
+		if (!detailMetadata) return Math.round(detail * 10);
+		const { min, max } = detailMetadata;
+		return Math.round(((detail - min) / (max - min)) * 9 + 1);
+	};
+	const detailFromUI = (uiValue: number) => {
+		if (!detailMetadata) return uiValue / 10;
+		const { min, max } = detailMetadata;
+		return min + ((uiValue - 1) / 9) * (max - min);
+	};
 
 	function handleInitializationPatternChange(value: string) {
 		console.log(`[ParameterPanel] Initialization pattern changed to: ${value}`);
@@ -167,6 +195,32 @@
 </script>
 
 <section class="space-y-6">
+	<!-- Parameter Validation Status -->
+	{#if hasValidationErrors || hasValidationWarnings}
+		<div class="space-y-2 rounded-lg border p-3">
+			{#if hasValidationErrors}
+				<div class="text-sm text-red-600 dark:text-red-400">
+					<div class="font-medium">Configuration Errors:</div>
+					<ul class="mt-1 list-inside list-disc space-y-1">
+						{#each validationResult.errors as error}
+							<li>{error.field}: {error.message}</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+			{#if hasValidationWarnings}
+				<div class="text-sm text-amber-600 dark:text-amber-400">
+					<div class="font-medium">Configuration Warnings:</div>
+					<ul class="mt-1 list-inside list-disc space-y-1">
+						{#each validationResult.warnings as warning}
+							<li>{warning.field}: {warning.message}</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+		</div>
+	{/if}
+
 	<!-- Core Parameters (Always Visible) -->
 	<div class="space-y-4">
 		<!-- Detail Level (Edge/Centerline backends only) -->
@@ -339,8 +393,8 @@
 			<FerrariSlider
 				id="stroke-width"
 				bind:value={strokeWidthValue}
-				min={0.5}
-				max={10.0}
+				min={strokeMetadata?.min ?? 0.5}
+				max={strokeMetadata?.max ?? 10.0}
 				step={0.1}
 				oninput={(value) => {
 					// PROPER ARCHITECTURE: Always use generic parameters
@@ -558,8 +612,8 @@
 						<FerrariSlider
 							id="spatial-sigma"
 							bind:value={spatialSigmaValue}
-							min={0.5}
-							max={1.5}
+							min={noiseFilterSpatialMetadata?.min ?? 0.5}
+							max={noiseFilterSpatialMetadata?.max ?? 1.5}
 							step={0.1}
 							oninput={(value) => {
 								onConfigChange({ noise_filter_spatial_sigma: value });
@@ -591,8 +645,8 @@
 						<FerrariSlider
 							id="range-sigma"
 							bind:value={rangeSigmaValue}
-							min={10}
-							max={100}
+							min={noiseFilterRangeMetadata?.min ?? 10}
+							max={noiseFilterRangeMetadata?.max ?? 100}
 							step={5}
 							oninput={(value) => {
 								onConfigChange({ noise_filter_range_sigma: value });
