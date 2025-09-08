@@ -26,24 +26,24 @@
 		showcaseItems = [
 			{
 				id: 1,
-				title: 'Logo Conversion',
+				title: 'Portrait Sketching',
 				algorithm: 'Edge Detection',
-				beforeImage: '/gallery-stock-before.png',
-				afterImage: '/gallery-stock-after.svg'
+				beforeImage: '/gallery/before/portraits-real/girl-beach.webp',
+				afterImage: '/gallery/after-webp/portraits-real/girl-beach(edgetracing).webp'
 			},
 			{
 				id: 2,
-				title: 'Portrait Art',
-				algorithm: 'Centerline',
-				beforeImage: '/gallery-stock-before.png',
-				afterImage: '/gallery-stock-after.svg'
+				title: 'Modern Portraits',
+				algorithm: 'Superpixel',
+				beforeImage: '/gallery/before/portraits-real/pool-hall.avif',
+				afterImage: '/gallery/after-webp/portraits-real/pool-hall(superpixel).webp'
 			},
 			{
 				id: 3,
-				title: 'Abstract Design',
-				algorithm: 'Superpixel',
-				beforeImage: '/gallery-stock-before.png',
-				afterImage: '/gallery-stock-after.svg'
+				title: 'Character Art',
+				algorithm: 'Edge Detection',
+				beforeImage: '/gallery/before/portraits-real/robert-knox.avif',
+				afterImage: '/gallery/after-webp/portraits-real/robert-knox(edgetracing).webp'
 			}
 		],
 		autoPlay = false,

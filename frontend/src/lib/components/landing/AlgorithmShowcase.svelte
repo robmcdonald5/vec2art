@@ -222,7 +222,7 @@
 					<BeforeAfterSlider
 						beforeImage={selectedAlgorithm.beforeImage}
 						afterImage={selectedAlgorithm.afterImage}
-						loading="lazy"
+						loading={isInitialized && selectedAlgorithm === algorithms[0] ? "eager" : "lazy"}
 						class="h-full w-full"
 					/>
 				</div>
