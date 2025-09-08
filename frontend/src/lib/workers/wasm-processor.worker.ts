@@ -595,14 +595,13 @@ async function configureVectorizer(config: any) {
 			}
 		}
 
-		// Initialization pattern configuration (superpixel backend)
-		const initPattern = config.superpixel_initialization_pattern || config.initialization_pattern;
+		// Superpixel initialization pattern configuration
 		if (
-			typeof initPattern === 'string' &&
-			typeof vectorizer.set_initialization_pattern === 'function'
+			typeof config.superpixel_initialization_pattern === 'string' &&
+			typeof vectorizer.set_superpixel_initialization_pattern === 'function'
 		) {
-			console.log('[Worker] Setting initialization_pattern:', initPattern);
-			vectorizer.set_initialization_pattern(initPattern);
+			console.log('[Worker] Setting superpixel_initialization_pattern:', config.superpixel_initialization_pattern);
+			vectorizer.set_superpixel_initialization_pattern(config.superpixel_initialization_pattern);
 		}
 
 		// Unified color configuration for superpixel backend
