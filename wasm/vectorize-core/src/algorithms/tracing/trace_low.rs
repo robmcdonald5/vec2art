@@ -2189,8 +2189,11 @@ fn initialize_cluster_centers(
     let mut clusters = Vec::new();
     let mut cluster_id = 0;
 
+    log::info!("🎯 Initializing cluster centers with pattern: {:?}", pattern);
+    
     match pattern {
         SuperpixelInitPattern::Square => {
+            log::info!("🎯 Executing SQUARE pattern initialization");
             // Traditional square grid initialization
             for y in (s / 2..height).step_by(s) {
                 for x in (s / 2..width).step_by(s) {
@@ -2221,6 +2224,7 @@ fn initialize_cluster_centers(
             }
         },
         SuperpixelInitPattern::Hexagonal => {
+            log::info!("🎯 Executing HEXAGONAL pattern initialization");
             // Hexagonal packing to reduce diagonal artifacts
             let hex_height = (s as f32 * 0.866).round() as usize; // sqrt(3)/2 ≈ 0.866
             let mut row = 0;
@@ -2257,6 +2261,7 @@ fn initialize_cluster_centers(
             }
         },
         SuperpixelInitPattern::Poisson => {
+            log::info!("🎯 Executing POISSON pattern initialization");
             // Poisson disk sampling for random but well-distributed points
             use std::collections::HashSet;
             
@@ -2361,6 +2366,10 @@ fn slic_segmentation(
     max_iterations: usize,
     initialization_pattern: SuperpixelInitPattern,
 ) -> Vec<usize> {
+    // DEBUG: Log the initialization pattern being used
+    log::info!("🎯 SLIC Segmentation: Using initialization pattern: {:?} for {}x{} image with {} superpixels", 
+               initialization_pattern, width, height, num_superpixels);
+    
     // Calculate initial grid spacing
     let total_pixels = width * height;
     let s = ((total_pixels as f32 / num_superpixels as f32).sqrt()) as usize;

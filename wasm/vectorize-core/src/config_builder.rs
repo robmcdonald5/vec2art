@@ -450,8 +450,10 @@ impl ConfigBuilder {
 
     /// Set superpixel initialization pattern: "square", "hexagonal", or "poisson"
     pub fn superpixel_initialization_pattern(mut self, pattern: &str) -> ConfigBuilderResult<Self> {
+        log::info!("🔧 ConfigBuilder: Setting superpixel_initialization_pattern to: {}", pattern);
         self.validate_superpixel_initialization_pattern(pattern)?;
         self.superpixel_initialization_pattern = Some(pattern.to_string());
+        log::info!("✅ ConfigBuilder: Superpixel initialization pattern set successfully");
         Ok(self)
     }
     
@@ -656,12 +658,17 @@ impl ConfigBuilder {
             config.superpixel_slic_iterations = iterations;
         }
         if let Some(pattern) = &self.superpixel_initialization_pattern {
-            config.superpixel_initialization_pattern = match pattern.as_str() {
+            let enum_pattern = match pattern.as_str() {
                 "square" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Square,
                 "hexagonal" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal,
                 "poisson" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson,
-                _ => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson, // Default to Poisson (best for artifacts)
+                _ => {
+                    log::warn!("🚨 ConfigBuilder: Unknown pattern '{}', defaulting to Poisson", pattern);
+                    crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson
+                }
             };
+            log::info!("🔧 ConfigBuilder: Converted pattern '{}' to enum: {:?}", pattern, enum_pattern);
+            config.superpixel_initialization_pattern = enum_pattern;
         }
         if let Some(fill) = self.fill_regions {
             config.superpixel_fill_regions = fill;
@@ -704,12 +711,17 @@ impl ConfigBuilder {
             config.superpixel_slic_iterations = iterations;
         }
         if let Some(pattern) = &self.superpixel_initialization_pattern {
-            config.superpixel_initialization_pattern = match pattern.as_str() {
+            let enum_pattern = match pattern.as_str() {
                 "square" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Square,
                 "hexagonal" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal,
                 "poisson" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson,
-                _ => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson, // Default to Poisson (best for artifacts)
+                _ => {
+                    log::warn!("🚨 ConfigBuilder: Unknown pattern '{}', defaulting to Poisson", pattern);
+                    crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson
+                }
             };
+            log::info!("🔧 ConfigBuilder: Converted pattern '{}' to enum: {:?}", pattern, enum_pattern);
+            config.superpixel_initialization_pattern = enum_pattern;
         }
         if let Some(fill) = self.fill_regions {
             config.superpixel_fill_regions = fill;
