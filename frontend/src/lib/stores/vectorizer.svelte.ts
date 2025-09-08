@@ -15,7 +15,7 @@ import type {
 	VectorizerPreset,
 	VectorizerBackend
 } from '$lib/types/vectorizer';
-import { DEFAULT_CONFIG as defaultConfig, PRESET_CONFIGS } from '$lib/types/vectorizer';
+import { DEFAULT_CONFIG as defaultConfig, PRESET_CONFIGS, getDefaultConfigForBackend } from '$lib/types/vectorizer';
 
 interface InitializationOptions {
 	threadCount?: number;
@@ -42,53 +42,12 @@ class VectorizerStore {
 	});
 
 	// Per-algorithm configuration state to prevent slider overlap/sharing
+	// Use centralized getDefaultConfigForBackend to ensure consistency
 	private _algorithmConfigs = $state<Record<VectorizerBackend, VectorizerConfig>>({
-		edge: {
-			...defaultConfig,
-			backend: 'edge' as const,
-			detail: 0.8,
-			stroke_width: 1.5,
-			hand_drawn_preset: 'none' as const,
-			variable_weights: 0.0,
-			tremor_strength: 0.0,
-			tapering: 0.0
-		},
-		centerline: {
-			...defaultConfig,
-			backend: 'centerline' as const,
-			detail: 0.6, // UI value 6 - moderate detail for skeleton extraction
-			stroke_width: 1.0, // Standard line width
-			enable_adaptive_threshold: true,
-			window_size: 25,
-			sensitivity_k: 0.4,
-			min_branch_length: 8,
-			douglas_peucker_epsilon: 1.0
-		},
-		superpixel: {
-			...defaultConfig,
-			backend: 'superpixel' as const,
-			detail: 0.2, // Not used by superpixel but kept for consistency
-			stroke_width: 1.5,
-			preserve_colors: true, // Enable colors by default for superpixel
-			num_superpixels: 250,
-			compactness: 15,
-			slic_iterations: 10,
-			superpixel_initialization_pattern: 'poisson' as const
-		},
-		dots: {
-			...defaultConfig,
-			backend: 'dots' as const,
-			detail: 0.8, // UI value 8 (consistent with dot density)
-			stroke_width: 1.0,
-			dot_density_threshold: 0.105, // UI value 8: better balance of detail and performance
-			min_radius: 0.5,
-			max_radius: 3.0,
-			adaptive_sizing: true,
-			background_tolerance: 0.1,
-			poisson_disk_sampling: false, // Disabled by default for better performance and stability
-			gradient_based_sizing: true,
-			preserve_colors: true // Enable colors by default for dots
-		}
+		edge: getDefaultConfigForBackend('edge'),
+		centerline: getDefaultConfigForBackend('centerline'),
+		superpixel: getDefaultConfigForBackend('superpixel'),
+		dots: getDefaultConfigForBackend('dots')
 	});
 
 	// Track initialization state separately
@@ -383,68 +342,11 @@ class VectorizerStore {
 
 	/**
 	 * Get default configuration for a specific backend
+	 * Use the centralized getDefaultConfigForBackend from types/vectorizer.ts
 	 */
 	private _getDefaultConfigForBackend(backend: VectorizerBackend): VectorizerConfig {
-		const baseConfig = { ...defaultConfig, backend };
-
-		switch (backend) {
-			case 'edge':
-				return {
-					...baseConfig,
-					detail: 0.8,
-					stroke_width: 1.5,
-					hand_drawn_preset: 'none',
-					variable_weights: 0.0,
-					tremor_strength: 0.0,
-					tapering: 0.0
-				};
-			case 'centerline':
-				return {
-					...baseConfig,
-					detail: 0.3,
-					stroke_width: 0.8,
-					enable_adaptive_threshold: true,
-					window_size: 25,
-					sensitivity_k: 0.4,
-					min_branch_length: 8,
-					douglas_peucker_epsilon: 1.0
-				};
-			case 'superpixel':
-				return {
-					...baseConfig,
-					detail: 0.2,
-					stroke_width: 1.5,
-					num_superpixels: 250,
-					compactness: 15,
-					slic_iterations: 10,
-					superpixel_initialization_pattern: 'poisson'
-				};
-			case 'dots':
-				return {
-					...baseConfig,
-					detail: 0.8, // UI value 8 (consistent with dot density)
-					stroke_width: 1.0,
-					dot_density_threshold: 0.105, // UI value 8: better balance of detail and performance
-					min_radius: 0.5,
-					max_radius: 3.0,
-					adaptive_sizing: true,
-					background_tolerance: 0.1,
-					poisson_disk_sampling: false, // Disabled by default for better performance and stability
-					gradient_based_sizing: true,
-					preserve_colors: true
-				};
-			default:
-				// Fallback to edge backend configuration for any unexpected backend value
-				return {
-					...baseConfig,
-					detail: 0.8,
-					stroke_width: 1.5,
-					hand_drawn_preset: 'none',
-					variable_weights: 0.0,
-					tremor_strength: 0.0,
-					tapering: 0.0
-				};
-		}
+		// Use the centralized function which properly applies BACKEND_DEFAULTS
+		return getDefaultConfigForBackend(backend);
 	}
 
 	/**
@@ -1067,7 +969,14 @@ class VectorizerStore {
 			normalized.detail = Math.max(0, Math.min(1, normalized.detail));
 		}
 		if (typeof normalized.stroke_width === 'number') {
-			normalized.stroke_width = Math.max(0.1, Math.min(10, normalized.stroke_width));
+			// Apply intelligent scaling limit to prevent WASM crashes
+			// Large images (>2x 1080p) can cause stroke scaling issues, so limit to 5.0 max
+			const imageArea = (this._state.input_image?.width ?? 1920) * (this._state.input_image?.height ?? 1080);
+			const reference1080pArea = 1920 * 1080;
+			const areaRatio = imageArea / reference1080pArea;
+			
+			const dynamicMaxStroke = areaRatio > 4 ? 5.0 : areaRatio > 2 ? 7.0 : 10.0;
+			normalized.stroke_width = Math.max(0.1, Math.min(dynamicMaxStroke, normalized.stroke_width));
 		}
 		if (typeof normalized.pass_count === 'number') {
 			normalized.pass_count = Math.max(1, Math.min(10, Math.round(normalized.pass_count)));

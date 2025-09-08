@@ -25,12 +25,50 @@ export interface PanZoomSyncStore {
 	resetStates: () => void;
 	preserveStates: () => void;
 	restoreStates: () => void;
+	// Failsafe recovery
+	recoverFromCorruption: () => void;
 }
 
 const defaultState: PanZoomState = { scale: 1, x: 0, y: 0 };
 
 /**
- * Create a pan/zoom synchronization store
+ * Validate pan/zoom state and return a safe version
+ * This prevents UI from getting stuck in invalid states
+ */
+function validatePanZoomState(state: PanZoomState, fallbackState?: PanZoomState): PanZoomState {
+	// Check for invalid values that can break the UI
+	const isInvalid = 
+		!state ||
+		typeof state.scale !== 'number' ||
+		typeof state.x !== 'number' ||
+		typeof state.y !== 'number' ||
+		!isFinite(state.scale) ||
+		!isFinite(state.x) ||
+		!isFinite(state.y) ||
+		state.scale <= 0 ||
+		state.scale > 100 || // Extreme zoom out protection
+		Math.abs(state.x) > 50000 || // Extreme pan protection  
+		Math.abs(state.y) > 50000;
+
+	if (isInvalid) {
+		console.warn('🚨 [PanZoomStore] INVALID STATE DETECTED:', {
+			invalid: state,
+			fallback: fallbackState || defaultState,
+			reasons: {
+				notObject: !state,
+				invalidScale: typeof state.scale !== 'number' || !isFinite(state.scale) || state.scale <= 0 || state.scale > 100,
+				invalidX: typeof state.x !== 'number' || !isFinite(state.x) || Math.abs(state.x) > 50000,
+				invalidY: typeof state.y !== 'number' || !isFinite(state.y) || Math.abs(state.y) > 50000
+			}
+		});
+		return fallbackState || defaultState;
+	}
+
+	return state;
+}
+
+/**
+ * Create a pan/zoom synchronization store with update deduplication
  */
 export function createPanZoomSyncStore(): PanZoomSyncStore {
 	let originalState = $state<PanZoomState>({ ...defaultState });
@@ -40,6 +78,9 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 	// Preserved states for maintaining zoom/pan during conversions
 	let preservedOriginalState: PanZoomState | null = null;
 	let preservedConvertedState: PanZoomState | null = null;
+
+	// Update deduplication - prevent feedback loops when sync is enabled
+	let isUpdatingFromSync = false;
 
 	return {
 		get originalState() {
@@ -55,35 +96,93 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 		},
 
 		updateOriginalState(newState: PanZoomState) {
-			originalState = { ...newState };
+			// Prevent feedback loops - if we're already updating from sync, ignore this call
+			if (isUpdatingFromSync) {
+				console.log('[PanZoomStore] updateOriginalState: Ignoring update during sync operation');
+				return;
+			}
 
-			// If sync is enabled, update converted state too
+			// Validate state with fallback to default only (no cross-referencing to avoid loops)
+			const safeState = validatePanZoomState(newState);
+			
+			console.log('[PanZoomStore] updateOriginalState:', {
+				input: newState,
+				validated: safeState,
+				syncEnabled: isSyncEnabled,
+				isUpdatingFromSync,
+				prevOriginal: originalState,
+				prevConverted: convertedState
+			});
+			
+			originalState = { ...safeState };
+
+			// If sync is enabled, update converted state too (with deduplication flag)
 			if (isSyncEnabled) {
-				convertedState = { ...newState };
+				isUpdatingFromSync = true;
+				convertedState = { ...safeState };
+				console.log('[PanZoomStore] Sync enabled - also updated converted state to:', convertedState);
+				isUpdatingFromSync = false;
 			}
 		},
 
 		updateConvertedState(newState: PanZoomState) {
-			convertedState = { ...newState };
+			// Prevent feedback loops - if we're already updating from sync, ignore this call
+			if (isUpdatingFromSync) {
+				console.log('[PanZoomStore] updateConvertedState: Ignoring update during sync operation');
+				return;
+			}
 
-			// If sync is enabled, update original state too
+			// Validate state with fallback to default only (no cross-referencing to avoid loops)
+			const safeState = validatePanZoomState(newState);
+			
+			console.log('[PanZoomStore] updateConvertedState:', {
+				input: newState,
+				validated: safeState,
+				syncEnabled: isSyncEnabled,
+				isUpdatingFromSync,
+				prevOriginal: originalState,
+				prevConverted: convertedState
+			});
+			
+			convertedState = { ...safeState };
+
+			// If sync is enabled, update original state too (with deduplication flag)
 			if (isSyncEnabled) {
-				originalState = { ...newState };
+				isUpdatingFromSync = true;
+				originalState = { ...safeState };
+				console.log('[PanZoomStore] Sync enabled - also updated original state to:', originalState);
+				isUpdatingFromSync = false;
 			}
 		},
 
 		syncStates(sourceState: PanZoomState) {
-			const newState = { ...sourceState };
-			originalState = newState;
-			convertedState = newState;
+			// Validate the source state before applying it to both panels
+			const safeState = validatePanZoomState(sourceState);
+			
+			console.log('[PanZoomStore] syncStates:', {
+				input: sourceState,
+				validated: safeState,
+				prevOriginal: originalState,
+				prevConverted: convertedState
+			});
+			
+			originalState = { ...safeState };
+			convertedState = { ...safeState };
 		},
 
 		toggleSync() {
+			console.log('[PanZoomStore] toggleSync:', {
+				previousSync: isSyncEnabled,
+				originalState,
+				convertedState
+			});
+			
 			isSyncEnabled = !isSyncEnabled;
 
 			// When enabling sync, sync to the original state
 			if (isSyncEnabled) {
 				convertedState = { ...originalState };
+				console.log('[PanZoomStore] Sync enabled - synced converted to original:', convertedState);
 			}
 		},
 
@@ -104,30 +203,63 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 		},
 
 		restoreStates() {
-			// Restore saved states after conversion/re-render
+			// Restore saved states after conversion/re-render with validation
 			if (preservedOriginalState) {
-				originalState = { ...preservedOriginalState };
+				const safeOriginalState = validatePanZoomState(preservedOriginalState);
+				originalState = { ...safeOriginalState };
 			}
 
 			if (preservedConvertedState) {
 				// Handle different sync modes appropriately
 				if (isSyncEnabled) {
 					// In sync mode, use the original state for both
-					convertedState = { ...(preservedOriginalState || preservedConvertedState) };
+					const sourceState = preservedOriginalState || preservedConvertedState;
+					const safeState = validatePanZoomState(sourceState);
+					convertedState = { ...safeState };
 				} else {
 					// In independent mode, preserve each state separately
-					convertedState = { ...preservedConvertedState };
+					const safeConvertedState = validatePanZoomState(preservedConvertedState);
+					convertedState = { ...safeConvertedState };
 				}
 			} else if (preservedOriginalState) {
 				// Pre-conversion state: inherit from original regardless of sync mode
 				// This handles the case where preview doesn't exist yet
-				convertedState = { ...preservedOriginalState };
+				const safeState = validatePanZoomState(preservedOriginalState);
+				convertedState = { ...safeState };
 			}
 
 			console.log('[PanZoomStore] States restored:', {
 				original: $state.snapshot(originalState),
 				converted: $state.snapshot(convertedState),
 				syncEnabled: isSyncEnabled
+			});
+		},
+
+		recoverFromCorruption() {
+			console.warn('[PanZoomStore] Manual recovery triggered - resetting to safe defaults');
+			
+			// Force validation of current states
+			const safeOriginal = validatePanZoomState(originalState);
+			const safeConverted = validatePanZoomState(convertedState);
+			
+			// If both states are corrupted, reset completely
+			if (safeOriginal === defaultState && safeConverted === defaultState) {
+				console.warn('[PanZoomStore] Both states corrupted, performing full reset');
+				originalState = { ...defaultState };
+				convertedState = { ...defaultState };
+			} else {
+				// Use whichever state is valid, or sync them
+				originalState = { ...safeOriginal };
+				convertedState = { ...safeConverted };
+			}
+			
+			// Clear any corrupted preserved states
+			preservedOriginalState = null;
+			preservedConvertedState = null;
+			
+			console.log('[PanZoomStore] Recovery complete:', {
+				original: $state.snapshot(originalState),
+				converted: $state.snapshot(convertedState)
 			});
 		}
 	};
