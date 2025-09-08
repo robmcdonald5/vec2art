@@ -342,10 +342,10 @@
 			>
 				<span
 					class="h-2 w-2 rounded-full {currentPanel === 0 ? 'bg-ferrari-600' : 'bg-gray-300'}"
-				/>
+				></span>
 				Overview
 			</button>
-			<div class="h-4 w-px bg-gray-300" />
+			<div class="h-4 w-px bg-gray-300"></div>
 			<button
 				onclick={() => goToPanel(1)}
 				class="flex items-center gap-2 transition-all {currentPanel === 1
@@ -354,7 +354,7 @@
 			>
 				<span
 					class="h-2 w-2 rounded-full {currentPanel === 1 ? 'bg-ferrari-600' : 'bg-gray-300'}"
-				/>
+				></span>
 				Examples
 			</button>
 		</div>

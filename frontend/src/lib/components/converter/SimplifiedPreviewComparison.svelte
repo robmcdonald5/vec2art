@@ -93,8 +93,9 @@
 	// Reset pan/zoom when changing images
 	function handleImageIndexChange(newIndex: number) {
 		onImageIndexChange?.(newIndex);
-		// Reset store state
-		modernPanZoomStore.resetAll();
+		// FIXED: Don't reset pan/zoom state - let each image maintain its own state
+		// Each image should remember its pan/zoom position when you return to it
+		// modernPanZoomStore.resetAll(); // REMOVED - this was causing pan/zoom to reset for every image
 	}
 
 	// Download original image functionality
@@ -274,6 +275,10 @@
 					: `left: ${sliderPosition}%; top: 0; bottom: 0; transform: translateX(-50%);`}
 				onmousedown={handleSliderMouseDown}
 				role="slider"
+				aria-valuemin="0"
+				aria-valuemax="100"
+				aria-valuenow={Math.round(sliderPosition)}
+				aria-label="Comparison slider"
 				tabindex="0"
 			>
 				<div class="bg-white shadow-lg {isVerticalSplit ? 'h-0.5 w-full' : 'h-full w-0.5'}"></div>
@@ -482,7 +487,19 @@
 							<div class="flex h-full items-center justify-center">
 								<div class="text-center space-y-3">
 									<FileImage class="text-converter-muted mx-auto h-16 w-16" />
-									<p class="text-converter-secondary text-sm">Click Convert to see result</p>
+									{#if settingsSyncMode === 'per-image-individual'}
+										<div>
+											<p class="text-converter-secondary text-sm font-medium">Individual Convert Mode</p>
+											<p class="text-converter-muted text-xs">Click Convert to process this specific image</p>
+										</div>
+									{:else}
+										<div>
+											<p class="text-converter-secondary text-sm font-medium">Ready to Convert</p>
+											<p class="text-converter-muted text-xs">
+												{settingsSyncMode === 'global' ? 'Will process all images with same settings' : 'Will process all images with individual settings'}
+											</p>
+										</div>
+									{/if}
 								</div>
 							</div>
 						{/if}

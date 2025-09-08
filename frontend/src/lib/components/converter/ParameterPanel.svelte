@@ -326,7 +326,7 @@
 					<div class="text-sm text-red-600 dark:text-red-400">
 						<div class="font-medium">Configuration Errors:</div>
 						<ul class="mt-1 list-inside list-disc space-y-1">
-							{#each validationResult.errors as error}
+							{#each validationResult.errors as error (error.field + error.message)}
 								<li>{error.field}: {error.message}</li>
 							{/each}
 						</ul>
@@ -336,7 +336,7 @@
 					<div class="text-sm text-amber-600 dark:text-amber-400">
 						<div class="font-medium">Configuration Warnings:</div>
 						<ul class="mt-1 list-inside list-disc space-y-1">
-							{#each validationResult.warnings as warning}
+							{#each validationResult.warnings as warning (warning.field + warning.message)}
 								<li>{warning.field}: {warning.message}</li>
 							{/each}
 						</ul>

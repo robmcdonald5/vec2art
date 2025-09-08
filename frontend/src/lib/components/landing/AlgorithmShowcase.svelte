@@ -291,12 +291,13 @@
 						aria-pressed={selectedAlgorithm.id === algorithm.id}
 						aria-label={`Select ${algorithm.name} algorithm`}
 					>
-						<svelte:component
-							this={algorithm.icon}
-							class="h-5 w-5 flex-shrink-0 sm:h-6 sm:w-6 {selectedAlgorithm.id === algorithm.id
-								? algorithm.color
-								: 'group-hover:text-ferrari-500 text-gray-400'} transition-colors duration-300"
-						/>
+						{#if algorithm.icon}
+							<algorithm.icon
+								class="h-5 w-5 flex-shrink-0 sm:h-6 sm:w-6 {selectedAlgorithm.id === algorithm.id
+									? algorithm.color
+									: 'group-hover:text-ferrari-500 text-gray-400'} transition-colors duration-300"
+							/>
+						{/if}
 						<div class="flex-1 text-left">
 							<div
 								class="text-sm font-semibold whitespace-nowrap sm:text-base {selectedAlgorithm.id ===
@@ -327,7 +328,7 @@
 		onkeydown={(e) => {
 			if (e.key === 'Enter' || e.key === ' ') {
 				e.preventDefault();
-				handleSceneClick(e as any);
+				handleSceneClick();
 			}
 		}}
 		tabindex="0"

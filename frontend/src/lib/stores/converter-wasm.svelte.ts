@@ -301,17 +301,14 @@ export class ConverterWasmStore {
 
 				// Create optimized ImageData from shared buffer
 				// Handle SharedArrayBuffer compatibility - create a regular Uint8ClampedArray for ImageData
-				let imageDataArray: Uint8ClampedArray;
-				if (buffer instanceof SharedArrayBuffer) {
-					// Copy SharedArrayBuffer data to regular ArrayBuffer for ImageData compatibility
-					const regularBuffer = new ArrayBuffer(imageData.width * imageData.height * 4);
-					const sourceView = new Uint8ClampedArray(buffer, 0, imageData.width * imageData.height * 4);
-					imageDataArray = new Uint8ClampedArray(regularBuffer);
-					imageDataArray.set(sourceView);
-				} else {
-					// Create Uint8ClampedArray from regular ArrayBuffer
-					imageDataArray = new Uint8ClampedArray(buffer, 0, imageData.width * imageData.height * 4);
-				}
+				// Always create from regular ArrayBuffer to ensure ImageData constructor compatibility
+				const regularBuffer = new ArrayBuffer(imageData.width * imageData.height * 4);
+				const sourceView = buffer instanceof SharedArrayBuffer 
+					? new Uint8ClampedArray(buffer, 0, imageData.width * imageData.height * 4)
+					: new Uint8ClampedArray(buffer, 0, imageData.width * imageData.height * 4);
+				
+				const imageDataArray = new Uint8ClampedArray(regularBuffer);
+				imageDataArray.set(sourceView);
 				
 				const optimizedImageData = new ImageData(
 					imageDataArray,

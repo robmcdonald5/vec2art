@@ -510,36 +510,21 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 					<ScrollFriendlyImageViewer
 						src={webpDataUrl}
 						alt="WebP Optimized SVG Preview"
-						bind:targetScale
-						bind:targetOffsetX
-						bind:targetOffsetY
-						minScale={0.1}
-						maxScale={5.0}
-						scaleSmoothing={800}
+						panel="converted"
 					/>
 				{:else if imgFallbackUrl}
 					<!-- IMG fallback result -->
 					<ScrollFriendlyImageViewer
 						src={imgFallbackUrl}
 						alt="IMG Fallback SVG"
-						bind:targetScale
-						bind:targetOffsetX
-						bind:targetOffsetY
-						minScale={0.1}
-						maxScale={5.0}
-						scaleSmoothing={800}
+						panel="converted"
 					/>
 				{:else if svgBlobUrl}
 					<!-- SVG DOM result -->
 					<ScrollFriendlyImageViewer
 						src={svgBlobUrl}
 						alt="SVG DOM Preview"
-						bind:targetScale
-						bind:targetOffsetX
-						bind:targetOffsetY
-						minScale={0.1}
-						maxScale={5.0}
-						scaleSmoothing={800}
+						panel="converted"
 					/>
 				{:else if canvasDataUrl}
 					<!-- Canvas rendering result (static) -->

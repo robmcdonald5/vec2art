@@ -466,12 +466,7 @@
 				<ScrollFriendlyImageViewer
 					src={imageUrl}
 					alt={imageAlt}
-					bind:targetScale
-					bind:targetOffsetX
-					bind:targetOffsetY
-					minScale={0.1}
-					maxScale={5.0}
-					scaleSmoothing={800}
+					panel="original"
 				/>
 			</div>
 

@@ -109,12 +109,6 @@
 			event.preventDefault();
 			shortcut.action();
 		}
-
-		// Toggle help with H key
-		if (event.key === 'h' && !event.shiftKey) {
-			event.preventDefault();
-			showHelp = !showHelp;
-		}
 	}
 
 	// Mount keyboard event listeners

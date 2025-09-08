@@ -5,7 +5,7 @@
 	interface Props {
 		svgContent: string;
 		alt?: string;
-		// Pan/zoom sync props (same as other viewers)
+		// Pan/zoom sync props (same as other viewers) - bindable
 		targetScale?: number;
 		targetOffsetX?: number;
 		targetOffsetY?: number;
@@ -306,12 +306,7 @@
 	<ScrollFriendlyImageViewer
 		src={imageUrl}
 		{alt}
-		bind:targetScale
-		bind:targetOffsetX
-		bind:targetOffsetY
-		{minScale}
-		{maxScale}
-		{scaleSmoothing}
+		panel="converted"
 	/>
 {:else if svgContent}
 	<div class="flex h-full items-center justify-center text-gray-400">

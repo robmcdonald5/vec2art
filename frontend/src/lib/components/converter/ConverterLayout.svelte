@@ -223,7 +223,7 @@
 				<div class="mt-4 space-y-4">
 					<!-- Algorithm Selection -->
 					<div>
-						<label id="algorithm-label" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<label for="backend-selector" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
 							Algorithm
 						</label>
 						<BackendSelector
@@ -231,20 +231,18 @@
 							{onBackendChange}
 							disabled={isProcessing}
 							compact={true}
-							aria-labelledby="algorithm-label"
 						/>
 					</div>
 
 					<!-- Style Preset -->
 					<div>
-						<label id="preset-label" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<label for="preset-selector" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
 							Style Preset
 						</label>
 						<PresetSelector
 							selectedPresetId={selectedPreset}
 							onPresetSelect={(preset: StylePreset | null) => onPresetChange(preset?.metadata.id as VectorizerPreset || 'custom')}
 							disabled={isProcessing}
-							aria-labelledby="preset-label"
 						/>
 					</div>
 
@@ -350,10 +348,10 @@
 						</div>
 
 						<!-- Performance Mode Buttons -->
-						<fieldset class="space-y-3">
-							<legend class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<div class="space-y-3">
+							<div id="performance-mode-legend" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
 								Performance Mode
-							</legend>
+							</div>
 							<div
 								role="radiogroup"
 								aria-labelledby="performance-mode-legend"
@@ -440,14 +438,14 @@
 								</p>
 							</div>
 						{/if}
-					</fieldset>
+					</div>
+				</div>
 
 					<!-- Parameter Panel -->
 					<ParameterPanel {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
 
 					<!-- Advanced Controls -->
 					<AdvancedControls {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
-				</div>
 			{/if}
 		</div>
 	</div>
