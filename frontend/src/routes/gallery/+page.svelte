@@ -12,8 +12,8 @@
 	let viewMode = $state<ViewMode>('grid');
 	let displayedItems = $state<GalleryItem[]>([]);
 	let isLoading = $state(true);
+	let isLoadingMore = $state(false);
 	let hasMore = $state(false);
-	let showFilters = $state(false);
 	
 	// Gallery data
 	let allItems = $state<GalleryItem[]>([]);
@@ -35,38 +35,48 @@
 	// Debounce timer for search
 	let searchTimer: NodeJS.Timeout;
 
-	// Apply filters with debouncing for search
+	// Apply filters reactively - debounce search, immediate for others
+	let previousSearch = '';
+	let previousCategory = '';
+	let previousAlgorithm = '';
+
 	$effect(() => {
-		if (filters.search !== undefined) {
-			clearTimeout(searchTimer);
+		const { search, category, algorithm } = filters;
+		
+		// Check what changed
+		const searchChanged = search !== previousSearch;
+		const categoryChanged = category !== previousCategory;
+		const algorithmChanged = algorithm !== previousAlgorithm;
+		
+		// Update previous values
+		previousSearch = search;
+		previousCategory = category;
+		previousAlgorithm = algorithm;
+		
+		clearTimeout(searchTimer);
+		
+		if (searchChanged) {
+			// Debounce search changes
 			searchTimer = setTimeout(() => {
 				applyFilters();
 			}, 300);
-		} else {
+		} else if (categoryChanged || algorithmChanged) {
+			// Apply category/algorithm changes immediately
 			applyFilters();
 		}
 	});
 	
 	function applyFilters() {
+		isLoading = true;
 		filteredItems = filterGalleryItems(allItems, filters);
 		currentPage = 0;
-		loadMoreItems();
+		// Add a small delay to show loading state
+		setTimeout(() => {
+			loadMoreItems();
+		}, 150);
 	}
 	
-	function handleSearchInput(event: Event) {
-		const target = event.target as HTMLInputElement;
-		filters.search = target.value;
-	}
-	
-	function handleCategoryChange(event: Event) {
-		const target = event.target as HTMLSelectElement;
-		filters.category = target.value;
-	}
-	
-	function handleAlgorithmFilter(algorithm: AlgorithmFilter) {
-		filters.algorithm = algorithm;
-		showFilters = false;
-	}
+
 	
 	function clearFilters() {
 		filters = {
@@ -114,22 +124,22 @@
 		
 		hasMore = displayedItems.length < filteredItems.length;
 		isLoading = false;
+		isLoadingMore = false;
 		currentPage++;
 	}
 
-	// Infinite scroll handler
-	function handleScroll() {
-		if (!browser || isLoading || !hasMore) return;
-
-		const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-		const windowHeight = window.innerHeight;
-		const documentHeight = document.documentElement.scrollHeight;
-
-		// Load more when user is 300px from bottom
-		if (scrollTop + windowHeight >= documentHeight - 300) {
-			isLoading = true;
-			setTimeout(() => loadMoreItems(), 200);
-		}
+	// Intersection observer for infinite scroll
+	let loadMoreTrigger: HTMLElement;
+	
+	// Load more function for infinite scroll
+	function triggerLoadMore() {
+		if (isLoadingMore || !hasMore) return;
+		
+		isLoadingMore = true;
+		
+		setTimeout(() => {
+			loadMoreItems();
+		}, 800); // Brief delay to show loading UX
 	}
 
 	// Load gallery data on mount
@@ -146,16 +156,52 @@
 			isLoading = false;
 		}
 		
+		// Set up intersection observer after mount
+		
+		// Also add scroll listener as fallback
 		if (browser) {
+			const handleScroll = () => {
+				const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+				const windowHeight = window.innerHeight;
+				const documentHeight = document.documentElement.scrollHeight;
+
+				// Load more when user is 200px from bottom
+				if (scrollTop + windowHeight >= documentHeight - 200) {
+					if (hasMore && !isLoadingMore) {
+						triggerLoadMore();
+					}
+				}
+			};
+			
 			window.addEventListener('scroll', handleScroll);
+			
+			// Cleanup
+			return () => {
+				window.removeEventListener('scroll', handleScroll);
+			};
 		}
+	});
+
+	// Set up intersection observer effect
+	$effect(() => {
+		if (!browser || !loadMoreTrigger) return;
+		
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+					triggerLoadMore();
+				}
+			},
+			{ threshold: 0.1 }
+		);
+
+		observer.observe(loadMoreTrigger);
+		
+		return () => observer.disconnect();
 	});
 
 	// Cleanup on destroy
 	onDestroy(() => {
-		if (browser) {
-			window.removeEventListener('scroll', handleScroll);
-		}
 		clearTimeout(searchTimer);
 	});
 </script>
@@ -174,30 +220,37 @@
 			<div class="flex items-center gap-4">
 				<!-- Search -->
 				<div class="relative">
-					<Search class="text-speed-gray-400 absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2" />
+					<Search class="text-gray-700 absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2" />
 					<input
 						type="text"
 						placeholder="Search examples..."
+						bind:value={filters.search}
 						class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 placeholder:text-speed-gray-400 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pl-12 transition-all duration-200 focus:ring-1 focus:outline-none"
 					/>
 				</div>
 
 				<!-- Categories -->
 				<select
+					bind:value={filters.category}
 					class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-all duration-200 focus:ring-1 focus:outline-none"
 				>
-					<option value="">All Categories</option>
-					<option value="logos">Logos & Icons</option>
-					<option value="artwork">Artwork</option>
-					<option value="photography">Photography</option>
-					<option value="technical">Technical</option>
+					<option value="all">All Categories</option>
+					{#each categories as category}
+						<option value={category.value}>{category.label} ({category.count})</option>
+					{/each}
 				</select>
 
-				<!-- Filter -->
-				<button class="btn-ferrari-secondary flex items-center gap-2 px-6 py-3">
-					<Filter class="h-4 w-4" />
-					Filter
-				</button>
+				<!-- Algorithm Filter -->
+				<select
+					bind:value={filters.algorithm}
+					class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-all duration-200 focus:ring-1 focus:outline-none"
+				>
+					<option value="all">All Algorithms</option>
+					<option value="edgetracing">Edge Tracing</option>
+					<option value="stippling">Dots (Stippling)</option>
+					<option value="superpixel">Superpixel</option>
+					<option value="centerline">Centerline</option>
+				</select>
 			</div>
 
 			<div class="flex items-center gap-2">
@@ -225,15 +278,6 @@
 			</div>
 		</div>
 		
-		{#if filters.search || filters.category !== 'all' || filters.algorithm !== 'all'}
-			<button
-				onclick={clearFilters}
-				class="text-ferrari-600 hover:text-ferrari-700 flex items-center gap-1 text-sm font-medium"
-			>
-				<X class="h-4 w-4" />
-				Clear filters
-			</button>
-		{/if}
 	</div>
 </section>
 
@@ -321,16 +365,93 @@
 					</div>
 				</div>
 			{/each}
+
+			<!-- Skeleton Loading Cards for Pagination -->
+			{#if isLoadingMore}
+				{#each Array(4) as _, i}
+					<div class="animate-pulse overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm {viewMode === 'list' ? 'flex flex-row' : ''}">
+						<!-- Skeleton Image -->
+						<div class="bg-gray-200 {viewMode === 'grid' ? 'aspect-square' : 'h-48 w-72 flex-shrink-0'}"></div>
+						
+						<!-- Skeleton Content -->
+						<div class="space-y-3 p-6 {viewMode === 'list' ? 'flex flex-1 flex-col justify-center' : ''}">
+							<div class="h-5 w-3/4 rounded bg-gray-200"></div>
+							<div class="h-4 w-1/2 rounded bg-gray-200"></div>
+							<div class="flex {viewMode === 'list' ? 'flex-col gap-1' : 'justify-between'}">
+								<div class="h-3 w-20 rounded bg-gray-200"></div>
+								<div class="h-3 w-16 rounded bg-gray-200"></div>
+							</div>
+						</div>
+					</div>
+				{/each}
+			{/if}
 		</div>
 
-		<!-- Loading Indicator -->
-		{#if isLoading && displayedItems.length > 0}
-			<div class="mt-12 flex justify-center">
-				<div class="flex items-center gap-3">
-					<div class="spinner-gradient h-8 w-8"></div>
-					<span class="text-lg text-gray-600">Loading more examples...</span>
+		<!-- Initial Loading State -->
+		{#if isLoading && displayedItems.length === 0}
+			<div class="text-center py-16">
+				<div class="mx-auto max-w-md">
+					<div class="mb-4">
+						<div class="spinner-gradient h-16 w-16 mx-auto"></div>
+					</div>
+					<h3 class="text-xl font-semibold text-gray-900 mb-2">Loading gallery...</h3>
+					<p class="text-gray-600">Please wait while we load the examples</p>
 				</div>
 			</div>
+		{/if}
+
+		<!-- No Results State -->
+		{#if !isLoading && displayedItems.length === 0}
+			<div class="text-center py-16">
+				<div class="mx-auto max-w-md">
+					<div class="mb-4">
+						<svg class="mx-auto h-16 w-16 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+						</svg>
+					</div>
+					<h3 class="text-xl font-semibold text-gray-900 mb-2">No examples found</h3>
+					<p class="text-gray-600 mb-6">
+						{#if filters.search || filters.category !== 'all' || filters.algorithm !== 'all'}
+							Try adjusting your search or filters to see more results.
+						{:else}
+							There are no examples available in the gallery yet.
+						{/if}
+					</p>
+					{#if filters.search || filters.category !== 'all' || filters.algorithm !== 'all'}
+						<button
+							onclick={clearFilters}
+							class="btn-ferrari-secondary px-6 py-3"
+						>
+							Clear filters
+						</button>
+					{/if}
+				</div>
+			</div>
+		{/if}
+
+		<!-- Loading More Indicator (for pagination/scrolling) -->
+		{#if isLoadingMore}
+			<div class="mt-8 flex justify-center">
+				<div class="flex items-center gap-3 rounded-lg bg-white px-6 py-3 shadow-sm border border-gray-200">
+					<div class="spinner-gradient h-5 w-5"></div>
+					<span class="text-gray-600">Loading more examples...</span>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Filter Loading Indicator -->
+		{#if isLoading && displayedItems.length > 0}
+			<div class="mt-8 flex justify-center">
+				<div class="flex items-center gap-3">
+					<div class="spinner-gradient h-6 w-6"></div>
+					<span class="text-gray-600">Filtering examples...</span>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Intersection Observer Trigger -->
+		{#if hasMore && !isLoadingMore}
+			<div bind:this={loadMoreTrigger} class="h-px w-full"></div>
 		{/if}
 
 		<!-- End of Results Message -->
