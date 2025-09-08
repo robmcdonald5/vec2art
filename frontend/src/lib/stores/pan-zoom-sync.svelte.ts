@@ -48,24 +48,27 @@ function validatePanZoomState(state: PanZoomState, fallbackState?: PanZoomState)
 		!isFinite(state.x) ||
 		!isFinite(state.y) ||
 		state.scale <= 0 ||
-		state.scale > 100 || // Extreme zoom out protection
-		Math.abs(state.x) > 50000 || // Extreme pan protection  
-		Math.abs(state.y) > 50000;
+		state.scale < 0.5 || // Reject overly zoomed out states (less than 50%)
+		state.scale > 10 || // Reject overly zoomed in states (more than 1000%)
+		Math.abs(state.x) > 10000 || // Extreme pan protection  
+		Math.abs(state.y) > 10000;
 
 	if (isInvalid) {
-		console.warn('🚨 [PanZoomStore] INVALID STATE DETECTED:', {
+		console.warn('🚨 [PanZoomStore] INVALID STATE DETECTED - RESETTING TO DEFAULT:', {
 			invalid: state,
 			fallback: fallbackState || defaultState,
 			reasons: {
 				notObject: !state,
-				invalidScale: typeof state.scale !== 'number' || !isFinite(state.scale) || state.scale <= 0 || state.scale > 100,
-				invalidX: typeof state.x !== 'number' || !isFinite(state.x) || Math.abs(state.x) > 50000,
-				invalidY: typeof state.y !== 'number' || !isFinite(state.y) || Math.abs(state.y) > 50000
+				invalidScale: typeof state.scale !== 'number' || !isFinite(state.scale) || state.scale <= 0 || state.scale < 0.5 || state.scale > 10,
+				invalidX: typeof state.x !== 'number' || !isFinite(state.x) || Math.abs(state.x) > 10000,
+				invalidY: typeof state.y !== 'number' || !isFinite(state.y) || Math.abs(state.y) > 10000
 			}
 		});
+		console.trace('🚨 [PanZoomStore] Stack trace for invalid state:');
 		return fallbackState || defaultState;
 	}
 
+	console.log('✅ [PanZoomStore] State validation passed:', state);
 	return state;
 }
 
@@ -75,10 +78,18 @@ function validatePanZoomState(state: PanZoomState, fallbackState?: PanZoomState)
 export function createPanZoomSyncStore(): PanZoomSyncStore {
 	// Load initial state from persistence if available
 	const persistedState = converterPersistence.loadPanZoomState();
+	console.log('🔍 [PanZoomStore] Loading persisted state:', persistedState);
+	console.log('🔍 [PanZoomStore] Default state:', defaultState);
 	
 	let originalState = $state<PanZoomState>(persistedState?.originalState || { ...defaultState });
 	let convertedState = $state<PanZoomState>(persistedState?.convertedState || { ...defaultState });
 	let isSyncEnabled = $state(persistedState?.isSyncEnabled ?? true);
+	
+	console.log('🔍 [PanZoomStore] Final initial states:', {
+		original: originalState,
+		converted: convertedState,
+		syncEnabled: isSyncEnabled
+	});
 
 	// Preserved states for maintaining zoom/pan during conversions
 	let preservedOriginalState: PanZoomState | null = null;
@@ -121,7 +132,7 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 			// If sync is enabled, update converted state too
 			if (isSyncEnabled) {
 				convertedState = { ...safeState };
-				console.log('[PanZoomStore] Sync enabled - also updated converted state to:', convertedState);
+				console.log('[PanZoomStore] Sync enabled - also updated converted state to:', $state.snapshot(convertedState));
 			}
 
 			// Save state to persistence (debounced)
@@ -143,7 +154,7 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 			// If sync is enabled, update original state too
 			if (isSyncEnabled) {
 				originalState = { ...safeState };
-				console.log('[PanZoomStore] Sync enabled - also updated original state to:', originalState);
+				console.log('[PanZoomStore] Sync enabled - also updated original state to:', $state.snapshot(originalState));
 			}
 
 			// Save state to persistence (debounced)
@@ -157,8 +168,8 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 			console.log('[PanZoomStore] syncStates:', {
 				input: sourceState,
 				validated: safeState,
-				prevOriginal: originalState,
-				prevConverted: convertedState
+				prevOriginal: $state.snapshot(originalState),
+				prevConverted: $state.snapshot(convertedState)
 			});
 			
 			originalState = { ...safeState };
@@ -171,8 +182,8 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 		toggleSync() {
 			console.log('[PanZoomStore] toggleSync:', {
 				previousSync: isSyncEnabled,
-				originalState,
-				convertedState
+				originalState: $state.snapshot(originalState),
+				convertedState: $state.snapshot(convertedState)
 			});
 			
 			isSyncEnabled = !isSyncEnabled;
@@ -180,7 +191,7 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 			// When enabling sync, sync to the original state
 			if (isSyncEnabled) {
 				convertedState = { ...originalState };
-				console.log('[PanZoomStore] Sync enabled - synced converted to original:', convertedState);
+				console.log('[PanZoomStore] Sync enabled - synced converted to original:', $state.snapshot(convertedState));
 			}
 
 			// Save state to persistence

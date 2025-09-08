@@ -76,7 +76,7 @@
 			
 			console.log('🔄 [InteractiveImagePanel] Updating from external state:', {
 				external: currentExternalState,
-				previous: previousExternalState,
+				previous: $state.snapshot(previousExternalState),
 				syncEnabled: enableSync
 			});
 			
@@ -96,7 +96,7 @@
 			
 			console.log('📤 [InteractiveImagePanel] Notifying parent of local changes:', {
 				current: currentLocalState,
-				previous: previousLocalState
+				previous: $state.snapshot(previousLocalState)
 			});
 			
 			// Notify parent of local changes

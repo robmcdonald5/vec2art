@@ -1,28 +1,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
 
 	interface Props {
 		src: string;
 		alt?: string;
-		targetScale?: number;
-		targetOffsetX?: number;
-		targetOffsetY?: number;
+		panel: 'original' | 'converted';
 		minScale?: number;
 		maxScale?: number;
 		scaleSmoothing?: number;
-		onTransformChange?: (state: { scale: number; x: number; y: number }) => void;
 	}
 
 	let {
 		src,
 		alt = '',
-		targetScale = $bindable(1),
-		targetOffsetX = $bindable(0),
-		targetOffsetY = $bindable(0),
+		panel,
 		minScale = 0.1,
 		maxScale = 5.0,
-		scaleSmoothing = 1200,
-		onTransformChange
+		scaleSmoothing = 1200
 	}: Props = $props();
 
 	let containerEl: HTMLDivElement = $state()!;
@@ -30,36 +25,85 @@
 	let isDragging = $state(false);
 	let startX = 0;
 	let startY = 0;
+	let hasDragged = $state(false);
+	
+	// Track if this specific component initiated the drag
+	let isThisPanelDragging = $state(false);
 
-	// Apply transforms
+	// Get current state from store for this panel
+	const currentState = $derived(panel === 'original' ? panZoomStore.originalState : panZoomStore.convertedState);
+
+	// Apply transforms using store state
 	$effect(() => {
-		if (imgEl) {
-			imgEl.style.transform = `translate(${targetOffsetX}px, ${targetOffsetY}px) scale(${targetScale})`;
+		if (imgEl && currentState) {
+			const transformString = `translate(${currentState.x}px, ${currentState.y}px) scale(${currentState.scale})`;
+			console.log(`🎨 [ScrollFriendlyImageViewer] ${panel} applying transform:`, transformString);
+			imgEl.style.transform = transformString;
 		}
 	});
 
-	// Handle mouse drag for panning
+	// Handle mouse drag for panning - calls store methods
 	function handleMouseDown(e: MouseEvent) {
+		console.log(`🚨 [ScrollFriendlyImageViewer] ${panel} MOUSEDOWN - currentState:`, currentState);
+		console.log(`🚨 [ScrollFriendlyImageViewer] ${panel} MOUSEDOWN - clientX: ${e.clientX}, clientY: ${e.clientY}`);
+		
 		isDragging = true;
-		startX = e.clientX - targetOffsetX;
-		startY = e.clientY - targetOffsetY;
+		isThisPanelDragging = true; // Mark this panel as the active dragger
+		hasDragged = false;
+		startX = e.clientX - currentState.x;
+		startY = e.clientY - currentState.y;
 		e.preventDefault();
+		
+		console.log(`🚨 [ScrollFriendlyImageViewer] ${panel} DRAG STARTED - startX: ${startX}, startY: ${startY}`);
 	}
 
 	function handleMouseMove(e: MouseEvent) {
-		if (!isDragging) return;
-		targetOffsetX = e.clientX - startX;
-		targetOffsetY = e.clientY - startY;
+		console.log(`🔍 [ScrollFriendlyImageViewer] ${panel} mousemove - isDragging: ${isDragging}, isThisPanelDragging: ${isThisPanelDragging}`);
 		
-		// Notify parent of transform change
-		onTransformChange?.({ scale: targetScale, x: targetOffsetX, y: targetOffsetY });
+		// Only handle mouse move if this panel initiated the drag
+		if (!isDragging || !isThisPanelDragging) {
+			console.log(`🔍 [ScrollFriendlyImageViewer] ${panel} mousemove SKIPPED - not dragging or not this panel`);
+			return;
+		}
+		
+		// Mark that we've actually dragged (not just clicked)
+		hasDragged = true;
+		
+		const newState = {
+			scale: currentState.scale,
+			x: e.clientX - startX,
+			y: e.clientY - startY
+		};
+		
+		console.log(`🔧 [ScrollFriendlyImageViewer] ${panel} pan update:`, newState);
+		
+		// Update store based on panel
+		if (panel === 'original') {
+			panZoomStore.updateOriginalState(newState);
+		} else {
+			panZoomStore.updateConvertedState(newState);
+		}
 	}
 
 	function handleMouseUp() {
+		console.log(`🔧 [ScrollFriendlyImageViewer] ${panel} ended drag (was active: ${isThisPanelDragging})`);
 		isDragging = false;
+		isThisPanelDragging = false; // Reset active dragger
+	}
+	
+	// Prevent button click if dragging occurred
+	function handleClick(e: MouseEvent) {
+		if (hasDragged) {
+			e.preventDefault();
+			e.stopPropagation();
+		}
+		// Reset hasDragged flag after a short delay to allow for legitimate clicks
+		setTimeout(() => {
+			hasDragged = false;
+		}, 10);
 	}
 
-	// Handle wheel for zoom - allow both Ctrl+scroll and regular scroll over image
+	// Handle wheel for zoom - calls store methods
 	function handleWheel(e: WheelEvent) {
 		// Always handle scroll when over the image viewer for better UX
 		// Users expect scroll zoom to work in image viewers
@@ -67,30 +111,58 @@
 
 		const delta = -e.deltaY;
 		const scaleChange = 1 + delta / scaleSmoothing;
-		const newScale = Math.max(minScale, Math.min(maxScale, targetScale * scaleChange));
+		const newScale = Math.max(minScale, Math.min(maxScale, currentState.scale * scaleChange));
 
 		// Zoom towards mouse position
 		const rect = containerEl.getBoundingClientRect();
 		const x = e.clientX - rect.left - rect.width / 2;
 		const y = e.clientY - rect.top - rect.height / 2;
 
-		const scaleRatio = newScale / targetScale;
-		targetOffsetX = x - scaleRatio * (x - targetOffsetX);
-		targetOffsetY = y - scaleRatio * (y - targetOffsetY);
-		targetScale = newScale;
+		const scaleRatio = newScale / currentState.scale;
+		const newX = x - scaleRatio * (x - currentState.x);
+		const newY = y - scaleRatio * (y - currentState.y);
 		
-		// Notify parent of transform change
-		onTransformChange?.({ scale: targetScale, x: targetOffsetX, y: targetOffsetY });
+		const newState = {
+			scale: newScale,
+			x: newX,
+			y: newY
+		};
+		
+		// Update store based on panel
+		if (panel === 'original') {
+			panZoomStore.updateOriginalState(newState);
+		} else {
+			panZoomStore.updateConvertedState(newState);
+		}
 	}
 
+	// Create unique instance ID for debugging
+	const instanceId = Math.random().toString(36).substring(2, 8);
+
 	onMount(() => {
-		// Add global mouse listeners for drag
-		document.addEventListener('mousemove', handleMouseMove);
-		document.addEventListener('mouseup', handleMouseUp);
+		console.log(`🔧 [ScrollFriendlyImageViewer] Instance ${instanceId} loaded for panel: ${panel}`);
+		
+		// We'll use global listeners but with better isolation
+		const handleGlobalMouseMove = (e: MouseEvent) => {
+			console.log(`🌐 [ScrollFriendlyImageViewer] Instance ${instanceId} (${panel}) global mousemove - isThisPanelDragging: ${isThisPanelDragging}`);
+			if (isThisPanelDragging) {
+				handleMouseMove(e);
+			}
+		};
+		
+		const handleGlobalMouseUp = (e: MouseEvent) => {
+			console.log(`🌐 [ScrollFriendlyImageViewer] Instance ${instanceId} (${panel}) global mouseup - isThisPanelDragging: ${isThisPanelDragging}`);
+			if (isThisPanelDragging) {
+				handleMouseUp();
+			}
+		};
+		
+		document.addEventListener('mousemove', handleGlobalMouseMove);
+		document.addEventListener('mouseup', handleGlobalMouseUp);
 
 		return () => {
-			document.removeEventListener('mousemove', handleMouseMove);
-			document.removeEventListener('mouseup', handleMouseUp);
+			document.removeEventListener('mousemove', handleGlobalMouseMove);
+			document.removeEventListener('mouseup', handleGlobalMouseUp);
 		};
 	});
 </script>
@@ -103,15 +175,20 @@
 		style="cursor: {isDragging ? 'grabbing' : 'grab'};"
 		onmousedown={handleMouseDown}
 		onkeydown={(e) => {
-			// Allow keyboard interaction - Enter/Space to start drag mode or reset position
-			if (e.key === 'Enter' || e.key === ' ') {
+			// Allow keyboard interaction - Enter/Space to reset position
+			// But don't reset if currently dragging
+			if ((e.key === 'Enter' || e.key === ' ') && !isDragging) {
 				e.preventDefault();
-				// Reset to center position
-				targetOffsetX = 0;
-				targetOffsetY = 0;
-				targetScale = 1;
+				// Reset to center position using store methods
+				const resetState = { scale: 1, x: 0, y: 0 };
+				if (panel === 'original') {
+					panZoomStore.updateOriginalState(resetState);
+				} else {
+					panZoomStore.updateConvertedState(resetState);
+				}
 			}
 		}}
+		onclick={handleClick}
 		aria-label="{alt
 			? alt + ' - '
 			: ''}Pannable and zoomable image. Use mouse to drag and scroll to zoom, or press Enter to reset."
