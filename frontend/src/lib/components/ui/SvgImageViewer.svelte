@@ -75,32 +75,68 @@
 	// Track previous sync state to detect changes
 	let prevEnableSync = enableSync;
 
-	// Sync external pan/zoom state when provided, preserve state when sync is disabled
+	// Combined pan/zoom synchronization effect with change detection to prevent infinite loops
+	let previousExternalState = $state<{ scale: number; x: number; y: number } | null>(null);
+	let previousLocalState = $state<{ scale: number; x: number; y: number } | null>(null);
+
 	$effect(() => {
-		if (externalPanZoom && enableSync) {
-			targetScale = externalPanZoom.scale;
-			targetOffsetX = externalPanZoom.x;
-			targetOffsetY = externalPanZoom.y;
-		}
+		// Check if external state has changed
+		const currentExternalState = externalPanZoom ? {
+			scale: externalPanZoom.scale,
+			x: externalPanZoom.x,
+			y: externalPanZoom.y
+		} : null;
 
-		// Detect when sync is being disabled - preserve current internal state
-		if (prevEnableSync && !enableSync) {
-			// Sync was just disabled - keep current internal state unchanged
-			// (targetScale, targetOffsetX, targetOffsetY retain their current values)
-		}
+		// Check if local state has changed
+		const currentLocalState = {
+			scale: targetScale,
+			x: targetOffsetX,
+			y: targetOffsetY
+		};
 
-		prevEnableSync = enableSync;
-	});
-
-	// Notify parent of pan/zoom changes when callback is provided
-	$effect(() => {
-		if (onPanZoomChange) {
-			onPanZoomChange({
-				scale: targetScale,
-				x: targetOffsetX,
-				y: targetOffsetY
+		// Only update from external if external state actually changed and sync is enabled
+		if (currentExternalState && enableSync && 
+			(!previousExternalState || 
+			 previousExternalState.scale !== currentExternalState.scale ||
+			 previousExternalState.x !== currentExternalState.x ||
+			 previousExternalState.y !== currentExternalState.y)) {
+			
+			console.log('🔄 [SvgImageViewer] Updating from external state:', {
+				external: currentExternalState,
+				previous: previousExternalState,
+				syncEnabled: enableSync
 			});
+			
+			// Update local state from external
+			targetScale = currentExternalState.scale;
+			targetOffsetX = currentExternalState.x;
+			targetOffsetY = currentExternalState.y;
+			
+			previousExternalState = { ...currentExternalState };
 		}
+		// Only notify parent if local state actually changed and we're not just syncing from external
+		else if (onPanZoomChange && 
+			(!previousLocalState ||
+			 previousLocalState.scale !== currentLocalState.scale ||
+			 previousLocalState.x !== currentLocalState.x ||
+			 previousLocalState.y !== currentLocalState.y)) {
+			
+			console.log('📤 [SvgImageViewer] Notifying parent of local changes:', {
+				current: currentLocalState,
+				previous: previousLocalState
+			});
+			
+			// Notify parent of local changes
+			onPanZoomChange(currentLocalState);
+			previousLocalState = { ...currentLocalState };
+		}
+
+		// Track sync state changes
+		if (prevEnableSync && !enableSync) {
+			// Sync was just disabled - preserve current state
+			console.log('[SvgImageViewer] Sync disabled, preserving state:', currentLocalState);
+		}
+		prevEnableSync = enableSync;
 	});
 
 	// Convert SVG content to image URL

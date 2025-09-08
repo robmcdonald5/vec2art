@@ -92,24 +92,60 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 	// WebP converter instance
 	let webpConverter = new SvgToWebPConverter();
 
-	// Sync external pan/zoom state - simple approach without blocking
-	$effect(() => {
-		if (externalPanZoom && enableSync) {
-			targetScale = externalPanZoom.scale;
-			targetOffsetX = externalPanZoom.x;
-			targetOffsetY = externalPanZoom.y;
-		}
-	});
+	// Combined pan/zoom synchronization effect with change detection to prevent infinite loops
+	let previousExternalState = $state<{ scale: number; x: number; y: number } | null>(null);
+	let previousLocalState = $state<{ scale: number; x: number; y: number } | null>(null);
 
-	// Notify parent of pan/zoom changes - allow reactive updates but prevent infinite loops
 	$effect(() => {
-		if (onPanZoomChange) {
-			// Don't use untrack here - we need the callback to update reactive state
-			onPanZoomChange({
-				scale: targetScale,
-				x: targetOffsetX,
-				y: targetOffsetY
+		// Check if external state has changed
+		const currentExternalState = externalPanZoom ? {
+			scale: externalPanZoom.scale,
+			x: externalPanZoom.x,
+			y: externalPanZoom.y
+		} : null;
+
+		// Check if local state has changed
+		const currentLocalState = {
+			scale: targetScale,
+			x: targetOffsetX,
+			y: targetOffsetY
+		};
+
+		// Only update from external if external state actually changed and sync is enabled
+		if (currentExternalState && enableSync && 
+			(!previousExternalState || 
+			 previousExternalState.scale !== currentExternalState.scale ||
+			 previousExternalState.x !== currentExternalState.x ||
+			 previousExternalState.y !== currentExternalState.y)) {
+			
+			console.log('🔄 [AdvancedSvgPreview] Updating from external state:', {
+				external: currentExternalState,
+				previous: previousExternalState,
+				syncEnabled: enableSync
 			});
+			
+			// Update local state from external
+			targetScale = currentExternalState.scale;
+			targetOffsetX = currentExternalState.x;
+			targetOffsetY = currentExternalState.y;
+			
+			previousExternalState = { ...currentExternalState };
+		}
+		// Only notify parent if local state actually changed and we're not just syncing from external
+		else if (onPanZoomChange && 
+			(!previousLocalState ||
+			 previousLocalState.scale !== currentLocalState.scale ||
+			 previousLocalState.x !== currentLocalState.x ||
+			 previousLocalState.y !== currentLocalState.y)) {
+			
+			console.log('📤 [AdvancedSvgPreview] Notifying parent of local changes:', {
+				current: currentLocalState,
+				previous: previousLocalState
+			});
+			
+			// Notify parent of local changes
+			onPanZoomChange(currentLocalState);
+			previousLocalState = { ...currentLocalState };
 		}
 	});
 

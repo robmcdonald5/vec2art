@@ -394,7 +394,14 @@
 								class="text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {panZoomStore.isSyncEnabled
 									? 'text-ferrari-600'
 									: 'text-gray-400'}"
-								onclick={panZoomStore.toggleSync}
+								onclick={() => {
+									console.log('🔄 [PreviewComparison] Sync button clicked:', {
+										currentSync: panZoomStore.isSyncEnabled,
+										originalState: panZoomStore.originalState,
+										convertedState: panZoomStore.convertedState
+									});
+									panZoomStore.toggleSync();
+								}}
 								aria-label={panZoomStore.isSyncEnabled ? 'Disable sync' : 'Enable sync'}
 								title={panZoomStore.isSyncEnabled
 									? 'Views are synchronized'
@@ -444,7 +451,16 @@
 									class="text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {useAdvancedPreview
 										? 'text-ferrari-600'
 										: 'text-gray-400'}"
-									onclick={() => (useAdvancedPreview = !useAdvancedPreview)}
+									onclick={() => {
+										console.log('🔄 [PreviewComparison] Switching preview mode:', {
+											from: useAdvancedPreview ? 'Advanced' : 'Raw SVG',
+											to: !useAdvancedPreview ? 'Advanced' : 'Raw SVG',
+											currentSync: panZoomStore.isSyncEnabled,
+											originalState: panZoomStore.originalState,
+											convertedState: panZoomStore.convertedState
+										});
+										useAdvancedPreview = !useAdvancedPreview;
+									}}
 									disabled={isProcessing}
 									title={useAdvancedPreview
 										? 'Switch to raw SVG view'
@@ -461,11 +477,11 @@
 					</div>
 
 					{#if hasResult && currentSvgUrl}
-						<!-- Keep both components mounted to preserve state -->
+						<!-- Use conditional rendering instead of CSS hide/show to prevent both components from being active -->
 						<div class="relative flex-1">
 							<!-- Advanced Preview (WebP optimized) -->
-							{#if currentResult?.svg}
-								<div class="absolute inset-0 {useAdvancedPreview ? 'block' : 'hidden'}">
+							{#if currentResult?.svg && useAdvancedPreview}
+								<div class="absolute inset-0">
 									<AdvancedSvgPreview
 										svgContent={currentResult.svg}
 										backend={currentResult.config_used?.backend || 'edge'}
@@ -482,13 +498,9 @@
 							{/if}
 
 							<!-- Raw SVG View (Blob optimized) -->
-							{#if currentResult?.svg}
+							{#if currentResult?.svg && !useAdvancedPreview}
 								<!-- Controls Header for Raw SVG View - moved outside absolute container -->
-								<div
-									class="mb-3 flex items-center justify-between px-2 {useAdvancedPreview
-										? 'hidden'
-										: 'flex'}"
-								>
+								<div class="mb-3 flex items-center justify-between px-2">
 									<div class="flex items-center gap-2">
 										<!-- Empty space for alignment -->
 									</div>
@@ -544,7 +556,7 @@
 								</div>
 
 								<!-- SvgImageViewer in absolute container -->
-								<div class="absolute inset-0 {useAdvancedPreview ? 'hidden' : 'block'}">
+								<div class="absolute inset-0">
 									<SvgImageViewer
 										bind:this={svgImageViewer}
 										svgContent={currentResult.svg}
@@ -560,9 +572,9 @@
 										enableSync={panZoomStore.isSyncEnabled}
 									/>
 								</div>
-							{:else}
+							{:else if !useAdvancedPreview}
 								<!-- Fallback for when no SVG content is available -->
-								<div class="absolute inset-0 {useAdvancedPreview ? 'hidden' : 'block'}">
+								<div class="absolute inset-0">
 									<InteractiveImagePanel
 										imageUrl={currentSvgUrl}
 										imageAlt="Converted SVG"
