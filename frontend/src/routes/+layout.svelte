@@ -7,6 +7,7 @@
 	import ToastContainer from '$lib/components/ui/toast/ToastContainer.svelte';
 	import { inject } from '@vercel/analytics';
 	import { preload } from '$lib/utils/preload';
+	import { registerServiceWorker } from '$lib/utils/service-worker';
 	// Removed scroll-lock - mobile menu uses proper CSS
 
 	let { children } = $props();
@@ -36,6 +37,9 @@
 		if (browser) {
 			// Initialize Vercel Analytics
 			inject();
+			
+			// Register Service Worker for caching
+			registerServiceWorker();
 
 			// Set initial theme based on system preference
 			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
