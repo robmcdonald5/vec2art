@@ -181,8 +181,8 @@
 	};
 
 	function handleInitializationPatternChange(value: string) {
-		console.log(`[ParameterPanel] Initialization pattern changed to: ${value}`);
-		onConfigChange({ dot_initialization_pattern: value as 'square' | 'hexagonal' | 'poisson' });
+		console.log(`[ParameterPanel] Superpixel initialization pattern changed to: ${value}`);
+		onConfigChange({ superpixel_initialization_pattern: value as 'square' | 'hexagonal' | 'poisson' });
 		onParameterChange?.();
 	}
 
@@ -485,7 +485,7 @@
 					Initialization Pattern
 				</label>
 				<CustomSelect
-					value={config.dot_initialization_pattern || 'poisson'}
+					value={config.superpixel_initialization_pattern || 'poisson'}
 					onchange={handleInitializationPatternChange}
 					{disabled}
 					options={[
