@@ -35,6 +35,44 @@
 	
 	// Debounce timer for search
 	let searchTimer: NodeJS.Timeout;
+	
+	// Progressive enhancement - preload tracking
+	let preloadedImages = $state(new Set<string>());
+	
+	// Preload images for better UX
+	function preloadImage(src: string) {
+		if (preloadedImages.has(src)) return;
+		
+		const img = new Image();
+		img.src = src;
+		preloadedImages.add(src);
+	}
+	
+	function handleItemHover(item: GalleryItem) {
+		// Preload both before and after images on hover for instant modal viewing
+		preloadImage(item.beforeImage);
+		preloadImage(item.afterImage);
+	}
+	
+	// Service worker caching for viewed items
+	async function cacheViewedItems() {
+		if (!browser || !navigator.serviceWorker.controller) return;
+		
+		try {
+			const channel = new MessageChannel();
+			navigator.serviceWorker.controller.postMessage(
+				{ action: 'cacheGalleryItems', items: displayedItems },
+				[channel.port2]
+			);
+			
+			// Listen for response (optional)
+			channel.port1.onmessage = (event) => {
+				console.log('[Gallery] Service Worker:', event.data);
+			};
+		} catch (error) {
+			console.log('[Gallery] Service Worker caching failed:', error);
+		}
+	}
 
 	// Apply filters reactively - debounce search, immediate for others
 	let previousSearch = '';
@@ -153,6 +191,12 @@
 		isLoading = false;
 		isLoadingMore = false;
 		currentPage++;
+		
+		// Cache newly loaded items for future visits
+		if (displayedItems.length > 0) {
+			// Delay caching to not impact initial render performance
+			setTimeout(() => cacheViewedItems(), 1000);
+		}
 	}
 
 	// Intersection observer for infinite scroll
@@ -323,6 +367,7 @@
 						? 'flex flex-row'
 						: ''}"
 					style="animation-delay: {Math.max(0, (item.id - 1) * 0.1)}s"
+					onmouseenter={() => handleItemHover(item)}
 				>
 					<!-- Before/After Slider -->
 					<div
@@ -515,7 +560,7 @@
 					afterImage={selectedItem.afterImage}
 					beforeAlt={`${selectedItem.title} - Original`}
 					afterAlt={`${selectedItem.title} - Converted`}
-					loading="eager"
+					loading="lazy"
 					class="h-full w-full"
 				/>
 			</div>

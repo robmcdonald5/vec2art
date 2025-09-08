@@ -1,5 +1,5 @@
 // Service Worker for vec2art Gallery Caching
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `vec2art-gallery-${CACHE_VERSION}`;
 const IMAGE_CACHE_NAME = `vec2art-images-${CACHE_VERSION}`;
 
@@ -153,6 +153,45 @@ self.addEventListener('message', (event) => {
           imageCacheSize: imageCacheKeys.length,
           totalSize: cacheKeys.length + imageCacheKeys.length
         });
+      })
+    );
+  }
+  
+  // Aggressive caching for viewed gallery items
+  if (event.data.action === 'cacheGalleryItems') {
+    const { items } = event.data;
+    event.waitUntil(
+      caches.open(IMAGE_CACHE_NAME).then((cache) => {
+        // Extract all image URLs from gallery items
+        const imageUrls = items.flatMap(item => [
+          item.beforeImage,
+          item.afterImage
+        ]).filter(Boolean);
+        
+        // Cache all images aggressively
+        return Promise.allSettled(
+          imageUrls.map(url => 
+            fetch(url)
+              .then(response => {
+                if (response.status === 200) {
+                  return cache.put(url, response.clone());
+                }
+              })
+              .catch(err => console.log(`[SW] Failed to cache ${url}:`, err))
+          )
+        );
+      }).then((results) => {
+        const successful = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected').length;
+        
+        if (event.ports[0]) {
+          event.ports[0].postMessage({ 
+            status: 'Gallery items cached',
+            successful,
+            failed,
+            total: results.length
+          });
+        }
       })
     );
   }
