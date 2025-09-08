@@ -4,19 +4,38 @@
 	import { HAND_DRAWN_DESCRIPTIONS } from '$lib/types/vectorizer';
 	import { CustomSelect } from '$lib/components/ui/custom-select';
 	import FerrariSlider from '$lib/components/ui/FerrariSlider.svelte';
+	import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
+	import { toastStore } from '$lib/stores/toast.svelte';
 
 	// Import dots backend architecture
 	import { mapUIConfigToDotsConfig, validateDotsConfig } from '$lib/utils/dots-mapping.js';
 	import type { UISliderConfig } from '$lib/types/dots-backend.js';
 
-	// Import generated parameter types and validation
+	// Import generated parameter types and validation directly
 	import { 
-		validateLegacyConfig,
-		processConfigWithGenerated,
-		type ValidationResult,
-		type EnhancedConfigResult
-	} from '$lib/types/parameter-adapter';
-	import { getParameterMetadata } from '$lib/types/generated-parameters';
+		getParameterMetadata,
+		validateParameter,
+		getParametersForBackend,
+		type VectorizerConfig as GeneratedConfig
+	} from '$lib/types/generated-parameters';
+	
+	// Import performance optimization utilities
+	import { 
+		globalValidationCache, 
+		globalDebouncedValidator,
+		type ValidationResult
+	} from '$lib/utils/validation-cache';
+	import { 
+		globalParameterUpdateManager,
+		type ParameterDelta
+	} from '$lib/utils/parameter-diff';
+	
+	// Phase 3.4: Import component optimization utilities
+	import { 
+		useMemo, 
+		useRenderThrottle,
+		globalStoreUpdater
+	} from '$lib/utils/component-optimizer';
 
 	interface ParameterPanelProps {
 		config: VectorizerConfig;
@@ -33,8 +52,110 @@
 		onParameterChange
 	}: ParameterPanelProps = $props();
 
-	// Enhanced validation using generated parameter registry
-	let validationResult: EnhancedConfigResult = $derived(processConfigWithGenerated(config));
+	// Error boundary handler for parameter validation
+	function handleParameterValidationError(error: Error, errorInfo: any) {
+		console.error('❌ [ErrorBoundary] Parameter validation error:', error, errorInfo);
+		toastStore.error(`Parameter validation failed: ${error.message}. Using safe defaults.`);
+		
+		// Reset to safe defaults on validation errors
+		onConfigChange({ 
+			detail: 0.6,
+			stroke_width: 2.0,
+			tremor_strength: 0.0,
+			variable_weights: 0.0,
+			tapering: 0.0
+		});
+	}
+
+	// High-performance cached validation using parameter diff tracking
+	let validationResult = $state<ValidationResult>({
+		isValid: true,
+		errors: [],
+		warnings: []
+	});
+	
+	// Track last validation hash to avoid unnecessary validations
+	let lastValidationHash = '';
+
+	// Optimized validation function with caching
+	const performValidation = (config: Partial<VectorizerConfig>): ValidationResult => {
+		const errors: Array<{ field: string; message: string }> = [];
+		const warnings: Array<{ field: string; message: string }> = [];
+
+		try {
+			// Validate core parameters using generated metadata
+			if (config.detail !== undefined) {
+				const result = validateParameter('detail', config.detail);
+				if (!result.valid) {
+					errors.push({ field: 'detail', message: result.error || 'Invalid detail value' });
+				}
+			}
+
+			if (config.stroke_width !== undefined) {
+				// Map stroke_width to stroke_px_at_1080p for validation
+				const result = validateParameter('stroke_px_at_1080p', config.stroke_width);
+				if (!result.valid) {
+					errors.push({ field: 'stroke_width', message: result.error || 'Invalid stroke width' });
+				}
+			}
+
+			// Backend-specific parameter validation
+			if (config.backend) {
+				const backendParams = getParametersForBackend(config.backend);
+				for (const paramName of backendParams) {
+					const legacyName = paramName === 'stroke_px_at_1080p' ? 'stroke_width' : paramName;
+					const value = (config as any)[legacyName];
+					
+					if (value !== undefined) {
+						const result = validateParameter(paramName, value);
+						if (!result.valid) {
+							errors.push({ 
+								field: legacyName, 
+								message: result.error || `Invalid ${legacyName}` 
+							});
+						}
+					}
+				}
+			}
+
+			return {
+				isValid: errors.length === 0,
+				errors,
+				warnings
+			};
+		} catch (error) {
+			console.warn('Parameter validation failed, using fallback:', error);
+			return {
+				isValid: false,
+				errors: [{ field: 'validation', message: 'Parameter validation failed' }],
+				warnings: []
+			};
+		}
+	};
+
+	// Use debounced validation for performance
+	$effect(() => {
+		globalDebouncedValidator.validate(
+			config,
+			performValidation,
+			(result, fromCache) => {
+				validationResult = result;
+				
+				// Log cache performance in development
+				if (import.meta.env.DEV) {
+					const stats = globalValidationCache.getStats();
+					if (stats.totalValidations % 10 === 0) { // Log every 10th validation
+						console.log(`[ParameterPanel] Validation cache stats:`, {
+							hitRatio: `${(stats.hitRatio * 100).toFixed(1)}%`,
+							cacheSize: stats.cacheSize,
+							fromCache
+						});
+					}
+				}
+			}
+		);
+	});
+
 	let hasValidationErrors = $derived(validationResult.errors.length > 0);
 	let hasValidationWarnings = $derived(validationResult.warnings.length > 0);
 
@@ -44,16 +165,18 @@
 	const noiseFilterSpatialMetadata = $derived(getParameterMetadata('noise_filter_spatial_sigma'));
 	const noiseFilterRangeMetadata = $derived(getParameterMetadata('noise_filter_range_sigma'));
 
-	// Convert detail using metadata ranges instead of hardcoded values
-	// UI: 1-10 scale, Internal: uses metadata min/max
+	// Convert detail using fallback values since metadata may not have min/max
+	// UI: 1-10 scale, Internal: 0.1-1.0 scale
 	const detailToUI = (detail: number) => {
-		if (!detailMetadata) return Math.round(detail * 10);
-		const { min, max } = detailMetadata;
+		// Use safe fallback values
+		const min = 0.1;
+		const max = 1.0;
 		return Math.round(((detail - min) / (max - min)) * 9 + 1);
 	};
 	const detailFromUI = (uiValue: number) => {
-		if (!detailMetadata) return uiValue / 10;
-		const { min, max } = detailMetadata;
+		// Use safe fallback values
+		const min = 0.1;
+		const max = 1.0;
 		return min + ((uiValue - 1) / 9) * (max - min);
 	};
 
@@ -195,31 +318,33 @@
 </script>
 
 <section class="space-y-6">
-	<!-- Parameter Validation Status -->
-	{#if hasValidationErrors || hasValidationWarnings}
-		<div class="space-y-2 rounded-lg border p-3">
-			{#if hasValidationErrors}
-				<div class="text-sm text-red-600 dark:text-red-400">
-					<div class="font-medium">Configuration Errors:</div>
-					<ul class="mt-1 list-inside list-disc space-y-1">
-						{#each validationResult.errors as error}
-							<li>{error.field}: {error.message}</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-			{#if hasValidationWarnings}
-				<div class="text-sm text-amber-600 dark:text-amber-400">
-					<div class="font-medium">Configuration Warnings:</div>
-					<ul class="mt-1 list-inside list-disc space-y-1">
-						{#each validationResult.warnings as warning}
-							<li>{warning.field}: {warning.message}</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-		</div>
-	{/if}
+	<!-- Parameter Validation Status with error boundary -->
+	<ErrorBoundary onError={handleParameterValidationError}>
+		{#if hasValidationErrors || hasValidationWarnings}
+			<div class="space-y-2 rounded-lg border p-3">
+				{#if hasValidationErrors}
+					<div class="text-sm text-red-600 dark:text-red-400">
+						<div class="font-medium">Configuration Errors:</div>
+						<ul class="mt-1 list-inside list-disc space-y-1">
+							{#each validationResult.errors as error}
+								<li>{error.field}: {error.message}</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+				{#if hasValidationWarnings}
+					<div class="text-sm text-amber-600 dark:text-amber-400">
+						<div class="font-medium">Configuration Warnings:</div>
+						<ul class="mt-1 list-inside list-disc space-y-1">
+							{#each validationResult.warnings as warning}
+								<li>{warning.field}: {warning.message}</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+			</div>
+		{/if}
+	</ErrorBoundary>
 
 	<!-- Core Parameters (Always Visible) -->
 	<div class="space-y-4">
@@ -393,8 +518,8 @@
 			<FerrariSlider
 				id="stroke-width"
 				bind:value={strokeWidthValue}
-				min={strokeMetadata?.min ?? 0.5}
-				max={strokeMetadata?.max ?? 10.0}
+				min={0.5}
+				max={10.0}
 				step={0.1}
 				oninput={(value) => {
 					// PROPER ARCHITECTURE: Always use generic parameters
@@ -612,8 +737,8 @@
 						<FerrariSlider
 							id="spatial-sigma"
 							bind:value={spatialSigmaValue}
-							min={noiseFilterSpatialMetadata?.min ?? 0.5}
-							max={noiseFilterSpatialMetadata?.max ?? 1.5}
+							min={0.5}
+							max={1.5}
 							step={0.1}
 							oninput={(value) => {
 								onConfigChange({ noise_filter_spatial_sigma: value });
@@ -645,8 +770,8 @@
 						<FerrariSlider
 							id="range-sigma"
 							bind:value={rangeSigmaValue}
-							min={noiseFilterRangeMetadata?.min ?? 10}
-							max={noiseFilterRangeMetadata?.max ?? 100}
+							min={10}
+							max={100}
 							step={5}
 							oninput={(value) => {
 								onConfigChange({ noise_filter_range_sigma: value });

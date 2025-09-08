@@ -735,7 +735,7 @@ export function validateParameter(paramName: string, value: any): { valid: boole
       if (typeof value !== 'number' || isNaN(value)) {
         return { valid: false, error: `${paramName} must be a number` };
       }
-      if (value < metadata.min || value > metadata.max) {
+      if ('min' in metadata && 'max' in metadata && (value < metadata.min || value > metadata.max)) {
         return { valid: false, error: `${paramName} must be between ${metadata.min} and ${metadata.max}` };
       }
       break;
@@ -745,13 +745,9 @@ export function validateParameter(paramName: string, value: any): { valid: boole
       }
       break;
     case 'enum':
-      if (typeof value !== 'string' || !metadata.variants?.includes(value)) {
-        return { valid: false, error: `${paramName} must be one of: ${metadata.variants?.join(', ')}` };
-      }
-      break;
-    case 'string':
-      if (typeof value !== 'string') {
-        return { valid: false, error: `${paramName} must be a string` };
+      if (typeof value !== 'string' || !('variants' in metadata) || !(metadata.variants as readonly string[]).includes(value)) {
+        const variants = 'variants' in metadata ? (metadata.variants as readonly string[]).join(', ') : 'unknown';
+        return { valid: false, error: `${paramName} must be one of: ${variants}` };
       }
       break;
   }

@@ -12,6 +12,7 @@
 		isProcessing?: boolean;
 		className?: string;
 		onDownloadOriginal?: () => void;
+		hideControls?: boolean;
 		// For synchronized pan/zoom (keeping interface for compatibility)
 		externalPanZoom?: { scale: number; x: number; y: number };
 		onPanZoomChange?: (state: { scale: number; x: number; y: number }) => void;
@@ -27,6 +28,7 @@
 		isProcessing = false,
 		className = '',
 		onDownloadOriginal,
+		hideControls = false,
 		externalPanZoom,
 		onPanZoomChange,
 		enableSync = false
@@ -352,72 +354,74 @@
 
 <div class="relative flex h-full flex-col {className}">
 	<!-- Header with title and controls -->
-	<div class="mb-3 flex items-center justify-between px-2">
-		<div class="text-converter-primary flex flex-1 items-center gap-2 text-sm font-medium" {title}>
-			<span class="truncate">{title}</span>
-			{#if showRemoveButton && onRemove}
-				<button
-					class="ml-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-red-500"
-					onclick={onRemove}
-					disabled={isProcessing}
-					aria-label="Remove image"
-					title="Remove this image"
-				>
-					×
-				</button>
-			{/if}
-		</div>
+	{#if !hideControls}
+		<div class="mb-3 flex items-center justify-between px-2">
+			<div class="text-converter-primary flex flex-1 items-center gap-2 text-sm font-medium" {title}>
+				<span class="truncate">{title}</span>
+				{#if showRemoveButton && onRemove}
+					<button
+						class="ml-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-red-500"
+						onclick={onRemove}
+						disabled={isProcessing}
+						aria-label="Remove image"
+						title="Remove this image"
+					>
+						×
+					</button>
+				{/if}
+			</div>
 
-		<!-- Working control buttons -->
-		<div class="flex gap-1">
-			<Button
-				variant="outline"
-				size="icon"
-				class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-				onclick={zoomOut}
-				disabled={!isInitialized}
-				aria-label="Zoom out"
-				title="Zoom out (- key)"
-			>
-				<ZoomOut class="h-4 w-4" />
-			</Button>
-			<Button
-				variant="outline"
-				size="icon"
-				class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-				onclick={zoomIn}
-				disabled={!isInitialized}
-				aria-label="Zoom in"
-				title="Zoom in (+ key)"
-			>
-				<ZoomIn class="h-4 w-4" />
-			</Button>
-			<Button
-				variant="outline"
-				size="icon"
-				class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-				onclick={resetView}
-				disabled={!isInitialized}
-				aria-label="Reset view"
-				title="Reset view (0 key)"
-			>
-				<Maximize2 class="h-4 w-4" />
-			</Button>
-			{#if onDownloadOriginal}
+			<!-- Working control buttons -->
+			<div class="flex gap-1">
 				<Button
 					variant="outline"
 					size="icon"
 					class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-					onclick={onDownloadOriginal}
+					onclick={zoomOut}
 					disabled={!isInitialized}
-					aria-label="Download original image"
-					title="Download original image"
+					aria-label="Zoom out"
+					title="Zoom out (- key)"
 				>
-					<Download class="h-4 w-4" />
+					<ZoomOut class="h-4 w-4" />
 				</Button>
-			{/if}
+				<Button
+					variant="outline"
+					size="icon"
+					class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+					onclick={zoomIn}
+					disabled={!isInitialized}
+					aria-label="Zoom in"
+					title="Zoom in (+ key)"
+				>
+					<ZoomIn class="h-4 w-4" />
+				</Button>
+				<Button
+					variant="outline"
+					size="icon"
+					class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+					onclick={resetView}
+					disabled={!isInitialized}
+					aria-label="Reset view"
+					title="Reset view (0 key)"
+				>
+					<Maximize2 class="h-4 w-4" />
+				</Button>
+				{#if onDownloadOriginal}
+					<Button
+						variant="outline"
+						size="icon"
+						class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+						onclick={onDownloadOriginal}
+						disabled={!isInitialized}
+						aria-label="Download original image"
+						title="Download original image"
+					>
+						<Download class="h-4 w-4" />
+					</Button>
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/if}
 
 	<!-- Interactive image container with svelte-image-viewer and scroll fix -->
 	<div

@@ -386,7 +386,7 @@
 			<!-- Original Image -->
 			<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
-					<!-- Sync Controls -->
+					<!-- Original Frame Header with Controls -->
 					<div class="mb-3 flex items-center justify-between px-2">
 						<div class="flex items-center gap-2">
 							<span class="text-converter-primary text-sm font-medium select-none">Original</span>
@@ -414,20 +414,96 @@
 								{/if}
 							</button>
 						</div>
+						
+						<!-- Original Frame Controls -->
+						<div class="flex gap-1">
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Zoom out original panel
+									panZoomStore.updateOriginalState({
+										...panZoomStore.originalState,
+										scale: Math.max(0.1, panZoomStore.originalState.scale / 1.2)
+									});
+								}}
+								aria-label="Zoom out"
+								title="Zoom out"
+							>
+								<ZoomOut class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Zoom in original panel
+									panZoomStore.updateOriginalState({
+										...panZoomStore.originalState,
+										scale: Math.min(5.0, panZoomStore.originalState.scale * 1.2)
+									});
+								}}
+								aria-label="Zoom in"
+								title="Zoom in"
+							>
+								<ZoomIn class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Reset original panel view
+									panZoomStore.updateOriginalState({ scale: 1, x: 0, y: 0 });
+								}}
+								aria-label="Reset view"
+								title="Reset view"
+							>
+								<Maximize2 class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => downloadOriginal(currentFile, currentImageUrl)}
+								aria-label="Download original"
+								title="Download original image"
+							>
+								<Download class="h-4 w-4" />
+							</Button>
+						</div>
 					</div>
+
+					<!-- File Name and Remove Button -->
+					{#if currentFile}
+						<div class="mb-2 flex items-center justify-between px-2">
+							<span class="text-converter-secondary text-xs truncate max-w-[70%]" title={currentFile.name}>
+								{currentFile.name}
+							</span>
+							<button
+								class="ml-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-red-500 hover:scale-110"
+								onclick={() => onRemoveFile?.(currentImageIndex)}
+								disabled={isProcessing}
+								aria-label="Remove image"
+								title="Remove this image"
+							>
+								×
+							</button>
+						</div>
+					{/if}
 
 					<InteractiveImagePanel
 						imageUrl={currentImageUrl}
 						imageAlt={currentFile?.name || 'Original image'}
-						title={currentFile?.name || 'Original'}
-						onRemove={currentFile ? () => onRemoveFile?.(currentImageIndex) : undefined}
-						showRemoveButton={Boolean(currentFile)}
+						title=""
+						showRemoveButton={false}
 						{isProcessing}
 						className="flex-1"
-						onDownloadOriginal={() => downloadOriginal(currentFile, currentImageUrl)}
 						externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}
 						onPanZoomChange={(state) => panZoomStore.updateOriginalState(state)}
 						enableSync={panZoomStore.isSyncEnabled}
+						hideControls={true}
 					/>
 				</div>
 			</div>
@@ -435,6 +511,7 @@
 			<!-- Converted SVG -->
 			<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
+					<!-- Converted Frame Header with Controls -->
 					<div class="mb-3 flex items-center justify-between px-2">
 						<div class="flex items-center gap-2">
 							<span
@@ -472,6 +549,71 @@
 										<Image class="h-4 w-4" />
 									{/if}
 								</button>
+							{/if}
+						</div>
+						
+						<!-- Converted Frame Controls -->
+						<div class="flex gap-1">
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Zoom out converted panel
+									panZoomStore.updateConvertedState({
+										...panZoomStore.convertedState,
+										scale: Math.max(0.1, panZoomStore.convertedState.scale / 1.2)
+									});
+								}}
+								disabled={!hasResult}
+								aria-label="Zoom out"
+								title="Zoom out"
+							>
+								<ZoomOut class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Zoom in converted panel
+									panZoomStore.updateConvertedState({
+										...panZoomStore.convertedState,
+										scale: Math.min(5.0, panZoomStore.convertedState.scale * 1.2)
+									});
+								}}
+								disabled={!hasResult}
+								aria-label="Zoom in"
+								title="Zoom in"
+							>
+								<ZoomIn class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Reset converted panel view
+									panZoomStore.updateConvertedState({ scale: 1, x: 0, y: 0 });
+								}}
+								disabled={!hasResult}
+								aria-label="Reset view"
+								title="Reset view"
+							>
+								<Maximize2 class="h-4 w-4" />
+							</Button>
+							{#if onDownload && hasResult}
+								<Button
+									variant="outline"
+									size="icon"
+									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={onDownload}
+									disabled={isProcessing}
+									aria-label="Download SVG"
+									title="Download SVG"
+								>
+									<Download class="h-4 w-4" />
+								</Button>
 							{/if}
 						</div>
 					</div>
@@ -578,7 +720,7 @@
 									<InteractiveImagePanel
 										imageUrl={currentSvgUrl}
 										imageAlt="Converted SVG"
-										title="Converted Preview"
+										title=""
 										{isProcessing}
 										className="flex-1"
 										externalPanZoom={panZoomStore.isSyncEnabled
@@ -586,6 +728,7 @@
 											: undefined}
 										onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
 										enableSync={panZoomStore.isSyncEnabled}
+										hideControls={true}
 									/>
 								</div>
 							{/if}

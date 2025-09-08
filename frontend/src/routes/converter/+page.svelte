@@ -13,6 +13,7 @@
 	import ConverterInterface from '$lib/components/converter/ConverterInterface.svelte';
 	import SettingsPanel from '$lib/components/converter/SettingsPanel.svelte';
 	import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
+	import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
 	import { toastStore } from '$lib/stores/toast.svelte';
 	import { parameterHistory } from '$lib/stores/parameter-history.svelte';
 	import { converterPersistence } from '$lib/stores/converter-persistence';
@@ -102,6 +103,29 @@
 		setTimeout(() => {
 			announceText = '';
 		}, 1000);
+	}
+
+	// Error boundary handlers
+	function handleConverterError(error: Error, errorInfo: any) {
+		console.error('❌ [ErrorBoundary] Converter component error:', error, errorInfo);
+		toastStore.error(`Converter error: ${error.message}. The system will attempt to recover.`);
+		
+		// Try to recover by resetting problematic state
+		if (error.message.includes('WASM') || error.message.includes('panic')) {
+			handleEmergencyRecovery();
+		} else if (error.message.includes('validation') || error.message.includes('parameter')) {
+			// Reset to default config on validation errors
+			settingsSyncStore.updateConfig({ ...DEFAULT_CONFIG });
+		}
+	}
+
+	function handleSettingsError(error: Error, errorInfo: any) {
+		console.error('❌ [ErrorBoundary] Settings panel error:', error, errorInfo);
+		toastStore.error(`Settings error: ${error.message}. Settings have been reset to defaults.`);
+		
+		// Reset settings to defaults on errors
+		settingsSyncStore.updateConfig({ ...DEFAULT_CONFIG });
+		selectedPreset = 'custom';
 	}
 
 	// File management functions
@@ -1465,46 +1489,50 @@
 			{:else if uiState === 'LOADED'}
 				<!-- LOADED State: Converter interface with settings -->
 				<main class="grid grid-cols-1 gap-8 xl:grid-cols-[1fr_auto]">
-					<!-- Main converter area -->
+					<!-- Main converter area with error boundary -->
 					<div class="space-y-6">
 						{#key componentResetKey}
-							<ConverterInterface
-								{files}
-								{originalImageUrls}
-								{filesMetadata}
-								{currentImageIndex}
-								currentProgress={currentProgress ?? undefined}
-								{results}
-								{previewSvgUrls}
-								{canConvert}
-								{canDownload}
-								{isProcessing}
-								onImageIndexChange={handleImageIndexChange}
-								onConvert={handleConvert}
-								onDownload={handleDownload}
-								onAbort={handleAbort}
-								onReset={handleClearAll}
-								onAddMore={handleAddMore}
-								onRemoveFile={handleRemoveFile}
-								isPanicked={vectorizerStore.isPanicked}
-								onEmergencyRecovery={handleEmergencyRecovery}
-								settingsSyncMode={settingsSyncStore.syncMode}
-								onSettingsModeChange={handleSettingsModeChange}
-							/>
+							<ErrorBoundary onError={handleConverterError}>
+								<ConverterInterface
+									{files}
+									{originalImageUrls}
+									{filesMetadata}
+									{currentImageIndex}
+									currentProgress={currentProgress ?? undefined}
+									{results}
+									{previewSvgUrls}
+									{canConvert}
+									{canDownload}
+									{isProcessing}
+									onImageIndexChange={handleImageIndexChange}
+									onConvert={handleConvert}
+									onDownload={handleDownload}
+									onAbort={handleAbort}
+									onReset={handleClearAll}
+									onAddMore={handleAddMore}
+									onRemoveFile={handleRemoveFile}
+									isPanicked={vectorizerStore.isPanicked}
+									onEmergencyRecovery={handleEmergencyRecovery}
+									settingsSyncMode={settingsSyncStore.syncMode}
+									onSettingsModeChange={handleSettingsModeChange}
+								/>
+							</ErrorBoundary>
 						{/key}
 					</div>
 
-					<!-- Settings panel -->
+					<!-- Settings panel with error boundary -->
 					<div class="space-y-4 xl:w-80">
-						<SettingsPanel
-							{config}
-							{selectedPreset}
-							disabled={isProcessing}
-							onConfigChange={handleConfigChange}
-							onPresetChange={handlePresetChange}
-							onBackendChange={handleBackendChange}
-							onParameterChange={handleParameterChange}
-						/>
+						<ErrorBoundary onError={handleSettingsError}>
+							<SettingsPanel
+								{config}
+								{selectedPreset}
+								disabled={isProcessing}
+								onConfigChange={handleConfigChange}
+								onPresetChange={handlePresetChange}
+								onBackendChange={handleBackendChange}
+								onParameterChange={handleParameterChange}
+							/>
+						</ErrorBoundary>
 					</div>
 				</main>
 			{/if}

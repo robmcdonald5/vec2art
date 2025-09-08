@@ -7,7 +7,12 @@
 import { browser } from '$app/environment';
 import type { VectorizerConfig, ProcessingResult } from '$lib/types/vectorizer';
 import { DEFAULT_CONFIG } from '$lib/types/vectorizer';
-import type { PanZoomState } from './pan-zoom-sync.svelte';
+// PanZoomState interface moved inline since pan-zoom-sync store was simplified
+export interface PanZoomState {
+	scale: number;
+	x: number;
+	y: number;
+}
 
 // Storage keys
 const STORAGE_KEYS = {
