@@ -163,7 +163,11 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 		renderError = null;
 
 		try {
-			console.log(`[AdvancedSvgPreview] Starting render for SVG of length:`, svgContent.length);
+			console.log(`🎨 [AdvancedSvgPreview] Starting render for SVG:`, {
+			length: svgContent.length,
+			sizeKB: Math.round(svgContent.length / 1024),
+			sizeMB: (svgContent.length / 1024 / 1024).toFixed(2)
+		});
 
 			// Clear previous renders
 			canvasDataUrl = null;
@@ -176,16 +180,18 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 
 			try {
 				const svgSize = svgContent.length;
-				const isLarge = svgSize > 500000; // 500KB threshold
-				const isHuge = svgSize > 1000000; // 1MB threshold
+				const isLarge = svgSize > 300000; // 300KB threshold (lowered for better optimization)
+				const isHuge = svgSize > 500000; // 500KB threshold (lowered from 1MB)
 
 				console.log('[AdvancedSvgPreview] SVG analysis:', {
 					sizeBytes: svgSize,
+					sizeMB: (svgSize / 1024 / 1024).toFixed(2),
 					isLarge,
-					isHuge
+					isHuge,
+					strategy: isHuge ? 'WebP' : isLarge ? 'IMG-fallback' : 'DOM'
 				});
 
-				// For huge SVGs (like 1.5MB), use WebP conversion
+				// For huge SVGs (500KB+), use WebP conversion for better performance
 				if (isHuge) {
 					// Still run analysis for performance stats even with WebP
 					try {
@@ -203,14 +209,14 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 					strategy = {
 						mode: 'webp',
 						detailLevel: 'high',
-						reason: `WebP conversion for ${Math.round(svgSize / 1024)}KB SVG (fast preview with pan/zoom)`,
+						reason: `WebP optimization for ${Math.round(svgSize / 1024)}KB SVG (500KB+ threshold - fast preview with pan/zoom)`,
 						estimatedPerformance: 'excellent'
 					};
 				} else if (isLarge) {
 					strategy = {
 						mode: 'img-fallback',
 						detailLevel: 'normal',
-						reason: `IMG fallback for ${Math.round(svgSize / 1024)}KB SVG`,
+						reason: `IMG fallback for ${Math.round(svgSize / 1024)}KB SVG (300KB+ threshold)`,
 						estimatedPerformance: 'excellent'
 					};
 				} else {
@@ -234,13 +240,27 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 			}
 
 			renderStrategy = strategy;
-			console.log(`[AdvancedSvgPreview] Using ${strategy.mode} rendering:`, strategy.reason);
+			console.log(`🚀 [AdvancedSvgPreview] Using ${strategy.mode.toUpperCase()} rendering:`, {
+				mode: strategy.mode,
+				reason: strategy.reason,
+				performance: strategy.estimatedPerformance,
+				svgSizeKB: Math.round(svgContent.length / 1024)
+			});
 
 			// Render based on strategy with individual error handling
 			switch (strategy.mode) {
 				case 'webp':
 					try {
-						await renderWithWebP();
+						// IMMEDIATE PREVIEW: Create blob URL first for instant display
+						renderWithSvgDom(); // This creates svgBlobUrl immediately
+						console.log('⚡ [AdvancedSvgPreview] Created immediate blob URL for instant preview');
+						
+						// BACKGROUND OPTIMIZATION: Start WebP conversion without blocking
+						renderWithWebP().then(() => {
+							console.log('🎨 [AdvancedSvgPreview] Background WebP optimization completed, preview will auto-update');
+						}).catch(error => {
+							console.warn('[AdvancedSvgPreview] Background WebP failed, keeping blob URL:', error);
+						});
 					} catch (error) {
 						console.warn('[AdvancedSvgPreview] WebP render failed, trying IMG fallback:', error);
 						renderWithImgFallback();
@@ -267,7 +287,16 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 				case 'webgl':
 					console.warn('[AdvancedSvgPreview] WebGL not implemented, using WebP');
 					try {
-						await renderWithWebP();
+						// IMMEDIATE PREVIEW: Create blob URL first for instant display
+						renderWithSvgDom();
+						console.log('⚡ [AdvancedSvgPreview] Created immediate blob URL for WebGL fallback');
+						
+						// BACKGROUND OPTIMIZATION: Start WebP conversion without blocking
+						renderWithWebP().then(() => {
+							console.log('🎨 [AdvancedSvgPreview] Background WebP optimization completed for WebGL fallback');
+						}).catch(error => {
+							console.warn('[AdvancedSvgPreview] WebP fallback failed, keeping blob URL:', error);
+						});
 					} catch (error) {
 						console.warn('[AdvancedSvgPreview] WebP fallback failed, using IMG:', error);
 						renderWithImgFallback();
@@ -276,7 +305,16 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 
 				default:
 					console.warn('[AdvancedSvgPreview] Unknown render mode, using WebP fallback');
-					await renderWithWebP();
+					// IMMEDIATE PREVIEW: Create blob URL first for instant display
+					renderWithSvgDom();
+					console.log('⚡ [AdvancedSvgPreview] Created immediate blob URL for unknown mode fallback');
+					
+					// BACKGROUND OPTIMIZATION: Start WebP conversion without blocking
+					renderWithWebP().then(() => {
+						console.log('🎨 [AdvancedSvgPreview] Background WebP optimization completed for unknown mode fallback');
+					}).catch(error => {
+						console.warn('[AdvancedSvgPreview] WebP fallback failed, keeping blob URL:', error);
+					});
 			}
 
 			// Try to update performance stats (non-critical)
@@ -302,7 +340,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 	}
 
 	async function renderWithWebP() {
-		console.log('[AdvancedSvgPreview] Starting WebP render');
+		console.log('🖼️ [AdvancedSvgPreview] Starting WebP optimization for large SVG...');
 
 		try {
 			// Check if WebP is supported
@@ -337,7 +375,11 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 			}
 
 			webpDataUrl = result.webpDataUrl;
-			console.log('[AdvancedSvgPreview] WebP render successful');
+			console.log('✅ [AdvancedSvgPreview] WebP optimization completed successfully!', {
+				compressionRatio: result.compressionRatio + 'x',
+				conversionTime: result.conversionTimeMs + 'ms',
+				finalSize: Math.round((result.webpDataUrl?.length || 0) / 1024) + 'KB'
+			});
 		} catch (error) {
 			console.error('[AdvancedSvgPreview] WebP render failed:', error);
 			throw error; // Re-throw to trigger fallback
@@ -387,13 +429,17 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 	// Get current display URL based on render mode
 	const displayUrl = $derived(() => {
 		const url = webpDataUrl || canvasDataUrl || imgFallbackUrl || svgBlobUrl;
-		console.log('[AdvancedSvgPreview] Display URL state:', {
+		const activeMode = webpDataUrl ? 'WebP' : canvasDataUrl ? 'Canvas' : imgFallbackUrl ? 'IMG' : svgBlobUrl ? 'Blob' : 'None';
+		console.log(`🔄 [AdvancedSvgPreview] Display URL updated - Active mode: ${activeMode}`, {
 			webpDataUrl: !!webpDataUrl,
 			canvasDataUrl: !!canvasDataUrl,
 			imgFallbackUrl: !!imgFallbackUrl,
 			svgBlobUrl: !!svgBlobUrl,
 			finalUrl: !!url
 		});
+		if (webpDataUrl && svgBlobUrl) {
+			console.log('🎨 [AdvancedSvgPreview] ✅ Successfully upgraded from Blob to optimized WebP!');
+		}
 		return url;
 	});
 

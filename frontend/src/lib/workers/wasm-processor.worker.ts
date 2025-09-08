@@ -40,7 +40,7 @@ interface WorkerResponse {
  * Initialize WASM module in worker context
  */
 async function initializeWasm(config?: { threadCount?: number; backend?: string }) {
-	console.log('[Worker] 🔧 initializeWasm called with config:', config);
+	console.log('[Worker] 🔧 initializeWasm called with config:', config ? JSON.parse(JSON.stringify(config)) : null);
 	console.log('[Worker] 🔧 Current wasmInitialized status:', wasmInitialized);
 
 	// Always attempt threading setup, even if WASM was previously initialized
@@ -261,17 +261,33 @@ async function configureVectorizer(config: any) {
 			// For dots backend: stroke_width controls dot sizes via UI mapping
 			// Extended range: 0.5-10.0 for bold artistic effects
 			const dotWidth = config.stroke_width;
-			const clampedWidth = Math.max(0.5, Math.min(10.0, dotWidth));
+			
+			// CRITICAL FIX: Validate stroke_width before dots mapping to prevent WASM crashes
+			if (isNaN(dotWidth) || !isFinite(dotWidth)) {
+				console.error('[Worker] 🚨 Invalid stroke_width for dots backend, using safe default:', dotWidth);
+				vectorizer.set_dot_size_range(0.5, 3.0); // Safe fallback
+			} else {
+				const clampedWidth = Math.max(0.5, Math.min(10.0, dotWidth));
 
-			// Map to extended ranges for larger dots
-			const normalizedWidth = (clampedWidth - 0.5) / (10.0 - 0.5);
-			const minRadius = 0.3 + normalizedWidth * (3.0 - 0.3); // 0.3-3.0 range
-			const maxRadius = Math.max(minRadius + 0.1, 1.0 + normalizedWidth * (10.0 - 1.0)); // 1.0-10.0 range
+				// Map to extended ranges for larger dots with additional safety checks
+				const normalizedWidth = (clampedWidth - 0.5) / (10.0 - 0.5);
+				let minRadius = 0.3 + normalizedWidth * (3.0 - 0.3); // 0.3-3.0 range
+				let maxRadius = Math.max(minRadius + 0.1, 1.0 + normalizedWidth * (10.0 - 1.0)); // 1.0-10.0 range
 
-			console.log(
-				`[Worker] 🎯 Dots backend - mapping stroke_width=${dotWidth} to dot_size_range(${minRadius.toFixed(1)}, ${maxRadius.toFixed(1)})`
-			);
-			vectorizer.set_dot_size_range(minRadius, maxRadius);
+				// SAFEGUARD: Ensure valid range and prevent potential divide-by-zero or invalid values
+				minRadius = Math.max(0.1, Math.min(10.0, minRadius));
+				maxRadius = Math.max(minRadius + 0.1, Math.min(10.0, maxRadius));
+
+				if (!isFinite(minRadius) || !isFinite(maxRadius)) {
+					console.error('[Worker] 🚨 Computed dot size range contains invalid values, using safe defaults');
+					vectorizer.set_dot_size_range(0.5, 3.0);
+				} else {
+					console.log(
+						`[Worker] 🎯 Dots backend - mapping stroke_width=${dotWidth} to dot_size_range(${minRadius.toFixed(1)}, ${maxRadius.toFixed(1)})`
+					);
+					vectorizer.set_dot_size_range(minRadius, maxRadius);
+				}
+			}
 		} else {
 			// For line art backends: stroke_width controls line thickness
 			console.log(`[Worker] Setting stroke width: ${config.stroke_width} (Range: 0.5-10.0)`);
@@ -515,26 +531,60 @@ async function configureVectorizer(config: any) {
 	if (config.backend === 'dots') {
 		console.log('[Worker] 🎯 Configuring dots backend parameters');
 
+		// CRITICAL FIX: Enhanced parameter validation to prevent WASM unreachable errors
 		// Use dot_density_threshold if available (from new Dot Density slider)
 		if (
 			typeof config.dot_density_threshold === 'number' &&
 			typeof vectorizer.set_dot_density === 'function'
 		) {
-			console.log(`[Worker] 🎯 Dot Density slider: ${config.dot_density_threshold}`);
-			vectorizer.set_dot_density(config.dot_density_threshold);
+			// SAFEGUARD: Strict validation of dot density parameter
+			const densityValue = config.dot_density_threshold;
+			if (isNaN(densityValue) || !isFinite(densityValue)) {
+				console.error('[Worker] 🚨 Invalid dot_density_threshold value, using safe default:', densityValue);
+				vectorizer.set_dot_density(0.1); // Safe default
+			} else {
+				// Strict range clamping to prevent backend crashes
+				const clampedDensity = Math.max(0.02, Math.min(0.4, densityValue));
+				if (clampedDensity !== densityValue) {
+					console.warn(`[Worker] ⚠️ dot_density_threshold clamped from ${densityValue} to ${clampedDensity} for safety`);
+				}
+				console.log(`[Worker] 🎯 Dot Density slider: ${clampedDensity}`);
+				vectorizer.set_dot_density(clampedDensity);
+			}
 		}
 
-		// Advanced dot size parameters override stroke_width mapping (only when explicitly set)
-		const hasAdvancedSizeParams =
-			typeof config.min_radius === 'number' || typeof config.max_radius === 'number';
+		// Advanced dot size parameters override stroke_width mapping (only when explicitly different from defaults)
+		// CRITICAL FIX: Only use advanced parameters if they're different from defaults, not just present
+		const defaultMinRadius = 0.5;
+		const defaultMaxRadius = 3.0;
+		const hasCustomAdvancedSizeParams =
+			(typeof config.min_radius === 'number' && config.min_radius !== defaultMinRadius) ||
+			(typeof config.max_radius === 'number' && config.max_radius !== defaultMaxRadius);
 
-		if (hasAdvancedSizeParams && typeof vectorizer.set_dot_size_range === 'function') {
+		if (hasCustomAdvancedSizeParams && typeof vectorizer.set_dot_size_range === 'function') {
 			const minRadius = config.min_radius ?? 0.5;
 			const maxRadius = config.max_radius ?? 3.0;
-			console.log(
-				`[Worker] 🎛️ Advanced dot size override: ${minRadius.toFixed(1)}-${maxRadius.toFixed(1)}px (overriding stroke_width mapping)`
-			);
-			vectorizer.set_dot_size_range(minRadius, maxRadius);
+			
+			// CRITICAL FIX: Validate dot size range parameters to prevent WASM crashes
+			if (isNaN(minRadius) || !isFinite(minRadius) || isNaN(maxRadius) || !isFinite(maxRadius)) {
+				console.error('[Worker] 🚨 Invalid dot size range values, using safe defaults:', { minRadius, maxRadius });
+				vectorizer.set_dot_size_range(0.5, 3.0); // Safe defaults
+			} else {
+				// Strict validation and correction of range parameters
+				const clampedMin = Math.max(0.1, Math.min(10.0, minRadius));
+				const clampedMax = Math.max(clampedMin + 0.1, Math.min(10.0, maxRadius));
+				
+				if (clampedMin !== minRadius || clampedMax !== maxRadius) {
+					console.warn(`[Worker] ⚠️ Dot size range corrected from (${minRadius}, ${maxRadius}) to (${clampedMin}, ${clampedMax}) for safety`);
+				}
+				
+				console.log(
+					`[Worker] 🎛️ Advanced dot size override: ${clampedMin.toFixed(1)}-${clampedMax.toFixed(1)}px (overriding stroke_width mapping)`
+				);
+				vectorizer.set_dot_size_range(clampedMin, clampedMax);
+			}
+		} else {
+			console.log('[Worker] ✅ Using stroke_width (Dot Width) mapping for dot sizes - advanced parameters at defaults');
 		}
 
 		// Algorithm features from checkboxes
@@ -577,8 +627,16 @@ async function configureVectorizer(config: any) {
 				typeof config[key] === 'number' &&
 				typeof vectorizer[method] === 'function'
 			) {
-				console.log(`[Worker] Setting ${key}:`, config[key]);
-				vectorizer[method](config[key]);
+				// CRITICAL FIX: Add validation for superpixel parameters to prevent intermittent WASM crashes
+				const value = config[key];
+				if (isNaN(value) || !isFinite(value)) {
+					console.error(`[Worker] 🚨 Invalid ${key} value: ${value}, skipping parameter`);
+					continue;
+				}
+
+				// Just apply the parameter value as requested - no more safety overrides
+				console.log(`[Worker] Setting ${key}:`, value);
+				vectorizer[method](value);
 			}
 		}
 
@@ -595,7 +653,7 @@ async function configureVectorizer(config: any) {
 			}
 		}
 
-		// Superpixel initialization pattern configuration
+		// Superpixel initialization pattern configuration - ALWAYS respect user choice
 		if (
 			typeof config.superpixel_initialization_pattern === 'string' &&
 			typeof vectorizer.set_superpixel_initialization_pattern === 'function'
@@ -848,7 +906,7 @@ async function processImage() {
 			backend: vectorizer.get_backend?.() || 'unknown',
 			detail: vectorizer.get_detail?.() || 'unknown',
 			thread_count: currentConfig?.thread_count || 'NOT_SET',
-			full_config: currentConfig
+			full_config: currentConfig ? JSON.parse(JSON.stringify(currentConfig)) : null
 		});
 
 		// Process with progress callback and dynamic JavaScript-based timeout
@@ -904,6 +962,23 @@ async function processImage() {
 				if (currentConfig?.backend === 'dots' && currentImageData) {
 					console.log('[Worker] 🔧 Pre-processing image data for dots backend stability...');
 
+					// CRITICAL FIX: Additional validation to prevent WASM unreachable errors
+					if (!currentImageData.data || currentImageData.data.length === 0) {
+						console.error('[Worker] 🚨 Invalid image data for dots backend processing');
+						throw new Error('Image data is corrupted or empty. Please try a different image.');
+					}
+
+					// Validate image dimensions are reasonable for dots backend
+					const pixelCount = currentImageData.width * currentImageData.height;
+					if (pixelCount === 0 || pixelCount > 50000000) { // > 50MP
+						console.error('[Worker] 🚨 Image dimensions invalid or too large for dots backend:', {
+							width: currentImageData.width,
+							height: currentImageData.height,
+							pixelCount
+						});
+						throw new Error('Image is too large or has invalid dimensions. Please resize to under 7000x7000 pixels.');
+					}
+
 					// Create a copy of the image data to avoid modifying the original
 					const dataArray = new Uint8ClampedArray(currentImageData.data.length);
 
@@ -916,14 +991,19 @@ async function processImage() {
 						dataArray[i + 3] = Math.max(200, 255); // Ensure solid alpha
 					}
 
-					// Create proper ImageData object
-					const imageDataCopy = new ImageData(
-						dataArray,
-						currentImageData.width,
-						currentImageData.height
-					);
-					processedImageData = imageDataCopy;
-					console.log('[Worker] ✅ Image data pre-processed for dots backend');
+					// Create proper ImageData object with validation
+					try {
+						const imageDataCopy = new ImageData(
+							dataArray,
+							currentImageData.width,
+							currentImageData.height
+						);
+						processedImageData = imageDataCopy;
+						console.log('[Worker] ✅ Image data pre-processed for dots backend');
+					} catch (imageError) {
+						console.error('[Worker] 🚨 Failed to create processed ImageData for dots backend:', imageError);
+						throw new Error('Failed to process image data. Please try a different image format.');
+					}
 				}
 
 				// Call vectorize with enhanced error handling for WASM panics

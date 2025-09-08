@@ -399,11 +399,12 @@
 
 	// Conversion functions
 	async function handleConvert() {
+		const conversionStartTime = performance.now();
 		console.log('🔍 [DEBUG] handleConvert called with state:', {
 			canConvert,
-			filesCount: files.length,
-			originalImageUrlsCount: originalImageUrls.length,
-			resultsCount: results.length,
+			filesCount: $state.snapshot(files).length,
+			originalImageUrlsCount: $state.snapshot(originalImageUrls).length,
+			resultsCount: $state.snapshot(results).length,
 			currentImageIndex,
 			isProcessing,
 			hasFiles
@@ -489,7 +490,11 @@
 			}
 
 			// Settings sync-aware conversion logic:
-			// Get convert configuration based on current settings sync mode
+			// CRITICAL FIX: Use the current reactive config to ensure we have the latest settings
+			// that the user sees in the UI, preventing stale settings bug
+			console.log('🔍 [DEBUG] Current reactive config being used for conversion:', $state.snapshot(config));
+			
+			// Get convert configuration based on current settings sync mode  
 			const convertConfig = settingsSyncStore.getConvertConfig();
 			const imagesToProcess = convertConfig.imageIndices;
 
@@ -502,10 +507,10 @@
 			const syncStats = settingsSyncStore.getStatistics();
 			console.log('🔍 [DEBUG] Settings sync store statistics:', syncStats);
 			console.log('🔍 [DEBUG] Current UI state:', {
-				filesCount: files.length,
-				originalImageUrlsCount: originalImageUrls.length,
-				filesMetadataCount: filesMetadata.length,
-				resultsCount: results.length,
+				filesCount: $state.snapshot(files).length,
+				originalImageUrlsCount: $state.snapshot(originalImageUrls).length,
+				filesMetadataCount: $state.snapshot(filesMetadata).length,
+				resultsCount: $state.snapshot(results).length,
 				currentImageIndex
 			});
 
@@ -529,15 +534,35 @@
 						}
 					);
 
-					// Update results
+					// Update results (CONSISTENT FIX: Apply same async blob creation pattern)
 					results = fallbackResults;
-					previewSvgUrls = fallbackResults.map((result) => {
+					
+					// Create preview URLs asynchronously to prevent blocking
+					const fallbackBlobPromises = fallbackResults.map(async (result, index) => {
 						if (result && result.svg) {
-							const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-							return URL.createObjectURL(blob);
+							return new Promise<string | null>((resolve) => {
+								const createBlob = () => {
+									try {
+										const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+										resolve(URL.createObjectURL(blob));
+									} catch (error) {
+										console.error(`Failed to create fallback blob URL for image ${index}:`, error);
+										resolve(null);
+									}
+								};
+								
+								// Use requestIdleCallback if available, otherwise setTimeout
+								if (typeof requestIdleCallback !== 'undefined') {
+									requestIdleCallback(createBlob);
+								} else {
+									setTimeout(createBlob, 0);
+								}
+							});
 						}
-						return null;
+						return Promise.resolve(null);
 					});
+					
+					previewSvgUrls = await Promise.all(fallbackBlobPromises);
 
 					toastStore.success(
 						`Fallback processing completed: ${fallbackResults.length} image(s) converted`
@@ -563,7 +588,21 @@
 				if (files[imageIndex]) {
 					filesToProcess.push(files[imageIndex]);
 					indexMapping.push(imageIndex);
-					configsToProcess.push(convertConfig.configMap.get(imageIndex)!);
+					// CRITICAL FIX: Use getCurrentConfig() to get the most up-to-date config
+					// instead of the potentially stale config from getConvertConfig() 
+					const currentConfig = settingsSyncStore.getCurrentConfig(imageIndex);
+					configsToProcess.push(currentConfig);
+					
+					// Debug: Compare with potentially stale config
+					const staleConfig = convertConfig.configMap.get(imageIndex);
+					if (JSON.stringify(currentConfig) !== JSON.stringify(staleConfig)) {
+						// FIX: Use $state.snapshot() to avoid proxy warnings
+						const currentSnapshot = $state.snapshot(currentConfig);
+						console.warn(`⚠️ [STALE SETTINGS DETECTED] Image ${imageIndex}:`, {
+							currentConfig: { backend: currentSnapshot.backend, detail: currentSnapshot.detail, stroke_width: currentSnapshot.stroke_width },
+							staleConfig: { backend: staleConfig?.backend, detail: staleConfig?.detail, stroke_width: staleConfig?.stroke_width }
+						});
+					}
 				}
 			}
 
@@ -630,6 +669,12 @@
 			let newResults = [...results];
 			let newPreviewUrls = [...previewSvgUrls];
 
+			// CRITICAL FIX: Hybrid blob creation to prevent both main thread blocking AND delayed updates
+			// Strategy: Immediate creation for small SVGs, chunked async for large SVGs
+			console.log('🔄 [DEBUG] Starting blob creation for', processedResults.length, 'results');
+			const startBlobTime = performance.now();
+			const blobCreationPromises: Promise<void>[] = [];
+
 			for (let i = 0; i < processedResults.length; i++) {
 				const originalIndex = indexMapping[i];
 				const result = processedResults[i];
@@ -639,21 +684,64 @@
 					URL.revokeObjectURL(newPreviewUrls[originalIndex]!);
 				}
 
-				// Update result
+				// Update result immediately
 				newResults[originalIndex] = result;
 
-				// Create new preview URL
+				// Create blob URL with hybrid strategy
 				if (result && result.svg) {
-					const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-					newPreviewUrls[originalIndex] = URL.createObjectURL(blob);
+					const svgSize = result.svg.length;
+					const isLargeSvg = svgSize > 500000; // > 500KB threshold
+					
+					console.log(`🔄 [DEBUG] Creating blob for image ${originalIndex}, size: ${Math.round(svgSize/1024)}KB, strategy: ${isLargeSvg ? 'chunked-async' : 'immediate'}`);
+
+					if (isLargeSvg) {
+						// Large SVG: Use chunked async approach with shorter timeout
+						const blobPromise = new Promise<void>((resolve) => {
+							const createBlob = () => {
+								try {
+									const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+									newPreviewUrls[originalIndex] = URL.createObjectURL(blob);
+									console.log(`✅ [DEBUG] Large blob created for image ${originalIndex}`);
+								} catch (error) {
+									console.error(`Failed to create large blob URL for image ${originalIndex}:`, error);
+									newPreviewUrls[originalIndex] = null;
+								}
+								resolve();
+							};
+
+							// CRITICAL FIX: Use shorter timeout for more responsive updates
+							// requestIdleCallback can be delayed too long under load
+							setTimeout(createBlob, 50); // 50ms max delay instead of waiting for idle
+						});
+						blobCreationPromises.push(blobPromise);
+					} else {
+						// Small SVG: Create immediately for instant preview update
+						try {
+							const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+							newPreviewUrls[originalIndex] = URL.createObjectURL(blob);
+							console.log(`✅ [DEBUG] Small blob created immediately for image ${originalIndex}`);
+						} catch (error) {
+							console.error(`Failed to create immediate blob URL for image ${originalIndex}:`, error);
+							newPreviewUrls[originalIndex] = null;
+						}
+					}
 				} else {
 					newPreviewUrls[originalIndex] = null;
 				}
 			}
 
+			// CRITICAL FIX: Update results and URLs atomically after all blobs are ready
+			// For small SVGs: this completes immediately, for large SVGs: max 50ms delay
+			await Promise.all(blobCreationPromises);
+			const blobTime = performance.now() - startBlobTime;
+			console.log(`✅ [DEBUG] All blob creation completed in ${Math.round(blobTime)}ms`);
+			
+			// Atomic update - both arrays updated simultaneously
 			results = newResults;
 			previewSvgUrls = newPreviewUrls;
 			completedImages = results.filter((r) => r && r.svg).length;
+			
+			console.log(`🎯 [DEBUG] Preview state updated - results: ${results.length}, preview URLs: ${previewSvgUrls.length}`);
 
 			const message =
 				filesToProcess.length === 1
@@ -663,10 +751,10 @@
 			toastStore.success(message);
 			announceToScreenReader(`Conversion completed: ${filesToProcess.length} images processed`);
 
-			// CRITICAL: Wait for SVG URLs to be fully ready before unlocking UI
-			// This prevents the UI from unlocking before the SVG output is visible to users
-			// Small delay ensures blob URLs are resolved and DOM is updated
+			// CRITICAL: Brief pause to ensure DOM updates with new blob URLs
+			// This ensures preview components can access the new URLs immediately
 			await new Promise((resolve) => setTimeout(resolve, 100));
+			console.log(`🔓 [DEBUG] UI will unlock - blob URLs should be ready for preview components`);
 
 			// Pan/zoom state restoration is now handled internally by SimplifiedPreviewComparison
 		} catch (error) {
@@ -675,6 +763,9 @@
 			toastStore.error(`Conversion failed: ${errorMessage}`);
 			announceToScreenReader('Conversion failed', 'assertive');
 		} finally {
+			const totalTime = performance.now() - conversionStartTime;
+			console.log(`🏁 [DEBUG] Conversion pipeline completed in ${Math.round(totalTime)}ms, unlocking UI`);
+			
 			isProcessing = false;
 			currentProgress = null;
 			processingImageIndex = currentImageIndex; // Reset to current index when done
@@ -683,6 +774,8 @@
 			if (emergencyTimeout) {
 				clearTimeout(emergencyTimeout);
 			}
+			
+			console.log(`🔓 [DEBUG] isProcessing set to false - UI should be unlocked now`);
 		}
 	}
 
@@ -690,9 +783,9 @@
 		console.log('🔍 [DEBUG] handleDownload called:', {
 			canDownload,
 			currentImageIndex,
-			resultsLength: results.length,
-			filesLength: files.length,
-			filesMetadataLength: filesMetadata.length
+			resultsLength: $state.snapshot(results).length,
+			filesLength: $state.snapshot(files).length,
+			filesMetadataLength: $state.snapshot(filesMetadata).length
 		});
 
 		if (!canDownload) {
@@ -966,13 +1059,13 @@
 					// Apply the preset configuration to the settings store
 					settingsSyncStore.updateConfig(presetConfig, currentImageIndex);
 
-					console.log(`✅ Preset config applied:`, {
+					console.log(`✅ Preset config applied:`, $state.snapshot({
 						backend: presetConfig.backend,
 						detail: presetConfig.detail,
 						stroke_width: presetConfig.stroke_width,
 						multipass: presetConfig.multipass,
 						hand_drawn_preset: presetConfig.hand_drawn_preset
-					});
+					}));
 				}
 			} else {
 				console.warn(`⚠️ Could not find StylePreset for legacy preset: ${preset}`);
@@ -996,13 +1089,13 @@
 		const updatedConfig = vectorizerStore.config;
 		settingsSyncStore.updateConfig(updatedConfig, currentImageIndex);
 
-		console.log(`✅ Backend switched to ${backend} using store defaults:`, {
+		console.log(`✅ Backend switched to ${backend} using store defaults:`, $state.snapshot({
 			backend: updatedConfig.backend,
 			detail: updatedConfig.detail,
 			stroke_width: updatedConfig.stroke_width,
 			enable_adaptive_threshold: updatedConfig.enable_adaptive_threshold,
 			preserve_colors: updatedConfig.preserve_colors
-		});
+		}));
 	}
 
 	function handleParameterChange() {
@@ -1219,14 +1312,50 @@
 			if (state.results && state.results.length > 0) {
 				const loadedResults = converterPersistence.loadResults();
 				results = loadedResults;
-				// Create preview URLs for loaded results
-				previewSvgUrls = loadedResults.map((result) => {
+				
+				// CRITICAL FIX: Show loading state for large SVG blob creation during restoration
+				const hasLargeSvgs = loadedResults.some(result => 
+					result && result.svg && result.svg.length > 1000000 // > 1MB
+				);
+				
+				if (hasLargeSvgs) {
+					console.log('🔄 [DEBUG] Detected large SVGs during restoration - showing loading state');
+					// Temporarily show loading state for large restorations
+					isProcessing = true;
+				}
+				
+				// Create preview URLs for loaded results (CONSISTENT FIX: Apply same async pattern)
+				const restoredBlobPromises = loadedResults.map(async (result, index) => {
 					if (result && result.svg) {
-						const blob = new Blob([result.svg], { type: 'image/svg+xml' });
-						return URL.createObjectURL(blob);
+						return new Promise<string | null>((resolve) => {
+							const createBlob = () => {
+								try {
+									const blob = new Blob([result.svg], { type: 'image/svg+xml' });
+									resolve(URL.createObjectURL(blob));
+								} catch (error) {
+									console.error(`Failed to create restored blob URL for result ${index}:`, error);
+									resolve(null);
+								}
+							};
+							
+							// Use requestIdleCallback if available, otherwise setTimeout
+							if (typeof requestIdleCallback !== 'undefined') {
+								requestIdleCallback(createBlob);
+							} else {
+								setTimeout(createBlob, 0);
+							}
+						});
 					}
-					return null;
+					return Promise.resolve(null);
 				});
+				
+				previewSvgUrls = await Promise.all(restoredBlobPromises);
+				
+				// CRITICAL FIX: Clear loading state after blob restoration completes
+				if (hasLargeSvgs) {
+					isProcessing = false;
+					console.log('✅ [DEBUG] Large SVG blob restoration completed - cleared loading state');
+				}
 			}
 
 			// Validate and adjust currentIndex after restoration

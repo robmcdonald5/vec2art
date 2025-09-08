@@ -512,8 +512,8 @@ export class ConverterSettingsStore {
 		}
 
 		console.log('[ConverterSettingsStore] Parameter normalization applied:', {
-			original: config,
-			normalized: normalized
+			original: JSON.parse(JSON.stringify(config)),
+			normalized: JSON.parse(JSON.stringify(normalized))
 		});
 
 		return normalized;

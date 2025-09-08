@@ -518,7 +518,7 @@
 					await store.vectorizerService.resetConfiguration();
 
 					// Try to configure the service with this test config
-					console.log(`🧪 Testing config: ${config.name}`, config);
+					console.log(`🧪 Testing config: ${config.name}`, JSON.parse(JSON.stringify(config)));
 					await store.vectorizerService.configure(config as any);
 					result.status = 'passed';
 					console.log(`✅ Config ${config.name} passed`);

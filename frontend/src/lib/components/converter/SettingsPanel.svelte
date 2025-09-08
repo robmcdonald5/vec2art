@@ -56,36 +56,42 @@
 
 	// Special handler for dots backend detail/density mapping
 	function updateDotDensity(value: number) {
-		const uiValue = value; // UI slider value (0.1 to 1.0)
-
-		// Convert to the 1-10 scale that matches Advanced Settings for consistency
-		// 0.1-1.0 → 1-10 (multiply by 10)
-		const advancedScaleValue = Math.round(uiValue * 10);
+		const uiValue = value; // UI slider value (1 to 10, same as Advanced Settings)
 
 		// Apply the same mapping as Advanced Settings (1-10 to 0.4-0.02)
 		// This ensures both Quick and Advanced Settings are perfectly synced
-		const threshold = 0.4 - ((advancedScaleValue - 1) / 9) * (0.4 - 0.02);
+		const threshold = 0.4 - ((uiValue - 1) / 9) * (0.4 - 0.02);
 
 		console.log(
-			`🎯 Dot Density mapping (FIXED): UI=${uiValue} (${advancedScaleValue}/10) → threshold=${threshold.toFixed(3)}`
+			`🎯 Quick Settings Dot Density mapping (SYNC FIX): UI=${uiValue}/10 → threshold=${threshold.toFixed(3)}`
 		);
 
-		// Update both parameters for consistency
+		// Update both parameters for consistency (same as Advanced Settings)
+		// Convert back to detail scale (0.1-1.0) for consistency
+		const detailValue = uiValue / 10;
 		onConfigChange({
-			detail: uiValue, // Keep detail in sync for other logic
+			detail: detailValue, // Keep detail in sync for other logic  
 			dot_density_threshold: threshold
 		});
 		onParameterChange();
 	}
 
 	// Reactive values for FerrariSlider components
-	let detailValue = $state(config.detail || 0.6);
+	let detailValue = $state(
+		config.backend === 'dots' ? Math.round((config.detail || 0.5) * 10) : (config.detail || 0.6)
+	);
 	let strokeWidthValue = $state(config.stroke_width || 2.0);
 	let regionComplexityValue = $state(config.num_superpixels || 150);
 
 	// Update reactive values when config changes
 	$effect(() => {
-		detailValue = config.detail || 0.6;
+		if (config.backend === 'dots') {
+			// For dots backend, convert from detail (0.1-1.0) to UI scale (1-10) to match Advanced Settings
+			detailValue = Math.round((config.detail || 0.5) * 10);
+		} else {
+			// For other backends, use detail directly (0.1-1.0)
+			detailValue = config.detail || 0.6;
+		}
 	});
 
 	$effect(() => {
@@ -215,9 +221,9 @@
 							<FerrariSlider
 								id="detail-level-slider"
 								bind:value={detailValue}
-								min={0.1}
-								max={1}
-								step={0.1}
+								min={config.backend === 'dots' ? 1 : 0.1}
+								max={config.backend === 'dots' ? 10 : 1}
+								step={config.backend === 'dots' ? 1 : 0.1}
 								oninput={config.backend === 'dots'
 									? updateDotDensity
 									: (value) => {
@@ -230,7 +236,7 @@
 							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
 								{#if config.backend === 'dots'}
 									<span>Sparse</span>
-									<span class="font-medium">{Math.round(detailValue * 10)}/10</span>
+									<span class="font-medium">{Math.round(detailValue)}/10</span>
 									<span>Dense</span>
 								{:else}
 									<span>Simple</span>

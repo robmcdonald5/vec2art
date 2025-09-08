@@ -197,7 +197,7 @@ export class WebGPUPerformanceTester {
 	 */
 	async runBenchmark(): Promise<BenchmarkSummary> {
 		console.log('🚀 Starting WebGPU Performance Benchmark');
-		console.log('Configuration:', this.config);
+		console.log('Configuration:', JSON.parse(JSON.stringify(this.config)));
 
 		const systemInfo = await this.getSystemInfo();
 		console.log('System Info:', systemInfo);
