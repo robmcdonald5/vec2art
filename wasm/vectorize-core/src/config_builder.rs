@@ -49,7 +49,7 @@ pub struct ConfigBuilder {
     num_superpixels: Option<u32>,
     compactness: Option<f32>,
     slic_iterations: Option<u32>,
-    initialization_pattern: Option<String>,
+    superpixel_initialization_pattern: Option<String>,
     fill_regions: Option<bool>,
     stroke_regions: Option<bool>,
     simplify_boundaries: Option<bool>,
@@ -76,7 +76,7 @@ impl ConfigBuilder {
             num_superpixels: None,
             compactness: None,
             slic_iterations: None,
-            initialization_pattern: None,
+            superpixel_initialization_pattern: None,
             fill_regions: None,
             stroke_regions: None,
             simplify_boundaries: None,
@@ -448,11 +448,17 @@ impl ConfigBuilder {
         Ok(self)
     }
 
-    /// Set superpixel initialization pattern: "square", "hexagonal", "triangular", or "poisson"
-    pub fn initialization_pattern(mut self, pattern: &str) -> ConfigBuilderResult<Self> {
-        self.validate_initialization_pattern(pattern)?;
-        self.initialization_pattern = Some(pattern.to_string());
+    /// Set superpixel initialization pattern: "square", "hexagonal", or "poisson"
+    pub fn superpixel_initialization_pattern(mut self, pattern: &str) -> ConfigBuilderResult<Self> {
+        self.validate_superpixel_initialization_pattern(pattern)?;
+        self.superpixel_initialization_pattern = Some(pattern.to_string());
         Ok(self)
+    }
+    
+    /// Deprecated: Use superpixel_initialization_pattern instead
+    #[deprecated(since = "0.1.0", note = "Use superpixel_initialization_pattern instead")]
+    pub fn initialization_pattern(self, pattern: &str) -> ConfigBuilderResult<Self> {
+        self.superpixel_initialization_pattern(pattern)
     }
 
     /// Enable or disable filled superpixel regions
@@ -649,7 +655,7 @@ impl ConfigBuilder {
         if let Some(iterations) = self.slic_iterations {
             config.superpixel_slic_iterations = iterations;
         }
-        if let Some(pattern) = &self.initialization_pattern {
+        if let Some(pattern) = &self.superpixel_initialization_pattern {
             config.superpixel_initialization_pattern = match pattern.as_str() {
                 "square" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Square,
                 "hexagonal" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal,
@@ -697,7 +703,7 @@ impl ConfigBuilder {
         if let Some(iterations) = self.slic_iterations {
             config.superpixel_slic_iterations = iterations;
         }
-        if let Some(pattern) = &self.initialization_pattern {
+        if let Some(pattern) = &self.superpixel_initialization_pattern {
             config.superpixel_initialization_pattern = match pattern.as_str() {
                 "square" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Square,
                 "hexagonal" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal,
@@ -967,7 +973,7 @@ impl ConfigBuilder {
         Ok(())
     }
 
-    fn validate_initialization_pattern(&self, pattern: &str) -> ConfigBuilderResult<()> {
+    fn validate_superpixel_initialization_pattern(&self, pattern: &str) -> ConfigBuilderResult<()> {
         match pattern {
             "square" | "hexagonal" | "poisson" => Ok(()),
             _ => Err(ConfigBuilderError::InvalidParameter(format!(

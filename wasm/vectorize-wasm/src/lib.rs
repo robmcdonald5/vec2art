@@ -453,10 +453,16 @@ impl WasmVectorizer {
 
     /// Set initialization pattern for superpixel backend
     #[wasm_bindgen]
-    pub fn set_initialization_pattern(&mut self, pattern: &str) -> Result<(), JsValue> {
-        self.config_builder = self.config_builder.clone().initialization_pattern(pattern)
-            .map_err(|e| JsValue::from_str(&format!("Failed to set initialization pattern: {}", e)))?;
+    pub fn set_superpixel_initialization_pattern(&mut self, pattern: &str) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().superpixel_initialization_pattern(pattern)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set superpixel initialization pattern: {}", e)))?;
         Ok(())
+    }
+    
+    /// Deprecated: Use set_superpixel_initialization_pattern instead
+    #[wasm_bindgen]
+    pub fn set_initialization_pattern(&mut self, pattern: &str) -> Result<(), JsValue> {
+        self.set_superpixel_initialization_pattern(pattern)
     }
 
     /// Set color preservation for superpixel backend

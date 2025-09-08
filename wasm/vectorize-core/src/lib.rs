@@ -11,6 +11,7 @@ pub mod error;
 pub mod execution;
 #[cfg(feature = "gpu-acceleration")]
 pub mod gpu;
+pub mod parameters;
 pub mod performance;
 pub mod preprocessing;
 pub mod svg;
@@ -26,6 +27,10 @@ pub use algorithms::{
 pub use config::SvgConfig;
 pub use config_builder::{ConfigBuilder, ConfigBuilderError, ConfigBuilderResult};
 pub use error::*;
+pub use parameters::{
+    ParameterDefinition, ParameterValidator, ValidationResult, ValidationError, ValidationWarning,
+    ParameterType, ParameterValue, ParameterCategory, PARAMETER_REGISTRY,
+};
 pub use execution::{
     current_num_threads, execute_parallel, execute_parallel_chunks, execute_parallel_filter_map,
     join, join3, par_bridge, par_enumerate, par_extend, par_iter, par_iter_mut, par_sort,
