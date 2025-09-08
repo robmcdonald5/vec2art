@@ -10,6 +10,7 @@
 		minScale?: number;
 		maxScale?: number;
 		scaleSmoothing?: number;
+		onTransformChange?: (state: { scale: number; x: number; y: number }) => void;
 	}
 
 	let {
@@ -20,7 +21,8 @@
 		targetOffsetY = $bindable(0),
 		minScale = 0.1,
 		maxScale = 5.0,
-		scaleSmoothing = 1200
+		scaleSmoothing = 1200,
+		onTransformChange
 	}: Props = $props();
 
 	let containerEl: HTMLDivElement = $state()!;
@@ -48,6 +50,9 @@
 		if (!isDragging) return;
 		targetOffsetX = e.clientX - startX;
 		targetOffsetY = e.clientY - startY;
+		
+		// Notify parent of transform change
+		onTransformChange?.({ scale: targetScale, x: targetOffsetX, y: targetOffsetY });
 	}
 
 	function handleMouseUp() {
@@ -73,6 +78,9 @@
 		targetOffsetX = x - scaleRatio * (x - targetOffsetX);
 		targetOffsetY = y - scaleRatio * (y - targetOffsetY);
 		targetScale = newScale;
+		
+		// Notify parent of transform change
+		onTransformChange?.({ scale: targetScale, x: targetOffsetX, y: targetOffsetY });
 	}
 
 	onMount(() => {

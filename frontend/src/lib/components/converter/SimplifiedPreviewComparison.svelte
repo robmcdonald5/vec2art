@@ -13,6 +13,7 @@
 	import ConverterHeader from './ConverterHeader.svelte';
 	import ScrollFriendlyImageViewer from '../ui/ScrollFriendlyImageViewer.svelte';
 	import type { ConverterComponentProps } from '$lib/types/shared-props';
+	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
 
 	interface Props extends ConverterComponentProps {}
 
@@ -40,13 +41,9 @@
 		onSettingsModeChange
 	}: Props = $props();
 
-	// **SIMPLIFIED**: Single pan/zoom state in parent component
-	let panZoomState = $state({
-		scale: 1,
-		x: 0,
-		y: 0,
-		syncEnabled: true
-	});
+	// Direct access to pan/zoom store states (no local state needed)
+	const originalState = $derived(panZoomStore.originalState);
+	const convertedState = $derived(panZoomStore.convertedState);
 
 	// Comparison slider state
 	let viewMode = $state<'side-by-side' | 'slider'>('side-by-side');
@@ -63,35 +60,98 @@
 	const currentResult = $derived(results?.[currentImageIndex]);
 	const isError = $derived(currentResult?.svg?.includes('Failed to convert') ?? false);
 
-	// **SIMPLIFIED**: Direct control functions
-	function zoomIn() {
-		panZoomState.scale = Math.min(5.0, panZoomState.scale * 1.2);
+	// Control functions using store directly
+	function zoomInOriginal() {
+		const currentState = panZoomStore.originalState;
+		panZoomStore.updateOriginalState({
+			...currentState,
+			scale: Math.min(5.0, currentState.scale * 1.2)
+		});
 	}
 
-	function zoomOut() {
-		panZoomState.scale = Math.max(0.1, panZoomState.scale / 1.2);
+	function zoomOutOriginal() {
+		const currentState = panZoomStore.originalState;
+		panZoomStore.updateOriginalState({
+			...currentState,
+			scale: Math.max(0.1, currentState.scale / 1.2)
+		});
 	}
 
-	function resetView() {
-		panZoomState.scale = 1;
-		panZoomState.x = 0;
-		panZoomState.y = 0;
+	function resetOriginalView() {
+		panZoomStore.updateOriginalState({ scale: 1, x: 0, y: 0 });
+	}
+
+	function zoomInConverted() {
+		const currentState = panZoomStore.convertedState;
+		panZoomStore.updateConvertedState({
+			...currentState,
+			scale: Math.min(5.0, currentState.scale * 1.2)
+		});
+	}
+
+	function zoomOutConverted() {
+		const currentState = panZoomStore.convertedState;
+		panZoomStore.updateConvertedState({
+			...currentState,
+			scale: Math.max(0.1, currentState.scale / 1.2)
+		});
+	}
+
+	function resetConvertedView() {
+		panZoomStore.updateConvertedState({ scale: 1, x: 0, y: 0 });
 	}
 
 	function toggleSync() {
-		panZoomState.syncEnabled = !panZoomState.syncEnabled;
-		console.log('🔄 [SimplifiedPreview] Sync toggled:', panZoomState.syncEnabled);
+		panZoomStore.toggleSync();
+		console.log('🔄 [SimplifiedPreview] Sync toggled:', panZoomStore.isSyncEnabled);
 	}
 
 	// Reset pan/zoom when changing images
 	function handleImageIndexChange(newIndex: number) {
 		onImageIndexChange?.(newIndex);
-		resetView(); // Clean reset for each image
+		// Reset store state
+		panZoomStore.resetStates();
 	}
 
-	// **SIMPLIFIED**: Single update handler
-	function updatePanZoom(updates: Partial<typeof panZoomState>) {
-		Object.assign(panZoomState, updates);
+	// Download original image functionality
+	function downloadOriginal(file: File | null, imageUrl: string | null) {
+		if (!file && !imageUrl) {
+			console.warn('No file or image URL available for download');
+			return;
+		}
+
+		// If we have the original file, download it directly
+		if (file) {
+			const link = document.createElement('a');
+			const url = URL.createObjectURL(file);
+			link.href = url;
+			link.download = file.name;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+			return;
+		}
+
+		// If we only have an image URL (like from originalImageUrls),
+		// try to download it
+		if (imageUrl) {
+			try {
+				const link = document.createElement('a');
+				link.href = imageUrl;
+				// Try to extract filename from URL or use generic name
+				const urlPath = new URL(imageUrl).pathname;
+				const filename = urlPath.split('/').pop() || 'original-image';
+				link.download = filename;
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+			} catch (error) {
+				console.warn('Failed to download original image:', error);
+				// Fallback: open in new tab
+				window.open(imageUrl, '_blank');
+			}
+		}
 	}
 
 	// Slider functions (unchanged)
@@ -244,35 +304,89 @@
 			<!-- Original Image -->
 			<div class="bg-ferrari-50/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
-					<!-- Header with sync controls -->
+					<!-- Original Frame Header with Controls -->
 					<div class="mb-3 flex items-center justify-between px-2">
-						<span class="text-converter-primary text-sm font-medium">Original</span>
-						<div class="flex items-center gap-1">
-							<!-- Zoom Controls -->
-							<Button variant="outline" size="icon" class="h-8 w-8" onclick={zoomOut}>
-								<ZoomOut class="h-4 w-4" />
-							</Button>
-							<Button variant="outline" size="icon" class="h-8 w-8" onclick={zoomIn}>
-								<ZoomIn class="h-4 w-4" />
-							</Button>
-							<Button variant="outline" size="icon" class="h-8 w-8" onclick={resetView}>
-								<Maximize2 class="h-4 w-4" />
-							</Button>
-							<!-- Sync Toggle -->
+						<div class="flex items-center gap-2">
+							<span class="text-converter-primary text-sm font-medium select-none">Original</span>
 							<button
-								class="text-converter-primary hover:text-ferrari-600 p-2 {panZoomState.syncEnabled
+								class="text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {panZoomStore.isSyncEnabled
 									? 'text-ferrari-600'
 									: 'text-gray-400'}"
 								onclick={toggleSync}
-								title={panZoomState.syncEnabled ? 'Views are synchronized' : 'Click to sync views'}
+								aria-label={panZoomStore.isSyncEnabled ? 'Disable sync' : 'Enable sync'}
+								title={panZoomStore.isSyncEnabled
+									? 'Views are synchronized'
+									: 'Click to sync both views'}
 							>
-								{#if panZoomState.syncEnabled}
+								{#if panZoomStore.isSyncEnabled}
 									<Link class="h-4 w-4" />
 								{:else}
 									<Unlink class="h-4 w-4" />
 								{/if}
 							</button>
 						</div>
+						
+						<!-- Original Frame Controls -->
+						<div class="flex gap-1">
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={zoomOutOriginal}
+								aria-label="Zoom out"
+								title="Zoom out"
+							>
+								<ZoomOut class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={zoomInOriginal}
+								aria-label="Zoom in"
+								title="Zoom in"
+							>
+								<ZoomIn class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={resetOriginalView}
+								aria-label="Reset view"
+								title="Reset view"
+							>
+								<Maximize2 class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => downloadOriginal(currentFile, currentImageUrl)}
+								aria-label="Download original"
+								title="Download original image"
+							>
+								<Download class="h-4 w-4" />
+							</Button>
+						</div>
+					</div>
+
+					<!-- File Name and Remove Button -->
+					<div class="mb-2 min-h-[1.25rem] flex items-center px-2">
+						{#if currentFile}
+							<span class="text-converter-secondary text-xs truncate" title={currentFile.name}>
+								{currentFile.name}
+							</span>
+							<button
+								class="ml-1 text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-red-500 hover:scale-110"
+								onclick={() => onRemoveFile?.(currentImageIndex)}
+								disabled={isProcessing}
+								aria-label="Remove image"
+								title="Remove this image"
+							>
+								×
+							</button>
+						{/if}
 					</div>
 
 					<!-- **SIMPLIFIED**: Direct ScrollFriendlyImageViewer -->
@@ -281,9 +395,10 @@
 							<ScrollFriendlyImageViewer
 								src={currentImageUrl}
 								alt={currentFile?.name || 'Original image'}
-								bind:targetScale={panZoomState.scale}
-								bind:targetOffsetX={panZoomState.x}
-								bind:targetOffsetY={panZoomState.y}
+								targetScale={originalState.scale}
+								targetOffsetX={originalState.x}
+								targetOffsetY={originalState.y}
+								onTransformChange={(state) => panZoomStore.updateOriginalState(state)}
 								minScale={0.1}
 								maxScale={5.0}
 								scaleSmoothing={800}
@@ -300,41 +415,86 @@
 			<!-- Converted SVG -->
 			<div class="bg-ferrari-50/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
+					<!-- Converted Frame Header with Controls -->
 					<div class="mb-3 flex items-center justify-between px-2">
-						<span class="text-converter-primary text-sm font-medium">
-							{isError ? 'Failed' : 'Converted'}
-						</span>
-						{#if hasResult}
-							<Button variant="outline" size="icon" class="h-8 w-8" onclick={onDownload}>
-								<Download class="h-4 w-4" />
+						<div class="flex items-center gap-2">
+							<span
+								class="text-sm font-medium select-none"
+								class:text-red-600={isError}
+								class:text-converter-primary={!isError}
+							>
+								{isError ? 'Failed' : 'Converted'}
+							</span>
+						</div>
+						
+						<!-- Converted Frame Controls -->
+						<div class="flex gap-1">
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={zoomOutConverted}
+								disabled={!hasResult}
+								aria-label="Zoom out"
+								title="Zoom out"
+							>
+								<ZoomOut class="h-4 w-4" />
 							</Button>
-						{/if}
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={zoomInConverted}
+								disabled={!hasResult}
+								aria-label="Zoom in"
+								title="Zoom in"
+							>
+								<ZoomIn class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={resetConvertedView}
+								disabled={!hasResult}
+								aria-label="Reset view"
+								title="Reset view"
+							>
+								<Maximize2 class="h-4 w-4" />
+							</Button>
+							{#if onDownload && hasResult}
+								<Button
+									variant="outline"
+									size="icon"
+									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={onDownload}
+									disabled={isProcessing}
+									aria-label="Download SVG"
+									title="Download SVG"
+								>
+									<Download class="h-4 w-4" />
+								</Button>
+							{/if}
+						</div>
 					</div>
+
+					<!-- Matching spacing for vertical alignment -->
+					<div class="mb-2 min-h-[1.25rem]"></div>
 
 					<div class="dark:bg-ferrari-900 flex-1 overflow-hidden rounded-lg bg-white">
 						{#if hasResult && currentSvgUrl}
-							{#if panZoomState.syncEnabled}
-								<!-- Synced SVG viewer -->
-								<ScrollFriendlyImageViewer
-									src={currentSvgUrl}
-									alt="Converted SVG"
-									bind:targetScale={panZoomState.scale}
-									bind:targetOffsetX={panZoomState.x}
-									bind:targetOffsetY={panZoomState.y}
-									minScale={0.1}
-									maxScale={5.0}
-									scaleSmoothing={800}
-								/>
-							{:else}
-								<!-- Independent SVG viewer -->
-								<ScrollFriendlyImageViewer
-									src={currentSvgUrl}
-									alt="Converted SVG"
-									minScale={0.1}
-									maxScale={5.0}
-									scaleSmoothing={800}
-								/>
-							{/if}
+							<!-- SVG viewer with store-based pan/zoom -->
+							<ScrollFriendlyImageViewer
+								src={currentSvgUrl}
+								alt="Converted SVG"
+								targetScale={convertedState.scale}
+								targetOffsetX={convertedState.x}
+								targetOffsetY={convertedState.y}
+								onTransformChange={(state) => panZoomStore.updateConvertedState(state)}
+								minScale={0.1}
+								maxScale={5.0}
+								scaleSmoothing={800}
+							/>
 						{:else if currentProgress}
 							<div class="flex h-full items-center justify-center">
 								<div class="text-center space-y-3">

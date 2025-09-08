@@ -2,8 +2,10 @@
  * Pan/Zoom Synchronization Store
  *
  * Manages synchronized pan/zoom state between before/after image panels
- * using Svelte 5 runes for reactive state management.
+ * using Svelte 5 runes for reactive state management with persistence.
  */
+
+import { converterPersistence } from './converter-persistence';
 
 export interface PanZoomState {
 	scale: number;
@@ -68,19 +70,28 @@ function validatePanZoomState(state: PanZoomState, fallbackState?: PanZoomState)
 }
 
 /**
- * Create a pan/zoom synchronization store with update deduplication
+ * Create a pan/zoom synchronization store with update deduplication and persistence
  */
 export function createPanZoomSyncStore(): PanZoomSyncStore {
-	let originalState = $state<PanZoomState>({ ...defaultState });
-	let convertedState = $state<PanZoomState>({ ...defaultState });
-	let isSyncEnabled = $state(true);
+	// Load initial state from persistence if available
+	const persistedState = converterPersistence.loadPanZoomState();
+	
+	let originalState = $state<PanZoomState>(persistedState?.originalState || { ...defaultState });
+	let convertedState = $state<PanZoomState>(persistedState?.convertedState || { ...defaultState });
+	let isSyncEnabled = $state(persistedState?.isSyncEnabled ?? true);
 
 	// Preserved states for maintaining zoom/pan during conversions
 	let preservedOriginalState: PanZoomState | null = null;
 	let preservedConvertedState: PanZoomState | null = null;
 
-	// Update deduplication - prevent feedback loops when sync is enabled
-	let isUpdatingFromSync = false;
+	// Function to save current state to persistence
+	const saveState = () => {
+		converterPersistence.savePanZoomState({
+			originalState: { ...originalState },
+			convertedState: { ...convertedState },
+			isSyncEnabled
+		});
+	};
 
 	return {
 		get originalState() {
@@ -96,63 +107,47 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 		},
 
 		updateOriginalState(newState: PanZoomState) {
-			// Prevent feedback loops - if we're already updating from sync, ignore this call
-			if (isUpdatingFromSync) {
-				console.log('[PanZoomStore] updateOriginalState: Ignoring update during sync operation');
-				return;
-			}
-
 			// Validate state with fallback to default only (no cross-referencing to avoid loops)
 			const safeState = validatePanZoomState(newState);
 			
 			console.log('[PanZoomStore] updateOriginalState:', {
 				input: newState,
 				validated: safeState,
-				syncEnabled: isSyncEnabled,
-				isUpdatingFromSync,
-				prevOriginal: originalState,
-				prevConverted: convertedState
+				syncEnabled: isSyncEnabled
 			});
 			
 			originalState = { ...safeState };
 
-			// If sync is enabled, update converted state too (with deduplication flag)
+			// If sync is enabled, update converted state too
 			if (isSyncEnabled) {
-				isUpdatingFromSync = true;
 				convertedState = { ...safeState };
 				console.log('[PanZoomStore] Sync enabled - also updated converted state to:', convertedState);
-				isUpdatingFromSync = false;
 			}
+
+			// Save state to persistence (debounced)
+			setTimeout(saveState, 0);
 		},
 
 		updateConvertedState(newState: PanZoomState) {
-			// Prevent feedback loops - if we're already updating from sync, ignore this call
-			if (isUpdatingFromSync) {
-				console.log('[PanZoomStore] updateConvertedState: Ignoring update during sync operation');
-				return;
-			}
-
 			// Validate state with fallback to default only (no cross-referencing to avoid loops)
 			const safeState = validatePanZoomState(newState);
 			
 			console.log('[PanZoomStore] updateConvertedState:', {
 				input: newState,
 				validated: safeState,
-				syncEnabled: isSyncEnabled,
-				isUpdatingFromSync,
-				prevOriginal: originalState,
-				prevConverted: convertedState
+				syncEnabled: isSyncEnabled
 			});
 			
 			convertedState = { ...safeState };
 
-			// If sync is enabled, update original state too (with deduplication flag)
+			// If sync is enabled, update original state too
 			if (isSyncEnabled) {
-				isUpdatingFromSync = true;
 				originalState = { ...safeState };
 				console.log('[PanZoomStore] Sync enabled - also updated original state to:', originalState);
-				isUpdatingFromSync = false;
 			}
+
+			// Save state to persistence (debounced)
+			setTimeout(saveState, 0);
 		},
 
 		syncStates(sourceState: PanZoomState) {
@@ -168,6 +163,9 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 			
 			originalState = { ...safeState };
 			convertedState = { ...safeState };
+
+			// Save state to persistence
+			saveState();
 		},
 
 		toggleSync() {
@@ -184,11 +182,17 @@ export function createPanZoomSyncStore(): PanZoomSyncStore {
 				convertedState = { ...originalState };
 				console.log('[PanZoomStore] Sync enabled - synced converted to original:', convertedState);
 			}
+
+			// Save state to persistence
+			saveState();
 		},
 
 		resetStates() {
 			originalState = { ...defaultState };
 			convertedState = { ...defaultState };
+			
+			// Save state to persistence
+			saveState();
 		},
 
 		preserveStates() {
