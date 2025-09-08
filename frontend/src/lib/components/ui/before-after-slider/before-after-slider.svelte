@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { OptimizedImage } from '$lib/components/ui/optimized-image';
 
 	interface Props {
 		beforeImage: string;
@@ -8,6 +9,9 @@
 		afterAlt?: string;
 		startPosition?: number;
 		class?: string;
+		loading?: 'lazy' | 'eager';
+		beforePlaceholder?: string;
+		afterPlaceholder?: string;
 	}
 
 	let {
@@ -16,7 +20,10 @@
 		beforeAlt = 'Before',
 		afterAlt = 'After',
 		startPosition = 50,
-		class: className = ''
+		class: className = '',
+		loading = 'lazy',
+		beforePlaceholder = '',
+		afterPlaceholder = ''
 	}: Props = $props();
 
 	let container: HTMLDivElement;
@@ -71,7 +78,22 @@
 >
 	<!-- After Image (Bottom Layer) -->
 	<div class="relative h-full w-full">
-		<img src={afterImage} alt={afterAlt} class="h-full w-full object-contain" draggable="false" />
+		{#if afterPlaceholder}
+			<img 
+				src={afterPlaceholder} 
+				alt="" 
+				aria-hidden="true"
+				class="absolute inset-0 h-full w-full object-contain blur-xl" 
+				draggable="false" 
+			/>
+		{/if}
+		<img 
+			src={afterImage} 
+			alt={afterAlt} 
+			{loading}
+			class="relative h-full w-full object-contain" 
+			draggable="false" 
+		/>
 	</div>
 
 	<!-- Before Image (Top Layer with Clip) -->
@@ -79,7 +101,22 @@
 		class="absolute inset-0"
 		style="clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%)"
 	>
-		<img src={beforeImage} alt={beforeAlt} class="h-full w-full object-contain" draggable="false" />
+		{#if beforePlaceholder}
+			<img 
+				src={beforePlaceholder} 
+				alt="" 
+				aria-hidden="true"
+				class="absolute inset-0 h-full w-full object-contain blur-xl" 
+				draggable="false" 
+			/>
+		{/if}
+		<img 
+			src={beforeImage} 
+			alt={beforeAlt} 
+			{loading}
+			class="relative h-full w-full object-contain" 
+			draggable="false" 
+		/>
 	</div>
 
 	<!-- Before Label (Left Side) - Clipped with before image area -->

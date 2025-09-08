@@ -28,7 +28,8 @@
 		algorithm: 'all'
 	});
 	
-	// Pagination
+	// Pagination - Reduced initial load for better performance
+	const INITIAL_ITEMS = 6; // Load fewer items initially for faster perceived load
 	const ITEMS_PER_PAGE = 12;
 	let currentPage = $state(0);
 	
@@ -96,14 +97,39 @@
 		selectedItem = null;
 	}
 
-	function downloadSVG(item: GalleryItem) {
-		// Download the original SVG file
-		const link = document.createElement('a');
-		link.href = item.afterSvg || item.afterImage;
-		link.download = `${item.title.replace(/\s+/g, '_').toLowerCase()}.svg`;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
+	async function downloadSVG(item: GalleryItem) {
+		// Extract category and filename from the original path
+		const pathParts = (item.afterSvg || '').split('/');
+		const category = pathParts[pathParts.length - 2];
+		const filename = pathParts[pathParts.length - 1];
+		
+		if (!category || !filename) {
+			console.error('Invalid SVG path:', item.afterSvg);
+			return;
+		}
+		
+		try {
+			// Fetch SVG from API endpoint
+			const response = await fetch(`/api/svg/${category}/${filename}`);
+			if (!response.ok) throw new Error('Failed to fetch SVG');
+			
+			const svgBlob = await response.blob();
+			const url = URL.createObjectURL(svgBlob);
+			
+			// Create download link
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = `${item.title.replace(/\s+/g, '_').toLowerCase()}.svg`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			
+			// Clean up
+			URL.revokeObjectURL(url);
+		} catch (error) {
+			console.error('Error downloading SVG:', error);
+			alert('Failed to download SVG. Please try again.');
+		}
 	}
 
 	function setViewMode(mode: ViewMode) {
@@ -112,12 +138,13 @@
 
 	// Load more items for pagination
 	function loadMoreItems() {
-		const start = currentPage * ITEMS_PER_PAGE;
-		const end = start + ITEMS_PER_PAGE;
-		
 		if (currentPage === 0) {
-			displayedItems = filteredItems.slice(0, end);
+			// Initial load - load fewer items for faster perceived performance
+			displayedItems = filteredItems.slice(0, INITIAL_ITEMS);
 		} else {
+			// Subsequent loads - use standard page size
+			const start = displayedItems.length;
+			const end = start + ITEMS_PER_PAGE;
 			const newItems = filteredItems.slice(start, end);
 			displayedItems = [...displayedItems, ...newItems];
 		}
@@ -129,7 +156,7 @@
 	}
 
 	// Intersection observer for infinite scroll
-	let loadMoreTrigger: HTMLElement;
+	let loadMoreTrigger = $state<HTMLElement | undefined>();
 	
 	// Load more function for infinite scroll
 	function triggerLoadMore() {
@@ -143,20 +170,19 @@
 	}
 
 	// Load gallery data on mount
-	onMount(async () => {
+	onMount(() => {
 		isLoading = true;
-		try {
-			const manifest = await loadGalleryData();
+		
+		// Load data asynchronously
+		loadGalleryData().then((manifest) => {
 			allItems = manifest.items;
 			categories = getCategories(allItems);
 			algorithmStats = getAlgorithmStats(allItems);
 			applyFilters();
-		} catch (error) {
+		}).catch((error) => {
 			console.error('Failed to load gallery:', error);
 			isLoading = false;
-		}
-		
-		// Set up intersection observer after mount
+		});
 		
 		// Also add scroll listener as fallback
 		if (browser) {
@@ -309,6 +335,7 @@
 							afterImage={item.afterImage}
 							beforeAlt={`${item.title} - Original`}
 							afterAlt={`${item.title} - Converted`}
+							loading="lazy"
 							class="h-full w-full"
 						/>
 
@@ -330,7 +357,7 @@
 									Expand
 								</button>
 								<button
-									onclick={() => downloadSVG(item)}
+									onclick={async () => await downloadSVG(item)}
 									class="bg-ferrari-600 hover:bg-ferrari-700 flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white shadow-lg transition-all duration-200 hover:scale-105"
 								>
 									<Download class="h-4 w-4" />
@@ -488,13 +515,14 @@
 					afterImage={selectedItem.afterImage}
 					beforeAlt={`${selectedItem.title} - Original`}
 					afterAlt={`${selectedItem.title} - Converted`}
+					loading="eager"
 					class="h-full w-full"
 				/>
 			</div>
 
 			<div class="flex justify-center gap-4 pb-8">
 				<button
-					onclick={() => selectedItem && downloadSVG(selectedItem)}
+					onclick={async () => selectedItem && await downloadSVG(selectedItem)}
 					class="btn-ferrari-primary flex items-center gap-2 px-6 py-3 text-lg"
 				>
 					<Download class="h-5 w-5" />
