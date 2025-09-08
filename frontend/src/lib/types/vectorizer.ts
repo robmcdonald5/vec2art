@@ -100,7 +100,7 @@ export interface VectorizerConfig {
 	num_superpixels?: number; // 50-500
 	compactness?: number; // 5-30
 	slic_iterations?: number; // 5-15
-	superpixel_initialization_pattern?: 'square' | 'hexagonal' | 'triangular' | 'poisson'; // Cluster initialization pattern
+	superpixel_initialization_pattern?: 'square' | 'hexagonal' | 'poisson'; // Cluster initialization pattern
 	min_region_size?: number; // 10-100 px²
 	color_distance?: number; // 10-50
 	spatial_distance_weight?: number; // 0.5-2.0
@@ -261,6 +261,59 @@ export type WorkerMessageType =
 	| WorkerErrorMessage
 	| WorkerCapabilitiesMessage;
 
+// Backend-specific default overrides
+export const BACKEND_DEFAULTS: Record<VectorizerBackend, Partial<VectorizerConfig>> = {
+	edge: {
+		// Edge detection defaults - monochrome line art
+		preserve_colors: false,
+		stroke_width: 1.5,
+		detail: 0.8,
+		hand_drawn_preset: 'none' as const,
+		variable_weights: 0.0,
+		tremor_strength: 0.0,
+		tapering: 0.0
+	},
+	centerline: {
+		// Centerline defaults - technical drawings (matching Rust for_technical())
+		preserve_colors: false,
+		stroke_width: 1.0, // Match Rust for_technical()
+		detail: 0.6, // Match Rust for_technical()
+		enable_adaptive_threshold: true,
+		window_size: 25,
+		sensitivity_k: 0.3, // Match Rust for_technical()
+		min_branch_length: 8,
+		douglas_peucker_epsilon: 1.0,
+		enable_width_modulation: false
+	},
+	superpixel: {
+		// Superpixel defaults - colored regions
+		preserve_colors: true, // Enable colors by default for superpixel
+		stroke_width: 1.5,
+		detail: 0.2, // Lower detail for region-based processing
+		num_superpixels: 275, // Increased region complexity
+		compactness: 10, // Match Rust default
+		slic_iterations: 10,
+		superpixel_initialization_pattern: 'poisson' as const,
+		fill_regions: true,
+		stroke_regions: true,
+		simplify_boundaries: true,
+		boundary_epsilon: 1.0
+	},
+	dots: {
+		// Dots defaults - stippling with colors
+		preserve_colors: true, // Enable colors by default for dots
+		stroke_width: 1.0,
+		detail: 0.8, // Higher detail for dots (UI value 8)
+		dot_density_threshold: 0.105, // UI value 8: better balance
+		min_radius: 0.5,
+		max_radius: 3.0,
+		adaptive_sizing: true,
+		background_tolerance: 0.1,
+		poisson_disk_sampling: false,
+		gradient_based_sizing: true
+	}
+};
+
 // Default configurations
 export const DEFAULT_CONFIG: VectorizerConfig = {
 	backend: 'edge',
@@ -281,8 +334,8 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	variable_weights: 0.0,
 	tremor_strength: 0.0,
 	tapering: 0.0,
-	// Unified color defaults
-	preserve_colors: false, // Default to monochrome for backward compatibility
+	// Unified color defaults (edge backend default)
+	preserve_colors: false, // Default to monochrome for edge backend
 	color_sampling: 'dominant', // Default to simple dominant color sampling
 	color_accuracy: 0.7, // Good balance of speed vs accuracy
 	max_colors_per_path: 3, // Reasonable color complexity limit
@@ -293,20 +346,8 @@ export const DEFAULT_CONFIG: VectorizerConfig = {
 	enable_background_removal: false, // Default disabled
 	background_removal_strength: 0.5, // Moderate strength when enabled
 	background_removal_algorithm: 'otsu', // Fast algorithm by default
-	max_processing_time_ms: 180000, // 3 minutes for comprehensive processing (increased from 60s due to background removal)
-	// Superpixel backend defaults
-	num_superpixels: 250, // Higher detail for better region definition
-	compactness: 15, // Balanced shape regularity (reduced from previous 20 to avoid artifacts)
-	slic_iterations: 10, // Standard SLIC iteration count
-	superpixel_initialization_pattern: 'poisson', // Poisson disk sampling shows least diagonal artifacts
-	// Dots backend defaults
-	dot_density_threshold: 0.105, // UI value 8: better balance of detail and performance
-	min_radius: 0.5,
-	max_radius: 3.0,
-	adaptive_sizing: true,
-	background_tolerance: 0.1,
-	poisson_disk_sampling: false, // Disabled by default for better performance and stability
-	gradient_based_sizing: true
+	max_processing_time_ms: 180000 // 3 minutes for comprehensive processing (increased from 60s due to background removal)
+	// Backend-specific defaults are now handled by BACKEND_DEFAULTS and getDefaultConfigForBackend()
 };
 
 // Preset configurations
@@ -332,8 +373,8 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 	technical: {
 		// Centerline backend - precise skeleton extraction
 		backend: 'centerline',
-		detail: 0.8, // Higher detail (UI value 8) for better centerline quality
-		stroke_width: 0.8,
+		detail: 0.6, // Optimal detail level for centerline algorithm (UI value 6)
+		stroke_width: 1.0, // Standard line width for technical drawings
 		hand_drawn_preset: 'none',
 		pass_count: 1, // Single pass for precise technical drawings
 		multipass: false,
@@ -344,7 +385,7 @@ export const PRESET_CONFIGS: Record<VectorizerPreset, Partial<VectorizerConfig>>
 		// Centerline-specific settings for precision
 		enable_adaptive_threshold: true,
 		window_size: 25,
-		sensitivity_k: 0.4,
+		sensitivity_k: 0.3, // Match Rust default from for_technical()
 		min_branch_length: 8,
 		enable_width_modulation: false,
 		douglas_peucker_epsilon: 1.0
@@ -470,3 +511,15 @@ export const PASS_COUNT_DESCRIPTIONS: Record<number, string> = {
 	3: 'Triple pass - extended multi-scale processing, slower processing',
 	4: 'Quad pass - maximum scale coverage, significantly slower processing'
 };
+
+/**
+ * Get the default configuration for a specific backend
+ * Merges backend-specific defaults with the base DEFAULT_CONFIG
+ */
+export function getDefaultConfigForBackend(backend: VectorizerBackend): VectorizerConfig {
+	return {
+		...DEFAULT_CONFIG,
+		...BACKEND_DEFAULTS[backend],
+		backend
+	};
+}
