@@ -3,109 +3,78 @@
 	import { browser } from '$app/environment';
 	import { BeforeAfterSlider } from '$lib/components/ui/before-after-slider';
 	import { Modal } from '$lib/components/ui/modal';
-	import { Filter, Grid, List, Search, Download, Maximize2 } from 'lucide-svelte';
-
-	interface GalleryItem {
-		id: number;
-		title: string;
-		algorithm: string;
-		beforeImage: string;
-		afterImage: string;
-		dimensions: string;
-		fileSize: string;
-		category: string;
-	}
+	import { Filter, Grid, List, Search, Download, Maximize2, X } from 'lucide-svelte';
+	import { loadGalleryData, filterGalleryItems, getCategories, getAlgorithmStats } from '$lib/data/gallery';
+	import type { GalleryItem, GalleryFilters, AlgorithmFilter, ViewMode } from '$lib/types/gallery';
 
 	let selectedItem = $state<GalleryItem | null>(null);
 	let modalOpen = $state(false);
-	let viewMode = $state<'grid' | 'list'>('grid');
+	let viewMode = $state<ViewMode>('grid');
 	let displayedItems = $state<GalleryItem[]>([]);
-	let isLoading = $state(false);
-	let hasMore = $state(true);
+	let isLoading = $state(true);
+	let hasMore = $state(false);
+	let showFilters = $state(false);
+	
+	// Gallery data
+	let allItems = $state<GalleryItem[]>([]);
+	let filteredItems = $state<GalleryItem[]>([]);
+	let categories = $state<Array<{ value: string; label: string; count: number }>>([]);
+	let algorithmStats = $state<Map<string, number>>(new Map());
+	
+	// Filters
+	let filters = $state<GalleryFilters>({
+		search: '',
+		category: 'all',
+		algorithm: 'all'
+	});
+	
+	// Pagination
+	const ITEMS_PER_PAGE = 12;
+	let currentPage = $state(0);
+	
+	// Debounce timer for search
+	let searchTimer: NodeJS.Timeout;
 
-	// Sample gallery data with the stock images
-	const galleryItems: GalleryItem[] = [
-		{
-			id: 1,
-			title: 'Sample Logo Conversion',
-			algorithm: 'Edge Detection',
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			dimensions: '800x600',
-			fileSize: '45KB',
-			category: 'logos'
-		},
-		{
-			id: 2,
-			title: 'Artistic Portrait',
-			algorithm: 'Centerline',
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			dimensions: '1024x768',
-			fileSize: '38KB',
-			category: 'artwork'
-		},
-		{
-			id: 3,
-			title: 'Technical Diagram',
-			algorithm: 'Superpixel',
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			dimensions: '1200x900',
-			fileSize: '52KB',
-			category: 'technical'
-		},
-		{
-			id: 4,
-			title: 'Nature Scene',
-			algorithm: 'Dots',
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			dimensions: '1920x1080',
-			fileSize: '67KB',
-			category: 'photography'
-		},
-		{
-			id: 5,
-			title: 'Brand Icon',
-			algorithm: 'Edge Detection',
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			dimensions: '512x512',
-			fileSize: '28KB',
-			category: 'logos'
-		},
-		{
-			id: 6,
-			title: 'Abstract Art',
-			algorithm: 'Centerline',
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			dimensions: '800x800',
-			fileSize: '41KB',
-			category: 'artwork'
-		},
-		{
-			id: 7,
-			title: 'Architecture',
-			algorithm: 'Superpixel',
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			dimensions: '1600x1200',
-			fileSize: '59KB',
-			category: 'photography'
-		},
-		{
-			id: 8,
-			title: 'Circuit Board',
-			algorithm: 'Edge Detection',
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			dimensions: '2048x1536',
-			fileSize: '73KB',
-			category: 'technical'
+	// Apply filters with debouncing for search
+	$effect(() => {
+		if (filters.search !== undefined) {
+			clearTimeout(searchTimer);
+			searchTimer = setTimeout(() => {
+				applyFilters();
+			}, 300);
+		} else {
+			applyFilters();
 		}
-	];
+	});
+	
+	function applyFilters() {
+		filteredItems = filterGalleryItems(allItems, filters);
+		currentPage = 0;
+		loadMoreItems();
+	}
+	
+	function handleSearchInput(event: Event) {
+		const target = event.target as HTMLInputElement;
+		filters.search = target.value;
+	}
+	
+	function handleCategoryChange(event: Event) {
+		const target = event.target as HTMLSelectElement;
+		filters.category = target.value;
+	}
+	
+	function handleAlgorithmFilter(algorithm: AlgorithmFilter) {
+		filters.algorithm = algorithm;
+		showFilters = false;
+	}
+	
+	function clearFilters() {
+		filters = {
+			search: '',
+			category: 'all',
+			algorithm: 'all'
+		};
+	}
 
 	function openModal(item: GalleryItem) {
 		selectedItem = item;
@@ -118,60 +87,34 @@
 	}
 
 	function downloadSVG(item: GalleryItem) {
-		// Create a temporary link element to trigger download
+		// Download the original SVG file
 		const link = document.createElement('a');
-		link.href = item.afterImage;
+		link.href = item.afterSvg || item.afterImage;
 		link.download = `${item.title.replace(/\s+/g, '_').toLowerCase()}.svg`;
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
 	}
 
-	function setViewMode(mode: 'grid' | 'list') {
+	function setViewMode(mode: ViewMode) {
 		viewMode = mode;
 	}
 
-	// Generate more sample items by duplicating and incrementing IDs
-	function generateMoreItems(startId: number, count: number): GalleryItem[] {
-		const baseItems = [...galleryItems];
-		const newItems: GalleryItem[] = [];
-
-		for (let i = 0; i < count; i++) {
-			const baseItem = baseItems[i % baseItems.length];
-			newItems.push({
-				...baseItem,
-				id: startId + i,
-				title: `${baseItem.title} ${Math.floor((startId + i - 1) / baseItems.length) + 1}`
-			});
-		}
-
-		return newItems;
-	}
-
-	// Load initial items (2 rows of 4 = 8 items)
-	function loadInitialItems() {
-		displayedItems = [...galleryItems];
-	}
-
-	// Load more items when scrolling
+	// Load more items for pagination
 	function loadMoreItems() {
-		if (isLoading || !hasMore) return;
-
-		isLoading = true;
-
-		// Simulate loading delay
-		setTimeout(() => {
-			const currentCount = displayedItems.length;
-			const newItems = generateMoreItems(currentCount + 1, 8); // Load 8 more items
+		const start = currentPage * ITEMS_PER_PAGE;
+		const end = start + ITEMS_PER_PAGE;
+		
+		if (currentPage === 0) {
+			displayedItems = filteredItems.slice(0, end);
+		} else {
+			const newItems = filteredItems.slice(start, end);
 			displayedItems = [...displayedItems, ...newItems];
-
-			// For demo purposes, stop loading after 5 batches (40 items total)
-			if (displayedItems.length >= 40) {
-				hasMore = false;
-			}
-
-			isLoading = false;
-		}, 500);
+		}
+		
+		hasMore = displayedItems.length < filteredItems.length;
+		isLoading = false;
+		currentPage++;
 	}
 
 	// Infinite scroll handler
@@ -184,13 +127,25 @@
 
 		// Load more when user is 300px from bottom
 		if (scrollTop + windowHeight >= documentHeight - 300) {
-			loadMoreItems();
+			isLoading = true;
+			setTimeout(() => loadMoreItems(), 200);
 		}
 	}
 
-	// Setup infinite scroll on mount
-	onMount(() => {
-		loadInitialItems();
+	// Load gallery data on mount
+	onMount(async () => {
+		isLoading = true;
+		try {
+			const manifest = await loadGalleryData();
+			allItems = manifest.items;
+			categories = getCategories(allItems);
+			algorithmStats = getAlgorithmStats(allItems);
+			applyFilters();
+		} catch (error) {
+			console.error('Failed to load gallery:', error);
+			isLoading = false;
+		}
+		
 		if (browser) {
 			window.addEventListener('scroll', handleScroll);
 		}
@@ -201,6 +156,7 @@
 		if (browser) {
 			window.removeEventListener('scroll', handleScroll);
 		}
+		clearTimeout(searchTimer);
 	});
 </script>
 
@@ -268,6 +224,16 @@
 				</div>
 			</div>
 		</div>
+		
+		{#if filters.search || filters.category !== 'all' || filters.algorithm !== 'all'}
+			<button
+				onclick={clearFilters}
+				class="text-ferrari-600 hover:text-ferrari-700 flex items-center gap-1 text-sm font-medium"
+			>
+				<X class="h-4 w-4" />
+				Clear filters
+			</button>
+		{/if}
 	</div>
 </section>
 
