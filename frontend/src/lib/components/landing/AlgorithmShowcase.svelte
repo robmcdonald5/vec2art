@@ -1,213 +1,29 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { fade, slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import BeforeAfterSlider from '$lib/components/ui/before-after-slider/before-after-slider.svelte';
 	import emblaCarouselSvelte from 'embla-carousel-svelte';
 	import Autoplay from 'embla-carousel-autoplay';
 	import type { EmblaCarouselType } from 'embla-carousel';
-	import {
-		BarChart3,
-		Palette,
-		PenTool,
-		Grid3x3,
-		ArrowRight,
-		Check,
-		Sparkles,
-		Zap,
-		Image,
-		Layers
-	} from 'lucide-svelte';
+	import { ArrowRight, Check, Zap } from 'lucide-svelte';
+	
+	// Import showcase data from gallery
+	import { 
+		showcaseAlgorithms, 
+		type ShowcaseAlgorithm,
+		getSvgApiUrl 
+	} from '$lib/data/showcase-gallery';
 
-	interface Algorithm {
-		id: string;
-		name: string;
-		technicalName: string;
-		description: string;
-		icon: any;
-		bestFor: string;
-		features: string[];
-		beforeImage: string;
-		afterImage: string;
-		color: string;
-		bgGradient: string;
-	}
-
-	const algorithms: Algorithm[] = [
-		{
-			id: 'centerline',
-			name: 'Bold Graphics',
-			technicalName: 'Centerline Tracing',
-			description:
-				'Perfect for logos and bold shapes with the Zhang-Suen algorithm creating precise, clean paths.',
-			icon: BarChart3,
-			bestFor: 'Logos & Icons',
-			features: ['Clean lines', 'Precise paths', 'Minimal complexity'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-blue-600',
-			bgGradient: 'from-blue-50 to-indigo-50'
-		},
-		{
-			id: 'dots',
-			name: 'Vintage Dots',
-			technicalName: 'Dot Mapping',
-			description:
-				'Create artistic stippling effects with adaptive dot patterns for unique textures and vintage aesthetics.',
-			icon: Palette,
-			bestFor: 'Artistic Effects',
-			features: ['Stippling style', 'Texture emphasis', 'Vintage look'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-purple-600',
-			bgGradient: 'from-purple-50 to-pink-50'
-		},
-		{
-			id: 'line',
-			name: 'Sketch Art',
-			technicalName: 'Line Tracing',
-			description:
-				'Detailed line art using Canny edge detection, ideal for converting photos to sketch-like drawings.',
-			icon: PenTool,
-			bestFor: 'Detailed Art',
-			features: ['Hand-drawn feel', 'Fine details', 'Natural strokes'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-emerald-600',
-			bgGradient: 'from-emerald-50 to-teal-50'
-		},
-		{
-			id: 'superpixel',
-			name: 'Modern Abstract',
-			technicalName: 'Superpixel',
-			description:
-				'SLIC segmentation creates stylized, abstract interpretations perfect for modern design.',
-			icon: Grid3x3,
-			bestFor: 'Abstract Art',
-			features: ['Geometric shapes', 'Color regions', 'Modern style'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-orange-600',
-			bgGradient: 'from-orange-50 to-amber-50'
-		},
-		// Placeholder algorithms for carousel demo
-		{
-			id: 'watercolor',
-			name: 'Watercolor Style',
-			technicalName: 'Fluid Simulation',
-			description:
-				'Coming soon: Advanced fluid dynamics to create beautiful watercolor painting effects.',
-			icon: Layers,
-			bestFor: 'Artistic Paintings',
-			features: ['Fluid dynamics', 'Color bleeding', 'Organic textures'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-cyan-600',
-			bgGradient: 'from-cyan-50 to-blue-50'
-		},
-		{
-			id: 'pencil',
-			name: 'Pencil Sketch',
-			technicalName: 'Gradient Analysis',
-			description:
-				'Coming soon: Realistic pencil sketching with pressure sensitivity and shading gradients.',
-			icon: PenTool,
-			bestFor: 'Realistic Sketches',
-			features: ['Pressure variation', 'Cross-hatching', 'Shading gradients'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-gray-600',
-			bgGradient: 'from-zinc-100 to-neutral-100'
-		},
-		{
-			id: 'neon',
-			name: 'Neon Glow',
-			technicalName: 'Luminance Mapping',
-			description:
-				'Coming soon: Electric neon sign effects with customizable glow intensity and colors.',
-			icon: Zap,
-			bestFor: 'Digital Art',
-			features: ['Glow effects', 'Electric colors', 'Night aesthetics'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-pink-600',
-			bgGradient: 'from-pink-50 to-rose-50'
-		},
-		{
-			id: 'mosaic',
-			name: 'Mosaic Tiles',
-			technicalName: 'Tessellation',
-			description:
-				'Coming soon: Beautiful mosaic tile patterns with customizable tile size and grout effects.',
-			icon: Grid3x3,
-			bestFor: 'Decorative Art',
-			features: ['Tile patterns', 'Grout effects', 'Color clustering'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-amber-600',
-			bgGradient: 'from-amber-50 to-yellow-50'
-		},
-		{
-			id: 'oil-painting',
-			name: 'Oil Painting',
-			technicalName: 'Brush Stroke Simulation',
-			description:
-				'Coming soon: Rich oil painting effects with realistic brush strokes and color blending.',
-			icon: Palette,
-			bestFor: 'Fine Art',
-			features: ['Brush textures', 'Color blending', 'Canvas effects'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-red-600',
-			bgGradient: 'from-red-50 to-orange-50'
-		},
-		{
-			id: 'comic-book',
-			name: 'Comic Book',
-			technicalName: 'Cel Shading',
-			description:
-				'Coming soon: Bold comic book style with flat colors and strong outlines for graphic novel aesthetics.',
-			icon: Image,
-			bestFor: 'Graphic Design',
-			features: ['Bold outlines', 'Flat colors', 'Pop art style'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-indigo-600',
-			bgGradient: 'from-indigo-50 to-purple-50'
-		},
-		{
-			id: 'charcoal',
-			name: 'Charcoal Draw',
-			technicalName: 'Texture Mapping',
-			description:
-				'Coming soon: Realistic charcoal drawing effects with natural texture and smudging techniques.',
-			icon: PenTool,
-			bestFor: 'Portrait Art',
-			features: ['Natural texture', 'Smudge effects', 'Paper grain'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-stone-600',
-			bgGradient: 'from-yellow-100 to-orange-100'
-		},
-		{
-			id: 'glass-effect',
-			name: 'Glass Effect',
-			technicalName: 'Refraction Simulation',
-			description:
-				'Coming soon: Stunning glass and crystal effects with realistic light refraction and transparency.',
-			icon: Sparkles,
-			bestFor: 'Modern Design',
-			features: ['Light refraction', 'Transparency', 'Reflections'],
-			beforeImage: '/gallery-stock-before.png',
-			afterImage: '/gallery-stock-after.svg',
-			color: 'text-teal-600',
-			bgGradient: 'from-teal-50 to-cyan-50'
-		}
-	];
+	// Use the curated showcase algorithms from gallery
+	const algorithms = showcaseAlgorithms;
 
 	let selectedAlgorithm = $state(algorithms[0]);
 	let emblaApi: EmblaCarouselType;
-	let autoplayPlugin = Autoplay({ delay: 3000, stopOnInteraction: true });
+	let autoplayPlugin = Autoplay({ delay: 4000, stopOnInteraction: true });
+	let isInitialized = $state(false);
 
 	// Embla carousel options
 	const options = {
@@ -218,8 +34,9 @@
 		slidesToScroll: 1
 	};
 
-	// Use reversed algorithms for left-to-right progression
-	const reversedAlgorithms = [...algorithms].reverse();
+	// FIXED: Use original algorithms array consistently (no reversal)
+	// This prevents state synchronization bugs between carousel and selection
+	const carouselAlgorithms = algorithms;
 
 	function onEmblaInit(event: CustomEvent<EmblaCarouselType>) {
 		emblaApi = event.detail;
@@ -227,20 +44,31 @@
 		// Listen for slide changes to update selected algorithm
 		emblaApi.on('select', () => {
 			const selectedIndex = emblaApi.selectedScrollSnap();
-			selectedAlgorithm = reversedAlgorithms[selectedIndex];
+			// FIXED: Use bounds checking to prevent array access errors
+			if (selectedIndex >= 0 && selectedIndex < carouselAlgorithms.length) {
+				selectedAlgorithm = carouselAlgorithms[selectedIndex];
+			}
 		});
 
-		// Set initial selected algorithm
+		// Set initial selected algorithm with bounds checking
 		const initialIndex = emblaApi.selectedScrollSnap();
-		selectedAlgorithm = reversedAlgorithms[initialIndex];
+		if (initialIndex >= 0 && initialIndex < carouselAlgorithms.length) {
+			selectedAlgorithm = carouselAlgorithms[initialIndex];
+		}
+		
+		isInitialized = true;
 	}
 
-	function handleTabClick(algorithm: Algorithm) {
-		if (!emblaApi) return;
+	function handleTabClick(algorithm: ShowcaseAlgorithm) {
+		if (!emblaApi || !isInitialized) return;
 
-		// Find the algorithm index and scroll to it
-		const algorithmIndex = reversedAlgorithms.findIndex((alg) => alg.id === algorithm.id);
-		if (algorithmIndex !== -1) {
+		// FIXED: Find algorithm index in correct array with validation
+		const algorithmIndex = carouselAlgorithms.findIndex((alg) => alg.id === algorithm.id);
+		if (algorithmIndex !== -1 && algorithmIndex < carouselAlgorithms.length) {
+			// Stop autoplay when user manually interacts
+			if (autoplayPlugin) {
+				autoplayPlugin.stop();
+			}
 			emblaApi.scrollTo(algorithmIndex);
 			selectedAlgorithm = algorithm;
 		}
@@ -252,6 +80,55 @@
 			autoplayPlugin.stop();
 		}
 	}
+	
+	function handleTryEffect() {
+		// Validate selected algorithm before navigation
+		if (!selectedAlgorithm || !selectedAlgorithm.isAvailable) {
+			console.warn('Cannot navigate: invalid or unavailable algorithm', selectedAlgorithm);
+			return;
+		}
+
+		try {
+			// Navigate to converter with algorithm parameters
+			const params = new URLSearchParams({
+				backend: selectedAlgorithm.backend
+			});
+			
+			if (selectedAlgorithm.preset) {
+				params.append('preset', selectedAlgorithm.preset);
+			}
+			
+			// Store the algorithm selection in sessionStorage for the converter to pick up
+			if (typeof window !== 'undefined') {
+				sessionStorage.setItem('selectedAlgorithm', JSON.stringify({
+					backend: selectedAlgorithm.backend,
+					preset: selectedAlgorithm.preset,
+					name: selectedAlgorithm.name
+				}));
+			}
+			
+			goto(`/converter?${params.toString()}`);
+		} catch (error) {
+			console.error('Failed to navigate to converter:', error);
+		}
+	}
+
+	// Validate selectedAlgorithm state consistency
+	$effect(() => {
+		if (selectedAlgorithm && emblaApi && isInitialized) {
+			const currentIndex = emblaApi.selectedScrollSnap();
+			const expectedAlgorithm = carouselAlgorithms[currentIndex];
+			
+			// Only log warnings for debugging, don't auto-correct to avoid infinite loops
+			if (expectedAlgorithm && selectedAlgorithm.id !== expectedAlgorithm.id) {
+				console.warn('Carousel state inconsistency detected:', {
+					currentIndex,
+					selectedId: selectedAlgorithm.id,
+					expectedId: expectedAlgorithm.id
+				});
+			}
+		}
+	});
 
 	onDestroy(() => {
 		if (emblaApi) {
@@ -280,7 +157,7 @@
 		onemblaInit={onEmblaInit}
 	>
 		<div class="embla__container flex gap-4 pt-2 pb-4 pl-4">
-			{#each reversedAlgorithms as algorithm (algorithm.id)}
+			{#each carouselAlgorithms as algorithm (algorithm.id)}
 				<div class="embla__slide flex-shrink-0" style="flex: 0 0 auto;">
 					<button
 						class="algorithm-tab group relative flex w-44 items-center gap-2 rounded-xl border-2 px-4 py-3 transition-all duration-300 sm:w-52 sm:px-6 sm:py-4 {selectedAlgorithm.id ===
@@ -345,6 +222,7 @@
 					<BeforeAfterSlider
 						beforeImage={selectedAlgorithm.beforeImage}
 						afterImage={selectedAlgorithm.afterImage}
+						loading="lazy"
 						class="h-full w-full"
 					/>
 				</div>
@@ -396,13 +274,16 @@
 
 				<!-- CTA -->
 				<div class="mt-auto">
-					<a
-						href="/converter?algorithm={selectedAlgorithm.id}"
-						class="group bg-ferrari-600 hover:bg-ferrari-700 inline-flex w-56 items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl"
+					<button
+						onclick={handleTryEffect}
+						disabled={!selectedAlgorithm.isAvailable}
+						class="group inline-flex w-56 items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold text-white shadow-lg transition-all duration-300 {selectedAlgorithm.isAvailable 
+							? 'bg-ferrari-600 hover:bg-ferrari-700 hover:-translate-y-0.5 hover:shadow-xl cursor-pointer' 
+							: 'bg-gray-400 cursor-not-allowed opacity-75'}"
 					>
-						Try {selectedAlgorithm.name}
-						<ArrowRight class="h-5 w-5 transition-transform group-hover:translate-x-1" />
-					</a>
+						{selectedAlgorithm.isAvailable ? 'Try This Style' : `Coming Soon: ${selectedAlgorithm.name}`}
+						<ArrowRight class="h-5 w-5 transition-transform {selectedAlgorithm.isAvailable ? 'group-hover:translate-x-1' : ''}" />
+					</button>
 				</div>
 			</div>
 		</div>

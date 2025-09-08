@@ -40,6 +40,9 @@
 	// Removed panZoomStore - now handled internally by SimplifiedPreviewComparison
 	import { getPresetById } from '$lib/presets/presets';
 	import { presetToVectorizerConfig } from '$lib/presets/converter';
+	
+	// Page data with algorithm params from URL
+	let { data } = $props();
 
 	// UI State Management - Using Svelte 5 runes
 	let files = $state<File[]>([]);
@@ -1139,8 +1142,49 @@
 				autoInitThreads: true
 			});
 
-			// Show success toast notification
-			toastStore.success('🚀 Converter ready! Upload images to get started.', 4000);
+			// Check for algorithm selection from URL params or sessionStorage
+			const urlBackend = data?.algorithmParams?.backend;
+			const urlPreset = data?.algorithmParams?.preset;
+			const sessionData = typeof window !== 'undefined' 
+				? JSON.parse(sessionStorage.getItem('selectedAlgorithm') || '{}')
+				: {};
+			
+			// Apply algorithm selection if available
+			if (urlBackend || sessionData.backend) {
+				const backend = urlBackend || sessionData.backend;
+				const preset = urlPreset || sessionData.preset;
+				const name = sessionData.name;
+				
+				// Update config with selected algorithm
+				config.backend = backend;
+				
+				// Apply preset if provided
+				if (preset) {
+					const presetConfig = getPresetById(preset);
+					if (presetConfig) {
+						const vectorizerConfig = presetToVectorizerConfig(presetConfig);
+						Object.assign(config, vectorizerConfig);
+					}
+				}
+				
+				// Update vectorizer store
+				vectorizerStore.updateConfig(config);
+				
+				// Show notification about selected algorithm
+				if (name) {
+					toastStore.success(`🎨 ${name} algorithm selected! Upload images to start.`, 4000);
+				} else {
+					toastStore.success('🚀 Converter ready! Upload images to get started.', 4000);
+				}
+				
+				// Clear sessionStorage after use
+				if (typeof window !== 'undefined') {
+					sessionStorage.removeItem('selectedAlgorithm');
+				}
+			} else {
+				// Show default success toast notification
+				toastStore.success('🚀 Converter ready! Upload images to get started.', 4000);
+			}
 
 			// Always auto-recover state seamlessly
 			await recoverSavedState();
