@@ -11,9 +11,9 @@
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import ConverterHeader from './ConverterHeader.svelte';
-	import ScrollFriendlyImageViewer from '../ui/ScrollFriendlyImageViewer.svelte';
+	import ModernPanZoomViewer from '../ui/ModernPanZoomViewer.svelte';
 	import type { ConverterComponentProps } from '$lib/types/shared-props';
-	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
+	import { modernPanZoomStore } from '$lib/stores/modern-pan-zoom.svelte';
 
 	interface Props extends ConverterComponentProps {}
 
@@ -41,9 +41,10 @@
 		onSettingsModeChange
 	}: Props = $props();
 
-	// Direct access to pan/zoom store states (no local state needed)
-	const originalState = $derived(panZoomStore.originalState);
-	const convertedState = $derived(panZoomStore.convertedState);
+	// Modern store access - clean and simple
+	// Component references for viewport-aware zooming
+	let originalViewer: ModernPanZoomViewer;
+	let convertedViewer: ModernPanZoomViewer;
 
 	// Comparison slider state
 	let viewMode = $state<'side-by-side' | 'slider'>('side-by-side');
@@ -60,57 +61,40 @@
 	const currentResult = $derived(results?.[currentImageIndex]);
 	const isError = $derived(currentResult?.svg?.includes('Failed to convert') ?? false);
 
-	// Control functions using store directly
+	// Modern control functions with viewport-centered zooming
 	function zoomInOriginal() {
-		const currentState = panZoomStore.originalState;
-		panZoomStore.updateOriginalState({
-			...currentState,
-			scale: Math.min(5.0, currentState.scale * 1.2)
-		});
+		originalViewer?.zoomToCenter(1.2);
 	}
 
 	function zoomOutOriginal() {
-		const currentState = panZoomStore.originalState;
-		panZoomStore.updateOriginalState({
-			...currentState,
-			scale: Math.max(0.1, currentState.scale / 1.2)
-		});
+		originalViewer?.zoomToCenter(1 / 1.2);
 	}
 
 	function resetOriginalView() {
-		panZoomStore.updateOriginalState({ scale: 1, x: 0, y: 0 });
+		modernPanZoomStore.resetPanel('original');
 	}
 
 	function zoomInConverted() {
-		const currentState = panZoomStore.convertedState;
-		panZoomStore.updateConvertedState({
-			...currentState,
-			scale: Math.min(5.0, currentState.scale * 1.2)
-		});
+		convertedViewer?.zoomToCenter(1.2);
 	}
 
 	function zoomOutConverted() {
-		const currentState = panZoomStore.convertedState;
-		panZoomStore.updateConvertedState({
-			...currentState,
-			scale: Math.max(0.1, currentState.scale / 1.2)
-		});
+		convertedViewer?.zoomToCenter(1 / 1.2);
 	}
 
 	function resetConvertedView() {
-		panZoomStore.updateConvertedState({ scale: 1, x: 0, y: 0 });
+		modernPanZoomStore.resetPanel('converted');
 	}
 
 	function toggleSync() {
-		panZoomStore.toggleSync();
-		console.log('🔄 [SimplifiedPreview] Sync toggled:', panZoomStore.isSyncEnabled);
+		modernPanZoomStore.toggleSync();
 	}
 
 	// Reset pan/zoom when changing images
 	function handleImageIndexChange(newIndex: number) {
 		onImageIndexChange?.(newIndex);
 		// Reset store state
-		panZoomStore.resetStates();
+		modernPanZoomStore.resetAll();
 	}
 
 	// Download original image functionality
@@ -309,16 +293,16 @@
 						<div class="flex items-center gap-2">
 							<span class="text-converter-primary text-sm font-medium select-none">Original</span>
 							<button
-								class="text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {panZoomStore.isSyncEnabled
+								class="text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {modernPanZoomStore.syncEnabled
 									? 'text-ferrari-600'
 									: 'text-gray-400'}"
 								onclick={toggleSync}
-								aria-label={panZoomStore.isSyncEnabled ? 'Disable sync' : 'Enable sync'}
-								title={panZoomStore.isSyncEnabled
+								aria-label={modernPanZoomStore.syncEnabled ? 'Disable sync' : 'Enable sync'}
+								title={modernPanZoomStore.syncEnabled
 									? 'Views are synchronized'
 									: 'Click to sync both views'}
 							>
-								{#if panZoomStore.isSyncEnabled}
+								{#if modernPanZoomStore.syncEnabled}
 									<Link class="h-4 w-4" />
 								{:else}
 									<Unlink class="h-4 w-4" />
@@ -389,19 +373,15 @@
 						{/if}
 					</div>
 
-					<!-- **SIMPLIFIED**: Direct ScrollFriendlyImageViewer -->
+					<!-- **MODERN**: Clean ModernPanZoomViewer -->
 					<div class="dark:bg-ferrari-900 flex-1 overflow-hidden rounded-lg bg-white">
 						{#if currentImageUrl}
-							<ScrollFriendlyImageViewer
+							<ModernPanZoomViewer
+								bind:this={originalViewer}
 								src={currentImageUrl}
 								alt={currentFile?.name || 'Original image'}
-								targetScale={originalState.scale}
-								targetOffsetX={originalState.x}
-								targetOffsetY={originalState.y}
-								onTransformChange={(state) => panZoomStore.updateOriginalState(state)}
-								minScale={0.1}
-								maxScale={5.0}
-								scaleSmoothing={800}
+								panel="original"
+								class="w-full h-full"
 							/>
 						{:else}
 							<div class="flex h-full items-center justify-center text-gray-400">
@@ -483,17 +463,13 @@
 
 					<div class="dark:bg-ferrari-900 flex-1 overflow-hidden rounded-lg bg-white">
 						{#if hasResult && currentSvgUrl}
-							<!-- SVG viewer with store-based pan/zoom -->
-							<ScrollFriendlyImageViewer
+							<!-- Modern SVG viewer -->
+							<ModernPanZoomViewer
+								bind:this={convertedViewer}
 								src={currentSvgUrl}
 								alt="Converted SVG"
-								targetScale={convertedState.scale}
-								targetOffsetX={convertedState.x}
-								targetOffsetY={convertedState.y}
-								onTransformChange={(state) => panZoomStore.updateConvertedState(state)}
-								minScale={0.1}
-								maxScale={5.0}
-								scaleSmoothing={800}
+								panel="converted"
+								class="w-full h-full"
 							/>
 						{:else if currentProgress}
 							<div class="flex h-full items-center justify-center">
