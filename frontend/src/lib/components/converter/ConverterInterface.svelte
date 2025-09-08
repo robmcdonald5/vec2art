@@ -1,5 +1,5 @@
 <script lang="ts">
-	import PreviewComparison from './PreviewComparison.svelte';
+	import PreviewComparison from './SimplifiedPreviewComparison.svelte';
 	import type { ConverterComponentProps } from '$lib/types/shared-props';
 
 	interface Props extends ConverterComponentProps {}

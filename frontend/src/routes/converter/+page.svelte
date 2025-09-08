@@ -36,7 +36,7 @@
 	import { wasmWorkerService } from '$lib/services/wasm-worker-service';
 	import { settingsSyncStore } from '$lib/stores/settings-sync.svelte';
 	import type { SettingsSyncMode } from '$lib/types/settings-sync';
-	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
+	// Removed panZoomStore - now handled internally by SimplifiedPreviewComparison
 	import { getPresetById } from '$lib/presets/presets';
 	import { presetToVectorizerConfig } from '$lib/presets/converter';
 
@@ -385,8 +385,7 @@
 			hasFiles
 		});
 
-		// IMPORTANT: Preserve pan/zoom states before conversion
-		panZoomStore.preserveStates();
+		// Pan/zoom state is now handled internally by SimplifiedPreviewComparison
 
 		if (!canConvert) {
 			// Enhanced validation with specific error messages
@@ -645,11 +644,7 @@
 			// Small delay ensures blob URLs are resolved and DOM is updated
 			await new Promise((resolve) => setTimeout(resolve, 100));
 
-			// IMPORTANT: Restore pan/zoom states after results are updated and DOM is ready
-			// Use requestAnimationFrame to ensure the DOM has been updated
-			requestAnimationFrame(() => {
-				panZoomStore.restoreStates();
-			});
+			// Pan/zoom state restoration is now handled internally by SimplifiedPreviewComparison
 		} catch (error) {
 			console.error('Conversion failed:', error);
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -817,8 +812,7 @@
 		completedImages = 0;
 		batchStartTime = null;
 
-		// Reset pan/zoom state
-		panZoomStore.resetStates();
+		// Pan/zoom reset is now handled internally by SimplifiedPreviewComparison
 
 		// Force component remounting by changing key
 		componentResetKey++;
@@ -1257,29 +1251,7 @@
 				}
 			}
 
-			// Restore pan/zoom state
-			if (state.panZoomState) {
-				try {
-					panZoomStore.syncStates(state.panZoomState.originalState);
-
-					if (!state.panZoomState.isSyncEnabled) {
-						// If sync was disabled, set the individual states and then disable sync
-						panZoomStore.updateOriginalState(state.panZoomState.originalState);
-						panZoomStore.updateConvertedState(state.panZoomState.convertedState);
-						if (panZoomStore.isSyncEnabled) {
-							panZoomStore.toggleSync(); // Disable sync to match saved state
-						}
-					}
-
-					console.log('✅ [DEBUG] Pan/zoom state restored:', {
-						original: state.panZoomState.originalState,
-						converted: state.panZoomState.convertedState,
-						syncEnabled: state.panZoomState.isSyncEnabled
-					});
-				} catch (error) {
-					console.warn('⚠️ [DEBUG] Failed to restore pan/zoom state:', error);
-				}
-			}
+			// Pan/zoom state restoration is now handled internally by SimplifiedPreviewComparison
 
 			// CRITICAL: Mark state recovery as complete
 			isRecoveringState = false;
@@ -1313,31 +1285,7 @@
 		converterPersistence.saveCurrentIndex(currentImageIndex);
 	});
 
-	// Save pan/zoom state when it changes
-	$effect(() => {
-		if (!pageLoaded || isClearingAll) return;
-
-		const panZoomState = {
-			originalState: panZoomStore.originalState,
-			convertedState: panZoomStore.convertedState,
-			isSyncEnabled: panZoomStore.isSyncEnabled
-		};
-
-		// Only save if state has meaningful values (not default)
-		const hasNonDefaultState =
-			panZoomState.originalState.scale !== 1 ||
-			panZoomState.originalState.x !== 0 ||
-			panZoomState.originalState.y !== 0 ||
-			panZoomState.convertedState.scale !== 1 ||
-			panZoomState.convertedState.x !== 0 ||
-			panZoomState.convertedState.y !== 0 ||
-			!panZoomState.isSyncEnabled;
-
-		if (hasNonDefaultState) {
-			// console.log('💾 [DEBUG] Saving pan/zoom state:', panZoomState);
-			converterPersistence.savePanZoomState(panZoomState);
-		}
-	});
+	// Pan/zoom state persistence is now handled internally by SimplifiedPreviewComparison
 
 	// Save files metadata when files change
 	$effect(() => {
@@ -1473,8 +1421,7 @@
 						// Step 7: Clear parameter history
 						parameterHistory.clear();
 
-						// Step 8: Reset pan/zoom state
-						panZoomStore.resetStates();
+						// Pan/zoom reset is now handled internally by SimplifiedPreviewComparison
 
 						// Step 9: Clear all persistence data AFTER state is reset
 						converterPersistence.clearAll();
