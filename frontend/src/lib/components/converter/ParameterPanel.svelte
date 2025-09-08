@@ -416,8 +416,18 @@
 						// Convert UI value (1-10) to dot density threshold (0.4-0.02, inverted)
 						// UI: 1 = sparse dots (high threshold), 10 = dense dots (low threshold)
 						const threshold = 0.4 - ((uiValue - 1) / 9) * (0.4 - 0.02);
-						// Set dot density threshold directly
-						onConfigChange({ dot_density_threshold: threshold });
+						
+						console.log(
+							`🎯 Advanced Settings Dot Density mapping (SYNC FIX): UI=${uiValue} → threshold=${threshold.toFixed(3)}`
+						);
+						
+						// SYNC FIX: Update both parameters like Quick Settings to maintain sync
+						// Convert back to detail scale (0.1-1.0) for consistency
+						const detailValue = uiValue / 10;
+						onConfigChange({
+							detail: detailValue, // Keep detail in sync for consistency
+							dot_density_threshold: threshold
+						});
 						onParameterChange?.();
 					}}
 					{disabled}
