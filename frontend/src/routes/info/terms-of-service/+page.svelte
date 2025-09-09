@@ -26,14 +26,14 @@
 					Terms of Service
 				</h1>
 				<p class="mx-auto max-w-2xl text-lg text-gray-600 md:text-xl">
-					Clear terms for using vec2art - Free for personal and commercial use with full transparency.
+					Clear terms for using vec2art - Free for personal use.
 				</p>
 				<div class="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 					<div
 						class="flex items-center gap-2 rounded-md bg-green-50 px-4 py-2 text-sm font-medium text-green-700"
 					>
 						<Users class="h-4 w-4" />
-						Free Personal & Commercial Use
+						Free Personal
 					</div>
 					<div
 						class="flex items-center gap-2 rounded-md bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700"
@@ -64,7 +64,7 @@
 					</div>
 					<div class="prose prose-gray max-w-none">
 						<p class="mb-4 text-gray-700">
-							vec2art is provided as a free service for both personal and commercial use:
+							vec2art is provided as a base free service for personal use:
 						</p>
 						<ul class="ml-4 list-inside list-disc space-y-2 text-gray-700">
 							<li>
@@ -72,14 +72,13 @@
 								creative work
 							</li>
 							<li>
-								<strong>Commercial Use:</strong> Use generated SVGs in commercial projects, marketing
-								materials, and business applications
+								<strong>Commercial Use:</strong> For use of vec2art in commercial settings, please refer to our contact page for licensing and API inqueries.
 							</li>
 							<li>
-								<strong>No Account Required:</strong> Full access to all features without registration
+								<strong>No Account Required:</strong> Access to the base features of the converter is allowed to anyone even without an account.
 							</li>
 							<li>
-								<strong>No Usage Limits:</strong> Convert unlimited images with no restrictions
+								<strong>No Usage Limits:</strong> Convert unlimited images with no direct usage limates. API endpoint(s) to the Converter page is limited dependent on licensing agreement with vec2art.
 							</li>
 						</ul>
 					</div>
@@ -94,14 +93,11 @@
 					<p class="mb-4 text-gray-700">When using vec2art, you agree to:</p>
 					<ul class="ml-4 list-inside list-disc space-y-2 text-gray-700">
 						<li>
-							<strong>Respect Copyright:</strong> Only upload images you own or have permission to modify
+							<strong>Respect Copyright:</strong> Only upload images you own or are considered fair use
 						</li>
 						<li>
 							<strong>Intellectual Property:</strong> Respect third-party trademarks, copyrights, and
 							intellectual property rights
-						</li>
-						<li>
-							<strong>Lawful Use:</strong> Use the service only for legal purposes in your jurisdiction
 						</li>
 						<li>
 							<strong>No Harmful Content:</strong> Do not process images containing illegal, harmful,
@@ -155,9 +151,6 @@
 							property
 						</li>
 						<li>
-							<strong>Open Source:</strong> Portions of our code are open source under respective licenses
-						</li>
-						<li>
 							<strong>No Claims:</strong> We make no claims to your creative output or generated SVGs
 						</li>
 					</ul>
@@ -176,7 +169,7 @@
 						</li>
 						<li>
 							<strong>No Damages:</strong> We are not liable for any direct, indirect, or consequential
-							damages
+							damages to uploaded images
 						</li>
 						<li>
 							<strong>User Responsibility:</strong> Users are responsible for backing up important work
@@ -197,7 +190,7 @@
 					<p class="mb-4 text-gray-700">How we handle changes to these terms:</p>
 					<ul class="ml-4 list-inside list-disc space-y-2 text-gray-700">
 						<li>
-							<strong>Notice of Changes:</strong> We will notify users of material changes to these terms
+							<strong>Notice of Changes:</strong> We will notify account holding users of material changes to these terms
 						</li>
 						<li>
 							<strong>Effective Date:</strong> Changes become effective 30 days after notification
@@ -216,13 +209,8 @@
 					<h3 class="mb-4 text-xl font-semibold text-gray-900">Questions About These Terms?</h3>
 					<p class="mb-4 text-gray-700">
 						If you have questions about these Terms of Service or need clarification on any points,
-						please contact us through:
+						please contact us via our contact page
 					</p>
-					<ul class="ml-4 list-inside list-disc space-y-2 text-gray-700">
-						<li>GitHub repository for technical questions and issues</li>
-						<li>Support channels for general inquiries</li>
-						<li>Community forums for user discussions</li>
-					</ul>
 				</div>
 			</div>
 		</div>

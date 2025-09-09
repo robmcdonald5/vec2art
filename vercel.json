@@ -1,31 +1,46 @@
 {
-  "builds": [
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/node"
-    }
-  ],
   "buildCommand": "chmod +x scripts/vercel-build.sh && ./scripts/vercel-build.sh && cd frontend && npm run build:frontend-only",
   "devCommand": "cd frontend && npm run dev",
   "installCommand": "cd frontend && npm ci",
-  "outputDirectory": "frontend/build",
+  "outputDirectory": "frontend/.svelte-kit/vercel-adapter",
   "framework": "sveltekit",
+  
   "functions": {
-    "frontend/build/server/chunks/*.js": {
-      "maxDuration": 30
+    "frontend/.svelte-kit/vercel-adapter/functions/fn.func": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "frontend/.svelte-kit/vercel-adapter/functions/api/*.func": {
+      "maxDuration": 10,
+      "memory": 512
     }
   },
+  
+  "regions": ["iad1"],
+  
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
         {
-          "key": "Cross-Origin-Embedder-Policy",
-          "value": "require-corp"
+          "key": "X-DNS-Prefetch-Control",
+          "value": "off"
         },
         {
-          "key": "Cross-Origin-Opener-Policy", 
-          "value": "same-origin"
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
         }
       ]
     },
@@ -39,17 +54,94 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        },
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "cross-origin"
+        }
+      ]
+    },
+    {
+      "source": "/_app/immutable/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/gallery/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    },
+    {
+      "source": "/(.*).webp",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        },
+        {
+          "key": "Content-Type",
+          "value": "image/webp"
+        }
+      ]
+    },
+    {
+      "source": "/(.*).avif",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        },
+        {
+          "key": "Content-Type",
+          "value": "image/avif"
         }
       ]
     }
   ],
+  
   "rewrites": [
     {
       "source": "/wasm/(.*)",
-      "destination": "/static/wasm/$1"
+      "destination": "/wasm/$1"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/robots.txt"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/sitemap.xml"
     }
   ],
+  
+  "redirects": [
+    {
+      "source": "/vec2art",
+      "destination": "/converter",
+      "permanent": false
+    },
+    {
+      "source": "/convert",
+      "destination": "/converter",
+      "permanent": false
+    }
+  ],
+  
+  "trailingSlash": false,
+  
+  "cleanUrls": true,
+  
   "env": {
     "NODE_ENV": "production"
-  }
+  },
+  
+  "crons": []
 }

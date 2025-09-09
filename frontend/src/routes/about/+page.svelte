@@ -58,7 +58,7 @@
 			<p class="text-premium mx-auto mt-6 max-w-3xl text-lg">
 				The most advanced browser-based image vectorizer. Transform any raster image into expressive
 				line art SVGs in seconds — entirely on your device with blazing-fast Rust-powered algorithms
-				and modern WebAssembly technology.
+				and modern WebAssembly integration.
 			</p>
 			<div class="mt-8 flex flex-wrap justify-center gap-6 text-sm text-gray-600">
 				<div class="flex items-center gap-2">

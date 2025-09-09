@@ -1,1 +1,46 @@
-User-agent: *\nAllow: /
+# vec2art Robots.txt
+# https://vec2art.vercel.app
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_app/
+Disallow: /wasm/snippets/
+Disallow: /.well-known/
+
+# Allow indexing of gallery and main pages
+Allow: /gallery
+Allow: /converter
+Allow: /about
+Allow: /contact
+
+# Sitemap location
+Sitemap: https://vec2art.vercel.app/sitemap.xml
+
+# Crawl delay (in seconds) for general bots
+Crawl-delay: 1
+
+# Specific bot rules for search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 0
+
+# Block AI training bots
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /

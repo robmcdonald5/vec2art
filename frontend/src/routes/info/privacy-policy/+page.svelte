@@ -143,24 +143,6 @@
 					</ul>
 				</div>
 
-				<!-- Open Source Transparency -->
-				<div>
-					<div class="mb-4 flex items-center gap-3">
-						<Github class="text-ferrari-600 h-6 w-6" />
-						<h3 class="text-xl font-semibold text-gray-900">Open Source Transparency</h3>
-					</div>
-					<p class="mb-4 text-gray-700">
-						vec2art is built with transparency in mind. Our code is available for review, ensuring
-						you can verify our privacy claims.
-					</p>
-					<ul class="ml-4 list-inside list-disc space-y-2 text-gray-700">
-						<li>Core algorithms written in Rust for performance and security</li>
-						<li>WebAssembly compilation ensures code integrity</li>
-						<li>No hidden network requests or data transmission</li>
-						<li>Community-driven development with public contributions</li>
-					</ul>
-				</div>
-
 				<!-- Your Rights -->
 				<div>
 					<div class="mb-4 flex items-center gap-3">
@@ -182,8 +164,7 @@
 				<div class="rounded-lg bg-gray-50 p-6">
 					<h3 class="mb-4 text-xl font-semibold text-gray-900">Questions About Privacy?</h3>
 					<p class="text-gray-700">
-						If you have questions about our privacy practices, please contact us through our GitHub
-						repository or support channels.
+						If you have questions about our privacy practices, please refer to the contact page.
 					</p>
 				</div>
 			</div>

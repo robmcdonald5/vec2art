@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-node';
+import adapter from '@sveltejs/adapter-vercel';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
@@ -8,10 +8,25 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
-		// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
-		// See https://svelte.dev/docs/kit/adapters for more information about adapters.
-		adapter: adapter(),
+		// Vercel adapter configuration for optimal deployment
+		adapter: adapter({
+			// Use Edge Functions for better performance
+			runtime: 'nodejs20.x',
+			
+			// Split functions for better cold start performance
+			split: true,
+			
+			// Configure ISR for specific routes
+			isr: {
+				// Gallery pages can be cached and regenerated
+				expiration: 60 * 60 * 24, // 24 hours
+				bypassToken: process.env.VERCEL_REVALIDATION_TOKEN,
+				allowQuery: ['category', 'backend']
+			},
+			
+			// Memory configuration for functions
+			memory: 1024
+		}),
 		
 		// CSP configuration for Cloudflare Turnstile compatibility
 		csp: {
