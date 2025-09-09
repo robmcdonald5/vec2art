@@ -25,12 +25,12 @@ The dot mapping system is designed for high-performance image vectorization with
 
 ### Performance Goals
 
-| Metric | Target | Measured Range |
-|--------|--------|----------------|
-| Processing Time | <1.5s | 0.05s - 1.2s |
-| Memory Usage | <4x image size | 2x - 6x image size |
-| CPU Utilization | 80%+ on available cores | 75% - 95% |
-| Scalability | Linear with cores | 1.8x - 3.5x on 4 cores |
+| Metric          | Target                  | Measured Range         |
+| --------------- | ----------------------- | ---------------------- |
+| Processing Time | <1.5s                   | 0.05s - 1.2s           |
+| Memory Usage    | <4x image size          | 2x - 6x image size     |
+| CPU Utilization | 80%+ on available cores | 75% - 95%              |
+| Scalability     | Linear with cores       | 1.8x - 3.5x on 4 cores |
 
 ## Benchmarking Results
 
@@ -53,23 +53,23 @@ Image Size    | Pixels    | Processing Time | Memory Peak | Generated Dots
 
 #### Configuration Impact on Performance
 
-| Configuration | 1000x1000 Time | Memory | Dots Generated |
-|---------------|-----------------|---------|----------------|
-| Default | 280ms | 45MB | 4,500 |
-| Fine Stippling (density=0.05) | 420ms | 52MB | 12,000 |
-| Bold Pointillism (density=0.2) | 180ms | 38MB | 1,800 |
-| Technical (no adaptive) | 220ms | 42MB | 3,200 |
-| Watercolor (large dots) | 160ms | 35MB | 800 |
+| Configuration                  | 1000x1000 Time | Memory | Dots Generated |
+| ------------------------------ | -------------- | ------ | -------------- |
+| Default                        | 280ms          | 45MB   | 4,500          |
+| Fine Stippling (density=0.05)  | 420ms          | 52MB   | 12,000         |
+| Bold Pointillism (density=0.2) | 180ms          | 38MB   | 1,800          |
+| Technical (no adaptive)        | 220ms          | 42MB   | 3,200          |
+| Watercolor (large dots)        | 160ms          | 35MB   | 800            |
 
 #### Parallel Processing Scaling
 
 | Thread Count | 2048x2048 Time | Speedup | Efficiency |
-|--------------|----------------|---------|------------|
-| 1 thread | 3200ms | 1.0x | 100% |
-| 2 threads | 1750ms | 1.83x | 91% |
-| 4 threads | 950ms | 3.37x | 84% |
-| 8 threads | 720ms | 4.44x | 56% |
-| 16 threads | 680ms | 4.71x | 29% |
+| ------------ | -------------- | ------- | ---------- |
+| 1 thread     | 3200ms         | 1.0x    | 100%       |
+| 2 threads    | 1750ms         | 1.83x   | 91%        |
+| 4 threads    | 950ms          | 3.37x   | 84%        |
+| 8 threads    | 720ms          | 4.44x   | 56%        |
+| 16 threads   | 680ms          | 4.71x   | 29%        |
 
 ### Real-World Performance Tests
 
@@ -79,7 +79,7 @@ Image Size    | Pixels    | Processing Time | Memory Peak | Generated Dots
 Image Type          | 1000x1000 Time | Complexity | Notes
 --------------------|----------------|------------|------------------
 Simple Logo         | 85ms          | Low        | Clean backgrounds, sharp edges
-Line Drawing        | 120ms         | Low        | High contrast, minimal gradients  
+Line Drawing        | 120ms         | Low        | High contrast, minimal gradients
 Photograph (Portrait)| 380ms         | High       | Complex gradients, varied detail
 Photograph (Landscape)| 420ms        | High       | Many fine details, texture
 Technical Diagram   | 150ms         | Medium     | Mixed content, clean sections
@@ -88,12 +88,12 @@ Abstract Art        | 320ms         | High       | Varied patterns, complex shap
 
 #### CLI vs API Performance
 
-| Interface | 1000x1000 Time | Overhead | Notes |
-|-----------|----------------|----------|-------|
-| Direct API | 280ms | 0ms | Pure processing time |
-| CLI (simple) | 320ms | 40ms | File I/O, argument parsing |
-| CLI (complex) | 340ms | 60ms | Additional validation, statistics |
-| WASM Binding | 310ms | 30ms | Minimal serialization overhead |
+| Interface     | 1000x1000 Time | Overhead | Notes                             |
+| ------------- | -------------- | -------- | --------------------------------- |
+| Direct API    | 280ms          | 0ms      | Pure processing time              |
+| CLI (simple)  | 320ms          | 40ms     | File I/O, argument parsing        |
+| CLI (complex) | 340ms          | 60ms     | Additional validation, statistics |
+| WASM Binding  | 310ms          | 30ms     | Minimal serialization overhead    |
 
 ## Optimization Strategies
 
@@ -110,7 +110,7 @@ let config = DotConfig {
     ..Default::default()
 };
 
-// Balanced approach  
+// Balanced approach
 let config = DotConfig {
     density_threshold: 0.1,   // Good quality-performance balance
     ..Default::default()
@@ -124,8 +124,9 @@ let config = DotConfig {
 ```
 
 **Performance Impact:**
+
 - `density_threshold: 0.25` → 60% faster, 70% fewer dots
-- `density_threshold: 0.1` → baseline performance  
+- `density_threshold: 0.1` → baseline performance
 - `density_threshold: 0.03` → 40% slower, 300% more dots
 
 #### 2. Adaptive Sizing Control
@@ -141,7 +142,7 @@ let config = DotConfig {
 // Quality-focused - adaptive sizing
 let config = DotConfig {
     adaptive_sizing: true,
-    ..Default::default()  
+    ..Default::default()
 };
 // Better artistic results, baseline performance
 ```
@@ -155,7 +156,7 @@ let config = DotConfig {
     ..Default::default()
 };
 
-// Tight spacing - more collision checks  
+// Tight spacing - more collision checks
 let config = DotConfig {
     spacing_factor: 1.2,  // Dense packing, slower
     ..Default::default()
@@ -172,7 +173,7 @@ fn optimized_dot_generation(image_size: usize, config: &DotConfig) -> Vec<Dot> {
     // Estimate dot count based on density and image size
     let estimated_dots = (image_size as f32 * (1.0 - config.density_threshold) * 0.3) as usize;
     let mut dots = Vec::with_capacity(estimated_dots);
-    
+
     // Processing continues with pre-allocated vector
     dots
 }
@@ -215,7 +216,7 @@ let config = DotConfig {
     use_parallel: true,
     parallel_threshold: match image_pixels {
         0..=50_000 => 100_000,      // Small images: disable parallel
-        50_001..=500_000 => 25_000, // Medium images: lower threshold  
+        50_001..=500_000 => 25_000, // Medium images: lower threshold
         _ => 10_000,                // Large images: aggressive parallel
     },
     ..Default::default()
@@ -245,24 +246,24 @@ SVG Generation       | +SVG size      | +50%           | String assembly
 
 ```rust
 fn process_large_image_chunked(
-    image: &RgbaImage, 
+    image: &RgbaImage,
     chunk_size: u32,
     config: &DotConfig
 ) -> Vec<Dot> {
     let mut all_dots = Vec::new();
-    
+
     for y in (0..image.height()).step_by(chunk_size as usize) {
         for x in (0..image.width()).step_by(chunk_size as usize) {
-            let chunk = image.view(x, y, 
+            let chunk = image.view(x, y,
                 chunk_size.min(image.width() - x),
                 chunk_size.min(image.height() - y)
             );
-            
+
             let chunk_dots = generate_dots_from_image(&chunk.to_image(), config, None, None);
             all_dots.extend(chunk_dots);
         }
     }
-    
+
     all_dots
 }
 ```
@@ -275,7 +276,7 @@ use memmap2::MmapOptions;
 fn process_memory_mapped_image(path: &Path) -> Result<Vec<Dot>, Box<dyn Error>> {
     let file = File::open(path)?;
     let mmap = unsafe { MmapOptions::new().map(&file)? };
-    
+
     // Process directly from memory-mapped data
     let image = image::load_from_memory(&mmap)?.to_rgba8();
     // Continue with normal processing...
@@ -293,10 +294,10 @@ fn safe_dot_generation(image: &RgbaImage, config: &DotConfig) -> Vec<Dot> {
         let gray = image::imageops::grayscale(image);
         let gradients = analyze_image_gradients(&gray);
         let background = detect_background_advanced(image, &BackgroundConfig::default());
-        
+
         generate_dots(image, &gradients, &background, config)
     }; // Temporary data freed here
-    
+
     dots
 }
 ```
@@ -362,7 +363,7 @@ unsafe fn simd_gradient_row(row: &[u8], gradients: &mut [f32]) {
 fn cache_optimized_processing(image: &RgbaImage, config: &DotConfig) -> Vec<Dot> {
     let mut dots = Vec::new();
     let tile_size = 64; // Fits in L1 cache
-    
+
     // Process in 64x64 tiles
     for tile_y in (0..image.height()).step_by(tile_size) {
         for tile_x in (0..image.width()).step_by(tile_size) {
@@ -371,7 +372,7 @@ fn cache_optimized_processing(image: &RgbaImage, config: &DotConfig) -> Vec<Dot>
             dots.extend(tile_dots);
         }
     }
-    
+
     dots
 }
 ```
@@ -384,7 +385,7 @@ fn cache_optimized_processing(image: &RgbaImage, config: &DotConfig) -> Vec<Dot>
 // Performance prediction model based on benchmarks
 fn estimate_processing_time(
     width: u32,
-    height: u32, 
+    height: u32,
     density_threshold: f32,
     thread_count: usize
 ) -> Duration {
@@ -397,7 +398,7 @@ fn estimate_processing_time(
         8 => 4.5,
         _ => 4.8,
     };
-    
+
     // Base time: 0.3ms per 1000 pixels
     let base_time_ms = (pixels / 1000.0) * 0.3 * complexity_factor / thread_efficiency;
     Duration::from_millis(base_time_ms as u64)
@@ -415,12 +416,12 @@ fn estimate_processing_time(
 fn windows_optimized_allocation(size: usize) -> Vec<u8> {
     use winapi::um::memoryapi::*;
     use winapi::um::sysinfoapi::*;
-    
+
     // Align to system page size for better performance
     let mut sys_info = std::mem::zeroed();
     unsafe { GetSystemInfo(&mut sys_info) };
     let page_size = sys_info.dwPageSize as usize;
-    
+
     let aligned_size = (size + page_size - 1) & !(page_size - 1);
     Vec::with_capacity(aligned_size)
 }
@@ -437,18 +438,18 @@ fn high_precision_timing<F: FnOnce() -> T, T>(f: F) -> (T, Duration) {
     let mut freq = 0;
     let mut start = 0;
     let mut end = 0;
-    
+
     unsafe {
         QueryPerformanceFrequency(&mut freq);
         QueryPerformanceCounter(&mut start);
     }
-    
+
     let result = f();
-    
+
     unsafe {
         QueryPerformanceCounter(&mut end);
     }
-    
+
     let duration = Duration::from_nanos(((end - start) * 1_000_000_000 / freq) as u64);
     (result, duration)
 }
@@ -471,7 +472,7 @@ fn optimize_memory_access(data: &[u8]) {
             data.len(),
             MADV_SEQUENTIAL
         );
-        
+
         // Preload into memory
         madvise(
             data.as_ptr() as *mut libc::c_void,
@@ -494,14 +495,14 @@ use wasm_bindgen::prelude::*;
 fn wasm_optimized_processing(image_data: &[u8]) -> Vec<Dot> {
     // Use smaller chunks to avoid memory spikes in browser
     let max_chunk_pixels = 500 * 500;
-    
+
     // Conservative settings for browser environment
     let config = DotConfig {
         use_parallel: false, // Single-threaded in WASM
         density_threshold: 0.15, // Reduce processing load
         ..Default::default()
     };
-    
+
     // Process with memory constraints
     process_with_memory_limit(image_data, &config, max_chunk_pixels)
 }
@@ -530,13 +531,13 @@ RUSTFLAGS="-C profile-use=/tmp/pgo-data" cargo build --release
 fn auto_tune_parameters(test_images: &[RgbaImage]) -> DotConfig {
     let parameter_space = [
         (0.05, 0.3, 1.0), // density_threshold options
-        (0.5, 1.0, 2.0),  // min_radius options  
+        (0.5, 1.0, 2.0),  // min_radius options
         (2.0, 3.0, 4.0),  // max_radius options
     ];
-    
+
     let mut best_config = DotConfig::default();
     let mut best_score = f64::INFINITY;
-    
+
     for &(density, min_r, max_r) in &parameter_space {
         let config = DotConfig {
             density_threshold: density,
@@ -544,14 +545,14 @@ fn auto_tune_parameters(test_images: &[RgbaImage]) -> DotConfig {
             max_radius: max_r,
             ..Default::default()
         };
-        
+
         let score = benchmark_config(&config, test_images);
         if score < best_score {
             best_score = score;
             best_config = config;
         }
     }
-    
+
     best_config
 }
 ```
@@ -571,12 +572,12 @@ struct ProcessingService {
 impl ProcessingService {
     fn new() -> Self {
         let (sender, receiver) = mpsc::channel();
-        
+
         thread::spawn(move || {
             let mut batch = Vec::new();
             let batch_size = 10;
             let batch_timeout = Duration::from_millis(100);
-            
+
             loop {
                 // Collect batch or timeout
                 match receiver.recv_timeout(batch_timeout) {
@@ -594,7 +595,7 @@ impl ProcessingService {
                 }
             }
         });
-        
+
         Self { sender }
     }
 }
@@ -609,11 +610,11 @@ fn adaptive_quality_config(
     system_load: f32
 ) -> DotConfig {
     let base_config = DotConfig::default();
-    
+
     // Scale quality based on constraints
     let time_pressure = target_time_ms < 500;
     let high_load = system_load > 0.8;
-    
+
     DotConfig {
         density_threshold: if time_pressure { 0.25 } else { base_config.density_threshold },
         adaptive_sizing: !(time_pressure || high_load),
@@ -635,20 +636,20 @@ use vectorize_core::telemetry::PerformanceTracker;
 
 fn tracked_processing(image: &RgbaImage, config: &DotConfig) -> (Vec<Dot>, PerformanceMetrics) {
     let mut tracker = PerformanceTracker::new();
-    
+
     tracker.start_phase("gradient_analysis");
     let gray = image::imageops::grayscale(image);
     let gradients = analyze_image_gradients(&gray);
     tracker.end_phase("gradient_analysis");
-    
+
     tracker.start_phase("background_detection");
     let background = detect_background_advanced(image, &BackgroundConfig::default());
     tracker.end_phase("background_detection");
-    
+
     tracker.start_phase("dot_generation");
     let dots = generate_dots(image, &gradients, &background, config);
     tracker.end_phase("dot_generation");
-    
+
     (dots, tracker.get_metrics())
 }
 ```
@@ -661,11 +662,11 @@ use sysinfo::{System, SystemExt, ProcessExt};
 fn monitor_resource_usage() -> ResourceMetrics {
     let mut system = System::new_all();
     system.refresh_all();
-    
+
     let cpu_usage = system.global_cpu_info().cpu_usage();
     let memory_used = system.used_memory();
     let memory_total = system.total_memory();
-    
+
     ResourceMetrics {
         cpu_percent: cpu_usage,
         memory_used_mb: memory_used / 1024 / 1024,
@@ -703,30 +704,30 @@ struct PerformanceProfiler {
 }
 
 impl PerformanceProfiler {
-    fn profile_dot_generation<F>(&mut self, phase_name: &str, f: F) -> Duration 
+    fn profile_dot_generation<F>(&mut self, phase_name: &str, f: F) -> Duration
     where F: FnOnce()
     {
         let start_memory = get_memory_usage();
         let start_time = Instant::now();
-        
+
         f();
-        
+
         let duration = start_time.elapsed();
         let end_memory = get_memory_usage();
-        
+
         self.phase_times.insert(phase_name.to_string(), duration);
         self.memory_snapshots.push(end_memory - start_memory);
-        
+
         duration
     }
-    
+
     fn analyze_bottlenecks(&self) -> PerformanceReport {
         let total_time: Duration = self.phase_times.values().sum();
         let bottleneck = self.phase_times
             .iter()
             .max_by_key(|(_, &time)| time)
             .map(|(name, _)| name.clone());
-            
+
         PerformanceReport {
             total_time,
             bottleneck_phase: bottleneck,
@@ -742,20 +743,20 @@ impl PerformanceProfiler {
 #[cfg(test)]
 mod performance_tests {
     use super::*;
-    
+
     #[test]
     fn test_performance_regression() {
         let test_image = create_standard_test_image(1000, 1000);
         let config = DotConfig::default();
-        
+
         let start = Instant::now();
         let dots = generate_dots_from_image(&test_image, &config, None, None);
         let duration = start.elapsed();
-        
+
         // Performance regression test - should complete in under 500ms
-        assert!(duration < Duration::from_millis(500), 
+        assert!(duration < Duration::from_millis(500),
                "Performance regression: took {}ms", duration.as_millis());
-        
+
         // Quality test - should generate reasonable number of dots
         assert!(dots.len() > 1000, "Quality regression: only {} dots generated", dots.len());
         assert!(dots.len() < 10000, "Efficiency regression: {} dots generated", dots.len());

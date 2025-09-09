@@ -46,7 +46,7 @@
 		if (browser) {
 			// Initialize Vercel Analytics
 			inject();
-			
+
 			// Register Service Worker for caching
 			registerServiceWorker();
 

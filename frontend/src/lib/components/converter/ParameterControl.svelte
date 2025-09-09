@@ -174,7 +174,8 @@
 		// Advanced Edge Detection (ETF/FDoG)
 		enable_etf_fdog: {
 			label: 'Enable ETF/FDoG',
-			description: 'Advanced edge detection using Edge Tangent Flow and Flow-based Difference of Gaussians',
+			description:
+				'Advanced edge detection using Edge Tangent Flow and Flow-based Difference of Gaussians',
 			type: 'boolean'
 		},
 		etf_radius: {
@@ -524,9 +525,7 @@
 			label: 'Thinning Algorithm',
 			description: 'Algorithm used for skeleton thinning',
 			type: 'select',
-			options: [
-				{ value: 'guo_hall', label: 'Guo-Hall - Fast and reliable' }
-			]
+			options: [{ value: 'guo_hall', label: 'Guo-Hall - Fast and reliable' }]
 		},
 		use_optimized: {
 			label: 'Use Optimized Processing',

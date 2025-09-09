@@ -1,6 +1,6 @@
 /**
  * Unified Converter Store - Backwards Compatibility Layer
- * 
+ *
  * This store provides a unified interface that maintains backwards compatibility
  * with existing components while delegating to the new functionally-separated stores.
  * This prevents breaking changes during the architectural refactoring.
@@ -28,14 +28,13 @@ interface InitializationOptions {
 
 /**
  * Unified Converter Store
- * 
+ *
  * Provides backwards compatibility by coordinating the three specialized stores:
  * - converterWasm: WASM lifecycle management
- * - converterSettings: Parameter and preset management  
+ * - converterSettings: Parameter and preset management
  * - converterState: Image processing and results
  */
 export class ConverterStore {
-	
 	/**
 	 * BACKWARDS COMPATIBILITY: State getter that rebuilds the original VectorizerState interface
 	 */
@@ -59,39 +58,101 @@ export class ConverterStore {
 	}
 
 	// BACKWARDS COMPATIBILITY: Direct property getters
-	get isProcessing(): boolean { return converterState.isProcessing; }
-	get isInitialized(): boolean { return converterWasm.isInitialized; }
-	get hasError(): boolean { return converterWasm.hasError || converterState.hasError; }
-	get error(): VectorizerError | undefined { return converterWasm.error || converterState.error; }
-	get isPanicked(): boolean { return converterWasm.isPanicked; }
-	get isRecovering(): boolean { return converterWasm.isRecovering; }
-	get recoveryAttempts(): number { return converterWasm.recoveryAttempts; }
-	get config(): VectorizerConfig { return converterSettings.config; }
-	get capabilities(): WasmCapabilityReport | undefined { return converterWasm.capabilities; }
-	get currentProgress(): ProcessingProgress | undefined { return converterState.currentProgress; }
-	get lastResult(): ProcessingResult | undefined { return converterState.lastResult; }
-	get inputImage(): ImageData | undefined { return converterState.inputImage; }
-	get inputFile(): File | undefined { return converterState.inputFile; }
-	get inputImages(): ImageData[] { return converterState.inputImages; }
-	get inputFiles(): File[] { return converterState.inputFiles; }
-	get currentImageIndex(): number { return converterState.currentImageIndex; }
-	get currentInputImage(): ImageData | undefined { return converterState.currentInputImage; }
-	get currentInputFile(): File | undefined { return converterState.currentInputFile; }
-	get batchResults(): ProcessingResult[] { return converterState.batchResults; }
-	get hasMultipleImages(): boolean { return converterState.hasMultipleImages; }
-	get wasmLoaded(): boolean { return converterWasm.wasmLoaded; }
-	get threadsInitialized(): boolean { return converterWasm.threadsInitialized; }
-	get requestedThreadCount(): number { return converterWasm.requestedThreadCount; }
-	get algorithmConfigs(): Record<VectorizerBackend, VectorizerConfig> { return converterSettings.algorithmConfigs; }
-	get vectorizerService() { return converterWasm.vectorizerService; }
+	get isProcessing(): boolean {
+		return converterState.isProcessing;
+	}
+	get isInitialized(): boolean {
+		return converterWasm.isInitialized;
+	}
+	get hasError(): boolean {
+		return converterWasm.hasError || converterState.hasError;
+	}
+	get error(): VectorizerError | undefined {
+		return converterWasm.error || converterState.error;
+	}
+	get isPanicked(): boolean {
+		return converterWasm.isPanicked;
+	}
+	get isRecovering(): boolean {
+		return converterWasm.isRecovering;
+	}
+	get recoveryAttempts(): number {
+		return converterWasm.recoveryAttempts;
+	}
+	get config(): VectorizerConfig {
+		return converterSettings.config;
+	}
+	get capabilities(): WasmCapabilityReport | undefined {
+		return converterWasm.capabilities;
+	}
+	get currentProgress(): ProcessingProgress | undefined {
+		return converterState.currentProgress;
+	}
+	get lastResult(): ProcessingResult | undefined {
+		return converterState.lastResult;
+	}
+	get inputImage(): ImageData | undefined {
+		return converterState.inputImage;
+	}
+	get inputFile(): File | undefined {
+		return converterState.inputFile;
+	}
+	get inputImages(): ImageData[] {
+		return converterState.inputImages;
+	}
+	get inputFiles(): File[] {
+		return converterState.inputFiles;
+	}
+	get currentImageIndex(): number {
+		return converterState.currentImageIndex;
+	}
+	get currentInputImage(): ImageData | undefined {
+		return converterState.currentInputImage;
+	}
+	get currentInputFile(): File | undefined {
+		return converterState.currentInputFile;
+	}
+	get batchResults(): ProcessingResult[] {
+		return converterState.batchResults;
+	}
+	get hasMultipleImages(): boolean {
+		return converterState.hasMultipleImages;
+	}
+	get wasmLoaded(): boolean {
+		return converterWasm.wasmLoaded;
+	}
+	get threadsInitialized(): boolean {
+		return converterWasm.threadsInitialized;
+	}
+	get requestedThreadCount(): number {
+		return converterWasm.requestedThreadCount;
+	}
+	get algorithmConfigs(): Record<VectorizerBackend, VectorizerConfig> {
+		return converterSettings.algorithmConfigs;
+	}
+	get vectorizerService() {
+		return converterWasm.vectorizerService;
+	}
 
 	// Settings store compatibility
-	get mode(): SettingsMode { return converterSettings.mode; }
-	get selectedPreset() { return converterSettings.selectedPreset; }
-	get manualOverrides() { return converterSettings.manualOverrides; }
-	get finalConfig() { return converterSettings.finalConfig; }
-	get showAdvancedSettings(): boolean { return converterSettings.showAdvancedSettings; }
-	get expandedSections(): Set<string> { return converterSettings.expandedSections; }
+	get mode(): SettingsMode {
+		return converterSettings.mode;
+	}
+	get selectedPreset() {
+		return converterSettings.selectedPreset;
+	}
+	get manualOverrides() {
+		return converterSettings.manualOverrides;
+	}
+	get finalConfig() {
+		return converterSettings.finalConfig;
+	}
+	get showAdvancedSettings(): boolean {
+		return converterSettings.showAdvancedSettings;
+	}
+	get expandedSections(): Set<string> {
+		return converterSettings.expandedSections;
+	}
 
 	/**
 	 * WASM MANAGEMENT - Delegate to converterWasm store
@@ -251,7 +312,7 @@ export class ConverterStore {
 		const wasmSuggestions = converterWasm.getRecoverySuggestions();
 		const stateSuggestions = converterState.getRecoverySuggestions();
 		const settingsSuggestions = converterSettings.getRecoverySuggestions();
-		
+
 		return [...wasmSuggestions, ...stateSuggestions, ...settingsSuggestions];
 	}
 

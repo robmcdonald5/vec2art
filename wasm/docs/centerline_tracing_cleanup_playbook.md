@@ -25,11 +25,11 @@ This guide turns the messy centerlines you’re seeing into clean, faithful path
 
 ## Integration order (TL;DR)
 
-1. **Denoise**: swap `closing` → **open+close**.  
-2. **Thinning**: replace Zhang–Suen with **Guo–Hall**.  
-3. **Loop hygiene**: **remove micro‑loops** before simplification.  
-4. **Reconnection**: use **tangent+EDT‑aware** joiner.  
-5. **Simplify**: switch to **adaptive Douglas–Peucker**.  
+1. **Denoise**: swap `closing` → **open+close**.
+2. **Thinning**: replace Zhang–Suen with **Guo–Hall**.
+3. **Loop hygiene**: **remove micro‑loops** before simplification.
+4. **Reconnection**: use **tangent+EDT‑aware** joiner.
+5. **Simplify**: switch to **adaptive Douglas–Peucker**.
 6. **Log metrics** at each stage to verify improvements.
 
 ---
@@ -39,6 +39,7 @@ This guide turns the messy centerlines you’re seeing into clean, faithful path
 **What it fixes**: kills pepper noise without fattening strokes; closing then bridges hairline gaps.
 
 **Drop‑in code (Rust):**
+
 ```rust
 /// Morphological open-then-close to denoise before thinning.
 fn morphological_open_close(binary: &GrayImage) -> GrayImage {
@@ -92,6 +93,7 @@ fn morphological_opening_3x3(binary: &GrayImage) -> GrayImage {
 ```
 
 **Call‑site change:**
+
 ```rust
 // BEFORE:
 // let processed_binary = if config.enable_morphological_filtering {
@@ -111,6 +113,7 @@ let processed_binary = if config.enable_morphological_filtering {
 **What it fixes**: fewer stair‑steps and spurs than Zhang–Suen on natural/photographic binarizations.
 
 **Drop‑in code (Rust):**
+
 ```rust
 fn guo_hall_thinning(binary: &GrayImage) -> GrayImage {
     let (w, h) = binary.dimensions();
@@ -191,6 +194,7 @@ fn guo_hall_thinning(binary: &GrayImage) -> GrayImage {
 ```
 
 **Call‑site change:**
+
 ```rust
 // BEFORE: let skeleton = zhang_suen_thinning(&processed_binary);
 // AFTER:
@@ -204,6 +208,7 @@ let skeleton = guo_hall_thinning(&processed_binary);
 **What it fixes**: prevents “nearby but unrelated” bridges; only joins if ends point toward each other **and** the straight segment isn’t blocked by low EDT.
 
 **Drop‑in code (Rust):**
+
 ```rust
 fn endpoint_tangent(poly: &[Point]) -> (f32, f32) {
     if poly.len() < 3 { return (0.0, 0.0); }
@@ -317,6 +322,7 @@ fn connect_nearby_endpoints_oriented(
 ```
 
 **Call‑site change:**
+
 ```rust
 // BEFORE:
 let reconnected_polylines = connect_nearby_endpoints(simplified_polylines, 3.5, 25.0);
@@ -332,6 +338,7 @@ let reconnected_polylines = connect_nearby_endpoints_oriented(simplified_polylin
 **What it fixes**: tiny 4–8 px cycles that look like “hairballs”.
 
 **Drop‑in code (Rust):**
+
 ```rust
 fn remove_micro_loops(mut polys: Vec<Vec<Point>>, min_perimeter_px: f32) -> Vec<Vec<Point>> {
     polys.retain(|p| {
@@ -345,6 +352,7 @@ fn remove_micro_loops(mut polys: Vec<Vec<Point>>, min_perimeter_px: f32) -> Vec<
 ```
 
 **Call‑site placement (after extraction/prune):**
+
 ```rust
 let polylines = extract_skeleton_polylines_improved(&skeleton);
 let pruned_polylines = prune_branches_with_edt(polylines, &edt, min_branch);
@@ -358,6 +366,7 @@ let pruned_polylines = remove_micro_loops(pruned_polylines, 12.0);
 **What it fixes**: keeps detail in bends while aggressively simplifying straights.
 
 **Drop‑in code (Rust):**
+
 ```rust
 fn local_curvature(p0:&Point, p1:&Point, p2:&Point) -> f32 {
     let v1 = ((p1.x-p0.x), (p1.y-p0.y));
@@ -412,6 +421,7 @@ fn simplify_adaptive(poly: &[Point], base_eps: f32) -> Vec<Point> {
 ```
 
 **Call‑site change (replace fixed‑ε DP):**
+
 ```rust
 let mut dp_eps = (0.0008 + 0.0022 * config.detail) * thresholds.image_diagonal_px;
 dp_eps = dp_eps.clamp(0.75, 3.0);
@@ -427,10 +437,10 @@ let simplified_polylines: Vec<Vec<Point>> = pruned_polylines
 
 ## Suggested parameter ranges
 
-- **Blur σ**: 0.8–1.2 (too low → noise; too high → merged features)  
-- **Sauvola**: `window=27–33`, `k=0.34–0.42` (start at 31 / 0.38)  
-- **EDT prune**: `min_branch = max(4, 8 + 16*detail)` and drop branches with **median_radius < 0.6 px**  
-- **Reconnection**: `max_join_dist_px = 6–8`, `max_angle_deg = 25–35`  
+- **Blur σ**: 0.8–1.2 (too low → noise; too high → merged features)
+- **Sauvola**: `window=27–33`, `k=0.34–0.42` (start at 31 / 0.38)
+- **EDT prune**: `min_branch = max(4, 8 + 16*detail)` and drop branches with **median_radius < 0.6 px**
+- **Reconnection**: `max_join_dist_px = 6–8`, `max_angle_deg = 25–35`
 - **Width modulation**: disable while debugging centerlines; re‑enable after skeleton quality is good
 
 ---
@@ -439,10 +449,10 @@ let simplified_polylines: Vec<Vec<Point>> = pruned_polylines
 
 Track these per stage to make improvements visible:
 
-- Foreground pixels after binarization **and** after open+close  
-- Skeleton pixel count; number of **endpoints** and **junctions**  
-- After pruning: number of polylines, total arc length, median length  
-- After reconnection: number of bridges accepted vs. rejected (by angle / EDT)  
+- Foreground pixels after binarization **and** after open+close
+- Skeleton pixel count; number of **endpoints** and **junctions**
+- After pruning: number of polylines, total arc length, median length
+- After reconnection: number of bridges accepted vs. rejected (by angle / EDT)
 - After simplification: average points per polyline
 
 A “healthy” run shows: a **big drop** from skeleton pixels → polylines, **few** junctions, **modest** reconnections, and a **lower** points‑per‑polyline without losing detail.
@@ -451,8 +461,8 @@ A “healthy” run shows: a **big drop** from skeleton pixels → polylines, **
 
 ## Notes & next steps
 
-- Keep your junction‑aware tracer, but **weight next‑step choice by tangent alignment** to the incoming direction.  
-- If inputs vary a lot (logos vs. photographs), consider **two preset configs** with different Sauvola + pruning thresholds.  
+- Keep your junction‑aware tracer, but **weight next‑step choice by tangent alignment** to the incoming direction.
+- If inputs vary a lot (logos vs. photographs), consider **two preset configs** with different Sauvola + pruning thresholds.
 - Once centerlines look clean, selectively re‑enable **width modulation** to capture stroke feel.
 
 **Done right, this sequence is usually a night‑and‑day improvement over “centerline_improved” with minimal code churn.**

@@ -12,10 +12,10 @@ const config = {
 		adapter: adapter({
 			// Use Edge Functions for better performance
 			runtime: 'nodejs20.x',
-			
+
 			// Split functions for better cold start performance
 			split: true,
-			
+
 			// Configure ISR for specific routes
 			isr: {
 				// Gallery pages can be cached and regenerated
@@ -23,11 +23,11 @@ const config = {
 				bypassToken: process.env.VERCEL_REVALIDATION_TOKEN,
 				allowQuery: ['category', 'backend']
 			},
-			
+
 			// Memory configuration for functions
 			memory: 1024
 		}),
-		
+
 		// CSP configuration for Cloudflare Turnstile compatibility
 		csp: {
 			mode: 'hash', // Use hash mode instead of nonce for better third-party compatibility
@@ -35,7 +35,12 @@ const config = {
 				'script-src': ['self', 'unsafe-eval', 'https://challenges.cloudflare.com'],
 				'style-src': ['self', 'unsafe-inline'], // Required for Svelte transitions
 				'frame-src': ['https://challenges.cloudflare.com'],
-				'connect-src': ['self', 'https://challenges.cloudflare.com', 'https://submit-form.com', 'https://vercel.com'],
+				'connect-src': [
+					'self',
+					'https://challenges.cloudflare.com',
+					'https://submit-form.com',
+					'https://vercel.com'
+				],
 				'img-src': ['self', 'data:', 'https:', 'blob:'],
 				'font-src': ['self', 'data:'],
 				'worker-src': ['self', 'blob:'],

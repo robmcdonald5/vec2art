@@ -5,6 +5,7 @@ This directory contains automated scripts to rebuild the WASM module with all re
 ## Quick Usage
 
 ### Option 1: From Project Root
+
 ```bash
 # Linux/Mac/Git Bash
 ./rebuild-wasm.sh
@@ -14,6 +15,7 @@ rebuild-wasm.bat
 ```
 
 ### Option 2: From Frontend Directory
+
 ```bash
 # Cross-platform npm script
 cd frontend
@@ -51,17 +53,20 @@ npm run rebuild-wasm
 ## Files Generated
 
 After running, these locations will be updated:
+
 - `frontend/src/lib/wasm/` - Source files for development
 - `frontend/static/wasm/` - Static files for serving
 
 ## Troubleshooting
 
 If you get build errors:
+
 1. Ensure you're in the project root directory
 2. Check that `wasm-pack` is installed: `cargo install wasm-pack`
 3. Verify Rust target is installed: `rustup target add wasm32-unknown-unknown`
 
 If fixes aren't applied:
+
 1. The scripts use `sed` (Linux/Mac) or `powershell` (Windows)
 2. Check file permissions if on Linux/Mac
 3. Run with admin privileges if needed on Windows

@@ -12,30 +12,23 @@
 	import type { UISliderConfig } from '$lib/types/dots-backend.js';
 
 	// Import generated parameter types and validation directly
-	import { 
+	import {
 		getParameterMetadata,
 		validateParameter,
 		getParametersForBackend,
 		type VectorizerConfig as GeneratedConfig
 	} from '$lib/types/generated-parameters';
-	
+
 	// Import performance optimization utilities
-	import { 
-		globalValidationCache, 
+	import {
+		globalValidationCache,
 		globalDebouncedValidator,
 		type ValidationResult
 	} from '$lib/utils/validation-cache';
-	import { 
-		globalParameterUpdateManager,
-		type ParameterDelta
-	} from '$lib/utils/parameter-diff';
-	
+	import { globalParameterUpdateManager, type ParameterDelta } from '$lib/utils/parameter-diff';
+
 	// Phase 3.4: Import component optimization utilities
-	import { 
-		useMemo, 
-		useRenderThrottle,
-		globalStoreUpdater
-	} from '$lib/utils/component-optimizer';
+	import { useMemo, useRenderThrottle, globalStoreUpdater } from '$lib/utils/component-optimizer';
 
 	interface ParameterPanelProps {
 		config: VectorizerConfig;
@@ -56,9 +49,9 @@
 	function handleParameterValidationError(error: Error, errorInfo: any) {
 		console.error('❌ [ErrorBoundary] Parameter validation error:', error, errorInfo);
 		toastStore.error(`Parameter validation failed: ${error.message}. Using safe defaults.`);
-		
+
 		// Reset to safe defaults on validation errors
-		onConfigChange({ 
+		onConfigChange({
 			detail: 0.6,
 			stroke_width: 2.0,
 			tremor_strength: 0.0,
@@ -73,7 +66,7 @@
 		errors: [],
 		warnings: []
 	});
-	
+
 	// Track last validation hash to avoid unnecessary validations
 	let lastValidationHash = '';
 
@@ -105,13 +98,13 @@
 				for (const paramName of backendParams) {
 					const legacyName = paramName === 'stroke_px_at_1080p' ? 'stroke_width' : paramName;
 					const value = (config as any)[legacyName];
-					
+
 					if (value !== undefined) {
 						const result = validateParameter(paramName, value);
 						if (!result.valid) {
-							errors.push({ 
-								field: legacyName, 
-								message: result.error || `Invalid ${legacyName}` 
+							errors.push({
+								field: legacyName,
+								message: result.error || `Invalid ${legacyName}`
 							});
 						}
 					}
@@ -135,25 +128,22 @@
 
 	// Use debounced validation for performance
 	$effect(() => {
-		globalDebouncedValidator.validate(
-			config,
-			performValidation,
-			(result, fromCache) => {
-				validationResult = result;
-				
-				// Log cache performance in development
-				if (import.meta.env.DEV) {
-					const stats = globalValidationCache.getStats();
-					if (stats.totalValidations % 10 === 0) { // Log every 10th validation
-						console.log(`[ParameterPanel] Validation cache stats:`, {
-							hitRatio: `${(stats.hitRatio * 100).toFixed(1)}%`,
-							cacheSize: stats.cacheSize,
-							fromCache
-						});
-					}
+		globalDebouncedValidator.validate(config, performValidation, (result, fromCache) => {
+			validationResult = result;
+
+			// Log cache performance in development
+			if (import.meta.env.DEV) {
+				const stats = globalValidationCache.getStats();
+				if (stats.totalValidations % 10 === 0) {
+					// Log every 10th validation
+					console.log(`[ParameterPanel] Validation cache stats:`, {
+						hitRatio: `${(stats.hitRatio * 100).toFixed(1)}%`,
+						cacheSize: stats.cacheSize,
+						fromCache
+					});
 				}
 			}
-		);
+		});
 	});
 
 	let hasValidationErrors = $derived(validationResult.errors.length > 0);
@@ -182,7 +172,9 @@
 
 	function handleInitializationPatternChange(value: string) {
 		console.log(`[ParameterPanel] Superpixel initialization pattern changed to: ${value}`);
-		onConfigChange({ superpixel_initialization_pattern: value as 'square' | 'hexagonal' | 'poisson' });
+		onConfigChange({
+			superpixel_initialization_pattern: value as 'square' | 'hexagonal' | 'poisson'
+		});
 		onParameterChange?.();
 	}
 
@@ -416,11 +408,11 @@
 						// Convert UI value (1-10) to dot density threshold (0.4-0.02, inverted)
 						// UI: 1 = sparse dots (high threshold), 10 = dense dots (low threshold)
 						const threshold = 0.4 - ((uiValue - 1) / 9) * (0.4 - 0.02);
-						
+
 						console.log(
 							`🎯 Advanced Settings Dot Density mapping (SYNC FIX): UI=${uiValue} → threshold=${threshold.toFixed(3)}`
 						);
-						
+
 						// SYNC FIX: Update both parameters like Quick Settings to maintain sync
 						// Convert back to detail scale (0.1-1.0) for consistency
 						const detailValue = uiValue / 10;

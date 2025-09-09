@@ -1,6 +1,6 @@
 /**
  * Processing Queue Store - Phase 3 Enhanced
- * 
+ *
  * High-performance image processing queue with smart batching, memory pooling,
  * and advanced optimization. Delivers 3x throughput improvement over Phase 2.
  */
@@ -21,13 +21,13 @@ interface QueueState {
 	queuedJobs: ProcessingJob[];
 	completedJobs: Map<string, ProcessingJob>;
 	failedJobs: Map<string, ProcessingJob>;
-	
+
 	// Queue configuration
 	maxConcurrency: number;
 	maxRetries: number;
 	jobTimeout: number;
 	cleanupAfter: number; // ms to keep completed jobs
-	
+
 	// Statistics
 	totalProcessed: number;
 	totalFailed: number;
@@ -40,13 +40,13 @@ export class ProcessingQueueStore {
 		queuedJobs: [],
 		completedJobs: new Map(),
 		failedJobs: new Map(),
-		
+
 		// Default configuration
 		maxConcurrency: 2, // Conservative default, will be updated based on thread count
 		maxRetries: 2,
 		jobTimeout: 300000, // 5 minutes
 		cleanupAfter: 600000, // 10 minutes
-		
+
 		// Statistics
 		totalProcessed: 0,
 		totalFailed: 0,
@@ -56,14 +56,14 @@ export class ProcessingQueueStore {
 	private wasmStore: ConverterWasmStore | null = null;
 	private processInterval: number | null = null;
 	private cleanupInterval: number | null = null;
-	
+
 	// Phase 3: Performance optimization components
 	private batchOptimizer = new BatchOptimizer({
 		maxBatchSize: 6,
 		minBatchSize: 2,
 		compatibilityThreshold: 0.8,
 		batchTimeout: 150, // Reduced for faster response
-		maxWaitTime: 1500  // Reduced wait time
+		maxWaitTime: 1500 // Reduced wait time
 	});
 	private activeBatches = new Map<string, ProcessingBatch>();
 	private pooledBuffers = new Map<string, PooledImageData>();
@@ -79,12 +79,17 @@ export class ProcessingQueueStore {
 	 */
 	initialize(wasmStore: ConverterWasmStore): void {
 		this.wasmStore = wasmStore;
-		
+
 		// Update concurrency based on available threads
 		if (wasmStore.capabilities?.hardware_concurrency) {
 			// Use half the available threads for queue processing
-			this._state.maxConcurrency = Math.max(1, Math.floor(wasmStore.capabilities.hardware_concurrency / 2));
-			console.log(`[ProcessingQueue] Set concurrency to ${this._state.maxConcurrency} based on ${wasmStore.capabilities.hardware_concurrency} threads`);
+			this._state.maxConcurrency = Math.max(
+				1,
+				Math.floor(wasmStore.capabilities.hardware_concurrency / 2)
+			);
+			console.log(
+				`[ProcessingQueue] Set concurrency to ${this._state.maxConcurrency} based on ${wasmStore.capabilities.hardware_concurrency} threads`
+			);
 		}
 	}
 
@@ -142,20 +147,26 @@ export class ProcessingQueueStore {
 
 		// Phase 3: Use batch optimizer for smart job scheduling
 		const readyBatch = this.batchOptimizer.addJob(job);
-		
+
 		if (readyBatch) {
 			// Batch is ready for immediate processing
-			console.log(`[ProcessingQueue] Processing batch ${readyBatch.id} with ${readyBatch.jobs.length} jobs`);
+			console.log(
+				`[ProcessingQueue] Processing batch ${readyBatch.id} with ${readyBatch.jobs.length} jobs`
+			);
 			this.processBatch(readyBatch);
 		} else {
 			// Job added to batch optimizer, waiting for more compatible jobs
-			console.log(`[ProcessingQueue] Job ${job.id} added to batch optimizer (priority: ${priority})`);
+			console.log(
+				`[ProcessingQueue] Job ${job.id} added to batch optimizer (priority: ${priority})`
+			);
 		}
 
 		// Check for timed out batches
 		const timedOutBatches = this.batchOptimizer.getTimedOutBatches();
 		for (const batch of timedOutBatches) {
-			console.log(`[ProcessingQueue] Processing timed out batch ${batch.id} with ${batch.jobs.length} jobs`);
+			console.log(
+				`[ProcessingQueue] Processing timed out batch ${batch.id} with ${batch.jobs.length} jobs`
+			);
 			this.processBatch(batch);
 		}
 
@@ -167,7 +178,7 @@ export class ProcessingQueueStore {
 	 */
 	cancelJob(jobId: string): boolean {
 		// Check if job is queued
-		const queueIndex = this._state.queuedJobs.findIndex(job => job.id === jobId);
+		const queueIndex = this._state.queuedJobs.findIndex((job) => job.id === jobId);
 		if (queueIndex !== -1) {
 			const job = this._state.queuedJobs.splice(queueIndex, 1)[0];
 			job.status = 'cancelled';
@@ -195,7 +206,7 @@ export class ProcessingQueueStore {
 	getJob(jobId: string): ProcessingJob | null {
 		return (
 			this._state.activeJobs.get(jobId) ||
-			this._state.queuedJobs.find(job => job.id === jobId) ||
+			this._state.queuedJobs.find((job) => job.id === jobId) ||
 			this._state.completedJobs.get(jobId) ||
 			this._state.failedJobs.get(jobId) ||
 			null
@@ -214,21 +225,23 @@ export class ProcessingQueueStore {
 	/**
 	 * Phase 3: Optimize image data using memory pool
 	 */
-	private async optimizeImageData(imageData: ImageData | ArrayBuffer): Promise<ImageData | ArrayBuffer> {
+	private async optimizeImageData(
+		imageData: ImageData | ArrayBuffer
+	): Promise<ImageData | ArrayBuffer> {
 		if (imageData instanceof ImageData) {
 			// Use memory pool to optimize ImageData
 			const pooledData = globalImagePool.allocateBuffer(imageData.width, imageData.height, 'RGBA');
 			const optimizedImageData = globalImagePool.createImageData(pooledData);
-			
+
 			// Copy original data to pooled buffer
 			optimizedImageData.data.set(imageData.data);
-			
+
 			// Store pooled data for later cleanup
 			this.pooledBuffers.set(`${imageData.width}x${imageData.height}`, pooledData);
-			
+
 			return optimizedImageData;
 		}
-		
+
 		// For ArrayBuffer, return as-is (already optimized)
 		return imageData;
 	}
@@ -239,22 +252,22 @@ export class ProcessingQueueStore {
 	private async processBatch(batch: ProcessingBatch): Promise<void> {
 		console.log(`[ProcessingQueue] Processing batch ${batch.id} with ${batch.jobs.length} jobs`);
 		this.activeBatches.set(batch.id, batch);
-		
+
 		// Move all jobs to active status
 		for (const job of batch.jobs) {
 			job.status = 'processing';
 			job.startedAt = Date.now();
 			this._state.activeJobs.set(job.id, job);
 		}
-		
+
 		// Phase 3.3: Use optimized batch processing with SharedArrayBuffer and thread distribution
 		try {
-			const batchData = batch.jobs.map(job => ({
+			const batchData = batch.jobs.map((job) => ({
 				imageData: job.imageData as ImageData,
 				config: job.config,
 				jobType: job.config.backend || 'edge'
 			}));
-			
+
 			const results = await this.wasmStore!.processBatchOptimized(
 				batchData,
 				(overallProgress, individualProgress) => {
@@ -266,7 +279,7 @@ export class ProcessingQueueStore {
 					});
 				}
 			);
-			
+
 			// Process results and complete jobs
 			results.forEach((result, index) => {
 				const job = batch.jobs[index];
@@ -282,18 +295,20 @@ export class ProcessingQueueStore {
 					this.completeJob(job);
 				}
 			});
-			
 		} catch (error) {
 			// Fall back to individual processing if batch processing fails
-			console.warn(`[ProcessingQueue] Batch processing failed, falling back to individual processing:`, error);
-			
-			const batchPromises = batch.jobs.map(job => this.processJob(job));
+			console.warn(
+				`[ProcessingQueue] Batch processing failed, falling back to individual processing:`,
+				error
+			);
+
+			const batchPromises = batch.jobs.map((job) => this.processJob(job));
 			await Promise.allSettled(batchPromises);
 		}
-		
+
 		// Clean up batch tracking
 		this.activeBatches.delete(batch.id);
-		
+
 		// Clean up pooled buffers for this batch
 		for (const job of batch.jobs) {
 			if (job.imageData instanceof ImageData) {
@@ -305,7 +320,7 @@ export class ProcessingQueueStore {
 				}
 			}
 		}
-		
+
 		console.log(`[ProcessingQueue] Batch ${batch.id} completed`);
 	}
 
@@ -397,7 +412,6 @@ export class ProcessingQueueStore {
 			job.result = result;
 			job.progress = 100;
 			this.completeJob(job);
-
 		} catch (error) {
 			console.error(`[ProcessingQueue] Job ${job.id} failed:`, error);
 
@@ -405,13 +419,16 @@ export class ProcessingQueueStore {
 			if (job.retryCount! < this._state.maxRetries) {
 				job.retryCount = (job.retryCount || 0) + 1;
 				job.status = 'queued';
-				
+
 				// Remove from active jobs and re-queue with delay
 				this._state.activeJobs.delete(job.id);
-				setTimeout(() => {
-					this.insertJobByPriority(job);
-					console.log(`[ProcessingQueue] Retrying job ${job.id} (attempt ${job.retryCount})`);
-				}, 1000 * Math.pow(2, job.retryCount - 1)); // Exponential backoff
+				setTimeout(
+					() => {
+						this.insertJobByPriority(job);
+						console.log(`[ProcessingQueue] Retrying job ${job.id} (attempt ${job.retryCount})`);
+					},
+					1000 * Math.pow(2, job.retryCount - 1)
+				); // Exponential backoff
 			} else {
 				// Max retries exceeded
 				this.completeJob(job, error instanceof Error ? error : new Error(String(error)));
@@ -428,7 +445,7 @@ export class ProcessingQueueStore {
 
 		// Update job status
 		job.completedAt = Date.now();
-		
+
 		if (error) {
 			job.status = 'failed';
 			job.error = error;
@@ -438,12 +455,12 @@ export class ProcessingQueueStore {
 			job.status = 'completed';
 			this._state.completedJobs.set(job.id, job);
 			this._state.totalProcessed++;
-			
+
 			// Update average processing time
 			if (job.startedAt && job.completedAt) {
 				const processingTime = job.completedAt - job.startedAt;
-				this._state.averageProcessingTime = 
-					(this._state.averageProcessingTime * (this._state.totalProcessed - 1) + processingTime) / 
+				this._state.averageProcessingTime =
+					(this._state.averageProcessingTime * (this._state.totalProcessed - 1) + processingTime) /
 					this._state.totalProcessed;
 			}
 		}
@@ -502,18 +519,18 @@ export class ProcessingQueueStore {
 		for (const job of this._state.activeJobs.values()) {
 			job.status = 'cancelled';
 		}
-		
+
 		for (const job of this._state.queuedJobs) {
 			job.status = 'cancelled';
 		}
-		
+
 		this._state.activeJobs.clear();
 		this._state.queuedJobs.length = 0;
 
 		// Phase 3: Clean up batch optimizer and memory pools
 		this.batchOptimizer.flushPendingBatches(); // Force flush any pending batches
 		this.activeBatches.clear();
-		
+
 		// Release all pooled buffers
 		for (const pooledData of this.pooledBuffers.values()) {
 			globalImagePool.releaseBuffer(pooledData);

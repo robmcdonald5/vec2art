@@ -1,5 +1,4 @@
 <script lang="ts">
-
 	interface Props {
 		beforeImage: string;
 		afterImage: string;
@@ -43,7 +42,6 @@
 			previousResetTrigger = resetTrigger;
 		}
 	});
-
 </script>
 
 <div
@@ -55,20 +53,20 @@
 	<!-- After Image (Bottom Layer) -->
 	<div class="relative h-full w-full">
 		{#if afterPlaceholder}
-			<img 
-				src={afterPlaceholder} 
-				alt="" 
+			<img
+				src={afterPlaceholder}
+				alt=""
 				aria-hidden="true"
-				class="absolute inset-0 h-full w-full object-contain blur-xl" 
-				draggable="false" 
+				class="absolute inset-0 h-full w-full object-contain blur-xl"
+				draggable="false"
 			/>
 		{/if}
-		<img 
-			src={afterImage} 
-			alt={afterAlt} 
+		<img
+			src={afterImage}
+			alt={afterAlt}
 			{loading}
-			class="relative h-full w-full object-contain" 
-			draggable="false" 
+			class="relative h-full w-full object-contain"
+			draggable="false"
 		/>
 	</div>
 
@@ -79,25 +77,23 @@
 			style="--animation-duration: {animationDuration}ms"
 		>
 			{#if beforePlaceholder}
-				<img 
-					src={beforePlaceholder} 
-					alt="" 
+				<img
+					src={beforePlaceholder}
+					alt=""
 					aria-hidden="true"
-					class="absolute inset-0 h-full w-full object-contain blur-xl" 
-					draggable="false" 
+					class="absolute inset-0 h-full w-full object-contain blur-xl"
+					draggable="false"
 				/>
 			{/if}
-			<img 
-				src={beforeImage} 
-				alt={beforeAlt} 
+			<img
+				src={beforeImage}
+				alt={beforeAlt}
 				{loading}
-				class="relative h-full w-full object-contain" 
-				draggable="false" 
+				class="relative h-full w-full object-contain"
+				draggable="false"
 			/>
 		</div>
 	{/key}
-
-
 </div>
 
 <style>
@@ -111,16 +107,12 @@
 		}
 	}
 
-
-
 	.animate-reveal {
 		animation: reveal-pan var(--animation-duration, 6000ms) ease-in-out forwards;
 		animation-delay: 1s; /* Wait 1 second before starting pan */
 		/* Start with fully visible before image, animate to hidden */
 		clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
 	}
-
-
 
 	/* Disable animation if user prefers reduced motion */
 	@media (prefers-reduced-motion: reduce) {

@@ -1,6 +1,6 @@
 /**
  * Processing System Types
- * 
+ *
  * Shared type definitions for the processing queue system to avoid circular dependencies.
  */
 

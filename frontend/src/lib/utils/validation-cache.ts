@@ -1,6 +1,6 @@
 /**
  * Validation Cache System
- * 
+ *
  * High-performance parameter validation caching to eliminate redundant validation calls.
  * Implements LRU eviction, hash-based caching, and intelligent cache invalidation.
  */
@@ -40,7 +40,8 @@ export class ValidationCache {
 	private readonly ttl: number;
 	private stats: ValidationCacheStats;
 
-	constructor(maxSize = 1000, ttlMs = 300000) { // 5 minutes default TTL
+	constructor(maxSize = 1000, ttlMs = 300000) {
+		// 5 minutes default TTL
 		this.maxSize = maxSize;
 		this.ttl = ttlMs;
 		this.stats = {
@@ -59,7 +60,7 @@ export class ValidationCache {
 	 */
 	get(parameterHash: string): ValidationResult | null {
 		const entry = this.cache.get(parameterHash);
-		
+
 		if (!entry) {
 			this.stats.misses++;
 			this.updateStats();
@@ -78,7 +79,7 @@ export class ValidationCache {
 		entry.lastAccess = Date.now();
 		this.stats.hits++;
 		this.updateStats();
-		
+
 		return entry.result;
 	}
 
@@ -102,11 +103,11 @@ export class ValidationCache {
 
 		this.cache.set(parameterHash, entry);
 		this.stats.totalValidations++;
-		
+
 		if (validationTimeMs) {
 			this.updateAverageValidationTime(validationTimeMs);
 		}
-		
+
 		this.updateStats();
 	}
 
@@ -125,10 +126,10 @@ export class ValidationCache {
 		let hash = 0;
 		for (let i = 0; i < sortedEntries.length; i++) {
 			const char = sortedEntries.charCodeAt(i);
-			hash = ((hash << 5) - hash) + char;
+			hash = (hash << 5) - hash + char;
 			hash = hash & hash; // Convert to 32-bit integer
 		}
-		
+
 		return `param_${Math.abs(hash).toString(36)}`;
 	}
 
@@ -144,12 +145,12 @@ export class ValidationCache {
 	 * Validate with caching
 	 */
 	validateWithCache(
-		config: Partial<VectorizerConfig>, 
+		config: Partial<VectorizerConfig>,
 		validatorFn: (config: Partial<VectorizerConfig>) => ValidationResult
 	): { result: ValidationResult; fromCache: boolean; hash: string } {
 		const hash = this.generateParameterHash(config);
 		const cached = this.get(hash);
-		
+
 		if (cached) {
 			return { result: cached, fromCache: true, hash };
 		}
@@ -158,9 +159,9 @@ export class ValidationCache {
 		const startTime = performance.now();
 		const result = validatorFn(config);
 		const validationTime = performance.now() - startTime;
-		
+
 		this.set(hash, result, validationTime);
-		
+
 		return { result, fromCache: false, hash };
 	}
 
@@ -182,7 +183,7 @@ export class ValidationCache {
 				deletedCount++;
 			}
 		}
-		
+
 		this.updateStats();
 		return deletedCount;
 	}
@@ -243,7 +244,7 @@ export class ValidationCache {
 	 */
 	private updateAverageValidationTime(newTime: number): void {
 		const count = this.stats.totalValidations;
-		this.stats.averageValidationTime = 
+		this.stats.averageValidationTime =
 			(this.stats.averageValidationTime * (count - 1) + newTime) / count;
 	}
 }
@@ -280,7 +281,7 @@ export class DebouncedValidator {
 		// Check cache immediately for instant feedback
 		const hash = this.cache.generateParameterHash(config);
 		const cached = this.cache.get(hash);
-		
+
 		if (cached) {
 			callback(cached, true);
 			return;

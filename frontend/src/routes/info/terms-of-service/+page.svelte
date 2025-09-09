@@ -1,12 +1,5 @@
 <script lang="ts">
-	import {
-		Scale,
-		Users,
-		AlertTriangle,
-		Server,
-		FileText,
-		Shield
-	} from 'lucide-svelte';
+	import { Scale, Users, AlertTriangle, Server, FileText, Shield } from 'lucide-svelte';
 </script>
 
 <svelte:head>
@@ -72,13 +65,17 @@
 								creative work
 							</li>
 							<li>
-								<strong>Commercial Use:</strong> For use of vec2art in commercial settings, please refer to our contact page for licensing and API inqueries.
+								<strong>Commercial Use:</strong> For use of vec2art in commercial settings, please refer
+								to our contact page for licensing and API inqueries.
 							</li>
 							<li>
-								<strong>No Account Required:</strong> Access to the base features of the converter is allowed to anyone even without an account.
+								<strong>No Account Required:</strong> Access to the base features of the converter is
+								allowed to anyone even without an account.
 							</li>
 							<li>
-								<strong>No Usage Limits:</strong> Convert unlimited images with no direct usage limates. API endpoint(s) to the Converter page is limited dependent on licensing agreement with vec2art.
+								<strong>No Usage Limits:</strong> Convert unlimited images with no direct usage limates.
+								API endpoint(s) to the Converter page is limited dependent on licensing agreement with
+								vec2art.
 							</li>
 						</ul>
 					</div>
@@ -190,7 +187,8 @@
 					<p class="mb-4 text-gray-700">How we handle changes to these terms:</p>
 					<ul class="ml-4 list-inside list-disc space-y-2 text-gray-700">
 						<li>
-							<strong>Notice of Changes:</strong> We will notify account holding users of material changes to these terms
+							<strong>Notice of Changes:</strong> We will notify account holding users of material changes
+							to these terms
 						</li>
 						<li>
 							<strong>Effective Date:</strong> Changes become effective 30 days after notification
@@ -229,7 +227,7 @@
 				</a>
 				<button
 					onclick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-					class="text-ferrari-600 hover:text-ferrari-700 hover:bg-ferrari-50 inline-flex items-center gap-2 rounded-md px-3 py-2 transition-all duration-200 hover:scale-105 hover:shadow-sm cursor-pointer"
+					class="text-ferrari-600 hover:text-ferrari-700 hover:bg-ferrari-50 inline-flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 transition-all duration-200 hover:scale-105 hover:shadow-sm"
 				>
 					<Scale class="h-4 w-4" />
 					Back to Top

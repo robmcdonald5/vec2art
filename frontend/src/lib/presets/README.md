@@ -9,6 +9,7 @@ The Style Presets system provides production-ready configurations for common ima
 ### Professional Category
 
 #### Corporate Logo
+
 - **Best For**: Logos, brand marks, icons, corporate graphics
 - **Backend**: Centerline
 - **Characteristics**: Clean, precise lines with no artistic effects. Optimized for scalability.
@@ -16,6 +17,7 @@ The Style Presets system provides production-ready configurations for common ima
 - **Market**: Corporate/business applications
 
 #### Technical Drawing
+
 - **Best For**: Engineering drawings, architecture, technical diagrams, CAD conversion
 - **Backend**: Edge
 - **Characteristics**: Uniform stroke weight, high precision, clean corners
@@ -25,6 +27,7 @@ The Style Presets system provides production-ready configurations for common ima
 ### Artistic Category
 
 #### Hand-Drawn Illustration
+
 - **Best For**: Illustrations, artistic portraits, sketches, creative projects
 - **Backend**: Edge
 - **Characteristics**: Natural tremor, variable line weights, organic tapering
@@ -32,6 +35,7 @@ The Style Presets system provides production-ready configurations for common ima
 - **Market**: Creative/artistic applications
 
 #### Photo to Sketch
+
 - **Best For**: Portrait photos, landscape photos, product images, social media
 - **Backend**: Edge
 - **Characteristics**: Photo optimization with natural shading and detail preservation
@@ -39,6 +43,7 @@ The Style Presets system provides production-ready configurations for common ima
 - **Market**: General consumer use
 
 #### Fine Pointillism
+
 - **Best For**: Fine art, portraits, landscapes, artistic prints
 - **Backend**: Dots
 - **Characteristics**: Neo-impressionist pointillism with fine dots and color mixing
@@ -48,6 +53,7 @@ The Style Presets system provides production-ready configurations for common ima
 ### Vintage Category
 
 #### Vintage Stippling
+
 - **Best For**: Retro designs, print production, vintage aesthetics, screen printing
 - **Backend**: Dots
 - **Characteristics**: Classic halftone patterns reminiscent of newspaper prints
@@ -57,6 +63,7 @@ The Style Presets system provides production-ready configurations for common ima
 ### Modern Category
 
 #### Modern Abstract
+
 - **Best For**: Posters, modern art, album covers, digital graphics
 - **Backend**: Superpixel
 - **Characteristics**: Bold geometric shapes with color preservation
@@ -64,6 +71,7 @@ The Style Presets system provides production-ready configurations for common ima
 - **Market**: Digital media
 
 #### Minimalist Poster
+
 - **Best For**: Minimalist art, posters, app icons, brand graphics
 - **Backend**: Superpixel
 - **Characteristics**: Ultra-simplified shapes with limited colors
@@ -73,6 +81,7 @@ The Style Presets system provides production-ready configurations for common ima
 ## Architecture
 
 ### File Structure
+
 ```
 frontend/src/lib/presets/
 ├── types.ts        # Type definitions for presets
@@ -87,10 +96,10 @@ The preset system uses strongly-typed interfaces:
 
 ```typescript
 interface StylePreset {
-  metadata: PresetMetadata;
-  backend: VectorizerBackend;
-  config: Partial<VectorizerConfig>;
-  overrides?: PresetOverrides;
+	metadata: PresetMetadata;
+	backend: VectorizerBackend;
+	config: Partial<VectorizerConfig>;
+	overrides?: PresetOverrides;
 }
 ```
 
@@ -140,19 +149,21 @@ const presetConfig = presetToProcessConfig(preset);
 
 // Apply user overrides
 const finalConfig = mergeWithUserConfig(presetConfig, {
-  stroke_width: 2.5,
-  detail: 0.8
+	stroke_width: 2.5,
+	detail: 0.8
 });
 ```
 
 ## Performance Considerations
 
 ### Processing Times
+
 - **Simple Presets** (Corporate Logo, Technical Drawing): <1.5s
 - **Medium Complexity** (Hand-Drawn, Photo to Sketch): <1.5s
 - **Higher Complexity** (Fine Pointillism): <2s
 
 ### Optimization Strategies
+
 1. Presets use optimal backend selection for each use case
 2. Parameters are pre-tuned to balance quality and speed
 3. Multi-pass processing only enabled when beneficial
@@ -163,31 +174,33 @@ const finalConfig = mergeWithUserConfig(presetConfig, {
 To add a new preset:
 
 1. Define the preset in `presets.ts`:
+
 ```typescript
 const newPreset: StylePreset = {
-  metadata: {
-    id: 'new-preset',
-    name: 'New Preset',
-    category: 'artistic',
-    // ... other metadata
-  },
-  backend: 'edge',
-  config: {
-    // WASM configuration
-  },
-  overrides: {
-    // Backend-specific overrides
-  }
+	metadata: {
+		id: 'new-preset',
+		name: 'New Preset',
+		category: 'artistic'
+		// ... other metadata
+	},
+	backend: 'edge',
+	config: {
+		// WASM configuration
+	},
+	overrides: {
+		// Backend-specific overrides
+	}
 };
 ```
 
 2. Add to preset collection:
+
 ```typescript
 export const presetCollection: PresetCollection = {
-  presets: [...existingPresets, newPreset],
-  categories: {
-    artistic: [...existingIds, 'new-preset']
-  }
+	presets: [...existingPresets, newPreset],
+	categories: {
+		artistic: [...existingIds, 'new-preset']
+	}
 };
 ```
 
@@ -196,6 +209,7 @@ export const presetCollection: PresetCollection = {
 ## Testing Presets
 
 Each preset should be tested with:
+
 1. Representative sample images
 2. Performance benchmarks
 3. Visual quality validation
@@ -204,6 +218,7 @@ Each preset should be tested with:
 ## Market Analysis
 
 Based on research, the priority presets address:
+
 - **$17.5B** corporate/logo market (Corporate Logo preset)
 - **17.3% CAGR** creative market growth (Hand-Drawn, Fine Pointillism)
 - **5.2% CAGR** print production growth (Vintage Stippling)
@@ -212,16 +227,19 @@ Based on research, the priority presets address:
 ## Future Enhancements
 
 ### Phase 2 (Weeks 3-4)
+
 - Variable dot shapes for Dots backend
 - Halftone patterns for vintage effects
 - Color palette reduction for poster styles
 
 ### Phase 3 (Weeks 5-8)
+
 - Gradient-based shading for pencil sketches
 - Cross-hatching generation
 - Paper texture overlay system
 
 ### Phase 4 (Weeks 9-16)
+
 - Cel Shading/Comic Book algorithm
 - Advanced artistic effects
 

@@ -1,432 +1,445 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SVG Artistic Effects Visual Comparison</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #1a1a1a;
-            color: #e0e0e0;
-            padding: 20px;
-        }
-        
-        h1 {
-            text-align: center;
-            margin-bottom: 10px;
-            color: #00d4ff;
-        }
-        
-        .description {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #888;
-        }
-        
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-        
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        label {
-            font-size: 12px;
-            color: #00d4ff;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        select, input {
-            padding: 8px 12px;
-            background: #2a2a2a;
-            border: 1px solid #444;
-            color: #e0e0e0;
-            border-radius: 4px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-        
-        select:hover, input:hover {
-            border-color: #00d4ff;
-        }
-        
-        .comparison-container {
-            display: flex;
-            gap: 20px;
-            max-width: 1600px;
-            margin: 0 auto;
-        }
-        
-        .svg-panel {
-            flex: 1;
-            background: #2a2a2a;
-            border: 2px solid #444;
-            border-radius: 8px;
-            padding: 20px;
-            position: relative;
-        }
-        
-        .svg-panel.highlight {
-            border-color: #00d4ff;
-        }
-        
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #444;
-        }
-        
-        .panel-title {
-            font-size: 18px;
-            font-weight: bold;
-            color: #00d4ff;
-        }
-        
-        .panel-stats {
-            font-size: 12px;
-            color: #888;
-        }
-        
-        .svg-container {
-            background: white;
-            border-radius: 4px;
-            padding: 20px;
-            min-height: 400px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-        
-        .svg-container svg {
-            max-width: 100%;
-            max-height: 600px;
-            width: auto;
-            height: auto;
-        }
-        
-        .loading {
-            color: #666;
-            font-style: italic;
-        }
-        
-        .error {
-            color: #ff4444;
-        }
-        
-        .metrics {
-            margin-top: 20px;
-            padding: 15px;
-            background: #1a1a1a;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        
-        .metric-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid #333;
-        }
-        
-        .metric-label {
-            color: #888;
-        }
-        
-        .metric-value {
-            color: #e0e0e0;
-            font-family: 'Courier New', monospace;
-        }
-        
-        .diff-indicator {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 10px;
-            margin-left: 10px;
-        }
-        
-        .diff-positive {
-            background: #00ff0033;
-            color: #00ff00;
-        }
-        
-        .diff-negative {
-            background: #ff000033;
-            color: #ff4444;
-        }
-        
-        .diff-neutral {
-            background: #ffff0033;
-            color: #ffff00;
-        }
-        
-        .zoom-controls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            display: flex;
-            gap: 5px;
-        }
-        
-        .zoom-btn {
-            width: 30px;
-            height: 30px;
-            background: #333;
-            border: 1px solid #555;
-            color: #e0e0e0;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .zoom-btn:hover {
-            background: #444;
-            border-color: #00d4ff;
-        }
-        
-        .overlay-mode {
-            display: none;
-            justify-content: center;
-            margin: 20px 0;
-        }
-        
-        .overlay-container {
-            position: relative;
-            background: white;
-            border-radius: 4px;
-            padding: 20px;
-            max-width: 800px;
-        }
-        
-        .overlay-svg {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-        }
-        
-        .overlay-svg.svg2 {
-            opacity: 0.5;
-            mix-blend-mode: multiply;
-        }
-        
-        #overlayToggle:checked ~ .comparison-container {
-            display: none;
-        }
-        
-        #overlayToggle:checked ~ .overlay-mode {
-            display: flex;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        padding: 20px;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 10px;
+        color: #00d4ff;
+      }
+
+      .description {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #888;
+      }
+
+      .controls {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      label {
+        font-size: 12px;
+        color: #00d4ff;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      select,
+      input {
+        padding: 8px 12px;
+        background: #2a2a2a;
+        border: 1px solid #444;
+        color: #e0e0e0;
+        border-radius: 4px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      select:hover,
+      input:hover {
+        border-color: #00d4ff;
+      }
+
+      .comparison-container {
+        display: flex;
+        gap: 20px;
+        max-width: 1600px;
+        margin: 0 auto;
+      }
+
+      .svg-panel {
+        flex: 1;
+        background: #2a2a2a;
+        border: 2px solid #444;
+        border-radius: 8px;
+        padding: 20px;
+        position: relative;
+      }
+
+      .svg-panel.highlight {
+        border-color: #00d4ff;
+      }
+
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #444;
+      }
+
+      .panel-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #00d4ff;
+      }
+
+      .panel-stats {
+        font-size: 12px;
+        color: #888;
+      }
+
+      .svg-container {
+        background: white;
+        border-radius: 4px;
+        padding: 20px;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      .svg-container svg {
+        max-width: 100%;
+        max-height: 600px;
+        width: auto;
+        height: auto;
+      }
+
+      .loading {
+        color: #666;
+        font-style: italic;
+      }
+
+      .error {
+        color: #ff4444;
+      }
+
+      .metrics {
+        margin-top: 20px;
+        padding: 15px;
+        background: #1a1a1a;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+
+      .metric-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid #333;
+      }
+
+      .metric-label {
+        color: #888;
+      }
+
+      .metric-value {
+        color: #e0e0e0;
+        font-family: "Courier New", monospace;
+      }
+
+      .diff-indicator {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        margin-left: 10px;
+      }
+
+      .diff-positive {
+        background: #00ff0033;
+        color: #00ff00;
+      }
+
+      .diff-negative {
+        background: #ff000033;
+        color: #ff4444;
+      }
+
+      .diff-neutral {
+        background: #ffff0033;
+        color: #ffff00;
+      }
+
+      .zoom-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        gap: 5px;
+      }
+
+      .zoom-btn {
+        width: 30px;
+        height: 30px;
+        background: #333;
+        border: 1px solid #555;
+        color: #e0e0e0;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .zoom-btn:hover {
+        background: #444;
+        border-color: #00d4ff;
+      }
+
+      .overlay-mode {
+        display: none;
+        justify-content: center;
+        margin: 20px 0;
+      }
+
+      .overlay-container {
+        position: relative;
+        background: white;
+        border-radius: 4px;
+        padding: 20px;
+        max-width: 800px;
+      }
+
+      .overlay-svg {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+      }
+
+      .overlay-svg.svg2 {
+        opacity: 0.5;
+        mix-blend-mode: multiply;
+      }
+
+      #overlayToggle:checked ~ .comparison-container {
+        display: none;
+      }
+
+      #overlayToggle:checked ~ .overlay-mode {
+        display: flex;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>🎨 SVG Artistic Effects Visual Comparison</h1>
-    <p class="description">Compare SVG outputs to see if artistic effects are being applied</p>
-    
+    <p class="description">
+      Compare SVG outputs to see if artistic effects are being applied
+    </p>
+
     <div class="controls">
-        <div class="control-group">
-            <label for="imageSelect">Test Image</label>
-            <select id="imageSelect">
-                <option value="checkerboard">Checkerboard (Simple)</option>
-                <option value="anime-girl">Anime Girl (Complex)</option>
-                <option value="Little-Red-Devil">Little Red Devil</option>
-                <option value="test1">Test 1</option>
-                <option value="test2">Test 2</option>
-            </select>
-        </div>
-        
-        <div class="control-group">
-            <label for="preset1">Left Preset</label>
-            <select id="preset1">
-                <option value="none">None</option>
-                <option value="subtle">Subtle</option>
-                <option value="medium">Medium</option>
-                <option value="strong">Strong</option>
-                <option value="sketchy">Sketchy</option>
-            </select>
-        </div>
-        
-        <div class="control-group">
-            <label for="preset2">Right Preset</label>
-            <select id="preset2">
-                <option value="sketchy">Sketchy</option>
-                <option value="none">None</option>
-                <option value="subtle">Subtle</option>
-                <option value="medium">Medium</option>
-                <option value="strong">Strong</option>
-            </select>
-        </div>
-        
-        <div class="control-group">
-            <label for="overlayToggle">Overlay Mode</label>
-            <input type="checkbox" id="overlayToggle">
-        </div>
-        
-        <div class="control-group">
-            <label for="backgroundSelect">Background</label>
-            <select id="backgroundSelect">
-                <option value="white">White</option>
-                <option value="black">Black</option>
-                <option value="#f0f0f0">Light Gray</option>
-                <option value="#333">Dark Gray</option>
-                <option value="#ffffcc">Cream</option>
-            </select>
-        </div>
+      <div class="control-group">
+        <label for="imageSelect">Test Image</label>
+        <select id="imageSelect">
+          <option value="checkerboard">Checkerboard (Simple)</option>
+          <option value="anime-girl">Anime Girl (Complex)</option>
+          <option value="Little-Red-Devil">Little Red Devil</option>
+          <option value="test1">Test 1</option>
+          <option value="test2">Test 2</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="preset1">Left Preset</label>
+        <select id="preset1">
+          <option value="none">None</option>
+          <option value="subtle">Subtle</option>
+          <option value="medium">Medium</option>
+          <option value="strong">Strong</option>
+          <option value="sketchy">Sketchy</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="preset2">Right Preset</label>
+        <select id="preset2">
+          <option value="sketchy">Sketchy</option>
+          <option value="none">None</option>
+          <option value="subtle">Subtle</option>
+          <option value="medium">Medium</option>
+          <option value="strong">Strong</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="overlayToggle">Overlay Mode</label>
+        <input type="checkbox" id="overlayToggle" />
+      </div>
+
+      <div class="control-group">
+        <label for="backgroundSelect">Background</label>
+        <select id="backgroundSelect">
+          <option value="white">White</option>
+          <option value="black">Black</option>
+          <option value="#f0f0f0">Light Gray</option>
+          <option value="#333">Dark Gray</option>
+          <option value="#ffffcc">Cream</option>
+        </select>
+      </div>
     </div>
-    
-    <input type="checkbox" id="overlayToggle" style="display: none;">
-    
+
+    <input type="checkbox" id="overlayToggle" style="display: none" />
+
     <div class="comparison-container">
-        <div class="svg-panel" id="panel1">
-            <div class="panel-header">
-                <span class="panel-title">None Preset</span>
-                <span class="panel-stats" id="stats1">Loading...</span>
-            </div>
-            <div class="svg-container" id="svgContainer1">
-                <div class="loading">Loading SVG...</div>
-            </div>
-            <div class="zoom-controls">
-                <button class="zoom-btn" onclick="zoom('svg1', 0.8)">−</button>
-                <button class="zoom-btn" onclick="zoom('svg1', 1.25)">+</button>
-                <button class="zoom-btn" onclick="zoom('svg1', 1)">⟲</button>
-            </div>
-            <div class="metrics" id="metrics1"></div>
+      <div class="svg-panel" id="panel1">
+        <div class="panel-header">
+          <span class="panel-title">None Preset</span>
+          <span class="panel-stats" id="stats1">Loading...</span>
         </div>
-        
-        <div class="svg-panel" id="panel2">
-            <div class="panel-header">
-                <span class="panel-title">Sketchy Preset</span>
-                <span class="panel-stats" id="stats2">Loading...</span>
-            </div>
-            <div class="svg-container" id="svgContainer2">
-                <div class="loading">Loading SVG...</div>
-            </div>
-            <div class="zoom-controls">
-                <button class="zoom-btn" onclick="zoom('svg2', 0.8)">−</button>
-                <button class="zoom-btn" onclick="zoom('svg2', 1.25)">+</button>
-                <button class="zoom-btn" onclick="zoom('svg2', 1)">⟲</button>
-            </div>
-            <div class="metrics" id="metrics2"></div>
+        <div class="svg-container" id="svgContainer1">
+          <div class="loading">Loading SVG...</div>
         </div>
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="zoom('svg1', 0.8)">−</button>
+          <button class="zoom-btn" onclick="zoom('svg1', 1.25)">+</button>
+          <button class="zoom-btn" onclick="zoom('svg1', 1)">⟲</button>
+        </div>
+        <div class="metrics" id="metrics1"></div>
+      </div>
+
+      <div class="svg-panel" id="panel2">
+        <div class="panel-header">
+          <span class="panel-title">Sketchy Preset</span>
+          <span class="panel-stats" id="stats2">Loading...</span>
+        </div>
+        <div class="svg-container" id="svgContainer2">
+          <div class="loading">Loading SVG...</div>
+        </div>
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="zoom('svg2', 0.8)">−</button>
+          <button class="zoom-btn" onclick="zoom('svg2', 1.25)">+</button>
+          <button class="zoom-btn" onclick="zoom('svg2', 1)">⟲</button>
+        </div>
+        <div class="metrics" id="metrics2"></div>
+      </div>
     </div>
-    
+
     <div class="overlay-mode">
-        <div class="overlay-container" id="overlayContainer">
-            <div class="loading">Loading overlays...</div>
-        </div>
+      <div class="overlay-container" id="overlayContainer">
+        <div class="loading">Loading overlays...</div>
+      </div>
     </div>
-    
+
     <script>
-        let currentScale = { svg1: 1, svg2: 1 };
-        
-        async function loadSVG(image, preset, containerId, statsId, metricsId, titleEl) {
-            const container = document.getElementById(containerId);
-            const statsEl = document.getElementById(statsId);
-            const metricsEl = document.getElementById(metricsId);
-            
-            // Determine the file path based on analysis outputs
-            let filename;
-            if (image === 'checkerboard') {
-                filename = 'test_checkerboard';
-            } else if (image === 'anime-girl') {
-                filename = 'anime-girl';
-            } else {
-                filename = image;
-            }
-            
-            const path = `examples/outputs/debug_artistic_effects/${preset}/${image}.svg`;
-            
-            try {
-                const response = await fetch(path);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
-                const svgText = await response.text();
-                container.innerHTML = svgText;
-                
-                // Add ID to the SVG for zoom control
-                const svg = container.querySelector('svg');
-                if (svg) {
-                    svg.id = containerId.replace('Container', '');
-                    
-                    // Calculate metrics
-                    const metrics = analyzeSVG(svgText);
-                    
-                    // Update stats
-                    statsEl.textContent = `${metrics.paths} paths, ${(svgText.length/1024).toFixed(1)}KB`;
-                    
-                    // Update title
-                    titleEl.textContent = `${preset.charAt(0).toUpperCase() + preset.slice(1)} Preset`;
-                    
-                    // Display metrics
-                    displayMetrics(metrics, metricsEl);
-                    
-                    return metrics;
-                }
-            } catch (error) {
-                container.innerHTML = `<div class="error">Failed to load: ${path}<br>${error.message}</div>`;
-                statsEl.textContent = 'Error';
-                return null;
-            }
+      let currentScale = { svg1: 1, svg2: 1 };
+
+      async function loadSVG(
+        image,
+        preset,
+        containerId,
+        statsId,
+        metricsId,
+        titleEl,
+      ) {
+        const container = document.getElementById(containerId);
+        const statsEl = document.getElementById(statsId);
+        const metricsEl = document.getElementById(metricsId);
+
+        // Determine the file path based on analysis outputs
+        let filename;
+        if (image === "checkerboard") {
+          filename = "test_checkerboard";
+        } else if (image === "anime-girl") {
+          filename = "anime-girl";
+        } else {
+          filename = image;
         }
-        
-        function analyzeSVG(svgText) {
-            const pathMatches = svgText.match(/<path[^>]*>/g) || [];
-            const strokeWidths = [];
-            const curveCommands = (svgText.match(/[CSQTcsqt]/g) || []).length;
-            const lineCommands = (svgText.match(/[LHVlhv]/g) || []).length;
-            
-            pathMatches.forEach(path => {
-                const widthMatch = path.match(/stroke-width="([^"]*)"/);
-                if (widthMatch) {
-                    strokeWidths.push(parseFloat(widthMatch[1]));
-                }
-            });
-            
-            const uniqueWidths = [...new Set(strokeWidths)];
-            const decimals = (svgText.match(/\.\d+/g) || []).length;
-            
-            return {
-                paths: pathMatches.length,
-                strokeWidths: strokeWidths,
-                uniqueStrokeWidths: uniqueWidths.length,
-                minStroke: Math.min(...strokeWidths),
-                maxStroke: Math.max(...strokeWidths),
-                curveCommands: curveCommands,
-                lineCommands: lineCommands,
-                decimals: decimals,
-                fileSize: svgText.length
-            };
+
+        const path = `examples/outputs/debug_artistic_effects/${preset}/${image}.svg`;
+
+        try {
+          const response = await fetch(path);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const svgText = await response.text();
+          container.innerHTML = svgText;
+
+          // Add ID to the SVG for zoom control
+          const svg = container.querySelector("svg");
+          if (svg) {
+            svg.id = containerId.replace("Container", "");
+
+            // Calculate metrics
+            const metrics = analyzeSVG(svgText);
+
+            // Update stats
+            statsEl.textContent = `${metrics.paths} paths, ${(svgText.length / 1024).toFixed(1)}KB`;
+
+            // Update title
+            titleEl.textContent = `${preset.charAt(0).toUpperCase() + preset.slice(1)} Preset`;
+
+            // Display metrics
+            displayMetrics(metrics, metricsEl);
+
+            return metrics;
+          }
+        } catch (error) {
+          container.innerHTML = `<div class="error">Failed to load: ${path}<br>${error.message}</div>`;
+          statsEl.textContent = "Error";
+          return null;
         }
-        
-        function displayMetrics(metrics, container) {
-            if (!metrics) {
-                container.innerHTML = '<div class="error">No metrics available</div>';
-                return;
-            }
-            
-            container.innerHTML = `
+      }
+
+      function analyzeSVG(svgText) {
+        const pathMatches = svgText.match(/<path[^>]*>/g) || [];
+        const strokeWidths = [];
+        const curveCommands = (svgText.match(/[CSQTcsqt]/g) || []).length;
+        const lineCommands = (svgText.match(/[LHVlhv]/g) || []).length;
+
+        pathMatches.forEach((path) => {
+          const widthMatch = path.match(/stroke-width="([^"]*)"/);
+          if (widthMatch) {
+            strokeWidths.push(parseFloat(widthMatch[1]));
+          }
+        });
+
+        const uniqueWidths = [...new Set(strokeWidths)];
+        const decimals = (svgText.match(/\.\d+/g) || []).length;
+
+        return {
+          paths: pathMatches.length,
+          strokeWidths: strokeWidths,
+          uniqueStrokeWidths: uniqueWidths.length,
+          minStroke: Math.min(...strokeWidths),
+          maxStroke: Math.max(...strokeWidths),
+          curveCommands: curveCommands,
+          lineCommands: lineCommands,
+          decimals: decimals,
+          fileSize: svgText.length,
+        };
+      }
+
+      function displayMetrics(metrics, container) {
+        if (!metrics) {
+          container.innerHTML = '<div class="error">No metrics available</div>';
+          return;
+        }
+
+        container.innerHTML = `
                 <div class="metric-row">
                     <span class="metric-label">Paths:</span>
                     <span class="metric-value">${metrics.paths}</span>
@@ -452,86 +465,110 @@
                     <span class="metric-value">${metrics.decimals}</span>
                 </div>
             `;
+      }
+
+      async function updateComparison() {
+        const image = document.getElementById("imageSelect").value;
+        const preset1 = document.getElementById("preset1").value;
+        const preset2 = document.getElementById("preset2").value;
+
+        const title1 = document.querySelector("#panel1 .panel-title");
+        const title2 = document.querySelector("#panel2 .panel-title");
+
+        const metrics1 = await loadSVG(
+          image,
+          preset1,
+          "svgContainer1",
+          "stats1",
+          "metrics1",
+          title1,
+        );
+        const metrics2 = await loadSVG(
+          image,
+          preset2,
+          "svgContainer2",
+          "stats2",
+          "metrics2",
+          title2,
+        );
+
+        // Highlight differences
+        if (metrics1 && metrics2) {
+          const panel1 = document.getElementById("panel1");
+          const panel2 = document.getElementById("panel2");
+
+          if (metrics1.fileSize === metrics2.fileSize) {
+            panel1.classList.remove("highlight");
+            panel2.classList.remove("highlight");
+          } else if (metrics1.fileSize > metrics2.fileSize) {
+            panel1.classList.add("highlight");
+            panel2.classList.remove("highlight");
+          } else {
+            panel2.classList.add("highlight");
+            panel1.classList.remove("highlight");
+          }
         }
-        
-        async function updateComparison() {
-            const image = document.getElementById('imageSelect').value;
-            const preset1 = document.getElementById('preset1').value;
-            const preset2 = document.getElementById('preset2').value;
-            
-            const title1 = document.querySelector('#panel1 .panel-title');
-            const title2 = document.querySelector('#panel2 .panel-title');
-            
-            const metrics1 = await loadSVG(image, preset1, 'svgContainer1', 'stats1', 'metrics1', title1);
-            const metrics2 = await loadSVG(image, preset2, 'svgContainer2', 'stats2', 'metrics2', title2);
-            
-            // Highlight differences
-            if (metrics1 && metrics2) {
-                const panel1 = document.getElementById('panel1');
-                const panel2 = document.getElementById('panel2');
-                
-                if (metrics1.fileSize === metrics2.fileSize) {
-                    panel1.classList.remove('highlight');
-                    panel2.classList.remove('highlight');
-                } else if (metrics1.fileSize > metrics2.fileSize) {
-                    panel1.classList.add('highlight');
-                    panel2.classList.remove('highlight');
-                } else {
-                    panel2.classList.add('highlight');
-                    panel1.classList.remove('highlight');
-                }
-            }
-            
-            // Update overlay if needed
-            if (document.getElementById('overlayToggle').checked) {
-                updateOverlay();
-            }
+
+        // Update overlay if needed
+        if (document.getElementById("overlayToggle").checked) {
+          updateOverlay();
         }
-        
-        function updateOverlay() {
-            const image = document.getElementById('imageSelect').value;
-            const preset1 = document.getElementById('preset1').value;
-            const preset2 = document.getElementById('preset2').value;
-            
-            const container = document.getElementById('overlayContainer');
-            
-            // This would need server-side support to properly overlay
-            container.innerHTML = `
+      }
+
+      function updateOverlay() {
+        const image = document.getElementById("imageSelect").value;
+        const preset1 = document.getElementById("preset1").value;
+        const preset2 = document.getElementById("preset2").value;
+
+        const container = document.getElementById("overlayContainer");
+
+        // This would need server-side support to properly overlay
+        container.innerHTML = `
                 <div class="error">
                     Overlay mode requires both SVGs to be loaded.<br>
                     Please view them side-by-side and compare manually.
                 </div>
             `;
+      }
+
+      function zoom(svgId, factor) {
+        const svg = document.getElementById(svgId);
+        if (svg) {
+          if (factor === 1) {
+            currentScale[svgId] = 1;
+          } else {
+            currentScale[svgId] *= factor;
+          }
+          svg.style.transform = `scale(${currentScale[svgId]})`;
         }
-        
-        function zoom(svgId, factor) {
-            const svg = document.getElementById(svgId);
-            if (svg) {
-                if (factor === 1) {
-                    currentScale[svgId] = 1;
-                } else {
-                    currentScale[svgId] *= factor;
-                }
-                svg.style.transform = `scale(${currentScale[svgId]})`;
-            }
-        }
-        
-        function updateBackground() {
-            const bg = document.getElementById('backgroundSelect').value;
-            document.querySelectorAll('.svg-container').forEach(container => {
-                container.style.background = bg;
-            });
-        }
-        
-        // Event listeners
-        document.getElementById('imageSelect').addEventListener('change', updateComparison);
-        document.getElementById('preset1').addEventListener('change', updateComparison);
-        document.getElementById('preset2').addEventListener('change', updateComparison);
-        document.getElementById('overlayToggle').addEventListener('change', updateOverlay);
-        document.getElementById('backgroundSelect').addEventListener('change', updateBackground);
-        
-        // Initial load
-        updateComparison();
+      }
+
+      function updateBackground() {
+        const bg = document.getElementById("backgroundSelect").value;
+        document.querySelectorAll(".svg-container").forEach((container) => {
+          container.style.background = bg;
+        });
+      }
+
+      // Event listeners
+      document
+        .getElementById("imageSelect")
+        .addEventListener("change", updateComparison);
+      document
+        .getElementById("preset1")
+        .addEventListener("change", updateComparison);
+      document
+        .getElementById("preset2")
+        .addEventListener("change", updateComparison);
+      document
+        .getElementById("overlayToggle")
+        .addEventListener("change", updateOverlay);
+      document
+        .getElementById("backgroundSelect")
+        .addEventListener("change", updateBackground);
+
+      // Initial load
+      updateComparison();
     </script>
-</body>
+  </body>
 </html>

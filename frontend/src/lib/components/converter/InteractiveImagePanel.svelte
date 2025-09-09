@@ -54,11 +54,13 @@
 
 	$effect(() => {
 		// Check if external state has changed
-		const currentExternalState = externalPanZoom ? {
-			scale: externalPanZoom.scale,
-			x: externalPanZoom.x,
-			y: externalPanZoom.y
-		} : null;
+		const currentExternalState = externalPanZoom
+			? {
+					scale: externalPanZoom.scale,
+					x: externalPanZoom.x,
+					y: externalPanZoom.y
+				}
+			: null;
 
 		// Check if local state has changed
 		const currentLocalState = {
@@ -68,37 +70,40 @@
 		};
 
 		// Only update from external if external state actually changed and sync is enabled
-		if (currentExternalState && enableSync && 
-			(!previousExternalState || 
-			 previousExternalState.scale !== currentExternalState.scale ||
-			 previousExternalState.x !== currentExternalState.x ||
-			 previousExternalState.y !== currentExternalState.y)) {
-			
+		if (
+			currentExternalState &&
+			enableSync &&
+			(!previousExternalState ||
+				previousExternalState.scale !== currentExternalState.scale ||
+				previousExternalState.x !== currentExternalState.x ||
+				previousExternalState.y !== currentExternalState.y)
+		) {
 			console.log('🔄 [InteractiveImagePanel] Updating from external state:', {
 				external: currentExternalState,
 				previous: $state.snapshot(previousExternalState),
 				syncEnabled: enableSync
 			});
-			
+
 			// Update local state from external
 			targetScale = currentExternalState.scale;
 			targetOffsetX = currentExternalState.x;
 			targetOffsetY = currentExternalState.y;
-			
+
 			previousExternalState = { ...currentExternalState };
 		}
 		// Only notify parent if local state actually changed and we're not just syncing from external
-		else if (onPanZoomChange && 
+		else if (
+			onPanZoomChange &&
 			(!previousLocalState ||
-			 previousLocalState.scale !== currentLocalState.scale ||
-			 previousLocalState.x !== currentLocalState.x ||
-			 previousLocalState.y !== currentLocalState.y)) {
-			
+				previousLocalState.scale !== currentLocalState.scale ||
+				previousLocalState.x !== currentLocalState.x ||
+				previousLocalState.y !== currentLocalState.y)
+		) {
 			console.log('📤 [InteractiveImagePanel] Notifying parent of local changes:', {
 				current: currentLocalState,
 				previous: $state.snapshot(previousLocalState)
 			});
-			
+
 			// Notify parent of local changes
 			onPanZoomChange(currentLocalState);
 			previousLocalState = { ...currentLocalState };
@@ -337,7 +342,7 @@
 					}
 				} catch (error) {
 					console.error('[ImageViewer] Failed to calculate proper scale:', error);
-					
+
 					// Fallback: preserve state if requested, otherwise default
 					if (shouldPreserveState && preservedScale !== null) {
 						targetScale = preservedScale;
@@ -356,7 +361,10 @@
 	<!-- Header with title and controls -->
 	{#if !hideControls}
 		<div class="mb-3 flex items-center justify-between px-2">
-			<div class="text-converter-primary flex flex-1 items-center gap-2 text-sm font-medium" {title}>
+			<div
+				class="text-converter-primary flex flex-1 items-center gap-2 text-sm font-medium"
+				{title}
+			>
 				<span class="truncate">{title}</span>
 				{#if showRemoveButton && onRemove}
 					<button
@@ -463,11 +471,7 @@
 		{#if imageUrl}
 			<!-- svelte-image-viewer component with programmatic controls -->
 			<div class="h-full w-full">
-				<ScrollFriendlyImageViewer
-					src={imageUrl}
-					alt={imageAlt}
-					panel="original"
-				/>
+				<ScrollFriendlyImageViewer src={imageUrl} alt={imageAlt} panel="original" />
 			</div>
 
 			<!-- Interactive cursor hint -->

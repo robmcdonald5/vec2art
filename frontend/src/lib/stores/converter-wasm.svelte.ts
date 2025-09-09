@@ -1,6 +1,6 @@
 /**
  * WASM Lifecycle Management Store - Enhanced with Phase 3.3 Optimizations
- * 
+ *
  * Handles WebAssembly module initialization, threading, capabilities,
  * emergency recovery, and panic detection. Enhanced with SharedArrayBuffer
  * optimization, thread affinity, and zero-copy operations.
@@ -9,10 +9,7 @@
 import { browser } from '$app/environment';
 import { vectorizerService } from '$lib/services/vectorizer-service';
 import { globalWasmOptimizer, type WasmMetrics } from '$lib/utils/wasm-optimizer';
-import type {
-	VectorizerError,
-	WasmCapabilityReport
-} from '$lib/types/vectorizer';
+import type { VectorizerError, WasmCapabilityReport } from '$lib/types/vectorizer';
 
 interface InitializationOptions {
 	threadCount?: number;
@@ -277,22 +274,22 @@ export class ConverterWasmStore {
 	): Promise<any> {
 		// Create zero-copy image transfer
 		const { buffer, metadata } = globalWasmOptimizer.createZeroCopyImageData(imageData);
-		
+
 		// Compress configuration for efficient transfer
 		const compressedConfig = globalWasmOptimizer.compressConfig(config);
-		
+
 		// Assign optimal thread for this job
 		const optimalThread = globalWasmOptimizer.assignOptimalThread(
-			jobType, 
+			jobType,
 			imageData.width * imageData.height
 		);
-		
+
 		const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-		
+
 		try {
 			// Track job start for load balancing
 			globalWasmOptimizer.trackJobStart(jobId, optimalThread, jobType);
-			
+
 			// Execute with circuit breaker and optimization
 			const result = await this.executeWithCircuitBreaker(async () => {
 				if (!this.vectorizerService) {
@@ -303,46 +300,47 @@ export class ConverterWasmStore {
 				// Handle SharedArrayBuffer compatibility - create a regular Uint8ClampedArray for ImageData
 				// Always create from regular ArrayBuffer to ensure ImageData constructor compatibility
 				const regularBuffer = new ArrayBuffer(imageData.width * imageData.height * 4);
-				const sourceView = buffer instanceof SharedArrayBuffer 
-					? new Uint8ClampedArray(buffer, 0, imageData.width * imageData.height * 4)
-					: new Uint8ClampedArray(buffer, 0, imageData.width * imageData.height * 4);
-				
+				const sourceView =
+					buffer instanceof SharedArrayBuffer
+						? new Uint8ClampedArray(buffer, 0, imageData.width * imageData.height * 4)
+						: new Uint8ClampedArray(buffer, 0, imageData.width * imageData.height * 4);
+
 				const imageDataArray = new Uint8ClampedArray(regularBuffer);
 				imageDataArray.set(sourceView);
-				
-				const optimizedImageData = new ImageData(
-					imageDataArray,
-					imageData.width,
-					imageData.height
-				);
+
+				const optimizedImageData = new ImageData(imageDataArray, imageData.width, imageData.height);
 
 				// Decompress config if needed
-				const finalConfig = buffer instanceof SharedArrayBuffer && compressedConfig instanceof Uint8Array
-					? globalWasmOptimizer.decompressConfig(compressedConfig)
-					: compressedConfig;
+				const finalConfig =
+					buffer instanceof SharedArrayBuffer && compressedConfig instanceof Uint8Array
+						? globalWasmOptimizer.decompressConfig(compressedConfig)
+						: compressedConfig;
 
 				// Process with regular service (enhanced with zero-copy buffers)
 				// Adapt progress callback to handle ProcessingProgress type
-				const adaptedProgressCallback = progressCallback ? (progress: any) => {
-					// Extract numeric progress from ProcessingProgress object
-					const numericProgress = typeof progress === 'object' && progress.progress ? progress.progress : progress;
-					progressCallback(numericProgress);
-				} : undefined;
-				
+				const adaptedProgressCallback = progressCallback
+					? (progress: any) => {
+							// Extract numeric progress from ProcessingProgress object
+							const numericProgress =
+								typeof progress === 'object' && progress.progress ? progress.progress : progress;
+							progressCallback(numericProgress);
+						}
+					: undefined;
+
 				const processingResult = await this.vectorizerService.processImage(
 					optimizedImageData,
 					finalConfig,
 					adaptedProgressCallback
 				);
-				
+
 				if (!processingResult) {
 					throw new Error('WASM processing failed');
 				}
-				
+
 				return {
 					svg: processingResult.svg,
 					metadata: {
-						...processingResult.statistics || {},
+						...(processingResult.statistics || {}),
 						optimizations: {
 							sharedArrayBuffer: buffer instanceof SharedArrayBuffer,
 							threadId: optimalThread,
@@ -354,11 +352,10 @@ export class ConverterWasmStore {
 			}, `Processing optimized image job ${jobId} on thread ${optimalThread}`);
 
 			return result;
-
 		} finally {
 			// Track job completion for metrics
 			globalWasmOptimizer.trackJobCompletion(jobId);
-			
+
 			// Release shared buffer
 			if (metadata.isShared) {
 				const bufferKey = `image_${imageData.width}x${imageData.height}`;
@@ -380,19 +377,20 @@ export class ConverterWasmStore {
 		// Process batch with optimal thread distribution
 		const promises = batch.map(async (item, index) => {
 			const jobType = item.jobType || 'edge';
-			
+
 			try {
 				const result = await this.processImageOptimized(
 					item.imageData,
 					item.config,
 					(progress) => {
 						individualProgress[index] = progress;
-						const overallProgress = individualProgress.reduce((sum, p) => sum + p, 0) / batch.length;
+						const overallProgress =
+							individualProgress.reduce((sum, p) => sum + p, 0) / batch.length;
 						progressCallback?.(overallProgress, [...individualProgress]);
 					},
 					jobType
 				);
-				
+
 				results[index] = result;
 			} catch (error) {
 				results[index] = { error };
@@ -645,9 +643,7 @@ export class ConverterWasmStore {
 				autoInitThreads: true
 			});
 
-			console.log(
-				'[ConverterWasmStore] ✅ Enhanced recovery completed successfully'
-			);
+			console.log('[ConverterWasmStore] ✅ Enhanced recovery completed successfully');
 		} catch (error) {
 			console.error('[ConverterWasmStore] ❌ Enhanced recovery failed:', error);
 
@@ -686,10 +682,10 @@ export class ConverterWasmStore {
 	cleanup(): void {
 		// WASM cleanup is handled by the service
 		vectorizerService.cleanup();
-		
+
 		// Phase 3.3: Cleanup WASM optimizer
 		globalWasmOptimizer.cleanup();
-		
+
 		this._state.is_initialized = false;
 		this._initState.wasmLoaded = false;
 		this._initState.threadsInitialized = false;
@@ -710,11 +706,11 @@ export class ConverterWasmStore {
 	/**
 	 * Circuit breaker implementation for robust failure handling
 	 */
-	
+
 	private updateCircuitState(): void {
 		const now = Date.now();
 		const breaker = this._circuitBreakerState;
-		
+
 		switch (breaker.state) {
 			case 'CLOSED':
 				if (breaker.failures >= breaker.failureThreshold) {
@@ -725,7 +721,7 @@ export class ConverterWasmStore {
 					);
 				}
 				break;
-				
+
 			case 'OPEN':
 				if (now >= breaker.openUntil) {
 					breaker.state = 'HALF_OPEN';
@@ -733,7 +729,7 @@ export class ConverterWasmStore {
 					console.log('[Circuit Breaker] Transitioning to HALF_OPEN state');
 				}
 				break;
-				
+
 			case 'HALF_OPEN':
 				// State changes are handled in recordSuccess/recordFailure
 				break;
@@ -743,9 +739,9 @@ export class ConverterWasmStore {
 	private recordSuccess(): void {
 		const breaker = this._circuitBreakerState;
 		const now = Date.now();
-		
+
 		breaker.lastSuccessTime = now;
-		
+
 		if (breaker.state === 'HALF_OPEN') {
 			breaker.halfOpenCalls++;
 			if (breaker.halfOpenCalls >= breaker.halfOpenMaxCalls) {
@@ -757,42 +753,42 @@ export class ConverterWasmStore {
 			// Reset failure count on success in CLOSED state
 			breaker.failures = 0;
 		}
-		
+
 		this.updateCircuitState();
 	}
 
 	private recordFailure(): void {
 		const breaker = this._circuitBreakerState;
 		const now = Date.now();
-		
+
 		breaker.lastFailureTime = now;
 		breaker.failures++;
-		
+
 		if (breaker.state === 'HALF_OPEN') {
 			// Immediately open on failure in HALF_OPEN state
 			breaker.state = 'OPEN';
 			breaker.openUntil = now + breaker.resetTimeout;
 			console.warn('[Circuit Breaker] Failure in HALF_OPEN, opening circuit');
 		}
-		
+
 		this.updateCircuitState();
 	}
 
 	private shouldAllowCall(): boolean {
 		this.updateCircuitState();
-		
+
 		const breaker = this._circuitBreakerState;
-		
+
 		switch (breaker.state) {
 			case 'CLOSED':
 				return true;
-				
+
 			case 'OPEN':
 				return false;
-				
+
 			case 'HALF_OPEN':
 				return breaker.halfOpenCalls < breaker.halfOpenMaxCalls;
-				
+
 			default:
 				return true;
 		}
@@ -822,7 +818,7 @@ export class ConverterWasmStore {
 			// Don't record validation or user input errors
 			if (error instanceof Error) {
 				const errorText = error.message.toLowerCase();
-				const isSystemFailure = 
+				const isSystemFailure =
 					errorText.includes('wasm') ||
 					errorText.includes('memory') ||
 					errorText.includes('panic') ||
@@ -833,11 +829,15 @@ export class ConverterWasmStore {
 						message: error.message,
 						details: error.stack
 					});
-				
+
 				if (isSystemFailure) {
-					console.warn(`[Circuit Breaker] Recording failure for ${operationName}: ${error.message}`);
+					console.warn(
+						`[Circuit Breaker] Recording failure for ${operationName}: ${error.message}`
+					);
 				} else {
-					console.log(`[Circuit Breaker] Ignoring user/validation error for circuit breaker: ${error.message}`);
+					console.log(
+						`[Circuit Breaker] Ignoring user/validation error for circuit breaker: ${error.message}`
+					);
 				}
 			}
 			throw error;

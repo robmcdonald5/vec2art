@@ -1,6 +1,6 @@
 /**
  * Parameter Diff System
- * 
+ *
  * Efficient parameter change detection and incremental validation.
  * Tracks only modified parameters to minimize validation overhead.
  */
@@ -45,10 +45,10 @@ export class ParameterDiffer {
 		// Compare each parameter
 		for (const [key, currentValue] of Object.entries(current)) {
 			const previousValue = this.lastConfig[key as keyof VectorizerConfig];
-			
+
 			if (!this.deepEqual(currentValue, previousValue)) {
 				changed.add(key);
-				
+
 				// Track change history
 				this.addToHistory({
 					field: key,
@@ -63,7 +63,7 @@ export class ParameterDiffer {
 		for (const key of Object.keys(this.lastConfig)) {
 			if (!(key in current)) {
 				changed.add(key);
-				
+
 				this.addToHistory({
 					field: key,
 					previousValue: this.lastConfig[key as keyof VectorizerConfig],
@@ -83,7 +83,7 @@ export class ParameterDiffer {
 
 		// Update internal state
 		this.lastConfig = { ...current };
-		
+
 		return delta;
 	}
 
@@ -92,13 +92,13 @@ export class ParameterDiffer {
 	 */
 	getChangedParameters(delta: ParameterDelta): Partial<VectorizerConfig> {
 		const changed: Partial<VectorizerConfig> = {};
-		
+
 		for (const field of delta.changed) {
 			if (field in delta.current) {
 				(changed as any)[field] = (delta.current as any)[field];
 			}
 		}
-		
+
 		return changed;
 	}
 
@@ -106,7 +106,7 @@ export class ParameterDiffer {
 	 * Check if any critical parameters have changed
 	 */
 	hasCriticalChanges(delta: ParameterDelta, criticalFields: string[]): boolean {
-		return criticalFields.some(field => delta.changed.has(field));
+		return criticalFields.some((field) => delta.changed.has(field));
 	}
 
 	/**
@@ -126,9 +126,7 @@ export class ParameterDiffer {
 			'noise_filter_range_sigma'
 		]);
 
-		return Array.from(delta.changed).filter(field => 
-			validationAffecting.has(field)
-		);
+		return Array.from(delta.changed).filter((field) => validationAffecting.has(field));
 	}
 
 	/**
@@ -194,9 +192,9 @@ export class ParameterDiffer {
 	getChangeFrequency(field: string, timeWindowMs = 60000): number {
 		const now = Date.now();
 		const windowStart = now - timeWindowMs;
-		
-		return this.changeHistory.filter(entry => 
-			entry.field === field && entry.timestamp >= windowStart
+
+		return this.changeHistory.filter(
+			(entry) => entry.field === field && entry.timestamp >= windowStart
 		).length;
 	}
 
@@ -205,10 +203,10 @@ export class ParameterDiffer {
 	 */
 	areChangesStabilizing(stabilityWindowMs = 1000): boolean {
 		const now = Date.now();
-		const recentChanges = this.changeHistory.filter(entry => 
-			now - entry.timestamp <= stabilityWindowMs
+		const recentChanges = this.changeHistory.filter(
+			(entry) => now - entry.timestamp <= stabilityWindowMs
 		);
-		
+
 		return recentChanges.length === 0;
 	}
 
@@ -226,20 +224,20 @@ export class ParameterDiffer {
 	 */
 	private deepEqual(a: any, b: any): boolean {
 		if (a === b) return true;
-		
+
 		if (a == null || b == null) return a === b;
-		
+
 		if (typeof a !== typeof b) return false;
-		
+
 		if (typeof a === 'object') {
 			const keysA = Object.keys(a);
 			const keysB = Object.keys(b);
-			
+
 			if (keysA.length !== keysB.length) return false;
-			
-			return keysA.every(key => this.deepEqual(a[key], b[key]));
+
+			return keysA.every((key) => this.deepEqual(a[key], b[key]));
 		}
-		
+
 		return false;
 	}
 
@@ -248,7 +246,7 @@ export class ParameterDiffer {
 	 */
 	private addToHistory(entry: ParameterChangeEntry): void {
 		this.changeHistory.push(entry);
-		
+
 		if (this.changeHistory.length > this.maxHistorySize) {
 			this.changeHistory.shift();
 		}
@@ -299,7 +297,7 @@ export class ParameterUpdateManager {
 
 		// Batch updates
 		this.updateQueue.push(updateFn);
-		
+
 		if (this.batchTimeoutId !== null) {
 			clearTimeout(this.batchTimeoutId);
 		}
@@ -318,7 +316,7 @@ export class ParameterUpdateManager {
 		}
 
 		this.isProcessingQueue = true;
-		
+
 		try {
 			// Process all queued updates
 			while (this.updateQueue.length > 0) {

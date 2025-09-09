@@ -1,14 +1,5 @@
 <script lang="ts">
-	import {
-		Shield,
-		Lock,
-		Server,
-		Eye,
-		Cookie,
-		FileText,
-		Users,
-		Github
-	} from 'lucide-svelte';
+	import { Shield, Lock, Server, Eye, Cookie, FileText, Users, Github } from 'lucide-svelte';
 </script>
 
 <svelte:head>
@@ -184,7 +175,7 @@
 				</a>
 				<button
 					onclick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-					class="text-ferrari-600 hover:text-ferrari-700 hover:bg-ferrari-50 inline-flex items-center gap-2 rounded-md px-3 py-2 transition-all duration-200 hover:scale-105 hover:shadow-sm cursor-pointer"
+					class="text-ferrari-600 hover:text-ferrari-700 hover:bg-ferrari-50 inline-flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 transition-all duration-200 hover:scale-105 hover:shadow-sm"
 				>
 					<Shield class="h-4 w-4" />
 					Back to Top

@@ -43,15 +43,17 @@ vectorize-wasm/
 ## 📋 Integration Steps
 
 ### 1. Copy WASM Module to SvelteKit
+
 ```bash
 # From your SvelteKit project root
 cp -r ../vec2art/wasm/vectorize-wasm/pkg src/lib/wasm/
 ```
 
 ### 2. Create WASM Helper
+
 ```javascript
 // src/lib/wasm.js
-import init, { WasmVectorizer } from '$lib/wasm/vectorize_wasm.js';
+import init, { WasmVectorizer } from "$lib/wasm/vectorize_wasm.js";
 
 let vectorizer = null;
 
@@ -69,37 +71,39 @@ export function getVectorizer() {
 ```
 
 ### 3. Update Vite Config
+
 ```javascript
 // vite.config.js
 export default {
   server: {
     headers: {
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-      'Cross-Origin-Opener-Policy': 'same-origin'
-    }
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
   },
   optimizeDeps: {
-    exclude: ['$lib/wasm/vectorize_wasm.js']
-  }
+    exclude: ["$lib/wasm/vectorize_wasm.js"],
+  },
 };
 ```
 
 ### 4. Use in Components
+
 ```svelte
 <script>
   import { onMount } from 'svelte';
   import { initWasm } from '$lib/wasm.js';
-  
+
   let vectorizer = null;
   let processing = false;
-  
+
   onMount(async () => {
     vectorizer = await initWasm();
   });
-  
+
   async function processImage(imageData) {
     if (!vectorizer) return;
-    
+
     processing = true;
     try {
       vectorizer.set_backend('edge');
@@ -115,7 +119,7 @@ export default {
 ## ✅ Benefits
 
 1. **90% Size Reduction**: From 47MB+ to ~4MB core module
-2. **Clean Integration**: No redundant files or dependencies  
+2. **Clean Integration**: No redundant files or dependencies
 3. **TypeScript Ready**: Complete type definitions included
 4. **Production Optimized**: Only essential files preserved
 5. **Well Documented**: Clear integration instructions
@@ -124,6 +128,7 @@ export default {
 ## 🎯 Ready for Production
 
 The WASM module is now:
+
 - ✅ Cleaned and optimized for SvelteKit
 - ✅ Properly documented for integration
 - ✅ Includes all necessary production files

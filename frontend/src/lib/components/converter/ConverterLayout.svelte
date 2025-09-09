@@ -180,10 +180,12 @@
 
 	// Helper function to generate performance button classes
 	function getPerformanceButtonClass(mode: PerformanceMode): string {
-		const baseClass = 'rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none';
+		const baseClass =
+			'rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none';
 		const activeClass = 'bg-blue-600 text-white';
-		const inactiveClass = 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600';
-		
+		const inactiveClass =
+			'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600';
+
 		return `${baseClass} ${currentPerformanceMode === mode ? activeClass : inactiveClass}`;
 	}
 </script>
@@ -223,7 +225,10 @@
 				<div class="mt-4 space-y-4">
 					<!-- Algorithm Selection -->
 					<div>
-						<label for="backend-selector" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<label
+							for="backend-selector"
+							class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+						>
 							Algorithm
 						</label>
 						<BackendSelector
@@ -236,12 +241,16 @@
 
 					<!-- Style Preset -->
 					<div>
-						<label for="preset-selector" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<label
+							for="preset-selector"
+							class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+						>
 							Style Preset
 						</label>
 						<PresetSelector
 							selectedPresetId={selectedPreset}
-							onPresetSelect={(preset: StylePreset | null) => onPresetChange(preset?.metadata.id as VectorizerPreset || 'custom')}
+							onPresetSelect={(preset: StylePreset | null) =>
+								onPresetChange((preset?.metadata.id as VectorizerPreset) || 'custom')}
 							disabled={isProcessing}
 						/>
 					</div>
@@ -250,7 +259,10 @@
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<!-- Detail Level -->
 						<div>
-							<label for="detail-level" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+							<label
+								for="detail-level"
+								class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+							>
 								Detail Level
 							</label>
 							<input
@@ -273,7 +285,10 @@
 
 						<!-- Line Width / Dot Width -->
 						<div>
-							<label for="stroke-width" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+							<label
+								for="stroke-width"
+								class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+							>
 								{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
 							</label>
 							<input
@@ -349,7 +364,10 @@
 
 						<!-- Performance Mode Buttons -->
 						<div class="space-y-3">
-							<div id="performance-mode-legend" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							<div
+								id="performance-mode-legend"
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+							>
 								Performance Mode
 							</div>
 							<div
@@ -414,8 +432,9 @@
 						{#if currentPerformanceMode === 'custom'}
 							<div class="mt-4 space-y-2">
 								<div class="flex items-center justify-between">
-									<label for="thread-count" class="text-sm font-medium text-gray-700 dark:text-gray-300"
-										>Thread Count</label
+									<label
+										for="thread-count"
+										class="text-sm font-medium text-gray-700 dark:text-gray-300">Thread Count</label
 									>
 									<span
 										class="rounded bg-gray-100 px-2 py-1 text-left font-mono text-xs dark:bg-gray-800"
@@ -441,11 +460,11 @@
 					</div>
 				</div>
 
-					<!-- Parameter Panel -->
-					<ParameterPanel {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
+				<!-- Parameter Panel -->
+				<ParameterPanel {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
 
-					<!-- Advanced Controls -->
-					<AdvancedControls {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
+				<!-- Advanced Controls -->
+				<AdvancedControls {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
 			{/if}
 		</div>
 	</div>
@@ -523,7 +542,8 @@
 					<!-- Style Preset Selection -->
 					<PresetSelector
 						selectedPresetId={selectedPreset}
-						onPresetSelect={(preset: StylePreset | null) => onPresetChange(preset?.metadata.id as VectorizerPreset || 'custom')}
+						onPresetSelect={(preset: StylePreset | null) =>
+							onPresetChange((preset?.metadata.id as VectorizerPreset) || 'custom')}
 						disabled={isProcessing}
 					/>
 

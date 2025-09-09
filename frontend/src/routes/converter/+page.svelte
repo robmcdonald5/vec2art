@@ -40,7 +40,7 @@
 	// Removed panZoomStore - now handled internally by SimplifiedPreviewComparison
 	import { getPresetById } from '$lib/presets/presets';
 	import { presetToVectorizerConfig } from '$lib/presets/converter';
-	
+
 	// Page data with algorithm params from URL
 	let { data } = $props();
 
@@ -112,7 +112,7 @@
 	function handleConverterError(error: Error, errorInfo: any) {
 		console.error('❌ [ErrorBoundary] Converter component error:', error, errorInfo);
 		toastStore.error(`Converter error: ${error.message}. The system will attempt to recover.`);
-		
+
 		// Try to recover by resetting problematic state
 		if (error.message.includes('WASM') || error.message.includes('panic')) {
 			handleEmergencyRecovery();
@@ -125,7 +125,7 @@
 	function handleSettingsError(error: Error, errorInfo: any) {
 		console.error('❌ [ErrorBoundary] Settings panel error:', error, errorInfo);
 		toastStore.error(`Settings error: ${error.message}. Settings have been reset to defaults.`);
-		
+
 		// Reset settings to defaults on errors
 		settingsSyncStore.updateConfig({ ...DEFAULT_CONFIG });
 		selectedPreset = 'custom';
@@ -495,9 +495,12 @@
 			// Settings sync-aware conversion logic:
 			// CRITICAL FIX: Use the current reactive config to ensure we have the latest settings
 			// that the user sees in the UI, preventing stale settings bug
-			console.log('🔍 [DEBUG] Current reactive config being used for conversion:', $state.snapshot(config));
-			
-			// Get convert configuration based on current settings sync mode  
+			console.log(
+				'🔍 [DEBUG] Current reactive config being used for conversion:',
+				$state.snapshot(config)
+			);
+
+			// Get convert configuration based on current settings sync mode
 			const convertConfig = settingsSyncStore.getConvertConfig();
 			const imagesToProcess = convertConfig.imageIndices;
 
@@ -539,7 +542,7 @@
 
 					// Update results (CONSISTENT FIX: Apply same async blob creation pattern)
 					results = fallbackResults;
-					
+
 					// Create preview URLs asynchronously to prevent blocking
 					const fallbackBlobPromises = fallbackResults.map(async (result, index) => {
 						if (result && result.svg) {
@@ -553,7 +556,7 @@
 										resolve(null);
 									}
 								};
-								
+
 								// Use requestIdleCallback if available, otherwise setTimeout
 								if (typeof requestIdleCallback !== 'undefined') {
 									requestIdleCallback(createBlob);
@@ -564,7 +567,7 @@
 						}
 						return Promise.resolve(null);
 					});
-					
+
 					previewSvgUrls = await Promise.all(fallbackBlobPromises);
 
 					toastStore.success(
@@ -592,18 +595,26 @@
 					filesToProcess.push(files[imageIndex]);
 					indexMapping.push(imageIndex);
 					// CRITICAL FIX: Use getCurrentConfig() to get the most up-to-date config
-					// instead of the potentially stale config from getConvertConfig() 
+					// instead of the potentially stale config from getConvertConfig()
 					const currentConfig = settingsSyncStore.getCurrentConfig(imageIndex);
 					configsToProcess.push(currentConfig);
-					
+
 					// Debug: Compare with potentially stale config
 					const staleConfig = convertConfig.configMap.get(imageIndex);
 					if (JSON.stringify(currentConfig) !== JSON.stringify(staleConfig)) {
 						// FIX: Use $state.snapshot() to avoid proxy warnings
 						const currentSnapshot = $state.snapshot(currentConfig);
 						console.warn(`⚠️ [STALE SETTINGS DETECTED] Image ${imageIndex}:`, {
-							currentConfig: { backend: currentSnapshot.backend, detail: currentSnapshot.detail, stroke_width: currentSnapshot.stroke_width },
-							staleConfig: { backend: staleConfig?.backend, detail: staleConfig?.detail, stroke_width: staleConfig?.stroke_width }
+							currentConfig: {
+								backend: currentSnapshot.backend,
+								detail: currentSnapshot.detail,
+								stroke_width: currentSnapshot.stroke_width
+							},
+							staleConfig: {
+								backend: staleConfig?.backend,
+								detail: staleConfig?.detail,
+								stroke_width: staleConfig?.stroke_width
+							}
 						});
 					}
 				}
@@ -694,8 +705,10 @@
 				if (result && result.svg) {
 					const svgSize = result.svg.length;
 					const isLargeSvg = svgSize > 500000; // > 500KB threshold
-					
-					console.log(`🔄 [DEBUG] Creating blob for image ${originalIndex}, size: ${Math.round(svgSize/1024)}KB, strategy: ${isLargeSvg ? 'chunked-async' : 'immediate'}`);
+
+					console.log(
+						`🔄 [DEBUG] Creating blob for image ${originalIndex}, size: ${Math.round(svgSize / 1024)}KB, strategy: ${isLargeSvg ? 'chunked-async' : 'immediate'}`
+					);
 
 					if (isLargeSvg) {
 						// Large SVG: Use chunked async approach with shorter timeout
@@ -706,7 +719,10 @@
 									newPreviewUrls[originalIndex] = URL.createObjectURL(blob);
 									console.log(`✅ [DEBUG] Large blob created for image ${originalIndex}`);
 								} catch (error) {
-									console.error(`Failed to create large blob URL for image ${originalIndex}:`, error);
+									console.error(
+										`Failed to create large blob URL for image ${originalIndex}:`,
+										error
+									);
 									newPreviewUrls[originalIndex] = null;
 								}
 								resolve();
@@ -724,7 +740,10 @@
 							newPreviewUrls[originalIndex] = URL.createObjectURL(blob);
 							console.log(`✅ [DEBUG] Small blob created immediately for image ${originalIndex}`);
 						} catch (error) {
-							console.error(`Failed to create immediate blob URL for image ${originalIndex}:`, error);
+							console.error(
+								`Failed to create immediate blob URL for image ${originalIndex}:`,
+								error
+							);
 							newPreviewUrls[originalIndex] = null;
 						}
 					}
@@ -738,13 +757,15 @@
 			await Promise.all(blobCreationPromises);
 			const blobTime = performance.now() - startBlobTime;
 			console.log(`✅ [DEBUG] All blob creation completed in ${Math.round(blobTime)}ms`);
-			
+
 			// Atomic update - both arrays updated simultaneously
 			results = newResults;
 			previewSvgUrls = newPreviewUrls;
 			completedImages = results.filter((r) => r && r.svg).length;
-			
-			console.log(`🎯 [DEBUG] Preview state updated - results: ${results.length}, preview URLs: ${previewSvgUrls.length}`);
+
+			console.log(
+				`🎯 [DEBUG] Preview state updated - results: ${results.length}, preview URLs: ${previewSvgUrls.length}`
+			);
 
 			const message =
 				filesToProcess.length === 1
@@ -767,8 +788,10 @@
 			announceToScreenReader('Conversion failed', 'assertive');
 		} finally {
 			const totalTime = performance.now() - conversionStartTime;
-			console.log(`🏁 [DEBUG] Conversion pipeline completed in ${Math.round(totalTime)}ms, unlocking UI`);
-			
+			console.log(
+				`🏁 [DEBUG] Conversion pipeline completed in ${Math.round(totalTime)}ms, unlocking UI`
+			);
+
 			isProcessing = false;
 			currentProgress = null;
 			processingImageIndex = currentImageIndex; // Reset to current index when done
@@ -777,7 +800,7 @@
 			if (emergencyTimeout) {
 				clearTimeout(emergencyTimeout);
 			}
-			
+
 			console.log(`🔓 [DEBUG] isProcessing set to false - UI should be unlocked now`);
 		}
 	}
@@ -1062,13 +1085,16 @@
 					// Apply the preset configuration to the settings store
 					settingsSyncStore.updateConfig(presetConfig, currentImageIndex);
 
-					console.log(`✅ Preset config applied:`, $state.snapshot({
-						backend: presetConfig.backend,
-						detail: presetConfig.detail,
-						stroke_width: presetConfig.stroke_width,
-						multipass: presetConfig.multipass,
-						hand_drawn_preset: presetConfig.hand_drawn_preset
-					}));
+					console.log(
+						`✅ Preset config applied:`,
+						$state.snapshot({
+							backend: presetConfig.backend,
+							detail: presetConfig.detail,
+							stroke_width: presetConfig.stroke_width,
+							multipass: presetConfig.multipass,
+							hand_drawn_preset: presetConfig.hand_drawn_preset
+						})
+					);
 				}
 			} else {
 				console.warn(`⚠️ Could not find StylePreset for legacy preset: ${preset}`);
@@ -1092,13 +1118,16 @@
 		const updatedConfig = vectorizerStore.config;
 		settingsSyncStore.updateConfig(updatedConfig, currentImageIndex);
 
-		console.log(`✅ Backend switched to ${backend} using store defaults:`, $state.snapshot({
-			backend: updatedConfig.backend,
-			detail: updatedConfig.detail,
-			stroke_width: updatedConfig.stroke_width,
-			enable_adaptive_threshold: updatedConfig.enable_adaptive_threshold,
-			preserve_colors: updatedConfig.preserve_colors
-		}));
+		console.log(
+			`✅ Backend switched to ${backend} using store defaults:`,
+			$state.snapshot({
+				backend: updatedConfig.backend,
+				detail: updatedConfig.detail,
+				stroke_width: updatedConfig.stroke_width,
+				enable_adaptive_threshold: updatedConfig.enable_adaptive_threshold,
+				preserve_colors: updatedConfig.preserve_colors
+			})
+		);
 	}
 
 	function handleParameterChange() {
@@ -1145,19 +1174,20 @@
 			// Check for algorithm selection from URL params or sessionStorage
 			const urlBackend = data?.algorithmParams?.backend;
 			const urlPreset = data?.algorithmParams?.preset;
-			const sessionData = typeof window !== 'undefined' 
-				? JSON.parse(sessionStorage.getItem('selectedAlgorithm') || '{}')
-				: {};
-			
+			const sessionData =
+				typeof window !== 'undefined'
+					? JSON.parse(sessionStorage.getItem('selectedAlgorithm') || '{}')
+					: {};
+
 			// Apply algorithm selection if available
 			if (urlBackend || sessionData.backend) {
 				const backend = urlBackend || sessionData.backend;
 				const preset = urlPreset || sessionData.preset;
 				const name = sessionData.name;
-				
+
 				// Update config with selected algorithm
 				config.backend = backend;
-				
+
 				// Apply preset if provided
 				if (preset) {
 					const presetConfig = getPresetById(preset);
@@ -1166,17 +1196,17 @@
 						Object.assign(config, vectorizerConfig);
 					}
 				}
-				
+
 				// Update vectorizer store
 				vectorizerStore.updateConfig(config);
-				
+
 				// Show notification about selected algorithm
 				if (name) {
 					toastStore.success(`🎨 ${name} algorithm selected! Upload images to start.`, 4000);
 				} else {
 					toastStore.success('🚀 Converter ready! Upload images to get started.', 4000);
 				}
-				
+
 				// Clear sessionStorage after use
 				if (typeof window !== 'undefined') {
 					sessionStorage.removeItem('selectedAlgorithm');
@@ -1356,18 +1386,18 @@
 			if (state.results && state.results.length > 0) {
 				const loadedResults = converterPersistence.loadResults();
 				results = loadedResults;
-				
+
 				// CRITICAL FIX: Show loading state for large SVG blob creation during restoration
-				const hasLargeSvgs = loadedResults.some(result => 
-					result && result.svg && result.svg.length > 1000000 // > 1MB
+				const hasLargeSvgs = loadedResults.some(
+					(result) => result && result.svg && result.svg.length > 1000000 // > 1MB
 				);
-				
+
 				if (hasLargeSvgs) {
 					console.log('🔄 [DEBUG] Detected large SVGs during restoration - showing loading state');
 					// Temporarily show loading state for large restorations
 					isProcessing = true;
 				}
-				
+
 				// Create preview URLs for loaded results (CONSISTENT FIX: Apply same async pattern)
 				const restoredBlobPromises = loadedResults.map(async (result, index) => {
 					if (result && result.svg) {
@@ -1381,7 +1411,7 @@
 									resolve(null);
 								}
 							};
-							
+
 							// Use requestIdleCallback if available, otherwise setTimeout
 							if (typeof requestIdleCallback !== 'undefined') {
 								requestIdleCallback(createBlob);
@@ -1392,9 +1422,9 @@
 					}
 					return Promise.resolve(null);
 				});
-				
+
 				previewSvgUrls = await Promise.all(restoredBlobPromises);
-				
+
 				// CRITICAL FIX: Clear loading state after blob restoration completes
 				if (hasLargeSvgs) {
 					isProcessing = false;

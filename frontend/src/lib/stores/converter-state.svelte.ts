@@ -1,17 +1,13 @@
 /**
  * Converter Core State Store
- * 
+ *
  * Handles image processing, file management, progress tracking, and results.
  * Extracted from vectorizer.svelte.ts to separate processing concerns from
  * configuration and WASM management.
  */
 
 import { browser } from '$app/environment';
-import type {
-	VectorizerError,
-	ProcessingResult,
-	ProcessingProgress
-} from '$lib/types/vectorizer';
+import type { VectorizerError, ProcessingResult, ProcessingProgress } from '$lib/types/vectorizer';
 
 // Import the other stores for coordination
 import { converterWasm } from './converter-wasm.svelte';
@@ -100,14 +96,20 @@ export class ConverterStateStore {
 	}
 
 	get currentInputImage(): ImageData | undefined {
-		if (this._imageState.input_images?.length && this._imageState.current_image_index !== undefined) {
+		if (
+			this._imageState.input_images?.length &&
+			this._imageState.current_image_index !== undefined
+		) {
 			return this._imageState.input_images[this._imageState.current_image_index];
 		}
 		return this._imageState.input_image;
 	}
 
 	get currentInputFile(): File | undefined {
-		if (this._imageState.input_files?.length && this._imageState.current_image_index !== undefined) {
+		if (
+			this._imageState.input_files?.length &&
+			this._imageState.current_image_index !== undefined
+		) {
 			return this._imageState.input_files[this._imageState.current_image_index];
 		}
 		return this._imageState.input_file;
@@ -142,7 +144,9 @@ export class ConverterStateStore {
 			const imageData = await this.fileToImageData(file);
 			this._imageState.input_image = imageData;
 
-			console.log(`[ConverterStateStore] Set input file: ${file.name} (${imageData.width}x${imageData.height})`);
+			console.log(
+				`[ConverterStateStore] Set input file: ${file.name} (${imageData.width}x${imageData.height})`
+			);
 		} catch (error) {
 			const fileError = {
 				type: 'processing' as const,
@@ -330,7 +334,9 @@ export class ConverterStateStore {
 				);
 			}
 
-			console.log(`[ConverterStateStore] ✅ Processing completed in ${result.processing_time_ms}ms`);
+			console.log(
+				`[ConverterStateStore] ✅ Processing completed in ${result.processing_time_ms}ms`
+			);
 			return result;
 		} catch (error) {
 			const processingError = error as VectorizerError;
@@ -397,9 +403,7 @@ export class ConverterStateStore {
 			const singleImageTimeoutMs = config.max_processing_time_ms || 30000;
 			// Use much longer timeout for complex backends (dots, superpixel) that may need more time
 			const backendMultiplier =
-				config.backend === 'dots' || config.backend === 'superpixel'
-					? 10
-					: 3;
+				config.backend === 'dots' || config.backend === 'superpixel' ? 10 : 3;
 			const batchTimeoutMs = Math.max(
 				singleImageTimeoutMs * images.length * backendMultiplier,
 				300000
@@ -458,7 +462,9 @@ export class ConverterStateStore {
 					);
 
 					results.push(result);
-					console.log(`[ConverterStateStore] Completed image ${i + 1}/${images.length} in ${result.processing_time_ms}ms`);
+					console.log(
+						`[ConverterStateStore] Completed image ${i + 1}/${images.length} in ${result.processing_time_ms}ms`
+					);
 				} catch (imageError) {
 					console.error(`[ConverterStateStore] Failed to process image ${i + 1}:`, imageError);
 					// Continue with remaining images but log the error
@@ -491,7 +497,9 @@ export class ConverterStateStore {
 				this._processingState.last_result = results[results.length - 1];
 			}
 
-			console.log(`[ConverterStateStore] ✅ Batch processing completed: ${results.length}/${images.length} images`);
+			console.log(
+				`[ConverterStateStore] ✅ Batch processing completed: ${results.length}/${images.length} images`
+			);
 			return results;
 		} catch (error) {
 			const processingError = error as VectorizerError;

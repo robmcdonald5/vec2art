@@ -81,11 +81,13 @@
 
 	$effect(() => {
 		// Check if external state has changed
-		const currentExternalState = externalPanZoom ? {
-			scale: externalPanZoom.scale,
-			x: externalPanZoom.x,
-			y: externalPanZoom.y
-		} : null;
+		const currentExternalState = externalPanZoom
+			? {
+					scale: externalPanZoom.scale,
+					x: externalPanZoom.x,
+					y: externalPanZoom.y
+				}
+			: null;
 
 		// Check if local state has changed
 		const currentLocalState = {
@@ -95,37 +97,40 @@
 		};
 
 		// Only update from external if external state actually changed and sync is enabled
-		if (currentExternalState && enableSync && 
-			(!previousExternalState || 
-			 previousExternalState.scale !== currentExternalState.scale ||
-			 previousExternalState.x !== currentExternalState.x ||
-			 previousExternalState.y !== currentExternalState.y)) {
-			
+		if (
+			currentExternalState &&
+			enableSync &&
+			(!previousExternalState ||
+				previousExternalState.scale !== currentExternalState.scale ||
+				previousExternalState.x !== currentExternalState.x ||
+				previousExternalState.y !== currentExternalState.y)
+		) {
 			console.log('🔄 [SvgImageViewer] Updating from external state:', {
 				external: currentExternalState,
 				previous: previousExternalState,
 				syncEnabled: enableSync
 			});
-			
+
 			// Update local state from external
 			targetScale = currentExternalState.scale;
 			targetOffsetX = currentExternalState.x;
 			targetOffsetY = currentExternalState.y;
-			
+
 			previousExternalState = { ...currentExternalState };
 		}
 		// Only notify parent if local state actually changed and we're not just syncing from external
-		else if (onPanZoomChange && 
+		else if (
+			onPanZoomChange &&
 			(!previousLocalState ||
-			 previousLocalState.scale !== currentLocalState.scale ||
-			 previousLocalState.x !== currentLocalState.x ||
-			 previousLocalState.y !== currentLocalState.y)) {
-			
+				previousLocalState.scale !== currentLocalState.scale ||
+				previousLocalState.x !== currentLocalState.x ||
+				previousLocalState.y !== currentLocalState.y)
+		) {
 			console.log('📤 [SvgImageViewer] Notifying parent of local changes:', {
 				current: currentLocalState,
 				previous: previousLocalState
 			});
-			
+
 			// Notify parent of local changes
 			onPanZoomChange(currentLocalState);
 			previousLocalState = { ...currentLocalState };
@@ -303,11 +308,7 @@
 	</div>
 {:else if imageUrl}
 	<!-- Use the same ScrollFriendlyImageViewer for consistent pan/zoom experience -->
-	<ScrollFriendlyImageViewer
-		src={imageUrl}
-		{alt}
-		panel="converted"
-	/>
+	<ScrollFriendlyImageViewer src={imageUrl} {alt} panel="converted" />
 {:else if svgContent}
 	<div class="flex h-full items-center justify-center text-gray-400">
 		<div class="text-center">

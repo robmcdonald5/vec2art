@@ -6,17 +6,17 @@ This directory contains build scripts and testing infrastructure for the vec2art
 
 ### Build Scripts
 
-| Script | Platform | Threading | Description |
-|--------|----------|-----------|-------------|
-| `build-wasm.sh` | Unix/Linux/macOS | Single | Standard WASM build for maximum browser compatibility |
-| `build-wasm.ps1` | Windows | Single | PowerShell version of standard WASM build |
-| `build-wasm-mt.sh` | Unix/Linux/macOS | Multi | Advanced WASM build with SharedArrayBuffer support |
-| `build-wasm-mt.ps1` | Windows | Multi | PowerShell version of multi-threaded WASM build |
+| Script              | Platform         | Threading | Description                                           |
+| ------------------- | ---------------- | --------- | ----------------------------------------------------- |
+| `build-wasm.sh`     | Unix/Linux/macOS | Single    | Standard WASM build for maximum browser compatibility |
+| `build-wasm.ps1`    | Windows          | Single    | PowerShell version of standard WASM build             |
+| `build-wasm-mt.sh`  | Unix/Linux/macOS | Multi     | Advanced WASM build with SharedArrayBuffer support    |
+| `build-wasm-mt.ps1` | Windows          | Multi     | PowerShell version of multi-threaded WASM build       |
 
 ### Testing Scripts
 
-| Script | Platform | Description |
-|--------|----------|-------------|
+| Script            | Platform         | Description                                         |
+| ----------------- | ---------------- | --------------------------------------------------- |
 | `test-wasm-mt.sh` | Unix/Linux/macOS | Comprehensive testing suite for multi-threaded WASM |
 
 ## 🚀 Quick Start
@@ -24,11 +24,13 @@ This directory contains build scripts and testing infrastructure for the vec2art
 ### Prerequisites
 
 **Required Tools:**
+
 - [Rust](https://rustup.rs/) (latest stable + nightly for multi-threading)
 - [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/) (v0.12.0+)
 - [Node.js](https://nodejs.org/) (v16.0.0+ for SharedArrayBuffer support)
 
 **Optional Tools:**
+
 - [Binaryen](https://github.com/WebAssembly/binaryen) (`wasm-opt` for optimization)
 - [WABT](https://github.com/WebAssembly/wabt) (`wasm-objdump` for inspection)
 
@@ -52,6 +54,7 @@ npm install -g binaryen  # Provides wasm-opt
 ### Single-threaded WASM (Recommended for Production)
 
 **Unix/Linux/macOS:**
+
 ```bash
 # Default release build with SIMD
 ./scripts/build-wasm.sh
@@ -65,6 +68,7 @@ npm install -g binaryen  # Provides wasm-opt
 ```
 
 **Windows:**
+
 ```powershell
 # Default release build with SIMD
 .\scripts\build-wasm.ps1
@@ -79,6 +83,7 @@ npm install -g binaryen  # Provides wasm-opt
 ### Multi-threaded WASM (Advanced)
 
 **Unix/Linux/macOS:**
+
 ```bash
 # Default multi-threaded build
 ./scripts/build-wasm-mt.sh
@@ -91,6 +96,7 @@ npm install -g binaryen  # Provides wasm-opt
 ```
 
 **Windows:**
+
 ```powershell
 # Default multi-threaded build
 .\scripts\build-wasm-mt.ps1
@@ -120,12 +126,14 @@ npm install -g binaryen  # Provides wasm-opt
 ### Manual Testing
 
 1. **Start the test server:**
+
    ```bash
    cd wasm/vectorize-wasm/tests
    npm start
    ```
 
 2. **Open browser and navigate to:**
+
    ```
    http://localhost:8080/threading-test.html
    ```
@@ -140,20 +148,22 @@ npm install -g binaryen  # Provides wasm-opt
 
 ### Feature Flags
 
-| Feature | Single-threaded | Multi-threaded | Description |
-|---------|-----------------|----------------|-------------|
-| `simd` | ✅ Optional | ✅ Optional | SIMD acceleration |
-| `wasm-parallel` | ❌ | ✅ Required | Multi-threading support |
-| `single-threaded` | ✅ Default | ❌ | Compatibility mode |
+| Feature           | Single-threaded | Multi-threaded | Description             |
+| ----------------- | --------------- | -------------- | ----------------------- |
+| `simd`            | ✅ Optional     | ✅ Optional    | SIMD acceleration       |
+| `wasm-parallel`   | ❌              | ✅ Required    | Multi-threading support |
+| `single-threaded` | ✅ Default      | ❌             | Compatibility mode      |
 
 ### Environment Variables
 
 **Single-threaded builds:**
+
 ```bash
 export RUSTFLAGS="-C target-feature=+simd128"
 ```
 
 **Multi-threaded builds:**
+
 ```bash
 export RUSTFLAGS="-C target-feature=+atomics -C target-feature=+bulk-memory -C target-feature=+mutable-globals -C target-feature=+simd128 -C link-arg=--max-memory=4294967296 -C link-arg=--import-memory -C link-arg=--export-memory -C link-arg=--shared-memory"
 ```
@@ -167,11 +177,13 @@ export RUSTFLAGS="-C target-feature=+atomics -C target-feature=+bulk-memory -C t
 ## 🌐 Browser Requirements
 
 ### Single-threaded WASM
+
 - **Supported:** All modern browsers
 - **Requirements:** WebAssembly support
 - **Headers:** None required
 
 ### Multi-threaded WASM
+
 - **Supported:** Chrome 68+, Firefox 79+, Safari 15.2+, Edge 79+
 - **Requirements:**
   - SharedArrayBuffer support
@@ -189,6 +201,7 @@ export RUSTFLAGS="-C target-feature=+atomics -C target-feature=+bulk-memory -C t
 ### Common Issues
 
 **"wasm-pack command not found"**
+
 ```bash
 # Install wasm-pack
 curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
@@ -196,16 +209,19 @@ source ~/.bashrc  # or restart terminal
 ```
 
 **"SharedArrayBuffer is not defined"**
+
 - Ensure proper COOP/COEP headers are set
 - Use HTTPS or localhost
 - Check browser compatibility
 
 **"Target wasm32-unknown-unknown not installed"**
+
 ```bash
 rustup target add wasm32-unknown-unknown
 ```
 
 **Multi-threading build fails**
+
 ```bash
 # Install nightly Rust for advanced features
 rustup install nightly
@@ -213,6 +229,7 @@ rustup default nightly
 ```
 
 **"Cannot find wasm-opt"**
+
 ```bash
 npm install -g binaryen
 ```
@@ -220,22 +237,26 @@ npm install -g binaryen
 ### Performance Issues
 
 **Large WASM binary size:**
+
 - Ensure `wasm-opt` is running
 - Check feature flags (disable unused features)
 - Use release builds for production
 
 **Slow compilation:**
+
 - Use debug builds during development
 - Enable parallel compilation: `export CARGO_BUILD_JOBS=4`
 
 ### Network Issues
 
 **CORS errors:**
+
 - Use the provided test server
 - Ensure proper headers are set
 - Check browser console for specific errors
 
 **Module loading failures:**
+
 - Verify WASM files exist in pkg/ directory
 - Check network tab for 404 errors
 - Ensure proper MIME types are set
@@ -245,11 +266,13 @@ npm install -g binaryen
 ### Build Optimizations
 
 1. **Release builds:**
+
    ```bash
    ./scripts/build-wasm-mt.sh release
    ```
 
 2. **wasm-opt optimization:**
+
    ```bash
    wasm-opt pkg/vectorize_wasm_bg.wasm -O3 --enable-simd --enable-threads -o optimized.wasm
    ```

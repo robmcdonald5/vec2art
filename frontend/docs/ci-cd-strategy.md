@@ -7,6 +7,7 @@ This document outlines the robust CI/CD testing strategy implemented for the vec
 ## Current Status ✅
 
 ### Fixed Issues
+
 - ✅ **Node.js Version**: Updated from 18.x to 20.x/22.x for compatibility
 - ✅ **svelte-check**: Fixed `--fail-on-hints` flag issue
 - ✅ **Auto-formatting**: Added prettier auto-fix to CI pipeline
@@ -14,6 +15,7 @@ This document outlines the robust CI/CD testing strategy implemented for the vec
 - ✅ **Working E2E Tests**: Created functional smoke and basic workflow tests
 
 ### New Test Infrastructure
+
 - ✅ **Smoke Tests**: Basic app loading and navigation (`tests/e2e/smoke.spec.ts`)
 - ✅ **Basic Workflow Tests**: Core user interactions (`tests/e2e/basic-workflow.spec.ts`)
 - ✅ **Simple Test Helpers**: Reliable utilities without complex WASM dependencies
@@ -22,7 +24,9 @@ This document outlines the robust CI/CD testing strategy implemented for the vec
 ## CI/CD Pipeline Architecture
 
 ### 1. Minimal CI (Always Running)
+
 **File**: `.github/workflows/ci-minimal.yml`
+
 - **Purpose**: Fast feedback on basic code quality
 - **Runs on**: All pushes and PRs
 - **Duration**: ~5 minutes
@@ -35,7 +39,9 @@ This document outlines the robust CI/CD testing strategy implemented for the vec
   6. Basic smoke test
 
 ### 2. Frontend CI (Main Pipeline)
+
 **File**: `.github/workflows/frontend-ci.yml`
+
 - **Purpose**: Comprehensive frontend testing
 - **Runs on**: PRs and main branch
 - **Duration**: ~15 minutes
@@ -49,7 +55,9 @@ This document outlines the robust CI/CD testing strategy implemented for the vec
   7. Optional accessibility tests
 
 ### 3. Simple E2E Tests (Reliable)
+
 **File**: `.github/workflows/e2e-simple.yml`
+
 - **Purpose**: Basic end-to-end functionality
 - **Runs on**: PRs and main branch
 - **Duration**: ~10 minutes
@@ -60,7 +68,9 @@ This document outlines the robust CI/CD testing strategy implemented for the vec
   - Error handling
 
 ### 4. Comprehensive E2E (Advanced)
+
 **File**: `.github/workflows/e2e-tests.yml` (Future)
+
 - **Purpose**: Full WASM integration and complex workflows
 - **Status**: Needs refactoring
 - **Plan**: Enable once WASM threading tests are stabilized
@@ -68,21 +78,25 @@ This document outlines the robust CI/CD testing strategy implemented for the vec
 ## Test Categorization
 
 ### ✅ **Tier 1: Always Working**
+
 - **Smoke tests**: App loads, basic navigation
 - **Build tests**: Compilation and bundle generation
 - **Linting**: Code quality and formatting
 
-### ✅ **Tier 2: Mostly Reliable** 
+### ✅ **Tier 2: Mostly Reliable**
+
 - **Unit tests**: Component and utility testing
 - **Basic E2E**: Simple user interactions
 - **TypeScript**: Type checking
 
 ### ⚠️ **Tier 3: Intermittent**
+
 - **Complex E2E**: Multi-step workflows
 - **WASM integration**: Threading initialization
 - **Cross-browser**: Firefox compatibility issues
 
 ### 🚧 **Tier 4: Needs Work**
+
 - **Performance tests**: WASM processing benchmarks
 - **Accessibility audits**: Full WCAG compliance
 - **Visual regression**: Screenshot comparisons
@@ -90,6 +104,7 @@ This document outlines the robust CI/CD testing strategy implemented for the vec
 ## Test Execution Strategy
 
 ### Pull Request Checks
+
 ```yaml
 Required Status Checks:
 ✅ Minimal CI - Basic build and smoke test
@@ -98,37 +113,42 @@ Required Status Checks:
 ```
 
 ### Merge to Main
+
 ```yaml
 Additional Checks:
-- Frontend CI (windows-latest, Node 22.x) - Cross-platform
-- Extended E2E suite (when stable)
-- Security audits
-- Dependency updates
+  - Frontend CI (windows-latest, Node 22.x) - Cross-platform
+  - Extended E2E suite (when stable)
+  - Security audits
+  - Dependency updates
 ```
 
 ### Nightly/Weekly
+
 ```yaml
 Comprehensive Testing:
-- Full WASM integration tests
-- Performance benchmarking
-- Cross-browser compatibility
-- Accessibility auditing
-- Dependency vulnerability scans
+  - Full WASM integration tests
+  - Performance benchmarking
+  - Cross-browser compatibility
+  - Accessibility auditing
+  - Dependency vulnerability scans
 ```
 
 ## Key Improvements Made
 
 ### 1. **Graduated Testing Approach**
+
 - Start with simple, reliable tests
 - Add complexity only when foundation is solid
 - Separate flaky tests from core CI
 
 ### 2. **Robust Error Handling**
+
 - Tests expect and handle common errors gracefully
 - Clear distinction between critical and expected errors
 - Detailed logging for debugging
 
 ### 3. **Flexible Test Infrastructure**
+
 ```typescript
 // Example: Flexible element detection
 async hasConvertButton(): Promise<boolean> {
@@ -137,7 +157,7 @@ async hasConvertButton(): Promise<boolean> {
     'button:has-text("Process")',
     'button[type="submit"]'
   ];
-  
+
   for (const selector of selectors) {
     if (await elementExists(this.page, selector)) {
       return true;
@@ -148,6 +168,7 @@ async hasConvertButton(): Promise<boolean> {
 ```
 
 ### 4. **Environment-Specific Configuration**
+
 - Different timeouts for CI vs local
 - Browser-specific settings for WASM support
 - Conditional test execution based on stability
@@ -183,24 +204,28 @@ npm run test:report:simple
 ## Next Steps (Prioritized)
 
 ### Phase 1: Stabilize Current (Week 1-2)
+
 1. ✅ Fix remaining Svelte syntax errors
 2. ✅ Resolve Firefox connection issues
 3. ✅ Address specific test failures
 4. ✅ Optimize test execution time
 
 ### Phase 2: Expand Coverage (Week 3-4)
+
 1. Add file upload E2E tests (without WASM)
 2. Test form validation and error states
 3. Add mobile/responsive E2E coverage
 4. Performance monitoring basics
 
 ### Phase 3: WASM Integration (Month 2)
+
 1. Create isolated WASM loading tests
 2. Test threading initialization patterns
 3. Add fallback behavior testing
 4. Performance benchmarking
 
 ### Phase 4: Production Ready (Month 3)
+
 1. Full cross-browser support
 2. Visual regression testing
 3. Accessibility compliance auditing
@@ -209,16 +234,19 @@ npm run test:report:simple
 ## Metrics and Monitoring
 
 ### Current Test Success Rate
+
 - **Smoke Tests**: ~85% (11/13 passing)
 - **Build Tests**: ~95% (working after fixes)
 - **Unit Tests**: TBD (need to run after format fixes)
 
 ### Target Success Rates
+
 - **Tier 1 Tests**: 95%+ success rate
-- **Tier 2 Tests**: 85%+ success rate  
+- **Tier 2 Tests**: 85%+ success rate
 - **Tier 3 Tests**: 70%+ success rate
 
 ### Monitoring
+
 - Test execution time trends
 - Flaky test identification
 - Coverage reporting

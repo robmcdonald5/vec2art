@@ -1,0 +1,41 @@
+# WASM generated files that have invalid TypeScript syntax
+**/*vectorize_wasm*.d.ts
+**/vectorize_wasm_bg.wasm.d.ts
+frontend/.svelte-kit/
+frontend/build/
+wasm/target/
+node_modules/
+.git/
+
+# Keep existing .prettierignore from frontend/
+# Generated files
+**/dist/
+**/build/
+**/.next/
+**/.vercel/
+**/coverage/
+**/.nyc_output/
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment files
+.env*
+
+# Log files
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp

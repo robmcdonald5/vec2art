@@ -1,11 +1,5 @@
 <script lang="ts">
-	import {
-		Shield,
-		Scale,
-		ArrowRight,
-		FileText,
-		Users
-	} from 'lucide-svelte';
+	import { Shield, Scale, ArrowRight, FileText, Users } from 'lucide-svelte';
 </script>
 
 <svelte:head>
@@ -25,7 +19,8 @@
 					Legal Information
 				</h1>
 				<p class="mx-auto max-w-2xl text-lg text-gray-600 md:text-xl">
-					Learn about our privacy practices and terms of service. Built on privacy-first principles with complete transparency.
+					Learn about our privacy practices and terms of service. Built on privacy-first principles
+					with complete transparency.
 				</p>
 			</div>
 		</div>
@@ -41,14 +36,17 @@
 					class="group block rounded-2xl bg-white p-8 shadow-lg transition-all duration-200 hover:scale-[1.02] hover:shadow-xl"
 				>
 					<div class="text-center">
-						<div class="text-ferrari-600 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-50 group-hover:bg-green-100">
+						<div
+							class="text-ferrari-600 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-50 group-hover:bg-green-100"
+						>
 							<Shield class="h-8 w-8" />
 						</div>
 						<h2 class="mb-4 text-2xl font-bold text-gray-900">Privacy Policy</h2>
 						<p class="mb-6 text-gray-600">
-							Learn about our privacy-first approach. Your images never leave your device with complete local processing.
+							Learn about our privacy-first approach. Your images never leave your device with
+							complete local processing.
 						</p>
-						<div class="flex flex-wrap justify-center gap-2 mb-6">
+						<div class="mb-6 flex flex-wrap justify-center gap-2">
 							<span class="rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-700">
 								100% Local Processing
 							</span>
@@ -56,7 +54,9 @@
 								Zero Data Collection
 							</span>
 						</div>
-						<div class="text-ferrari-600 group-hover:text-ferrari-700 flex items-center justify-center gap-2 font-medium transition-colors">
+						<div
+							class="text-ferrari-600 group-hover:text-ferrari-700 flex items-center justify-center gap-2 font-medium transition-colors"
+						>
 							Read Privacy Policy
 							<ArrowRight class="h-4 w-4 transition-transform group-hover:translate-x-1" />
 						</div>
@@ -69,14 +69,17 @@
 					class="group block rounded-2xl bg-white p-8 shadow-lg transition-all duration-200 hover:scale-[1.02] hover:shadow-xl"
 				>
 					<div class="text-center">
-						<div class="text-ferrari-600 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 group-hover:bg-blue-100">
+						<div
+							class="text-ferrari-600 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 group-hover:bg-blue-100"
+						>
 							<Scale class="h-8 w-8" />
 						</div>
 						<h2 class="mb-4 text-2xl font-bold text-gray-900">Terms of Service</h2>
 						<p class="mb-6 text-gray-600">
-							Understand your rights and our service terms. Free for personal and commercial use with clear guidelines.
+							Understand your rights and our service terms. Free for personal and commercial use
+							with clear guidelines.
 						</p>
-						<div class="flex flex-wrap justify-center gap-2 mb-6">
+						<div class="mb-6 flex flex-wrap justify-center gap-2">
 							<span class="rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-700">
 								Free Commercial Use
 							</span>
@@ -84,7 +87,9 @@
 								No Account Required
 							</span>
 						</div>
-						<div class="text-ferrari-600 group-hover:text-ferrari-700 flex items-center justify-center gap-2 font-medium transition-colors">
+						<div
+							class="text-ferrari-600 group-hover:text-ferrari-700 flex items-center justify-center gap-2 font-medium transition-colors"
+						>
 							Read Terms of Service
 							<ArrowRight class="h-4 w-4 transition-transform group-hover:translate-x-1" />
 						</div>
@@ -100,10 +105,11 @@
 			<div class="mb-8">
 				<h2 class="mb-4 text-3xl font-bold text-gray-900">Privacy-First by Design</h2>
 				<p class="mx-auto max-w-2xl text-lg text-gray-600">
-					vec2art is built with your privacy as the top priority. Every design decision prioritizes keeping your data secure and under your control.
+					vec2art is built with your privacy as the top priority. Every design decision prioritizes
+					keeping your data secure and under your control.
 				</p>
 			</div>
-			
+
 			<div class="grid gap-6 sm:grid-cols-3">
 				<div class="rounded-lg bg-green-50 p-6">
 					<Shield class="text-ferrari-600 mx-auto mb-3 h-8 w-8" />

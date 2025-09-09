@@ -4,7 +4,7 @@
   "installCommand": "cd frontend && npm ci",
   "outputDirectory": "frontend/.svelte-kit/vercel-adapter",
   "framework": "sveltekit",
-  
+
   "functions": {
     "frontend/.svelte-kit/vercel-adapter/functions/fn.func": {
       "maxDuration": 30,
@@ -15,9 +15,9 @@
       "memory": 512
     }
   },
-  
+
   "regions": ["iad1"],
-  
+
   "headers": [
     {
       "source": "/(.*)",
@@ -106,7 +106,7 @@
       ]
     }
   ],
-  
+
   "rewrites": [
     {
       "source": "/wasm/(.*)",
@@ -121,7 +121,7 @@
       "destination": "/sitemap.xml"
     }
   ],
-  
+
   "redirects": [
     {
       "source": "/vec2art",
@@ -134,14 +134,14 @@
       "permanent": false
     }
   ],
-  
+
   "trailingSlash": false,
-  
+
   "cleanUrls": true,
-  
+
   "env": {
     "NODE_ENV": "production"
   },
-  
+
   "crons": []
 }

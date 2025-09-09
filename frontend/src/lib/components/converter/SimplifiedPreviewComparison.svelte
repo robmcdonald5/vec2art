@@ -294,14 +294,18 @@
 				tabindex="0"
 			>
 				<div class="bg-white shadow-lg {isVerticalSplit ? 'h-0.5 w-full' : 'h-full w-0.5'}"></div>
-				<div class="absolute top-1/2 left-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-red-600 bg-white flex items-center justify-center shadow-lg">
+				<div
+					class="absolute top-1/2 left-1/2 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-red-600 bg-white shadow-lg"
+				>
 					<ArrowLeftRight class="h-4 w-4 text-red-600 {isVerticalSplit ? 'rotate-90' : ''}" />
 				</div>
 			</div>
 		</div>
 	{:else}
 		<!-- Side-by-Side Mode -->
-		<div class="divide-ferrari-200 grid grid-cols-1 divide-y lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+		<div
+			class="divide-ferrari-200 grid grid-cols-1 divide-y lg:grid-cols-2 lg:divide-x lg:divide-y-0"
+		>
 			<!-- Original Image -->
 			<div class="bg-ferrari-50/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
@@ -326,7 +330,7 @@
 								{/if}
 							</button>
 						</div>
-						
+
 						<!-- Original Frame Controls -->
 						<div class="flex gap-1">
 							<Button
@@ -373,13 +377,13 @@
 					</div>
 
 					<!-- File Name and Remove Button -->
-					<div class="mb-2 min-h-[1.25rem] flex items-center px-2">
+					<div class="mb-2 flex min-h-[1.25rem] items-center px-2">
 						{#if currentFile}
-							<span class="text-converter-secondary text-xs truncate" title={currentFile.name}>
+							<span class="text-converter-secondary truncate text-xs" title={currentFile.name}>
 								{currentFile.name}
 							</span>
 							<button
-								class="ml-1 text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-red-500 hover:scale-110"
+								class="ml-1 text-sm font-medium text-gray-400 transition-colors duration-200 hover:scale-110 hover:text-red-500"
 								onclick={() => onRemoveFile?.(currentImageIndex)}
 								disabled={isProcessing}
 								aria-label="Remove image"
@@ -398,7 +402,7 @@
 								src={currentImageUrl}
 								alt={currentFile?.name || 'Original image'}
 								panel="original"
-								class="w-full h-full"
+								class="h-full w-full"
 							/>
 						{:else}
 							<div class="flex h-full items-center justify-center text-gray-400">
@@ -423,7 +427,7 @@
 								{isError ? 'Failed' : 'Converted'}
 							</span>
 						</div>
-						
+
 						<!-- Converted Frame Controls -->
 						<div class="flex gap-1">
 							<Button
@@ -486,29 +490,37 @@
 								src={currentSvgUrl}
 								alt="Converted SVG"
 								panel="converted"
-								class="w-full h-full"
+								class="h-full w-full"
 							/>
 						{:else if currentProgress}
 							<div class="flex h-full items-center justify-center">
-								<div class="text-center space-y-3">
-									<div class="border-ferrari-500 mx-auto h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"></div>
+								<div class="space-y-3 text-center">
+									<div
+										class="border-ferrari-500 mx-auto h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"
+									></div>
 									<p class="text-converter-secondary text-sm">Converting...</p>
 								</div>
 							</div>
 						{:else}
 							<div class="flex h-full items-center justify-center">
-								<div class="text-center space-y-3">
+								<div class="space-y-3 text-center">
 									<FileImage class="text-converter-muted mx-auto h-16 w-16" />
 									{#if settingsSyncMode === 'per-image-individual'}
 										<div>
-											<p class="text-converter-secondary text-sm font-medium">Individual Convert Mode</p>
-											<p class="text-converter-muted text-xs">Click Convert to process this specific image</p>
+											<p class="text-converter-secondary text-sm font-medium">
+												Individual Convert Mode
+											</p>
+											<p class="text-converter-muted text-xs">
+												Click Convert to process this specific image
+											</p>
 										</div>
 									{:else}
 										<div>
 											<p class="text-converter-secondary text-sm font-medium">Ready to Convert</p>
 											<p class="text-converter-muted text-xs">
-												{settingsSyncMode === 'global' ? 'Will process all images with same settings' : 'Will process all images with individual settings'}
+												{settingsSyncMode === 'global'
+													? 'Will process all images with same settings'
+													: 'Will process all images with individual settings'}
 											</p>
 										</div>
 									{/if}

@@ -16,7 +16,7 @@ class InMemoryRateLimiter {
 	constructor(windowMs = 60000, maxRequests = 100) {
 		this.windowMs = windowMs;
 		this.maxRequests = maxRequests;
-		
+
 		// Clean up old entries every minute
 		if (typeof setInterval !== 'undefined') {
 			setInterval(() => this.cleanup(), 60000);
@@ -33,7 +33,7 @@ class InMemoryRateLimiter {
 				count: 1,
 				resetTime: now + this.windowMs
 			});
-			
+
 			return {
 				success: true,
 				remaining: this.maxRequests - 1,
@@ -147,7 +147,9 @@ class UpstashRateLimiter {
 export function createRateLimiter(
 	windowMs = 60000,
 	maxRequests = 100
-): { check: (identifier: string) => Promise<{ success: boolean; remaining: number; reset: Date }> } {
+): {
+	check: (identifier: string) => Promise<{ success: boolean; remaining: number; reset: Date }>;
+} {
 	// Use environment variables if available
 	const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
 	const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -172,16 +174,16 @@ export function getClientIdentifier(request: Request, clientAddress: string): st
 	const forwarded = request.headers.get('x-forwarded-for');
 	const realIp = request.headers.get('x-real-ip');
 	const cfConnectingIp = request.headers.get('cf-connecting-ip');
-	
+
 	// Use the most reliable IP address available
 	const ip = cfConnectingIp || realIp || forwarded?.split(',')[0] || clientAddress;
-	
+
 	// In development, use a more granular identifier
 	if (dev) {
 		const userAgent = request.headers.get('user-agent') || 'unknown';
 		return `${ip}:${userAgent.substring(0, 50)}`;
 	}
-	
+
 	return ip;
 }
 

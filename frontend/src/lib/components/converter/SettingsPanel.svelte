@@ -70,7 +70,7 @@
 		// Convert back to detail scale (0.1-1.0) for consistency
 		const detailValue = uiValue / 10;
 		onConfigChange({
-			detail: detailValue, // Keep detail in sync for other logic  
+			detail: detailValue, // Keep detail in sync for other logic
 			dot_density_threshold: threshold
 		});
 		onParameterChange();
@@ -78,7 +78,7 @@
 
 	// Reactive values for FerrariSlider components
 	let detailValue = $state(
-		config.backend === 'dots' ? Math.round((config.detail || 0.5) * 10) : (config.detail || 0.6)
+		config.backend === 'dots' ? Math.round((config.detail || 0.5) * 10) : config.detail || 0.6
 	);
 	let strokeWidthValue = $state(config.stroke_width || 2.0);
 	let regionComplexityValue = $state(config.num_superpixels || 150);

@@ -327,8 +327,7 @@
 					? 'text-ferrari-600 font-medium'
 					: 'text-gray-500 hover:text-gray-700'}"
 			>
-				<span
-					class="h-2 w-2 rounded-full {currentPanel === 0 ? 'bg-ferrari-600' : 'bg-gray-300'}"
+				<span class="h-2 w-2 rounded-full {currentPanel === 0 ? 'bg-ferrari-600' : 'bg-gray-300'}"
 				></span>
 				Overview
 			</button>
@@ -339,8 +338,7 @@
 					? 'text-ferrari-600 font-medium'
 					: 'text-gray-500 hover:text-gray-700'}"
 			>
-				<span
-					class="h-2 w-2 rounded-full {currentPanel === 1 ? 'bg-ferrari-600' : 'bg-gray-300'}"
+				<span class="h-2 w-2 rounded-full {currentPanel === 1 ? 'bg-ferrari-600' : 'bg-gray-300'}"
 				></span>
 				Examples
 			</button>

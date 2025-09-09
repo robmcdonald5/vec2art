@@ -1,6 +1,6 @@
 /**
  * Component Performance Optimizer - Phase 3.4
- * 
+ *
  * Advanced frontend performance optimizations including selective store updates,
  * component memoization, virtual scrolling, and render throttling for maximum
  * UI responsiveness during intensive operations.
@@ -100,11 +100,11 @@ export class ComponentMemoizer<T> {
 	 */
 	private generateCacheKey(key: string, dependencies: any[]): string {
 		if (dependencies.length === 0) return key;
-		
+
 		const depString = dependencies
-			.map(dep => typeof dep === 'object' ? JSON.stringify(dep) : String(dep))
+			.map((dep) => (typeof dep === 'object' ? JSON.stringify(dep) : String(dep)))
 			.join('|');
-		
+
 		return `${key}:${depString}`;
 	}
 
@@ -141,11 +141,12 @@ export class ComponentMemoizer<T> {
 	 * Evict least recently used entries
 	 */
 	private evictLeastUsed(): void {
-		const entries = Array.from(this.cache.entries())
-			.sort((a, b) => a[1].accessCount - b[1].accessCount);
+		const entries = Array.from(this.cache.entries()).sort(
+			(a, b) => a[1].accessCount - b[1].accessCount
+		);
 
 		const toEvict = entries.slice(0, Math.floor(this.config.cacheSize * 0.1)); // Evict 10%
-		
+
 		for (const [key] of toEvict) {
 			this.cache.delete(key);
 		}
@@ -177,8 +178,11 @@ export class ComponentMemoizer<T> {
 		return {
 			size: this.cache.size,
 			maxSize: this.config.cacheSize,
-			hitRatio: this.cache.size > 0 ? 
-				Array.from(this.cache.values()).reduce((sum, entry) => sum + entry.accessCount, 0) / this.cache.size : 0
+			hitRatio:
+				this.cache.size > 0
+					? Array.from(this.cache.values()).reduce((sum, entry) => sum + entry.accessCount, 0) /
+						this.cache.size
+					: 0
 		};
 	}
 }
@@ -209,13 +213,9 @@ export class RenderThrottler {
 	/**
 	 * Schedule a throttled update
 	 */
-	scheduleUpdate(
-		id: string,
-		callback: () => void,
-		priority: string = 'normal'
-	): void {
+	scheduleUpdate(id: string, callback: () => void, priority: string = 'normal'): void {
 		const priorityLevel = this.config.priorityLevels[priority] || 2;
-		
+
 		this.pendingUpdates.set(id, {
 			callback,
 			priority: priorityLevel,
@@ -250,8 +250,9 @@ export class RenderThrottler {
 		}
 
 		// Sort updates by priority (highest first)
-		const updates = Array.from(this.pendingUpdates.values())
-			.sort((a, b) => b.priority - a.priority);
+		const updates = Array.from(this.pendingUpdates.values()).sort(
+			(a, b) => b.priority - a.priority
+		);
 
 		// Limit updates per batch based on maxUpdatesPerSecond
 		const maxUpdatesPerBatch = Math.ceil(
@@ -259,7 +260,7 @@ export class RenderThrottler {
 		);
 
 		const batch = updates.slice(0, maxUpdatesPerBatch);
-		
+
 		// Execute updates
 		for (const update of batch) {
 			try {
@@ -292,13 +293,17 @@ export class RenderThrottler {
 	getStats() {
 		return {
 			pendingUpdates: this.pendingUpdates.size,
-			priorityDistribution: Array.from(this.pendingUpdates.values())
-				.reduce((acc, update) => {
-					const priority = Object.entries(this.config.priorityLevels)
-						.find(([, level]) => level === update.priority)?.[0] || 'unknown';
+			priorityDistribution: Array.from(this.pendingUpdates.values()).reduce(
+				(acc, update) => {
+					const priority =
+						Object.entries(this.config.priorityLevels).find(
+							([, level]) => level === update.priority
+						)?.[0] || 'unknown';
 					acc[priority] = (acc[priority] || 0) + 1;
 					return acc;
-				}, {} as Record<string, number>)
+				},
+				{} as Record<string, number>
+			)
 		};
 	}
 }
@@ -401,21 +406,22 @@ export class SelectiveStoreUpdater {
 	/**
 	 * Apply pending updates with throttling
 	 */
-	applyUpdates(
-		target: Record<string, any>, 
-		priority: string = 'normal'
-	): void {
+	applyUpdates(target: Record<string, any>, priority: string = 'normal'): void {
 		const updateId = `store_update_${Date.now()}`;
-		
-		this.throttler.scheduleUpdate(updateId, () => {
-			for (const [propertyPath, value] of this.pendingUpdates) {
-				this.setNestedProperty(target, propertyPath, value);
-			}
-			
-			// Clear processed updates
-			this.updateMask.clear();
-			this.pendingUpdates.clear();
-		}, priority);
+
+		this.throttler.scheduleUpdate(
+			updateId,
+			() => {
+				for (const [propertyPath, value] of this.pendingUpdates) {
+					this.setNestedProperty(target, propertyPath, value);
+				}
+
+				// Clear processed updates
+				this.updateMask.clear();
+				this.pendingUpdates.clear();
+			},
+			priority
+		);
 	}
 
 	/**
@@ -424,7 +430,7 @@ export class SelectiveStoreUpdater {
 	private setNestedProperty(obj: any, path: string, value: any): void {
 		const parts = path.split('.');
 		let current = obj;
-		
+
 		for (let i = 0; i < parts.length - 1; i++) {
 			const part = parts[i];
 			if (!(part in current) || typeof current[part] !== 'object') {
@@ -432,7 +438,7 @@ export class SelectiveStoreUpdater {
 			}
 			current = current[part];
 		}
-		
+
 		current[parts[parts.length - 1]] = value;
 	}
 
@@ -458,11 +464,7 @@ export const globalStoreUpdater = new SelectiveStoreUpdater();
 /**
  * Utility function for memoizing expensive computations
  */
-export function useMemo<T>(
-	key: string,
-	compute: () => T,
-	dependencies: any[] = []
-): T {
+export function useMemo<T>(key: string, compute: () => T, dependencies: any[] = []): T {
 	return globalComponentMemoizer.memo(key, compute, dependencies) as T;
 }
 

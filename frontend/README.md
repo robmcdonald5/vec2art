@@ -5,11 +5,13 @@ SvelteKit 5 frontend for the vec2art image-to-SVG conversion tool.
 ## Setup
 
 1. Install dependencies:
+
 ```sh
 npm install
 ```
 
 2. Configure environment variables:
+
 ```sh
 # Copy the example environment file
 cp .env.example .env

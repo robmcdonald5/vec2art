@@ -1,6 +1,6 @@
 /**
  * Modern Pan/Zoom Store - Ground-up redesign
- * 
+ *
  * Built with Svelte 5 runes for optimal performance and maintainability.
  * Uses CSS transforms with GPU acceleration for smooth interactions.
  * Implements robust validation and clean architectural patterns.
@@ -60,11 +60,21 @@ export class ModernPanZoomStore {
 	}
 
 	// Reactive getters
-	get originalState() { return this._state.original; }
-	get convertedState() { return this._state.converted; }
-	get syncEnabled() { return this._state.config.syncEnabled; }
-	get isDragging() { return this._state.isDragging; }
-	get activePanel() { return this._state.activePanel; }
+	get originalState() {
+		return this._state.original;
+	}
+	get convertedState() {
+		return this._state.converted;
+	}
+	get syncEnabled() {
+		return this._state.config.syncEnabled;
+	}
+	get isDragging() {
+		return this._state.isDragging;
+	}
+	get activePanel() {
+		return this._state.activePanel;
+	}
 
 	// Derived transform strings for CSS
 	get originalTransform() {
@@ -103,7 +113,7 @@ export class ModernPanZoomStore {
 	 */
 	setDragging(isDragging: boolean, panel?: 'original' | 'converted') {
 		this._state.isDragging = isDragging;
-		this._state.activePanel = isDragging ? (panel || null) : null;
+		this._state.activePanel = isDragging ? panel || null : null;
 	}
 
 	/**
@@ -111,7 +121,7 @@ export class ModernPanZoomStore {
 	 */
 	toggleSync() {
 		this._state.config.syncEnabled = !this._state.config.syncEnabled;
-		
+
 		// When enabling sync, sync converted to original
 		if (this._state.config.syncEnabled) {
 			Object.assign(this._state.converted, this._state.original);
@@ -134,7 +144,7 @@ export class ModernPanZoomStore {
 	 */
 	resetPanel(panel: 'original' | 'converted') {
 		Object.assign(this._state[panel], DEFAULT_TRANSFORM);
-		
+
 		if (this._state.config.syncEnabled) {
 			const otherPanel = panel === 'original' ? 'converted' : 'original';
 			Object.assign(this._state[otherPanel], DEFAULT_TRANSFORM);
@@ -148,51 +158,55 @@ export class ModernPanZoomStore {
 	 */
 	zoom(panel: 'original' | 'converted', factor: number, center?: { x: number; y: number }) {
 		const current = this._state[panel];
-		const newScale = Math.max(this._state.config.minScale, 
-			Math.min(this._state.config.maxScale, current.scale * factor));
-		
+		const newScale = Math.max(
+			this._state.config.minScale,
+			Math.min(this._state.config.maxScale, current.scale * factor)
+		);
+
 		if (newScale === current.scale) return; // No change needed
-		
+
 		if (center) {
 			// Zoom towards the specified point (like mouse wheel zoom)
 			const scaleRatio = newScale / current.scale;
 			const newX = center.x - scaleRatio * (center.x - current.x);
 			const newY = center.y - scaleRatio * (center.y - current.y);
-			
+
 			this.updatePanel(panel, { scale: newScale, x: newX, y: newY });
 		} else {
 			// Zoom towards viewport center (for button-based zoom)
 			// This assumes a standard viewport size - we'll improve this in the component
 			const viewportCenterX = 0; // Will be overridden by component
 			const viewportCenterY = 0; // Will be overridden by component
-			
+
 			const scaleRatio = newScale / current.scale;
 			const newX = viewportCenterX - scaleRatio * (viewportCenterX - current.x);
 			const newY = viewportCenterY - scaleRatio * (viewportCenterY - current.y);
-			
+
 			this.updatePanel(panel, { scale: newScale, x: newX, y: newY });
 		}
 	}
-	
+
 	/**
 	 * Zoom towards viewport center (for button-based zoom)
 	 */
 	zoomToViewportCenter(panel: 'original' | 'converted', factor: number, viewportRect: DOMRect) {
 		const current = this._state[panel];
-		const newScale = Math.max(this._state.config.minScale, 
-			Math.min(this._state.config.maxScale, current.scale * factor));
-		
+		const newScale = Math.max(
+			this._state.config.minScale,
+			Math.min(this._state.config.maxScale, current.scale * factor)
+		);
+
 		if (newScale === current.scale) return; // No change needed
-		
+
 		// Calculate viewport center relative to the container
 		const centerX = viewportRect.width / 2;
 		const centerY = viewportRect.height / 2;
-		
+
 		// Zoom towards viewport center
 		const scaleRatio = newScale / current.scale;
 		const newX = centerX - scaleRatio * (centerX - current.x);
 		const newY = centerY - scaleRatio * (centerY - current.y);
-		
+
 		this.updatePanel(panel, { scale: newScale, x: newX, y: newY });
 	}
 
@@ -212,11 +226,11 @@ export class ModernPanZoomStore {
 	 */
 	updateConfig(updates: Partial<PanZoomConfig>) {
 		Object.assign(this._state.config, updates);
-		
+
 		// Re-validate current transforms with new constraints
 		this._state.original = validateTransform(this._state.original, this._state.config);
 		this._state.converted = validateTransform(this._state.converted, this._state.config);
-		
+
 		this.persistState();
 	}
 
@@ -230,7 +244,7 @@ export class ModernPanZoomStore {
 			convertedState: { ...this._state.converted },
 			syncEnabled: this._state.config.syncEnabled
 		};
-		
+
 		// Save to session storage for recovery
 		if (typeof window !== 'undefined') {
 			sessionStorage.setItem('panZoomPreserved', JSON.stringify(stateToPreserve));
@@ -242,19 +256,25 @@ export class ModernPanZoomStore {
 	 */
 	restoreState() {
 		if (typeof window === 'undefined') return;
-		
+
 		try {
 			const preserved = sessionStorage.getItem('panZoomPreserved');
 			if (preserved) {
 				const state = JSON.parse(preserved);
-				
-				this._state.original = validateTransform(state.originalState || DEFAULT_TRANSFORM, this._state.config);
-				this._state.converted = validateTransform(state.convertedState || DEFAULT_TRANSFORM, this._state.config);
+
+				this._state.original = validateTransform(
+					state.originalState || DEFAULT_TRANSFORM,
+					this._state.config
+				);
+				this._state.converted = validateTransform(
+					state.convertedState || DEFAULT_TRANSFORM,
+					this._state.config
+				);
 				this._state.config.syncEnabled = state.syncEnabled ?? true;
-				
+
 				// Clean up preserved state
 				sessionStorage.removeItem('panZoomPreserved');
-				
+
 				this.persistState();
 			}
 		} catch (error) {
@@ -268,15 +288,15 @@ export class ModernPanZoomStore {
 	private loadPersistedState() {
 		try {
 			const persisted = converterPersistence.loadPanZoomState();
-			
+
 			if (persisted) {
 				// Validate and apply persisted transforms
 				this._state.original = validateTransform(
-					persisted.originalState || DEFAULT_TRANSFORM, 
+					persisted.originalState || DEFAULT_TRANSFORM,
 					this._state.config
 				);
 				this._state.converted = validateTransform(
-					persisted.convertedState || DEFAULT_TRANSFORM, 
+					persisted.convertedState || DEFAULT_TRANSFORM,
 					this._state.config
 				);
 				this._state.config.syncEnabled = persisted.isSyncEnabled ?? true;

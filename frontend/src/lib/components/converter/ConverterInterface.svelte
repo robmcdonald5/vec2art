@@ -33,8 +33,10 @@
 	// Error boundary handler for preview comparison
 	function handlePreviewError(error: Error, errorInfo: any) {
 		console.error('❌ [ErrorBoundary] Preview comparison error:', error, errorInfo);
-		toastStore.error(`Image display error: ${error.message}. Try refreshing or re-uploading the image.`);
-		
+		toastStore.error(
+			`Image display error: ${error.message}. Try refreshing or re-uploading the image.`
+		);
+
 		// Try to recover by resetting to the first image
 		if (onImageIndexChange) {
 			onImageIndexChange(0);

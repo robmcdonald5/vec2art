@@ -60,7 +60,7 @@
 		// Initialize performance monitoring
 		systemCapabilities = performanceMonitor.getSystemCapabilities();
 		currentMetrics = performanceMonitor.getCurrentMetrics();
-		
+
 		// Initialize new CPU detection system
 		try {
 			cpuCapabilities = await detectCPUCapabilities();

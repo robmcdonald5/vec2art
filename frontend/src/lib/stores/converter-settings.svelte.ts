@@ -1,6 +1,6 @@
 /**
  * Converter Settings Store
- * 
+ *
  * Handles parameter management, presets, validation, and UI organization.
  * Merged from vectorizer-settings.svelte.ts and configuration parts of vectorizer.svelte.ts
  * to create a single source of truth for all parameter-related functionality.
@@ -13,10 +13,10 @@ import { presetToVectorizerConfig, mergeWithUserConfig } from '$lib/presets/conv
 import { DEFAULT_CONFIG, getDefaultConfigForBackend, PRESET_CONFIGS } from '$lib/types/vectorizer';
 
 // Phase 3: Import performance optimization utilities
-import { 
-	ParameterDiffer, 
+import {
+	ParameterDiffer,
 	globalParameterUpdateManager,
-	type ParameterDelta 
+	type ParameterDelta
 } from '$lib/utils/parameter-diff';
 import { globalValidationCache } from '$lib/utils/validation-cache';
 
@@ -26,16 +26,16 @@ export type VectorizerConfig = LegacyConfig; // Will transition to GeneratedConf
 // Parameter validation and conversion utilities
 function validateConfig(config: VectorizerConfig): { isValid: boolean; errors: string[] } {
 	const errors: string[] = [];
-	
+
 	// Basic validation - more comprehensive validation will come from generated metadata
 	if (config.detail < 0.1 || config.detail > 1.0) {
 		errors.push('Detail must be between 0.1 and 1.0');
 	}
-	
+
 	if (config.stroke_width < 0.5 || config.stroke_width > 10.0) {
 		errors.push('Stroke width must be between 0.5 and 10.0');
 	}
-	
+
 	return {
 		isValid: errors.length === 0,
 		errors
@@ -69,11 +69,11 @@ interface SettingsState {
 	mode: SettingsMode;
 	selectedPreset: StylePreset | null;
 	manualOverrides: Partial<VectorizerConfig>;
-	
+
 	// UI state
 	showAdvancedSettings: boolean;
 	expandedSections: Set<string>;
-	
+
 	// Per-algorithm configuration state to prevent slider overlap/sharing
 	algorithmConfigs: Record<VectorizerBackend, VectorizerConfig>;
 }
@@ -85,11 +85,11 @@ export class ConverterSettingsStore {
 		selectedPreset: null,
 		manualOverrides: {},
 		config: { ...DEFAULT_CONFIG },
-		
+
 		// UI state
 		showAdvancedSettings: false,
 		expandedSections: new Set(['core']),
-		
+
 		// Per-algorithm configuration state - use centralized defaults
 		algorithmConfigs: {
 			edge: getDefaultConfigForBackend('edge'),
@@ -103,8 +103,8 @@ export class ConverterSettingsStore {
 	finalConfig = $derived.by((): VectorizerConfig => {
 		switch (this._state.mode) {
 			case 'preset':
-				return this._state.selectedPreset 
-					? presetToVectorizerConfig(this._state.selectedPreset) 
+				return this._state.selectedPreset
+					? presetToVectorizerConfig(this._state.selectedPreset)
 					: DEFAULT_CONFIG;
 
 			case 'manual': {
@@ -176,7 +176,9 @@ export class ConverterSettingsStore {
 			this._state.mode = 'manual';
 			this._state.config = { ...this._state.algorithmConfigs[this._state.config.backend] };
 		}
-		console.log(`[ConverterSettingsStore] Selected preset: ${preset?.metadata?.name || 'none'}, mode: ${this._state.mode}`);
+		console.log(
+			`[ConverterSettingsStore] Selected preset: ${preset?.metadata?.name || 'none'}, mode: ${this._state.mode}`
+		);
 	}
 
 	/**
@@ -235,7 +237,7 @@ export class ConverterSettingsStore {
 		if (key === 'backend' && value !== this._state.config.backend) {
 			const newBackend = value as VectorizerBackend;
 			const backendDefaults = getDefaultConfigForBackend(newBackend);
-			
+
 			// Save current config state to the current algorithm
 			this._state.algorithmConfigs[this._state.config.backend] = { ...this._state.config };
 
@@ -245,7 +247,7 @@ export class ConverterSettingsStore {
 				...this._state.manualOverrides,
 				[key]: value
 			};
-			
+
 			// Apply backend-specific defaults if not already overridden
 			if (!('preserve_colors' in this._state.manualOverrides)) {
 				updatedOverrides.preserve_colors = backendDefaults.preserve_colors;
@@ -256,7 +258,7 @@ export class ConverterSettingsStore {
 			if (!('detail' in this._state.manualOverrides)) {
 				updatedOverrides.detail = backendDefaults.detail;
 			}
-			
+
 			this._state.manualOverrides = updatedOverrides;
 
 			// Switch to the new algorithm's config
@@ -298,12 +300,12 @@ export class ConverterSettingsStore {
 		// Validate the updates first
 		const testConfig = { ...this.finalConfig, ...updates };
 		const validation = validateConfig(testConfig);
-		
+
 		if (!validation.isValid) {
 			console.warn('[ConverterSettingsStore] Validation errors:', validation.errors);
 			// Continue with normalization to fix invalid values
 		}
-		
+
 		// Apply normalization to all updates
 		const normalizedUpdates = this.normalizeConfig(updates);
 
@@ -314,7 +316,7 @@ export class ConverterSettingsStore {
 			// Remove backend from remaining updates
 			const remainingUpdates = { ...normalizedUpdates };
 			delete remainingUpdates.backend;
-			
+
 			// Apply remaining updates
 			if (Object.keys(remainingUpdates).length > 0) {
 				this._state.manualOverrides = {
@@ -351,7 +353,6 @@ export class ConverterSettingsStore {
 	updateConfig(updates: Partial<VectorizerConfig>): void {
 		this.updateParameters(updates);
 	}
-
 
 	/**
 	 * Reset configuration to defaults - resets current algorithm config only
@@ -391,7 +392,7 @@ export class ConverterSettingsStore {
 	 * Normalize a single parameter value
 	 */
 	private normalizeParameterValue<K extends keyof VectorizerConfig>(
-		key: K, 
+		key: K,
 		value: VectorizerConfig[K]
 	): VectorizerConfig[K] {
 		// For complex normalization that depends on image dimensions or other config,
@@ -599,7 +600,9 @@ export class ConverterSettingsStore {
 				config.hand_drawn_preset !== 'none' &&
 				(config.variable_weights > 0 || config.tremor_strength > 0)
 			) {
-				console.warn('[ConverterSettingsStore] Hand-drawn effects are not recommended for dots backend');
+				console.warn(
+					'[ConverterSettingsStore] Hand-drawn effects are not recommended for dots backend'
+				);
 			}
 		}
 
@@ -717,7 +720,9 @@ export class ConverterSettingsStore {
 			newExpanded.add(section);
 		}
 		this._state.expandedSections = newExpanded;
-		console.log(`[ConverterSettingsStore] Section '${section}' ${newExpanded.has(section) ? 'expanded' : 'collapsed'}`);
+		console.log(
+			`[ConverterSettingsStore] Section '${section}' ${newExpanded.has(section) ? 'expanded' : 'collapsed'}`
+		);
 	}
 
 	/**
@@ -759,7 +764,7 @@ export class ConverterSettingsStore {
 						parameters: [
 							'enable_etf_fdog',
 							'etf_radius',
-							'etf_iterations', 
+							'etf_iterations',
 							'etf_coherency_tau',
 							'fdog_sigma_s',
 							'fdog_sigma_c',
@@ -795,10 +800,7 @@ export class ConverterSettingsStore {
 						id: 'noise-filtering-advanced',
 						title: 'Advanced Noise Filtering',
 						description: 'Fine-tune noise reduction parameters',
-						parameters: [
-							'noise_filter_spatial_sigma',
-							'noise_filter_range_sigma'
-						]
+						parameters: ['noise_filter_spatial_sigma', 'noise_filter_range_sigma']
 					},
 					{
 						id: 'multipass-advanced',
@@ -853,7 +855,7 @@ export class ConverterSettingsStore {
 						title: 'Basic Region Settings',
 						description: 'Core superpixel segmentation parameters',
 						parameters: [
-							'num_superpixels', 
+							'num_superpixels',
 							'compactness',
 							'slic_iterations',
 							'superpixel_initialization_pattern'
@@ -867,7 +869,7 @@ export class ConverterSettingsStore {
 							'min_region_size',
 							'color_distance',
 							'spatial_distance_weight',
-							'fill_regions', 
+							'fill_regions',
 							'stroke_regions',
 							'simplify_boundaries',
 							'boundary_epsilon'
@@ -905,21 +907,13 @@ export class ConverterSettingsStore {
 						id: 'centerline-modulation',
 						title: 'Width Modulation',
 						description: 'Variable width line generation',
-						parameters: [
-							'enable_width_modulation',
-							'edt_radius_ratio',
-							'width_modulation_range'
-						]
+						parameters: ['enable_width_modulation', 'edt_radius_ratio', 'width_modulation_range']
 					},
 					{
 						id: 'centerline-smoothing',
 						title: 'Path Smoothing',
 						description: 'Simplify and smooth generated paths',
-						parameters: [
-							'douglas_peucker_epsilon',
-							'adaptive_simplification',
-							'use_optimized'
-						]
+						parameters: ['douglas_peucker_epsilon', 'adaptive_simplification', 'use_optimized']
 					}
 				);
 				break;
@@ -948,16 +942,16 @@ export class ConverterSettingsStore {
 		// Configuration-specific suggestions
 		suggestions.push('Reset to default settings');
 		suggestions.push('Try a different algorithm or preset');
-		
+
 		// Backend-specific suggestions based on current backend
 		const backend = this._state.config.backend;
-		if (backend === 'dots' && validation.errors.some(e => e.includes('radius'))) {
+		if (backend === 'dots' && validation.errors.some((e) => e.includes('radius'))) {
 			suggestions.push('Adjust dot size settings - ensure minimum < maximum');
 		}
-		if (backend === 'centerline' && validation.errors.some(e => e.includes('branch'))) {
+		if (backend === 'centerline' && validation.errors.some((e) => e.includes('branch'))) {
 			suggestions.push('Adjust branch filtering settings');
 		}
-		if (backend === 'superpixel' && validation.errors.some(e => e.includes('superpixels'))) {
+		if (backend === 'superpixel' && validation.errors.some((e) => e.includes('superpixels'))) {
 			suggestions.push('Adjust number of regions or compactness');
 		}
 

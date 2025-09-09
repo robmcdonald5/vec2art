@@ -1,6 +1,6 @@
 /**
  * Smart Batching System
- * 
+ *
  * Optimizes processing queue throughput by intelligently grouping compatible jobs
  * for batch processing, reducing WASM call overhead and improving performance.
  */
@@ -59,25 +59,25 @@ export class BatchOptimizer {
 	addJob(job: ProcessingJob): ProcessingBatch | null {
 		// Find compatible existing batch
 		const compatibleBatch = this.findCompatibleBatch(job);
-		
+
 		if (compatibleBatch && compatibleBatch.jobs.length < this.config.maxBatchSize) {
 			// Add to existing batch
 			compatibleBatch.jobs.push(job);
 			compatibleBatch.batchSize = compatibleBatch.jobs.length;
 			compatibleBatch.estimatedProcessingTime = this.calculateBatchProcessingTime(compatibleBatch);
-			
+
 			// Check if batch is ready for processing
 			if (this.isBatchReady(compatibleBatch)) {
 				this.pendingBatches.delete(compatibleBatch.id);
 				return compatibleBatch;
 			}
-			
+
 			return null; // Batch not ready yet
 		}
 
 		// Create new batch
 		const newBatch = this.createBatch([job]);
-		
+
 		// Check if job should be processed immediately (high priority or large image)
 		if (this.shouldProcessImmediately(job)) {
 			return newBatch;
@@ -85,7 +85,7 @@ export class BatchOptimizer {
 
 		// Add to pending batches
 		this.pendingBatches.set(newBatch.id, newBatch);
-		
+
 		// Set timeout to process batch if no more compatible jobs arrive
 		setTimeout(() => {
 			const batch = this.pendingBatches.get(newBatch.id);
@@ -133,9 +133,11 @@ export class BatchOptimizer {
 
 		for (const batch of this.pendingBatches.values()) {
 			const compatibility = this.calculateCompatibility(job, batch.jobs[0]);
-			
-			if (compatibility.score > bestCompatibility && 
-			    compatibility.score >= this.config.compatibilityThreshold) {
+
+			if (
+				compatibility.score > bestCompatibility &&
+				compatibility.score >= this.config.compatibilityThreshold
+			) {
 				bestCompatibility = compatibility.score;
 				bestBatch = batch;
 			}
@@ -194,7 +196,10 @@ export class BatchOptimizer {
 	/**
 	 * Calculate parameter compatibility score
 	 */
-	private calculateParameterCompatibility(config1: VectorizerConfig, config2: VectorizerConfig): number {
+	private calculateParameterCompatibility(
+		config1: VectorizerConfig,
+		config2: VectorizerConfig
+	): number {
 		const criticalParams = [
 			'detail',
 			'stroke_width',
@@ -214,14 +219,15 @@ export class BatchOptimizer {
 
 			if (value1 !== undefined && value2 !== undefined) {
 				totalParams++;
-				
+
 				if (typeof value1 === 'number' && typeof value2 === 'number') {
 					// For numeric parameters, allow small differences
 					const diff = Math.abs(value1 - value2);
 					const avg = (value1 + value2) / 2;
 					const percentDiff = avg > 0 ? diff / avg : 0;
-					
-					if (percentDiff < 0.1) { // Within 10%
+
+					if (percentDiff < 0.1) {
+						// Within 10%
 						matchCount++;
 					}
 				} else if (value1 === value2) {
@@ -238,15 +244,16 @@ export class BatchOptimizer {
 	 */
 	private createBatch(jobs: ProcessingJob[]): ProcessingBatch {
 		const batchId = `batch_${++this.batchCounter}_${Date.now()}`;
-		const compatibility = jobs.length > 1 
-			? this.calculateCompatibility(jobs[0], jobs[1])
-			: {
-				backend: jobs[0].config.backend,
-				similarImageSizes: true,
-				compatibleParameters: true,
-				samePriority: true,
-				score: 1.0
-			};
+		const compatibility =
+			jobs.length > 1
+				? this.calculateCompatibility(jobs[0], jobs[1])
+				: {
+						backend: jobs[0].config.backend,
+						similarImageSizes: true,
+						compatibleParameters: true,
+						samePriority: true,
+						score: 1.0
+					};
 
 		const batch: ProcessingBatch = {
 			id: batchId,
@@ -267,7 +274,7 @@ export class BatchOptimizer {
 	private calculateBatchProcessingTime(batch: ProcessingBatch): number {
 		// Base processing time per job
 		let totalTime = 0;
-		
+
 		for (const job of batch.jobs) {
 			const imageSize = this.getImageSize(job.imageData);
 			const baseTime = this.estimateJobProcessingTime(job, imageSize);
@@ -300,16 +307,16 @@ export class BatchOptimizer {
 
 		// Detail level affects processing time
 		if (config.detail !== undefined) {
-			multiplier *= (0.5 + config.detail * 1.5); // 0.5x to 2x
+			multiplier *= 0.5 + config.detail * 1.5; // 0.5x to 2x
 		}
 
 		// Hand-drawn effects add complexity
 		if (config.variable_weights && config.variable_weights > 0) {
-			multiplier *= (1 + config.variable_weights * 0.3);
+			multiplier *= 1 + config.variable_weights * 0.3;
 		}
 
 		if (config.tremor_strength && config.tremor_strength > 0) {
-			multiplier *= (1 + config.tremor_strength * 0.2);
+			multiplier *= 1 + config.tremor_strength * 0.2;
 		}
 
 		// Noise filtering adds time
@@ -340,15 +347,15 @@ export class BatchOptimizer {
 	 * Calculate batch priority based on job priorities
 	 */
 	private calculateBatchPriority(jobs: ProcessingJob[]): 'low' | 'normal' | 'high' {
-		const priorities = jobs.map(job => job.priority);
-		
+		const priorities = jobs.map((job) => job.priority);
+
 		// If any job is high priority, batch is high priority
 		if (priorities.includes('high')) return 'high';
-		
+
 		// If majority are normal priority, batch is normal
-		const normalCount = priorities.filter(p => p === 'normal').length;
+		const normalCount = priorities.filter((p) => p === 'normal').length;
 		if (normalCount > jobs.length / 2) return 'normal';
-		
+
 		return 'low';
 	}
 
@@ -360,14 +367,14 @@ export class BatchOptimizer {
 		// 1. Batch is at max size
 		// 2. High priority batch with 2+ jobs
 		// 3. Batch has been waiting too long
-		
+
 		if (batch.jobs.length >= this.config.maxBatchSize) return true;
-		
+
 		if (batch.priority === 'high' && batch.jobs.length >= 2) return true;
-		
+
 		const age = Date.now() - batch.created;
 		if (age > this.config.maxWaitTime) return true;
-		
+
 		return false;
 	}
 
@@ -379,14 +386,14 @@ export class BatchOptimizer {
 		// 1. Very large images (>4MP)
 		// 2. High priority with complex parameters
 		// 3. Jobs that don't benefit from batching
-		
+
 		const imageSize = this.getImageSize(job.imageData);
 		if (imageSize > 4000000) return true; // >4MP
-		
+
 		if (job.priority === 'high' && this.getComplexityMultiplier(job.config) > 1.5) {
 			return true;
 		}
-		
+
 		return false;
 	}
 
@@ -397,7 +404,7 @@ export class BatchOptimizer {
 		if (imageData instanceof ImageData) {
 			return imageData.width * imageData.height;
 		}
-		
+
 		// For ArrayBuffer, estimate based on byte size (assuming RGBA)
 		return imageData.byteLength / 4;
 	}
@@ -410,10 +417,13 @@ export class BatchOptimizer {
 			pendingBatches: this.pendingBatches.size,
 			totalBatchesCreated: this.batchCounter,
 			config: this.config,
-			averageBatchSize: this.pendingBatches.size > 0 
-				? Array.from(this.pendingBatches.values())
-					.reduce((sum, batch) => sum + batch.jobs.length, 0) / this.pendingBatches.size
-				: 0
+			averageBatchSize:
+				this.pendingBatches.size > 0
+					? Array.from(this.pendingBatches.values()).reduce(
+							(sum, batch) => sum + batch.jobs.length,
+							0
+						) / this.pendingBatches.size
+					: 0
 		};
 	}
 }

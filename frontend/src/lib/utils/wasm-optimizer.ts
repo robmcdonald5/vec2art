@@ -1,6 +1,6 @@
 /**
  * WASM Performance Optimizer - Phase 3.3
- * 
+ *
  * Advanced WASM integration optimizations including SharedArrayBuffer management,
  * thread affinity, load balancing, and zero-copy operations for maximum performance.
  */
@@ -48,7 +48,7 @@ export class WasmOptimizer {
 	private metrics: WasmMetrics;
 	private activeJobs = new Map<string, { threadId: number; startTime: number; jobType: string }>();
 	private threadLoad = new Map<number, number>(); // threadId -> current load (0-1)
-	
+
 	constructor(config?: Partial<WasmOptimizationConfig>) {
 		this.config = {
 			enableSharedArrayBuffer: this.detectSharedArrayBufferSupport(),
@@ -114,9 +114,7 @@ export class WasmOptimizer {
 			// Test if we can actually share the buffer
 			try {
 				const worker = new Worker(
-					URL.createObjectURL(
-						new Blob(['postMessage(42);'], { type: 'application/javascript' })
-					)
+					URL.createObjectURL(new Blob(['postMessage(42);'], { type: 'application/javascript' }))
 				);
 				worker.terminate();
 				console.log('[WasmOptimizer] ✅ SharedArrayBuffer fully supported');
@@ -168,7 +166,7 @@ export class WasmOptimizer {
 		}
 
 		const bufferKey = key || `buffer_${size}_${Date.now()}`;
-		
+
 		// Check if we already have a suitable buffer
 		const existingBuffer = this.bufferPool.buffers.get(bufferKey);
 		if (existingBuffer && existingBuffer.byteLength >= size) {
@@ -193,7 +191,10 @@ export class WasmOptimizer {
 			console.log(`[WasmOptimizer] Allocated shared buffer: ${bufferKey} (${size} bytes)`);
 			return buffer;
 		} catch (error) {
-			console.warn('[WasmOptimizer] SharedArrayBuffer allocation failed, falling back to ArrayBuffer:', error);
+			console.warn(
+				'[WasmOptimizer] SharedArrayBuffer allocation failed, falling back to ArrayBuffer:',
+				error
+			);
 			return new ArrayBuffer(size);
 		}
 	}
@@ -240,7 +241,9 @@ export class WasmOptimizer {
 				this.bufferPool.totalAllocated -= buffer.byteLength;
 				freedSpace += buffer.byteLength;
 
-				console.log(`[WasmOptimizer] Evicted buffer: ${key} (${buffer.byteLength} bytes, age: ${Math.round(age/1000)}s)`);
+				console.log(
+					`[WasmOptimizer] Evicted buffer: ${key} (${buffer.byteLength} bytes, age: ${Math.round(age / 1000)}s)`
+				);
 
 				if (freedSpace >= requiredSpace) break;
 			}
@@ -252,23 +255,25 @@ export class WasmOptimizer {
 	 */
 	assignOptimalThread(jobType: string, jobSize: number): number {
 		const availableThreads = this.threadAffinity.coreIds;
-		
+
 		switch (this.threadAffinity.loadBalancing) {
 			case 'affinity-based':
 				// Try to use preferred core for job type
 				const preferredCore = this.threadAffinity.affinityHints.get(jobType);
-				if (preferredCore !== undefined && 
-				    availableThreads.includes(preferredCore) &&
-				    (this.threadLoad.get(preferredCore) || 0) < this.threadAffinity.migrationThreshold) {
+				if (
+					preferredCore !== undefined &&
+					availableThreads.includes(preferredCore) &&
+					(this.threadLoad.get(preferredCore) || 0) < this.threadAffinity.migrationThreshold
+				) {
 					return preferredCore;
 				}
-				// Fall through to least-loaded if preferred core is busy
-				
+			// Fall through to least-loaded if preferred core is busy
+
 			case 'least-loaded':
 				// Find thread with lowest current load
 				let minLoad = 1.0;
 				let bestThread = availableThreads[0];
-				
+
 				for (const threadId of availableThreads) {
 					const load = this.threadLoad.get(threadId) || 0;
 					if (load < minLoad) {
@@ -277,7 +282,7 @@ export class WasmOptimizer {
 					}
 				}
 				return bestThread;
-				
+
 			case 'round-robin':
 			default:
 				// Simple round-robin assignment
@@ -309,7 +314,7 @@ export class WasmOptimizer {
 		if (!job) return;
 
 		const duration = Date.now() - job.startTime;
-		
+
 		// Update thread load
 		const currentLoad = this.threadLoad.get(job.threadId) || 0;
 		this.threadLoad.set(job.threadId, Math.max(0, currentLoad - 0.2));
@@ -323,16 +328,16 @@ export class WasmOptimizer {
 	/**
 	 * Create zero-copy image data transfer
 	 */
-	createZeroCopyImageData(imageData: ImageData): { buffer: ArrayBuffer | SharedArrayBuffer; metadata: any } {
+	createZeroCopyImageData(imageData: ImageData): {
+		buffer: ArrayBuffer | SharedArrayBuffer;
+		metadata: any;
+	} {
 		const width = imageData.width;
 		const height = imageData.height;
 		const dataSize = width * height * 4; // RGBA
 
 		// Allocate shared buffer for zero-copy transfer
-		const buffer = this.allocateSharedBuffer(
-			dataSize, 
-			`image_${width}x${height}`
-		);
+		const buffer = this.allocateSharedBuffer(dataSize, `image_${width}x${height}`);
 
 		// Copy image data to shared buffer
 		const view = new Uint8ClampedArray(buffer);
@@ -362,7 +367,7 @@ export class WasmOptimizer {
 			const jsonString = JSON.stringify(config);
 			const encoder = new TextEncoder();
 			const compressed = encoder.encode(jsonString);
-			
+
 			// Only compress if it saves significant space
 			if (compressed.length < jsonString.length * 0.8) {
 				return compressed;
@@ -403,8 +408,9 @@ export class WasmOptimizer {
 	 */
 	getBufferPoolStats() {
 		const totalBuffers = this.bufferPool.buffers.size;
-		const activeBuffers = Array.from(this.bufferPool.usage.values())
-			.filter(usage => usage > 0).length;
+		const activeBuffers = Array.from(this.bufferPool.usage.values()).filter(
+			(usage) => usage > 0
+		).length;
 
 		return {
 			totalBuffers,
@@ -441,13 +447,15 @@ export class WasmOptimizer {
 		}
 
 		// Calculate parallel efficiency (simplified)
-		const activeThreads = Array.from(this.threadLoad.values()).filter(load => load > 0).length;
+		const activeThreads = Array.from(this.threadLoad.values()).filter((load) => load > 0).length;
 		const maxThreads = this.threadAffinity.coreIds.length;
 		this.metrics.parallelEfficiency = activeThreads / maxThreads;
 
 		// Update buffer hit ratio
 		const totalBufferRequests = this.bufferPool.buffers.size;
-		const bufferHits = Array.from(this.bufferPool.usage.values()).filter(usage => usage > 1).length;
+		const bufferHits = Array.from(this.bufferPool.usage.values()).filter(
+			(usage) => usage > 1
+		).length;
 		this.metrics.bufferHitRatio = totalBufferRequests > 0 ? bufferHits / totalBufferRequests : 0;
 	}
 
@@ -462,7 +470,7 @@ export class WasmOptimizer {
 			}
 
 			// Update shared buffer usage
-			this.metrics.sharedBufferUsage = 
+			this.metrics.sharedBufferUsage =
 				(this.bufferPool.totalAllocated / this.bufferPool.maxPoolSize) * 100;
 
 			// Log metrics periodically in development

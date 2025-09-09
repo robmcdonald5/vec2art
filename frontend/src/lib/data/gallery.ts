@@ -32,10 +32,7 @@ export async function loadGalleryData(): Promise<GalleryManifest> {
 /**
  * Filter gallery items based on search criteria
  */
-export function filterGalleryItems(
-	items: GalleryItem[],
-	filters: GalleryFilters
-): GalleryItem[] {
+export function filterGalleryItems(items: GalleryItem[], filters: GalleryFilters): GalleryItem[] {
 	return items.filter((item) => {
 		// Search filter
 		if (filters.search) {
@@ -64,9 +61,11 @@ export function filterGalleryItems(
 /**
  * Get unique categories from items
  */
-export function getCategories(items: GalleryItem[]): Array<{ value: string; label: string; count: number }> {
+export function getCategories(
+	items: GalleryItem[]
+): Array<{ value: string; label: string; count: number }> {
 	const categoryMap = new Map<string, number>();
-	
+
 	items.forEach((item) => {
 		const count = categoryMap.get(item.category) || 0;
 		categoryMap.set(item.category, count + 1);
@@ -92,7 +91,7 @@ export function getCategories(items: GalleryItem[]): Array<{ value: string; labe
  */
 export function getAlgorithmStats(items: GalleryItem[]): Map<string, number> {
 	const stats = new Map<string, number>();
-	
+
 	items.forEach((item) => {
 		const count = stats.get(item.algorithmKey) || 0;
 		stats.set(item.algorithmKey, count + 1);

@@ -24,7 +24,7 @@ async function validateTurnstile(token: string, ip: string): Promise<TurnstileRe
 
 	const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
 		method: 'POST',
-		body: formData,
+		body: formData
 	});
 
 	return response.json();
@@ -35,14 +35,14 @@ function getClientAddress(request: Request): string {
 	const forwardedFor = request.headers.get('x-forwarded-for');
 	const realIP = request.headers.get('x-real-ip');
 	const cfConnectingIP = request.headers.get('cf-connecting-ip');
-	
+
 	if (cfConnectingIP) return cfConnectingIP;
 	if (realIP) return realIP;
 	if (forwardedFor) {
 		// X-Forwarded-For can contain multiple IPs, use the first one
 		return forwardedFor.split(',')[0].trim();
 	}
-	
+
 	return 'unknown';
 }
 
@@ -96,11 +96,11 @@ export const actions: Actions = {
 		} else {
 			try {
 				const turnstileResult = await validateTurnstile(turnstileToken, clientIP);
-				
+
 				if (!turnstileResult.success) {
 					console.error('Turnstile verification failed:', turnstileResult['error-codes']);
 					errors.turnstile = 'Verification failed. Please try again.';
-					
+
 					// Log specific error codes for debugging
 					const errorCodes = turnstileResult['error-codes'] || [];
 					if (errorCodes.includes('timeout-or-duplicate')) {
@@ -130,7 +130,7 @@ export const actions: Actions = {
 		// If we get here, all validation passed
 		// The actual form submission will still be handled by the client-side code
 		// This just validates the Turnstile and form data
-		
+
 		return {
 			success: true,
 			message: 'Form validation passed'

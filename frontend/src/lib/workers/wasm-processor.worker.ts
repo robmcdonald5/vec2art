@@ -40,7 +40,10 @@ interface WorkerResponse {
  * Initialize WASM module in worker context
  */
 async function initializeWasm(config?: { threadCount?: number; backend?: string }) {
-	console.log('[Worker] 🔧 initializeWasm called with config:', config ? JSON.parse(JSON.stringify(config)) : null);
+	console.log(
+		'[Worker] 🔧 initializeWasm called with config:',
+		config ? JSON.parse(JSON.stringify(config)) : null
+	);
 	console.log('[Worker] 🔧 Current wasmInitialized status:', wasmInitialized);
 
 	// Always attempt threading setup, even if WASM was previously initialized
@@ -261,10 +264,13 @@ async function configureVectorizer(config: any) {
 			// For dots backend: stroke_width controls dot sizes via UI mapping
 			// Extended range: 0.5-10.0 for bold artistic effects
 			const dotWidth = config.stroke_width;
-			
+
 			// CRITICAL FIX: Validate stroke_width before dots mapping to prevent WASM crashes
 			if (isNaN(dotWidth) || !isFinite(dotWidth)) {
-				console.error('[Worker] 🚨 Invalid stroke_width for dots backend, using safe default:', dotWidth);
+				console.error(
+					'[Worker] 🚨 Invalid stroke_width for dots backend, using safe default:',
+					dotWidth
+				);
 				vectorizer.set_dot_size_range(0.5, 3.0); // Safe fallback
 			} else {
 				const clampedWidth = Math.max(0.5, Math.min(10.0, dotWidth));
@@ -279,7 +285,9 @@ async function configureVectorizer(config: any) {
 				maxRadius = Math.max(minRadius + 0.1, Math.min(10.0, maxRadius));
 
 				if (!isFinite(minRadius) || !isFinite(maxRadius)) {
-					console.error('[Worker] 🚨 Computed dot size range contains invalid values, using safe defaults');
+					console.error(
+						'[Worker] 🚨 Computed dot size range contains invalid values, using safe defaults'
+					);
 					vectorizer.set_dot_size_range(0.5, 3.0);
 				} else {
 					console.log(
@@ -540,13 +548,18 @@ async function configureVectorizer(config: any) {
 			// SAFEGUARD: Strict validation of dot density parameter
 			const densityValue = config.dot_density_threshold;
 			if (isNaN(densityValue) || !isFinite(densityValue)) {
-				console.error('[Worker] 🚨 Invalid dot_density_threshold value, using safe default:', densityValue);
+				console.error(
+					'[Worker] 🚨 Invalid dot_density_threshold value, using safe default:',
+					densityValue
+				);
 				vectorizer.set_dot_density(0.1); // Safe default
 			} else {
 				// Strict range clamping to prevent backend crashes
 				const clampedDensity = Math.max(0.02, Math.min(0.4, densityValue));
 				if (clampedDensity !== densityValue) {
-					console.warn(`[Worker] ⚠️ dot_density_threshold clamped from ${densityValue} to ${clampedDensity} for safety`);
+					console.warn(
+						`[Worker] ⚠️ dot_density_threshold clamped from ${densityValue} to ${clampedDensity} for safety`
+					);
 				}
 				console.log(`[Worker] 🎯 Dot Density slider: ${clampedDensity}`);
 				vectorizer.set_dot_density(clampedDensity);
@@ -564,27 +577,34 @@ async function configureVectorizer(config: any) {
 		if (hasCustomAdvancedSizeParams && typeof vectorizer.set_dot_size_range === 'function') {
 			const minRadius = config.min_radius ?? 0.5;
 			const maxRadius = config.max_radius ?? 3.0;
-			
+
 			// CRITICAL FIX: Validate dot size range parameters to prevent WASM crashes
 			if (isNaN(minRadius) || !isFinite(minRadius) || isNaN(maxRadius) || !isFinite(maxRadius)) {
-				console.error('[Worker] 🚨 Invalid dot size range values, using safe defaults:', { minRadius, maxRadius });
+				console.error('[Worker] 🚨 Invalid dot size range values, using safe defaults:', {
+					minRadius,
+					maxRadius
+				});
 				vectorizer.set_dot_size_range(0.5, 3.0); // Safe defaults
 			} else {
 				// Strict validation and correction of range parameters
 				const clampedMin = Math.max(0.1, Math.min(10.0, minRadius));
 				const clampedMax = Math.max(clampedMin + 0.1, Math.min(10.0, maxRadius));
-				
+
 				if (clampedMin !== minRadius || clampedMax !== maxRadius) {
-					console.warn(`[Worker] ⚠️ Dot size range corrected from (${minRadius}, ${maxRadius}) to (${clampedMin}, ${clampedMax}) for safety`);
+					console.warn(
+						`[Worker] ⚠️ Dot size range corrected from (${minRadius}, ${maxRadius}) to (${clampedMin}, ${clampedMax}) for safety`
+					);
 				}
-				
+
 				console.log(
 					`[Worker] 🎛️ Advanced dot size override: ${clampedMin.toFixed(1)}-${clampedMax.toFixed(1)}px (overriding stroke_width mapping)`
 				);
 				vectorizer.set_dot_size_range(clampedMin, clampedMax);
 			}
 		} else {
-			console.log('[Worker] ✅ Using stroke_width (Dot Width) mapping for dot sizes - advanced parameters at defaults');
+			console.log(
+				'[Worker] ✅ Using stroke_width (Dot Width) mapping for dot sizes - advanced parameters at defaults'
+			);
 		}
 
 		// Algorithm features from checkboxes
@@ -658,7 +678,10 @@ async function configureVectorizer(config: any) {
 			typeof config.superpixel_initialization_pattern === 'string' &&
 			typeof vectorizer.set_superpixel_initialization_pattern === 'function'
 		) {
-			console.log('[Worker] Setting superpixel_initialization_pattern:', config.superpixel_initialization_pattern);
+			console.log(
+				'[Worker] Setting superpixel_initialization_pattern:',
+				config.superpixel_initialization_pattern
+			);
 			vectorizer.set_superpixel_initialization_pattern(config.superpixel_initialization_pattern);
 		}
 
@@ -970,13 +993,16 @@ async function processImage() {
 
 					// Validate image dimensions are reasonable for dots backend
 					const pixelCount = currentImageData.width * currentImageData.height;
-					if (pixelCount === 0 || pixelCount > 50000000) { // > 50MP
+					if (pixelCount === 0 || pixelCount > 50000000) {
+						// > 50MP
 						console.error('[Worker] 🚨 Image dimensions invalid or too large for dots backend:', {
 							width: currentImageData.width,
 							height: currentImageData.height,
 							pixelCount
 						});
-						throw new Error('Image is too large or has invalid dimensions. Please resize to under 7000x7000 pixels.');
+						throw new Error(
+							'Image is too large or has invalid dimensions. Please resize to under 7000x7000 pixels.'
+						);
 					}
 
 					// Create a copy of the image data to avoid modifying the original
@@ -1001,7 +1027,10 @@ async function processImage() {
 						processedImageData = imageDataCopy;
 						console.log('[Worker] ✅ Image data pre-processed for dots backend');
 					} catch (imageError) {
-						console.error('[Worker] 🚨 Failed to create processed ImageData for dots backend:', imageError);
+						console.error(
+							'[Worker] 🚨 Failed to create processed ImageData for dots backend:',
+							imageError
+						);
 						throw new Error('Failed to process image data. Please try a different image format.');
 					}
 				}

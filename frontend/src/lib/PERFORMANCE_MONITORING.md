@@ -5,6 +5,7 @@ A comprehensive performance telemetry and monitoring framework designed specific
 ## Overview
 
 This framework provides enterprise-grade performance monitoring with a focus on:
+
 - **Web Vitals Tracking** - Core web performance metrics (LCP, FID, CLS, FCP, TTI, TTFB)
 - **WASM Performance** - Specialized monitoring for WebAssembly operations
 - **User Experience Analytics** - Comprehensive UX tracking and journey analysis
@@ -28,25 +29,25 @@ await quickStartPerformanceMonitoring();
 ### Advanced Configuration
 
 ```typescript
-import { 
-  initializePerformanceMonitoring,
-  startBudgetMonitoring,
-  addAnalyticsProvider
+import {
+	initializePerformanceMonitoring,
+	startBudgetMonitoring,
+	addAnalyticsProvider
 } from '$lib/services';
 
 // Custom configuration
 await initializePerformanceMonitoring({
-  enableWebVitals: true,
-  enableWASMTracking: true,
-  enableUXTracking: true,
-  enableErrorTracking: true,
-  enableResourceMonitoring: true,
-  budgets: {
-    LCP: 2000,      // Stricter budget
-    wasmLoadTime: 800,
-    imageProcessing: 1200
-  },
-  debugMode: true
+	enableWebVitals: true,
+	enableWASMTracking: true,
+	enableUXTracking: true,
+	enableErrorTracking: true,
+	enableResourceMonitoring: true,
+	budgets: {
+		LCP: 2000, // Stricter budget
+		wasmLoadTime: 800,
+		imageProcessing: 1200
+	},
+	debugMode: true
 });
 
 // Start budget monitoring
@@ -54,16 +55,16 @@ startBudgetMonitoring();
 
 // Add analytics provider
 addAnalyticsProvider({
-  ga4Integration: {
-    measurementId: 'G-XXXXXXXXXX',
-    apiSecret: 'your-api-secret',
-    enabled: true
-  },
-  privacySettings: {
-    collectPII: false,
-    anonymizeIPs: true,
-    dataRetentionDays: 30
-  }
+	ga4Integration: {
+		measurementId: 'G-XXXXXXXXXX',
+		apiSecret: 'your-api-secret',
+		enabled: true
+	},
+	privacySettings: {
+		collectPII: false,
+		anonymizeIPs: true,
+		dataRetentionDays: 30
+	}
 });
 ```
 
@@ -89,10 +90,10 @@ console.log('Current performance:', metrics);
 Specialized tracking for WebAssembly operations.
 
 ```typescript
-import { 
-  trackWASMModuleLoading,
-  trackWASMImageProcessing,
-  getCurrentWASMMetrics 
+import {
+	trackWASMModuleLoading,
+	trackWASMImageProcessing,
+	getCurrentWASMMetrics
 } from '$lib/services';
 
 // Track WASM module loading
@@ -103,15 +104,15 @@ moduleLoader.end();
 
 // Track image processing
 const processor = trackWASMImageProcessing('edge', {
-  size: 1024*1024,
-  width: 800,
-  height: 600,
-  format: 'png'
+	size: 1024 * 1024,
+	width: 800,
+	height: 600,
+	format: 'png'
 });
 
 processor.start();
 // ... process image
-processor.end({ outputSize: 512*1024, pathCount: 1500 });
+processor.end({ outputSize: 512 * 1024, pathCount: 1500 });
 
 // Get current WASM metrics
 const wasmMetrics = getCurrentWASMMetrics();
@@ -122,11 +123,7 @@ const wasmMetrics = getCurrentWASMMetrics();
 Advanced error tracking with recovery monitoring.
 
 ```typescript
-import { 
-  trackApplicationError,
-  addErrorBreadcrumb,
-  getErrorStatistics 
-} from '$lib/services';
+import { trackApplicationError, addErrorBreadcrumb, getErrorStatistics } from '$lib/services';
 
 // Add breadcrumbs for context
 addErrorBreadcrumb('User clicked process button');
@@ -134,13 +131,13 @@ addErrorBreadcrumb('WASM module loaded successfully');
 
 // Track errors with context
 try {
-  // ... some operation
+	// ... some operation
 } catch (error) {
-  trackApplicationError(error, {
-    component: 'image-processor',
-    action: 'process-image',
-    userState: { imageSize: 1024*1024 }
-  });
+	trackApplicationError(error, {
+		component: 'image-processor',
+		action: 'process-image',
+		userState: { imageSize: 1024 * 1024 }
+	});
 }
 
 // Get error statistics
@@ -153,11 +150,11 @@ console.log('Error recovery rate:', errorStats.recoveryRate);
 System resource monitoring for memory, CPU, and network.
 
 ```typescript
-import { 
-  startResourceMonitoring,
-  getCurrentResources,
-  getResourceTrends,
-  estimateResourceImpact 
+import {
+	startResourceMonitoring,
+	getCurrentResources,
+	getResourceTrends,
+	estimateResourceImpact
 } from '$lib/services';
 
 // Start monitoring
@@ -165,7 +162,7 @@ startResourceMonitoring(5000); // 5 second intervals
 
 // Get current usage
 const resources = getCurrentResources();
-console.log('Memory usage:', resources.heapUsage / (1024*1024), 'MB');
+console.log('Memory usage:', resources.heapUsage / (1024 * 1024), 'MB');
 
 // Get trends
 const trends = getResourceTrends();
@@ -173,9 +170,9 @@ console.log('Memory trend:', trends.memory);
 
 // Estimate impact of operations
 const impact = estimateResourceImpact({
-  type: 'image-processing',
-  size: 2 * 1024 * 1024,
-  complexity: 'high'
+	type: 'image-processing',
+	size: 2 * 1024 * 1024,
+	complexity: 'high'
 });
 console.log('Estimated memory increase:', impact.estimatedMemoryIncrease);
 ```
@@ -185,12 +182,7 @@ console.log('Estimated memory increase:', impact.estimatedMemoryIncrease);
 Comprehensive user experience tracking.
 
 ```typescript
-import { 
-  startUXTracking,
-  trackFeatureUsage,
-  startTask,
-  getUXAnalytics 
-} from '$lib/services';
+import { startUXTracking, trackFeatureUsage, startTask, getUXAnalytics } from '$lib/services';
 
 // Start UX tracking
 startUXTracking();
@@ -218,33 +210,24 @@ console.log('Task completion rate:', uxAnalytics.taskCompletionRate);
 Proactive performance budget enforcement.
 
 ```typescript
-import { 
-  setBudget,
-  checkBudget,
-  subscribeToAlerts,
-  getBudgetStatus 
-} from '$lib/services';
+import { setBudget, checkBudget, subscribeToAlerts, getBudgetStatus } from '$lib/services';
 
 // Set custom budgets
 setBudget('image_processing_time', 'custom', 1000, {
-  warningThreshold: 80,
-  criticalThreshold: 100,
-  recommendations: [
-    'Increase thread count',
-    'Optimize image size',
-    'Use more efficient algorithm'
-  ]
+	warningThreshold: 80,
+	criticalThreshold: 100,
+	recommendations: ['Increase thread count', 'Optimize image size', 'Use more efficient algorithm']
 });
 
 // Subscribe to alerts
 subscribeToAlerts({
-  name: 'performance-alerts',
-  metrics: ['image_processing_time'],
-  severities: ['warning', 'critical'],
-  callback: (alert) => {
-    console.warn('Performance budget exceeded:', alert);
-  },
-  enabled: true
+	name: 'performance-alerts',
+	metrics: ['image_processing_time'],
+	severities: ['warning', 'critical'],
+	callback: (alert) => {
+		console.warn('Performance budget exceeded:', alert);
+	},
+	enabled: true
 });
 
 // Check budget status
@@ -257,29 +240,29 @@ console.log('Budget health:', status.overallHealth);
 GDPR/CCPA compliant data collection.
 
 ```typescript
-import { 
-  hasConsent,
-  updateConsent,
-  canCollectData,
-  exportUserData,
-  showConsentBanner 
+import {
+	hasConsent,
+	updateConsent,
+	canCollectData,
+	exportUserData,
+	showConsentBanner
 } from '$lib/services';
 
 // Check consent
 if (hasConsent('analytics')) {
-  // Start analytics tracking
+	// Start analytics tracking
 }
 
 // Update user consent
 updateConsent({
-  analytics: true,
-  functional: true,
-  marketing: false
+	analytics: true,
+	functional: true,
+	marketing: false
 });
 
 // Check if data collection is allowed
 if (canCollectData('performance_monitoring')) {
-  // Collect performance data
+	// Collect performance data
 }
 
 // Export user data (GDPR compliance)
@@ -294,13 +277,13 @@ showConsentBanner();
 Advanced debugging and optimization tools.
 
 ```typescript
-import { 
-  startDebugging,
-  stopDebugging,
-  detectBottlenecks,
-  detectMemoryLeaks,
-  mark,
-  measure 
+import {
+	startDebugging,
+	stopDebugging,
+	detectBottlenecks,
+	detectMemoryLeaks,
+	mark,
+	measure
 } from '$lib/services';
 
 // Start debug session
@@ -319,7 +302,7 @@ console.log('Performance bottlenecks:', bottlenecks);
 // Detect memory leaks
 const leakDetection = await detectMemoryLeaks();
 if (leakDetection.hasLeaks) {
-  console.warn('Memory leaks detected:', leakDetection.leaks);
+	console.warn('Memory leaks detected:', leakDetection.leaks);
 }
 
 // Stop debugging and get report
@@ -333,23 +316,17 @@ Include the performance dashboard in your Svelte components:
 
 ```svelte
 <script>
-  import PerformanceDashboard from '$lib/components/ui/performance-dashboard.svelte';
-  
-  let showDashboard = false;
-  let darkMode = false;
+	import PerformanceDashboard from '$lib/components/ui/performance-dashboard.svelte';
+
+	let showDashboard = false;
+	let darkMode = false;
 </script>
 
 {#if showDashboard}
-  <PerformanceDashboard 
-    expanded={true} 
-    {darkMode}
-    refreshInterval={5000}
-  />
+	<PerformanceDashboard expanded={true} {darkMode} refreshInterval={5000} />
 {/if}
 
-<button on:click={() => showDashboard = !showDashboard}>
-  Toggle Performance Dashboard
-</button>
+<button on:click={() => (showDashboard = !showDashboard)}> Toggle Performance Dashboard </button>
 ```
 
 ## Integration with vec2art WASM
@@ -360,17 +337,17 @@ Include the performance dashboard in your Svelte components:
 import { trackWASMModuleLoading } from '$lib/services';
 
 async function loadWASMModule() {
-  const tracker = trackWASMModuleLoading();
-  
-  try {
-    tracker.start();
-    const module = await import('vectorize-wasm');
-    tracker.end();
-    return module;
-  } catch (error) {
-    tracker.end(); // Still end tracking on error
-    throw error;
-  }
+	const tracker = trackWASMModuleLoading();
+
+	try {
+		tracker.start();
+		const module = await import('vectorize-wasm');
+		tracker.end();
+		return module;
+	} catch (error) {
+		tracker.end(); // Still end tracking on error
+		throw error;
+	}
 }
 ```
 
@@ -380,32 +357,32 @@ async function loadWASMModule() {
 import { trackWASMImageProcessing } from '$lib/services';
 
 async function processImage(imageData: ImageData, backend: string) {
-  const tracker = trackWASMImageProcessing(backend, {
-    size: imageData.data.length,
-    width: imageData.width,
-    height: imageData.height,
-    format: 'rgba'
-  });
-  
-  tracker.start();
-  
-  try {
-    const result = await wasmModule.process_image(imageData, backend);
-    
-    tracker.end({
-      outputSize: result.svg.length,
-      pathCount: result.pathCount
-    });
-    
-    return result;
-  } catch (error) {
-    trackApplicationError(error, {
-      component: 'wasm-processor',
-      backend,
-      imageSize: imageData.data.length
-    });
-    throw error;
-  }
+	const tracker = trackWASMImageProcessing(backend, {
+		size: imageData.data.length,
+		width: imageData.width,
+		height: imageData.height,
+		format: 'rgba'
+	});
+
+	tracker.start();
+
+	try {
+		const result = await wasmModule.process_image(imageData, backend);
+
+		tracker.end({
+			outputSize: result.svg.length,
+			pathCount: result.pathCount
+		});
+
+		return result;
+	} catch (error) {
+		trackApplicationError(error, {
+			component: 'wasm-processor',
+			backend,
+			imageSize: imageData.data.length
+		});
+		throw error;
+	}
 }
 ```
 
@@ -415,26 +392,26 @@ async function processImage(imageData: ImageData, backend: string) {
 
 ```typescript
 const performanceBudgets = {
-  // Core Web Vitals (milliseconds)
-  LCP: 2500,
-  FID: 100,
-  CLS: 0.1,
-  FCP: 1800,
-  TTI: 3800,
-  TTFB: 800,
-  
-  // WASM Performance (milliseconds)
-  wasmLoadTime: 1000,
-  threadInitTime: 200,
-  
-  // Application Performance (milliseconds)
-  imageProcessing: 1500,
-  uiResponseTime: 16,
-  
-  // Resource Limits (bytes)
-  bundleSize: 1024 * 1024,
-  imageUploadSize: 10 * 1024 * 1024,
-  memoryUsage: 512 * 1024 * 1024
+	// Core Web Vitals (milliseconds)
+	LCP: 2500,
+	FID: 100,
+	CLS: 0.1,
+	FCP: 1800,
+	TTI: 3800,
+	TTFB: 800,
+
+	// WASM Performance (milliseconds)
+	wasmLoadTime: 1000,
+	threadInitTime: 200,
+
+	// Application Performance (milliseconds)
+	imageProcessing: 1500,
+	uiResponseTime: 16,
+
+	// Resource Limits (bytes)
+	bundleSize: 1024 * 1024,
+	imageUploadSize: 10 * 1024 * 1024,
+	memoryUsage: 512 * 1024 * 1024
 };
 ```
 
@@ -442,11 +419,11 @@ const performanceBudgets = {
 
 ```typescript
 const privacyConfig = {
-  collectPII: false,
-  cookieConsent: true,
-  dataRetentionDays: 30,
-  anonymizeIPs: true,
-  optOutAvailable: true
+	collectPII: false,
+	cookieConsent: true,
+	dataRetentionDays: 30,
+	anonymizeIPs: true,
+	optOutAvailable: true
 };
 ```
 
@@ -454,13 +431,13 @@ const privacyConfig = {
 
 ```typescript
 const analyticsConfig = {
-  ga4Integration: {
-    measurementId: 'G-XXXXXXXXXX',
-    apiSecret: 'your-api-secret',
-    enabled: true
-  },
-  customEndpoint: 'https://analytics.your-domain.com/collect',
-  privacySettings: privacyConfig
+	ga4Integration: {
+		measurementId: 'G-XXXXXXXXXX',
+		apiSecret: 'your-api-secret',
+		enabled: true
+	},
+	customEndpoint: 'https://analytics.your-domain.com/collect',
+	privacySettings: privacyConfig
 };
 ```
 
@@ -502,22 +479,24 @@ The framework automatically generates optimization recommendations:
 ### Common Issues
 
 1. **WASM Loading Failures**
+
    ```typescript
    // Check browser support
    if (!('WebAssembly' in window)) {
-     console.error('WebAssembly not supported');
+   	console.error('WebAssembly not supported');
    }
-   
+
    // Verify CORS headers
    // Ensure COEP/COOP headers for SharedArrayBuffer
    ```
 
 2. **Memory Leaks**
+
    ```typescript
    // Use memory profiler
    const leakDetection = await detectMemoryLeaks();
    if (leakDetection.hasLeaks) {
-     // Review object lifecycle
+   	// Review object lifecycle
    }
    ```
 
@@ -525,8 +504,8 @@ The framework automatically generates optimization recommendations:
    ```typescript
    // Check current violations
    const violations = getCurrentViolations();
-   violations.forEach(violation => {
-     console.log('Fix:', violation.metric, violation.suggestions);
+   violations.forEach((violation) => {
+   	console.log('Fix:', violation.metric, violation.suggestions);
    });
    ```
 
@@ -536,8 +515,8 @@ Enable debug mode for detailed logging:
 
 ```typescript
 await initializePerformanceMonitoring({
-  debugMode: true,
-  enableDevTools: true
+	debugMode: true,
+	enableDevTools: true
 });
 ```
 

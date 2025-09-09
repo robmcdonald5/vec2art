@@ -40,7 +40,8 @@
 	let turnstileLoaded = false;
 
 	// Constants for validation
-	const EMAIL_REGEX = /^[a-zA-Z0-9_+&*-]+(?:\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
+	const EMAIL_REGEX =
+		/^[a-zA-Z0-9_+&*-]+(?:\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
 	const MIN_MESSAGE_LENGTH = 10;
 	const MAX_MESSAGE_LENGTH = 2000;
 	const MIN_NAME_LENGTH = 2;
@@ -482,7 +483,12 @@
 	$: validateMessage(formData.message);
 
 	// Overall form validity
-	$: isFormValid = isNameValid && isEmailValid && isMessageValid && isTurnstileValid && (selectedCategory !== 'bug' || formData.bugType);
+	$: isFormValid =
+		isNameValid &&
+		isEmailValid &&
+		isMessageValid &&
+		isTurnstileValid &&
+		(selectedCategory !== 'bug' || formData.bugType);
 
 	// Disable submit button only when submitting or form is invalid
 	$: isSubmitDisabled = isSubmitting || !isFormValid;
@@ -497,7 +503,7 @@
 			errors.name = `Name must be at least ${MIN_NAME_LENGTH} characters long`;
 		}
 
-		// Email validation  
+		// Email validation
 		if (!formData.email.trim()) {
 			errors.email = 'Email is required';
 		} else if (!EMAIL_REGEX.test(formData.email.trim())) {
@@ -850,8 +856,8 @@
 											class="focus:border-ferrari-500 focus:ring-ferrari-500/20 w-full rounded-lg border px-4 py-3 pr-10 text-gray-900 placeholder-gray-500 transition-colors focus:ring-2 focus:outline-none {errors.name
 												? 'border-red-500'
 												: isNameValid && formData.name.length > 0
-												? 'border-green-500'
-												: 'border-gray-300'}"
+													? 'border-green-500'
+													: 'border-gray-300'}"
 											placeholder="Enter your full name"
 											required
 										/>
@@ -885,8 +891,8 @@
 											class="focus:border-ferrari-500 focus:ring-ferrari-500/20 w-full rounded-lg border px-4 py-3 pr-10 text-gray-900 placeholder-gray-500 transition-colors focus:ring-2 focus:outline-none {errors.email
 												? 'border-red-500'
 												: isEmailValid && formData.email.length > 0
-												? 'border-green-500'
-												: 'border-gray-300'}"
+													? 'border-green-500'
+													: 'border-gray-300'}"
 											placeholder="Enter your email address"
 											required
 										/>
@@ -926,7 +932,13 @@
 									<p class="mt-1 text-sm text-red-600">{errors.message}</p>
 								{/if}
 								<div class="mt-2 flex justify-between text-sm">
-									<span class="{isMessageValid ? 'text-green-600' : formData.message.length > 0 ? 'text-red-600' : 'text-gray-500'}">
+									<span
+										class={isMessageValid
+											? 'text-green-600'
+											: formData.message.length > 0
+												? 'text-red-600'
+												: 'text-gray-500'}
+									>
 										{#if formData.message.length === 0}
 											Enter at least {MIN_MESSAGE_LENGTH} characters
 										{:else if !isMessageValid}
@@ -939,7 +951,13 @@
 											✓ Message length is good
 										{/if}
 									</span>
-									<span class="{formData.message.length > MAX_MESSAGE_LENGTH ? 'text-red-600 font-medium' : formData.message.length > MAX_MESSAGE_LENGTH * 0.9 ? 'text-amber-600' : 'text-gray-500'}">
+									<span
+										class={formData.message.length > MAX_MESSAGE_LENGTH
+											? 'font-medium text-red-600'
+											: formData.message.length > MAX_MESSAGE_LENGTH * 0.9
+												? 'text-amber-600'
+												: 'text-gray-500'}
+									>
 										{formData.message.length}/{MAX_MESSAGE_LENGTH}
 									</span>
 								</div>
@@ -969,7 +987,9 @@
 								<!-- Form Validation Status -->
 								{#if !isFormValid && !isSubmitting}
 									<div class="text-center">
-										<div class="inline-flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">
+										<div
+											class="inline-flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700"
+										>
 											<AlertTriangle class="h-4 w-4" />
 											Please complete all required fields and verification
 										</div>
@@ -979,11 +999,12 @@
 								<button
 									type="submit"
 									disabled={isSubmitDisabled}
-									class="flex items-center justify-center gap-2 rounded-lg px-8 py-4 font-medium text-white transition-all duration-200 focus:ring-2 focus:outline-none {isSubmitDisabled 
-										? 'bg-gray-400 cursor-not-allowed opacity-50' 
-										: 'bg-ferrari-600 hover:bg-ferrari-700 focus:ring-ferrari-500/50 hover:scale-[1.02] hover:shadow-lg'
-									}"
-									title={isSubmitDisabled && !isSubmitting ? 'Please complete all fields and verification' : ''}
+									class="flex items-center justify-center gap-2 rounded-lg px-8 py-4 font-medium text-white transition-all duration-200 focus:ring-2 focus:outline-none {isSubmitDisabled
+										? 'cursor-not-allowed bg-gray-400 opacity-50'
+										: 'bg-ferrari-600 hover:bg-ferrari-700 focus:ring-ferrari-500/50 hover:scale-[1.02] hover:shadow-lg'}"
+									title={isSubmitDisabled && !isSubmitting
+										? 'Please complete all fields and verification'
+										: ''}
 								>
 									{#if isSubmitting}
 										<div

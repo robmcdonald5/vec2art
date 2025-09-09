@@ -98,11 +98,13 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 
 	$effect(() => {
 		// Check if external state has changed
-		const currentExternalState = externalPanZoom ? {
-			scale: externalPanZoom.scale,
-			x: externalPanZoom.x,
-			y: externalPanZoom.y
-		} : null;
+		const currentExternalState = externalPanZoom
+			? {
+					scale: externalPanZoom.scale,
+					x: externalPanZoom.x,
+					y: externalPanZoom.y
+				}
+			: null;
 
 		// Check if local state has changed
 		const currentLocalState = {
@@ -112,37 +114,40 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 		};
 
 		// Only update from external if external state actually changed and sync is enabled
-		if (currentExternalState && enableSync && 
-			(!previousExternalState || 
-			 previousExternalState.scale !== currentExternalState.scale ||
-			 previousExternalState.x !== currentExternalState.x ||
-			 previousExternalState.y !== currentExternalState.y)) {
-			
+		if (
+			currentExternalState &&
+			enableSync &&
+			(!previousExternalState ||
+				previousExternalState.scale !== currentExternalState.scale ||
+				previousExternalState.x !== currentExternalState.x ||
+				previousExternalState.y !== currentExternalState.y)
+		) {
 			console.log('🔄 [AdvancedSvgPreview] Updating from external state:', {
 				external: currentExternalState,
 				previous: previousExternalState,
 				syncEnabled: enableSync
 			});
-			
+
 			// Update local state from external
 			targetScale = currentExternalState.scale;
 			targetOffsetX = currentExternalState.x;
 			targetOffsetY = currentExternalState.y;
-			
+
 			previousExternalState = { ...currentExternalState };
 		}
 		// Only notify parent if local state actually changed and we're not just syncing from external
-		else if (onPanZoomChange && 
+		else if (
+			onPanZoomChange &&
 			(!previousLocalState ||
-			 previousLocalState.scale !== currentLocalState.scale ||
-			 previousLocalState.x !== currentLocalState.x ||
-			 previousLocalState.y !== currentLocalState.y)) {
-			
+				previousLocalState.scale !== currentLocalState.scale ||
+				previousLocalState.x !== currentLocalState.x ||
+				previousLocalState.y !== currentLocalState.y)
+		) {
 			console.log('📤 [AdvancedSvgPreview] Notifying parent of local changes:', {
 				current: currentLocalState,
 				previous: previousLocalState
 			});
-			
+
 			// Notify parent of local changes
 			onPanZoomChange(currentLocalState);
 			previousLocalState = { ...currentLocalState };
@@ -164,10 +169,10 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 
 		try {
 			console.log(`🎨 [AdvancedSvgPreview] Starting render for SVG:`, {
-			length: svgContent.length,
-			sizeKB: Math.round(svgContent.length / 1024),
-			sizeMB: (svgContent.length / 1024 / 1024).toFixed(2)
-		});
+				length: svgContent.length,
+				sizeKB: Math.round(svgContent.length / 1024),
+				sizeMB: (svgContent.length / 1024 / 1024).toFixed(2)
+			});
 
 			// Clear previous renders
 			canvasDataUrl = null;
@@ -254,13 +259,20 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 						// IMMEDIATE PREVIEW: Create blob URL first for instant display
 						renderWithSvgDom(); // This creates svgBlobUrl immediately
 						console.log('⚡ [AdvancedSvgPreview] Created immediate blob URL for instant preview');
-						
+
 						// BACKGROUND OPTIMIZATION: Start WebP conversion without blocking
-						renderWithWebP().then(() => {
-							console.log('🎨 [AdvancedSvgPreview] Background WebP optimization completed, preview will auto-update');
-						}).catch(error => {
-							console.warn('[AdvancedSvgPreview] Background WebP failed, keeping blob URL:', error);
-						});
+						renderWithWebP()
+							.then(() => {
+								console.log(
+									'🎨 [AdvancedSvgPreview] Background WebP optimization completed, preview will auto-update'
+								);
+							})
+							.catch((error) => {
+								console.warn(
+									'[AdvancedSvgPreview] Background WebP failed, keeping blob URL:',
+									error
+								);
+							});
 					} catch (error) {
 						console.warn('[AdvancedSvgPreview] WebP render failed, trying IMG fallback:', error);
 						renderWithImgFallback();
@@ -290,13 +302,17 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 						// IMMEDIATE PREVIEW: Create blob URL first for instant display
 						renderWithSvgDom();
 						console.log('⚡ [AdvancedSvgPreview] Created immediate blob URL for WebGL fallback');
-						
+
 						// BACKGROUND OPTIMIZATION: Start WebP conversion without blocking
-						renderWithWebP().then(() => {
-							console.log('🎨 [AdvancedSvgPreview] Background WebP optimization completed for WebGL fallback');
-						}).catch(error => {
-							console.warn('[AdvancedSvgPreview] WebP fallback failed, keeping blob URL:', error);
-						});
+						renderWithWebP()
+							.then(() => {
+								console.log(
+									'🎨 [AdvancedSvgPreview] Background WebP optimization completed for WebGL fallback'
+								);
+							})
+							.catch((error) => {
+								console.warn('[AdvancedSvgPreview] WebP fallback failed, keeping blob URL:', error);
+							});
 					} catch (error) {
 						console.warn('[AdvancedSvgPreview] WebP fallback failed, using IMG:', error);
 						renderWithImgFallback();
@@ -307,14 +323,20 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 					console.warn('[AdvancedSvgPreview] Unknown render mode, using WebP fallback');
 					// IMMEDIATE PREVIEW: Create blob URL first for instant display
 					renderWithSvgDom();
-					console.log('⚡ [AdvancedSvgPreview] Created immediate blob URL for unknown mode fallback');
-					
+					console.log(
+						'⚡ [AdvancedSvgPreview] Created immediate blob URL for unknown mode fallback'
+					);
+
 					// BACKGROUND OPTIMIZATION: Start WebP conversion without blocking
-					renderWithWebP().then(() => {
-						console.log('🎨 [AdvancedSvgPreview] Background WebP optimization completed for unknown mode fallback');
-					}).catch(error => {
-						console.warn('[AdvancedSvgPreview] WebP fallback failed, keeping blob URL:', error);
-					});
+					renderWithWebP()
+						.then(() => {
+							console.log(
+								'🎨 [AdvancedSvgPreview] Background WebP optimization completed for unknown mode fallback'
+							);
+						})
+						.catch((error) => {
+							console.warn('[AdvancedSvgPreview] WebP fallback failed, keeping blob URL:', error);
+						});
 			}
 
 			// Try to update performance stats (non-critical)
@@ -429,7 +451,15 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 	// Get current display URL based on render mode
 	const displayUrl = $derived(() => {
 		const url = webpDataUrl || canvasDataUrl || imgFallbackUrl || svgBlobUrl;
-		const activeMode = webpDataUrl ? 'WebP' : canvasDataUrl ? 'Canvas' : imgFallbackUrl ? 'IMG' : svgBlobUrl ? 'Blob' : 'None';
+		const activeMode = webpDataUrl
+			? 'WebP'
+			: canvasDataUrl
+				? 'Canvas'
+				: imgFallbackUrl
+					? 'IMG'
+					: svgBlobUrl
+						? 'Blob'
+						: 'None';
 		console.log(`🔄 [AdvancedSvgPreview] Display URL updated - Active mode: ${activeMode}`, {
 			webpDataUrl: !!webpDataUrl,
 			canvasDataUrl: !!canvasDataUrl,
@@ -567,11 +597,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 					/>
 				{:else if svgBlobUrl}
 					<!-- SVG DOM result -->
-					<ScrollFriendlyImageViewer
-						src={svgBlobUrl}
-						alt="SVG DOM Preview"
-						panel="converted"
-					/>
+					<ScrollFriendlyImageViewer src={svgBlobUrl} alt="SVG DOM Preview" panel="converted" />
 				{:else if canvasDataUrl}
 					<!-- Canvas rendering result (static) -->
 					<img

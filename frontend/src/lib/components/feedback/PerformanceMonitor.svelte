@@ -11,10 +11,10 @@
 	import { globalImagePool } from '$lib/utils/image-pool';
 	import { processingQueue } from '$lib/stores/processing-queue.svelte';
 	import { converterWasm } from '$lib/stores/converter-wasm.svelte';
-	import { 
-		globalComponentMemoizer, 
-		globalRenderThrottler, 
-		globalStoreUpdater 
+	import {
+		globalComponentMemoizer,
+		globalRenderThrottler,
+		globalStoreUpdater
 	} from '$lib/utils/component-optimizer';
 	import { useMemo } from '$lib/utils/component-optimizer';
 
@@ -50,20 +50,20 @@
 	let showMonitor = $state(false);
 	let updateInterval: number | null = null;
 	let metricsHistory: PerformanceMetrics[] = $state([]);
-	
+
 	// Use memoization for expensive calculations
-	const currentMetrics = $derived(useMemo(
-		'performance_metrics',
-		() => calculateCurrentMetrics(),
-		[showMonitor] // Recalculate when monitor visibility changes
-	));
+	const currentMetrics = $derived(
+		useMemo(
+			'performance_metrics',
+			() => calculateCurrentMetrics(),
+			[showMonitor] // Recalculate when monitor visibility changes
+		)
+	);
 
 	// Performance improvement since Phase 3 start
-	const performanceGains = $derived(useMemo(
-		'performance_gains',
-		() => calculatePerformanceGains(),
-		[metricsHistory.length]
-	));
+	const performanceGains = $derived(
+		useMemo('performance_gains', () => calculatePerformanceGains(), [metricsHistory.length])
+	);
 
 	function calculateCurrentMetrics(): PerformanceMetrics {
 		const validationStats = globalValidationCache.getStats();
@@ -71,7 +71,7 @@
 		const queueStats = processingQueue.statistics;
 		const wasmMetrics = converterWasm.wasmMetrics;
 		const bufferStats = converterWasm.bufferPoolStats;
-		
+
 		return {
 			validation: {
 				hitRatio: validationStats.hitRatio,
@@ -113,16 +113,18 @@
 		return {
 			validationSpeed: `+${((current.validation.hitRatio - baseline.validation.hitRatio) * 100).toFixed(1)}%`,
 			memoryEfficiency: `+${(current.imagePool.hitRatio * 100).toFixed(1)}%`,
-			processingThroughput: current.processingQueue.averageProcessingTime > 0 && baseline.processingQueue.averageProcessingTime > 0
-				? `+${(((baseline.processingQueue.averageProcessingTime - current.processingQueue.averageProcessingTime) / baseline.processingQueue.averageProcessingTime) * 100).toFixed(1)}%`
-				: 'N/A',
+			processingThroughput:
+				current.processingQueue.averageProcessingTime > 0 &&
+				baseline.processingQueue.averageProcessingTime > 0
+					? `+${(((baseline.processingQueue.averageProcessingTime - current.processingQueue.averageProcessingTime) / baseline.processingQueue.averageProcessingTime) * 100).toFixed(1)}%`
+					: 'N/A',
 			parallelization: `${current.wasmOptimization.parallelEfficiency.toFixed(1)}%`
 		};
 	}
 
 	function startMonitoring(): void {
 		if (updateInterval) return;
-		
+
 		updateInterval = window.setInterval(() => {
 			const metrics = calculateCurrentMetrics();
 			metricsHistory = [...metricsHistory.slice(-50), metrics]; // Keep last 50 entries
@@ -171,7 +173,7 @@
 <!-- Performance Monitor Toggle Button -->
 <button
 	onclick={toggleMonitor}
-	class="fixed top-4 right-4 z-50 px-3 py-2 bg-gray-800 text-white rounded-lg shadow-lg hover:bg-gray-700 transition-colors text-sm font-mono"
+	class="fixed top-4 right-4 z-50 rounded-lg bg-gray-800 px-3 py-2 font-mono text-sm text-white shadow-lg transition-colors hover:bg-gray-700"
 	title="Toggle Performance Monitor"
 >
 	{showMonitor ? '📊 Hide' : '📊 Show'} Perf
@@ -179,22 +181,22 @@
 
 <!-- Performance Monitor Panel -->
 {#if showMonitor}
-	<div class="fixed top-16 right-4 z-40 w-96 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl font-mono text-xs">
+	<div
+		class="fixed top-16 right-4 z-40 w-96 rounded-lg border border-gray-300 bg-white font-mono text-xs shadow-xl dark:border-gray-600 dark:bg-gray-800"
+	>
 		<!-- Header -->
-		<div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-t-lg border-b border-gray-300 dark:border-gray-600">
-			<h3 class="font-semibold text-gray-900 dark:text-white">
-				🚀 Phase 3 Performance Monitor
-			</h3>
-			<p class="text-gray-600 dark:text-gray-300 text-xs">
-				Real-time optimization metrics
-			</p>
+		<div
+			class="rounded-t-lg border-b border-gray-300 bg-gray-50 px-4 py-3 dark:border-gray-600 dark:bg-gray-700"
+		>
+			<h3 class="font-semibold text-gray-900 dark:text-white">🚀 Phase 3 Performance Monitor</h3>
+			<p class="text-xs text-gray-600 dark:text-gray-300">Real-time optimization metrics</p>
 		</div>
 
 		<!-- Metrics Content -->
-		<div class="p-4 max-h-96 overflow-y-auto">
+		<div class="max-h-96 overflow-y-auto p-4">
 			<!-- Phase 3.1: Validation Cache -->
 			<div class="mb-4">
-				<h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">
+				<h4 class="mb-2 font-semibold text-gray-800 dark:text-gray-200">
 					🧠 Validation Cache (Phase 3.1)
 				</h4>
 				<div class="grid grid-cols-2 gap-2 text-xs">
@@ -210,7 +212,7 @@
 							{currentMetrics.validation.cacheSize}
 						</span>
 					</div>
-					<div class="flex justify-between col-span-2">
+					<div class="col-span-2 flex justify-between">
 						<span class="text-gray-600 dark:text-gray-400">Total Validations:</span>
 						<span class="text-gray-900 dark:text-white">
 							{currentMetrics.validation.totalValidations.toLocaleString()}
@@ -221,7 +223,7 @@
 
 			<!-- Phase 3.2: Image Pool & Queue -->
 			<div class="mb-4">
-				<h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">
+				<h4 class="mb-2 font-semibold text-gray-800 dark:text-gray-200">
 					🏊 Memory Pool (Phase 3.2)
 				</h4>
 				<div class="grid grid-cols-2 gap-2 text-xs">
@@ -237,7 +239,7 @@
 							{formatBytes(currentMetrics.imagePool.totalMemoryMB * 1024 * 1024)}
 						</span>
 					</div>
-					<div class="flex justify-between col-span-2">
+					<div class="col-span-2 flex justify-between">
 						<span class="text-gray-600 dark:text-gray-400">Utilization:</span>
 						<span class={getPerformanceColor(currentMetrics.imagePool.utilizationPercent)}>
 							{currentMetrics.imagePool.utilizationPercent.toFixed(1)}%
@@ -248,9 +250,7 @@
 
 			<!-- Processing Queue -->
 			<div class="mb-4">
-				<h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">
-					📋 Processing Queue
-				</h4>
+				<h4 class="mb-2 font-semibold text-gray-800 dark:text-gray-200">📋 Processing Queue</h4>
 				<div class="grid grid-cols-2 gap-2 text-xs">
 					<div class="flex justify-between">
 						<span class="text-gray-600 dark:text-gray-400">Active Jobs:</span>
@@ -281,7 +281,7 @@
 
 			<!-- Phase 3.3: WASM Optimizations -->
 			<div class="mb-4">
-				<h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">
+				<h4 class="mb-2 font-semibold text-gray-800 dark:text-gray-200">
 					⚡ WASM Optimization (Phase 3.3)
 				</h4>
 				<div class="grid grid-cols-2 gap-2 text-xs">
@@ -297,7 +297,7 @@
 							{currentMetrics.wasmOptimization.sharedBufferUsage.toFixed(1)}%
 						</span>
 					</div>
-					<div class="flex justify-between col-span-2">
+					<div class="col-span-2 flex justify-between">
 						<span class="text-gray-600 dark:text-gray-400">Avg Job Time:</span>
 						<span class="text-gray-900 dark:text-white">
 							{currentMetrics.wasmOptimization.averageJobTime.toFixed(0)}ms
@@ -308,9 +308,7 @@
 
 			<!-- Phase 3.4: Frontend Performance -->
 			<div class="mb-4">
-				<h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">
-					🖥️ Frontend (Phase 3.4)
-				</h4>
+				<h4 class="mb-2 font-semibold text-gray-800 dark:text-gray-200">🖥️ Frontend (Phase 3.4)</h4>
 				<div class="grid grid-cols-2 gap-2 text-xs">
 					<div class="flex justify-between">
 						<span class="text-gray-600 dark:text-gray-400">Comp Cache:</span>
@@ -324,7 +322,7 @@
 							{currentMetrics.frontend.pendingRenderUpdates}
 						</span>
 					</div>
-					<div class="flex justify-between col-span-2">
+					<div class="col-span-2 flex justify-between">
 						<span class="text-gray-600 dark:text-gray-400">Store Updates:</span>
 						<span class="text-gray-900 dark:text-white">
 							{currentMetrics.frontend.storeUpdatesPending}
@@ -335,17 +333,17 @@
 
 			<!-- Performance Gains Summary -->
 			{#if Object.keys(performanceGains).length > 0}
-				<div class="border-t border-gray-200 dark:border-gray-600 pt-3">
-					<h4 class="font-semibold text-green-600 dark:text-green-400 mb-2">
+				<div class="border-t border-gray-200 pt-3 dark:border-gray-600">
+					<h4 class="mb-2 font-semibold text-green-600 dark:text-green-400">
 						📈 Phase 3 Improvements
 					</h4>
 					<div class="grid grid-cols-2 gap-2 text-xs">
 						{#each Object.entries(performanceGains) as [metric, gain]}
 							<div class="flex justify-between">
-								<span class="text-gray-600 dark:text-gray-400 capitalize">
+								<span class="text-gray-600 capitalize dark:text-gray-400">
 									{metric.replace(/([A-Z])/g, ' $1').toLowerCase()}:
 								</span>
-								<span class="text-green-500 font-semibold">
+								<span class="font-semibold text-green-500">
 									{gain}
 								</span>
 							</div>
@@ -356,7 +354,9 @@
 		</div>
 
 		<!-- Footer -->
-		<div class="px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-b-lg border-t border-gray-300 dark:border-gray-600">
+		<div
+			class="rounded-b-lg border-t border-gray-300 bg-gray-50 px-4 py-2 dark:border-gray-600 dark:bg-gray-700"
+		>
 			<p class="text-xs text-gray-500 dark:text-gray-400">
 				Updates every 1s • {metricsHistory.length} samples
 			</p>

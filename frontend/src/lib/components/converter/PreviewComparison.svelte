@@ -414,7 +414,7 @@
 								{/if}
 							</button>
 						</div>
-						
+
 						<!-- Original Frame Controls -->
 						<div class="flex gap-1">
 							<Button
@@ -478,11 +478,14 @@
 					<!-- File Name and Remove Button -->
 					{#if currentFile}
 						<div class="mb-2 flex items-center justify-between px-2">
-							<span class="text-converter-secondary text-xs truncate max-w-[70%]" title={currentFile.name}>
+							<span
+								class="text-converter-secondary max-w-[70%] truncate text-xs"
+								title={currentFile.name}
+							>
 								{currentFile.name}
 							</span>
 							<button
-								class="ml-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-red-500 hover:scale-110"
+								class="ml-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:scale-110 hover:text-red-500"
 								onclick={() => onRemoveFile?.(currentImageIndex)}
 								disabled={isProcessing}
 								aria-label="Remove image"
@@ -551,7 +554,7 @@
 								</button>
 							{/if}
 						</div>
-						
+
 						<!-- Converted Frame Controls -->
 						<div class="flex gap-1">
 							<Button

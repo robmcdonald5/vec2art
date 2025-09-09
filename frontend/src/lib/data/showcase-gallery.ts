@@ -3,16 +3,7 @@
  * Maps selected gallery images to showcase algorithms with optimized loading
  */
 
-import {
-	BarChart3,
-	Palette,
-	PenTool,
-	Grid3x3,
-	Sparkles,
-	Zap,
-	Image,
-	Layers
-} from 'lucide-svelte';
+import { BarChart3, Palette, PenTool, Grid3x3, Sparkles, Zap, Image, Layers } from 'lucide-svelte';
 import type { ComponentType } from 'svelte';
 
 export interface ShowcaseAlgorithm {
@@ -309,12 +300,12 @@ export const showcaseAlgorithms: ShowcaseAlgorithm[] = [
 
 // Helper function to get showcase by ID
 export function getShowcaseById(id: string): ShowcaseAlgorithm | undefined {
-	return showcaseAlgorithms.find(alg => alg.id === id);
+	return showcaseAlgorithms.find((alg) => alg.id === id);
 }
 
 // Helper function to get available showcases only
 export function getAvailableShowcases(): ShowcaseAlgorithm[] {
-	return showcaseAlgorithms.filter(alg => alg.isAvailable);
+	return showcaseAlgorithms.filter((alg) => alg.isAvailable);
 }
 
 // Helper function to construct SVG API URL

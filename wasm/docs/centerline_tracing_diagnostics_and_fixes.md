@@ -6,31 +6,31 @@
 
 ## Why the results look sub‑optimal
 
-1) **Neighbor choice during skeleton walking**
-   - In `trace_from_endpoint` you pick the **first** neighbor (e.g., `neighbors[0]`), which causes zig-zags, wrong turns at T/X-junctions, and fragmented polylines.  
+1. **Neighbor choice during skeleton walking**
+   - In `trace_from_endpoint` you pick the **first** neighbor (e.g., `neighbors[0]`), which causes zig-zags, wrong turns at T/X-junctions, and fragmented polylines.
    - **Fix:** Make the step **direction-aware**—prefer the neighbor that best preserves the current heading and avoid diagonal “corner hops” without orthogonal support.
 
-2) **Over-aggressive tolerances for one‑pixel skeletons**
+2. **Over-aggressive tolerances for one‑pixel skeletons**
    - `min_centerline_branch_px` in the ~12–48 px range prunes real detail.
    - `dp_epsilon_px = 0.003–0.015 × image_diagonal` can be ~5–23 px at 1080p—way too large for 1‑px skeletons, so curves get straight‑lined and micro‑features vanish.
 
-3) **Global Otsu on anti‑aliased art**
+3. **Global Otsu on anti‑aliased art**
    - Otsu makes uneven stroke widths on shaded/AA images → unstable skeletons.
    - **Fix:** Prefer **adaptive** thresholding (Sauvola/Niblack/box‑Sauvola) or tile-wise mean/variance thresholds.
 
-4) **Opening (erode→dilate) before thinning**
-   - Opening **shrinks** thin strokes and creates breaks.  
+4. **Opening (erode→dilate) before thinning**
+   - Opening **shrinks** thin strokes and creates breaks.
    - **Fix:** Use **closing** (dilate→erode) to **bridge tiny gaps** first, then trim spurs after thinning.
 
-5) **No gap‑bridging / path reconnection**
-   - Small breaks remain after thinning.  
+5. **No gap‑bridging / path reconnection**
+   - Small breaks remain after thinning.
    - **Fix:** Reconnect endpoints that are near each other **and** direction‑aligned.
 
-6) **Junction handling & spur pruning**
-   - Pure “short length” pruning deletes real branches and keeps junk near nodes.  
+6. **Junction handling & spur pruning**
+   - Pure “short length” pruning deletes real branches and keeps junk near nodes.
    - **Fix:** Add a **radius ratio** test using the distance transform to prefer thick “trunks” and drop hairlike spurs.
 
-7) **Uniform SVG stroke width**
+7. **Uniform SVG stroke width**
    - Real centerlines look better if width is modulated by the **EDT radius** along the skeleton (mild, clamped).
 
 ---
@@ -39,7 +39,7 @@
 
 ### 1) Direction‑aware skeleton walking (replace your `trace_from_endpoint`)
 
-This preserves heading, avoids diagonal corner jumps, and de‑prioritizes stepping *into* junctions unless necessary.
+This preserves heading, avoids diagonal corner jumps, and de‑prioritizes stepping _into_ junctions unless necessary.
 
 ```rust
 fn trace_from_endpoint(
@@ -186,6 +186,7 @@ fn morphological_closing_3x3(binary: &GrayImage) -> GrayImage {
 ```
 
 Then in your pipeline:
+
 ```rust
 let processed_binary = if config.noise_filtering {
     morphological_closing_3x3(&binary)
@@ -196,7 +197,7 @@ let processed_binary = if config.noise_filtering {
 
 ### 4) Bridge near‑collinear endpoints (reduces breaks without fattening)
 
-Connect polylines whose endpoints are within a small gap *and* headings align.
+Connect polylines whose endpoints are within a small gap _and_ headings align.
 
 ```rust
 fn connect_nearby_endpoints(mut lines: Vec<Vec<Point>>, max_gap: f32, max_turn_deg: f32) -> Vec<Vec<Point>> {
@@ -283,6 +284,7 @@ fn connect_nearby_endpoints(mut lines: Vec<Vec<Point>>, max_gap: f32, max_turn_d
 ```
 
 Call it just after extracting polylines:
+
 ```rust
 let polylines = connect_nearby_endpoints(polylines, 3.5, 25.0);
 ```
@@ -310,19 +312,19 @@ A quick, effective choice is **box‑Sauvola**: compute local mean and variance 
 
 ## TL;DR settings that usually fix “meh” centerlines
 
-- Use **closing** (not opening) before thinning.  
-- Use **adaptive** thresholding (tile‑based) instead of global Otsu.  
-- **Direction‑aware** walking (code above) instead of `neighbors[0]`.  
-- `min_centerline_branch_px ≈ 6..12` for most assets.  
-- `dp_epsilon_px ≈ 0.8–3.0 px` at 1080p (curvature‑aware if possible).  
-- Link endpoints within **~3–4 px** if headings align (function above).  
+- Use **closing** (not opening) before thinning.
+- Use **adaptive** thresholding (tile‑based) instead of global Otsu.
+- **Direction‑aware** walking (code above) instead of `neighbors[0]`.
+- `min_centerline_branch_px ≈ 6..12` for most assets.
+- `dp_epsilon_px ≈ 0.8–3.0 px` at 1080p (curvature‑aware if possible).
+- Link endpoints within **~3–4 px** if headings align (function above).
 - Optional: compute **EDT radius** for width modulation + smarter spur pruning.
 
 ---
 
 ## Integration notes
 
-- Insert **closing** right after binarization and **before** thinning.  
-- Swap in the **direction‑aware walker** wherever you assemble polylines from the skeleton.  
-- Apply **tight DP** and **gentle pruning** on the resulting polylines.  
+- Insert **closing** right after binarization and **before** thinning.
+- Swap in the **direction‑aware walker** wherever you assemble polylines from the skeleton.
+- Apply **tight DP** and **gentle pruning** on the resulting polylines.
 - Then run **endpoint bridging**, and (optionally) **EDT‑based** width modulation and spur pruning.

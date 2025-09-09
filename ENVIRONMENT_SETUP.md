@@ -19,6 +19,7 @@ cp .env.example .env
 ```
 
 Edit `.env` and add your actual values:
+
 ```env
 PUBLIC_FORMSPARK_ENDPOINT_ID=your_actual_formspark_id
 PUBLIC_TURNSTILE_SITE_KEY=your_actual_turnstile_key
@@ -64,11 +65,13 @@ vercel env add PUBLIC_TURNSTILE_SITE_KEY
 ## Getting API Keys
 
 ### Formspark
+
 1. Sign up at https://formspark.io/
 2. Create a new form
 3. Copy the endpoint ID from your dashboard
 
 ### Cloudflare Turnstile
+
 1. Go to https://dash.cloudflare.com/
 2. Navigate to Turnstile
 3. Create a new site
@@ -84,7 +87,7 @@ The application is designed to build successfully even without these keys config
 
 ## Security Notes
 
-- These are "PUBLIC_" prefixed variables, meaning they're exposed to the client
+- These are "PUBLIC\_" prefixed variables, meaning they're exposed to the client
 - They're safe to include in frontend code as they're meant to be public
 - Never commit actual values to the repository - use `.env` files locally and secrets in CI/CD
 - The `.env` file is gitignored to prevent accidental commits
@@ -94,6 +97,7 @@ The application is designed to build successfully even without these keys config
 ### Build Fails with "PUBLIC_TURNSTILE_SITE_KEY" is not exported
 
 **Solution**: Ensure one of the following:
+
 1. GitHub Secrets are configured (for CI)
 2. `.env.ci` file exists in frontend/ directory (fallback for CI)
 3. `.env` file exists with values (for local development)
@@ -102,6 +106,7 @@ The application is designed to build successfully even without these keys config
 ### Contact Form Not Working
 
 **Check**:
+
 1. Verify the Formspark endpoint ID is correct
 2. Ensure Turnstile site key matches your domain configuration
 3. Check browser console for any CORS or validation errors

@@ -26,12 +26,14 @@
 	let startX = 0;
 	let startY = 0;
 	let hasDragged = $state(false);
-	
+
 	// Track if this specific component initiated the drag
 	let isThisPanelDragging = $state(false);
 
 	// Get current state from store for this panel
-	const currentState = $derived(panel === 'original' ? panZoomStore.originalState : panZoomStore.convertedState);
+	const currentState = $derived(
+		panel === 'original' ? panZoomStore.originalState : panZoomStore.convertedState
+	);
 
 	// Apply transforms using store state
 	$effect(() => {
@@ -45,38 +47,46 @@
 	// Handle mouse drag for panning - calls store methods
 	function handleMouseDown(e: MouseEvent) {
 		console.log(`🚨 [ScrollFriendlyImageViewer] ${panel} MOUSEDOWN - currentState:`, currentState);
-		console.log(`🚨 [ScrollFriendlyImageViewer] ${panel} MOUSEDOWN - clientX: ${e.clientX}, clientY: ${e.clientY}`);
-		
+		console.log(
+			`🚨 [ScrollFriendlyImageViewer] ${panel} MOUSEDOWN - clientX: ${e.clientX}, clientY: ${e.clientY}`
+		);
+
 		isDragging = true;
 		isThisPanelDragging = true; // Mark this panel as the active dragger
 		hasDragged = false;
 		startX = e.clientX - currentState.x;
 		startY = e.clientY - currentState.y;
 		e.preventDefault();
-		
-		console.log(`🚨 [ScrollFriendlyImageViewer] ${panel} DRAG STARTED - startX: ${startX}, startY: ${startY}`);
+
+		console.log(
+			`🚨 [ScrollFriendlyImageViewer] ${panel} DRAG STARTED - startX: ${startX}, startY: ${startY}`
+		);
 	}
 
 	function handleMouseMove(e: MouseEvent) {
-		console.log(`🔍 [ScrollFriendlyImageViewer] ${panel} mousemove - isDragging: ${isDragging}, isThisPanelDragging: ${isThisPanelDragging}`);
-		
+		console.log(
+			`🔍 [ScrollFriendlyImageViewer] ${panel} mousemove - isDragging: ${isDragging}, isThisPanelDragging: ${isThisPanelDragging}`
+		);
+
 		// Only handle mouse move if this panel initiated the drag
 		if (!isDragging || !isThisPanelDragging) {
-			console.log(`🔍 [ScrollFriendlyImageViewer] ${panel} mousemove SKIPPED - not dragging or not this panel`);
+			console.log(
+				`🔍 [ScrollFriendlyImageViewer] ${panel} mousemove SKIPPED - not dragging or not this panel`
+			);
 			return;
 		}
-		
+
 		// Mark that we've actually dragged (not just clicked)
 		hasDragged = true;
-		
+
 		const newState = {
 			scale: currentState.scale,
 			x: e.clientX - startX,
 			y: e.clientY - startY
 		};
-		
+
 		console.log(`🔧 [ScrollFriendlyImageViewer] ${panel} pan update:`, newState);
-		
+
 		// Update store based on panel
 		if (panel === 'original') {
 			panZoomStore.updateOriginalState(newState);
@@ -86,11 +96,13 @@
 	}
 
 	function handleMouseUp() {
-		console.log(`🔧 [ScrollFriendlyImageViewer] ${panel} ended drag (was active: ${isThisPanelDragging})`);
+		console.log(
+			`🔧 [ScrollFriendlyImageViewer] ${panel} ended drag (was active: ${isThisPanelDragging})`
+		);
 		isDragging = false;
 		isThisPanelDragging = false; // Reset active dragger
 	}
-	
+
 	// Prevent button click if dragging occurred
 	function handleClick(e: MouseEvent) {
 		if (hasDragged) {
@@ -121,13 +133,13 @@
 		const scaleRatio = newScale / currentState.scale;
 		const newX = x - scaleRatio * (x - currentState.x);
 		const newY = y - scaleRatio * (y - currentState.y);
-		
+
 		const newState = {
 			scale: newScale,
 			x: newX,
 			y: newY
 		};
-		
+
 		// Update store based on panel
 		if (panel === 'original') {
 			panZoomStore.updateOriginalState(newState);
@@ -141,22 +153,26 @@
 
 	onMount(() => {
 		console.log(`🔧 [ScrollFriendlyImageViewer] Instance ${instanceId} loaded for panel: ${panel}`);
-		
+
 		// We'll use global listeners but with better isolation
 		const handleGlobalMouseMove = (e: MouseEvent) => {
-			console.log(`🌐 [ScrollFriendlyImageViewer] Instance ${instanceId} (${panel}) global mousemove - isThisPanelDragging: ${isThisPanelDragging}`);
+			console.log(
+				`🌐 [ScrollFriendlyImageViewer] Instance ${instanceId} (${panel}) global mousemove - isThisPanelDragging: ${isThisPanelDragging}`
+			);
 			if (isThisPanelDragging) {
 				handleMouseMove(e);
 			}
 		};
-		
+
 		const handleGlobalMouseUp = (e: MouseEvent) => {
-			console.log(`🌐 [ScrollFriendlyImageViewer] Instance ${instanceId} (${panel}) global mouseup - isThisPanelDragging: ${isThisPanelDragging}`);
+			console.log(
+				`🌐 [ScrollFriendlyImageViewer] Instance ${instanceId} (${panel}) global mouseup - isThisPanelDragging: ${isThisPanelDragging}`
+			);
 			if (isThisPanelDragging) {
 				handleMouseUp();
 			}
 		};
-		
+
 		document.addEventListener('mousemove', handleGlobalMouseMove);
 		document.addEventListener('mouseup', handleGlobalMouseUp);
 

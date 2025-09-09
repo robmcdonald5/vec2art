@@ -79,20 +79,20 @@
 	<!-- After Image (Bottom Layer) -->
 	<div class="relative h-full w-full">
 		{#if afterPlaceholder}
-			<img 
-				src={afterPlaceholder} 
-				alt="" 
+			<img
+				src={afterPlaceholder}
+				alt=""
 				aria-hidden="true"
-				class="absolute inset-0 h-full w-full object-contain blur-xl" 
-				draggable="false" 
+				class="absolute inset-0 h-full w-full object-contain blur-xl"
+				draggable="false"
 			/>
 		{/if}
-		<img 
-			src={afterImage} 
-			alt={afterAlt} 
+		<img
+			src={afterImage}
+			alt={afterAlt}
 			{loading}
-			class="relative h-full w-full object-contain" 
-			draggable="false" 
+			class="relative h-full w-full object-contain"
+			draggable="false"
 		/>
 	</div>
 
@@ -102,20 +102,20 @@
 		style="clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%)"
 	>
 		{#if beforePlaceholder}
-			<img 
-				src={beforePlaceholder} 
-				alt="" 
+			<img
+				src={beforePlaceholder}
+				alt=""
 				aria-hidden="true"
-				class="absolute inset-0 h-full w-full object-contain blur-xl" 
-				draggable="false" 
+				class="absolute inset-0 h-full w-full object-contain blur-xl"
+				draggable="false"
 			/>
 		{/if}
-		<img 
-			src={beforeImage} 
-			alt={beforeAlt} 
+		<img
+			src={beforeImage}
+			alt={beforeAlt}
 			{loading}
-			class="relative h-full w-full object-contain" 
-			draggable="false" 
+			class="relative h-full w-full object-contain"
+			draggable="false"
 		/>
 	</div>
 

@@ -13,28 +13,26 @@
 
 	let container: HTMLDivElement;
 	let image: HTMLImageElement;
-	
+
 	// Local interaction state
 	let isPointerDown = $state(false);
 	let startPointer = $state({ x: 0, y: 0 });
 	let startTransform = $state<Transform>({ x: 0, y: 0, scale: 1 });
 	let imageLoaded = $state(false);
-	
+
 	// Track last known mouse position for button-based zooming
 	let lastMousePosition = $state<{ x: number; y: number } | null>(null);
 
 	// Get reactive transform string from store
 	const transformStyle = $derived(
-		panel === 'original' 
-			? modernPanZoomStore.originalTransform 
+		panel === 'original'
+			? modernPanZoomStore.originalTransform
 			: modernPanZoomStore.convertedTransform
 	);
 
 	// Get current state for this panel
 	const currentState = $derived(
-		panel === 'original' 
-			? modernPanZoomStore.originalState 
-			: modernPanZoomStore.convertedState
+		panel === 'original' ? modernPanZoomStore.originalState : modernPanZoomStore.convertedState
 	);
 
 	/**
@@ -42,11 +40,11 @@
 	 */
 	function handlePointerDown(event: PointerEvent) {
 		if (!event.isPrimary) return;
-		
+
 		isPointerDown = true;
 		startPointer = { x: event.clientX, y: event.clientY };
 		startTransform = { ...currentState };
-		
+
 		modernPanZoomStore.setDragging(true, panel);
 		container.setPointerCapture(event.pointerId);
 		event.preventDefault();
@@ -57,10 +55,10 @@
 	 */
 	function handlePointerMove(event: PointerEvent) {
 		if (!isPointerDown || !event.isPrimary) return;
-		
+
 		const deltaX = event.clientX - startPointer.x;
 		const deltaY = event.clientY - startPointer.y;
-		
+
 		modernPanZoomStore.updatePanel(panel, {
 			x: startTransform.x + deltaX,
 			y: startTransform.y + deltaY,
@@ -73,10 +71,10 @@
 	 */
 	function handlePointerUp(event: PointerEvent) {
 		if (!event.isPrimary) return;
-		
+
 		isPointerDown = false;
 		modernPanZoomStore.setDragging(false);
-		
+
 		if (container.hasPointerCapture(event.pointerId)) {
 			container.releasePointerCapture(event.pointerId);
 		}
@@ -87,13 +85,13 @@
 	 */
 	function handleWheel(event: WheelEvent) {
 		event.preventDefault();
-		
+
 		const rect = container.getBoundingClientRect();
 		const centerX = event.clientX - rect.left;
 		const centerY = event.clientY - rect.top;
-		
+
 		const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
-		
+
 		modernPanZoomStore.zoom(panel, zoomFactor, {
 			x: centerX,
 			y: centerY
@@ -106,7 +104,7 @@
 	function handleKeyDown(event: KeyboardEvent) {
 		const panStep = 50;
 		const zoomStep = 1.1;
-		
+
 		switch (event.code) {
 			case 'ArrowUp':
 				event.preventDefault();
@@ -159,7 +157,7 @@
 		if (event.touches.length === 2) {
 			const touch1 = event.touches[0];
 			const touch2 = event.touches[1];
-			
+
 			initialTouchDistance = Math.hypot(
 				touch2.clientX - touch1.clientX,
 				touch2.clientY - touch1.clientY
@@ -173,20 +171,20 @@
 		if (event.touches.length === 2) {
 			const touch1 = event.touches[0];
 			const touch2 = event.touches[1];
-			
+
 			const currentDistance = Math.hypot(
 				touch2.clientX - touch1.clientX,
 				touch2.clientY - touch1.clientY
 			);
-			
+
 			const scaleChange = currentDistance / initialTouchDistance;
 			const newScale = initialScale * scaleChange;
-			
+
 			modernPanZoomStore.updatePanel(panel, {
 				...currentState,
 				scale: newScale
 			});
-			
+
 			event.preventDefault();
 		}
 	}
@@ -194,13 +192,13 @@
 	// Global event listeners for smooth dragging
 	$effect(() => {
 		if (!isPointerDown) return;
-		
+
 		const handleGlobalPointerMove = (e: PointerEvent) => handlePointerMove(e);
 		const handleGlobalPointerUp = (e: PointerEvent) => handlePointerUp(e);
-		
+
 		document.addEventListener('pointermove', handleGlobalPointerMove);
 		document.addEventListener('pointerup', handleGlobalPointerUp);
-		
+
 		return () => {
 			document.removeEventListener('pointermove', handleGlobalPointerMove);
 			document.removeEventListener('pointerup', handleGlobalPointerUp);
@@ -209,14 +207,14 @@
 
 	// Accessibility features
 	const zoomPercentage = $derived(Math.round(currentState.scale * 100));
-	
+
 	/**
 	 * Get the current viewport dimensions for centered zooming
 	 */
 	export function getViewportRect(): DOMRect | null {
 		return container?.getBoundingClientRect() || null;
 	}
-	
+
 	/**
 	 * Zoom towards last mouse position (for button-based controls)
 	 */
@@ -236,7 +234,7 @@
 			}
 		}
 	}
-	
+
 	/**
 	 * Track mouse position even when not dragging
 	 */
@@ -251,7 +249,7 @@
 	}
 </script>
 
-<div 
+<div
 	bind:this={container}
 	class="modern-pan-zoom-container {className}"
 	role="application"
@@ -265,23 +263,21 @@
 	ontouchstart={handleTouchStart}
 	ontouchmove={handleTouchMove}
 >
-	<img 
+	<img
 		bind:this={image}
-		{src} 
+		{src}
 		{alt}
 		onload={handleImageLoad}
 		style="transform: {transformStyle}"
 		draggable="false"
 		class="pan-zoom-image"
 	/>
-	
+
 	<!-- Screen reader info -->
-	<div 
-		id="zoom-info-{panel}" 
-		class="sr-only" 
-		aria-live="polite"
-	>
-		{panel} panel: {zoomPercentage}% zoom, position {Math.round(currentState.x)}, {Math.round(currentState.y)}
+	<div id="zoom-info-{panel}" class="sr-only" aria-live="polite">
+		{panel} panel: {zoomPercentage}% zoom, position {Math.round(currentState.x)}, {Math.round(
+			currentState.y
+		)}
 	</div>
 </div>
 
@@ -296,16 +292,16 @@
 		touch-action: none;
 		background: transparent;
 	}
-	
+
 	.modern-pan-zoom-container:active {
 		cursor: grabbing;
 	}
-	
+
 	.modern-pan-zoom-container:focus {
 		outline: 2px solid #0066cc;
 		outline-offset: 2px;
 	}
-	
+
 	.pan-zoom-image {
 		display: block;
 		max-width: none;
@@ -317,7 +313,7 @@
 		will-change: transform;
 		pointer-events: none;
 	}
-	
+
 	.sr-only {
 		position: absolute;
 		width: 1px;

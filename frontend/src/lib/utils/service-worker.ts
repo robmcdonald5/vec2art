@@ -13,9 +13,12 @@ export async function registerServiceWorker() {
 		console.log('Service Worker registered successfully:', registration);
 
 		// Check for updates periodically (every hour)
-		setInterval(() => {
-			registration.update();
-		}, 60 * 60 * 1000);
+		setInterval(
+			() => {
+				registration.update();
+			},
+			60 * 60 * 1000
+		);
 
 		// Handle updates
 		registration.addEventListener('updatefound', () => {
@@ -49,10 +52,7 @@ export async function clearServiceWorkerCache(): Promise<void> {
 			resolve();
 		};
 
-		registration.active!.postMessage(
-			{ action: 'clearCache' },
-			[messageChannel.port2]
-		);
+		registration.active!.postMessage({ action: 'clearCache' }, [messageChannel.port2]);
 	});
 }
 
@@ -74,9 +74,6 @@ export async function getServiceWorkerCacheSize(): Promise<{
 			resolve(event.data);
 		};
 
-		registration.active!.postMessage(
-			{ action: 'getCacheSize' },
-			[messageChannel.port2]
-		);
+		registration.active!.postMessage({ action: 'getCacheSize' }, [messageChannel.port2]);
 	});
 }

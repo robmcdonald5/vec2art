@@ -9,12 +9,12 @@
 	import Autoplay from 'embla-carousel-autoplay';
 	import type { EmblaCarouselType } from 'embla-carousel';
 	import { ArrowRight, Check, Zap } from 'lucide-svelte';
-	
+
 	// Import showcase data from gallery
-	import { 
-		showcaseAlgorithms, 
+	import {
+		showcaseAlgorithms,
 		type ShowcaseAlgorithm,
-		getSvgApiUrl 
+		getSvgApiUrl
 	} from '$lib/data/showcase-gallery';
 
 	// Use the curated showcase algorithms from gallery
@@ -55,7 +55,7 @@
 		if (initialIndex >= 0 && initialIndex < carouselAlgorithms.length) {
 			selectedAlgorithm = carouselAlgorithms[initialIndex];
 		}
-		
+
 		isInitialized = true;
 	}
 
@@ -80,7 +80,7 @@
 			autoplayPlugin.stop();
 		}
 	}
-	
+
 	function handleTryEffect() {
 		// Validate selected algorithm before navigation
 		if (!selectedAlgorithm || !selectedAlgorithm.isAvailable) {
@@ -93,33 +93,35 @@
 			const params = new URLSearchParams({
 				backend: selectedAlgorithm.backend
 			});
-			
+
 			if (selectedAlgorithm.preset) {
 				params.append('preset', selectedAlgorithm.preset);
 			}
-			
+
 			// Store the algorithm selection in sessionStorage for the converter to pick up
 			if (typeof window !== 'undefined') {
-				sessionStorage.setItem('selectedAlgorithm', JSON.stringify({
-					backend: selectedAlgorithm.backend,
-					preset: selectedAlgorithm.preset,
-					name: selectedAlgorithm.name
-				}));
+				sessionStorage.setItem(
+					'selectedAlgorithm',
+					JSON.stringify({
+						backend: selectedAlgorithm.backend,
+						preset: selectedAlgorithm.preset,
+						name: selectedAlgorithm.name
+					})
+				);
 			}
-			
+
 			goto(`/converter?${params.toString()}`);
 		} catch (error) {
 			console.error('Failed to navigate to converter:', error);
 		}
 	}
 
-
 	// Validate selectedAlgorithm state consistency
 	$effect(() => {
 		if (selectedAlgorithm && emblaApi && isInitialized) {
 			const currentIndex = emblaApi.selectedScrollSnap();
 			const expectedAlgorithm = carouselAlgorithms[currentIndex];
-			
+
 			// Only log warnings for debugging, don't auto-correct to avoid infinite loops
 			if (expectedAlgorithm && selectedAlgorithm.id !== expectedAlgorithm.id) {
 				console.warn('Carousel state inconsistency detected:', {
@@ -223,7 +225,7 @@
 					<BeforeAfterSlider
 						beforeImage={selectedAlgorithm.beforeImage}
 						afterImage={selectedAlgorithm.afterImage}
-						loading={isInitialized && selectedAlgorithm === algorithms[0] ? "eager" : "lazy"}
+						loading={isInitialized && selectedAlgorithm === algorithms[0] ? 'eager' : 'lazy'}
 						class="h-full w-full"
 					/>
 				</div>
@@ -278,12 +280,18 @@
 					<button
 						onclick={handleTryEffect}
 						disabled={!selectedAlgorithm.isAvailable}
-						class="group inline-flex w-56 items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold text-white shadow-lg transition-all duration-300 {selectedAlgorithm.isAvailable 
-							? 'bg-ferrari-600 hover:bg-ferrari-700 hover:-translate-y-0.5 hover:shadow-xl cursor-pointer' 
-							: 'bg-gray-400 cursor-not-allowed opacity-75'}"
+						class="group inline-flex w-56 items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold text-white shadow-lg transition-all duration-300 {selectedAlgorithm.isAvailable
+							? 'bg-ferrari-600 hover:bg-ferrari-700 cursor-pointer hover:-translate-y-0.5 hover:shadow-xl'
+							: 'cursor-not-allowed bg-gray-400 opacity-75'}"
 					>
-						{selectedAlgorithm.isAvailable ? 'Try This Style' : `Coming Soon: ${selectedAlgorithm.name}`}
-						<ArrowRight class="h-5 w-5 transition-transform {selectedAlgorithm.isAvailable ? 'group-hover:translate-x-1' : ''}" />
+						{selectedAlgorithm.isAvailable
+							? 'Try This Style'
+							: `Coming Soon: ${selectedAlgorithm.name}`}
+						<ArrowRight
+							class="h-5 w-5 transition-transform {selectedAlgorithm.isAvailable
+								? 'group-hover:translate-x-1'
+								: ''}"
+						/>
 					</button>
 				</div>
 			</div>

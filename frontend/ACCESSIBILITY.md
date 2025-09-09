@@ -13,22 +13,26 @@ The vec2art frontend application has been designed and implemented with comprehe
 The application is fully operable using only the keyboard:
 
 #### Global Navigation
+
 - **Tab** - Move forward through interactive elements
 - **Shift + Tab** - Move backward through interactive elements
 - **Enter/Space** - Activate buttons, links, and controls
 - **Escape** - Close modals and cancel operations
 
 #### Performance Mode Selection
+
 - **Arrow Keys** - Navigate between performance mode options
 - **Home** - Jump to first performance mode
 - **End** - Jump to last performance mode
 - **Enter/Space** - Select a performance mode
 
 #### File Upload
+
 - **Enter/Space** - Open file selection dialog when focused on upload area
 - **Enter/Space** - Remove file when focused on uploaded file
 
 #### Form Controls
+
 - **Arrow Keys** - Adjust slider values
 - **Home/End** - Jump to min/max values on sliders
 - **Space** - Toggle checkboxes
@@ -39,18 +43,21 @@ The application is fully operable using only the keyboard:
 The application provides comprehensive screen reader support:
 
 #### Live Regions
+
 - **Processing Status** - Real-time announcements of conversion progress
 - **System Status** - Notifications about thread initialization and performance mode changes
 - **File Operations** - Announcements when files are selected or removed
 - **Settings Changes** - Notifications when configuration options are modified
 
 #### Semantic Structure
+
 - **Proper Headings** - Hierarchical heading structure (h1, h2, h3)
 - **Landmarks** - Main content areas, navigation, and complementary sections
 - **Form Labels** - All form controls properly labeled and described
 - **Button Descriptions** - Clear, descriptive button text and ARIA labels
 
 #### Content Descriptions
+
 - **Image Alt Text** - Descriptive alternative text for all images
 - **Progress Indicators** - Detailed progress information with time estimates
 - **Error Messages** - Clear error descriptions and recovery suggestions
@@ -58,12 +65,14 @@ The application provides comprehensive screen reader support:
 ### 3. Visual Accessibility
 
 #### Color and Contrast
+
 - **WCAG AA Compliance** - Minimum 4.5:1 contrast ratio for normal text
 - **Color Independence** - Information not conveyed by color alone
 - **Focus Indicators** - Visible focus rings on all interactive elements
 - **High Contrast Support** - Compatible with system high contrast modes
 
 #### Typography and Layout
+
 - **Readable Fonts** - Minimum 16px font size for body text
 - **Scalable Text** - Supports up to 200% zoom without horizontal scrolling
 - **Adequate Spacing** - Sufficient line height and spacing between elements
@@ -72,6 +81,7 @@ The application provides comprehensive screen reader support:
 ### 4. Reduced Motion Support
 
 The application respects user preferences for reduced motion:
+
 - **Animation Controls** - Reduced or eliminated animations when preferred
 - **Transition Options** - Alternative presentation methods for motion-sensitive users
 
@@ -141,11 +151,13 @@ The application respects user preferences for reduced motion:
 ## Error Handling and Recovery
 
 ### Validation Messages
+
 - **Clear Descriptions** - Error messages explain what went wrong and how to fix it
 - **Associated with Fields** - Errors are programmatically linked to relevant form fields
 - **Non-Intrusive** - Errors don't interfere with navigation or screen reader flow
 
 ### Recovery Suggestions
+
 - **Specific Actions** - Clear instructions for resolving problems
 - **Alternative Methods** - Multiple ways to accomplish the same task
 - **Reset Options** - Ability to clear settings and start over
@@ -153,12 +165,15 @@ The application respects user preferences for reduced motion:
 ## Testing and Validation
 
 ### Automated Testing
+
 The application includes comprehensive accessibility testing:
+
 - **axe-core Integration** - Automated WCAG compliance checking
 - **Keyboard Navigation Tests** - Verification of keyboard operability
 - **Screen Reader Simulation** - Testing with assistive technology simulation
 
 ### Manual Testing Recommendations
+
 For thorough accessibility validation:
 
 1. **Screen Reader Testing**
@@ -179,6 +194,7 @@ For thorough accessibility validation:
 ## Browser Support
 
 The accessibility features are supported in:
+
 - **Chrome/Chromium** 90+
 - **Firefox** 88+
 - **Safari** 14+
@@ -195,19 +211,22 @@ We are committed to maintaining and improving accessibility. If you encounter an
 ## Resources
 
 ### WCAG Guidelines
+
 - [Web Content Accessibility Guidelines (WCAG) 2.1](https://www.w3.org/WAI/WCAG21/quickref/)
 - [WCAG 2.1 AA Compliance Checklist](https://www.w3.org/WAI/WCAG21/quickref/?currentsidebar=%23col_overview&levels=aaa)
 
 ### Assistive Technology
+
 - [NVDA Screen Reader](https://www.nvaccess.org/download/)
 - [VoiceOver User Guide](https://support.apple.com/guide/voiceover/)
 - [JAWS Screen Reader](https://www.freedomscientific.com/products/software/jaws/)
 
 ### Testing Tools
+
 - [axe DevTools](https://www.deque.com/axe/devtools/)
 - [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
 - [Lighthouse Accessibility Audit](https://developers.google.com/web/tools/lighthouse)
 
 ---
 
-*This accessibility guide is maintained alongside the application code and updated with each release to reflect current features and capabilities.*
+_This accessibility guide is maintained alongside the application code and updated with each release to reflect current features and capabilities._
