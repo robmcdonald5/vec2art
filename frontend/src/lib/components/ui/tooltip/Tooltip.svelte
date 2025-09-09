@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { HelpCircle } from 'lucide-svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade /*, scale */ } from "svelte/transition";
 
 	interface Props {
 		content: string;
@@ -23,14 +23,10 @@
 	let isVisible = $state(false);
 	let tooltipElement = $state<HTMLDivElement>();
 	let triggerElement = $state<HTMLButtonElement>();
-	let tooltipPosition = $state({ top: 0, left: 0 });
+	// let tooltipPosition = $state({ x: 0, y: 0 });
 
 	// Calculate dynamic position for fixed positioning
-	function calculatePosition() {
-		if (!triggerElement) {
-			console.log('No trigger element found');
-			return;
-		}
+	// function calculatePosition() { /* TODO: implement if needed */ }
 
 		const triggerRect = triggerElement.getBoundingClientRect();
 		const offset = 8; // Gap between trigger and tooltip

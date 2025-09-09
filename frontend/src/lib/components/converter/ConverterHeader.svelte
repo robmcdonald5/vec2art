@@ -27,8 +27,8 @@
 			ActionHandlerProps,
 			SettingsSyncProps {
 		// Required callbacks for this component
-		onImageIndexChange: (newIndex: number) => void;
-		onRemoveFile: (fileIndex: number) => void;
+		onImageIndexChange: (_index: number) => void;
+		onRemoveFile: (_index: number) => void;
 		// Component-specific props
 		viewMode: 'side-by-side' | 'slider';
 		hasResult: boolean;
@@ -66,7 +66,7 @@
 	const totalFiles = $derived(
 		Math.max(files.length, originalImageUrls.length, filesMetadata.length)
 	);
-	const currentFile = $derived(files[currentImageIndex]);
+	// const currentFile = $derived(files[currentImageIndex]); // TODO: may be needed later
 
 	// Create unified file info for dropdown display
 	const fileDisplayInfo = $derived.by(() => {

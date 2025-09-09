@@ -9,7 +9,7 @@
 <script lang="ts">
 	interface Props {
 		fallback?: boolean;
-		onError?: (error: Error, errorInfo: any) => void;
+		onError?: (_error: Error, _errorInfo: any) => void;
 		children?: any;
 	}
 

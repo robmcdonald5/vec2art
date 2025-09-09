@@ -30,8 +30,8 @@
 		currentMode: PerformanceMode;
 		currentThreadCount?: number;
 		isProcessing?: boolean;
-		onModeChange: (selectedMode: PerformanceMode, selectedThreadCount: number) => void;
-		onAdvancedSettingsToggle?: (shouldShow: boolean) => void;
+		onModeChange: (_selectedMode: string, _selectedThreadCount: number) => void;
+		onAdvancedSettingsToggle?: (_shouldShow: boolean) => void;
 	}
 
 	let {

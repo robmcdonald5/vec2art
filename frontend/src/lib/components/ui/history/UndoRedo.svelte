@@ -4,7 +4,7 @@
 	import type { VectorizerConfig } from '$lib/types/vectorizer';
 
 	interface Props {
-		onConfigChange: (config: VectorizerConfig) => void;
+		onConfigChange: (_config: any) => void;
 		disabled?: boolean;
 	}
 

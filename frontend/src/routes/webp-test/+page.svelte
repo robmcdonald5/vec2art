@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	// import { onMount } from "svelte";
 	import WebPWebGPUDemo from '$lib/components/ui/WebPWebGPUDemo.svelte';
 	import { Zap, ArrowLeft, Cpu, Activity } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';

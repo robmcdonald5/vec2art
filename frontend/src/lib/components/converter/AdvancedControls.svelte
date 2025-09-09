@@ -23,7 +23,7 @@
 
 	interface AdvancedControlsProps {
 		config: VectorizerConfig;
-		onConfigChange: (config: Partial<VectorizerConfig>) => void;
+		onConfigChange: (_config: Partial<VectorizerConfig>) => void;
 		disabled?: boolean;
 		onParameterChange?: () => void;
 	}

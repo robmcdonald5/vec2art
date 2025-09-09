@@ -6,7 +6,7 @@
 
 	interface Props {
 		selectedPresetId?: string;
-		onPresetSelect: (selectedPreset: StylePreset | null) => void;
+		onPresetSelect: (_selectedPreset: StylePreset | null) => void;
 		disabled?: boolean;
 		// New prop for algorithm-specific filtering
 		selectedAlgorithm?: VectorizerBackend;

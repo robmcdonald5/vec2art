@@ -16,9 +16,9 @@
 		config: VectorizerConfig;
 		selectedPreset: VectorizerPreset | 'custom';
 		disabled?: boolean;
-		onConfigChange: (config: Partial<VectorizerConfig>) => void;
-		onPresetChange: (presetValue: VectorizerPreset | 'custom') => void;
-		onBackendChange: (backendValue: VectorizerBackend) => void;
+		onConfigChange: (_config: Partial<VectorizerConfig>) => void;
+		onPresetChange: (_presetValue: string) => void;
+		onBackendChange: (_backendValue: VectorizerBackend) => void;
 		onParameterChange: () => void;
 	}
 

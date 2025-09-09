@@ -8,15 +8,15 @@
 	import { toastStore } from '$lib/stores/toast.svelte';
 
 	// Import dots backend architecture
-	import { mapUIConfigToDotsConfig, validateDotsConfig } from '$lib/utils/dots-mapping.js';
-	import type { UISliderConfig } from '$lib/types/dots-backend.js';
+	// import { mapUIConfigToDotsConfig, validateDotsConfig } from "$lib/types/dots-backend";
+	// import type { UISliderConfig } from "$lib/types/shared-props";
 
 	// Import generated parameter types and validation directly
 	import {
-		getParameterMetadata,
+		// getParameterMetadata, // TODO: Re-enable when parameter metadata is used
 		validateParameter,
 		getParametersForBackend,
-		type VectorizerConfig as GeneratedConfig
+		type VectorizerConfig as _GeneratedConfig // TODO: Re-enable when GeneratedConfig is used
 	} from '$lib/types/generated-parameters';
 
 	// Import performance optimization utilities
@@ -25,10 +25,10 @@
 		globalDebouncedValidator,
 		type ValidationResult
 	} from '$lib/utils/validation-cache';
-	import { globalParameterUpdateManager, type ParameterDelta } from '$lib/utils/parameter-diff';
+	// import { globalParameterUpdateManager, type ParameterDelta } from "$lib/stores/parameter-update-manager";
 
 	// Phase 3.4: Import component optimization utilities
-	import { useMemo, useRenderThrottle, globalStoreUpdater } from '$lib/utils/component-optimizer';
+	// import { useMemo, useRenderThrottle, globalStoreUpdater } from "$lib/stores/optimizations";
 
 	interface ParameterPanelProps {
 		config: VectorizerConfig;
@@ -68,7 +68,7 @@
 	});
 
 	// Track last validation hash to avoid unnecessary validations
-	let lastValidationHash = '';
+	// let lastValidationHash = "";
 
 	// Optimized validation function with caching
 	const performValidation = (config: Partial<VectorizerConfig>): ValidationResult => {
@@ -150,10 +150,10 @@
 	let hasValidationWarnings = $derived(validationResult.warnings.length > 0);
 
 	// Get parameter metadata for dynamic ranges and validation
-	const detailMetadata = $derived(getParameterMetadata('detail'));
-	const strokeMetadata = $derived(getParameterMetadata('stroke_px_at_1080p'));
-	const noiseFilterSpatialMetadata = $derived(getParameterMetadata('noise_filter_spatial_sigma'));
-	const noiseFilterRangeMetadata = $derived(getParameterMetadata('noise_filter_range_sigma'));
+	// const detailMetadata = { /* ... */ };
+	// const strokeMetadata = { /* ... */ };
+	// const noiseFilterSpatialMetadata = { /* ... */ };
+	// const noiseFilterRangeMetadata = { /* ... */ };
 
 	// Convert detail using fallback values since metadata may not have min/max
 	// UI: 1-10 scale, Internal: 0.1-1.0 scale

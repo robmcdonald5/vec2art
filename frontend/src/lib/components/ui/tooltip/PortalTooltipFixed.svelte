@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { HelpCircle } from 'lucide-svelte';
-	import { fade } from 'svelte/transition';
+	// import { fade } from "svelte/transition";
 	import { onMount, onDestroy } from 'svelte';
 
 	interface Props {

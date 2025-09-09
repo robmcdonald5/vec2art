@@ -18,10 +18,7 @@
 	import type { ConverterComponentProps } from '$lib/types/shared-props';
 	import AdvancedSvgPreview from '../ui/AdvancedSvgPreview.svelte';
 	import SvgImageViewer from '../ui/SvgImageViewer.svelte';
-	import {
-		analyzeSvgComplexity,
-		assessPerformance
-	} from '$lib/services/svg-performance-analyzer.js';
+	// import { analyzeSvgComplexity, assessPerformance } from "$lib/utils/svg-analysis";
 	import {
 		createManagedObjectURL,
 		releaseManagedObjectURL
@@ -104,7 +101,7 @@
 	// Performance analysis is handled by the PerformanceWarning component
 
 	// Zoom levels
-	const zoomLevels = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
+	// const zoomLevels = [0.5, 0.75, 1, 1.5, 2, 3];
 
 	// Reset pan/zoom store when changing images (optional)
 	function resetPanZoomState(force = false) {

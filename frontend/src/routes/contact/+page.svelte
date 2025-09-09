@@ -37,7 +37,7 @@
 	// Turnstile integration
 	let turnstileToken = '';
 	let turnstileWidget: any = null;
-	let turnstileLoaded = false;
+	// let turnstileLoaded = $state(false);
 
 	// Constants for validation
 	const EMAIL_REGEX =

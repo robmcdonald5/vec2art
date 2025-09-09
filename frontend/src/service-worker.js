@@ -8,7 +8,7 @@ import { build, files, version } from '$service-worker';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 
 // Create a unique cache name for this deployment
-const CACHE_NAME = `vec2art-cache-v${version}`;
+// const CACHE_NAME = `vec2art-cache-v${version}`; // TODO: Re-enable when needed
 const ASSETS_CACHE = `vec2art-assets-v${version}`;
 const RUNTIME_CACHE = `vec2art-runtime-v${version}`;
 const IMAGE_CACHE = `vec2art-images-v1`; // Persistent across versions
@@ -155,7 +155,8 @@ async function handleImages(request) {
 			cache.put(request, response.clone());
 		}
 		return response;
-	} catch (error) {
+	} catch (err) {
+		console.error('Image handling error:', err);
 		return new Response('Image not available', { status: 503 });
 	}
 }
@@ -171,7 +172,8 @@ async function handleAPI(request) {
 			cache.put(request, response.clone());
 		}
 		return response;
-	} catch (error) {
+	} catch (err) {
+		console.error('API request error:', err);
 		// Network failed, try cache
 		const cached = await cache.match(request);
 		if (cached) {
@@ -222,7 +224,8 @@ async function handleDefault(request) {
 			cache.put(request, response.clone());
 		}
 		return response;
-	} catch (error) {
+	} catch (err) {
+		console.error('Resource fetch error:', err);
 		return new Response('Resource not available', { status: 503 });
 	}
 }

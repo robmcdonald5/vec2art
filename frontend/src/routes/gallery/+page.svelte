@@ -3,14 +3,14 @@
 	import { browser } from '$app/environment';
 	import { BeforeAfterSlider } from '$lib/components/ui/before-after-slider';
 	import { Modal } from '$lib/components/ui/modal';
-	import { Filter, Grid, List, Search, Download, Maximize2, X } from 'lucide-svelte';
+	import { Grid, List, Search, Download, Maximize2 } from 'lucide-svelte';
 	import {
 		loadGalleryData,
 		filterGalleryItems,
 		getCategories,
 		getAlgorithmStats
 	} from '$lib/data/gallery';
-	import type { GalleryItem, GalleryFilters, AlgorithmFilter, ViewMode } from '$lib/types/gallery';
+	import type { GalleryItem, GalleryFilters, ViewMode } from '$lib/types/gallery';
 
 	let selectedItem = $state<GalleryItem | null>(null);
 	let modalOpen = $state(false);
@@ -24,7 +24,7 @@
 	let allItems = $state<GalleryItem[]>([]);
 	let filteredItems = $state<GalleryItem[]>([]);
 	let categories = $state<Array<{ value: string; label: string; count: number }>>([]);
-	let algorithmStats = $state<Map<string, number>>(new Map());
+	// let algorithmStats = $state<Map<string, number>>(new Map()); // TODO: Re-enable when algorithm filtering is implemented
 
 	// Filters
 	let filters = $state<GalleryFilters>({
@@ -310,7 +310,7 @@
 					class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-all duration-200 focus:ring-1 focus:outline-none"
 				>
 					<option value="all">All Categories</option>
-					{#each categories as category}
+					{#each categories as category (category.value)}
 						<option value={category.value}>{category.label} ({category.count})</option>
 					{/each}
 				</select>
@@ -474,7 +474,7 @@
 
 			<!-- Skeleton Loading Cards for Pagination -->
 			{#if isLoadingMore}
-				{#each Array(4) as _, i}
+				{#each Array(4) as _, i (i)}
 					<div
 						class="animate-pulse overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm {viewMode ===
 						'list'

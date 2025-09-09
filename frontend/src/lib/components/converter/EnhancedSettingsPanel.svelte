@@ -12,12 +12,12 @@
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { vectorizerSettings } from '$lib/stores/vectorizer-settings.svelte';
-	import PresetSelector from './PresetSelector.svelte';
+	// import PresetSelector from "./PresetSelector.svelte";
 	import ParameterControl from './ParameterControl.svelte';
 	import type { VectorizerConfig } from '$lib/types/vectorizer';
 
 	interface Props {
-		onConfigChange: (config: VectorizerConfig) => void;
+		onConfigChange: (_config: VectorizerConfig) => void;
 		disabled?: boolean;
 	}
 

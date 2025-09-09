@@ -9,7 +9,7 @@
 		type WebPConversionOptions,
 		type WebPResult
 	} from '$lib/services/svg-to-webp-converter';
-	import { Activity, Zap, Settings, Download, Upload, ArrowLeft, Info } from 'lucide-svelte';
+	import { Activity, Settings, Download, Upload, ArrowLeft, Info } from 'lucide-svelte';
 
 	let converter: SvgToWebPConverter;
 	let converting = false;
@@ -122,11 +122,11 @@
 		return `${(ms / 1000).toFixed(2)}s`;
 	}
 
-	function formatBytes(bytes: number): string {
-		if (bytes < 1024) return `${bytes}B`;
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-		return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-	}
+	// function formatBytes(bytes: number): string {
+	// 	if (bytes < 1024) return `${bytes}B`;
+	// 	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+	// 	return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+	// }
 </script>
 
 <svelte:head>

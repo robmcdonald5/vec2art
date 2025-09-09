@@ -36,7 +36,7 @@
 		currentProgress?: ProcessingProgress;
 		results: ProcessingResult[];
 		previewSvgUrls: (string | null)[];
-		onImageIndexChange: (newIndex: number) => void;
+		onImageIndexChange: (_newIndex: number) => void;
 		// Action callbacks - required
 		onConvert: () => void;
 		onDownload: () => void;

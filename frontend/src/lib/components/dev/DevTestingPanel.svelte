@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	// import { onMount } from "svelte";
 	import { Button } from '$lib/components/ui/button';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte';
 

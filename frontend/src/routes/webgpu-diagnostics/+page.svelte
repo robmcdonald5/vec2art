@@ -146,7 +146,8 @@
 				code: basicShader
 			});
 
-			const pipeline = webgpuDevice!.createComputePipeline({
+			// const pipeline =
+			webgpuDevice!.createComputePipeline({
 				label: 'basic test pipeline',
 				layout: 'auto',
 				compute: {
@@ -210,7 +211,8 @@
 				code: complexShader
 			});
 
-			const pipeline = webgpuDevice!.createComputePipeline({
+			// const pipeline =
+			webgpuDevice!.createComputePipeline({
 				label: 'complex test pipeline',
 				layout: 'auto',
 				compute: {

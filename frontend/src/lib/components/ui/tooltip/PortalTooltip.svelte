@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { HelpCircle } from 'lucide-svelte';
 	import { computePosition, flip, shift, offset, arrow } from '@floating-ui/dom';
-	import { fade } from 'svelte/transition';
+	// import { fade } from "svelte/transition";
 	import { onMount } from 'svelte';
 
 	interface Props {

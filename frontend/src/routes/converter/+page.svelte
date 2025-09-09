@@ -54,16 +54,16 @@
 	let results = $state<(ProcessingResult | null)[]>([]);
 	let previewSvgUrls = $state<(string | null)[]>([]);
 	let isProcessing = $state(false);
-	let processingImageIndex = $state(0); // Needed for progress tracking
-	let completedImages = $state(0); // Needed for batch tracking
-	let batchStartTime = $state<Date | null>(null); // Tracks batch processing start time
+	// let processingImageIndex = $state(0);
+	// let completedImages = $state(0);
+	// let batchStartTime = $state(Date.now());
 
 	// Page initialization state
 	let pageLoaded = $state(false);
 	let initError = $state<string | null>(null);
 	let isRecoveringState = $state(false);
 	let isClearingAll = $state(false); // Flag to prevent auto-save during Clear All
-	let hasRecoveredState = $state(false); // Tracks whether state recovery was successful
+	// let hasRecoveredState = $state(false);
 
 	// Download format selector state
 	let showDownloadSelector = $state(false);
@@ -187,7 +187,7 @@
 
 			// Create URLs for the new files and append to existing URLs
 			const newImageUrls = [...originalImageUrls]; // Keep existing URLs (restored or active)
-			const startIndex = Math.max(previousFileCount, previousRestoredCount); // Start after existing data
+			// const startIndex = currentImageIndex;
 
 			// Handle both URLs and metadata for new files
 			if (previousFileCount === 0 && previousRestoredCount > 0) {

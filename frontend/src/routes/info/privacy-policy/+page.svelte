@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Shield, Lock, Server, Eye, Cookie, FileText, Users, Github } from 'lucide-svelte';
+	import { Shield, Lock, Server, Eye, Cookie, FileText, Users } from 'lucide-svelte';
 </script>
 
 <svelte:head>

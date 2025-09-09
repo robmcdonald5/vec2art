@@ -5,7 +5,7 @@
 	interface Props {
 		parameter: keyof VectorizerConfig;
 		value: any;
-		onChange: (newValue: any) => void;
+		onChange: (_newValue: any) => void;
 		disabled?: boolean;
 		showOverride?: boolean;
 	}

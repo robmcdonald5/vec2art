@@ -170,7 +170,7 @@
 					cpuUsageEstimate: 25
 				},
 				{
-					mode: 'balanced',
+					// mode: "balanced",
 					threadCount: Math.floor(cores * 0.5),
 					reasoning: [`Balanced performance, uses ${Math.floor(cores * 0.5)}/${cores} cores`],
 					warnings: [],

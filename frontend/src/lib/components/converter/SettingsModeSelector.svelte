@@ -7,7 +7,7 @@
 	interface SettingsModeSelectorProps {
 		currentMode: SettingsSyncMode;
 		totalImages: number;
-		onModeChange: (selectedMode: SettingsSyncMode) => void;
+		onModeChange: (_selectedMode: string) => void;
 		disabled?: boolean;
 	}
 

@@ -17,10 +17,10 @@
 		isOpen: boolean;
 		onClose: () => void;
 		config: VectorizerConfig;
-		onConfigChange: (configUpdates: Partial<VectorizerConfig>) => void;
+		onConfigChange: (_configUpdates: Partial<VectorizerConfig>) => void;
 		selectedPreset: VectorizerPreset | 'custom';
-		onPresetChange: (presetValue: VectorizerPreset | 'custom') => void;
-		onBackendChange: (backendValue: VectorizerBackend) => void;
+		onPresetChange: (_presetValue: string) => void;
+		onBackendChange: (_backendValue: VectorizerBackend) => void;
 		disabled?: boolean;
 		onParameterChange?: () => void;
 	}

@@ -6,7 +6,7 @@
 
 	interface BackendSelectorProps {
 		selectedBackend: VectorizerBackend;
-		onBackendChange: (backendValue: VectorizerBackend) => void;
+		onBackendChange: (_backend: VectorizerBackend) => void;
 		disabled?: boolean;
 		compact?: boolean;
 	}

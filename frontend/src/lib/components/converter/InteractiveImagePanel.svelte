@@ -15,7 +15,7 @@
 		hideControls?: boolean;
 		// For synchronized pan/zoom (keeping interface for compatibility)
 		externalPanZoom?: { scale: number; x: number; y: number };
-		onPanZoomChange?: (state: { scale: number; x: number; y: number }) => void;
+		onPanZoomChange?: (_state: { scale: number; x: number; y: number }) => void;
 		enableSync?: boolean;
 	}
 
@@ -42,8 +42,8 @@
 	let targetScale = $state(1);
 	let targetOffsetX = $state(0);
 	let targetOffsetY = $state(0);
-	let initialFitScale = $state(1);
-	let hasCalculatedInitialFit = $state(false);
+	// let initialFitScale = $state(1);
+	// let hasCalculatedInitialFit = $state(false);
 
 	// Track previous sync state to detect changes
 	let prevEnableSync = enableSync;
@@ -240,11 +240,8 @@
 	}
 
 	// Simple approach: just try to fit the image to container like object-fit: contain would
-	async function fitToContainer() {
-		if (!imageUrl || !containerElement) return;
-
+	async function _fitToContainer() {
 		try {
-			// Get actual image dimensions
 			const { width, height } = await waitForImageLoad(imageUrl);
 
 			// Get container dimensions

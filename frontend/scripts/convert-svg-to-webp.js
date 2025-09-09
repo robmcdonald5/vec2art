@@ -140,7 +140,7 @@ async function processGallery() {
 				// Find matching before image
 				const beforeDir = path.join(GALLERY_DIR, 'before', category);
 				let beforeImage = null;
-				let beforeImagePath = null;
+				let _beforeImagePath = null;
 
 				try {
 					const beforeFiles = await fs.readdir(beforeDir);
@@ -173,7 +173,7 @@ async function processGallery() {
 
 					if (matchingBefore) {
 						beforeImage = `/gallery/before/${category}/${matchingBefore}`;
-						beforeImagePath = path.join(beforeDir, matchingBefore);
+						// const beforeImagePath = path.join(beforeDir, matchingBefore); // TODO: might be needed later
 					}
 				} catch {
 					// Before directory might not exist for this category
@@ -217,7 +217,7 @@ async function processGallery() {
 	console.log(`📊 Total images processed: ${manifest.totalImages}`);
 	console.log(`📄 Manifest saved to: ${MANIFEST_PATH}`);
 	console.log('\n📁 Categories:');
-	for (const [cat, info] of Object.entries(manifest.categories)) {
+	for (const [, info] of Object.entries(manifest.categories)) {
 		console.log(`  • ${info.name}: ${info.count} images`);
 	}
 }
