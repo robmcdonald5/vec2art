@@ -3,7 +3,7 @@
  * Defines the structure and types for artistic style presets in vec2art
  */
 
-import type { VectorizerBackend, VectorizerConfig } from '$lib/types/vectorizer';
+import type { VectorizerBackend } from '$lib/types/vectorizer';
 
 export interface PresetMetadata {
 	id: string;

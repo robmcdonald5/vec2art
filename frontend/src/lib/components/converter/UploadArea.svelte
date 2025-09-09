@@ -8,7 +8,7 @@
 	let {
 		onFilesSelect,
 		disabled = false,
-		maxSize = 1 * 1024 * 1024 * 1024, // 1GB
+		maxSize: _maxSize = 1 * 1024 * 1024 * 1024, // 1GB
 		accept = 'image/jpeg,image/png,image/webp,image/tiff,image/bmp,image/gif,image/avif'
 	}: Props = $props();
 

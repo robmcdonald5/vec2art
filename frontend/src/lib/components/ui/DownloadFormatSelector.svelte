@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Download, FileText, Image, X } from 'lucide-svelte';
-	import { Button } from '$lib/components/ui/button';
 	import { lockBodyScroll } from '$lib/utils/scroll-lock';
 	import { onDestroy } from 'svelte';
 

@@ -18,7 +18,7 @@
 		maxHeight?: number;
 		// Sync props (same as InteractiveImagePanel)
 		externalPanZoom?: { scale: number; x: number; y: number };
-		onPanZoomChange?: (state: { scale: number; x: number; y: number }) => void;
+		onPanZoomChange?: (_state: { scale: number; x: number; y: number }) => void;
 		enableSync?: boolean;
 	}
 
@@ -28,9 +28,9 @@
 		targetScale = $bindable(1),
 		targetOffsetX = $bindable(0),
 		targetOffsetY = $bindable(0),
-		minScale = 0.1,
-		maxScale = 5.0,
-		scaleSmoothing = 1200,
+		minScale: _minScale = 0.1,
+		maxScale: _maxScale = 5.0,
+		scaleSmoothing: _scaleSmoothing = 1200,
 		renderMethod = 'blob',
 		maxWidth,
 		maxHeight,

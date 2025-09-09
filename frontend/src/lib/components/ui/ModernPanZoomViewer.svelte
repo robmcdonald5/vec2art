@@ -18,7 +18,7 @@
 	let isPointerDown = $state(false);
 	let startPointer = $state({ x: 0, y: 0 });
 	let startTransform = $state<Transform>({ x: 0, y: 0, scale: 1 });
-	let imageLoaded = $state(false);
+	let _imageLoaded = $state(false);
 
 	// Track last known mouse position for button-based zooming
 	let lastMousePosition = $state<{ x: number; y: number } | null>(null);
@@ -144,7 +144,7 @@
 	 * Handle image load
 	 */
 	function handleImageLoad() {
-		imageLoaded = true;
+		_imageLoaded = true;
 	}
 
 	/**

@@ -15,11 +15,11 @@
 		Rocket,
 		AlertTriangle,
 		CheckCircle,
-		Info
+		_Info
 	} from 'lucide-svelte';
 
 	interface Props {
-		onSelect: (threadCount: number, mode: string) => void;
+		onSelect: (_threadCount: number, _mode: string) => void;
 		isInitializing?: boolean;
 		disabled?: boolean;
 	}
@@ -76,7 +76,7 @@
 
 	function handleKeyboardNavigation(
 		event: KeyboardEvent,
-		mode: 'battery' | 'balanced' | 'performance' | 'extreme' | 'custom'
+		_mode: 'battery' | 'balanced' | 'performance' | 'extreme' | 'custom'
 	) {
 		switch (event.key) {
 			case 'ArrowLeft':
@@ -170,7 +170,7 @@
 					cpuUsageEstimate: 25
 				},
 				{
-					// mode: "balanced",
+					mode: 'balanced',
 					threadCount: Math.floor(cores * 0.5),
 					reasoning: [`Balanced performance, uses ${Math.floor(cores * 0.5)}/${cores} cores`],
 					warnings: [],

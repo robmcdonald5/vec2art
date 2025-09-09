@@ -86,7 +86,7 @@ test.describe('Preset Diagnostic', () => {
 						break;
 					}
 				}
-			} catch (e) {
+			} catch (_e) {
 				// Skip problematic buttons
 			}
 		}

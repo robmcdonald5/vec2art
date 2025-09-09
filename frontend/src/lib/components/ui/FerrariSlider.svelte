@@ -9,8 +9,8 @@
 		disabled?: boolean;
 		id?: string;
 		class?: string;
-		onchange?: (value: number) => void;
-		oninput?: (value: number) => void;
+		onchange?: (_value: number) => void;
+		oninput?: (_value: number) => void;
 	}
 
 	let {

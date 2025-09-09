@@ -29,7 +29,7 @@
 		onReset,
 		onAbort,
 		onAddMore,
-		onToggleHelp,
+		onToggleHelp: _onToggleHelp,
 		canConvert = false,
 		canDownload = false,
 		isProcessing = false

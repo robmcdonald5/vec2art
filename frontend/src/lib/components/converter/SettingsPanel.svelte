@@ -35,7 +35,7 @@
 	let isAdvancedSettingsExpanded = $state(false);
 
 	// Parameter update handler
-	function updateConfig(key: keyof VectorizerConfig) {
+	function _updateConfig(key: keyof VectorizerConfig) {
 		return (event: Event) => {
 			const target = event.target as HTMLInputElement;
 			let value: any = target.value;

@@ -71,7 +71,7 @@ export class GpuService {
 			if (this.capabilities.available) {
 				try {
 					// Initialize GPU processing pipeline
-					const gpuInitResult = await this.wasmModule.initialize_gpu_processing();
+					const _gpuInitResult = await this.wasmModule.initialize_gpu_processing();
 					// GPU processing pipeline initialized successfully
 
 					// Initialize GPU selector with GPU support

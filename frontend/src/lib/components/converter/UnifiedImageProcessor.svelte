@@ -2,7 +2,6 @@
 	import {
 		Upload,
 		X,
-		AlertCircle,
 		ChevronLeft,
 		ChevronRight,
 		FileImage,
@@ -27,7 +26,7 @@
 		// Upload props
 		accept?: string;
 		maxSize?: number;
-		onFilesSelect: (selectedFiles: File[]) => void;
+		onFilesSelect: (_selectedFiles: File[]) => void;
 		disabled?: boolean;
 		currentFiles?: File[];
 		// Preview props

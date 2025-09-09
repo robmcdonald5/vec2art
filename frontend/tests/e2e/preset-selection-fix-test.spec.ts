@@ -2,7 +2,7 @@
  * Preset Selection Fix Test
  * Tests the fixed preset selection state management
  */
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 
 test.describe('Preset Selection Fix', () => {
 	test('Test preset selection state management is fixed', async ({ page }) => {

@@ -8,7 +8,7 @@
 		FileImage,
 		Play,
 		Download,
-		RotateCcw
+		_RotateCcw
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -20,7 +20,7 @@
 		accept?: string;
 		maxSize?: number; // in bytes
 		maxFiles?: number; // maximum number of files
-		onFilesSelect?: (files: File[]) => void;
+		onFilesSelect?: (_files: File[]) => void;
 		disabled?: boolean;
 		currentFiles?: File[];
 		// Converter actions
@@ -46,7 +46,7 @@
 		isProcessing = false,
 		onConvert,
 		onDownload,
-		onReset,
+		_onReset,
 		onAbort
 	}: Props = $props();
 
@@ -95,10 +95,10 @@
 	}
 
 	// Prevent event bubbling helper
-	function withEventPrevention<T extends any[]>(fn: (...args: T) => void) {
-		return (event: Event, ...args: T) => {
+	function withEventPrevention<T extends any[]>(fn: (..._args: T) => void) {
+		return (event: Event, ..._args: T) => {
 			event.stopPropagation();
-			fn(...args);
+			fn(..._args);
 		};
 	}
 

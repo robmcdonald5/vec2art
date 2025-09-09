@@ -5,7 +5,7 @@
 		checked?: boolean;
 		disabled?: boolean;
 		class?: string;
-		onCheckedChange?: (checked: boolean) => void;
+		onCheckedChange?: (_checked: boolean) => void;
 	}
 
 	let {

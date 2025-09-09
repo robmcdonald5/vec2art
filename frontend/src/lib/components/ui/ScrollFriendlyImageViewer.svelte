@@ -164,7 +164,7 @@
 			}
 		};
 
-		const handleGlobalMouseUp = (e: MouseEvent) => {
+		const handleGlobalMouseUp = (_e: MouseEvent) => {
 			console.log(
 				`🌐 [ScrollFriendlyImageViewer] Instance ${instanceId} (${panel}) global mouseup - isThisPanelDragging: ${isThisPanelDragging}`
 			);

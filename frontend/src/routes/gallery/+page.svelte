@@ -24,7 +24,7 @@
 	let allItems = $state<GalleryItem[]>([]);
 	let filteredItems = $state<GalleryItem[]>([]);
 	let categories = $state<Array<{ value: string; label: string; count: number }>>([]);
-	// let algorithmStats = $state<Map<string, number>>(new Map()); // TODO: Re-enable when algorithm filtering is implemented
+	let algorithmStats = $state<Map<string, number>>(new Map()); // TODO: Re-enable when algorithm filtering is implemented
 
 	// Filters
 	let filters = $state<GalleryFilters>({

@@ -2,7 +2,7 @@
 	import { HelpCircle } from 'lucide-svelte';
 	import { computePosition, flip, shift, offset, autoUpdate } from '@floating-ui/dom';
 	import { fade } from 'svelte/transition';
-	import { onMount, onDestroy } from 'svelte';
+	import { onDestroy } from 'svelte';
 
 	interface Props {
 		content: string;

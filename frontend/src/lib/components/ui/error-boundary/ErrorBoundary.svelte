@@ -4,12 +4,12 @@
 	 * SvelteKit 5 Error Handling
 	 */
 
-	import { AlertCircle } from 'lucide-svelte';
-	import { Button } from '../button';
+	// import { AlertCircle } from 'lucide-svelte';
+	// import { Button } from '../button';
 
 	// Component props
 	interface Props {
-		handleError?: (error: Error) => void;
+		handleError?: (_error: Error) => void;
 		class?: string;
 		children?: import('svelte').Snippet;
 	}
@@ -17,10 +17,10 @@
 	let { handleError = () => {}, class: className = '', children, ...restProps }: Props = $props();
 
 	// Error handling function
-	function onError(error: unknown, reset: () => void) {
-		console.error('ErrorBoundary caught error:', error);
+	function onError(_error: unknown, _reset: () => void) {
+		console.error('ErrorBoundary caught error:', _error);
 		// Convert unknown error to Error type for handleError
-		const errorObj = error instanceof Error ? error : new Error(String(error));
+		const errorObj = _error instanceof Error ? _error : new Error(String(_error));
 		handleError(errorObj);
 	}
 </script>

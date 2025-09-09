@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { ChevronDown, ChevronUp } from 'lucide-svelte';
+	import { ChevronDown } from 'lucide-svelte';
+	// import { ChevronUp } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 
 	interface SelectOption {
@@ -13,7 +14,7 @@
 		options: SelectOption[];
 		placeholder?: string;
 		disabled?: boolean;
-		onchange?: (value: string) => void;
+		onchange?: (_value: string) => void;
 	}
 
 	let {

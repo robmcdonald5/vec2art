@@ -1,9 +1,6 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
-	import { page } from '$app/stores';
+	import { onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { fade, slide } from 'svelte/transition';
-	import { cubicOut } from 'svelte/easing';
 	import BeforeAfterSlider from '$lib/components/ui/before-after-slider/before-after-slider.svelte';
 	import emblaCarouselSvelte from 'embla-carousel-svelte';
 	import Autoplay from 'embla-carousel-autoplay';
@@ -14,7 +11,6 @@
 	import {
 		showcaseAlgorithms,
 		type ShowcaseAlgorithm,
-		getSvgApiUrl
 	} from '$lib/data/showcase-gallery';
 
 	// Use the curated showcase algorithms from gallery
@@ -90,7 +86,7 @@
 
 		try {
 			// Navigate to converter with algorithm parameters
-			const params = new URLSearchParams({
+			const params = new window.URLSearchParams({
 				backend: selectedAlgorithm.backend
 			});
 

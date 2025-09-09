@@ -8,7 +8,7 @@
 		step?: number;
 		disabled?: boolean;
 		class?: string;
-		onValueChange?: (value: number) => void;
+		onValueChange?: (_value: number) => void;
 	}
 
 	let {

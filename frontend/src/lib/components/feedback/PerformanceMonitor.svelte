@@ -70,7 +70,7 @@
 		const poolStats = globalImagePool.getStats();
 		const queueStats = processingQueue.statistics;
 		const wasmMetrics = converterWasm.wasmMetrics;
-		const bufferStats = converterWasm.bufferPoolStats;
+		const _bufferStats = converterWasm.bufferPoolStats;
 
 		return {
 			validation: {
@@ -338,7 +338,7 @@
 						📈 Phase 3 Improvements
 					</h4>
 					<div class="grid grid-cols-2 gap-2 text-xs">
-						{#each Object.entries(performanceGains) as [metric, gain]}
+						{#each Object.entries(performanceGains) as [metric, gain] (metric)}
 							<div class="flex justify-between">
 								<span class="text-gray-600 capitalize dark:text-gray-400">
 									{metric.replace(/([A-Z])/g, ' $1').toLowerCase()}:

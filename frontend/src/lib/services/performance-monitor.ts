@@ -11,7 +11,7 @@ import type {
 	ProcessingAnalytics,
 	ErrorTracking,
 	ResourceMonitoring,
-	UXAnalytics,
+	_UXAnalytics,
 	PerformanceSnapshot,
 	PerformanceReport,
 	PerformanceBudgets,
@@ -486,7 +486,7 @@ export class PerformanceMonitor {
 		try {
 			let total = 0;
 			for (const key in localStorage) {
-				if (localStorage.hasOwnProperty(key)) {
+				if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
 					total += localStorage[key].length;
 				}
 			}
@@ -746,7 +746,7 @@ export class PerformanceMonitor {
 		});
 	}
 
-	private sendToGA4(metric: any, config: any): void {
+	private sendToGA4(metric: any, _config: any): void {
 		// GA4 implementation would go here
 		console.log('Sending metric to GA4:', metric);
 	}
@@ -759,7 +759,7 @@ export class PerformanceMonitor {
 		}).catch(console.error);
 	}
 
-	private sendErrorToGA4(error: ErrorTracking, config: any): void {
+	private sendErrorToGA4(error: ErrorTracking, _config: any): void {
 		// GA4 error tracking implementation
 		console.log('Sending error to GA4:', error);
 	}

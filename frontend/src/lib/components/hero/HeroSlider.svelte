@@ -64,7 +64,7 @@
 	let currentX = $state(0);
 	let containerEl: HTMLDivElement;
 	let showcaseIndex = $state(0);
-	let autoPlayInterval: NodeJS.Timeout;
+	let autoPlayInterval: number;
 
 	// Spring for smooth panel transitions
 	const panelOffset = spring(0, {
@@ -171,7 +171,7 @@
 		showcaseIndex = (showcaseIndex + 1) % showcaseItems.length;
 	}
 
-	function prevShowcase() {
+	function _prevShowcase() {
 		showcaseIndex = (showcaseIndex - 1 + showcaseItems.length) % showcaseItems.length;
 	}
 
@@ -187,9 +187,9 @@
 	// Lifecycle
 	onMount(() => {
 		// Add global mouse/touch listeners
-		document.addEventListener('mousemove', handleMove as EventListener);
+		document.addEventListener('mousemove', handleMove as any);
 		document.addEventListener('mouseup', handleEnd);
-		document.addEventListener('touchmove', handleMove as EventListener, { passive: true });
+		document.addEventListener('touchmove', handleMove as any, { passive: true });
 		document.addEventListener('touchend', handleEnd);
 
 		// Start autoplay if on showcase panel
@@ -198,9 +198,9 @@
 		}
 
 		return () => {
-			document.removeEventListener('mousemove', handleMove as EventListener);
+			document.removeEventListener('mousemove', handleMove as any);
 			document.removeEventListener('mouseup', handleEnd);
-			document.removeEventListener('touchmove', handleMove as EventListener);
+			document.removeEventListener('touchmove', handleMove as any);
 			document.removeEventListener('touchend', handleEnd);
 
 			if (autoPlayInterval) {

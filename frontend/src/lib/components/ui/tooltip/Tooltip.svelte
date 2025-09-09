@@ -23,11 +23,12 @@
 	let isVisible = $state(false);
 	let tooltipElement = $state<HTMLDivElement>();
 	let triggerElement = $state<HTMLButtonElement>();
-	// let tooltipPosition = $state({ x: 0, y: 0 });
+	let _tooltipPosition = $state({ top: 0, left: 0 });
 
 	// Calculate dynamic position for fixed positioning
-	// function calculatePosition() { /* TODO: implement if needed */ }
-
+	function _calculatePosition() {
+		if (!triggerElement) return;
+		
 		const triggerRect = triggerElement.getBoundingClientRect();
 		const offset = 8; // Gap between trigger and tooltip
 
@@ -54,7 +55,7 @@
 		}
 
 		console.log('Calculated position:', { top, left, triggerRect, position });
-		tooltipPosition = { top, left };
+		_tooltipPosition = { top, left };
 	}
 
 	// Position calculations for transform classes

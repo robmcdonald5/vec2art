@@ -256,7 +256,7 @@
 		{onAbort}
 		{onReset}
 		{onAddMore}
-		onRemoveFile={onRemoveFile || ((index: number) => {})}
+		onRemoveFile={onRemoveFile || ((_index: number) => {})}
 		{isPanicked}
 		{onEmergencyRecovery}
 		{settingsSyncMode}

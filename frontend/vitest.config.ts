@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'node:url';
 // TODO: Re-enable Storybook testing in the future
 // import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
-const dirname =
+const _dirname =
 	typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
 // Storybook integration disabled for now due to complexity

@@ -35,7 +35,7 @@
 		/**
 		 * The underlying HTML element to render. Defaults to "button".
 		 */
-		as?: keyof HTMLElementTagNameMap;
+		as?: any; // keyof HTMLElementTagNameMap
 		/**
 		 * The button variant.
 		 */
@@ -59,15 +59,15 @@
 		/**
 		 * Click handler.
 		 */
-		onclick?: (event: MouseEvent) => void;
+		onclick?: (_event: MouseEvent) => void;
 		/**
 		 * Mouse enter handler.
 		 */
-		onmouseenter?: (event: MouseEvent) => void;
+		onmouseenter?: (_event: MouseEvent) => void;
 		/**
 		 * Mouse leave handler.
 		 */
-		onmouseleave?: (event: MouseEvent) => void;
+		onmouseleave?: (_event: MouseEvent) => void;
 		/**
 		 * Children snippet for button content
 		 */
@@ -79,7 +79,7 @@
 	}
 
 	let {
-		as = 'button' as keyof HTMLElementTagNameMap,
+		as = 'button' as any, // keyof HTMLElementTagNameMap
 		variant = 'default',
 		size = 'default',
 		disabled = false,

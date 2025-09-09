@@ -5,7 +5,7 @@
 	interface Props {
 		accept?: string;
 		maxSize?: number; // in bytes
-		onFileSelect?: (file: File) => void;
+		onFileSelect?: (_file: File) => void;
 		disabled?: boolean;
 		currentFile?: File | null;
 	}

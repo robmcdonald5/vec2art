@@ -63,7 +63,7 @@ const rateLimiting: Handle = async ({ event, resolve }) => {
 	// Only apply to API routes
 	if (event.url.pathname.startsWith('/api/')) {
 		// Get client identifier (IP in production, would need proper implementation)
-		const clientId = event.getClientAddress();
+		const _clientId = event.getClientAddress();
 
 		// TODO: Implement actual rate limiting with Redis/Upstash
 		// For now, just add rate limit headers

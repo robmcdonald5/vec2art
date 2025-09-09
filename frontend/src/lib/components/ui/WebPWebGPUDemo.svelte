@@ -25,7 +25,7 @@
 			try {
 				const adapter = await navigator.gpu.requestAdapter();
 				webgpuAvailable = !!adapter;
-			} catch (error) {
+			} catch (_error) {
 				webgpuAvailable = false;
 			}
 		}

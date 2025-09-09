@@ -10,24 +10,20 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 -->
 
 <script lang="ts">
-	import { onMount, onDestroy, untrack } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import type {
 		RenderStrategy,
-		ViewportBounds,
 		PreviewRenderOptions
 	} from '$lib/services/svg-preview-renderer';
 	import { svgPreviewRenderer } from '$lib/services/svg-preview-renderer';
 	import { SvgToWebPConverter } from '$lib/services/svg-to-webp-converter';
 	import ScrollFriendlyImageViewer from '$lib/components/ui/ScrollFriendlyImageViewer.svelte';
-	import SvgImageViewer from '$lib/components/ui/SvgImageViewer.svelte';
 	import {
 		ZoomIn,
 		ZoomOut,
 		Maximize2,
 		Move,
 		Activity,
-		Cpu,
-		Monitor,
 		Download
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -44,7 +40,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 		onDownload?: () => void;
 		// Pan/zoom synchronization
 		externalPanZoom?: { scale: number; x: number; y: number };
-		onPanZoomChange?: (state: { scale: number; x: number; y: number }) => void;
+		onPanZoomChange?: (_state: { scale: number; x: number; y: number }) => void;
 		enableSync?: boolean;
 		// Performance options
 		forceImageMode?: boolean;
@@ -57,26 +53,26 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 		width = 800,
 		height = 600,
 		showControls = true,
-		showPerformanceInfo = false,
+		showPerformanceInfo: _showPerformanceInfo = false,
 		className = '',
 		onDownload,
 		externalPanZoom,
 		onPanZoomChange,
 		enableSync = false,
 		forceImageMode = false,
-		imageRenderMethod = 'blob'
+		imageRenderMethod: _imageRenderMethod = 'blob'
 	}: Props = $props();
 
 	// Component state
 	let containerElement = $state<HTMLDivElement>();
-	let canvasElement = $state<HTMLCanvasElement>();
-	let imgElement = $state<HTMLImageElement>();
+	let _canvasElement = $state<HTMLCanvasElement>();
+	let _imgElement = $state<HTMLImageElement>();
 	let renderStrategy = $state<RenderStrategy | null>(null);
 	let isRendering = $state(false);
 	let renderError = $state<string | null>(null);
-	let performanceStats = $state<any>(null);
+	let _performanceStats = $state<any>(null);
 	let showGpuTroubleshooting = $state(false);
-	let useImageMode = $state(forceImageMode);
+	let _useImageMode = $state(forceImageMode);
 
 	// Pan/zoom state for ImageViewer
 	let targetScale = $state(1);
@@ -341,7 +337,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 
 			// Try to update performance stats (non-critical)
 			try {
-				performanceStats = svgPreviewRenderer.getPerformanceStats();
+				_performanceStats = svgPreviewRenderer.getPerformanceStats();
 			} catch (error) {
 				console.warn('[AdvancedSvgPreview] Performance stats failed:', error);
 			}
@@ -416,7 +412,7 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 			hasCanvas: !!result.canvas
 		});
 		canvasDataUrl = result.dataUrl;
-		canvasElement = result.canvas;
+		_canvasElement = result.canvas;
 	}
 
 	function renderWithImgFallback() {

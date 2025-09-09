@@ -68,7 +68,7 @@
 			class="absolute inset-0 h-full w-full object-contain blur-xl"
 		/>
 		<picture class="relative">
-			{#each useFormats.filter((f) => f !== originalFormat) as format}
+			{#each useFormats.filter((f) => f !== originalFormat) as format (format)}
 				<source type="image/{format}" srcset={getFormatSource(format)} {sizes} />
 			{/each}
 			<img
@@ -84,7 +84,7 @@
 	</div>
 {:else}
 	<picture>
-		{#each useFormats.filter((f) => f !== originalFormat) as format}
+		{#each useFormats.filter((f) => f !== originalFormat) as format (format)}
 			<source type="image/{format}" srcset={getFormatSource(format)} {sizes} />
 		{/each}
 		<img {src} {alt} {width} {height} {loading} {sizes} class={className} />

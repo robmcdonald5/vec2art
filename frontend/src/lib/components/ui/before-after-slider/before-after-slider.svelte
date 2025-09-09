@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { OptimizedImage } from '$lib/components/ui/optimized-image';
 
 	interface Props {
 		beforeImage: string;
@@ -56,15 +55,15 @@
 	}
 
 	onMount(() => {
-		document.addEventListener('mousemove', handleMove as EventListener);
+		document.addEventListener('mousemove', handleMove as any);
 		document.addEventListener('mouseup', handleEnd);
-		document.addEventListener('touchmove', handleMove as EventListener, { passive: true });
+		document.addEventListener('touchmove', handleMove as any, { passive: true });
 		document.addEventListener('touchend', handleEnd);
 
 		return () => {
-			document.removeEventListener('mousemove', handleMove as EventListener);
+			document.removeEventListener('mousemove', handleMove as any);
 			document.removeEventListener('mouseup', handleEnd);
-			document.removeEventListener('touchmove', handleMove as EventListener);
+			document.removeEventListener('touchmove', handleMove as any);
 			document.removeEventListener('touchend', handleEnd);
 		};
 	});
