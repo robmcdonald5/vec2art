@@ -220,7 +220,7 @@
 		<!-- Slider Mode -->
 		<div
 			bind:this={sliderContainer}
-			class="relative aspect-video overflow-hidden bg-gray-50"
+			class="relative aspect-[2/1] overflow-hidden bg-gray-50"
 			role="application"
 			aria-label="Interactive image comparison slider"
 		>
@@ -233,14 +233,26 @@
 					<Button
 						variant="outline"
 						size="icon"
-						class="h-8 w-8 bg-white/90 hover:bg-white"
+						class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
 						onclick={() => (isVerticalSplit = !isVerticalSplit)}
+						aria-label={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
+						title={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
 					>
 						<ArrowLeftRight class="h-4 w-4 {isVerticalSplit ? 'rotate-90' : ''}" />
 					</Button>
-					<Button variant="outline" size="icon" class="h-8 w-8 bg-white/90" onclick={resetSlider}>
-						<Maximize2 class="h-4 w-4" />
-					</Button>
+					{#if onDownload && hasResult}
+						<Button
+							variant="outline"
+							size="icon"
+							class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+							onclick={onDownload}
+							disabled={isProcessing}
+							aria-label="Download SVG"
+							title="Download SVG"
+						>
+							<Download class="h-4 w-4" />
+						</Button>
+					{/if}
 				</div>
 			</div>
 
