@@ -28,9 +28,22 @@
 	let isSubmitting = false;
 	let isSubmitted = false;
 
+	// Enhanced validation states
+	let isEmailValid = false;
+	let isMessageValid = false;
+	let isNameValid = false;
+	let isTurnstileValid = false;
+
 	// Turnstile integration
 	let turnstileToken = '';
 	let turnstileWidget: any = null;
+	let turnstileLoaded = false;
+
+	// Constants for validation
+	const EMAIL_REGEX = /^[a-zA-Z0-9_+&*-]+(?:\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
+	const MIN_MESSAGE_LENGTH = 10;
+	const MAX_MESSAGE_LENGTH = 2000;
+	const MIN_NAME_LENGTH = 2;
 
 	// System detection
 	let systemInfo = {
@@ -404,6 +417,8 @@
 				sitekey: PUBLIC_TURNSTILE_SITE_KEY,
 				callback: (token: string) => {
 					turnstileToken = token;
+					isTurnstileValid = true;
+					turnstileLoaded = true;
 					// Clear any turnstile errors
 					if (errors.turnstile) {
 						delete errors.turnstile;
@@ -412,15 +427,25 @@
 				},
 				'error-callback': () => {
 					turnstileToken = '';
+					isTurnstileValid = false;
+					turnstileLoaded = true;
 					errors.turnstile = 'Verification failed. Please try again.';
 					errors = { ...errors };
 				},
 				'expired-callback': () => {
 					turnstileToken = '';
+					isTurnstileValid = false;
 					errors.turnstile = 'Verification expired. Please verify again.';
+					errors = { ...errors };
+				},
+				'timeout-callback': () => {
+					turnstileToken = '';
+					isTurnstileValid = false;
+					errors.turnstile = 'Verification timed out. Please try again.';
 					errors = { ...errors };
 				}
 			});
+			turnstileLoaded = true;
 		}
 	}
 
@@ -428,33 +453,74 @@
 		if (turnstileWidget && (window as any).turnstile) {
 			(window as any).turnstile.reset(turnstileWidget);
 			turnstileToken = '';
+			isTurnstileValid = false;
 		}
 	}
+
+	// Real-time validation functions
+	function validateName(name: string): boolean {
+		const trimmed = name.trim();
+		isNameValid = trimmed.length >= MIN_NAME_LENGTH;
+		return isNameValid;
+	}
+
+	function validateEmail(email: string): boolean {
+		const trimmed = email.trim();
+		isEmailValid = trimmed.length > 0 && EMAIL_REGEX.test(trimmed);
+		return isEmailValid;
+	}
+
+	function validateMessage(message: string): boolean {
+		const trimmed = message.trim();
+		isMessageValid = trimmed.length >= MIN_MESSAGE_LENGTH && trimmed.length <= MAX_MESSAGE_LENGTH;
+		return isMessageValid;
+	}
+
+	// Reactive validation - runs whenever form data changes
+	$: validateName(formData.name);
+	$: validateEmail(formData.email);
+	$: validateMessage(formData.message);
+
+	// Overall form validity
+	$: isFormValid = isNameValid && isEmailValid && isMessageValid && isTurnstileValid && (selectedCategory !== 'bug' || formData.bugType);
+
+	// Disable submit button only when submitting or form is invalid
+	$: isSubmitDisabled = isSubmitting || !isFormValid;
 
 	function validateForm() {
 		errors = {};
 
+		// Name validation
 		if (!formData.name.trim()) {
 			errors.name = 'Name is required';
+		} else if (formData.name.trim().length < MIN_NAME_LENGTH) {
+			errors.name = `Name must be at least ${MIN_NAME_LENGTH} characters long`;
 		}
 
+		// Email validation  
 		if (!formData.email.trim()) {
 			errors.email = 'Email is required';
-		} else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+		} else if (!EMAIL_REGEX.test(formData.email.trim())) {
 			errors.email = 'Please enter a valid email address';
 		}
 
+		// Bug type validation
 		if (formData.category === 'bug' && !formData.bugType) {
 			errors.bugType = 'Please select a bug type';
 		}
 
+		// Message validation
+		const messageLength = formData.message.trim().length;
 		if (!formData.message.trim()) {
 			errors.message = 'Message is required';
-		} else if (formData.message.trim().length < 10) {
-			errors.message = 'Message must be at least 10 characters long';
+		} else if (messageLength < MIN_MESSAGE_LENGTH) {
+			errors.message = `Message must be at least ${MIN_MESSAGE_LENGTH} characters long`;
+		} else if (messageLength > MAX_MESSAGE_LENGTH) {
+			errors.message = `Message cannot exceed ${MAX_MESSAGE_LENGTH} characters`;
 		}
 
-		if (!turnstileToken) {
+		// Turnstile validation
+		if (!turnstileToken || !isTurnstileValid) {
 			errors.turnstile = 'Please complete the verification challenge';
 		}
 
@@ -469,7 +535,32 @@
 		isSubmitting = true;
 
 		try {
-			// Prepare form data for Formspark
+			// First: Server-side validation with Turnstile verification
+			const serverValidationData = new FormData();
+			serverValidationData.append('name', formData.name);
+			serverValidationData.append('email', formData.email);
+			serverValidationData.append('message', formData.message);
+			serverValidationData.append('category', formData.category);
+			serverValidationData.append('bugType', formData.bugType);
+			serverValidationData.append('cf-turnstile-response', turnstileToken);
+
+			const serverValidationResponse = await fetch('/contact', {
+				method: 'POST',
+				body: serverValidationData
+			});
+
+			if (!serverValidationResponse.ok) {
+				const serverErrors = await serverValidationResponse.json();
+				if (serverErrors.errors) {
+					errors = serverErrors.errors;
+					errors = { ...errors };
+					resetTurnstile();
+					return;
+				}
+				throw new Error(`Server validation failed: ${serverValidationResponse.status}`);
+			}
+
+			// Second: If server validation passes, proceed with Formspark submission
 			const submissionData = {
 				name: formData.name,
 				email: formData.email,
@@ -749,17 +840,31 @@
 									<label for="name" class="mb-2 block text-sm font-medium text-gray-700">
 										<User class="mr-1 inline h-4 w-4" />
 										Full Name
+										<span class="text-red-500">*</span>
 									</label>
-									<input
-										id="name"
-										type="text"
-										bind:value={formData.name}
-										class="focus:border-ferrari-500 focus:ring-ferrari-500/20 w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-500 transition-colors focus:ring-2 focus:outline-none {errors.name
-											? 'border-red-500'
-											: ''}"
-										placeholder="Enter your full name"
-										required
-									/>
+									<div class="relative">
+										<input
+											id="name"
+											type="text"
+											bind:value={formData.name}
+											class="focus:border-ferrari-500 focus:ring-ferrari-500/20 w-full rounded-lg border px-4 py-3 pr-10 text-gray-900 placeholder-gray-500 transition-colors focus:ring-2 focus:outline-none {errors.name
+												? 'border-red-500'
+												: isNameValid && formData.name.length > 0
+												? 'border-green-500'
+												: 'border-gray-300'}"
+											placeholder="Enter your full name"
+											required
+										/>
+										{#if formData.name.length > 0}
+											<div class="absolute inset-y-0 right-0 flex items-center pr-3">
+												{#if isNameValid}
+													<CheckCircle class="h-5 w-5 text-green-500" />
+												{:else}
+													<AlertTriangle class="h-5 w-5 text-red-500" />
+												{/if}
+											</div>
+										{/if}
+									</div>
 									{#if errors.name}
 										<p class="mt-1 text-sm text-red-600">{errors.name}</p>
 									{/if}
@@ -770,17 +875,31 @@
 									<label for="email" class="mb-2 block text-sm font-medium text-gray-700">
 										<Mail class="mr-1 inline h-4 w-4" />
 										Email Address
+										<span class="text-red-500">*</span>
 									</label>
-									<input
-										id="email"
-										type="email"
-										bind:value={formData.email}
-										class="focus:border-ferrari-500 focus:ring-ferrari-500/20 w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-500 transition-colors focus:ring-2 focus:outline-none {errors.email
-											? 'border-red-500'
-											: ''}"
-										placeholder="Enter your email address"
-										required
-									/>
+									<div class="relative">
+										<input
+											id="email"
+											type="email"
+											bind:value={formData.email}
+											class="focus:border-ferrari-500 focus:ring-ferrari-500/20 w-full rounded-lg border px-4 py-3 pr-10 text-gray-900 placeholder-gray-500 transition-colors focus:ring-2 focus:outline-none {errors.email
+												? 'border-red-500'
+												: isEmailValid && formData.email.length > 0
+												? 'border-green-500'
+												: 'border-gray-300'}"
+											placeholder="Enter your email address"
+											required
+										/>
+										{#if formData.email.length > 0}
+											<div class="absolute inset-y-0 right-0 flex items-center pr-3">
+												{#if isEmailValid}
+													<CheckCircle class="h-5 w-5 text-green-500" />
+												{:else}
+													<AlertTriangle class="h-5 w-5 text-red-500" />
+												{/if}
+											</div>
+										{/if}
+									</div>
 									{#if errors.email}
 										<p class="mt-1 text-sm text-red-600">{errors.email}</p>
 									{/if}
@@ -806,9 +925,24 @@
 								{#if errors.message}
 									<p class="mt-1 text-sm text-red-600">{errors.message}</p>
 								{/if}
-								<p class="mt-2 text-sm text-gray-500">
-									{formData.message.length}/1000 characters
-								</p>
+								<div class="mt-2 flex justify-between text-sm">
+									<span class="{isMessageValid ? 'text-green-600' : formData.message.length > 0 ? 'text-red-600' : 'text-gray-500'}">
+										{#if formData.message.length === 0}
+											Enter at least {MIN_MESSAGE_LENGTH} characters
+										{:else if !isMessageValid}
+											{#if formData.message.trim().length < MIN_MESSAGE_LENGTH}
+												Need {MIN_MESSAGE_LENGTH - formData.message.trim().length} more characters
+											{:else}
+												{formData.message.trim().length - MAX_MESSAGE_LENGTH} characters over limit
+											{/if}
+										{:else}
+											✓ Message length is good
+										{/if}
+									</span>
+									<span class="{formData.message.length > MAX_MESSAGE_LENGTH ? 'text-red-600 font-medium' : formData.message.length > MAX_MESSAGE_LENGTH * 0.9 ? 'text-amber-600' : 'text-gray-500'}">
+										{formData.message.length}/{MAX_MESSAGE_LENGTH}
+									</span>
+								</div>
 							</div>
 
 							<!-- Turnstile Verification -->
@@ -832,10 +966,24 @@
 									<p class="text-center text-sm text-red-600">{errors.submit}</p>
 								{/if}
 
+								<!-- Form Validation Status -->
+								{#if !isFormValid && !isSubmitting}
+									<div class="text-center">
+										<div class="inline-flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">
+											<AlertTriangle class="h-4 w-4" />
+											Please complete all required fields and verification
+										</div>
+									</div>
+								{/if}
+
 								<button
 									type="submit"
-									disabled={isSubmitting}
-									class="bg-ferrari-600 hover:bg-ferrari-700 focus:ring-ferrari-500/50 flex items-center justify-center gap-2 rounded-lg px-8 py-4 font-medium text-white transition-all duration-200 focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+									disabled={isSubmitDisabled}
+									class="flex items-center justify-center gap-2 rounded-lg px-8 py-4 font-medium text-white transition-all duration-200 focus:ring-2 focus:outline-none {isSubmitDisabled 
+										? 'bg-gray-400 cursor-not-allowed opacity-50' 
+										: 'bg-ferrari-600 hover:bg-ferrari-700 focus:ring-ferrari-500/50 hover:scale-[1.02] hover:shadow-lg'
+									}"
+									title={isSubmitDisabled && !isSubmitting ? 'Please complete all fields and verification' : ''}
 								>
 									{#if isSubmitting}
 										<div

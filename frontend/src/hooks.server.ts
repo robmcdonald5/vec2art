@@ -9,5 +9,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
 	response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
 
+	// CSP is now handled by SvelteKit configuration in svelte.config.js
+	
 	return response;
 };
