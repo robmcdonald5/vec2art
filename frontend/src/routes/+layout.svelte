@@ -3,6 +3,7 @@
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { afterNavigate } from '$app/navigation';
 	import MobileMenu from '$lib/components/navigation/MobileMenu.svelte';
 	import ToastContainer from '$lib/components/ui/toast/ToastContainer.svelte';
 	import { inject } from '@vercel/analytics';
@@ -28,6 +29,14 @@
 		$page.url.pathname;
 		if (mobileMenuOpen) {
 			mobileMenuOpen = false;
+		}
+	});
+
+	// Scroll to top on navigation
+	afterNavigate(() => {
+		// Scroll to top of the page on navigation
+		if (browser) {
+			window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 		}
 	});
 
