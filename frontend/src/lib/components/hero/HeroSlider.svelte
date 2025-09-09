@@ -302,7 +302,7 @@
 												afterImage={showcaseItems[showcaseIndex].afterImage}
 												class="h-full w-full"
 												animationDuration={6000}
-												resetTrigger={showcaseIndex}
+												resetTrigger={currentPanel === 1 ? showcaseIndex : -1}
 												loading="eager"
 											/>
 										</div>

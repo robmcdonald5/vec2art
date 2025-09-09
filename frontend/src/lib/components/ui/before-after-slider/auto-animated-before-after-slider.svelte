@@ -32,12 +32,15 @@
 	// Track previous resetTrigger to avoid infinite loops - start with -1 to ensure first animation runs
 	let previousResetTrigger = $state(-1);
 
-	// Reset animation when resetTrigger changes
+	// Reset animation when resetTrigger changes (only if not -1)
 	$effect(() => {
-		if (resetTrigger !== previousResetTrigger) {
+		if (resetTrigger !== previousResetTrigger && resetTrigger !== -1) {
 			previousResetTrigger = resetTrigger;
 			// Simply update the key to force re-render
 			animationKey = Date.now();
+		} else if (resetTrigger === -1) {
+			// Stop animation when resetTrigger is -1
+			previousResetTrigger = resetTrigger;
 		}
 	});
 
@@ -72,7 +75,7 @@
 	<!-- Before Image (Top Layer with Animated Clip) -->
 	{#key animationKey}
 		<div
-			class="absolute inset-0 animate-reveal"
+			class="absolute inset-0 {resetTrigger !== -1 ? 'animate-reveal' : ''}"
 			style="--animation-duration: {animationDuration}ms"
 		>
 			{#if beforePlaceholder}
