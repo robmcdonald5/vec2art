@@ -389,51 +389,77 @@
 							class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
 						></div>
 
-						<!-- Action Buttons -->
-						<div
-							class="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 transform gap-2 opacity-0 transition-all duration-300 group-hover:opacity-100"
-						>
-							<div class="pointer-events-auto flex gap-2">
-								<button
-									onclick={() => openModal(item)}
-									class="text-ferrari-600 flex items-center gap-1 rounded-lg bg-white/90 px-3 py-2 text-sm font-medium shadow-lg backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white"
-								>
-									<Maximize2 class="h-4 w-4" />
-									Expand
-								</button>
-								<button
-									onclick={async () => await downloadSVG(item)}
-									class="bg-ferrari-600 hover:bg-ferrari-700 flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white shadow-lg transition-all duration-200 hover:scale-105"
-								>
-									<Download class="h-4 w-4" />
-									Download
-								</button>
+						<!-- Action Buttons - Only show on grid mode -->
+						{#if viewMode === 'grid'}
+							<div
+								class="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 transform opacity-0 transition-all duration-300 group-hover:opacity-100"
+							>
+								<div class="pointer-events-auto flex items-center">
+									<button
+										onclick={() => openModal(item)}
+										class="text-ferrari-600 flex items-center justify-center rounded-lg bg-white/90 p-2.5 shadow-lg backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white"
+										style="margin-right: 12px;"
+										aria-label="Expand image"
+									>
+										<Maximize2 class="h-4 w-4" />
+									</button>
+									<button
+										onclick={async () => await downloadSVG(item)}
+										class="bg-ferrari-600 hover:bg-ferrari-700 flex items-center justify-center rounded-lg p-2.5 text-white shadow-lg transition-all duration-200 hover:scale-105"
+										style="margin-left: 12px;"
+										aria-label="Download SVG"
+									>
+										<Download class="h-4 w-4" />
+									</button>
+								</div>
 							</div>
-						</div>
+						{/if}
 					</div>
 
 					<!-- Card Details -->
 					<div
-						class="space-y-3 p-6 {viewMode === 'list' ? 'flex flex-1 flex-col justify-center' : ''}"
+						class="space-y-3 p-6 {viewMode === 'list' ? 'flex flex-1 justify-between items-center' : ''}"
 					>
-						<h3
-							class="group-hover:text-ferrari-600 text-lg font-semibold text-gray-900 transition-colors duration-300"
-						>
-							{item.title}
-						</h3>
-						<div class="flex items-center gap-2">
-							<span class="algorithm-badge">
-								{item.algorithm}
-							</span>
+						<div class="{viewMode === 'list' ? 'flex flex-col space-y-3' : 'space-y-3'}">
+							<h3
+								class="group-hover:text-ferrari-600 text-lg font-semibold text-gray-900 transition-colors duration-300"
+							>
+								{item.title}
+							</h3>
+							<div class="flex items-center gap-2">
+								<span class="algorithm-badge">
+									{item.algorithm}
+								</span>
+							</div>
+							<div
+								class="flex {viewMode === 'list'
+									? 'flex-col gap-1'
+									: 'justify-between'} text-sm text-gray-600"
+							>
+								<span class="font-medium">{item.dimensions}</span>
+								<span class="font-medium">{item.fileSize}</span>
+							</div>
 						</div>
-						<div
-							class="flex {viewMode === 'list'
-								? 'flex-col gap-1'
-								: 'justify-between'} text-sm text-gray-600"
-						>
-							<span class="font-medium">{item.dimensions}</span>
-							<span class="font-medium">{item.fileSize}</span>
-						</div>
+
+						<!-- Action Buttons for List Mode - Stacked to the right -->
+						{#if viewMode === 'list'}
+							<div class="flex flex-col gap-2 opacity-0 transition-all duration-300 group-hover:opacity-100 flex-shrink-0">
+								<button
+									onclick={() => openModal(item)}
+									class="text-ferrari-600 hover:bg-ferrari-50 flex items-center justify-center rounded-lg border border-ferrari-200 bg-white p-2.5 shadow-sm transition-all duration-200 hover:scale-105"
+									aria-label="Expand image"
+								>
+									<Maximize2 class="h-4 w-4" />
+								</button>
+								<button
+									onclick={async () => await downloadSVG(item)}
+									class="bg-ferrari-600 hover:bg-ferrari-700 flex items-center justify-center rounded-lg p-2.5 text-white shadow-sm transition-all duration-200 hover:scale-105"
+									aria-label="Download SVG"
+								>
+									<Download class="h-4 w-4" />
+								</button>
+							</div>
+						{/if}
 					</div>
 				</div>
 			{/each}
@@ -539,9 +565,10 @@
 <!-- Modal for expanded view -->
 <Modal open={modalOpen} onClose={closeModal}>
 	{#if selectedItem}
-		<div class="rounded-xl bg-white p-8">
-			<div class="mb-8">
-				<h2 class="text-speed-gray-900 mb-3 text-3xl font-bold">{selectedItem.title}</h2>
+		<div class="rounded-xl bg-white p-6 w-full">
+			<!-- Header Section -->
+			<div class="mb-6">
+				<h2 class="text-speed-gray-900 mb-3 text-2xl font-bold">{selectedItem.title}</h2>
 				<div class="flex items-center gap-4">
 					<span class="algorithm-badge py-2">
 						{selectedItem.algorithm}
@@ -552,20 +579,24 @@
 				</div>
 			</div>
 
-			<div
-				class="mb-6 aspect-video overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg"
-			>
-				<BeforeAfterSlider
-					beforeImage={selectedItem.beforeImage}
-					afterImage={selectedItem.afterImage}
-					beforeAlt={`${selectedItem.title} - Original`}
-					afterAlt={`${selectedItem.title} - Converted`}
-					loading="lazy"
-					class="h-full w-full"
-				/>
+			<!-- Image Section - Fixed height container -->
+			<div class="mb-6">
+				<div
+					class="h-96 w-full overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg"
+				>
+					<BeforeAfterSlider
+						beforeImage={selectedItem.beforeImage}
+						afterImage={selectedItem.afterImage}
+						beforeAlt={`${selectedItem.title} - Original`}
+						afterAlt={`${selectedItem.title} - Converted`}
+						loading="lazy"
+						class="h-full w-full"
+					/>
+				</div>
 			</div>
 
-			<div class="flex justify-center gap-4 pb-8">
+			<!-- Button Section -->
+			<div class="flex justify-center gap-4">
 				<button
 					onclick={async () => selectedItem && await downloadSVG(selectedItem)}
 					class="btn-ferrari-primary flex items-center gap-2 px-6 py-3 text-lg"
