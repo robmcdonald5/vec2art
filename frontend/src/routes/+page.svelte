@@ -36,7 +36,7 @@
 
 <div>
 	<!-- Hero Slider Container -->
-	<HeroSlider autoPlay={true} autoPlayDelay={6000}>
+	<HeroSlider autoPlay={true} autoPlayDelay={7000}>
 		<!-- Enhanced Hero Section with Modern Gradients -->
 		<section class="relative min-h-[90vh] overflow-hidden">
 			<!-- Modern gradient background -->

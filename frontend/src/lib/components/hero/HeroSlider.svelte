@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { spring } from 'svelte/motion';
-	import BeforeAfterSlider from '$lib/components/ui/before-after-slider/before-after-slider.svelte';
+	import AutoAnimatedBeforeAfterSlider from '$lib/components/ui/before-after-slider/auto-animated-before-after-slider.svelte';
 	import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-svelte';
 	import { preload } from '$lib/utils/preload';
 
@@ -40,6 +40,13 @@
 			},
 			{
 				id: 3,
+				title: 'Anime Stippling',
+				algorithm: 'Dot Pattern Art',
+				beforeImage: '/gallery/before/anime/anime-girl-portrait.png',
+				afterImage: '/gallery/after-webp/anime/anime-girl-portrait(stippling).webp'
+			},
+			{
+				id: 4,
 				title: 'Character Art',
 				algorithm: 'Edge Detection',
 				beforeImage: '/gallery/before/portraits-real/robert-knox.avif',
@@ -47,7 +54,7 @@
 			}
 		],
 		autoPlay = false,
-		autoPlayDelay = 8000
+		autoPlayDelay = 7500
 	}: Props = $props();
 
 	// State
@@ -279,45 +286,25 @@
 												{showcaseItems[showcaseIndex].title}
 											</h3>
 											<span
-												class="from-ferrari-500 to-ferrari-600 inline-block rounded-full bg-gradient-to-r px-4 py-1 text-sm font-medium text-white shadow-md"
+												class="inline-block rounded-full bg-gray-900 px-4 py-1 text-sm font-medium text-white shadow-md"
 											>
 												{showcaseItems[showcaseIndex].algorithm}
 											</span>
 										</div>
 
-										<!-- Before/After Display with Navigation -->
+										<!-- Before/After Display - Auto-Animated -->
 										<div
 											class="relative aspect-video overflow-hidden rounded-xl bg-gray-50"
 											data-no-hero-drag
 										>
-											<BeforeAfterSlider
+											<AutoAnimatedBeforeAfterSlider
 												beforeImage={showcaseItems[showcaseIndex].beforeImage}
 												afterImage={showcaseItems[showcaseIndex].afterImage}
-												class="before-after-slider h-full w-full"
+												class="h-full w-full"
+												animationDuration={6000}
+												resetTrigger={showcaseIndex}
+												loading="eager"
 											/>
-
-											<!-- Showcase Navigation - Top corners -->
-											<!-- Left Arrow -->
-											<button
-												onclick={prevShowcase}
-												class="group hover:bg-ferrari-600 absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:text-white"
-												aria-label="Previous example"
-											>
-												<ChevronLeft
-													class="h-4 w-4 text-gray-700 transition-colors group-hover:text-white"
-												/>
-											</button>
-
-											<!-- Right Arrow -->
-											<button
-												onclick={nextShowcase}
-												class="group hover:bg-ferrari-600 absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:text-white"
-												aria-label="Next example"
-											>
-												<ChevronRight
-													class="h-4 w-4 text-gray-700 transition-colors group-hover:text-white"
-												/>
-											</button>
 										</div>
 									</div>
 								</div>

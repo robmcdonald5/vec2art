@@ -45,8 +45,8 @@
 	// State
 	let customThreadCount = $state(4);
 	let showAdvanced = $state(false);
-	let systemCapabilities = $state(performanceMonitor.getSystemCapabilities());
-	let currentMetrics = $state(performanceMonitor.getCurrentMetrics());
+	let systemCapabilities = $state(null);
+	let currentMetrics = $state(null);
 	let monitoringInterval: ReturnType<typeof setInterval> | undefined;
 	let isStressed = $state(false);
 
@@ -57,6 +57,10 @@
 
 	// Load saved preferences
 	onMount(async () => {
+		// Initialize performance monitoring
+		systemCapabilities = performanceMonitor.getSystemCapabilities();
+		currentMetrics = performanceMonitor.getCurrentMetrics();
+		
 		// Initialize new CPU detection system
 		try {
 			cpuCapabilities = await detectCPUCapabilities();

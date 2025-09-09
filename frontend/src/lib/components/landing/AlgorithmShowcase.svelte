@@ -20,7 +20,7 @@
 	// Use the curated showcase algorithms from gallery
 	const algorithms = showcaseAlgorithms;
 
-	let selectedAlgorithm = $state(algorithms[0]);
+	let selectedAlgorithm = $state(algorithms[0] || null);
 	let emblaApi: EmblaCarouselType;
 	let autoplayPlugin = Autoplay({ delay: 4000, stopOnInteraction: true });
 	let isInitialized = $state(false);
@@ -112,6 +112,7 @@
 			console.error('Failed to navigate to converter:', error);
 		}
 	}
+
 
 	// Validate selectedAlgorithm state consistency
 	$effect(() => {
@@ -249,7 +250,7 @@
 						Key Features
 					</h4>
 					<div class="space-y-3">
-						{#each selectedAlgorithm.features as feature, index (index)}
+						{#each selectedAlgorithm?.features || [] as feature, index (index)}
 							<div class="flex items-center gap-3">
 								<div
 									class="h-8 w-8 flex-shrink-0 rounded-full {selectedAlgorithm.bgGradient} flex items-center justify-center"

@@ -82,7 +82,7 @@
 
 	// Performance state
 	let currentPerformanceMode = $state<PerformanceMode>(performanceMode);
-	let currentThreadCount = $state(threadCount);
+	let currentThreadCount = $state(threadCount || 0);
 	const systemCapabilities = performanceMonitor.getSystemCapabilities();
 
 	// Simple button click handlers with explicit logging
