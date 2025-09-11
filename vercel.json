@@ -1,3 +1,6 @@
 {
-  "framework": "sveltekit"
+  "framework": "sveltekit",
+  "buildCommand": "cd frontend && npm run build:frontend-only",
+  "installCommand": "cd frontend && npm ci",
+  "outputDirectory": "frontend/.vercel/output"
 }

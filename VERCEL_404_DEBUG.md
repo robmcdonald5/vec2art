@@ -253,7 +253,11 @@ if (url.startsWith('/wasm/') || url.endsWith('.wasm')) {
 - But complex configuration was likely the problem
 - This provides minimal framework hint without interference
 
-**Result**: 🔄 **TESTING IN PROGRESS**
+**Result**: ❌ **FAILED - BUILD ERROR**
+- Build Error: `sh: line 1: svelte-kit: command not found`
+- Error: `Command "svelte-kit build" exited with 127`
+
+**Analysis**: Minimal vercel.json caused Vercel to use default SvelteKit build command `svelte-kit build` instead of our custom build process. But `svelte-kit` CLI is deprecated in favor of `vite build` in SvelteKit 2.x.
 
 ## 🚨 CRITICAL DISCOVERY: Node.js Version Mismatch
 **Found**: Vercel project settings show Node.js 22.x, but our config specifies 20.x
@@ -270,6 +274,31 @@ if (url.startsWith('/wasm/') || url.endsWith('.wasm')) {
 1. **Update svelte.config.js to Node.js 22.x** (recommended - latest)
 2. **Change Vercel settings to Node.js 20.x** (match current config)
 
+## Debugging Attempt 6: Correct Build Commands (Theory 3)
+**Date**: 2025-09-11 (immediately after Theory 2 failure)  
+**Issue**: Minimal vercel.json uses deprecated `svelte-kit build` command  
+**Theory**: Need proper build commands but minimal configuration  
+**Root Cause**: SvelteKit 2.x uses `vite build`, not `svelte-kit build`
+
+**Changes Made**:
+```json
+{
+  "framework": "sveltekit",
+  "buildCommand": "cd frontend && npm run build:frontend-only",
+  "installCommand": "cd frontend && npm ci", 
+  "outputDirectory": "frontend/.vercel/output"
+}
+```
+
+**Key Insights**:
+- ✅ Keep framework detection: `"framework": "sveltekit"`
+- ✅ Specify correct build command (not deprecated svelte-kit CLI)
+- ✅ Keep working outputDirectory from previous attempts
+- ✅ Combined with Node.js 22.x runtime alignment
+- ❌ Removed: regions, complex headers (let SvelteKit handle)
+
+**Result**: 🔄 **TESTING IN PROGRESS**
+
 ---
 
-**Status**: 🔄 Testing Theory 2 - minimal vercel.json (deployment starting)
+**Status**: 🔄 Testing Theory 3 - correct build commands + Node.js 22.x alignment
