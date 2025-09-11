@@ -15,22 +15,7 @@ const config = {
 			regions: ['iad1']
 		}),
 
-		// Prerender only static routes - exclude API routes and dynamic pages
-		prerender: {
-			entries: [
-				'/', // Home page
-				'/about', // About page
-				'/contact', // Contact page
-				'/gallery', // Gallery page
-				'/info', // Info page
-				'/info/privacy-policy', // Privacy policy
-				'/info/terms-of-service', // Terms of service
-				'/convert', // Redirect page
-				'/vec2art' // Redirect page
-			],
-			handleMissingId: 'warn',
-			handleHttpError: 'warn'
-		},
+		// REMOVED: Prerender causing 404 issues - let all routes be handled by server function
 
 		// Service Worker configuration
 		serviceWorker: {
