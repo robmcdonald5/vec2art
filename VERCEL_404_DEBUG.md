@@ -334,8 +334,50 @@ if (url.startsWith('/wasm/') || url.endsWith('.wasm')) {
 - ✅ Proper WASM build integration
 - ✅ Correct output directory configuration
 
+**Result**: ✅ **WASM BUILD SUCCESS** ❌ **STILL 404 ERRORS**
+- ✅ WASM builds successfully - `__wbindgen_placeholder__.js` error resolved
+- ❌ Still getting 404: NOT_FOUND Code: NOT_FOUND ID: cle1:cle1::rsf64-1757633164790-0953a18896a8
+- **Analysis**: WASM was a red herring - the core routing issue remains
+
+**Critical Insight**: The 404 errors are NOT caused by WASM build failures. The routing system itself is broken.
+
+## Debugging Attempt 8: Fix Prerender Conflicts (Theory 5)
+**Date**: 2025-09-11 (after WASM success but continued 404s)  
+**Issue**: Prerender configuration conflicts with dynamic routes  
+**Root Cause Discovery**: `prerender: { entries: ['*'] }` tries to prerender ALL pages including API routes
+
+**The Problem**:
+- `'*'` prerendering attempts to statically generate dynamic API routes
+- API routes like `/api/svg/[category]/[filename]/+server.ts` cannot be prerendered
+- This causes routing system conflicts and 404 errors
+- Dynamic server-side routes need runtime, not build-time generation
+
+**Solution**:
+Replace wildcard `'*'` with specific static route list:
+```javascript
+prerender: {
+  entries: [
+    '/', '/about', '/contact', '/gallery', '/info',
+    '/info/privacy-policy', '/info/terms-of-service',
+    '/convert', '/vec2art' // redirects
+  ]
+}
+```
+
+**This approach**:
+- ✅ Prerender static pages for performance
+- ✅ Allow API routes to run server-side  
+- ✅ Prevent prerender/SSR routing conflicts
+- ✅ Maintain redirect page handling
+
+**Combined with ALL previous fixes**:
+- ✅ Node.js 22.x runtime alignment
+- ✅ WASM build integration (working)
+- ✅ Correct framework detection
+- ✅ Proper output directory
+
 **Result**: 🔄 **TESTING IN PROGRESS**
 
 ---
 
-**Status**: 🔄 Testing Theory 4 - WASM build integration + all previous fixes
+**Status**: 🔄 Testing Theory 5 - Prerender fix + WASM build + all previous fixes

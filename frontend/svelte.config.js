@@ -15,12 +15,18 @@ const config = {
 			regions: ['iad1']
 		}),
 
-		// Prerender most routes for better performance
+		// Prerender only static routes - exclude API routes and dynamic pages
 		prerender: {
 			entries: [
-				'*', // Prerender all discoverable pages
-				'/convert', // Ensure redirect pages are handled
-				'/vec2art'
+				'/', // Home page
+				'/about', // About page
+				'/contact', // Contact page  
+				'/gallery', // Gallery page
+				'/info', // Info page
+				'/info/privacy-policy', // Privacy policy
+				'/info/terms-of-service', // Terms of service
+				'/convert', // Redirect page
+				'/vec2art' // Redirect page
 			],
 			handleMissingId: 'warn',
 			handleHttpError: 'warn'
