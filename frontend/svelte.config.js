@@ -8,56 +8,40 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		// Vercel adapter configuration for optimal deployment
+		// Simplified Vercel adapter for static deployment
 		adapter: adapter({
-			// Use Edge Functions for better performance
-			runtime: 'nodejs20.x',
-
-			// Split functions for better cold start performance
-			split: true,
-
-			// Configure ISR for specific routes
-			isr: {
-				// Gallery pages can be cached and regenerated
-				expiration: 60 * 60 * 24, // 24 hours
-				bypassToken: process.env.VERCEL_REVALIDATION_TOKEN,
-				allowQuery: ['category', 'backend']
-			},
-
-			// Memory configuration for functions
-			memory: 1024
+			// Use Edge Runtime for better performance
+			runtime: 'edge'
 		}),
 
-		// Service Worker configuration - disable in development
+		// Prerender most routes for better performance
+		prerender: {
+			entries: [
+				'*', // Prerender all discoverable pages
+				'/convert', // Ensure redirect pages are handled
+				'/vec2art'
+			],
+			handleMissingId: 'warn',
+			handleHttpError: 'warn'
+		},
+
+		// Service Worker configuration
 		serviceWorker: {
 			register: process.env.NODE_ENV === 'production'
 		},
 
-		// CSP configuration for Cloudflare Turnstile compatibility
+		// Simplified CSP for WASM compatibility
 		csp: {
-			mode: 'hash', // Use hash mode instead of nonce for better third-party compatibility
+			mode: 'hash',
 			directives: {
-				'script-src': [
-					'self',
-					'unsafe-eval',
-					'https://challenges.cloudflare.com',
-					'https://va.vercel-scripts.com'
-				],
-				'style-src': ['self', 'unsafe-inline'], // Required for Svelte transitions
-				'frame-src': ['https://challenges.cloudflare.com'],
-				'connect-src': [
-					'self',
-					'https://challenges.cloudflare.com',
-					'https://submit-form.com',
-					'https://vercel.com',
-					'https://vitals.vercel-insights.com'
-				],
+				'script-src': ['self', 'unsafe-eval', 'https://va.vercel-scripts.com'],
+				'style-src': ['self', 'unsafe-inline'],
+				'connect-src': ['self'],
 				'img-src': ['self', 'data:', 'https:', 'blob:'],
 				'font-src': ['self', 'data:'],
 				'worker-src': ['self', 'blob:'],
 				'object-src': ['none'],
-				'base-uri': ['self'],
-				'form-action': ['self']
+				'base-uri': ['self']
 			}
 		}
 	}
