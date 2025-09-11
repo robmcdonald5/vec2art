@@ -11,11 +11,11 @@
 		CheckCircle
 	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
-	import { PUBLIC_FORMSPARK_ENDPOINT_ID, PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
+	import { env } from '$env/dynamic/public';
 
-	// Environment variables with fallbacks
-	const turnstile_site_key = PUBLIC_TURNSTILE_SITE_KEY || '';
-	const formspark_endpoint = PUBLIC_FORMSPARK_ENDPOINT_ID || '';
+	// Environment variables with safe fallbacks for CI/development
+	const turnstile_site_key = env.PUBLIC_TURNSTILE_SITE_KEY || '';
+	const formspark_endpoint = env.PUBLIC_FORMSPARK_ENDPOINT_ID || '';
 
 	// Form state management
 	let selectedCategory = $state.raw('general');
