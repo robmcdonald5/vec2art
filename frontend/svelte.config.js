@@ -20,7 +20,7 @@ const config = {
 			entries: [
 				'/', // Home page
 				'/about', // About page
-				'/contact', // Contact page  
+				'/contact', // Contact page
 				'/gallery', // Gallery page
 				'/info', // Info page
 				'/info/privacy-policy', // Privacy policy
