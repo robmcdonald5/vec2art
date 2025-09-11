@@ -3,7 +3,7 @@
  * Basic utilities for E2E tests without complex dependencies
  */
 
-import { Page, expect } from '@playwright/test';
+import { Page, _expect } from '@playwright/test';
 
 /**
  * Wait for page to be fully loaded and interactive

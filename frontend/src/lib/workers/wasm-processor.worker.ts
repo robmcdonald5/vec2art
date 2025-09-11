@@ -962,6 +962,7 @@ async function processImage() {
 			console.log('[Worker] Processing with JavaScript timeout:', timeoutMs, 'ms');
 		}
 
+		// eslint-disable-next-line no-async-promise-executor
 		const svg = await new Promise<string>(async (resolve, reject) => {
 			let timeoutHandle: number | undefined;
 			let isCompleted = false;

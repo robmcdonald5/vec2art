@@ -167,6 +167,7 @@ export default [
 		ignores: [
 			'build/',
 			'.svelte-kit/',
+			'.vercel/',
 			'dist/',
 			'src/lib/wasm/**/*.js',
 			'src/lib/wasm/**/*.d.ts',

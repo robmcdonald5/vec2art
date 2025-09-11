@@ -59,7 +59,7 @@ test.describe('Accessibility', () => {
 		if ((await modal.count()) > 0) {
 			// Focus should be trapped within the modal
 			await page.keyboard.press('Tab');
-			const focusedElement = await page.locator(':focus');
+			const _focusedElement = await page.locator(':focus');
 			const modalContainer = await modal.first();
 
 			// Focused element should be within the modal
@@ -130,7 +130,7 @@ test.describe('Accessibility', () => {
 		await expect(landmarks).toHaveCount(/* expected number based on page structure */);
 
 		// Check for skip links (if implemented)
-		const skipLinks = page.locator('a:has-text("Skip to"), a:has-text("Skip to main content")');
+		const _skipLinks = page.locator('a:has-text("Skip to"), a:has-text("Skip to main content")');
 		// Skip links are optional but recommended
 	});
 

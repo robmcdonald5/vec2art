@@ -70,7 +70,7 @@ test.describe('Smoke Tests', () => {
 		await page.waitForTimeout(5000);
 
 		// Check if WASM loading completed (success or failure)
-		const wasmStatus = await page.evaluate(() => {
+		const _wasmStatus = await page.evaluate(() => {
 			// Check various possible WASM status indicators
 			const statusElement =
 				document.querySelector('[data-testid*="wasm"]') ||

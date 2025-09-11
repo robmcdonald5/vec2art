@@ -9,7 +9,7 @@ import {
 	setupConsoleErrorTracking,
 	getExpectedProcessingTime
 } from './utils/test-helpers';
-import { TEST_IMAGES, getTestImage } from './fixtures/test-data';
+import { TEST_IMAGES as _TEST_IMAGES, getTestImage } from './fixtures/test-data';
 
 test.describe('Core Image Vectorization Workflow', () => {
 	let converterPage: ConverterPage;

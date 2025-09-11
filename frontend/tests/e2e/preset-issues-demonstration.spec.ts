@@ -2,7 +2,7 @@
  * Preset Issues Demonstration Test
  * Demonstrates and documents the specific issues with preset functionality
  */
-import { test, expect, Page } from '@playwright/test';
+import { test, expect as _expect, Page } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
