@@ -1,20 +1,11 @@
-# Ignore WASM binary files
+# Generated WASM files (large binaries)
 *.wasm
-*_bg.wasm.d.ts
+vectorize_wasm_bg.wasm.d.ts
 
-# But allow essential worker files and their types
-!worker-load.js
-!worker-load.d.ts
+# Generated build artifacts
+__wbindgen_placeholder__.js
+snippets/
 
-# Allow TypeScript source files (already tracked)
-!*.ts
-!*.d.ts
-!*.js
-
-# Allow test files and documentation
-!*.test.ts
-!*.md
-
-# Allow package.json and gitignore
-!package.json
-!.gitignore
+# Build metadata that changes frequently
+package.json
+README.md
