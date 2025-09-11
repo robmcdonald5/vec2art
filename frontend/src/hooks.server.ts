@@ -46,6 +46,7 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 	if (url.startsWith('/wasm/') || url.endsWith('.wasm')) {
 		response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
 		response.headers.set('Content-Type', 'application/wasm');
+		response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin'); // Required for WASM multithreading
 	} else if (url.match(/\.(jpg|jpeg|png|gif|webp|avif|svg|ico)$/i)) {
 		response.headers.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
 	} else if (url.match(/\.(js|css)$/i) && url.includes('_app/')) {
