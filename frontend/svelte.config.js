@@ -11,7 +11,7 @@ const config = {
 		// Vercel adapter with Node.js runtime for filesystem compatibility
 		adapter: adapter({
 			// Use Node.js runtime for compatibility with filesystem APIs
-			runtime: 'nodejs20.x',
+			runtime: 'nodejs22.x', // Match Vercel project settings
 			regions: ['iad1']
 		}),
 

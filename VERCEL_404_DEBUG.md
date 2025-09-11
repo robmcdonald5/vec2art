@@ -255,6 +255,21 @@ if (url.startsWith('/wasm/') || url.endsWith('.wasm')) {
 
 **Result**: 🔄 **TESTING IN PROGRESS**
 
+## 🚨 CRITICAL DISCOVERY: Node.js Version Mismatch
+**Found**: Vercel project settings show Node.js 22.x, but our config specifies 20.x
+- `svelte.config.js`: `runtime: 'nodejs20.x'`
+- Vercel Project Settings: `Node.js 22.x`
+
+**Impact**: This mismatch could cause:
+- Runtime incompatibilities
+- Build environment differences  
+- Route handler failures
+- Deployment inconsistencies
+
+**Options**:
+1. **Update svelte.config.js to Node.js 22.x** (recommended - latest)
+2. **Change Vercel settings to Node.js 20.x** (match current config)
+
 ---
 
 **Status**: 🔄 Testing Theory 2 - minimal vercel.json (deployment starting)
