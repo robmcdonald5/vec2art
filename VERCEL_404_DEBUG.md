@@ -186,6 +186,75 @@ frontend/src/routes/
 - [Vercel SvelteKit Integration](https://vercel.com/docs/frameworks/full-stack/sveltekit)
 - [Vercel Error Documentation](https://vercel.com/docs/errors#not-found)
 
+## Debugging Attempt 4: Remove vercel.json (Theory 1)
+**Date**: 2025-09-11 (latest)  
+**Issue**: Custom vercel.json might interfere with SvelteKit's automatic deployment  
+**Theory**: Let @sveltejs/adapter-vercel handle everything automatically  
+**Changes Made**:
+- ✅ Backed up `vercel.json` as `vercel.json.backup`
+- ✅ Deleted `vercel.json` entirely
+- ✅ Verified build still works: `npm run build:frontend-only` successful  
+- ✅ Verified WASM headers handled in `hooks.server.ts` (lines 46-48)
+- ⚠️ Missing `Cross-Origin-Resource-Policy: cross-origin` header (was in vercel.json)
+
+**Build Output**: Still creates `frontend/.vercel/output/` correctly
+**Push Status**: ✅ Committed and pushed - deployment in progress
+
+**Additional Fix Applied**:
+- ✅ Added missing `Cross-Origin-Resource-Policy: cross-origin` header to `hooks.server.ts` 
+- This ensures WASM multithreading works properly without vercel.json
+
+**Result**: ❌ **FAILED - NEW ERROR**
+- Build Error: `Could not resolve entry module "index.html"`
+- Vercel deployment failed during build phase
+- Error: `Error: Command "vite build" exited with 1`
+
+**Analysis**: Removing vercel.json entirely caused Vercel to lose SvelteKit context and try to build as a generic Vite app, looking for index.html instead of using SvelteKit's build process.
+
+## WASM Header Analysis
+The removed vercel.json had WASM-specific headers:
+```json
+{
+  "source": "/wasm/(.*)",
+  "headers": [
+    {"key": "Content-Type", "value": "application/wasm"},
+    {"key": "Cross-Origin-Resource-Policy", "value": "cross-origin"}
+  ]
+}
+```
+
+Current hooks.server.ts handles:
+```javascript
+if (url.startsWith('/wasm/') || url.endsWith('.wasm')) {
+    response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    response.headers.set('Content-Type', 'application/wasm'); // ✅ Covered
+    // ❌ Missing: Cross-Origin-Resource-Policy: cross-origin
+}
+```
+
+**Potential Next Step**: If Theory 1 fails, add missing CORS header to hooks.server.ts
+
+## Debugging Attempt 5: Minimal vercel.json (Theory 2)
+**Date**: 2025-09-11 (immediately after Theory 1 failure)  
+**Issue**: Complete vercel.json removal breaks framework detection  
+**Theory**: Vercel needs minimal framework hint but not complex overrides  
+**Changes Made**:
+- ✅ Created minimal vercel.json with only framework detection:
+  ```json
+  {
+    "framework": "sveltekit"
+  }
+  ```
+- ✅ No custom buildCommand, outputDirectory, or other overrides
+- ✅ Let SvelteKit adapter handle all deployment logic automatically
+
+**Reasoning**: 
+- Theory 1 proved vercel.json IS needed for framework detection
+- But complex configuration was likely the problem
+- This provides minimal framework hint without interference
+
+**Result**: 🔄 **TESTING IN PROGRESS**
+
 ---
 
-**Status**: Ready for next debugging attempt - Theory 1 (Remove vercel.json)
+**Status**: 🔄 Testing Theory 2 - minimal vercel.json (deployment starting)
