@@ -192,7 +192,7 @@ test.describe('Artistic Effects Integration Tests', () => {
 		expect(parseFloat(clampedTremor)).toBeLessThanOrEqual(0.5);
 	});
 
-	test('performance remains acceptable with artistic effects', async ({ page }) => {
+	test('performance remains acceptable with artistic effects', async ({ page: _page }) => {
 		// Enable all artistic effects at maximum
 		await converterPage.setArtisticEffect('variable_weights', 1.0);
 		await converterPage.setArtisticEffect('tremor_strength', 0.5);

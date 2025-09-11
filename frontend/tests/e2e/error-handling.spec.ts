@@ -161,7 +161,7 @@ test.describe('Error Handling and Recovery Tests', () => {
 				for (let i = 0; i < 100; i++) {
 					window.memoryPressure.push(new ArrayBuffer(10 * 1024 * 1024)); // 10MB each
 				}
-			} catch (e) {
+			} catch (_e) {
 				// Expected to fail at some point
 			}
 		});
@@ -200,7 +200,10 @@ test.describe('Error Handling and Recovery Tests', () => {
 		});
 	});
 
-	test('browser compatibility error handling', async ({ page, browserName }) => {
+	test('browser compatibility error handling', async ({
+		page: _page,
+		browserName: _browserName
+	}) => {
 		await converterPage.goto();
 
 		// Simulate missing browser features
@@ -320,7 +323,7 @@ test.describe('Error Handling and Recovery Tests', () => {
 	});
 
 	test('error reporting and logging', async ({ page }) => {
-		const networkMonitoring = setupNetworkMonitoring(page);
+		const _networkMonitoring = setupNetworkMonitoring(page);
 
 		await converterPage.goto();
 		await converterPage.waitForWasmLoad();

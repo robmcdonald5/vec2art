@@ -339,7 +339,7 @@ test.describe('Preset Validation Suite', () => {
 	}
 
 	// Comparative tests - ensure presets produce different outputs
-	test('Presets produce meaningfully different outputs', async ({ page }) => {
+	test('Presets produce meaningfully different outputs', async ({ page: _page }) => {
 		const testImage = 'medium-test.jpg';
 		const outputs = new Map<string, string>();
 
@@ -375,7 +375,7 @@ test.describe('Preset Validation Suite', () => {
 	});
 
 	// Algorithm differences test
-	test('Different algorithms produce distinctly different outputs', async ({ page }) => {
+	test('Different algorithms produce distinctly different outputs', async ({ page: _page }) => {
 		const testImage = 'simple-shapes.png';
 		const algorithmOutputs = new Map<string, string>();
 

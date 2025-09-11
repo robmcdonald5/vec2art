@@ -152,7 +152,7 @@ class SimplePresetValidator {
 			'text="Please wait"'
 		];
 
-		let processingStarted = false;
+		let _processingStarted = false;
 		for (const indicator of processingIndicators) {
 			if (
 				await this.page

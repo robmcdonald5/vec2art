@@ -7,7 +7,7 @@ import { FullConfig } from '@playwright/test';
 import fs from 'fs/promises';
 import path from 'path';
 
-async function globalTeardown(config: FullConfig) {
+async function globalTeardown(_config: FullConfig) {
 	console.log('Tearing down E2E test environment...');
 
 	try {
@@ -24,7 +24,7 @@ async function globalTeardown(config: FullConfig) {
 					}
 				}
 				console.log(`Cleaned up temporary files in: ${dir}`);
-			} catch (error) {
+			} catch (_error) {
 				// Directory might not exist, which is fine
 				console.log(`Skipped cleanup for: ${dir} (directory not found)`);
 			}
@@ -43,13 +43,13 @@ async function globalTeardown(config: FullConfig) {
 				console.log(`Failed: ${parsed.stats?.failed || 0}`);
 				console.log(`Skipped: ${parsed.stats?.skipped || 0}`);
 				console.log(`Duration: ${parsed.stats?.duration || 0}ms`);
-			} catch (error) {
+			} catch (_error) {
 				console.log('Could not generate test summary (results file not found)');
 			}
 		}
 
 		console.log('E2E test environment teardown complete');
-	} catch (error) {
+	} catch (_error) {
 		console.error('Error during teardown:', error);
 		// Don't throw - teardown failures shouldn't fail the build
 	}
