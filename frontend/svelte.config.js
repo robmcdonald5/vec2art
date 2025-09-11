@@ -8,10 +8,11 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		// Simplified Vercel adapter for static deployment
+		// Vercel adapter with Node.js runtime for filesystem compatibility
 		adapter: adapter({
-			// Use Edge Runtime for better performance
-			runtime: 'edge'
+			// Use Node.js runtime for compatibility with filesystem APIs
+			runtime: 'nodejs20.x',
+			regions: ['iad1']
 		}),
 
 		// Prerender most routes for better performance
