@@ -5,6 +5,7 @@
 
 import { getPresetById, presetToVectorizerConfig } from './index';
 import type { VectorizerConfig } from '$lib/types/vectorizer';
+import { browser } from '$app/environment';
 
 // Test preset conversion functionality
 export function testPresetIntegration(): boolean {
@@ -111,6 +112,6 @@ export function testPresetIntegration(): boolean {
 }
 
 // Export for potential browser console testing
-if (typeof window !== 'undefined') {
+if (browser && typeof window !== 'undefined') {
 	(window as any).testPresetIntegration = testPresetIntegration;
 }

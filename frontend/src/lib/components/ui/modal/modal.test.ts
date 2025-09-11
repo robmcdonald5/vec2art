@@ -71,7 +71,7 @@ describe('Modal Component', () => {
 
 		it('should render children content', () => {
 			const onClose = vi.fn();
-			const { container } = render(Modal, {
+			const { container: _container } = render(Modal, {
 				props: {
 					open: true,
 					onClose,
@@ -241,7 +241,7 @@ describe('Modal Component', () => {
 			});
 
 			const closeButton = screen.getByRole('button', { name: /close modal/i });
-			const firstInput = screen.getByTestId('first-input');
+			const _firstInput = screen.getByTestId('first-input');
 			const lastInput = screen.getByTestId('last-input');
 
 			// Focus should start at close button (first focusable)

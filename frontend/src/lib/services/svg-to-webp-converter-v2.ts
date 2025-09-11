@@ -193,7 +193,7 @@ export class SvgToWebPConverterV2 {
 			maxWidth = 2048,
 			maxHeight = 2048,
 			scaleFactor = window.devicePixelRatio || 1,
-			progressive = true,
+			progressive: _progressive = true,
 			useWorker = true,
 			onProgress
 		} = options;
@@ -349,7 +349,7 @@ export class SvgToWebPConverterV2 {
 		if (viewBoxMatch) {
 			const viewBoxValues = viewBoxMatch[1].split(/[\\s,]+/).map(Number);
 			if (viewBoxValues.length >= 4) {
-				const [x, y, width, height] = viewBoxValues;
+				const [_x, _y, width, height] = viewBoxValues;
 				if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
 					return { width, height };
 				}
@@ -492,7 +492,7 @@ export class SvgToWebPConverterV2 {
 			this.worker = null;
 		}
 
-		for (const [id, promise] of this.workerPromises.entries()) {
+		for (const [_id, promise] of this.workerPromises.entries()) {
 			promise.reject(new Error('Converter disposed'));
 		}
 		this.workerPromises.clear();

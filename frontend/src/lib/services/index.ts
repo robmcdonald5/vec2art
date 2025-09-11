@@ -162,12 +162,12 @@ export {
 	performanceIntegration,
 	initializePerformanceMonitoring,
 	trackWASMLoading,
-	trackWASMInstantiation,
+	trackWASMInstantiation as trackWASMInstantiationIntegration,
 	trackWASMThreads,
 	trackImageProcessing,
 	trackTask,
 	trackFeature,
-	trackApplicationError,
+	trackApplicationError as trackApplicationErrorIntegration,
 	getPerformanceReport,
 	exportPerformanceData,
 	checkSystemHealth
@@ -229,6 +229,11 @@ export async function quickStartPerformanceMonitoring(
 		debugMode?: boolean;
 	} = {}
 ): Promise<void> {
+	// Import functions locally to avoid circular dependencies
+	const { isConsentRequired, getConsentStatus, showConsentBanner, hasConsent, getComplianceStatus: _getComplianceStatus } = await import('./privacy-manager.js');
+	const { initializePerformanceMonitoring, checkSystemHealth } = await import('./performance-integration.js');  
+	const { startBudgetMonitoring, getBudgetStatus: _getBudgetStatus, getPerformanceRecommendations: _getPerformanceRecommendations } = await import('./performance-budgets.js');
+	const { startDebugging } = await import('./dev-tools.js');
 	const {
 		enableWebVitals = true,
 		enableWASMTracking = true,
@@ -295,16 +300,21 @@ export async function quickStartPerformanceMonitoring(
 }
 
 /**
- * Get comprehensive performance status
+ * Get comprehensive performance status  
  */
-export function getPerformanceStatus(): {
+export async function getPerformanceStatus(): Promise<{
 	isMonitoring: boolean;
 	services: Record<string, boolean>;
-	health: ReturnType<typeof checkSystemHealth>;
-	budgets: ReturnType<typeof getBudgetStatus>;
-	privacy: ReturnType<typeof getComplianceStatus>;
-	recommendations: Recommendation[];
-} {
+	health: any;
+	budgets: any;
+	privacy: any;
+	recommendations: any[];
+}> {
+	// Import functions locally to avoid circular dependencies
+	const { hasConsent, getComplianceStatus } = await import('./privacy-manager.js');
+	const { checkSystemHealth } = await import('./performance-integration.js');
+	const { getBudgetStatus, getPerformanceRecommendations } = await import('./performance-budgets.js');
+
 	return {
 		isMonitoring: true, // Would check actual monitoring status
 		services: {
@@ -328,18 +338,26 @@ export function getPerformanceStatus(): {
 /**
  * Export all performance data for analysis
  */
-export function exportAllPerformanceData(): {
+export async function exportAllPerformanceData(): Promise<{
 	timestamp: string;
-	performance: ReturnType<typeof getPerformanceReport>;
-	ux: ReturnType<typeof exportUXData>;
-	errors: ReturnType<typeof exportErrorData>;
-	budgets: ReturnType<typeof exportBudgetData>;
-	analytics: ReturnType<typeof exportAnalyticsData>;
+	performance: any;
+	ux: any;
+	errors: any;
+	budgets: any;
+	analytics: any;
 	privacy: {
-		consent: ReturnType<typeof getConsentStatus>;
-		compliance: ReturnType<typeof getComplianceStatus>;
+		consent: any;
+		compliance: any;
 	};
-} {
+}> {
+	// Import functions locally to avoid circular dependencies
+	const { getPerformanceReport } = await import('./performance-integration.js');
+	const { exportUXData } = await import('./ux-analytics.js');
+	const { exportErrorData } = await import('./error-tracker.js');
+	const { exportBudgetData } = await import('./performance-budgets.js');
+	const { exportAnalyticsData } = await import('./analytics-integration.js');
+	const { getConsentStatus, getComplianceStatus } = await import('./privacy-manager.js');
+
 	return {
 		timestamp: new Date().toISOString(),
 		performance: getPerformanceReport(),

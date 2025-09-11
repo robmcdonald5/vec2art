@@ -92,7 +92,7 @@ export class WebGPUDeviceManager {
 			try {
 				deviceInfo.device?.destroy();
 				console.log(`[WebGPU Manager] 🛑 Destroyed device for ${owner} during emergency shutdown`);
-			} catch (error) {
+			} catch (_error) {
 				// Ignore cleanup errors
 			}
 		}
@@ -571,7 +571,7 @@ export class WebGPUDeviceManager {
 				if (testDevice) {
 					try {
 						testDevice.destroy();
-					} catch (cleanupError) {
+					} catch (_cleanupError) {
 						// Ignore cleanup errors
 					}
 				}
@@ -829,14 +829,16 @@ export class WebGPUDeviceManager {
 		const isWindows = navigator.platform.includes('Win');
 
 		switch (strategy) {
-			case 'High-performance':
+			case 'High-performance': {
 				const highPerfOptions: any = { forceFallbackAdapter: false };
 				if (!isWindows) highPerfOptions.powerPreference = 'high-performance';
 				return highPerfOptions;
-			case 'Low-power':
+			}
+			case 'Low-power': {
 				const lowPowerOptions: any = { forceFallbackAdapter: false };
 				if (!isWindows) lowPowerOptions.powerPreference = 'low-power';
 				return lowPowerOptions;
+			}
 			case 'Software-fallback':
 				return { forceFallbackAdapter: true };
 			default:
@@ -852,10 +854,10 @@ export class WebGPUDeviceManager {
 
 		// Destroy all devices
 		const deviceCount = this.devices.size;
-		for (const [owner, deviceInfo] of this.devices) {
+		for (const [_owner, deviceInfo] of this.devices) {
 			try {
 				deviceInfo.device?.destroy();
-			} catch (error) {
+			} catch (_error) {
 				// Ignore cleanup errors
 			}
 		}

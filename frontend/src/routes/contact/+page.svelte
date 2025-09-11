@@ -13,31 +13,31 @@
 	import { onMount } from 'svelte';
 	import { PUBLIC_FORMSPARK_ENDPOINT_ID, PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
 
-	// Form state management
-	let selectedCategory = 'general';
-	let formData = {
+	// Form state management  
+	let selectedCategory = $state.raw('general');
+	let formData = $state({
 		name: '',
 		email: '',
 		message: '',
 		category: 'general',
 		bugType: ''
-	};
+	});
 
 	// Form validation
-	let errors: Record<string, string> = {};
-	let isSubmitting = false;
-	let isSubmitted = false;
+	let errors = $state<Record<string, string>>({});
+	let isSubmitting = $state(false);
+	let isSubmitted = $state(false);
 
 	// Enhanced validation states
-	let isEmailValid = false;
-	let isMessageValid = false;
-	let isNameValid = false;
-	let isTurnstileValid = false;
+	let isEmailValid = $state(false);
+	let isMessageValid = $state(false);
+	let isNameValid = $state(false);
+	let isTurnstileValid = $state(false);
 
 	// Turnstile integration
-	let turnstileToken = '';
-	let turnstileWidget: any = null;
-	// let turnstileLoaded = $state(false);
+	let turnstileToken = $state('');
+	let turnstileWidget: string | null = null;
+	let _turnstileLoaded = $state(false);
 
 	// Constants for validation
 	const EMAIL_REGEX =
@@ -47,7 +47,7 @@
 	const MIN_NAME_LENGTH = 2;
 
 	// System detection
-	let systemInfo = {
+	let systemInfo = $state({
 		browser: '',
 		browserVersion: '',
 		os: '',
@@ -58,7 +58,7 @@
 		webAssemblySupport: false,
 		sharedArrayBufferSupport: false,
 		crossOriginIsolation: false
-	};
+	});
 
 	// System detection function
 	function detectSystemInfo() {
@@ -398,12 +398,12 @@
 		detectSystemInfo();
 
 		// Initialize Turnstile widget
-		if (typeof window !== 'undefined' && (window as any).turnstile) {
+		if (typeof window !== 'undefined' && window.turnstile) {
 			initTurnstile();
 		} else {
 			// Wait for Turnstile to load
 			const checkTurnstile = setInterval(() => {
-				if ((window as any).turnstile) {
+				if (window.turnstile) {
 					clearInterval(checkTurnstile);
 					initTurnstile();
 				}
@@ -413,13 +413,13 @@
 
 	function initTurnstile() {
 		const turnstileContainer = document.getElementById('turnstile-container');
-		if (turnstileContainer && (window as any).turnstile) {
-			turnstileWidget = (window as any).turnstile.render('#turnstile-container', {
+		if (turnstileContainer && window.turnstile) {
+			turnstileWidget = window.turnstile.render('#turnstile-container', {
 				sitekey: PUBLIC_TURNSTILE_SITE_KEY,
 				callback: (token: string) => {
 					turnstileToken = token;
 					isTurnstileValid = true;
-					turnstileLoaded = true;
+					_turnstileLoaded = true;
 					// Clear any turnstile errors
 					if (errors.turnstile) {
 						delete errors.turnstile;
@@ -429,7 +429,7 @@
 				'error-callback': () => {
 					turnstileToken = '';
 					isTurnstileValid = false;
-					turnstileLoaded = true;
+					_turnstileLoaded = true;
 					errors.turnstile = 'Verification failed. Please try again.';
 					errors = { ...errors };
 				},
@@ -446,13 +446,13 @@
 					errors = { ...errors };
 				}
 			});
-			turnstileLoaded = true;
+			_turnstileLoaded = true;
 		}
 	}
 
 	function resetTurnstile() {
-		if (turnstileWidget && (window as any).turnstile) {
-			(window as any).turnstile.reset(turnstileWidget);
+		if (turnstileWidget && window.turnstile) {
+			window.turnstile.reset(turnstileWidget);
 			turnstileToken = '';
 			isTurnstileValid = false;
 		}
@@ -478,20 +478,21 @@
 	}
 
 	// Reactive validation - runs whenever form data changes
-	$: validateName(formData.name);
-	$: validateEmail(formData.email);
-	$: validateMessage(formData.message);
+	$effect(() => { validateName(formData.name); });
+	$effect(() => { validateEmail(formData.email); });
+	$effect(() => { validateMessage(formData.message); });
 
 	// Overall form validity
-	$: isFormValid =
+	let isFormValid = $derived(
 		isNameValid &&
 		isEmailValid &&
 		isMessageValid &&
 		isTurnstileValid &&
-		(selectedCategory !== 'bug' || formData.bugType);
+		(selectedCategory !== 'bug' || formData.bugType)
+	);
 
 	// Disable submit button only when submitting or form is invalid
-	$: isSubmitDisabled = isSubmitting || !isFormValid;
+	let isSubmitDisabled = $derived(isSubmitting || !isFormValid);
 
 	function validateForm() {
 		errors = {};
@@ -649,7 +650,7 @@
 		}
 	}
 
-	$: currentCategory = categories[selectedCategory as keyof typeof categories];
+	let currentCategory = $derived(categories[selectedCategory as keyof typeof categories]);
 </script>
 
 <svelte:head>
@@ -705,8 +706,7 @@
 									: 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'}"
 								onclick={() => selectCategory(category.id)}
 							>
-								<svelte:component
-									this={category.icon}
+								<category.icon
 									class="h-8 w-8 {selectedCategory === category.id
 										? 'text-ferrari-600'
 										: 'text-gray-600 group-hover:text-gray-700'}"
@@ -767,7 +767,7 @@
 							<div
 								class="border-ferrari-200 bg-ferrari-50 flex items-center gap-3 rounded-lg border p-4"
 							>
-								<svelte:component this={currentCategory.icon} class="text-ferrari-600 h-6 w-6" />
+								<currentCategory.icon class="text-ferrari-600 h-6 w-6" />
 								<div>
 									<h3 class="font-semibold text-gray-900">{currentCategory.title}</h3>
 									<p class="text-sm text-gray-700">{currentCategory.description}</p>

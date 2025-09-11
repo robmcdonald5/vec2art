@@ -4,7 +4,6 @@
  */
 
 import type { VectorizerConfig, VectorizerBackend } from '$lib/types/vectorizer';
-import { DEFAULT_CONFIG } from '$lib/types/vectorizer';
 
 export interface DeviceCapabilities {
 	// Hardware info
@@ -79,7 +78,7 @@ export class PerformanceOptimizer {
 		}
 
 		const optimizedConfig = { ...baseConfig };
-		const { pixelCount, estimatedComplexity } = imageCharacteristics;
+		const { pixelCount, estimatedComplexity: _estimatedComplexity } = imageCharacteristics;
 
 		// Apply device-specific optimizations
 		this.applyDeviceOptimizations(optimizedConfig);

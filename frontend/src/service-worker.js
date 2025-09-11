@@ -7,6 +7,11 @@ import { build, files, version } from '$service-worker';
 
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 
+// Early exit for development environment to prevent import errors
+if (typeof location !== 'undefined' && location.hostname === 'localhost') {
+	console.log('[SW] Development mode detected, service worker disabled');
+}
+
 // Create a unique cache name for this deployment
 // const CACHE_NAME = `vec2art-cache-v${version}`; // TODO: Re-enable when needed
 const ASSETS_CACHE = `vec2art-assets-v${version}`;
@@ -107,7 +112,7 @@ sw.addEventListener('fetch', (event) => {
 });
 
 // Handle WASM files - cache first strategy
-async function handleWASM(request) {
+async function handleWASM(/** @type {Request} */ request) {
 	const cache = await caches.open(WASM_CACHE);
 	const cached = await cache.match(request);
 
@@ -128,7 +133,7 @@ async function handleWASM(request) {
 }
 
 // Handle image requests - cache first with background update
-async function handleImages(request) {
+async function handleImages(/** @type {Request} */ request) {
 	const cache = await caches.open(IMAGE_CACHE);
 	const cached = await cache.match(request);
 
@@ -162,7 +167,7 @@ async function handleImages(request) {
 }
 
 // Handle API requests - network first strategy
-async function handleAPI(request) {
+async function handleAPI(/** @type {Request} */ request) {
 	const cache = await caches.open(RUNTIME_CACHE);
 
 	try {
@@ -184,7 +189,7 @@ async function handleAPI(request) {
 }
 
 // Handle static assets - cache only
-async function handleStatic(request) {
+async function handleStatic(/** @type {Request} */ request) {
 	const cache = await caches.open(ASSETS_CACHE);
 	const cached = await cache.match(request);
 
@@ -197,7 +202,7 @@ async function handleStatic(request) {
 }
 
 // Handle default requests - stale while revalidate
-async function handleDefault(request) {
+async function handleDefault(/** @type {Request} */ request) {
 	const cache = await caches.open(RUNTIME_CACHE);
 	const cached = await cache.match(request);
 
@@ -231,7 +236,7 @@ async function handleDefault(request) {
 }
 
 // Helper function to check if a path is an image
-function isImageRequest(pathname) {
+function isImageRequest(/** @type {string} */ pathname) {
 	const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg', '.ico'];
 	return imageExtensions.some((ext) => pathname.toLowerCase().endsWith(ext));
 }

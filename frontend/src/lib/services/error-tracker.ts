@@ -5,9 +5,9 @@
 
 import type {
 	ErrorTracking,
-	UserInteraction,
+	UserInteraction as _UserInteraction,
 	PerformanceSnapshot,
-	Alert
+	Alert as _Alert
 } from '../types/performance.js';
 import { performanceMonitor, trackError, trackCustomMetric } from './performance-monitor.js';
 
@@ -102,7 +102,7 @@ export class ErrorTracker {
 	/**
 	 * Track an error with enhanced context
 	 */
-	trackError(error: Error, context: EnhancedErrorContext = {}, userAction?: string): string {
+	trackError(error: Error, context: EnhancedErrorContext = {}, _userAction?: string): string {
 		const errorId = this.generateErrorId();
 		const category = this.categorizeError(error, context);
 		const severity = this.assessSeverity(error, context);
@@ -234,7 +234,7 @@ export class ErrorTracker {
 			{} as Record<ErrorCategory, number>
 		);
 
-		const errorsBySerivty = this.errorHistory.reduce(
+		const errorsByseverity = this.errorHistory.reduce(
 			(acc, error) => {
 				const severity = this.getSeverityFromError(error);
 				acc[severity] = (acc[severity] || 0) + 1;
@@ -261,7 +261,7 @@ export class ErrorTracker {
 		return {
 			totalErrors: this.errorHistory.length,
 			errorsByCategory,
-			errorsBySerivty,
+			errorsByseverity,
 			recoveryRate,
 			averageRecoveryTime,
 			topErrorPatterns
@@ -302,7 +302,7 @@ export class ErrorTracker {
 		recoveries: ErrorRecovery[];
 		patterns: ErrorPattern[];
 		breadcrumbs: string[];
-		statistics: ReturnType<typeof this.getErrorStatistics>;
+		statistics: ReturnType<ErrorTracker['getErrorStatistics']>;
 	} {
 		return {
 			errors: this.errorHistory,
@@ -321,7 +321,7 @@ export class ErrorTracker {
 			name: 'wasm-module-reload',
 			description: 'Reload WASM module after failure',
 			canRecover: (error) => error.errorType === 'wasm' && error.errorMessage.includes('module'),
-			recover: async (error, context) => {
+			recover: async (_error, _context) => {
 				try {
 					// Attempt to reload the WASM module
 					this.addBreadcrumb('Attempting WASM module reload');
@@ -353,7 +353,7 @@ export class ErrorTracker {
 			description: 'Fall back to single-threaded mode',
 			canRecover: (error) =>
 				error.errorMessage.includes('thread') || error.errorMessage.includes('SharedArrayBuffer'),
-			recover: async (error, context) => {
+			recover: async (_error, _context) => {
 				try {
 					this.addBreadcrumb('Falling back to single-threaded mode');
 
@@ -379,7 +379,7 @@ export class ErrorTracker {
 			description: 'Clean up memory and retry',
 			canRecover: (error) =>
 				error.errorMessage.includes('memory') || error.errorMessage.includes('allocation'),
-			recover: async (error, context) => {
+			recover: async (_error, _context) => {
 				try {
 					this.addBreadcrumb('Attempting memory cleanup');
 
@@ -433,7 +433,7 @@ export class ErrorTracker {
 
 	private setupGlobalErrorHandlers(): void {
 		// JavaScript errors
-		window.addEventListener('error', (event) => {
+		window.addEventListener('error', (event: ErrorEvent) => {
 			this.trackError(event.error, {
 				component: 'global',
 				action: 'script-error',
@@ -443,7 +443,7 @@ export class ErrorTracker {
 		});
 
 		// Promise rejections
-		window.addEventListener('unhandledrejection', (event) => {
+		window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
 			const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
 			this.trackError(error, {
 				component: 'global',
@@ -455,8 +455,8 @@ export class ErrorTracker {
 		window.addEventListener(
 			'error',
 			(event) => {
-				if (event.target !== window) {
-					const target = event.target as HTMLElement;
+				if (event.target && event.target !== window) {
+					const target = event.target as unknown as HTMLElement;
 					this.trackError(new Error(`Resource loading failed: ${target.tagName}`), {
 						component: 'resource-loader',
 						action: 'resource-error',
@@ -751,7 +751,7 @@ export class ErrorTracker {
 		throw new Error('Memory cleanup not implemented');
 	}
 
-	private async retryFileOperation(context: EnhancedErrorContext): Promise<void> {
+	private async retryFileOperation(_context: EnhancedErrorContext): Promise<void> {
 		// Implementation would retry file operations
 		throw new Error('File retry not implemented');
 	}

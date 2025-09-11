@@ -15,12 +15,15 @@ export default [
 	...svelte.configs['flat/prettier'],
 	{
 		rules: {
-			'no-unused-vars': ['error', {
-				argsIgnorePattern: '^_',
-				varsIgnorePattern: '^_',
-				caughtErrorsIgnorePattern: '^_',
-				ignoreRestSiblings: true
-			}],
+			'no-unused-vars': [
+				'error',
+				{
+					argsIgnorePattern: '^_',
+					varsIgnorePattern: '^_',
+					caughtErrorsIgnorePattern: '^_',
+					ignoreRestSiblings: true
+				}
+			],
 			'svelte/require-each-key': 'error',
 			'svelte/no-useless-children-snippet': 'warn',
 			'svelte/prefer-writable-derived': 'warn',
@@ -95,11 +98,11 @@ export default [
 	// Handle test and config files that are not in the TypeScript project
 	{
 		files: [
-			'tests/**/*.ts', 
-			'tests/**/*.tsx', 
-			'*.config.ts', 
-			'static/**/*.ts', 
-			'src/**/*.test.ts', 
+			'tests/**/*.ts',
+			'tests/**/*.tsx',
+			'*.config.ts',
+			'static/**/*.ts',
+			'src/**/*.test.ts',
 			'src/**/*.spec.ts',
 			'src/lib/services/performance-*.ts',
 			'src/lib/services/analytics-*.ts',
@@ -149,12 +152,15 @@ export default [
 			}
 		},
 		rules: {
-			'no-unused-vars': ['error', {
-				argsIgnorePattern: '^_',
-				varsIgnorePattern: '^_',
-				caughtErrorsIgnorePattern: '^_',
-				ignoreRestSiblings: true
-			}]
+			'no-unused-vars': [
+				'error',
+				{
+					argsIgnorePattern: '^_',
+					varsIgnorePattern: '^_',
+					caughtErrorsIgnorePattern: '^_',
+					ignoreRestSiblings: true
+				}
+			]
 		}
 	},
 	{

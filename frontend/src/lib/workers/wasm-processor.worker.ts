@@ -11,7 +11,7 @@
 // Import the WASM module
 import init, * as wasmModule from '../wasm/vectorize_wasm.js';
 import { calculateMultipassConfig } from '../types/vectorizer.js';
-import { devLog, devDebug, devWarn, devError } from '../utils/dev-logger.js';
+import { devLog } from '../utils/dev-logger.js';
 
 // Note: dots backend parameters now handled directly in SettingsPanel.svelte
 
@@ -1338,7 +1338,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 				await createVectorizer(payload.imageData);
 
 				// Configure vectorizer
-				configureVectorizer(payload.config);
+				await configureVectorizer(payload.config);
 
 				// Store GPU preference for processing
 				currentConfig.preferGpu = payload.preferGpu;

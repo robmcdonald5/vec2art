@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
 	import BeforeAfterSlider from '$lib/components/ui/before-after-slider/before-after-slider.svelte';
 	import emblaCarouselSvelte from 'embla-carousel-svelte';
 	import Autoplay from 'embla-carousel-autoplay';
@@ -8,10 +9,7 @@
 	import { ArrowRight, Check, Zap } from 'lucide-svelte';
 
 	// Import showcase data from gallery
-	import {
-		showcaseAlgorithms,
-		type ShowcaseAlgorithm,
-	} from '$lib/data/showcase-gallery';
+	import { showcaseAlgorithms, type ShowcaseAlgorithm } from '$lib/data/showcase-gallery';
 
 	// Use the curated showcase algorithms from gallery
 	const algorithms = showcaseAlgorithms;
@@ -85,17 +83,15 @@
 		}
 
 		try {
-			// Navigate to converter with algorithm parameters
-			const params = new window.URLSearchParams({
-				backend: selectedAlgorithm.backend
-			});
-
+			// Build query parameters manually for Svelte reactivity compatibility
+			let queryParams = `backend=${encodeURIComponent(selectedAlgorithm.backend)}`;
+			
 			if (selectedAlgorithm.preset) {
-				params.append('preset', selectedAlgorithm.preset);
+				queryParams += `&preset=${encodeURIComponent(selectedAlgorithm.preset)}`;
 			}
 
 			// Store the algorithm selection in sessionStorage for the converter to pick up
-			if (typeof window !== 'undefined') {
+			if (browser) {
 				sessionStorage.setItem(
 					'selectedAlgorithm',
 					JSON.stringify({
@@ -106,7 +102,7 @@
 				);
 			}
 
-			goto(`/converter?${params.toString()}`);
+			goto(`/converter?${queryParams}`);
 		} catch (error) {
 			console.error('Failed to navigate to converter:', error);
 		}

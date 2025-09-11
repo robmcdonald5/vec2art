@@ -253,11 +253,11 @@ export class WasmOptimizer {
 	/**
 	 * Assign optimal thread for job based on affinity and load balancing
 	 */
-	assignOptimalThread(jobType: string, jobSize: number): number {
+	assignOptimalThread(jobType: string, _jobSize: number): number {
 		const availableThreads = this.threadAffinity.coreIds;
 
 		switch (this.threadAffinity.loadBalancing) {
-			case 'affinity-based':
+			case 'affinity-based': {
 				// Try to use preferred core for job type
 				const preferredCore = this.threadAffinity.affinityHints.get(jobType);
 				if (
@@ -267,9 +267,10 @@ export class WasmOptimizer {
 				) {
 					return preferredCore;
 				}
-			// Fall through to least-loaded if preferred core is busy
+				// Fall through to least-loaded if preferred core is busy
+			}
 
-			case 'least-loaded':
+			case 'least-loaded': {
 				// Find thread with lowest current load
 				let minLoad = 1.0;
 				let bestThread = availableThreads[0];
@@ -282,12 +283,14 @@ export class WasmOptimizer {
 					}
 				}
 				return bestThread;
+			}
 
 			case 'round-robin':
-			default:
+			default: {
 				// Simple round-robin assignment
 				const activeJobCount = this.activeJobs.size;
 				return availableThreads[activeJobCount % availableThreads.length];
+			}
 		}
 	}
 
@@ -434,7 +437,7 @@ export class WasmOptimizer {
 	/**
 	 * Update performance metrics
 	 */
-	private updateMetrics(duration: number, threadId: number, jobType: string): void {
+	private updateMetrics(duration: number, threadId: number, _jobType: string): void {
 		// Update average job time
 		const currentAvg = this.metrics.averageJobTime;
 		const totalJobs = this.activeJobs.size + 1; // Include completed job

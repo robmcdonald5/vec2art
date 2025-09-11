@@ -248,7 +248,7 @@ describe('Worker WASM Loader - Console Logging', () => {
 		try {
 			await initializeWasm();
 			expect.fail('Should have thrown error');
-		} catch (e) {
+		} catch (_e) {
 			expect(consoleMock.error).toHaveBeenCalledWith(
 				'[Worker WASM] ❌ Worker initialization failed:',
 				error
@@ -362,7 +362,7 @@ describe('Worker WASM Loader - Integration Scenarios', () => {
 		const { initializeWasm } = await import('./worker-load');
 
 		// Simulate worker receiving a message to initialize WASM
-		const mockWorkerMessage = {
+		const _mockWorkerMessage = {
 			data: { action: 'init-wasm' }
 		};
 
@@ -403,10 +403,10 @@ describe('Worker WASM Loader - Integration Scenarios', () => {
 describe('Worker WASM Loader - URL and Path Handling', () => {
 	it('should handle different base URL contexts', async () => {
 		// Mock different import.meta.url contexts
-		const originalMetaUrl = import.meta.url;
+		const _originalMetaUrl = import.meta.url;
 
 		// Test with different URL formats that workers might encounter
-		const testUrls = [
+		const _testUrls = [
 			'blob:null/12345678-1234-1234-1234-123456789012',
 			'data:application/javascript;base64,ZXhhbXBsZQ==',
 			'http://localhost:3000/worker.js',

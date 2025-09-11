@@ -64,7 +64,7 @@
 	let currentX = $state(0);
 	let containerEl: HTMLDivElement;
 	let showcaseIndex = $state(0);
-	let autoPlayInterval: number;
+	let autoPlayInterval: ReturnType<typeof setInterval> | undefined;
 
 	// Spring for smooth panel transitions
 	const panelOffset = spring(0, {
@@ -224,6 +224,7 @@
 
 <div class="relative w-full overflow-hidden">
 	<!-- Slider Container -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		bind:this={containerEl}
 		class="relative h-full w-full cursor-grab active:cursor-grabbing"

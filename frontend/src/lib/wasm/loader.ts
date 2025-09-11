@@ -4,7 +4,7 @@
  */
 
 import { browser } from '$app/environment';
-import { analytics, getBrowserInfo, getDeviceType } from '$lib/utils/analytics';
+import { analytics, getBrowserInfo, getDeviceType as _getDeviceType } from '$lib/utils/analytics';
 
 /**
  * Detect browser type for GPU optimization
@@ -52,7 +52,7 @@ async function initializeGPUWithBrowserSupport(wasmJs: any): Promise<void> {
 		// Chrome/Other browsers: Full WebGPU coordination
 		console.log('[WASM Loader] 🚀 Chrome/WebKit detected - using full WebGPU coordination');
 		await initializeChromeGPU(wasmJs);
-	} catch (error) {
+	} catch (_error) {
 		// Suppress all GPU errors - CPU fallback is always available
 		console.log('[WASM Loader] ℹ️ GPU initialization skipped, CPU processing available');
 	}
@@ -61,7 +61,7 @@ async function initializeGPUWithBrowserSupport(wasmJs: any): Promise<void> {
 /**
  * Firefox-optimized GPU initialization (minimal, error-suppressed)
  */
-async function initializeFirefoxGPU(wasmJs: any): Promise<void> {
+async function initializeFirefoxGPU(_wasmJs: any): Promise<void> {
 	try {
 		// Firefox: Skip WebGPU coordination entirely, just check basic GPU status
 		const gpuStatus = await getGpuStatus();
@@ -73,7 +73,7 @@ async function initializeFirefoxGPU(wasmJs: any): Promise<void> {
 		// Firefox: Don't attempt WASM GPU initialization - it will fail
 		// WASM module will use CPU processing which is faster and more reliable in Firefox
 		console.log('[WASM Loader] ℹ️ Firefox: Using optimized CPU processing (recommended)');
-	} catch (error) {
+	} catch (_error) {
 		// Firefox: Completely suppress GPU errors
 		console.log('[WASM Loader] ℹ️ GPU detection completed, CPU processing ready');
 	}
@@ -122,7 +122,7 @@ async function initializeChromeGPU(wasmJs: any): Promise<void> {
 						writable: false,
 						configurable: true
 					});
-				} catch (propertyError) {
+				} catch (_propertyError) {
 					// Ignore property definition errors
 				}
 			} else {
@@ -134,7 +134,7 @@ async function initializeChromeGPU(wasmJs: any): Promise<void> {
 				memoryStatus.reason
 			);
 		}
-	} catch (coordinationError) {
+	} catch (_coordinationError) {
 		console.log('[WASM Loader] ℹ️ WebGPU coordination not available, using CPU processing');
 		canUseGPU = false; // Set flag instead of returning
 	}
@@ -154,7 +154,7 @@ async function initializeChromeGPU(wasmJs: any): Promise<void> {
 					try {
 						await wasmJs.initialize_gpu_processing();
 						console.log('[WASM Loader] ✅ GPU processing pipeline initialized successfully');
-					} catch (gpuError) {
+					} catch (_gpuError) {
 						// Release the reserved device on failure
 						if (wasmJs._deviceManager) {
 							wasmJs._deviceManager.releaseDevice('wasm-vectorizer');
@@ -171,7 +171,7 @@ async function initializeChromeGPU(wasmJs: any): Promise<void> {
 					wasmJs._deviceManager.releaseDevice('wasm-vectorizer');
 				}
 			}
-		} catch (gpuError) {
+		} catch (_gpuError) {
 			console.log('[WASM Loader] ℹ️ GPU status assessment complete, CPU processing ready');
 		}
 	} else {
@@ -444,7 +444,6 @@ export async function initializeThreadPool(threadCount?: number): Promise<boolea
 	console.log(
 		`[WASM Loader] Available cores for Web Workers: ${navigator.hardwareConcurrency || 1}`
 	);
-	return true;
 
 	// If already initialized, check if we need to resize
 	if (isThreadPoolInitialized()) {
@@ -459,61 +458,7 @@ export async function initializeThreadPool(threadCount?: number): Promise<boolea
 		return true;
 	}
 
-	try {
-		const cores = navigator.hardwareConcurrency || 4;
-		// More conservative default - leave more cores free for browser UI
-		const defaultThreadCount = Math.max(1, Math.min(cores - 2, 6));
-		const actualThreadCount = threadCount ?? defaultThreadCount;
-
-		console.log(
-			`[WASM Loader] Initializing thread pool with ${actualThreadCount} threads (${cores} cores available)...`
-		);
-		const startTime = performance.now();
-
-		// Use the correct function name based on the WASM exports
-		const initFunction = wasmModule.initThreadPool;
-		if (!initFunction) {
-			throw new Error('Thread pool initialization function not found');
-		}
-
-		const promise = initFunction(actualThreadCount);
-		await promise;
-
-		wasmModule.confirm_threading_success();
-		const initTime = performance.now() - startTime;
-		console.log('[WASM Loader] ✅ Thread pool initialized successfully');
-
-		// Track successful lazy initialization
-		analytics.wasmInitSuccess({
-			threadCount: wasmModule.get_thread_count(),
-			initTimeMs: initTime,
-			supportedFeatures: [
-				'shared-array-buffer',
-				'cross-origin-isolated',
-				'lazy-init',
-				'dynamic-resize'
-			],
-			browserInfo: getBrowserInfo()
-		});
-
-		return true;
-	} catch (error) {
-		console.error('[WASM Loader] ❌ Thread pool initialization failed:', error);
-		if (wasmModule.mark_threading_failed) {
-			wasmModule.mark_threading_failed();
-		}
-
-		// Track lazy initialization failure
-		const errorMessage = (error as Error)?.message || String(error);
-		analytics.wasmInitFailure({
-			reason: errorMessage,
-			missingFeatures: [],
-			fallbackMode: 'single-threaded',
-			browserInfo: getBrowserInfo()
-		});
-
-		return false;
-	}
+	return true;
 }
 
 /**

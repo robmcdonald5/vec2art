@@ -39,7 +39,7 @@
 
 	// Sheet height control
 	let sheetHeight = $state<'collapsed' | 'partial' | 'full'>('partial');
-	let sheetElement: HTMLElement;
+	let sheetElement = $state<HTMLElement>();
 	let startY = 0;
 	let currentY = 0;
 	let isDragging = false;
@@ -277,14 +277,6 @@
 			min-width: 44px;
 		}
 
-		input[type='range'] {
-			height: 44px;
-		}
-
-		input[type='checkbox'] {
-			width: 20px;
-			height: 20px;
-		}
 	}
 
 	/* Improve scrolling on mobile */

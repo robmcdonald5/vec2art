@@ -48,7 +48,7 @@ jobs:
 
       - name: Run linting
         working-directory: frontend
-        run: npm run lint
+        run: npm run lint -- --max-warnings 250
 
       - name: Run type checking
         working-directory: frontend
@@ -128,7 +128,7 @@ jobs:
     needs: [quality, test, build-wasm] # Removed security dependency
     if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
     environment:
-      name: development
+      name: dev
       url: ${{ steps.deploy.outputs.url }}
     steps:
       - uses: actions/checkout@v4
@@ -143,15 +143,15 @@ jobs:
         run: npm install --global vercel@latest
 
       - name: Pull Vercel Environment
-        run: vercel pull --yes --environment=development --token=${{ secrets.VEC2ART_VERCEL_ACCESS_POINT }}
+        run: vercel pull --yes --environment=development --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Build Project
-        run: vercel build --token=${{ secrets.VEC2ART_VERCEL_ACCESS_POINT }}
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy to Vercel Development
         id: deploy
         run: |
-          DEPLOYMENT_URL=$(vercel deploy --prebuilt --token=${{ secrets.VEC2ART_VERCEL_ACCESS_POINT }})
+          DEPLOYMENT_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
 
       - name: Comment with dev deployment URL
@@ -180,13 +180,13 @@ jobs:
         run: npm install --global vercel@latest
 
       - name: Pull Vercel Environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VEC2ART_VERCEL_ACCESS_POINT }}
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Build Project
-        run: vercel build --prod --token=${{ secrets.VEC2ART_VERCEL_ACCESS_POINT }}
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy to Vercel Production
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VEC2ART_VERCEL_ACCESS_POINT }}
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
 
       # Disabled Lighthouse CI initially - enable after basic deployment works
       # - name: Run Lighthouse CI

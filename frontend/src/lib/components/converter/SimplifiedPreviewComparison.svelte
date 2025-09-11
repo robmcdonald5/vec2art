@@ -43,11 +43,11 @@
 
 	// Modern store access - clean and simple
 	// Component references for viewport-aware zooming
-	let originalViewer: ModernPanZoomViewer;
-	let convertedViewer: ModernPanZoomViewer;
+	let originalViewer = $state<ModernPanZoomViewer>();
+	let convertedViewer = $state<ModernPanZoomViewer>();
 
 	// Comparison slider state
-	let viewMode = $state<'side-by-side' | 'slider'>('side-by-side');
+	let viewMode: 'side-by-side' | 'slider' = 'side-by-side';
 	let sliderPosition = $state(50);
 	let isDragging = $state(false);
 	let sliderContainer = $state<HTMLDivElement>();

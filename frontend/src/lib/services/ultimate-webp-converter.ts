@@ -13,14 +13,10 @@
 
 import { browser } from '$app/environment';
 import {
-	WebGPUWebPConverter,
-	type WebGPUWebPResult,
-	type WebGPUWebPOptions
+	WebGPUWebPConverter
 } from './svg-webp-converter-webgpu';
 import {
-	OptimizedWebPEncoder,
-	type OptimizedWebPOptions,
-	type WebPEncodingResult
+	OptimizedWebPEncoder
 } from './optimized-webp-encoder';
 import {
 	ProgressiveWebPStreamer,
@@ -28,7 +24,7 @@ import {
 	type ProgressiveStage,
 	type StreamingResult
 } from './progressive-webp-streamer';
-import { WasmWebPEncoder, type WasmWebPOptions, type WasmWebPResult } from './wasm-webp-encoder';
+import { WasmWebPEncoder, type WasmWebPOptions } from './wasm-webp-encoder';
 import { WebGPUImageProcessor, type ImageProcessingTask } from './webgpu-image-processor';
 
 export interface UltimateConversionOptions {
@@ -252,6 +248,8 @@ export class UltimateWebPConverter {
 		for (let i = 0; i < 100000; i++) {
 			sum += Math.sqrt(i);
 		}
+		// Prevent compiler optimization by using sum
+		const _preventOptimization = sum > 0;
 
 		const computeTime = performance.now() - startTime;
 
@@ -274,17 +272,17 @@ export class UltimateWebPConverter {
 		const totalStartTime = performance.now();
 
 		const {
-			quality = 0.8,
-			maxWidth = 2048,
-			maxHeight = 2048,
-			scaleFactor = window.devicePixelRatio || 1,
+			quality: _quality = 0.8,
+			maxWidth: _maxWidth = 2048,
+			maxHeight: _maxHeight = 2048,
+			scaleFactor: _scaleFactor = window.devicePixelRatio || 1,
 			preferWebGPU = true,
 			enableProgressive = true,
-			enableAdaptiveQuality = true,
-			enableEnhancement = false,
-			maxProcessingTime = 30000, // 30 seconds max
+			enableAdaptiveQuality: _enableAdaptiveQuality = true,
+			enableEnhancement: _enableEnhancement = false,
+			maxProcessingTime: _maxProcessingTime = 30000, // 30 seconds max
 			onProgress,
-			onProgressiveFrame,
+			onProgressiveFrame: _onProgressiveFrame,
 			onOptimizationSelected,
 			onPerformanceWarning
 		} = options;
@@ -1096,7 +1094,7 @@ export class UltimateWebPConverter {
 	}
 
 	private analyzeImageForWasm(imageData: ImageData): 'line-art' | 'photo' | 'mixed' {
-		const { data, width, height } = imageData;
+		const { data, width: _width, height: _height } = imageData;
 		let edgePixels = 0;
 		let colorVariance = 0;
 		let transparentPixels = 0;

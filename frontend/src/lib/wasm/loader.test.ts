@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { MockedFunction } from 'vitest';
+import type { MockedFunction as _MockedFunction } from 'vitest';
 
 // Mock browser environment before importing
 vi.mock('$app/environment', () => ({
@@ -136,7 +136,7 @@ afterEach(async () => {
 	try {
 		const { resetWasm } = await import('./loader');
 		resetWasm();
-	} catch (e) {
+	} catch (_e) {
 		// Module might not be loaded yet, that's fine
 	}
 

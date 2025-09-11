@@ -7,8 +7,7 @@
 		ChevronRight,
 		FileImage,
 		Play,
-		Download,
-		_RotateCcw
+		Download
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -46,7 +45,7 @@
 		isProcessing = false,
 		onConvert,
 		onDownload,
-		_onReset,
+		onReset: _onReset,
 		onAbort
 	}: Props = $props();
 

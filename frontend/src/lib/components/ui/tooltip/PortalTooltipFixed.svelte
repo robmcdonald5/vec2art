@@ -15,7 +15,7 @@
 	let {
 		content,
 		title,
-		_position = 'top',
+		position: _position = 'top',
 		size = 'md',
 		trigger = 'hover',
 		disabled = false

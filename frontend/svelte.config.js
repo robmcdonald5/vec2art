@@ -28,18 +28,24 @@ const config = {
 			memory: 1024
 		}),
 
+		// Service Worker configuration - disable in development
+		serviceWorker: {
+			register: process.env.NODE_ENV === 'production'
+		},
+
 		// CSP configuration for Cloudflare Turnstile compatibility
 		csp: {
 			mode: 'hash', // Use hash mode instead of nonce for better third-party compatibility
 			directives: {
-				'script-src': ['self', 'unsafe-eval', 'https://challenges.cloudflare.com'],
+				'script-src': ['self', 'unsafe-eval', 'https://challenges.cloudflare.com', 'https://va.vercel-scripts.com'],
 				'style-src': ['self', 'unsafe-inline'], // Required for Svelte transitions
 				'frame-src': ['https://challenges.cloudflare.com'],
 				'connect-src': [
 					'self',
 					'https://challenges.cloudflare.com',
 					'https://submit-form.com',
-					'https://vercel.com'
+					'https://vercel.com',
+					'https://vitals.vercel-insights.com'
 				],
 				'img-src': ['self', 'data:', 'https:', 'blob:'],
 				'font-src': ['self', 'data:'],

@@ -47,7 +47,7 @@ test.describe('Basic User Workflow', () => {
 		expect(fileInputExists || uploadButtonExists || dropzoneExists).toBe(true);
 	});
 
-	test('converter page shows processing controls', async ({ page }) => {
+	test('converter page shows processing controls', async ({ page: _page }) => {
 		await converterPage.goto();
 
 		// Should have convert/process button (might be disabled)

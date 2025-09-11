@@ -252,7 +252,7 @@ export class ImageDataPool {
 	 * Force cleanup of old buffers
 	 */
 	cleanup(): void {
-		const now = Date.now();
+		const _now = Date.now();
 		let totalCleared = 0;
 
 		for (const [poolKey, pool] of this.pools.entries()) {

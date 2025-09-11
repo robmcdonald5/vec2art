@@ -173,7 +173,7 @@ class OffscreenSvgToWebPConverter {
 		if (viewBoxMatch) {
 			const viewBoxValues = viewBoxMatch[1].split(/[\s,]+/).map(Number);
 			if (viewBoxValues.length >= 4) {
-				const [x, y, width, height] = viewBoxValues;
+				const [_x, _y, width, height] = viewBoxValues;
 				if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
 					return { width, height };
 				}

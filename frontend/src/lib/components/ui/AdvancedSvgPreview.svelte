@@ -11,21 +11,11 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 
 <script lang="ts">
 	import { onDestroy, untrack } from 'svelte';
-	import type {
-		RenderStrategy,
-		PreviewRenderOptions
-	} from '$lib/services/svg-preview-renderer';
+	import type { RenderStrategy, PreviewRenderOptions } from '$lib/services/svg-preview-renderer';
 	import { svgPreviewRenderer } from '$lib/services/svg-preview-renderer';
 	import { SvgToWebPConverter } from '$lib/services/svg-to-webp-converter';
 	import ScrollFriendlyImageViewer from '$lib/components/ui/ScrollFriendlyImageViewer.svelte';
-	import {
-		ZoomIn,
-		ZoomOut,
-		Maximize2,
-		Move,
-		Activity,
-		Download
-	} from 'lucide-svelte';
+	import { ZoomIn, ZoomOut, Maximize2, Move, Activity, Download } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import GpuTroubleshootingGuide from './GpuTroubleshootingGuide.svelte';
 

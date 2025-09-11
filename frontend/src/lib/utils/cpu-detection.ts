@@ -308,7 +308,7 @@ async function getBatteryStatus(): Promise<CPUCapabilities['batteryStatus']> {
 			const battery = (navigator as any).battery;
 			return battery.charging ? 'charging' : 'discharging';
 		}
-	} catch (error) {
+	} catch (_error) {
 		// Battery API not available or blocked
 	}
 
@@ -322,7 +322,7 @@ function getThermalState(): CPUCapabilities['thermalState'] {
 			const memory = (navigator as any).deviceMemory;
 			if (memory <= 2) return 'fair';
 		}
-	} catch (error) {
+	} catch (_error) {
 		// Not available
 	}
 
@@ -343,7 +343,7 @@ async function checkFeatureSupport(): Promise<CPUCapabilities['features']> {
 		const canvas = document.createElement('canvas');
 		features.webgl = !!canvas.getContext('webgl');
 		features.webgl2 = !!canvas.getContext('webgl2');
-	} catch (error) {
+	} catch (_error) {
 		// WebGL not supported
 	}
 

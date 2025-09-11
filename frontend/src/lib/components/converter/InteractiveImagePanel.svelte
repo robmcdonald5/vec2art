@@ -242,9 +242,11 @@
 	// Simple approach: just try to fit the image to container like object-fit: contain would
 	async function _fitToContainer() {
 		try {
+			if (!imageUrl) return;
 			const { width, height } = await waitForImageLoad(imageUrl);
 
 			// Get container dimensions
+			if (!containerElement) return;
 			const containerRect = containerElement.getBoundingClientRect();
 			const containerWidth = containerRect.width - 40; // Some padding
 			const containerHeight = containerRect.height - 40;

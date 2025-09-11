@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate App Icon</title>
+</head>
+<body>
+    <canvas id="canvas" width="192" height="192"></canvas>
+    <p>Right-click the image below and "Save as..." to download app-icon-192.png</p>
+    <img id="output" style="border: 1px solid #ccc;" />
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Fill with dark background
+        ctx.fillStyle = '#020817';
+        ctx.fillRect(0, 0, 192, 192);
+        
+        // Add rounded corners (approximate)
+        ctx.beginPath();
+        ctx.roundRect(0, 0, 192, 192, 24);
+        ctx.clip();
+        ctx.fillStyle = '#020817';
+        ctx.fillRect(0, 0, 192, 192);
+        
+        // Draw the chevron down shape (like favicon)
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 12;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(48, 72);   // Left point
+        ctx.lineTo(96, 120);  // Bottom point
+        ctx.lineTo(144, 72);  // Right point
+        ctx.stroke();
+        
+        // Draw the dot
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(96, 72, 9, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Convert to downloadable image
+        const dataURL = canvas.toDataURL('image/png');
+        document.getElementById('output').src = dataURL;
+        
+        // Auto-download
+        const link = document.createElement('a');
+        link.download = 'app-icon-192.png';
+        link.href = dataURL;
+        link.click();
+    </script>
+</body>
+</html>

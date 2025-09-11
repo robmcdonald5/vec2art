@@ -567,7 +567,7 @@ export class WasmWorkerService {
 			isolatedWorker.addEventListener('error', (error) => {
 				console.error('[WasmWorkerService] Isolated worker error:', error);
 				// Reject all pending promises
-				for (const [id, pending] of pendingMessages) {
+				for (const [_id, pending] of pendingMessages) {
 					pending.reject(new Error(`Isolated worker error: ${error.message}`));
 				}
 				pendingMessages.clear();
@@ -652,13 +652,13 @@ export class WasmWorkerService {
 	/**
 	 * Handle critical WASM errors with robust restart mechanism
 	 */
-	private async handleCriticalError(error: any): Promise<void> {
+	private async handleCriticalError(_error: any): Promise<void> {
 		try {
 			this.workerState = WorkerState.RESTARTING;
 
 			// 1. Reject all pending requests immediately
 			const pendingCount = pendingRequests.size;
-			for (const [id, pending] of pendingRequests) {
+			for (const [_id, pending] of pendingRequests) {
 				pending.reject(new Error('Worker restarting due to critical error'));
 			}
 			pendingRequests.clear();
@@ -783,7 +783,7 @@ export class WasmWorkerService {
 
 			// 3. Reject all pending requests
 			const pendingCount = pendingRequests.size;
-			for (const [id, pending] of pendingRequests) {
+			for (const [_id, pending] of pendingRequests) {
 				pending.reject(new Error('Force reset - operation cancelled'));
 			}
 			pendingRequests.clear();

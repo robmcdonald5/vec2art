@@ -7,16 +7,7 @@
 		type CPUCapabilities,
 		type PerformanceRecommendation
 	} from '$lib/utils/cpu-detection';
-	import {
-		Loader2,
-		Cpu,
-		Battery,
-		Zap,
-		Rocket,
-		AlertTriangle,
-		CheckCircle,
-		_Info
-	} from 'lucide-svelte';
+	import { Loader2, Cpu, Battery, Zap, Rocket, AlertTriangle, CheckCircle } from 'lucide-svelte';
 
 	interface Props {
 		onSelect: (_threadCount: number, _mode: string) => void;

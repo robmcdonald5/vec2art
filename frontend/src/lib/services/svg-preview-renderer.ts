@@ -405,7 +405,7 @@ export class SvgPreviewRenderer {
 				};
 			}
 			return null;
-		} catch (error) {
+		} catch (_error) {
 			return null;
 		}
 	}

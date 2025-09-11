@@ -11,7 +11,6 @@ import type {
 	ProcessingAnalytics,
 	ErrorTracking,
 	ResourceMonitoring,
-	_UXAnalytics,
 	PerformanceSnapshot,
 	PerformanceReport,
 	PerformanceBudgets,

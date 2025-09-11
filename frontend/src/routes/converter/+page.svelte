@@ -6,7 +6,7 @@
 	 */
 
 	import { onMount } from 'svelte';
-	import { Loader2, AlertCircle, RefreshCw } from 'lucide-svelte';
+	import { RefreshCw } from 'lucide-svelte';
 
 	// Import new layered components
 	import UploadArea from '$lib/components/converter/UploadArea.svelte';
@@ -54,16 +54,16 @@
 	let results = $state<(ProcessingResult | null)[]>([]);
 	let previewSvgUrls = $state<(string | null)[]>([]);
 	let isProcessing = $state(false);
-	// let processingImageIndex = $state(0);
-	// let completedImages = $state(0);
-	// let batchStartTime = $state(Date.now());
+	let _processingImageIndex = $state(0);
+	let _completedImages = $state(0);
+	let _batchStartTime = $state<Date | null>(null);
 
 	// Page initialization state
 	let pageLoaded = $state(false);
 	let initError = $state<string | null>(null);
 	let isRecoveringState = $state(false);
 	let isClearingAll = $state(false); // Flag to prevent auto-save during Clear All
-	// let hasRecoveredState = $state(false);
+	let _hasRecoveredState = $state(false);
 
 	// Download format selector state
 	let showDownloadSelector = $state(false);
@@ -101,7 +101,7 @@
 	// Accessibility announcements
 	let announceText = $state('');
 
-	function announceToScreenReader(message: string, priority?: 'polite' | 'assertive') {
+	function announceToScreenReader(message: string, _priority?: 'polite' | 'assertive') {
 		announceText = message;
 		setTimeout(() => {
 			announceText = '';
@@ -440,8 +440,8 @@
 
 		try {
 			isProcessing = true;
-			completedImages = 0;
-			batchStartTime = new Date();
+			_completedImages = 0;
+			_batchStartTime = new Date();
 			announceToScreenReader('Starting image conversion');
 
 			emergencyTimeout = setTimeout(() => {
@@ -533,9 +533,9 @@
 
 					const fallbackResults = await vectorizerStore.processBatch(
 						(imageIndex, totalImages, progress) => {
-							processingImageIndex = imageIndex;
+							_processingImageIndex = imageIndex;
 							currentProgress = progress;
-							completedImages = imageIndex;
+							_completedImages = imageIndex;
 							announceToScreenReader(`Processing image ${imageIndex + 1}: ${progress.stage}`);
 						}
 					);
@@ -636,11 +636,11 @@
 				const batchResults = await vectorizerStore.processBatch(
 					(imageIndex, totalImages, progress) => {
 						const originalIndex = indexMapping[imageIndex];
-						processingImageIndex = originalIndex;
+						_processingImageIndex = originalIndex;
 						currentProgress = progress;
 
 						if (progress.stage === 'preprocessing' && progress.progress === 0) {
-							completedImages = imageIndex;
+							_completedImages = imageIndex;
 						}
 
 						announceToScreenReader(`Processing image ${originalIndex + 1}: ${progress.stage}`);
@@ -662,11 +662,11 @@
 					await vectorizerStore.setInputFiles([filesToProcess[i]]);
 					const singleResult = await vectorizerStore.processBatch(
 						(imageIndex, totalImages, progress) => {
-							processingImageIndex = originalIndex;
+							_processingImageIndex = originalIndex;
 							currentProgress = progress;
 
 							if (progress.stage === 'preprocessing' && progress.progress === 0) {
-								completedImages = i;
+								_completedImages = i;
 							}
 
 							announceToScreenReader(`Processing image ${originalIndex + 1}: ${progress.stage}`);
@@ -761,7 +761,7 @@
 			// Atomic update - both arrays updated simultaneously
 			results = newResults;
 			previewSvgUrls = newPreviewUrls;
-			completedImages = results.filter((r) => r && r.svg).length;
+			_completedImages = results.filter((r) => r && r.svg).length;
 
 			console.log(
 				`🎯 [DEBUG] Preview state updated - results: ${results.length}, preview URLs: ${previewSvgUrls.length}`
@@ -794,7 +794,7 @@
 
 			isProcessing = false;
 			currentProgress = null;
-			processingImageIndex = currentImageIndex; // Reset to current index when done
+			_processingImageIndex = currentImageIndex; // Reset to current index when done
 
 			// Clear emergency timeout if processing completed normally
 			if (emergencyTimeout) {
@@ -930,7 +930,7 @@
 		vectorizerStore.abortProcessing();
 		isProcessing = false;
 		currentProgress = null;
-		processingImageIndex = currentImageIndex; // Reset to current index when aborted
+		_processingImageIndex = currentImageIndex; // Reset to current index when aborted
 		announceToScreenReader('Conversion stopped');
 	}
 
@@ -952,8 +952,8 @@
 		previewSvgUrls = [];
 		currentProgress = null;
 		isProcessing = false;
-		completedImages = 0;
-		batchStartTime = null;
+		_completedImages = 0;
+		_batchStartTime = null;
 
 		// Pan/zoom reset is now handled internally by SimplifiedPreviewComparison
 
@@ -1463,7 +1463,7 @@
 					console.log(
 						`⚠️ State partially restored: settings and metadata recovered, but files need re-upload`
 					);
-					hasRecoveredState = true;
+					_hasRecoveredState = true;
 					// Show a user-friendly notification about needing to re-upload
 					setTimeout(() => {
 						toastStore.info(
@@ -1474,7 +1474,7 @@
 				} else {
 					// Full successful restoration
 					console.log(`✅ Full state restored: ${files.length} files and settings recovered`);
-					hasRecoveredState = true;
+					_hasRecoveredState = true;
 				}
 			}
 
@@ -1586,7 +1586,7 @@
 				canConvert,
 				canDownload,
 				isProcessing,
-				hasRecoveredState
+				_hasRecoveredState
 			});
 		});
 	}

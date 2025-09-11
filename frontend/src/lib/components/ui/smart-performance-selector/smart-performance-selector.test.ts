@@ -7,7 +7,10 @@ import { describe, it, expect, beforeEach, afterEach, vi, type MockedFunction } 
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import SmartPerformanceSelector from './smart-performance-selector.svelte';
 import * as cpuDetection from '$lib/utils/cpu-detection';
-import type { CPUCapabilities, PerformanceRecommendation } from '$lib/utils/cpu-detection';
+import type {
+	CPUCapabilities as _CPUCapabilities,
+	PerformanceRecommendation as _PerformanceRecommendation
+} from '$lib/utils/cpu-detection';
 import {
 	createMockCapabilities,
 	createMockRecommendations,
@@ -23,22 +26,22 @@ vi.mock('$lib/utils/cpu-detection', () => ({
 
 // Mock Lucide icons to prevent import issues
 vi.mock('lucide-svelte', () => ({
-	Loader2: ({ class: className, ...props }: any) =>
-		`<div class="${className || ''}" data-testid="loader2-icon" {...props}></div>`,
-	Cpu: ({ class: className, ...props }: any) =>
-		`<div class="${className || ''}" data-testid="cpu-icon" {...props}></div>`,
-	Battery: ({ class: className, ...props }: any) =>
-		`<div class="${className || ''}" data-testid="battery-icon" {...props}></div>`,
-	Zap: ({ class: className, ...props }: any) =>
-		`<div class="${className || ''}" data-testid="zap-icon" {...props}></div>`,
-	Rocket: ({ class: className, ...props }: any) =>
-		`<div class="${className || ''}" data-testid="rocket-icon" {...props}></div>`,
-	AlertTriangle: ({ class: className, ...props }: any) =>
-		`<div class="${className || ''}" data-testid="alert-triangle-icon" {...props}></div>`,
-	CheckCircle: ({ class: className, ...props }: any) =>
-		`<div class="${className || ''}" data-testid="check-circle-icon" {...props}></div>`,
-	Info: ({ class: className, ...props }: any) =>
-		`<div class="${className || ''}" data-testid="info-icon" {...props}></div>`
+	Loader2: ({ class: className, ..._props }: any) =>
+		`<div class="${className || ''}" data-testid="loader2-icon" {..._props}></div>`,
+	Cpu: ({ class: className, ..._props }: any) =>
+		`<div class="${className || ''}" data-testid="cpu-icon" {..._props}></div>`,
+	Battery: ({ class: className, ..._props }: any) =>
+		`<div class="${className || ''}" data-testid="battery-icon" {..._props}></div>`,
+	Zap: ({ class: className, ..._props }: any) =>
+		`<div class="${className || ''}" data-testid="zap-icon" {..._props}></div>`,
+	Rocket: ({ class: className, ..._props }: any) =>
+		`<div class="${className || ''}" data-testid="rocket-icon" {..._props}></div>`,
+	AlertTriangle: ({ class: className, ..._props }: any) =>
+		`<div class="${className || ''}" data-testid="alert-triangle-icon" {..._props}></div>`,
+	CheckCircle: ({ class: className, ..._props }: any) =>
+		`<div class="${className || ''}" data-testid="check-circle-icon" {..._props}></div>`,
+	Info: ({ class: className, ..._props }: any) =>
+		`<div class="${className || ''}" data-testid="info-icon" {..._props}></div>`
 }));
 
 describe('SmartPerformanceSelector', () => {

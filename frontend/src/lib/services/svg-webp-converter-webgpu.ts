@@ -14,8 +14,7 @@
 import { browser } from '$app/environment';
 import {
 	WebGPUImageProcessor,
-	type ImageProcessingTask,
-	type ProcessingResult
+	type ImageProcessingTask
 } from './webgpu-image-processor';
 
 export interface WebGPUWebPOptions {
@@ -181,7 +180,7 @@ export class WebGPUWebPConverter {
 			maxWidth = 2048,
 			maxHeight = 2048,
 			scaleFactor = window.devicePixelRatio || 1,
-			progressive = true,
+			progressive: _progressive = true,
 			useWebGPU = true,
 			enableEnhancement = false,
 			enhancement = {},
@@ -389,7 +388,7 @@ export class WebGPUWebPConverter {
 		if (viewBoxMatch) {
 			const viewBoxValues = viewBoxMatch[1].split(/[\s,]+/).map(Number);
 			if (viewBoxValues.length >= 4) {
-				const [x, y, width, height] = viewBoxValues;
+				const [_x, _y, width, height] = viewBoxValues;
 				if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
 					return { width, height };
 				}
@@ -552,7 +551,7 @@ export class WebGPUWebPConverter {
 		workerAvailable: boolean;
 		optimalSettings: WebGPUWebPOptions;
 	}> {
-		const gpuParams = await this.gpuProcessor.getOptimalParameters();
+		const _gpuParams = await this.gpuProcessor.getOptimalParameters();
 
 		// Map GPU processing parameters to WebP-specific options
 		const optimalSettings: WebGPUWebPOptions = {

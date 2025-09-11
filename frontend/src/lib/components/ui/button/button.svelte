@@ -113,12 +113,11 @@
 <svelte:element
 	this={as}
 	class={cn(buttonVariants({ variant, size }), 'btn-clickable', className)}
-	{disabled}
-	{type}
 	onclick={handleClick}
 	{onmouseenter}
 	{onmouseleave}
 	{...restProps}
+	{...as === 'button' || as === 'input' ? { disabled, type } : {}}
 >
 	{#if children}
 		{@render children()}

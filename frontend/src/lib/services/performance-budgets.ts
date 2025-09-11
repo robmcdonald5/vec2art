@@ -8,7 +8,6 @@ import type {
 	Alert,
 	Recommendation,
 	WebVitalsMetrics,
-	CustomMetrics,
 	WASMPerformanceMetrics,
 	ResourceMonitoring
 } from '../types/performance.js';
@@ -427,7 +426,7 @@ export class PerformanceBudgetsManager {
 		rules: BudgetRule[];
 		violations: BudgetViolation[];
 		alerts: Alert[];
-		status: ReturnType<typeof this.getBudgetStatus>;
+		status: ReturnType<PerformanceBudgetsManager['getBudgetStatus']>;
 		recommendations: Recommendation[];
 	} {
 		return {

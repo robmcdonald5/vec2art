@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { HelpCircle } from 'lucide-svelte';
-	import { fade /*, scale */ } from "svelte/transition";
+	import { fade /*, scale */ } from 'svelte/transition';
 
 	interface Props {
 		content: string;
@@ -28,7 +28,7 @@
 	// Calculate dynamic position for fixed positioning
 	function _calculatePosition() {
 		if (!triggerElement) return;
-		
+
 		const triggerRect = triggerElement.getBoundingClientRect();
 		const offset = 8; // Gap between trigger and tooltip
 

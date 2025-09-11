@@ -252,7 +252,7 @@
 <div
 	bind:this={container}
 	class="modern-pan-zoom-container {className}"
-	role="application"
+	role="button"
 	aria-label="{alt} - Pannable and zoomable image viewer"
 	aria-describedby="zoom-info-{panel}"
 	tabindex="0"

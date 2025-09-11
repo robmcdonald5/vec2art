@@ -6,16 +6,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
 	PerformanceMonitor,
-	globalPerformanceMonitor,
+	globalPerformanceMonitor as _globalPerformanceMonitor,
 	debounce,
 	throttle,
 	memoize,
 	AnimationFrameManager,
-	globalAnimationFrameManager,
+	globalAnimationFrameManager as _globalAnimationFrameManager,
 	createLazyLoader,
 	ResourcePool,
 	TaskScheduler,
-	globalTaskScheduler,
+	globalTaskScheduler as _globalTaskScheduler,
 	createWorkerPool
 } from './performance';
 import { setupBrowserMocks, cleanupBrowserMocks } from '@tests/test-utils';

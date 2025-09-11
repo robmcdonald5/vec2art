@@ -90,9 +90,9 @@ export class ProgressiveWebPStreamer {
 			qualityLevels = [0.3, 0.6, 0.9],
 			enableMultiRes = true,
 			enableTiling = false,
-			tileSize = 512,
-			adaptiveQuality = true,
-			onProgressiveUpdate
+			tileSize: _tileSize = 512,
+			adaptiveQuality: _adaptiveQuality = true,
+			onProgressiveUpdate: _onProgressiveUpdate
 		} = options;
 
 		this.performanceMonitor.startTime = performance.now();
@@ -205,7 +205,7 @@ export class ProgressiveWebPStreamer {
 
 		// Second pass: Stream tiles at high quality
 		const maxConcurrent = options.maxConcurrentStreams || 3;
-		const tilePromises: Promise<void>[] = [];
+		const _tilePromises: Promise<void>[] = [];
 
 		for (let i = 0; i < tiles.length; i += maxConcurrent) {
 			const tileBatch = tiles.slice(i, i + maxConcurrent);
@@ -269,7 +269,7 @@ export class ProgressiveWebPStreamer {
 
 			// Process chunk of image data
 			const startPixel = chunk * chunkSize;
-			const endPixel = Math.min(startPixel + chunkSize, totalPixels);
+			const _endPixel = Math.min(startPixel + chunkSize, totalPixels);
 
 			// Render chunk (simplified - in reality would need more complex chunking)
 			const progress = ((chunk + 1) / totalChunks) * 100;
@@ -373,7 +373,7 @@ export class ProgressiveWebPStreamer {
 	/**
 	 * Compose tiles back into final image
 	 */
-	private async composeTiles(imageData: ImageData, tiles: TileInfo[]): Promise<string> {
+	private async composeTiles(imageData: ImageData, _tiles: TileInfo[]): Promise<string> {
 		const canvas = this.createCanvas(imageData);
 		const ctx = canvas.getContext('2d')!;
 		ctx.putImageData(imageData, 0, 0);
@@ -434,43 +434,39 @@ export class ProgressiveWebPStreamer {
 			}
 		});
 
-		const promise = new Promise<StreamingResult>(async (resolve, reject) => {
-			try {
-				const reader = stream.getReader();
-				let finalStage: ProgressiveStage | null = null;
+		const promise = (async (): Promise<StreamingResult> => {
+			const reader = stream.getReader();
+			let finalStage: ProgressiveStage | null = null;
 
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
 
-					if (value.type === 'final' || value.progress === 100) {
-						finalStage = value;
-					}
+				if (value.type === 'final' || value.progress === 100) {
+					finalStage = value;
 				}
-
-				const totalTime = performance.now() - startTime;
-
-				if (!finalStage?.dataUrl) {
-					throw new Error('No final image data received');
-				}
-
-				resolve({
-					finalDataUrl: finalStage.dataUrl,
-					streamingTime: totalTime,
-					totalBytes: this.estimateSize(finalStage.dataUrl),
-					compressionRatio: this.calculateCompressionRatio(imageData, finalStage.dataUrl),
-					stages,
-					performance: {
-						firstFrameTime: this.performanceMonitor.firstFrameTime,
-						progressiveFrames: this.performanceMonitor.framesDelivered,
-						totalStreamingTime: totalTime,
-						peakMemoryUsage: this.performanceMonitor.peakMemory
-					}
-				});
-			} catch (error) {
-				reject(error);
 			}
-		});
+
+			const totalTime = performance.now() - startTime;
+
+			if (!finalStage?.dataUrl) {
+				throw new Error('No final image data received');
+			}
+
+			return {
+				finalDataUrl: finalStage.dataUrl,
+				streamingTime: totalTime,
+				totalBytes: this.estimateSize(finalStage.dataUrl),
+				compressionRatio: this.calculateCompressionRatio(imageData, finalStage.dataUrl),
+				stages,
+				performance: {
+					firstFrameTime: this.performanceMonitor.firstFrameTime,
+					progressiveFrames: this.performanceMonitor.framesDelivered,
+					totalStreamingTime: totalTime,
+					peakMemoryUsage: this.performanceMonitor.peakMemory
+				}
+			};
+		})();
 
 		return { stream, promise };
 	}

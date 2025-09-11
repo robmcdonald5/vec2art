@@ -243,9 +243,9 @@ export function downloadBlob(blob: Blob, filename: string): void {
 	a.download = filename;
 	a.style.display = 'none';
 
-	document.body.appendChild(a);
+	document.body.appendChild(a as Node);
 	a.click();
-	document.body.removeChild(a);
+	document.body.removeChild(a as Node);
 
 	// Clean up the URL object
 	setTimeout(() => URL.revokeObjectURL(url), 100);

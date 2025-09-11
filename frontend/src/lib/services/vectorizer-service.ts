@@ -26,22 +26,19 @@ import {
 	getMaxThreads,
 	getRecommendedThreadCount,
 	resizeThreadPool,
-	cleanupThreadPool,
-	optimizeThreadCount
+	cleanupThreadPool
 } from '$lib/wasm/loader';
 
 // Import performance monitoring
 import {
 	performanceMonitor,
-	type PerformanceMode,
-	shouldUseProgressiveProcessing
+	type PerformanceMode
 } from '$lib/utils/performance-monitor';
 
 // Import Web Worker service for safe WASM execution
 import { wasmWorkerService } from './wasm-worker-service';
 
-// Import GPU service for hardware acceleration
-import { gpuService } from './gpu-service';
+// GPU service import removed (unused)
 
 // Dynamic import type for WASM module
 type WasmModule = any; // We'll type this properly after loading
@@ -656,7 +653,7 @@ export class VectorizerService {
 			if (typeof this.vectorizer.cleanup_state === 'function') {
 				this.vectorizer.cleanup_state();
 			}
-		} catch (e) {
+		} catch (_e) {
 			// Ignore cleanup errors as function may not exist
 		}
 
@@ -1144,7 +1141,7 @@ export class VectorizerService {
 	private async _processWithProgressiveCallback(
 		imageData: ImageData,
 		progressCallback: (stage: string, progress: number, elapsed: number) => Promise<void>,
-		useProgressive: boolean
+		_useProgressive: boolean
 	): Promise<string> {
 		return new Promise((resolve, reject) => {
 			try {
@@ -1188,7 +1185,7 @@ export class VectorizerService {
 		let totalProgress = 0;
 
 		for (const stageInfo of stages) {
-			const stageStart = performance.now();
+			const _stageStart = performance.now();
 			const stageDuration = 100; // Simulated stage duration
 
 			for (let i = 0; i <= 10; i++) {

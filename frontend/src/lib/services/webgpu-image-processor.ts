@@ -217,13 +217,13 @@ export class WebGPUImageProcessor {
 		// Create compute pipelines - allow individual failures
 		try {
 			await this.createComputePipeline('resize', resizeShader);
-		} catch (error) {
+		} catch (_error) {
 			console.log('[WebGPU] Resize processing using CPU fallback (browser compatibility)');
 		}
 
 		try {
 			await this.createComputePipeline('enhance', enhanceShader);
-		} catch (error) {
+		} catch (_error) {
 			console.log('[WebGPU] Enhance processing using CPU fallback (browser compatibility)');
 		}
 	}

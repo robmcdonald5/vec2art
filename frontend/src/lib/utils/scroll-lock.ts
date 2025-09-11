@@ -2,7 +2,7 @@
  * DISABLED - Testing if scroll locks are the problem
  */
 
-import { browser } from '$app/environment';
+import { browser as _browser } from '$app/environment';
 
 /**
  * NO-OP for testing - does nothing

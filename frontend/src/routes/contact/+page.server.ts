@@ -1,7 +1,9 @@
 import { fail } from '@sveltejs/kit';
-import { PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
-import { TURNSTILE_SECRET_KEY } from '$env/static/private';
+import { PUBLIC_TURNSTILE_SITE_KEY as _PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
 import type { Actions } from './$types';
+
+// Optional Turnstile secret key - will be undefined if not set
+const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
 
 // Enhanced form validation constants (matching client-side)
 const EMAIL_REGEX = /^[a-zA-Z0-9_+&*-]+(?:\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
@@ -17,6 +19,10 @@ interface TurnstileResponse {
 }
 
 async function validateTurnstile(token: string, ip: string): Promise<TurnstileResponse> {
+	if (!TURNSTILE_SECRET_KEY) {
+		return { success: false, 'error-codes': ['missing-secret-key'] };
+	}
+
 	const formData = new FormData();
 	formData.append('secret', TURNSTILE_SECRET_KEY);
 	formData.append('response', token);

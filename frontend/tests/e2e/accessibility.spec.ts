@@ -4,7 +4,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { ConverterPage, navigateWithKeyboard, checkAccessibility } from './utils/test-helpers';
+import { ConverterPage, navigateWithKeyboard as _navigateWithKeyboard, checkAccessibility as _checkAccessibility } from './utils/test-helpers';
 
 test.describe('Accessibility Tests', () => {
 	let converterPage: ConverterPage;
@@ -120,7 +120,7 @@ test.describe('Accessibility Tests', () => {
 		await converterPage.waitForWasmLoad();
 
 		// Monitor aria-live regions
-		const announcements: string[] = [];
+		const _announcements: string[] = [];
 
 		// Listen for changes in aria-live regions
 		await page.evaluate(() => {

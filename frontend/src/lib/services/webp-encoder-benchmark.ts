@@ -12,13 +12,11 @@
  */
 
 import { browser } from '$app/environment';
-import { WasmWebPEncoder, type WasmWebPOptions, type WasmWebPResult } from './wasm-webp-encoder';
+import { WasmWebPEncoder } from './wasm-webp-encoder';
 import {
-	OptimizedWebPEncoder,
-	type OptimizedWebPOptions,
-	type WebPEncodingResult
+	OptimizedWebPEncoder
 } from './optimized-webp-encoder';
-import { WebGPUWebPConverter, type WebGPUWebPResult } from './svg-webp-converter-webgpu';
+import { WebGPUWebPConverter } from './svg-webp-converter-webgpu';
 
 export interface BenchmarkConfig {
 	testSizes: number[]; // Image sizes to test (pixel count)
@@ -236,7 +234,7 @@ export class WebPEncoderBenchmark {
 		for (let i = 0; i < config.warmupIterations; i++) {
 			try {
 				await this.encodeWithCanvas(imageData, 0.8);
-			} catch (error) {
+			} catch (_error) {
 				// Ignore warmup errors
 			}
 		}
@@ -281,13 +279,13 @@ export class WebPEncoderBenchmark {
 
 		for (let i = 0; i < config.iterations; i++) {
 			try {
-				const startTime = performance.now();
+				const _startTime = performance.now();
 				const result = await this.optimizedEncoder.encodeToWebP(imageData, {
 					quality: 0.8,
 					adaptive: true,
 					useWorker: true
 				});
-				const endTime = performance.now();
+				const _endTime = performance.now();
 
 				times.push(result.encodingTime);
 				compressionRatio += result.compressionRatio;
@@ -327,12 +325,12 @@ export class WebPEncoderBenchmark {
 
 		for (let i = 0; i < config.iterations; i++) {
 			try {
-				const startTime = performance.now();
+				const _startTime = performance.now();
 				const result = await this.wasmEncoder.encodeToWebP(imageData, {
 					...wasmOptions,
 					fallbackToCanvas: false // Force WASM for pure benchmark
 				});
-				const endTime = performance.now();
+				const _endTime = performance.now();
 
 				times.push(result.encodingTime);
 				compressionRatio += result.compressionRatio;

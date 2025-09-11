@@ -23,7 +23,6 @@ import type {
 import {
 	UltimateWebPConverter,
 	type UltimateConversionOptions,
-	type UltimateConversionResult,
 	type ConversionMethod
 } from './ultimate-webp-converter';
 
@@ -204,7 +203,7 @@ export class SvgToWebPConverter {
 			maxHeight = 2048,
 			scaleFactor = window.devicePixelRatio || 1,
 			progressive = true,
-			useWorker = true,
+			useWorker: _useWorker = true,
 			onProgress,
 
 			// Advanced optimization options
@@ -533,7 +532,7 @@ export class SvgToWebPConverter {
 				console.log('[WebPConverter] ViewBox values:', viewBoxValues);
 
 				if (viewBoxValues.length >= 4) {
-					const [x, y, width, height] = viewBoxValues;
+					const [_x, _y, width, height] = viewBoxValues;
 					if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
 						console.log('[WebPConverter] Using viewBox dimensions:', { width, height });
 						return { width, height };
@@ -562,7 +561,7 @@ export class SvgToWebPConverter {
 				// Try to get dimensions from parsed SVG
 				const viewBox = svgElement.getAttribute('viewBox');
 				if (viewBox) {
-					const [x, y, width, height] = viewBox.split(/[\s,]+/).map(Number);
+					const [_x, _y, width, height] = viewBox.split(/[\s,]+/).map(Number);
 					if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
 						console.log('[WebPConverter] Using parsed viewBox:', { width, height });
 						return { width, height };
@@ -773,7 +772,7 @@ export class SvgToWebPConverter {
 	 */
 	static getOptimalSettings(svgContent: string): WebPConversionOptions {
 		const size = svgContent.length;
-		const isComplex = svgContent.includes('<path') && svgContent.includes('gradient');
+		const _isComplex = svgContent.includes('<path') && svgContent.includes('gradient');
 
 		if (size > 1000000) {
 			// >1MB - Use main thread for now due to Worker limitations
@@ -885,7 +884,7 @@ export class SvgToWebPConverter {
 		}
 
 		// Clean up any pending promises
-		for (const [id, promise] of this.workerPromises.entries()) {
+		for (const [_id, promise] of this.workerPromises.entries()) {
 			promise.reject(new Error('Converter disposed'));
 		}
 		this.workerPromises.clear();

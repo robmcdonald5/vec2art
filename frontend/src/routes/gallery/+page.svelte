@@ -14,7 +14,7 @@
 
 	let selectedItem = $state<GalleryItem | null>(null);
 	let modalOpen = $state(false);
-	let viewMode = $state<ViewMode>('grid');
+	let viewMode: ViewMode = 'grid';
 	let displayedItems = $state<GalleryItem[]>([]);
 	let isLoading = $state(true);
 	let isLoadingMore = $state(false);
@@ -24,7 +24,7 @@
 	let allItems = $state<GalleryItem[]>([]);
 	let filteredItems = $state<GalleryItem[]>([]);
 	let categories = $state<Array<{ value: string; label: string; count: number }>>([]);
-	let algorithmStats = $state<Map<string, number>>(new Map()); // TODO: Re-enable when algorithm filtering is implemented
+	let _algorithmStats = $state<Map<string, number>>(new Map()); // TODO: Re-enable when algorithm filtering is implemented
 
 	// Filters
 	let filters = $state<GalleryFilters>({
@@ -225,7 +225,7 @@
 			.then((manifest) => {
 				allItems = manifest.items;
 				categories = getCategories(allItems);
-				algorithmStats = getAlgorithmStats(allItems);
+				_algorithmStats = getAlgorithmStats(allItems);
 				applyFilters();
 			})
 			.catch((error) => {

@@ -17,10 +17,10 @@ import {
 } from '@tests/test-utils';
 
 describe('FileDropzone Component', () => {
-	let mockNavigator: any;
+	let _mockNavigator: any;
 
 	beforeEach(() => {
-		mockNavigator = setupBrowserMocks();
+		_mockNavigator = setupBrowserMocks();
 		vi.clearAllMocks();
 	});
 
