@@ -297,8 +297,45 @@ if (url.startsWith('/wasm/') || url.endsWith('.wasm')) {
 - ✅ Combined with Node.js 22.x runtime alignment
 - ❌ Removed: regions, complex headers (let SvelteKit handle)
 
+**Result**: ❌ **FAILED - WASM BUILD ERROR**
+- Build Error: `Could not resolve "./__wbindgen_placeholder__.js" from "src/lib/wasm/vectorize_wasm.js"`
+- This is the WASM bindgen placeholder issue we solve locally with `rebuild-wasm.sh`
+- Vercel build environment doesn't run our local WASM fixing scripts
+
+**Analysis**: The 404 issue might actually be secondary to WASM build failure. If WASM modules fail to build/load, routes depending on them could return 404s.
+
+## Debugging Attempt 7: WASM Build Integration (Theory 4)
+**Date**: 2025-09-11 (after Theory 3 WASM failure)  
+**Issue**: `__wbindgen_placeholder__.js` error - WASM bindgen placeholder not resolved  
+**Root Cause Discovery**: Vercel community shows same issue - WASM must be built BEFORE frontend build
+
+**Research Findings**:
+- Same error reported by other SvelteKit + Rust WASM + Vercel users
+- Solution: Move generated `pkg` to `$lib` directory and import from there
+- Alternative: Ensure WASM is built before frontend build process
+- The issue is that normal `wasm-pack` output doesn't work in Vercel's build environment
+
+**Changes Made**:
+```json
+{
+  "buildCommand": "chmod +x scripts/vercel-build.sh && ./scripts/vercel-build.sh && cd frontend && npm run build:frontend-only"
+}
+```
+
+**This approach**:
+- ✅ Runs our existing `vercel-build.sh` script that builds WASM correctly
+- ✅ Applies all WASM bindgen placeholder fixes automatically  
+- ✅ Ensures WASM files exist before SvelteKit build attempts to bundle them
+- ✅ Uses our proven local build process that works
+
+**Combined Fixes**:
+- ✅ Node.js 22.x runtime alignment
+- ✅ Correct framework detection
+- ✅ Proper WASM build integration
+- ✅ Correct output directory configuration
+
 **Result**: 🔄 **TESTING IN PROGRESS**
 
 ---
 
-**Status**: 🔄 Testing Theory 3 - correct build commands + Node.js 22.x alignment
+**Status**: 🔄 Testing Theory 4 - WASM build integration + all previous fixes
