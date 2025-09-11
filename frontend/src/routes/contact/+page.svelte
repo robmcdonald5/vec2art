@@ -12,7 +12,7 @@
 	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { PUBLIC_FORMSPARK_ENDPOINT_ID, PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
-	
+
 	// Environment variables with fallbacks
 	const turnstile_site_key = PUBLIC_TURNSTILE_SITE_KEY || '';
 	const formspark_endpoint = PUBLIC_FORMSPARK_ENDPOINT_ID || '';
