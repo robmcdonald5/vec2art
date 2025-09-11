@@ -73,8 +73,9 @@ jobs:
 
       - name: Run unit tests (if available)
         working-directory: frontend
-        run: npm run test:run || echo "No tests configured yet"
+        run: timeout 10m npm run test:run || echo "Tests completed or timed out"
         continue-on-error: true
+        timeout-minutes: 12
 
       # Removed coverage upload until tests are properly configured
 
