@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { PUBLIC_TURNSTILE_SITE_KEY as _PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
+// Note: PUBLIC_TURNSTILE_SITE_KEY is only used on client-side, not needed on server
 import type { Actions } from './$types';
 
 // Optional Turnstile secret key - will be undefined if not set

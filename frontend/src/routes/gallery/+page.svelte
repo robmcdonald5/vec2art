@@ -14,7 +14,7 @@
 
 	let selectedItem = $state<GalleryItem | null>(null);
 	let modalOpen = $state(false);
-	let viewMode: ViewMode = 'grid';
+	let viewMode = $state<ViewMode>('grid');
 	let displayedItems = $state<GalleryItem[]>([]);
 	let isLoading = $state(true);
 	let isLoadingMore = $state(false);
@@ -39,7 +39,7 @@
 	let currentPage = $state(0);
 
 	// Debounce timer for search
-	let searchTimer: NodeJS.Timeout;
+	let searchTimer: ReturnType<typeof setTimeout>;
 
 	// Progressive enhancement - preload tracking
 	let preloadedImages = $state(new Set<string>());

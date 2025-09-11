@@ -51,7 +51,7 @@
 	}: Props = $props();
 
 	// Comparison slider state
-	let viewMode: 'side-by-side' | 'slider' = 'side-by-side';
+	let viewMode = $state<'side-by-side' | 'slider'>('side-by-side');
 	let sliderPosition = $state(50); // Percentage from left
 	let isDragging = $state(false);
 	let sliderContainer = $state<HTMLDivElement>();

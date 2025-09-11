@@ -12,6 +12,10 @@
 	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { PUBLIC_FORMSPARK_ENDPOINT_ID, PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
+	
+	// Environment variables with fallbacks
+	const turnstile_site_key = PUBLIC_TURNSTILE_SITE_KEY || '';
+	const formspark_endpoint = PUBLIC_FORMSPARK_ENDPOINT_ID || '';
 
 	// Form state management
 	let selectedCategory = $state.raw('general');
@@ -415,7 +419,7 @@
 		const turnstileContainer = document.getElementById('turnstile-container');
 		if (turnstileContainer && window.turnstile) {
 			turnstileWidget = window.turnstile.render('#turnstile-container', {
-				sitekey: PUBLIC_TURNSTILE_SITE_KEY,
+				sitekey: turnstile_site_key,
 				callback: (token: string) => {
 					turnstileToken = token;
 					isTurnstileValid = true;
@@ -605,7 +609,7 @@
 			};
 
 			// Submit to Formspark
-			const response = await fetch(`https://submit-form.com/${PUBLIC_FORMSPARK_ENDPOINT_ID}`, {
+			const response = await fetch(`https://submit-form.com/${formspark_endpoint}`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
