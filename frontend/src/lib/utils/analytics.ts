@@ -163,7 +163,9 @@ export const analytics = {
  * Get basic browser/device info for analytics
  */
 export function getBrowserInfo(): string {
-	if (!browser) return 'unknown';
+	if (!browser || typeof navigator === 'undefined' || !navigator.userAgent) {
+		return 'unknown';
+	}
 
 	const ua = navigator.userAgent;
 	if (ua.includes('Chrome')) return 'chrome';

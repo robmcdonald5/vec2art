@@ -12,12 +12,8 @@
  */
 
 import { browser } from '$app/environment';
-import {
-	WebGPUWebPConverter
-} from './svg-webp-converter-webgpu';
-import {
-	OptimizedWebPEncoder
-} from './optimized-webp-encoder';
+import { WebGPUWebPConverter } from './svg-webp-converter-webgpu';
+import { OptimizedWebPEncoder } from './optimized-webp-encoder';
 import {
 	ProgressiveWebPStreamer,
 	type ProgressiveStreamOptions,

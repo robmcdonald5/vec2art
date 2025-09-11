@@ -13,9 +13,7 @@
 
 import { browser } from '$app/environment';
 import { WasmWebPEncoder } from './wasm-webp-encoder';
-import {
-	OptimizedWebPEncoder
-} from './optimized-webp-encoder';
+import { OptimizedWebPEncoder } from './optimized-webp-encoder';
 import { WebGPUWebPConverter } from './svg-webp-converter-webgpu';
 
 export interface BenchmarkConfig {

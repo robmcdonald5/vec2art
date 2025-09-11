@@ -12,10 +12,7 @@
  */
 
 import { browser } from '$app/environment';
-import {
-	WebGPUImageProcessor,
-	type ImageProcessingTask
-} from './webgpu-image-processor';
+import { WebGPUImageProcessor, type ImageProcessingTask } from './webgpu-image-processor';
 
 export interface WebGPUWebPOptions {
 	quality?: number;

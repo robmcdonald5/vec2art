@@ -47,7 +47,7 @@
 	let convertedViewer = $state<ModernPanZoomViewer>();
 
 	// Comparison slider state
-	let viewMode: 'side-by-side' | 'slider' = 'side-by-side';
+	let viewMode = $state<'side-by-side' | 'slider'>('side-by-side');
 	let sliderPosition = $state(50);
 	let isDragging = $state(false);
 	let sliderContainer = $state<HTMLDivElement>();

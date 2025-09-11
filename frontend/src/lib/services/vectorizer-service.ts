@@ -30,10 +30,7 @@ import {
 } from '$lib/wasm/loader';
 
 // Import performance monitoring
-import {
-	performanceMonitor,
-	type PerformanceMode
-} from '$lib/utils/performance-monitor';
+import { performanceMonitor, type PerformanceMode } from '$lib/utils/performance-monitor';
 
 // Import Web Worker service for safe WASM execution
 import { wasmWorkerService } from './wasm-worker-service';

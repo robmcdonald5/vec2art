@@ -98,7 +98,8 @@ export function generateTestSvg(
 		const elementType = i % 7;
 
 		switch (elementType) {
-			case 0: { // Complex path
+			case 0: {
+				// Complex path
 				const path = `M${x},${y} Q${x + Math.random() * 100},${y + Math.random() * 100} ${x + Math.random() * 200},${y + Math.random() * 200} T${x + Math.random() * 300},${y + Math.random() * 300}`;
 				elements.push(
 					`<path d="${path}" stroke="${color}" stroke-width="${1 + Math.random() * 3}" fill="none" opacity="${0.6 + Math.random() * 0.4}"/>`
@@ -106,7 +107,8 @@ export function generateTestSvg(
 				break;
 			}
 
-			case 1: { // Circle with gradient
+			case 1: {
+				// Circle with gradient
 				const r = 10 + Math.random() * 30;
 				elements.push(
 					`<circle cx="${x}" cy="${y}" r="${r}" fill="url(#${gradientId})" opacity="${0.7 + Math.random() * 0.3}"/>`
@@ -114,7 +116,8 @@ export function generateTestSvg(
 				break;
 			}
 
-			case 2: { // Rectangle
+			case 2: {
+				// Rectangle
 				const w = 20 + Math.random() * 80;
 				const h = 20 + Math.random() * 80;
 				elements.push(
@@ -123,7 +126,8 @@ export function generateTestSvg(
 				break;
 			}
 
-			case 3: { // Ellipse
+			case 3: {
+				// Ellipse
 				const rx = 15 + Math.random() * 40;
 				const ry = 15 + Math.random() * 40;
 				elements.push(
@@ -132,7 +136,8 @@ export function generateTestSvg(
 				break;
 			}
 
-			case 4: { // Polygon
+			case 4: {
+				// Polygon
 				const points = Array.from({ length: 3 + Math.floor(Math.random() * 5) }, (_, j) => {
 					const angle = (j / 6) * Math.PI * 2;
 					const radius = 20 + Math.random() * 40;
@@ -144,7 +149,8 @@ export function generateTestSvg(
 				break;
 			}
 
-			case 5: { // Line with complex stroke
+			case 5: {
+				// Line with complex stroke
 				const x2 = Math.random() * width;
 				const y2 = Math.random() * height;
 				elements.push(

@@ -37,7 +37,12 @@ const config = {
 		csp: {
 			mode: 'hash', // Use hash mode instead of nonce for better third-party compatibility
 			directives: {
-				'script-src': ['self', 'unsafe-eval', 'https://challenges.cloudflare.com', 'https://va.vercel-scripts.com'],
+				'script-src': [
+					'self',
+					'unsafe-eval',
+					'https://challenges.cloudflare.com',
+					'https://va.vercel-scripts.com'
+				],
 				'style-src': ['self', 'unsafe-inline'], // Required for Svelte transitions
 				'frame-src': ['https://challenges.cloudflare.com'],
 				'connect-src': [

@@ -276,7 +276,6 @@
 			min-height: 44px;
 			min-width: 44px;
 		}
-
 	}
 
 	/* Improve scrolling on mobile */

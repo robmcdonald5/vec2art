@@ -85,7 +85,7 @@
 		try {
 			// Build query parameters manually for Svelte reactivity compatibility
 			let queryParams = `backend=${encodeURIComponent(selectedAlgorithm.backend)}`;
-			
+
 			if (selectedAlgorithm.preset) {
 				queryParams += `&preset=${encodeURIComponent(selectedAlgorithm.preset)}`;
 			}

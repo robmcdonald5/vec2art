@@ -5,16 +5,6 @@
   "outputDirectory": "frontend/.svelte-kit/vercel-adapter",
   "framework": "sveltekit",
 
-  "functions": {
-    "frontend/.svelte-kit/vercel-adapter/functions/fn.func": {
-      "maxDuration": 30,
-      "memory": 1024
-    },
-    "frontend/.svelte-kit/vercel-adapter/functions/api/*.func": {
-      "maxDuration": 10,
-      "memory": 512
-    }
-  },
 
   "regions": ["iad1"],
 

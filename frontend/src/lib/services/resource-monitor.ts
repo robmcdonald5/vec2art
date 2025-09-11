@@ -478,7 +478,7 @@ export class ResourceMonitor {
 	private estimateDOMSize(): number {
 		try {
 			const walker = document.createTreeWalker(
-				document.body, 
+				document.body,
 				1, // NodeFilter.SHOW_ELEMENT
 				null
 			);

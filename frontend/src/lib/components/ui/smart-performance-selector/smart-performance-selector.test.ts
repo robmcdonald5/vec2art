@@ -558,6 +558,8 @@ describe('SmartPerformanceSelector', () => {
 
 	describe('Performance and Integration', () => {
 		it('should not cause memory leaks during rapid re-renders', async () => {
+			vi.useFakeTimers();
+			
 			for (let i = 0; i < 10; i++) {
 				const { unmount } = render(SmartPerformanceSelector, { onSelect: mockOnSelect });
 				await waitFor(() => {
@@ -568,6 +570,8 @@ describe('SmartPerformanceSelector', () => {
 
 			// Should not accumulate event listeners or timers
 			expect(vi.getTimerCount()).toBe(0);
+			
+			vi.useRealTimers();
 		});
 
 		it('should handle rapid user interactions without errors', async () => {

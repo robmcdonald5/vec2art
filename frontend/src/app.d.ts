@@ -290,10 +290,6 @@ declare global {
 		constructor(message: string): GPUInternalError;
 	}
 
-
-
-
-
 	// Algorithm stats global variable for gallery page
 	var algorithmStats: any;
 
@@ -327,7 +323,6 @@ declare global {
 			isExpired: (widgetId?: string) => boolean;
 		};
 	}
-
 }
 
 export {};

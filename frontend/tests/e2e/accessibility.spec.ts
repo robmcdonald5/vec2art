@@ -4,7 +4,11 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { ConverterPage, navigateWithKeyboard as _navigateWithKeyboard, checkAccessibility as _checkAccessibility } from './utils/test-helpers';
+import {
+	ConverterPage,
+	navigateWithKeyboard as _navigateWithKeyboard,
+	checkAccessibility as _checkAccessibility
+} from './utils/test-helpers';
 
 test.describe('Accessibility Tests', () => {
 	let converterPage: ConverterPage;

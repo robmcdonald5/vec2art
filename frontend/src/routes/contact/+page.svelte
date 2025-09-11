@@ -13,7 +13,7 @@
 	import { onMount } from 'svelte';
 	import { PUBLIC_FORMSPARK_ENDPOINT_ID, PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
 
-	// Form state management  
+	// Form state management
 	let selectedCategory = $state.raw('general');
 	let formData = $state({
 		name: '',
@@ -478,17 +478,23 @@
 	}
 
 	// Reactive validation - runs whenever form data changes
-	$effect(() => { validateName(formData.name); });
-	$effect(() => { validateEmail(formData.email); });
-	$effect(() => { validateMessage(formData.message); });
+	$effect(() => {
+		validateName(formData.name);
+	});
+	$effect(() => {
+		validateEmail(formData.email);
+	});
+	$effect(() => {
+		validateMessage(formData.message);
+	});
 
 	// Overall form validity
 	let isFormValid = $derived(
 		isNameValid &&
-		isEmailValid &&
-		isMessageValid &&
-		isTurnstileValid &&
-		(selectedCategory !== 'bug' || formData.bugType)
+			isEmailValid &&
+			isMessageValid &&
+			isTurnstileValid &&
+			(selectedCategory !== 'bug' || formData.bugType)
 	);
 
 	// Disable submit button only when submitting or form is invalid

@@ -230,9 +230,21 @@ export async function quickStartPerformanceMonitoring(
 	} = {}
 ): Promise<void> {
 	// Import functions locally to avoid circular dependencies
-	const { isConsentRequired, getConsentStatus, showConsentBanner, hasConsent, getComplianceStatus: _getComplianceStatus } = await import('./privacy-manager.js');
-	const { initializePerformanceMonitoring, checkSystemHealth } = await import('./performance-integration.js');  
-	const { startBudgetMonitoring, getBudgetStatus: _getBudgetStatus, getPerformanceRecommendations: _getPerformanceRecommendations } = await import('./performance-budgets.js');
+	const {
+		isConsentRequired,
+		getConsentStatus,
+		showConsentBanner,
+		hasConsent,
+		getComplianceStatus: _getComplianceStatus
+	} = await import('./privacy-manager.js');
+	const { initializePerformanceMonitoring, checkSystemHealth } = await import(
+		'./performance-integration.js'
+	);
+	const {
+		startBudgetMonitoring,
+		getBudgetStatus: _getBudgetStatus,
+		getPerformanceRecommendations: _getPerformanceRecommendations
+	} = await import('./performance-budgets.js');
 	const { startDebugging } = await import('./dev-tools.js');
 	const {
 		enableWebVitals = true,
@@ -300,7 +312,7 @@ export async function quickStartPerformanceMonitoring(
 }
 
 /**
- * Get comprehensive performance status  
+ * Get comprehensive performance status
  */
 export async function getPerformanceStatus(): Promise<{
 	isMonitoring: boolean;
@@ -313,7 +325,9 @@ export async function getPerformanceStatus(): Promise<{
 	// Import functions locally to avoid circular dependencies
 	const { hasConsent, getComplianceStatus } = await import('./privacy-manager.js');
 	const { checkSystemHealth } = await import('./performance-integration.js');
-	const { getBudgetStatus, getPerformanceRecommendations } = await import('./performance-budgets.js');
+	const { getBudgetStatus, getPerformanceRecommendations } = await import(
+		'./performance-budgets.js'
+	);
 
 	return {
 		isMonitoring: true, // Would check actual monitoring status
