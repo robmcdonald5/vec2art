@@ -2,6 +2,22 @@ import type { Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
 
+// CRITICAL DEBUG: Function invocation verification
+const debugLogging: Handle = async ({ event, resolve }) => {
+	console.log(`🚨 [CRITICAL DEBUG] ${new Date().toISOString()}`);
+	console.log(`🚨 Request: ${event.request.method} ${event.url.pathname}`);
+	console.log(`🚨 User-Agent: ${event.request.headers.get('user-agent')}`);
+	console.log(`🚨 Host: ${event.request.headers.get('host')}`);
+	console.log(`🚨 X-Forwarded-For: ${event.request.headers.get('x-forwarded-for')}`);
+	
+	const response = await resolve(event);
+	
+	console.log(`🚨 Response Status: ${response.status}`);
+	console.log(`🚨 Response Headers:`, Object.fromEntries(response.headers.entries()));
+	
+	return response;
+};
+
 // Security headers middleware
 const securityHeaders: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event, {
@@ -126,8 +142,9 @@ const performanceMonitoring: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
-// Combine all middleware
+// Combine all middleware - DEBUG FIRST to verify function invocation
 export const handle = sequence(
+	debugLogging,
 	securityHeaders,
 	rateLimiting,
 	requestSanitization,

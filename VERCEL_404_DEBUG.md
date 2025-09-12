@@ -481,8 +481,77 @@ prerender: {
 - Eliminates the "neither static nor server" state causing 404s
 - Can add prerender back selectively once basic routing works
 
+**Result**: ❌ **FAILED - 404 PERSISTS**
+
+- Error ID: `404: NOT_FOUND Code: NOT_FOUND ID: cle1:cle1::c224t-1757635474086-53772287bff5`
+- **Analysis**: Even with prerender removed, 404 errors continue
+- **Implication**: The issue is NOT prerender-related - there's a deeper routing problem
+
+## 🚨 CRITICAL ANALYSIS: 9 Theories Tested, ALL FAILED
+
+After 9 systematic debugging attempts, **ALL theories have failed**:
+
+1. ❌ **SvelteKit configuration** - Simplified config didn't fix it
+2. ❌ **Edge Functions compatibility** - Switched to Node.js runtime didn't fix it  
+3. ❌ **Output directory** - Corrected .vercel/output path didn't fix it
+4. ❌ **vercel.json interference** - Removing/simplifying didn't fix it
+5. ❌ **Node.js version mismatch** - Fixed 20.x→22.x alignment didn't fix it
+6. ❌ **WASM build integration** - Fixed WASM build didn't fix it
+7. ❌ **Prerender configuration conflicts** - Specific route list didn't fix it
+8. ❌ **Route deployment investigation** - Found functions properly generated
+9. ❌ **Remove prerender entirely** - Server-only routes still return 404
+
+## 🔬 SCIENTIFIC ANALYSIS: What We Know vs Don't Know
+
+### ✅ **What We KNOW Works** (Confirmed Evidence):
+- **Local development**: Routes work perfectly in `npm run dev`
+- **Build process**: `npm run build:frontend-only` completes successfully
+- **Function generation**: `catchall.func` is created with correct configuration
+- **Server handler**: `index.js` handler exists and looks correct
+- **Route bundling**: All page entries are bundled in server output
+- **WASM integration**: Builds and integrates correctly
+- **Vercel deployment**: Shows "successful" status
+- **Static assets**: CSS, JS, images serve correctly from `/`
+- **Framework detection**: Vercel recognizes this as SvelteKit
+
+### ❌ **What We DON'T KNOW** (Critical Unknowns):
+- **Is the server function actually being invoked?**
+- **Are requests reaching our SvelteKit handler at all?**
+- **Is there a Vercel routing configuration override?**
+- **Is the function deployed to the correct region/edge location?**
+- **Are there Vercel-specific headers/routing rules interfering?**
+- **Is our catchall function properly configured in Vercel's system?**
+
+## 🎯 NEXT SYSTEMATIC INVESTIGATION APPROACH
+
+Based on scientific method, we need to **isolate the problem layer**:
+
+### **Theory 10: Function Invocation Verification**
+**Hypothesis**: The server function exists but is not being invoked by Vercel's routing
+**Test Strategy**:
+1. **Add logging to server function** to confirm if it's being called
+2. **Check Vercel function logs** for any invocation attempts  
+3. **Verify function deployment status** in Vercel dashboard
+4. **Test with minimal SvelteKit app** to isolate our specific setup
+
+### **Theory 11: Vercel Routing Override**
+**Hypothesis**: Vercel has internal routing rules that override our function
+**Test Strategy**:
+1. **Check for hidden .vercel config** files or overrides
+2. **Review Vercel project settings** for custom routing rules
+3. **Compare with working SvelteKit deployments** on Vercel
+4. **Test deployment to different Vercel project** for isolation
+
+### **Theory 12: Adapter Configuration Issue**  
+**Hypothesis**: @sveltejs/adapter-vercel has configuration we're missing
+**Test Strategy**:
+1. **Compare our adapter config** with Vercel documentation
+2. **Test with minimal adapter configuration** (default settings)
+3. **Check adapter version compatibility** with our SvelteKit version
+4. **Review adapter-vercel GitHub issues** for similar problems
+
 ---
 
-**Status**: ✅ **ROOT CAUSE IDENTIFIED** - Prerender failure causing routes to not exist anywhere
+**Status**: 🔴 **CRITICAL** - 9 theories failed, need systematic layer isolation
 
-**Next Step**: Build and test with prerender removed - routes should work via server function
+**Next Critical Step**: Function invocation verification with server-side logging
