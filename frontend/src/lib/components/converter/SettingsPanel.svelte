@@ -34,9 +34,6 @@
 	let isQuickSettingsExpanded = $state(true);
 	let isAdvancedSettingsExpanded = $state(false);
 	
-	// Progressive disclosure for mobile
-	let settingsMode = $state<'essential' | 'standard' | 'expert'>('essential');
-	
 	// Check if we're on mobile
 	let isMobile = $state(false);
 	
@@ -120,58 +117,21 @@
 	});
 </script>
 
-<div class="w-full max-w-sm space-y-4">
-	<!-- Mobile Settings Mode Selector -->
-	{#if isMobile}
-		<div class="border-ferrari-200/30 bg-ferrari-50/30 rounded-xl border p-3">
-			<div class="mb-2">
-				<h4 class="text-ferrari-700 text-sm font-medium">Settings Level</h4>
-			</div>
-			<div class="grid grid-cols-3 gap-1">
-				<button
-					class="rounded-md px-3 py-2 text-xs font-medium transition-all duration-200 {settingsMode === 'essential'
-						? 'bg-ferrari-500 text-white shadow-md'
-						: 'bg-white/50 text-ferrari-600 hover:bg-ferrari-100'}"
-					onclick={() => (settingsMode = 'essential')}
-				>
-					Simple
-				</button>
-				<button
-					class="rounded-md px-3 py-2 text-xs font-medium transition-all duration-200 {settingsMode === 'standard'
-						? 'bg-ferrari-500 text-white shadow-md'
-						: 'bg-white/50 text-ferrari-600 hover:bg-ferrari-100'}"
-					onclick={() => (settingsMode = 'standard')}
-				>
-					Standard
-				</button>
-				<button
-					class="rounded-md px-3 py-2 text-xs font-medium transition-all duration-200 {settingsMode === 'expert'
-						? 'bg-ferrari-500 text-white shadow-md'
-						: 'bg-white/50 text-ferrari-600 hover:bg-ferrari-100'}"
-					onclick={() => (settingsMode = 'expert')}
-				>
-					Expert
-				</button>
-			</div>
-			<p class="text-ferrari-600/70 mt-2 text-xs">
-				{settingsMode === 'essential' ? 'Just algorithm selection' : 
-				 settingsMode === 'standard' ? 'Common adjustments' : 
-				 'All advanced controls'}
-			</p>
-		</div>
-	{/if}
+<div class="w-full max-w-sm space-y-4 md:space-y-4 space-y-6">
 
 	<!-- Quick Settings Panel -->
 	<div
 		class="card-ferrari-static to-ferrari-50/20 border-ferrari-200/50 overflow-hidden rounded-2xl border bg-gradient-to-br from-white shadow-lg"
 	>
 		<button
-			class="to-ferrari-50/30 hover:from-ferrari-50 hover:to-ferrari-100/50 flex w-full items-center justify-between bg-gradient-to-r from-transparent p-4 text-left transition-all duration-200 focus:outline-none {isQuickSettingsExpanded
+			class="mobile-touch-target to-ferrari-50/30 hover:from-ferrari-50 hover:to-ferrari-100/50 flex w-full items-center justify-between bg-gradient-to-r from-transparent p-4 text-left transition-all duration-200 focus:outline-none active:scale-[0.98] {isQuickSettingsExpanded
 				? 'ring-ferrari-500 ring-2 ring-offset-2'
 				: ''}"
 			style="z-index: 5; position: relative;"
 			onclick={() => (isQuickSettingsExpanded = !isQuickSettingsExpanded)}
 			type="button"
+			aria-expanded={isQuickSettingsExpanded}
+			aria-controls="quick-settings-content"
 		>
 			<div class="flex items-center gap-3">
 				<div class="bg-ferrari-100 rounded-lg p-2">
@@ -189,7 +149,7 @@
 		</button>
 
 		{#if isQuickSettingsExpanded}
-			<div class="space-y-6 bg-white/50 p-4 backdrop-blur-sm">
+			<div id="quick-settings-content" class="space-y-6 bg-white/50 p-4 backdrop-blur-sm">
 				<!-- Algorithm Selection - ALWAYS VISIBLE (Essential Level) -->
 				<div>
 					<div class="mb-3 flex items-center gap-2">
@@ -425,18 +385,19 @@
 		{/if}
 	</div>
 
-	<!-- Advanced Settings Panel - EXPERT LEVEL ONLY -->
-	{#if !isMobile || settingsMode === 'expert'}
+	<!-- Advanced Settings Panel -->
 	<div
 		class="card-ferrari-static to-ferrari-50/20 border-ferrari-200/50 overflow-hidden rounded-2xl border bg-gradient-to-br from-white shadow-lg"
 	>
 		<button
-			class="to-ferrari-50/30 hover:from-ferrari-50 hover:to-ferrari-100/50 flex w-full items-center justify-between bg-gradient-to-r from-transparent p-4 text-left transition-all duration-200 focus:outline-none {isAdvancedSettingsExpanded
+			class="mobile-touch-target to-ferrari-50/30 hover:from-ferrari-50 hover:to-ferrari-100/50 flex w-full items-center justify-between bg-gradient-to-r from-transparent p-4 text-left transition-all duration-200 focus:outline-none active:scale-[0.98] {isAdvancedSettingsExpanded
 				? 'ring-ferrari-500 ring-2 ring-offset-2'
 				: ''}"
 			style="z-index: 5; position: relative;"
 			onclick={() => (isAdvancedSettingsExpanded = !isAdvancedSettingsExpanded)}
 			type="button"
+			aria-expanded={isAdvancedSettingsExpanded}
+			aria-controls="advanced-settings-content"
 		>
 			<div class="flex items-center gap-3">
 				<div class="bg-ferrari-100 rounded-lg p-2">
@@ -454,7 +415,7 @@
 		</button>
 
 		{#if isAdvancedSettingsExpanded}
-			<div class="space-y-6 bg-white/50 p-4 backdrop-blur-sm">
+			<div id="advanced-settings-content" class="space-y-6 bg-white/50 p-4 backdrop-blur-sm">
 				<!-- Parameter Panel -->
 				<ParameterPanel {config} {onConfigChange} {disabled} {onParameterChange} />
 

@@ -1691,9 +1691,9 @@
 				</main>
 			{:else if uiState === 'LOADED'}
 				<!-- LOADED State: Converter interface with settings -->
-				<main class="grid grid-cols-1 gap-8 xl:grid-cols-[1fr_auto]">
+				<main class="grid grid-cols-1 gap-6 md:gap-8 xl:grid-cols-[1fr_auto]">
 					<!-- Main converter area with error boundary -->
-					<div class="space-y-6">
+					<div class="space-y-4 md:space-y-6">
 						{#key componentResetKey}
 							<ErrorBoundary onError={handleConverterError}>
 								<ConverterInterface

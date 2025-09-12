@@ -225,34 +225,71 @@
 			aria-label="Interactive image comparison slider"
 		>
 			<!-- Slider Controls -->
-			<div class="absolute top-4 right-4 left-4 z-20 flex items-center justify-between">
-				<span class="text-converter-primary rounded bg-white/90 px-2 py-1 text-sm font-medium">
-					Comparison Slider ({Math.round(sliderPosition)}%)
-				</span>
-				<div class="flex items-center gap-1">
-					<Button
-						variant="outline"
-						size="icon"
-						class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-						onclick={() => (isVerticalSplit = !isVerticalSplit)}
-						aria-label={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
-						title={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
-					>
-						<ArrowLeftRight class="h-4 w-4 {isVerticalSplit ? 'rotate-90' : ''}" />
-					</Button>
-					{#if onDownload && hasResult}
+			<div class="absolute inset-x-2 top-2 z-20 md:inset-x-4 md:top-4">
+				<!-- Mobile: Stacked layout -->
+				<div class="flex flex-col gap-2 md:hidden">
+					<div class="text-converter-primary rounded-lg bg-white/95 px-3 py-2 text-center text-sm font-medium shadow-sm backdrop-blur-sm">
+						Comparison Slider ({Math.round(sliderPosition)}%)
+					</div>
+					<div class="flex items-center justify-center gap-3">
+						<Button
+							variant="outline"
+							size="default"
+							class="mobile-touch-target border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/95 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 rounded-lg bg-white/95 shadow-sm backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white hover:shadow-md active:scale-95"
+							onclick={() => (isVerticalSplit = !isVerticalSplit)}
+							aria-label={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
+							title={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
+						>
+							<ArrowLeftRight class="h-5 w-5 {isVerticalSplit ? 'rotate-90' : ''} transition-transform" />
+							<span class="ml-2 text-sm font-medium">{isVerticalSplit ? 'Horizontal' : 'Vertical'}</span>
+						</Button>
+						{#if onDownload && hasResult}
+							<Button
+								variant="outline"
+								size="default"
+								class="mobile-touch-target border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/95 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 rounded-lg bg-white/95 shadow-sm backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={onDownload}
+								disabled={isProcessing}
+								aria-label="Download SVG"
+								title="Download SVG"
+							>
+								<Download class="h-5 w-5" />
+								<span class="ml-2 text-sm font-medium">Download</span>
+							</Button>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Desktop: Original horizontal layout -->
+				<div class="hidden items-center justify-between md:flex">
+					<span class="text-converter-primary rounded bg-white/90 px-2 py-1 text-sm font-medium">
+						Comparison Slider ({Math.round(sliderPosition)}%)
+					</span>
+					<div class="flex items-center gap-1">
 						<Button
 							variant="outline"
 							size="icon"
 							class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-							onclick={onDownload}
-							disabled={isProcessing}
-							aria-label="Download SVG"
-							title="Download SVG"
+							onclick={() => (isVerticalSplit = !isVerticalSplit)}
+							aria-label={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
+							title={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
 						>
-							<Download class="h-4 w-4" />
+							<ArrowLeftRight class="h-4 w-4 {isVerticalSplit ? 'rotate-90' : ''}" />
 						</Button>
-					{/if}
+						{#if onDownload && hasResult}
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={onDownload}
+								disabled={isProcessing}
+								aria-label="Download SVG"
+								title="Download SVG"
+							>
+								<Download class="h-4 w-4" />
+							</Button>
+						{/if}
+					</div>
 				</div>
 			</div>
 
@@ -310,69 +347,137 @@
 			<div class="bg-ferrari-50/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
 					<!-- Original Frame Header with Controls -->
-					<div class="mb-3 flex items-center justify-between px-2">
-						<div class="flex items-center gap-2">
-							<span class="text-converter-primary text-sm font-medium select-none">Original</span>
-							<button
-								class="text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {modernPanZoomStore.syncEnabled
-									? 'text-ferrari-600'
-									: 'text-gray-400'}"
-								onclick={toggleSync}
-								aria-label={modernPanZoomStore.syncEnabled ? 'Disable sync' : 'Enable sync'}
-								title={modernPanZoomStore.syncEnabled
-									? 'Views are synchronized'
-									: 'Click to sync both views'}
-							>
-								{#if modernPanZoomStore.syncEnabled}
-									<Link class="h-4 w-4" />
-								{:else}
-									<Unlink class="h-4 w-4" />
-								{/if}
-							</button>
+					<div class="mb-3 px-2">
+						<!-- Mobile: Stacked layout -->
+						<div class="flex flex-col gap-3 md:hidden">
+							<div class="flex items-center justify-between">
+								<span class="text-converter-primary text-base font-semibold select-none">Original</span>
+								<button
+									class="mobile-touch-target text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {modernPanZoomStore.syncEnabled
+										? 'text-ferrari-600'
+										: 'text-gray-400'}"
+									onclick={toggleSync}
+									aria-label={modernPanZoomStore.syncEnabled ? 'Disable sync' : 'Enable sync'}
+									title={modernPanZoomStore.syncEnabled
+										? 'Views are synchronized'
+										: 'Click to sync both views'}
+								>
+									{#if modernPanZoomStore.syncEnabled}
+										<Link class="h-6 w-6" />
+									{:else}
+										<Unlink class="h-6 w-6" />
+									{/if}
+								</button>
+							</div>
+							<div class="flex justify-center gap-2">
+								<Button
+									variant="outline"
+									size="sm"
+									class="mobile-touch-target border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 rounded bg-white/90 transition-all duration-200 hover:scale-105 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={zoomOutOriginal}
+									aria-label="Zoom out"
+									title="Zoom out"
+								>
+									<ZoomOut class="h-4 w-4" />
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									class="mobile-touch-target border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 rounded bg-white/90 transition-all duration-200 hover:scale-105 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={zoomInOriginal}
+									aria-label="Zoom in"
+									title="Zoom in"
+								>
+									<ZoomIn class="h-4 w-4" />
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									class="mobile-touch-target border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 rounded bg-white/90 transition-all duration-200 hover:scale-105 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={resetOriginalView}
+									aria-label="Reset view"
+									title="Reset view"
+								>
+									<Maximize2 class="h-4 w-4" />
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									class="mobile-touch-target border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 rounded bg-white/90 transition-all duration-200 hover:scale-105 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={() => downloadOriginal(currentFile, currentImageUrl)}
+									aria-label="Download original"
+									title="Download original image"
+								>
+									<Download class="h-4 w-4" />
+								</Button>
+							</div>
 						</div>
 
-						<!-- Original Frame Controls -->
-						<div class="flex gap-1">
-							<Button
-								variant="outline"
-								size="icon"
-								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={zoomOutOriginal}
-								aria-label="Zoom out"
-								title="Zoom out"
-							>
-								<ZoomOut class="h-4 w-4" />
-							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={zoomInOriginal}
-								aria-label="Zoom in"
-								title="Zoom in"
-							>
-								<ZoomIn class="h-4 w-4" />
-							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={resetOriginalView}
-								aria-label="Reset view"
-								title="Reset view"
-							>
-								<Maximize2 class="h-4 w-4" />
-							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={() => downloadOriginal(currentFile, currentImageUrl)}
-								aria-label="Download original"
-								title="Download original image"
-							>
-								<Download class="h-4 w-4" />
-							</Button>
+						<!-- Desktop: Original horizontal layout -->
+						<div class="hidden items-center justify-between md:flex">
+							<div class="flex items-center gap-2">
+								<span class="text-converter-primary text-sm font-medium select-none">Original</span>
+								<button
+									class="text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {modernPanZoomStore.syncEnabled
+										? 'text-ferrari-600'
+										: 'text-gray-400'}"
+									onclick={toggleSync}
+									aria-label={modernPanZoomStore.syncEnabled ? 'Disable sync' : 'Enable sync'}
+									title={modernPanZoomStore.syncEnabled
+										? 'Views are synchronized'
+										: 'Click to sync both views'}
+								>
+									{#if modernPanZoomStore.syncEnabled}
+										<Link class="h-4 w-4" />
+									{:else}
+										<Unlink class="h-4 w-4" />
+									{/if}
+								</button>
+							</div>
+
+							<!-- Original Frame Controls -->
+							<div class="flex gap-1">
+								<Button
+									variant="outline"
+									size="icon"
+									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={zoomOutOriginal}
+									aria-label="Zoom out"
+									title="Zoom out"
+								>
+									<ZoomOut class="h-4 w-4" />
+								</Button>
+								<Button
+									variant="outline"
+									size="icon"
+									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={zoomInOriginal}
+									aria-label="Zoom in"
+									title="Zoom in"
+								>
+									<ZoomIn class="h-4 w-4" />
+								</Button>
+								<Button
+									variant="outline"
+									size="icon"
+									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={resetOriginalView}
+									aria-label="Reset view"
+									title="Reset view"
+								>
+									<Maximize2 class="h-4 w-4" />
+								</Button>
+								<Button
+									variant="outline"
+									size="icon"
+									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={() => downloadOriginal(currentFile, currentImageUrl)}
+									aria-label="Download original"
+									title="Download original image"
+								>
+									<Download class="h-4 w-4" />
+								</Button>
+							</div>
 						</div>
 					</div>
 
@@ -417,65 +522,129 @@
 			<div class="bg-ferrari-50/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
 					<!-- Converted Frame Header with Controls -->
-					<div class="mb-3 flex items-center justify-between px-2">
-						<div class="flex items-center gap-2">
-							<span
-								class="text-sm font-medium select-none"
-								class:text-red-600={isError}
-								class:text-converter-primary={!isError}
-							>
-								{isError ? 'Failed' : 'Converted'}
-							</span>
+					<div class="mb-3 px-2">
+						<!-- Mobile: Stacked layout -->
+						<div class="flex flex-col gap-3 md:hidden">
+							<div class="flex items-center justify-center">
+								<span
+									class="text-base font-semibold select-none"
+									class:text-red-600={isError}
+									class:text-converter-primary={!isError}
+								>
+									{isError ? 'Failed' : 'Converted'}
+								</span>
+							</div>
+							<div class="flex justify-center gap-2">
+								<Button
+									variant="outline"
+									size="sm"
+									class="mobile-touch-target border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 rounded bg-white/90 transition-all duration-200 hover:scale-105 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={zoomOutConverted}
+									disabled={!hasResult}
+									aria-label="Zoom out"
+									title="Zoom out"
+								>
+									<ZoomOut class="h-4 w-4" />
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									class="mobile-touch-target border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 rounded bg-white/90 transition-all duration-200 hover:scale-105 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={zoomInConverted}
+									disabled={!hasResult}
+									aria-label="Zoom in"
+									title="Zoom in"
+								>
+									<ZoomIn class="h-4 w-4" />
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									class="mobile-touch-target border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 rounded bg-white/90 transition-all duration-200 hover:scale-105 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={resetConvertedView}
+									disabled={!hasResult}
+									aria-label="Reset view"
+									title="Reset view"
+								>
+									<Maximize2 class="h-4 w-4" />
+								</Button>
+								{#if onDownload && hasResult}
+									<Button
+										variant="outline"
+										size="sm"
+										class="mobile-touch-target border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 rounded bg-white/90 transition-all duration-200 hover:scale-105 hover:bg-white hover:shadow-md active:scale-95"
+										onclick={onDownload}
+										disabled={isProcessing}
+										aria-label="Download SVG"
+										title="Download SVG"
+									>
+										<Download class="h-4 w-4" />
+									</Button>
+								{/if}
+							</div>
 						</div>
 
-						<!-- Converted Frame Controls -->
-						<div class="flex gap-1">
-							<Button
-								variant="outline"
-								size="icon"
-								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={zoomOutConverted}
-								disabled={!hasResult}
-								aria-label="Zoom out"
-								title="Zoom out"
-							>
-								<ZoomOut class="h-4 w-4" />
-							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={zoomInConverted}
-								disabled={!hasResult}
-								aria-label="Zoom in"
-								title="Zoom in"
-							>
-								<ZoomIn class="h-4 w-4" />
-							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-								onclick={resetConvertedView}
-								disabled={!hasResult}
-								aria-label="Reset view"
-								title="Reset view"
-							>
-								<Maximize2 class="h-4 w-4" />
-							</Button>
-							{#if onDownload && hasResult}
+						<!-- Desktop: Original horizontal layout -->
+						<div class="hidden items-center justify-between md:flex">
+							<div class="flex items-center gap-2">
+								<span
+									class="text-sm font-medium select-none"
+									class:text-red-600={isError}
+									class:text-converter-primary={!isError}
+								>
+									{isError ? 'Failed' : 'Converted'}
+								</span>
+							</div>
+
+							<!-- Converted Frame Controls -->
+							<div class="flex gap-1">
 								<Button
 									variant="outline"
 									size="icon"
 									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-									onclick={onDownload}
-									disabled={isProcessing}
-									aria-label="Download SVG"
-									title="Download SVG"
+									onclick={zoomOutConverted}
+									disabled={!hasResult}
+									aria-label="Zoom out"
+									title="Zoom out"
 								>
-									<Download class="h-4 w-4" />
+									<ZoomOut class="h-4 w-4" />
 								</Button>
-							{/if}
+								<Button
+									variant="outline"
+									size="icon"
+									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={zoomInConverted}
+									disabled={!hasResult}
+									aria-label="Zoom in"
+									title="Zoom in"
+								>
+									<ZoomIn class="h-4 w-4" />
+								</Button>
+								<Button
+									variant="outline"
+									size="icon"
+									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={resetConvertedView}
+									disabled={!hasResult}
+									aria-label="Reset view"
+									title="Reset view"
+								>
+									<Maximize2 class="h-4 w-4" />
+								</Button>
+								{#if onDownload && hasResult}
+									<Button
+										variant="outline"
+										size="icon"
+										class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+										onclick={onDownload}
+										disabled={isProcessing}
+										aria-label="Download SVG"
+										title="Download SVG"
+									>
+										<Download class="h-4 w-4" />
+									</Button>
+								{/if}
+							</div>
 						</div>
 					</div>
 
