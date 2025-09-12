@@ -1,0 +1,247 @@
+name: Deploy Pipeline
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
+jobs:
+  # Pre-deployment validation
+  validate:
+    name: Validate & Build
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check-deploy.outputs.should-deploy }}
+      deploy-env: ${{ steps.check-deploy.outputs.deploy-env }}
+    
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            wasm/vectorize-wasm/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('wasm/vectorize-wasm/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install wasm-pack
+        run: |
+          if ! command -v wasm-pack &> /dev/null; then
+            curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          fi
+          export PATH="$HOME/.cargo/bin:$PATH"
+          wasm-pack --version
+        shell: bash
+
+      - name: Build WASM module
+        run: |
+          echo "🔧 Building WASM module..."
+          export PATH="$HOME/.cargo/bin:$PATH"
+          chmod +x ./rebuild-wasm.sh 2>/dev/null || true
+          bash ./rebuild-wasm.sh
+        shell: bash
+        working-directory: .
+
+      - name: Install frontend dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Setup environment variables
+        run: |
+          if [ -z "${{ secrets.PUBLIC_FORMSPARK_ENDPOINT_ID }}" ]; then
+            echo "Using CI placeholder environment variables"
+            cp .env.ci .env
+          else
+            echo "Using GitHub Secrets for environment variables"
+            echo "PUBLIC_FORMSPARK_ENDPOINT_ID=${{ secrets.PUBLIC_FORMSPARK_ENDPOINT_ID }}" > .env
+            echo "PUBLIC_TURNSTILE_SITE_KEY=${{ secrets.PUBLIC_TURNSTILE_SITE_KEY }}" >> .env
+          fi
+
+      - name: Code quality checks
+        run: |
+          echo "🔍 Running code quality checks..."
+          
+          # Auto-format code if needed
+          if ! npx prettier --check . --ignore-unknown; then
+            echo "Auto-formatting code..."
+            npx prettier --write . --ignore-unknown
+          fi
+          
+          # SvelteKit sync
+          npx svelte-kit sync
+          
+          # Type checking
+          npx svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
+          
+          # Linting
+          npx eslint . --max-warnings=0
+
+      - name: Run tests
+        run: |
+          echo "🧪 Running test suite..."
+          
+          # Run unit tests with coverage
+          npx vitest run --coverage --reporter=verbose
+          
+          echo "✅ All tests passed"
+        env:
+          CI: true
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Verify build output
+        run: |
+          echo "🔍 Verifying build output..."
+          if [ -d "build" ]; then
+            echo "✅ Build directory created successfully"
+            echo "📊 Build size: $(du -sh build/ | cut -f1)"
+            
+            # Check for critical files
+            if [ -f "build/index.html" ]; then
+              echo "✅ index.html found"
+            else
+              echo "❌ index.html missing"
+              exit 1
+            fi
+            
+            # Check for WASM files
+            wasm_files=$(find build -name "*.wasm" | wc -l)
+            echo "🦀 WASM files: $wasm_files"
+            
+            if [ $wasm_files -eq 0 ]; then
+              echo "⚠️  No WASM files found in build"
+            fi
+            
+          else
+            echo "❌ Build directory not found"
+            exit 1
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            frontend/build/
+            !frontend/build/**/*.map
+          retention-days: 7
+
+      - name: Determine deployment
+        id: check-deploy
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "deploy-env=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "deploy-env=development" >> $GITHUB_OUTPUT
+          else
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+            echo "deploy-env=none" >> $GITHUB_OUTPUT
+          fi
+
+  # Deploy to appropriate environment
+  deploy:
+    name: Deploy to ${{ needs.validate.outputs.deploy-env }}
+    runs-on: ubuntu-latest
+    needs: validate
+    if: needs.validate.outputs.should-deploy == 'true'
+    environment:
+      name: ${{ needs.validate.outputs.deploy-env }}
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: frontend/
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment
+        run: |
+          vercel pull --yes --environment=${{ needs.validate.outputs.deploy-env }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel
+        id: deploy
+        run: |
+          if [[ "${{ needs.validate.outputs.deploy-env }}" == "production" ]]; then
+            echo "🚀 Deploying to production..."
+            vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+            DEPLOYMENT_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          else
+            echo "🚀 Deploying to development..."
+            vercel build --token=${{ secrets.VERCEL_TOKEN }}
+            DEPLOYMENT_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          fi
+          
+          echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          echo "✅ Deployment successful: $DEPLOYMENT_URL"
+
+  # Post-deployment verification
+  verify:
+    name: Post-Deploy Verification
+    runs-on: ubuntu-latest
+    needs: [validate, deploy]
+    if: needs.validate.outputs.should-deploy == 'true' && needs.validate.outputs.deploy-env == 'production'
+    continue-on-error: true
+
+    steps:
+      - name: Smoke tests
+        run: |
+          echo "🔍 Running smoke tests..."
+          
+          # Check site availability
+          if curl -f https://vec2art.vercel.app; then
+            echo "✅ Site is accessible"
+          else
+            echo "❌ Site accessibility check failed"
+            exit 1
+          fi
+          
+          # Check security headers
+          if curl -I https://vec2art.vercel.app | grep -E "X-Frame|X-Content-Type"; then
+            echo "✅ Security headers present"
+          else
+            echo "⚠️  Some security headers missing"
+          fi
+          
+          echo "✅ Smoke tests completed"

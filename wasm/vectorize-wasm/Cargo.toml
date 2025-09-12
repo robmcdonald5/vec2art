@@ -60,7 +60,8 @@ console_log = "0.2"
 [dev-dependencies]
 wasm-bindgen-test = { workspace = true }
 
-# Benchmarking dependencies
+# Benchmarking dependencies (only for native targets, not WASM)
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 rand = { version = "0.8", features = ["std_rng"] }
 
