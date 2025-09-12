@@ -137,9 +137,9 @@ export class SvgToWebPConverter {
 
 	private async initializeWorker(): Promise<void> {
 		try {
-			// Create worker from the worker file
-			const workerUrl = new URL('../workers/svg-webp-converter.worker.ts', import.meta.url);
-			this.worker = new Worker(workerUrl, { type: 'module' });
+			// Create worker using Vite worker import syntax
+			const SvgWebpWorker = await import('../workers/svg-webp-converter.worker.ts?worker');
+			this.worker = new SvgWebpWorker.default();
 
 			this.worker.onmessage = (event: MessageEvent<WebPConversionResponse>) => {
 				this.handleWorkerMessage(event.data);
