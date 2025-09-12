@@ -68,8 +68,8 @@ jobs:
         run: |
           echo "🔧 Building WASM module..."
           export PATH="$HOME/.cargo/bin:$PATH"
-          chmod +x ./rebuild-wasm.sh 2>/dev/null || true
-          bash ./rebuild-wasm.sh
+          chmod +x ./scripts/rebuild-wasm.sh 2>/dev/null || true
+          bash ./scripts/rebuild-wasm.sh
         shell: bash
         working-directory: .
 

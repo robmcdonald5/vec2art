@@ -6,8 +6,8 @@ set -e
 echo "🚀 Starting Vercel deployment build process..."
 
 # Check if we're in the correct directory
-if [ ! -f "rebuild-wasm.sh" ]; then
-    echo "❌ rebuild-wasm.sh not found. Make sure this script is run from the project root."
+if [ ! -f "scripts/rebuild-wasm.sh" ]; then
+    echo "❌ scripts/rebuild-wasm.sh not found. Make sure this script is run from the project root."
     exit 1
 fi
 
@@ -34,8 +34,8 @@ wasm-pack --version
 
 # Build WASM
 echo "🔧 Building WASM module..."
-chmod +x ./rebuild-wasm.sh
-./rebuild-wasm.sh
+chmod +x ./scripts/rebuild-wasm.sh
+./scripts/rebuild-wasm.sh
 
 # Verify WASM files exist
 echo "✅ Verifying WASM build output..."
