@@ -13,7 +13,7 @@ const debugLogging: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
 
 	console.log(`🚨 Response Status: ${response.status}`);
-	console.log(`🚨 Response Headers:`, Object.fromEntries(response.headers.entries()));
+	console.log(`🚨 Response Headers:`, Object.fromEntries([...response.headers]));
 
 	return response;
 };
