@@ -9,12 +9,12 @@ const debugLogging: Handle = async ({ event, resolve }) => {
 	console.log(`🚨 User-Agent: ${event.request.headers.get('user-agent')}`);
 	console.log(`🚨 Host: ${event.request.headers.get('host')}`);
 	console.log(`🚨 X-Forwarded-For: ${event.request.headers.get('x-forwarded-for')}`);
-	
+
 	const response = await resolve(event);
-	
+
 	console.log(`🚨 Response Status: ${response.status}`);
 	console.log(`🚨 Response Headers:`, Object.fromEntries(response.headers.entries()));
-	
+
 	return response;
 };
 
