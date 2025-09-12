@@ -32,6 +32,7 @@
 			((parseFloat(element.value) - parseFloat(element.min)) /
 				(parseFloat(element.max) - parseFloat(element.min))) *
 			100;
+		// Update CSS custom property for pseudo-element background
 		element.style.setProperty('--value', `${percent}%`);
 	}
 
@@ -130,6 +131,8 @@
 
 	.slider-ferrari::-webkit-slider-track {
 		background: transparent;
+		height: 8px; /* Visual track height */
+		border-radius: 4px;
 	}
 
 	.slider-ferrari::-webkit-slider-thumb {
@@ -163,8 +166,9 @@
 
 	.slider-ferrari::-moz-range-track {
 		background: transparent;
-		height: 8px;
+		height: 8px; /* Visual track height maintained */
 		border-radius: 4px;
+		border: none;
 	}
 
 	.slider-ferrari::-moz-range-thumb {

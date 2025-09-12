@@ -18,18 +18,23 @@
 
 	// Toggle mobile menu
 	function toggleMobileMenu() {
+		console.log('Toggle called, current state:', mobileMenuOpen);
 		mobileMenuOpen = !mobileMenuOpen;
+		console.log('New state:', mobileMenuOpen);
 	}
 
 	// Mobile menu scroll is handled by CSS (fixed positioning)
 
 	// Close menu on navigation
+	let previousPathname = $state($page.url.pathname);
 	$effect(() => {
-		// Track pathname changes to close mobile menu
-		$page.url.pathname;
-		if (mobileMenuOpen) {
+		const currentPathname = $page.url.pathname;
+		// Only close menu if pathname actually changed (not initial load)
+		if (previousPathname !== currentPathname && mobileMenuOpen) {
+			console.log('Pathname changed, closing menu:', previousPathname, '->', currentPathname);
 			mobileMenuOpen = false;
 		}
+		previousPathname = currentPathname;
 	});
 
 	// Scroll to top on navigation
@@ -50,16 +55,20 @@
 			// Register Service Worker for caching
 			registerServiceWorker();
 
-			// Set initial theme based on system preference
-			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+			// Force light mode for now since mobile components don't have dark mode styles
+			// TODO: Implement proper dark mode support for mobile components
 			const savedTheme = localStorage.getItem('theme');
-			const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+			const _theme = savedTheme === 'dark' ? 'dark' : 'light'; // Only use saved theme, ignore system preference
 
-			if (theme === 'dark') {
-				document.documentElement.classList.add('dark');
-			} else {
-				document.documentElement.classList.remove('dark');
-			}
+			// Always ensure light mode for better mobile compatibility
+			document.documentElement.classList.remove('dark');
+
+			// For future dark mode support, uncomment and design dark mode mobile styles:
+			// if (theme === 'dark') {
+			// 	document.documentElement.classList.add('dark');
+			// } else {
+			// 	document.documentElement.classList.remove('dark');
+			// }
 		}
 	});
 </script>
@@ -86,7 +95,7 @@
 		>
 			<a
 				href="/"
-				class="hover:animate-ferrari-glow flex items-center font-semibold transition-all duration-300"
+				class="hover:animate-ferrari-glow flex items-center font-semibold transition-all duration-300 min-h-[44px] py-2"
 			>
 				<span class="footer-gradient-text text-3xl font-bold md:text-3xl"> vec2art </span>
 			</a>

@@ -856,9 +856,7 @@
 								size="sm"
 								class="text-xs"
 							>
-								{isRunningTests
-										? '⏳ Testing...'
-										: '🧪 Quick Validation'}
+								{isRunningTests ? '⏳ Testing...' : '🧪 Quick Validation'}
 							</Button>
 							<Button
 								onclick={testFunctionAvailability}

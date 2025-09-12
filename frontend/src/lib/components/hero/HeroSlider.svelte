@@ -276,7 +276,7 @@
 										<a
 											href="/converter"
 											use:preload
-											class="btn-ferrari-primary absolute top-4 right-4 z-10 inline-flex items-center gap-2 px-4 py-2 text-sm"
+											class="btn-ferrari-primary absolute top-4 right-4 z-10 inline-flex min-h-[44px] items-center gap-2 px-4 py-3 text-sm"
 										>
 											Try It Yourself
 											<ChevronRight class="h-3 w-3" />
@@ -304,7 +304,7 @@
 												class="h-full w-full"
 												animationDuration={6000}
 												resetTrigger={currentPanel === 1 ? showcaseIndex : -1}
-												loading="eager"
+												loading={currentPanel === 1 && showcaseIndex === 0 ? 'eager' : 'lazy'}
 											/>
 										</div>
 									</div>
@@ -324,24 +324,40 @@
 		>
 			<button
 				onclick={() => goToPanel(0)}
-				class="flex items-center gap-2 transition-all {currentPanel === 0
+				class="relative flex min-h-[44px] touch-manipulation items-center gap-2 overflow-hidden px-2 transition-all {currentPanel ===
+				0
 					? 'text-ferrari-600 font-medium'
-					: 'text-gray-500 hover:text-gray-700'}"
+					: 'text-gray-500 hover:text-gray-700 active:scale-95'}"
 			>
-				<span class="h-2 w-2 rounded-full {currentPanel === 0 ? 'bg-ferrari-600' : 'bg-gray-300'}"
+				<span
+					class="relative z-10 h-2 w-2 rounded-full {currentPanel === 0
+						? 'bg-ferrari-600'
+						: 'bg-gray-300'}"
 				></span>
-				Overview
+				<span class="relative z-10">Overview</span>
+				<!-- Mobile touch ripple -->
+				<div
+					class="bg-ferrari-100 pointer-events-none absolute inset-0 scale-0 rounded-full opacity-0 transition-all duration-300 group-active:scale-100 group-active:opacity-20 md:hidden"
+				></div>
 			</button>
 			<div class="h-4 w-px bg-gray-300"></div>
 			<button
 				onclick={() => goToPanel(1)}
-				class="flex items-center gap-2 transition-all {currentPanel === 1
+				class="relative flex min-h-[44px] touch-manipulation items-center gap-2 overflow-hidden px-2 transition-all {currentPanel ===
+				1
 					? 'text-ferrari-600 font-medium'
-					: 'text-gray-500 hover:text-gray-700'}"
+					: 'text-gray-500 hover:text-gray-700 active:scale-95'}"
 			>
-				<span class="h-2 w-2 rounded-full {currentPanel === 1 ? 'bg-ferrari-600' : 'bg-gray-300'}"
+				<span
+					class="relative z-10 h-2 w-2 rounded-full {currentPanel === 1
+						? 'bg-ferrari-600'
+						: 'bg-gray-300'}"
 				></span>
-				Examples
+				<span class="relative z-10">Examples</span>
+				<!-- Mobile touch ripple -->
+				<div
+					class="bg-ferrari-100 pointer-events-none absolute inset-0 scale-0 rounded-full opacity-0 transition-all duration-300 group-active:scale-100 group-active:opacity-20 md:hidden"
+				></div>
 			</button>
 		</div>
 	</div>
@@ -351,7 +367,7 @@
 		<!-- Right arrow to go to showcase -->
 		<button
 			onclick={() => goToPanel(1)}
-			class="absolute top-1/2 right-4 z-20 -translate-y-1/2 focus:outline-none"
+			class="absolute top-1/2 right-4 z-20 flex min-h-[44px] min-w-[44px] -translate-y-1/2 touch-manipulation items-center justify-center rounded-full focus:outline-none"
 			aria-label="View examples"
 		>
 			<ChevronLeft
@@ -362,7 +378,7 @@
 		<!-- Left arrow to go back to hero -->
 		<button
 			onclick={() => goToPanel(0)}
-			class="absolute top-1/2 left-4 z-20 -translate-y-1/2 focus:outline-none"
+			class="absolute top-1/2 left-4 z-20 flex min-h-[44px] min-w-[44px] -translate-y-1/2 touch-manipulation items-center justify-center rounded-full focus:outline-none"
 			aria-label="Back to overview"
 		>
 			<ChevronRight

@@ -5,11 +5,16 @@
 	import { preload } from '$lib/utils/preload';
 
 	interface Props {
-		isOpen?: boolean;
-		onToggle?: () => void;
+		isOpen: boolean;
+		onToggle: () => void;
 	}
 
-	let { isOpen = false, onToggle }: Props = $props();
+	let { isOpen, onToggle }: Props = $props();
+
+	// Debug logging
+	$effect(() => {
+		console.log('MobileMenu isOpen changed:', isOpen);
+	});
 
 	// Navigation items
 	const navItems = [
@@ -35,9 +40,9 @@
 <!-- Mobile Menu Button (visible on small screens) -->
 <button
 	onclick={onToggle}
-	class="relative z-50 rounded-lg border border-gray-200 bg-white/80 p-2 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-gray-50 hover:shadow-sm active:scale-95 md:hidden dark:border-gray-700 dark:bg-gray-900/80 dark:hover:bg-gray-800"
+	class="relative z-50 min-h-[44px] min-w-[44px] rounded-lg border border-gray-200 bg-white/80 p-2 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-gray-50 hover:shadow-sm active:scale-95 md:hidden dark:border-gray-700 dark:bg-gray-900/80 dark:hover:bg-gray-800"
 	aria-label={isOpen ? 'Close menu' : 'Open menu'}
-	aria-expanded={isOpen}
+	aria-expanded={isOpen ? 'true' : 'false'}
 >
 	{#if isOpen}
 		<X class="h-6 w-6 text-gray-700 dark:text-gray-300" />

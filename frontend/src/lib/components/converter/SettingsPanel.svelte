@@ -33,6 +33,21 @@
 	// UI state management
 	let isQuickSettingsExpanded = $state(true);
 	let isAdvancedSettingsExpanded = $state(false);
+	
+	// Progressive disclosure for mobile
+	let settingsMode = $state<'essential' | 'standard' | 'expert'>('essential');
+	
+	// Check if we're on mobile
+	let isMobile = $state(false);
+	
+	// Update mobile detection
+	if (typeof window !== 'undefined') {
+		const checkMobile = () => {
+			isMobile = window.innerWidth <= 768;
+		};
+		checkMobile();
+		window.addEventListener('resize', checkMobile);
+	}
 
 	// Parameter update handler
 	function _updateConfig(key: keyof VectorizerConfig) {
@@ -106,6 +121,46 @@
 </script>
 
 <div class="w-full max-w-sm space-y-4">
+	<!-- Mobile Settings Mode Selector -->
+	{#if isMobile}
+		<div class="border-ferrari-200/30 bg-ferrari-50/30 rounded-xl border p-3">
+			<div class="mb-2">
+				<h4 class="text-ferrari-700 text-sm font-medium">Settings Level</h4>
+			</div>
+			<div class="grid grid-cols-3 gap-1">
+				<button
+					class="rounded-md px-3 py-2 text-xs font-medium transition-all duration-200 {settingsMode === 'essential'
+						? 'bg-ferrari-500 text-white shadow-md'
+						: 'bg-white/50 text-ferrari-600 hover:bg-ferrari-100'}"
+					onclick={() => (settingsMode = 'essential')}
+				>
+					Simple
+				</button>
+				<button
+					class="rounded-md px-3 py-2 text-xs font-medium transition-all duration-200 {settingsMode === 'standard'
+						? 'bg-ferrari-500 text-white shadow-md'
+						: 'bg-white/50 text-ferrari-600 hover:bg-ferrari-100'}"
+					onclick={() => (settingsMode = 'standard')}
+				>
+					Standard
+				</button>
+				<button
+					class="rounded-md px-3 py-2 text-xs font-medium transition-all duration-200 {settingsMode === 'expert'
+						? 'bg-ferrari-500 text-white shadow-md'
+						: 'bg-white/50 text-ferrari-600 hover:bg-ferrari-100'}"
+					onclick={() => (settingsMode = 'expert')}
+				>
+					Expert
+				</button>
+			</div>
+			<p class="text-ferrari-600/70 mt-2 text-xs">
+				{settingsMode === 'essential' ? 'Just algorithm selection' : 
+				 settingsMode === 'standard' ? 'Common adjustments' : 
+				 'All advanced controls'}
+			</p>
+		</div>
+	{/if}
+
 	<!-- Quick Settings Panel -->
 	<div
 		class="card-ferrari-static to-ferrari-50/20 border-ferrari-200/50 overflow-hidden rounded-2xl border bg-gradient-to-br from-white shadow-lg"
@@ -135,7 +190,7 @@
 
 		{#if isQuickSettingsExpanded}
 			<div class="space-y-6 bg-white/50 p-4 backdrop-blur-sm">
-				<!-- Algorithm Selection -->
+				<!-- Algorithm Selection - ALWAYS VISIBLE (Essential Level) -->
 				<div>
 					<div class="mb-3 flex items-center gap-2">
 						<label for="backend-selector" class="text-converter-primary block text-sm font-medium">
@@ -155,7 +210,8 @@
 					/>
 				</div>
 
-				<!-- Style Preset (Disabled - Coming Soon) -->
+				<!-- Style Preset (Disabled - Coming Soon) - STANDARD+ ONLY -->
+				{#if !isMobile || settingsMode !== 'essential'}
 				<div>
 					<div class="mb-3 flex items-center gap-2">
 						<label
@@ -187,8 +243,10 @@
 						<div class="absolute inset-0 cursor-not-allowed rounded-md bg-gray-100/50"></div>
 					</div>
 				</div>
+				{/if}
 
-				<!-- Essential Parameters -->
+				<!-- Essential Parameters - STANDARD+ LEVEL -->
+				{#if !isMobile || settingsMode !== 'essential'}
 				<div class="grid grid-cols-1 gap-6">
 					<!-- Detail Level (Edge/Centerline backends) OR Dot Density (Dots backend) -->
 					{#if config.backend !== 'superpixel'}
@@ -362,11 +420,13 @@
 						</div>
 					</div>
 				</div>
+				{/if}
 			</div>
 		{/if}
 	</div>
 
-	<!-- Advanced Settings Panel -->
+	<!-- Advanced Settings Panel - EXPERT LEVEL ONLY -->
+	{#if !isMobile || settingsMode === 'expert'}
 	<div
 		class="card-ferrari-static to-ferrari-50/20 border-ferrari-200/50 overflow-hidden rounded-2xl border bg-gradient-to-br from-white shadow-lg"
 	>
