@@ -101,30 +101,7 @@ const rateLimiting: Handle = async ({ event, resolve }) => {
 
 // Request sanitization and validation
 const requestSanitization: Handle = async ({ event, resolve }) => {
-	// Validate and sanitize file paths in API requests
-	if (event.url.pathname.startsWith('/api/svg/')) {
-		const parts = event.url.pathname.split('/');
-
-		// Check for path traversal attempts
-		if (parts.some((part) => part.includes('..') || part.includes('~'))) {
-			return new Response('Invalid request', { status: 400 });
-		}
-
-		// Validate category and filename format
-		if (parts.length >= 4) {
-			const category = parts[3];
-			const filename = parts[4];
-
-			// Only allow alphanumeric, hyphens, and parentheses
-			const validPattern = /^[a-zA-Z0-9\-()]+$/;
-			if (
-				!validPattern.test(category) ||
-				(filename && !validPattern.test(filename.replace('.svg', '')))
-			) {
-				return new Response('Invalid parameters', { status: 400 });
-			}
-		}
-	}
+	// SVG downloads now use static files directly - no API endpoint needed
 
 	return resolve(event);
 };

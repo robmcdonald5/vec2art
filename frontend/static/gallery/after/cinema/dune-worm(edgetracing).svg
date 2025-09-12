@@ -1,0 +1,770 @@
+<svg width="4000" height="3000" viewBox="0 0 4000 3000" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision">
+  <path d="M 2988.00 195.00 L 2982.00 203.00" fill="none" stroke="#441A0C" stroke-width="3.40" />
+  <path d="M 2981.00 205.00 L 2958.00 302.00 L 3004.00 387.00 L 2957.00 296.00 L 2979.00 206.00" fill="none" stroke="#542714" stroke-width="3.40" />
+  <path d="M 2962.00 275.00 L 2975.00 330.00 L 3053.00 391.00 L 3124.00 413.00 L 3011.00 385.00 L 2983.00 352.00 L 3088.00 413.00 L 3111.00 404.00 L 3069.00 388.00 L 3065.00 407.00 L 3037.00 389.00 L 3087.00 406.00 L 3039.00 369.00 L 3047.00 399.00 L 3015.00 384.00 L 3035.00 359.00 L 2980.00 348.00 L 3034.00 361.00 L 3032.00 378.00 L 2973.00 321.00 L 2977.00 344.00 L 2960.00 278.00" fill="none" stroke="#BA7831" stroke-width="3.40" />
+  <path d="M 3476.00 540.00 L 3439.00 595.00 L 3462.00 649.00 L 3439.00 607.00 L 3449.00 564.00" fill="none" stroke="#421D0B" stroke-width="3.40" />
+  <path d="M 3465.00 552.00 L 3457.00 559.00" fill="none" stroke="#592710" stroke-width="3.40" />
+  <path d="M 3451.00 569.00 L 3446.00 611.00 L 3475.00 626.00 L 3446.00 613.00 L 3450.00 572.00" fill="none" stroke="#93581E" stroke-width="3.40" />
+  <path d="M 713.00 592.00 L 777.00 612.00 L 709.00 596.00" fill="none" stroke="#F2A12B" stroke-width="3.40" />
+  <path d="M 677.00 594.00 L 697.00 599.00 L 652.00 605.00 L 615.00 661.00 L 628.00 627.00" fill="none" stroke="#F6BB47" stroke-width="3.40" />
+  <path d="M 822.00 607.00 L 865.00 631.00 L 802.00 613.00" fill="none" stroke="#F4A52E" stroke-width="3.40" />
+  <path d="M 3450.00 623.00 L 3516.00 658.00 L 3450.00 624.00" fill="none" stroke="#DBA954" stroke-width="3.40" />
+  <path d="M 3455.00 624.00 L 3518.00 656.00 L 3544.00 644.00 L 3508.00 653.00 L 3456.00 624.00" fill="none" stroke="#CD9643" stroke-width="3.40" />
+  <path d="M 3466.00 626.00 L 3482.00 632.00 L 3466.00 627.00" fill="none" stroke="#A56B2B" stroke-width="3.40" />
+  <path d="M 3564.00 628.00 L 3539.00 656.00" fill="none" stroke="#602D18" stroke-width="3.40" />
+  <path d="M 1219.00 664.00 L 1367.00 679.00 L 1544.00 746.00 L 1863.00 957.00 L 1660.00 812.00 L 1426.00 699.00 L 1257.00 664.00 L 1094.00 687.00" fill="none" stroke="#F6CA65" stroke-width="3.40" />
+  <path d="M 3505.00 664.00 L 3525.00 673.00 L 3504.00 665.00" fill="none" stroke="#F8C880" stroke-width="3.40" />
+  <path d="M 1228.00 667.00 L 1220.00 683.00 L 1231.00 667.00" fill="none" stroke="#FFDF79" stroke-width="3.40" />
+  <path d="M 1241.00 667.00 L 1233.00 681.00 L 1264.00 675.00 L 1243.00 676.00" fill="none" stroke="#FFD36D" stroke-width="3.40" />
+  <path d="M 858.00 679.00 L 884.00 688.00 L 855.00 681.00 L 843.00 711.00 L 828.00 702.00 L 860.00 679.00" fill="none" stroke="#F9D370" stroke-width="3.40" />
+  <path d="M 1266.00 690.00 L 1428.00 722.00 L 1519.00 779.00 L 1618.00 895.00 L 1655.00 1018.00 L 1611.00 885.00 L 1494.00 758.00 L 1328.00 695.00 L 1194.00 697.00" fill="none" stroke="#EE9F33" stroke-width="3.40" />
+  <path d="M 1239.00 696.00 L 1264.00 706.00 L 1239.00 697.00" fill="none" stroke="#FFDC73" stroke-width="3.40" />
+  <path d="M 1263.00 696.00 L 1290.00 706.00 L 1262.00 698.00" fill="none" stroke="#FFD876" stroke-width="3.40" />
+  <path d="M 858.00 698.00 L 856.00 728.00 L 859.00 698.00" fill="none" stroke="#FCEDAA" stroke-width="3.40" />
+  <path d="M 856.00 699.00 L 845.00 714.00" fill="none" stroke="#FFECA7" stroke-width="3.40" />
+  <path d="M 1095.00 701.00 L 1079.00 705.00" fill="none" stroke="#F1B94C" stroke-width="3.40" />
+  <path d="M 1075.00 707.00 L 1040.00 722.00" fill="none" stroke="#F3BE54" stroke-width="3.40" />
+  <path d="M 1169.00 707.00 L 1163.00 715.00" fill="none" stroke="#F09F33" stroke-width="3.40" />
+  <path d="M 1299.00 711.00 L 1464.00 766.00 L 1579.00 870.00 L 1512.00 798.00 L 1372.00 722.00 L 1285.00 712.00 L 1152.00 737.00 L 1270.00 714.00" fill="none" stroke="#DD8A2E" stroke-width="3.40" />
+  <path d="M 1179.00 717.00 L 1144.00 722.00" fill="none" stroke="#BD5315" stroke-width="3.40" />
+  <path d="M 1167.00 725.00 L 1156.00 730.00" fill="none" stroke="#E07429" stroke-width="3.40" />
+  <path d="M 1286.00 725.00 L 1272.00 726.00" fill="none" stroke="#FDD57D" stroke-width="3.40" />
+  <path d="M 3986.00 725.00 L 3954.00 789.00 L 3986.00 727.00" fill="none" stroke="#1F0900" stroke-width="3.40" />
+  <path d="M 1013.00 730.00 L 995.00 743.00" fill="none" stroke="#FFE49D" stroke-width="3.40" />
+  <path d="M 1422.00 731.00 L 1432.00 735.00" fill="none" stroke="#F7BF62" stroke-width="3.40" />
+  <path d="M 869.00 734.00 L 858.00 767.00 L 870.00 737.00" fill="none" stroke="#FEE49A" stroke-width="3.40" />
+  <path d="M 1168.00 738.00 L 1146.00 747.00" fill="none" stroke="#BB6917" stroke-width="3.40" />
+  <path d="M 1272.00 738.00 L 1388.00 751.00 L 1465.00 790.00 L 1562.00 873.00 L 1606.00 958.00 L 1541.00 851.00 L 1415.00 761.00 L 1252.00 739.00 L 1136.00 763.00" fill="none" stroke="#C67932" stroke-width="3.40" />
+  <path d="M 1497.00 740.00 L 1616.00 854.00 L 1663.00 984.00 L 1615.00 854.00 L 1497.00 741.00" fill="none" stroke="#F4BC5B" stroke-width="3.40" />
+  <path d="M 1245.00 747.00 L 1113.00 780.00 L 989.00 877.00 L 978.00 917.00 L 982.00 885.00" fill="none" stroke="#F3BD63" stroke-width="3.40" />
+  <path d="M 1497.00 747.00 L 1507.00 754.00" fill="none" stroke="#EAAA48" stroke-width="3.40" />
+  <path d="M 987.00 748.00 L 961.00 769.00" fill="none" stroke="#F8D37B" stroke-width="3.40" />
+  <path d="M 1111.00 748.00 L 1101.00 754.00" fill="none" stroke="#F6B94E" stroke-width="3.40" />
+  <path d="M 1286.00 748.00 L 1282.00 765.00 L 1287.00 748.00" fill="none" stroke="#FDCF77" stroke-width="3.40" />
+  <path d="M 1257.00 749.00 L 1270.00 763.00 L 1243.00 763.00 L 1262.00 755.00" fill="none" stroke="#FED078" stroke-width="3.40" />
+  <path d="M 1289.00 749.00 L 1305.00 763.00 L 1289.00 751.00" fill="none" stroke="#FBCF76" stroke-width="3.40" />
+  <path d="M 1306.00 749.00 L 1317.00 765.00 L 1305.00 751.00" fill="none" stroke="#FBCF78" stroke-width="3.40" />
+  <path d="M 3919.00 751.00 L 3885.00 882.00 L 3914.00 756.00" fill="none" stroke="#915729" stroke-width="3.40" />
+  <path d="M 1049.00 759.00 L 1037.00 770.00" fill="none" stroke="#FCD685" stroke-width="3.40" />
+  <path d="M 1128.00 759.00 L 1113.00 767.00" fill="none" stroke="#B96816" stroke-width="3.40" />
+  <path d="M 1505.00 760.00 L 1536.00 787.00 L 1506.00 760.00" fill="none" stroke="#CE8326" stroke-width="3.40" />
+  <path d="M 1536.00 760.00 L 1546.00 770.00" fill="none" stroke="#F3A34A" stroke-width="3.40" />
+  <path d="M 1387.00 763.00 L 1396.00 769.00" fill="none" stroke="#FECC75" stroke-width="3.40" />
+  <path d="M 1234.00 770.00 L 1116.00 794.00" fill="none" stroke="#953618" stroke-width="3.40" />
+  <path d="M 1033.00 773.00 L 1024.00 782.00" fill="none" stroke="#FCD270" stroke-width="3.40" />
+  <path d="M 954.00 774.00 L 941.00 790.00" fill="none" stroke="#FFDB8F" stroke-width="3.40" />
+  <path d="M 865.00 776.00 L 867.00 806.00 L 866.00 776.00" fill="none" stroke="#F6C868" stroke-width="3.40" />
+  <path d="M 1576.00 777.00 L 1584.00 783.00" fill="none" stroke="#F1AC47" stroke-width="3.40" />
+  <path d="M 1547.00 785.00 L 1630.00 886.00 L 1659.00 1007.00 L 1635.00 898.00 L 1557.00 794.00" fill="none" stroke="#B96922" stroke-width="3.40" />
+  <path d="M 1515.00 786.00 L 1612.00 895.00 L 1650.00 1010.00 L 1623.00 915.00 L 1521.00 791.00" fill="none" stroke="#E3A550" stroke-width="3.40" />
+  <path d="M 982.00 789.00 L 967.00 805.00 L 986.00 828.00 L 969.00 806.00" fill="none" stroke="#F5A72B" stroke-width="3.40" />
+  <path d="M 1370.00 789.00 L 1162.00 805.00 L 1068.00 850.00 L 1004.00 922.00 L 1026.00 889.00" fill="none" stroke="#4B1A09" stroke-width="3.40" />
+  <path d="M 1072.00 791.00 L 1049.00 808.00" fill="none" stroke="#DF872E" stroke-width="3.40" />
+  <path d="M 1273.00 795.00 L 1301.00 815.00 L 1270.00 798.00" fill="none" stroke="#FFE389" stroke-width="3.40" />
+  <path d="M 932.00 796.00 L 870.00 889.00 L 919.00 810.00" fill="none" stroke="#FCC471" stroke-width="3.40" />
+  <path d="M 1603.00 796.00 L 1648.00 862.00 L 1612.00 804.00" fill="none" stroke="#F5B150" stroke-width="3.40" />
+  <path d="M 1138.00 798.00 L 1126.00 807.00" fill="none" stroke="#E99A35" stroke-width="3.40" />
+  <path d="M 1292.00 798.00 L 1304.00 815.00 L 1295.00 798.00" fill="none" stroke="#DBA65A" stroke-width="3.40" />
+  <path d="M 1348.00 799.00 L 1491.00 884.00 L 1551.00 1023.00 L 1485.00 877.00 L 1350.00 800.00" fill="none" stroke="#C18638" stroke-width="3.40" />
+  <path d="M 1600.00 801.00 L 1671.00 941.00 L 1600.00 802.00" fill="none" stroke="#D57A29" stroke-width="3.40" />
+  <path d="M 1144.00 802.00 L 1136.00 809.00" fill="none" stroke="#C86224" stroke-width="3.40" />
+  <path d="M 1206.00 803.00 L 1176.00 812.00" fill="none" stroke="#813513" stroke-width="3.40" />
+  <path d="M 1626.00 804.00 L 1647.00 833.00 L 1627.00 804.00" fill="none" stroke="#FCCA69" stroke-width="3.40" />
+  <path d="M 1315.00 805.00 L 1330.00 815.00 L 1314.00 807.00" fill="none" stroke="#8E5021" stroke-width="3.40" />
+  <path d="M 1623.00 808.00 L 1678.00 938.00 L 1623.00 809.00" fill="none" stroke="#F7C15F" stroke-width="3.40" />
+  <path d="M 1047.00 809.00 L 1004.00 848.00" fill="none" stroke="#D47322" stroke-width="3.40" />
+  <path d="M 1484.00 809.00 L 1492.00 815.00" fill="none" stroke="#7E5329" stroke-width="3.40" />
+  <path d="M 948.00 813.00 L 901.00 883.00 L 943.00 818.00" fill="none" stroke="#E27115" stroke-width="3.40" />
+  <path d="M 884.00 815.00 L 880.00 841.00 L 885.00 815.00" fill="none" stroke="#F9C154" stroke-width="3.40" />
+  <path d="M 1019.00 815.00 L 997.00 833.00" fill="none" stroke="#F7A738" stroke-width="3.40" />
+  <path d="M 938.00 817.00 L 931.00 827.00" fill="none" stroke="#E07213" stroke-width="3.40" />
+  <path d="M 918.00 824.00 L 875.00 896.00 L 914.00 828.00" fill="none" stroke="#E68421" stroke-width="3.40" />
+  <path d="M 1510.00 828.00 L 1605.00 962.00 L 1516.00 833.00" fill="none" stroke="#4D1C0B" stroke-width="3.40" />
+  <path d="M 1668.00 828.00 L 1680.00 838.00" fill="none" stroke="#EBA859" stroke-width="3.40" />
+  <path d="M 1057.00 830.00 L 998.00 894.00 L 1053.00 833.00" fill="none" stroke="#F7B74B" stroke-width="3.40" />
+  <path d="M 941.00 831.00 L 933.00 842.00" fill="none" stroke="#E06611" stroke-width="3.40" />
+  <path d="M 1652.00 831.00 L 1682.00 853.00 L 1653.00 831.00" fill="none" stroke="#C1642B" stroke-width="3.40" />
+  <path d="M 1200.00 846.00 L 1207.00 860.00 L 1196.00 847.00" fill="none" stroke="#A9472C" stroke-width="3.40" />
+  <path d="M 1002.00 848.00 L 979.00 870.00" fill="none" stroke="#CC5C1D" stroke-width="3.40" />
+  <path d="M 1048.00 849.00 L 1035.00 860.00" fill="none" stroke="#F4B146" stroke-width="3.40" />
+  <path d="M 1310.00 851.00 L 1323.00 867.00 L 1309.00 852.00" fill="none" stroke="#501A10" stroke-width="3.40" />
+  <path d="M 932.00 855.00 L 911.00 880.00" fill="none" stroke="#EC761E" stroke-width="3.40" />
+  <path d="M 1033.00 861.00 L 1025.00 869.00" fill="none" stroke="#E7912A" stroke-width="3.40" />
+  <path d="M 1245.00 863.00 L 1258.00 882.00 L 1238.00 867.00" fill="none" stroke="#A7471D" stroke-width="3.40" />
+  <path d="M 1040.00 864.00 L 997.00 936.00 L 1035.00 869.00" fill="none" stroke="#D26D1D" stroke-width="3.40" />
+  <path d="M 3962.00 867.00 L 3976.00 874.00 L 3964.00 891.00 L 3960.00 870.00" fill="none" stroke="#43170E" stroke-width="3.40" />
+  <path d="M 1630.00 868.00 L 1657.00 926.00 L 1631.00 868.00" fill="none" stroke="#7C2A14" stroke-width="3.40" />
+  <path d="M 1003.00 869.00 L 972.00 906.00" fill="none" stroke="#B74A12" stroke-width="3.40" />
+  <path d="M 1660.00 869.00 L 1681.00 912.00 L 1660.00 870.00" fill="none" stroke="#A0471B" stroke-width="3.40" />
+  <path d="M 1051.00 870.00 L 1019.00 905.00" fill="none" stroke="#86370E" stroke-width="3.40" />
+  <path d="M 1020.00 873.00 L 1005.00 891.00" fill="none" stroke="#E48A2A" stroke-width="3.40" />
+  <path d="M 1215.00 876.00 L 1231.00 886.00 L 1211.00 878.00" fill="none" stroke="#8E3B19" stroke-width="3.40" />
+  <path d="M 1477.00 877.00 L 1545.00 1005.00 L 1483.00 884.00" fill="none" stroke="#70422B" stroke-width="3.40" />
+  <path d="M 1355.00 880.00 L 1358.00 898.00 L 1351.00 881.00" fill="none" stroke="#561D0A" stroke-width="3.40" />
+  <path d="M 1684.00 881.00 L 1704.00 902.00 L 1685.00 881.00" fill="none" stroke="#A54A1E" stroke-width="3.40" />
+  <path d="M 3878.00 884.00 L 3696.00 1179.00 L 3658.00 1212.00 L 3868.00 898.00" fill="none" stroke="#8F4C21" stroke-width="3.40" />
+  <path d="M 1303.00 886.00 L 1318.00 895.00 L 1290.00 895.00" fill="none" stroke="#6D2413" stroke-width="3.40" />
+  <path d="M 1224.00 887.00 L 1221.00 902.00" fill="none" stroke="#A8461F" stroke-width="3.40" />
+  <path d="M 1587.00 887.00 L 1599.00 912.00 L 1583.00 888.00" fill="none" stroke="#49190D" stroke-width="3.40" />
+  <path d="M 3831.00 888.00 L 3823.00 897.00" fill="none" stroke="#955525" stroke-width="3.40" />
+  <path d="M 1210.00 889.00 L 1217.00 906.00 L 1211.00 889.00" fill="none" stroke="#C05823" stroke-width="3.40" />
+  <path d="M 3961.00 889.00 L 3931.00 977.00 L 3958.00 892.00" fill="none" stroke="#270E07" stroke-width="3.40" />
+  <path d="M 1737.00 890.00 L 1766.00 959.00 L 1736.00 891.00" fill="none" stroke="#974E17" stroke-width="3.40" />
+  <path d="M 1082.00 891.00 L 1100.00 895.00 L 1081.00 892.00" fill="none" stroke="#98391B" stroke-width="3.40" />
+  <path d="M 1713.00 891.00 L 1727.00 902.00 L 1706.00 896.00" fill="none" stroke="#9B431F" stroke-width="3.40" />
+  <path d="M 1759.00 892.00 L 1765.00 900.00" fill="none" stroke="#FFCC67" stroke-width="3.40" />
+  <path d="M 1003.00 896.00 L 996.00 906.00" fill="none" stroke="#B3481E" stroke-width="3.40" />
+  <path d="M 1317.00 897.00 L 1308.00 903.00" fill="none" stroke="#702913" stroke-width="3.40" />
+  <path d="M 1757.00 897.00 L 1783.00 970.00 L 1757.00 898.00" fill="none" stroke="#F1B553" stroke-width="3.40" />
+  <path d="M 1771.00 900.00 L 1802.00 926.00 L 1773.00 900.00" fill="none" stroke="#DD9934" stroke-width="3.40" />
+  <path d="M 994.00 906.00 L 980.00 951.00 L 978.00 924.00" fill="none" stroke="#AD4520" stroke-width="3.40" />
+  <path d="M 1768.00 912.00 L 1796.00 929.00 L 1768.00 913.00" fill="none" stroke="#C16E20" stroke-width="3.40" />
+  <path d="M 1071.00 913.00 L 1062.00 918.00" fill="none" stroke="#A23A1D" stroke-width="3.40" />
+  <path d="M 923.00 914.00 L 905.00 933.00" fill="none" stroke="#CA5623" stroke-width="3.40" />
+  <path d="M 1269.00 917.00 L 1257.00 920.00" fill="none" stroke="#BD5824" stroke-width="3.40" />
+  <path d="M 1393.00 918.00 L 1405.00 929.00 L 1391.00 921.00" fill="none" stroke="#65220F" stroke-width="3.40" />
+  <path d="M 1816.00 924.00 L 1828.00 932.00" fill="none" stroke="#D89233" stroke-width="3.40" />
+  <path d="M 1341.00 928.00 L 1331.00 950.00" fill="none" stroke="#9F461C" stroke-width="3.40" />
+  <path d="M 1389.00 928.00 L 1383.00 944.00" fill="none" stroke="#B55721" stroke-width="3.40" />
+  <path d="M 3270.00 928.00 L 3266.00 1011.00 L 3249.00 1002.00 L 3268.00 930.00" fill="none" stroke="#8B4B1D" stroke-width="3.40" />
+  <path d="M 3262.00 929.00 L 3244.00 995.00 L 3251.00 935.00" fill="none" stroke="#88481C" stroke-width="3.40" />
+  <path d="M 3287.00 929.00 L 3296.00 987.00 L 3284.00 935.00" fill="none" stroke="#935830" stroke-width="3.40" />
+  <path d="M 1380.00 931.00 L 1381.00 941.00" fill="none" stroke="#B2562D" stroke-width="3.40" />
+  <path d="M 3326.00 931.00 L 3313.00 933.00" fill="none" stroke="#58290D" stroke-width="3.40" />
+  <path d="M 1028.00 932.00 L 1034.00 948.00 L 1025.00 933.00" fill="none" stroke="#88321B" stroke-width="3.40" />
+  <path d="M 3848.00 933.00 L 3842.00 943.00" fill="none" stroke="#571D0F" stroke-width="3.40" />
+  <path d="M 814.00 935.00 L 887.00 954.00 L 811.00 937.00" fill="none" stroke="#CE5E1C" stroke-width="3.40" />
+  <path d="M 3806.00 935.00 L 3790.00 966.00 L 3806.00 941.00" fill="none" stroke="#792C1A" stroke-width="3.40" />
+  <path d="M 3326.00 937.00 L 3312.00 965.00 L 3312.00 942.00" fill="none" stroke="#662E09" stroke-width="3.40" />
+  <path d="M 3804.00 937.00 L 3797.00 946.00" fill="none" stroke="#6D2818" stroke-width="3.40" />
+  <path d="M 1067.00 941.00 L 1089.00 966.00 L 1050.00 944.00" fill="none" stroke="#953C1C" stroke-width="3.40" />
+  <path d="M 1243.00 946.00 L 1251.00 984.00 L 1249.00 950.00 L 1233.00 953.00" fill="none" stroke="#AC5528" stroke-width="3.40" />
+  <path d="M 3317.00 946.00 L 3328.00 953.00" fill="none" stroke="#A25D22" stroke-width="3.40" />
+  <path d="M 3663.00 946.00 L 3651.00 969.00 L 3674.00 985.00 L 3652.00 956.00" fill="none" stroke="#6B3A1A" stroke-width="3.40" />
+  <path d="M 1069.00 950.00 L 1074.00 961.00" fill="none" stroke="#DB7533" stroke-width="3.40" />
+  <path d="M 3324.00 951.00 L 3322.00 961.00" fill="none" stroke="#A4612C" stroke-width="3.40" />
+  <path d="M 1012.00 956.00 L 1035.00 986.00 L 1011.00 957.00" fill="none" stroke="#7B2818" stroke-width="3.40" />
+  <path d="M 1245.00 956.00 L 1249.00 982.00 L 1237.00 959.00" fill="none" stroke="#E98E47" stroke-width="3.40" />
+  <path d="M 1123.00 957.00 L 1137.00 973.00 L 1119.00 961.00" fill="none" stroke="#A74C20" stroke-width="3.40" />
+  <path d="M 1182.00 960.00 L 1196.00 990.00 L 1180.00 966.00" fill="none" stroke="#89381B" stroke-width="3.40" />
+  <path d="M 1861.00 961.00 L 1889.00 1030.00 L 1859.00 963.00" fill="none" stroke="#EEA642" stroke-width="3.40" />
+  <path d="M 1864.00 961.00 L 1899.00 1052.00 L 1866.00 962.00" fill="none" stroke="#E5A740" stroke-width="3.40" />
+  <path d="M 3798.00 963.00 L 3684.00 1093.00 L 3667.00 1086.00 L 3704.00 1001.00 L 3678.00 1047.00 L 3666.00 1088.00 L 3698.00 1080.00 L 3797.00 965.00" fill="none" stroke="#5D1F0E" stroke-width="3.40" />
+  <path d="M 3426.00 964.00 L 3423.00 998.00 L 3425.00 965.00" fill="none" stroke="#693319" stroke-width="3.40" />
+  <path d="M 1175.00 965.00 L 1193.00 988.00 L 1176.00 965.00" fill="none" stroke="#78260E" stroke-width="3.40" />
+  <path d="M 1407.00 967.00 L 1394.00 979.00" fill="none" stroke="#682313" stroke-width="3.40" />
+  <path d="M 800.00 968.00 L 745.00 998.00" fill="none" stroke="#F1A334" stroke-width="3.40" />
+  <path d="M 3284.00 968.00 L 3278.00 1033.00 L 3282.00 973.00" fill="none" stroke="#C28238" stroke-width="3.40" />
+  <path d="M 3789.00 968.00 L 3781.00 981.00" fill="none" stroke="#341209" stroke-width="3.40" />
+  <path d="M 876.00 970.00 L 901.00 986.00 L 876.00 971.00" fill="none" stroke="#E68B22" stroke-width="3.40" />
+  <path d="M 1907.00 971.00 L 1979.00 1012.00 L 1907.00 972.00" fill="none" stroke="#F2B14B" stroke-width="3.40" />
+  <path d="M 841.00 972.00 L 852.00 984.00 L 831.00 987.00 L 843.00 975.00" fill="none" stroke="#E99221" stroke-width="3.40" />
+  <path d="M 1344.00 972.00 L 1333.00 1000.00 L 1336.00 977.00" fill="none" stroke="#7F310D" stroke-width="3.40" />
+  <path d="M 987.00 974.00 L 1064.00 1087.00 L 987.00 975.00" fill="none" stroke="#98361D" stroke-width="3.40" />
+  <path d="M 1071.00 974.00 L 1097.00 990.00 L 1055.00 986.00" fill="none" stroke="#8F301A" stroke-width="3.40" />
+  <path d="M 1888.00 974.00 L 1912.00 1004.00 L 1888.00 975.00" fill="none" stroke="#EDAF3E" stroke-width="3.40" />
+  <path d="M 1861.00 975.00 L 1881.00 1017.00 L 1862.00 975.00" fill="none" stroke="#DE8D32" stroke-width="3.40" />
+  <path d="M 796.00 977.00 L 804.00 1004.00 L 793.00 989.00 L 788.00 1011.00 L 795.00 979.00 L 776.00 993.00 L 787.00 1011.00 L 795.00 987.00" fill="none" stroke="#EF9F33" stroke-width="3.40" />
+  <path d="M 1234.00 979.00 L 1242.00 998.00 L 1233.00 981.00" fill="none" stroke="#4A1811" stroke-width="3.40" />
+  <path d="M 3797.00 979.00 L 3757.00 1044.00 L 3796.00 980.00" fill="none" stroke="#6D2914" stroke-width="3.40" />
+  <path d="M 3291.00 981.00 L 3282.00 1054.00 L 3290.00 982.00" fill="none" stroke="#B87C3D" stroke-width="3.40" />
+  <path d="M 3324.00 982.00 L 3318.00 1031.00 L 3322.00 986.00" fill="none" stroke="#A46136" stroke-width="3.40" />
+  <path d="M 1185.00 988.00 L 1199.00 1004.00 L 1186.00 988.00" fill="none" stroke="#47150A" stroke-width="3.40" />
+  <path d="M 956.00 989.00 L 952.00 999.00" fill="none" stroke="#D96B1E" stroke-width="3.40" />
+  <path d="M 3295.00 989.00 L 3294.00 1011.00" fill="none" stroke="#AE7130" stroke-width="3.40" />
+  <path d="M 3892.00 989.00 L 3885.00 1000.00" fill="none" stroke="#5E2315" stroke-width="3.40" />
+  <path d="M 966.00 990.00 L 1008.00 1036.00 L 966.00 993.00" fill="none" stroke="#CD6120" stroke-width="3.40" />
+  <path d="M 1195.00 992.00 L 1229.00 1022.00 L 1195.00 993.00" fill="none" stroke="#6B1E0E" stroke-width="3.40" />
+  <path d="M 868.00 993.00 L 877.00 1013.00 L 869.00 993.00" fill="none" stroke="#C6581D" stroke-width="3.40" />
+  <path d="M 3919.00 993.00 L 3914.00 1011.00 L 3921.00 993.00" fill="none" stroke="#2C150F" stroke-width="3.40" />
+  <path d="M 3368.00 994.00 L 3360.00 1029.00 L 3367.00 995.00" fill="none" stroke="#7F3E1E" stroke-width="3.40" />
+  <path d="M 1133.00 995.00 L 1116.00 1004.00" fill="none" stroke="#772B14" stroke-width="3.40" />
+  <path d="M 1928.00 997.00 L 1961.00 1025.00 L 1928.00 998.00" fill="none" stroke="#E9AC42" stroke-width="3.40" />
+  <path d="M 3720.00 997.00 L 3718.00 1007.00" fill="none" stroke="#250802" stroke-width="3.40" />
+  <path d="M 1304.00 998.00 L 1321.00 1001.00 L 1301.00 1003.00" fill="none" stroke="#612616" stroke-width="3.40" />
+  <path d="M 1042.00 999.00 L 1031.00 1003.00" fill="none" stroke="#9E3C1F" stroke-width="3.40" />
+  <path d="M 1827.00 999.00 L 1827.00 1028.00 L 1825.00 1001.00" fill="none" stroke="#AE5A1A" stroke-width="3.40" />
+  <path d="M 1819.00 1000.00 L 1823.00 1026.00 L 1820.00 1000.00" fill="none" stroke="#A8501E" stroke-width="3.40" />
+  <path d="M 1141.00 1001.00 L 1156.00 1013.00 L 1137.00 1003.00" fill="none" stroke="#BE5E2B" stroke-width="3.40" />
+  <path d="M 1929.00 1004.00 L 1939.00 1013.00" fill="none" stroke="#E4A73C" stroke-width="3.40" />
+  <path d="M 1954.00 1005.00 L 2005.00 1090.00 L 1955.00 1005.00" fill="none" stroke="#F5BC53" stroke-width="3.40" />
+  <path d="M 1374.00 1010.00 L 1366.00 1016.00" fill="none" stroke="#742C16" stroke-width="3.40" />
+  <path d="M 1381.00 1010.00 L 1375.00 1020.00" fill="none" stroke="#B56952" stroke-width="3.40" />
+  <path d="M 3788.00 1011.00 L 3781.00 1020.00" fill="none" stroke="#40140B" stroke-width="3.40" />
+  <path d="M 3644.00 1012.00 L 3599.00 1120.00 L 3640.00 1018.00" fill="none" stroke="#985A29" stroke-width="3.40" />
+  <path d="M 967.00 1014.00 L 986.00 1039.00 L 968.00 1014.00" fill="none" stroke="#BA501C" stroke-width="3.40" />
+  <path d="M 1941.00 1014.00 L 1957.00 1027.00" fill="none" stroke="#E1A135" stroke-width="3.40" />
+  <path d="M 1079.00 1017.00 L 1113.00 1025.00 L 1078.00 1018.00" fill="none" stroke="#872D13" stroke-width="3.40" />
+  <path d="M 1338.00 1017.00 L 1354.00 1024.00 L 1336.00 1021.00" fill="none" stroke="#631B05" stroke-width="3.40" />
+  <path d="M 3009.00 1017.00 L 3012.00 1086.00 L 3011.00 1017.00" fill="none" stroke="#9D5C1C" stroke-width="3.40" />
+  <path d="M 3647.00 1019.00 L 3622.00 1076.00 L 3643.00 1021.00" fill="none" stroke="#9F481D" stroke-width="3.40" />
+  <path d="M 3858.00 1020.00 L 3848.00 1036.00" fill="none" stroke="#853A23" stroke-width="3.40" />
+  <path d="M 3843.00 1021.00 L 3833.00 1038.00" fill="none" stroke="#7E331C" stroke-width="3.40" />
+  <path d="M 3273.00 1022.00 L 3273.00 1034.00" fill="none" stroke="#94551F" stroke-width="3.40" />
+  <path d="M 3885.00 1022.00 L 3878.00 1033.00" fill="none" stroke="#511D12" stroke-width="3.40" />
+  <path d="M 1075.00 1025.00 L 1085.00 1041.00 L 1076.00 1025.00" fill="none" stroke="#96381E" stroke-width="3.40" />
+  <path d="M 1990.00 1025.00 L 2026.00 1111.00 L 1990.00 1028.00" fill="none" stroke="#F7C155" stroke-width="3.40" />
+  <path d="M 1015.00 1026.00 L 1063.00 1097.00 L 1015.00 1028.00" fill="none" stroke="#BE5223" stroke-width="3.40" />
+  <path d="M 2009.00 1026.00 L 2097.00 1068.00 L 2013.00 1027.00" fill="none" stroke="#F4B951" stroke-width="3.40" />
+  <path d="M 1113.00 1031.00 L 1154.00 1052.00 L 1112.00 1032.00" fill="none" stroke="#73250F" stroke-width="3.40" />
+  <path d="M 1987.00 1031.00 L 2018.00 1133.00 L 1984.00 1032.00" fill="none" stroke="#CD8324" stroke-width="3.40" />
+  <path d="M 3233.00 1031.00 L 3223.00 1033.00" fill="none" stroke="#A66022" stroke-width="3.40" />
+  <path d="M 3235.00 1031.00 L 3201.00 1136.00 L 3234.00 1033.00" fill="none" stroke="#BE7A3B" stroke-width="3.40" />
+  <path d="M 1447.00 1033.00 L 1434.00 1041.00" fill="none" stroke="#471401" stroke-width="3.40" />
+  <path d="M 3843.00 1033.00 L 3837.00 1043.00" fill="none" stroke="#331108" stroke-width="3.40" />
+  <path d="M 999.00 1034.00 L 1012.00 1047.00" fill="none" stroke="#CD6120" stroke-width="3.40" />
+  <path d="M 700.00 1036.00 L 665.00 1043.00" fill="none" stroke="#DE7718" stroke-width="3.40" />
+  <path d="M 990.00 1036.00 L 1040.00 1106.00 L 990.00 1037.00" fill="none" stroke="#B1451E" stroke-width="3.40" />
+  <path d="M 2016.00 1036.00 L 2027.00 1052.00" fill="none" stroke="#FCC052" stroke-width="3.40" />
+  <path d="M 3997.00 1037.00 L 3953.00 1150.00 L 3992.00 1045.00" fill="none" stroke="#34160C" stroke-width="3.40" />
+  <path d="M 1000.00 1038.00 L 1040.00 1097.00 L 998.00 1039.00" fill="none" stroke="#B54A16" stroke-width="3.40" />
+  <path d="M 3861.00 1039.00 L 3835.00 1066.00" fill="none" stroke="#44180D" stroke-width="3.40" />
+  <path d="M 1903.00 1040.00 L 1914.00 1062.00 L 1904.00 1040.00" fill="none" stroke="#A54E23" stroke-width="3.40" />
+  <path d="M 2017.00 1046.00 L 2016.00 1058.00" fill="none" stroke="#D38020" stroke-width="3.40" />
+  <path d="M 2785.00 1046.00 L 2798.00 1057.00 L 2783.00 1055.00" fill="none" stroke="#C67B2A" stroke-width="3.40" />
+  <path d="M 3424.00 1046.00 L 3412.00 1101.00 L 3423.00 1047.00" fill="none" stroke="#98571F" stroke-width="3.40" />
+  <path d="M 3819.00 1048.00 L 3807.00 1058.00" fill="none" stroke="#581F0E" stroke-width="3.40" />
+  <path d="M 3838.00 1048.00 L 3829.00 1057.00" fill="none" stroke="#270600" stroke-width="3.40" />
+  <path d="M 2652.00 1052.00 L 2704.00 1086.00 L 2653.00 1052.00" fill="none" stroke="#C77F2B" stroke-width="3.40" />
+  <path d="M 3238.00 1052.00 L 3237.00 1082.00 L 3239.00 1052.00" fill="none" stroke="#B06F2F" stroke-width="3.40" />
+  <path d="M 2049.00 1053.00 L 2082.00 1122.00 L 2050.00 1053.00" fill="none" stroke="#DB9A34" stroke-width="3.40" />
+  <path d="M 3309.00 1055.00 L 3304.00 1090.00 L 3307.00 1056.00" fill="none" stroke="#915521" stroke-width="3.40" />
+  <path d="M 3880.00 1056.00 L 3872.00 1067.00" fill="none" stroke="#523225" stroke-width="3.40" />
+  <path d="M 1025.00 1058.00 L 1043.00 1088.00 L 1026.00 1058.00" fill="none" stroke="#A23B18" stroke-width="3.40" />
+  <path d="M 3543.00 1060.00 L 3525.00 1073.00 L 3546.00 1065.00" fill="none" stroke="#A6692A" stroke-width="3.40" />
+  <path d="M 2081.00 1066.00 L 2120.00 1165.00 L 2082.00 1066.00" fill="none" stroke="#FDCC63" stroke-width="3.40" />
+  <path d="M 3818.00 1067.00 L 3775.00 1133.00 L 3806.00 1078.00" fill="none" stroke="#2D0500" stroke-width="3.40" />
+  <path d="M 2081.00 1071.00 L 2090.00 1107.00 L 2080.00 1075.00" fill="none" stroke="#C27E2B" stroke-width="3.40" />
+  <path d="M 1658.00 1072.00 L 1638.00 1082.00" fill="none" stroke="#6C2312" stroke-width="3.40" />
+  <path d="M 2117.00 1072.00 L 2213.00 1109.00 L 2120.00 1072.00" fill="none" stroke="#E99E39" stroke-width="3.40" />
+  <path d="M 3769.00 1075.00 L 3697.00 1190.00 L 3764.00 1080.00" fill="none" stroke="#6B2519" stroke-width="3.40" />
+  <path d="M 3838.00 1079.00 L 3746.00 1243.00 L 3736.00 1225.00 L 3746.00 1241.00 L 3823.00 1098.00" fill="none" stroke="#552318" stroke-width="3.40" />
+  <path d="M 1843.00 1080.00 L 1824.00 1089.00" fill="none" stroke="#9B461F" stroke-width="3.40" />
+  <path d="M 1670.00 1081.00 L 1597.00 1133.00" fill="none" stroke="#7C2E18" stroke-width="3.40" />
+  <path d="M 3742.00 1081.00 L 3735.00 1089.00" fill="none" stroke="#8A3B1D" stroke-width="3.40" />
+  <path d="M 2190.00 1082.00 L 2226.00 1103.00 L 2187.00 1087.00" fill="none" stroke="#C37125" stroke-width="3.40" />
+  <path d="M 2984.00 1082.00 L 2994.00 1103.00 L 2984.00 1083.00 L 2965.00 1100.00 L 2992.00 1086.00" fill="none" stroke="#A96327" stroke-width="3.40" />
+  <path d="M 3707.00 1083.00 L 3668.00 1160.00 L 3695.00 1096.00" fill="none" stroke="#8D3416" stroke-width="3.40" />
+  <path d="M 1653.00 1084.00 L 1640.00 1094.00" fill="none" stroke="#823120" stroke-width="3.40" />
+  <path d="M 1012.00 1085.00 L 1049.00 1134.00 L 1013.00 1085.00" fill="none" stroke="#762315" stroke-width="3.40" />
+  <path d="M 2118.00 1085.00 L 2128.00 1097.00" fill="none" stroke="#DE9C48" stroke-width="3.40" />
+  <path d="M 2139.00 1088.00 L 2148.00 1095.00" fill="none" stroke="#FEBE5C" stroke-width="3.40" />
+  <path d="M 3821.00 1088.00 L 3814.00 1098.00" fill="none" stroke="#8D3D22" stroke-width="3.40" />
+  <path d="M 2139.00 1091.00 L 2141.00 1104.00" fill="none" stroke="#AF6E1E" stroke-width="3.40" />
+  <path d="M 2099.00 1092.00 L 2111.00 1197.00 L 2100.00 1092.00" fill="none" stroke="#964728" stroke-width="3.40" />
+  <path d="M 3729.00 1092.00 L 3674.00 1181.00 L 3728.00 1096.00" fill="none" stroke="#8A3719" stroke-width="3.40" />
+  <path d="M 1912.00 1095.00 L 1925.00 1117.00 L 1940.00 1095.00 L 1924.00 1117.00 L 1913.00 1095.00" fill="none" stroke="#933F1A" stroke-width="3.40" />
+  <path d="M 1014.00 1097.00 L 1038.00 1127.00 L 1015.00 1097.00" fill="none" stroke="#7D2517" stroke-width="3.40" />
+  <path d="M 2412.00 1097.00 L 2392.00 1109.00" fill="none" stroke="#CD832C" stroke-width="3.40" />
+  <path d="M 2040.00 1101.00 L 2032.00 1111.00" fill="none" stroke="#BA6D25" stroke-width="3.40" />
+  <path d="M 3826.00 1102.00 L 3823.00 1112.00" fill="none" stroke="#753722" stroke-width="3.40" />
+  <path d="M 3217.00 1103.00 L 3204.00 1141.00 L 3215.00 1104.00" fill="none" stroke="#A26429" stroke-width="3.40" />
+  <path d="M 2147.00 1104.00 L 2163.00 1171.00 L 2147.00 1107.00" fill="none" stroke="#82421C" stroke-width="3.40" />
+  <path d="M 2219.00 1106.00 L 2385.00 1145.00 L 2218.00 1107.00" fill="none" stroke="#DF9A35" stroke-width="3.40" />
+  <path d="M 2089.00 1109.00 L 2096.00 1148.00 L 2086.00 1119.00" fill="none" stroke="#7B3710" stroke-width="3.40" />
+  <path d="M 2464.00 1109.00 L 2488.00 1120.00 L 2458.00 1111.00 L 2439.00 1136.00 L 2450.00 1115.00" fill="none" stroke="#D28B31" stroke-width="3.40" />
+  <path d="M 3977.00 1110.00 L 3927.00 1240.00 L 3967.00 1121.00" fill="none" stroke="#3C130D" stroke-width="3.40" />
+  <path d="M 2220.00 1116.00 L 2242.00 1183.00 L 2223.00 1121.00" fill="none" stroke="#EBAE51" stroke-width="3.40" />
+  <path d="M 3773.00 1117.00 L 3760.00 1170.00 L 3772.00 1118.00" fill="none" stroke="#9D481F" stroke-width="3.40" />
+  <path d="M 3841.00 1117.00 L 3801.00 1175.00 L 3841.00 1119.00" fill="none" stroke="#491F11" stroke-width="3.40" />
+  <path d="M 1222.00 1118.00 L 1228.00 1142.00 L 1235.00 1118.00 L 1212.00 1122.00" fill="none" stroke="#8B3119" stroke-width="3.40" />
+  <path d="M 2154.00 1120.00 L 2166.00 1182.00 L 2155.00 1120.00" fill="none" stroke="#823C23" stroke-width="3.40" />
+  <path d="M 2023.00 1121.00 L 2027.00 1148.00 L 2024.00 1121.00" fill="none" stroke="#8F4424" stroke-width="3.40" />
+  <path d="M 3595.00 1122.00 L 3567.00 1148.00" fill="none" stroke="#C88C46" stroke-width="3.40" />
+  <path d="M 3754.00 1123.00 L 3748.00 1132.00" fill="none" stroke="#602515" stroke-width="3.40" />
+  <path d="M 2230.00 1125.00 L 2246.00 1187.00 L 2231.00 1125.00" fill="none" stroke="#B47E34" stroke-width="3.40" />
+  <path d="M 2167.00 1127.00 L 2174.00 1187.00 L 2168.00 1127.00" fill="none" stroke="#8C4412" stroke-width="3.40" />
+  <path d="M 3787.00 1128.00 L 3778.00 1138.00" fill="none" stroke="#873A20" stroke-width="3.40" />
+  <path d="M 3218.00 1130.00 L 3271.00 1213.00 L 3263.00 1236.00 L 3268.00 1205.00 L 3218.00 1133.00" fill="none" stroke="#AA6927" stroke-width="3.40" />
+  <path d="M 3602.00 1134.00 L 3548.00 1242.00 L 3601.00 1137.00" fill="none" stroke="#903A17" stroke-width="3.40" />
+  <path d="M 3217.00 1135.00 L 3190.00 1189.00 L 3216.00 1136.00" fill="none" stroke="#BA7A32" stroke-width="3.40" />
+  <path d="M 735.00 1136.00 L 762.00 1149.00 L 731.00 1137.00 L 710.00 1156.00 L 743.00 1142.00" fill="none" stroke="#C6571F" stroke-width="3.40" />
+  <path d="M 2283.00 1136.00 L 2308.00 1195.00 L 2285.00 1138.00" fill="none" stroke="#F8BF65" stroke-width="3.40" />
+  <path d="M 2296.00 1138.00 L 2312.00 1194.00 L 2294.00 1141.00" fill="none" stroke="#B37626" stroke-width="3.40" />
+  <path d="M 3584.00 1138.00 L 3563.00 1186.00 L 3581.00 1141.00" fill="none" stroke="#813110" stroke-width="3.40" />
+  <path d="M 3615.00 1138.00 L 3580.00 1205.00 L 3616.00 1138.00" fill="none" stroke="#B3631E" stroke-width="3.40" />
+  <path d="M 3623.00 1139.00 L 3603.00 1178.00 L 3624.00 1139.00" fill="none" stroke="#BB6B24" stroke-width="3.40" />
+  <path d="M 3751.00 1139.00 L 3714.00 1219.00 L 3750.00 1140.00" fill="none" stroke="#722710" stroke-width="3.40" />
+  <path d="M 3038.00 1141.00 L 3056.00 1169.00 L 3038.00 1143.00" fill="none" stroke="#C58032" stroke-width="3.40" />
+  <path d="M 3743.00 1142.00 L 3727.00 1155.00" fill="none" stroke="#7F331B" stroke-width="3.40" />
+  <path d="M 2171.00 1144.00 L 2177.00 1175.00 L 2170.00 1145.00" fill="none" stroke="#853B0E" stroke-width="3.40" />
+  <path d="M 2333.00 1146.00 L 2360.00 1214.00 L 2339.00 1153.00" fill="none" stroke="#C69143" stroke-width="3.40" />
+  <path d="M 3782.00 1147.00 L 3775.00 1155.00" fill="none" stroke="#9C501E" stroke-width="3.40" />
+  <path d="M 2342.00 1149.00 L 2359.00 1198.00 L 2343.00 1149.00" fill="none" stroke="#D8A248" stroke-width="3.40" />
+  <path d="M 3565.00 1149.00 L 3548.00 1164.00" fill="none" stroke="#B47643" stroke-width="3.40" />
+  <path d="M 741.00 1151.00 L 815.00 1178.00 L 843.00 1168.00 L 745.00 1151.00" fill="none" stroke="#D2681C" stroke-width="3.40" />
+  <path d="M 3583.00 1151.00 L 3520.00 1289.00 L 3582.00 1152.00" fill="none" stroke="#934014" stroke-width="3.40" />
+  <path d="M 3739.00 1154.00 L 3660.00 1321.00 L 3735.00 1158.00" fill="none" stroke="#9B4A1D" stroke-width="3.40" />
+  <path d="M 2416.00 1159.00 L 2430.00 1194.00 L 2415.00 1160.00" fill="none" stroke="#8A4100" stroke-width="3.40" />
+  <path d="M 889.00 1163.00 L 969.00 1197.00 L 887.00 1167.00" fill="none" stroke="#B24B1E" stroke-width="3.40" />
+  <path d="M 3560.00 1164.00 L 3549.00 1176.00" fill="none" stroke="#9C481C" stroke-width="3.40" />
+  <path d="M 2535.00 1165.00 L 2558.00 1186.00 L 2540.00 1166.00 L 2532.00 1186.00 L 2534.00 1167.00" fill="none" stroke="#FACC6C" stroke-width="3.40" />
+  <path d="M 2554.00 1167.00 L 2578.00 1193.00 L 2554.00 1170.00" fill="none" stroke="#FACF71" stroke-width="3.40" />
+  <path d="M 3539.00 1169.00 L 3495.00 1245.00 L 3531.00 1175.00" fill="none" stroke="#C27D30" stroke-width="3.40" />
+  <path d="M 889.00 1170.00 L 880.00 1179.00" fill="none" stroke="#D56A1C" stroke-width="3.40" />
+  <path d="M 2504.00 1170.00 L 2552.00 1216.00 L 2504.00 1172.00" fill="none" stroke="#C6862F" stroke-width="3.40" />
+  <path d="M 2626.00 1174.00 L 2647.00 1227.00 L 2625.00 1181.00" fill="none" stroke="#F7C45B" stroke-width="3.40" />
+  <path d="M 751.00 1175.00 L 764.00 1184.00 L 748.00 1183.00" fill="none" stroke="#E17723" stroke-width="3.40" />
+  <path d="M 2614.00 1175.00 L 2643.00 1234.00 L 2614.00 1176.00" fill="none" stroke="#F7C45B" stroke-width="3.40" />
+  <path d="M 3656.00 1175.00 L 3603.00 1281.00 L 3648.00 1185.00" fill="none" stroke="#B15D1D" stroke-width="3.40" />
+  <path d="M 3621.00 1178.00 L 3577.00 1279.00 L 3618.00 1181.00" fill="none" stroke="#A7511E" stroke-width="3.40" />
+  <path d="M 1901.00 1179.00 L 1889.00 1185.00" fill="none" stroke="#85351A" stroke-width="3.40" />
+  <path d="M 1343.00 1183.00 L 1330.00 1202.00" fill="none" stroke="#9C3E1C" stroke-width="3.40" />
+  <path d="M 869.00 1187.00 L 916.00 1191.00 L 868.00 1188.00" fill="none" stroke="#E48720" stroke-width="3.40" />
+  <path d="M 3510.00 1188.00 L 3499.00 1200.00" fill="none" stroke="#C87E29" stroke-width="3.40" />
+  <path d="M 3561.00 1189.00 L 3547.00 1207.00" fill="none" stroke="#B05D2B" stroke-width="3.40" />
+  <path d="M 2699.00 1192.00 L 2718.00 1194.00 L 2699.00 1193.00" fill="none" stroke="#C98022" stroke-width="3.40" />
+  <path d="M 2748.00 1192.00 L 2767.00 1228.00 L 2748.00 1193.00" fill="none" stroke="#FBC160" stroke-width="3.40" />
+  <path d="M 3510.00 1194.00 L 3496.00 1212.00" fill="none" stroke="#D0862D" stroke-width="3.40" />
+  <path d="M 3632.00 1194.00 L 3625.00 1202.00" fill="none" stroke="#9C481C" stroke-width="3.40" />
+  <path d="M 3686.00 1195.00 L 3676.00 1204.00" fill="none" stroke="#BF7722" stroke-width="3.40" />
+  <path d="M 3701.00 1195.00 L 3636.00 1292.00 L 3696.00 1200.00" fill="none" stroke="#8F3C1E" stroke-width="3.40" />
+  <path d="M 2679.00 1197.00 L 2753.00 1231.00 L 2679.00 1201.00" fill="none" stroke="#D48E2C" stroke-width="3.40" />
+  <path d="M 2764.00 1197.00 L 2812.00 1302.00 L 2766.00 1200.00" fill="none" stroke="#C58A3C" stroke-width="3.40" />
+  <path d="M 3513.00 1199.00 L 3486.00 1251.00 L 3512.00 1200.00" fill="none" stroke="#C67D21" stroke-width="3.40" />
+  <path d="M 2747.00 1201.00 L 2767.00 1248.00 L 2749.00 1201.00" fill="none" stroke="#93501C" stroke-width="3.40" />
+  <path d="M 2778.00 1201.00 L 2797.00 1254.00 L 2776.00 1202.00" fill="none" stroke="#A56211" stroke-width="3.40" />
+  <path d="M 2671.00 1204.00 L 2652.00 1213.00" fill="none" stroke="#B66C21" stroke-width="3.40" />
+  <path d="M 2761.00 1204.00 L 2778.00 1231.00 L 2761.00 1206.00" fill="none" stroke="#773711" stroke-width="3.40" />
+  <path d="M 1610.00 1205.00 L 1627.00 1221.00 L 1599.00 1266.00 L 1623.00 1216.00 L 1608.00 1207.00" fill="none" stroke="#9D411C" stroke-width="3.40" />
+  <path d="M 3674.00 1205.00 L 3665.00 1217.00" fill="none" stroke="#C07621" stroke-width="3.40" />
+  <path d="M 2875.00 1206.00 L 2891.00 1224.00 L 2876.00 1206.00" fill="none" stroke="#FCCC5E" stroke-width="3.40" />
+  <path d="M 2896.00 1207.00 L 2920.00 1247.00 L 2898.00 1208.00" fill="none" stroke="#FDC459" stroke-width="3.40" />
+  <path d="M 3682.00 1207.00 L 3638.00 1276.00 L 3674.00 1214.00" fill="none" stroke="#B66E1C" stroke-width="3.40" />
+  <path d="M 2928.00 1210.00 L 3008.00 1220.00 L 2926.00 1211.00" fill="none" stroke="#E7A946" stroke-width="3.40" />
+  <path d="M 3491.00 1211.00 L 3483.00 1221.00" fill="none" stroke="#CD8428" stroke-width="3.40" />
+  <path d="M 3777.00 1211.00 L 3768.00 1221.00" fill="none" stroke="#703B1C" stroke-width="3.40" />
+  <path d="M 2627.00 1212.00 L 2635.00 1235.00 L 2629.00 1213.00" fill="none" stroke="#944A1B" stroke-width="3.40" />
+  <path d="M 2878.00 1212.00 L 2907.00 1245.00 L 2877.00 1213.00" fill="none" stroke="#D99A33" stroke-width="3.40" />
+  <path d="M 2895.00 1213.00 L 2925.00 1275.00 L 2896.00 1213.00" fill="none" stroke="#E69F43" stroke-width="3.40" />
+  <path d="M 2792.00 1214.00 L 2878.00 1238.00 L 2796.00 1216.00" fill="none" stroke="#D28638" stroke-width="3.40" />
+  <path d="M 853.00 1215.00 L 864.00 1231.00 L 852.00 1218.00" fill="none" stroke="#D76D21" stroke-width="3.40" />
+  <path d="M 887.00 1215.00 L 890.00 1232.00" fill="none" stroke="#F5B547" stroke-width="3.40" />
+  <path d="M 2858.00 1215.00 L 2873.00 1222.00 L 2857.00 1216.00" fill="none" stroke="#E8A645" stroke-width="3.40" />
+  <path d="M 2924.00 1216.00 L 3008.00 1330.00 L 2979.00 1286.00 L 2992.00 1324.00 L 2972.00 1323.00 L 2948.00 1272.00 L 2959.00 1332.00 L 2968.00 1283.00 L 2994.00 1312.00 L 2931.00 1223.00" fill="none" stroke="#F2B34A" stroke-width="3.40" />
+  <path d="M 2565.00 1221.00 L 2606.00 1254.00 L 2565.00 1222.00" fill="none" stroke="#C4842C" stroke-width="3.40" />
+  <path d="M 2924.00 1221.00 L 2942.00 1269.00 L 2927.00 1222.00" fill="none" stroke="#EAB74C" stroke-width="3.40" />
+  <path d="M 2942.00 1223.00 L 2998.00 1247.00 L 2942.00 1224.00" fill="none" stroke="#D9983A" stroke-width="3.40" />
+  <path d="M 2914.00 1224.00 L 2932.00 1272.00 L 2915.00 1224.00" fill="none" stroke="#BC732F" stroke-width="3.40" />
+  <path d="M 3450.00 1225.00 L 3415.00 1282.00 L 3449.00 1231.00" fill="none" stroke="#CD8F2C" stroke-width="3.40" />
+  <path d="M 3439.00 1226.00 L 3426.00 1246.00" fill="none" stroke="#D79736" stroke-width="3.40" />
+  <path d="M 3479.00 1227.00 L 3465.00 1246.00" fill="none" stroke="#D2942F" stroke-width="3.40" />
+  <path d="M 948.00 1228.00 L 946.00 1246.00 L 931.00 1230.00 L 947.00 1237.00" fill="none" stroke="#F1A93D" stroke-width="3.40" />
+  <path d="M 2797.00 1229.00 L 2814.00 1274.00 L 2796.00 1230.00" fill="none" stroke="#D79735" stroke-width="3.40" />
+  <path d="M 1100.00 1230.00 L 1182.00 1261.00 L 1097.00 1233.00" fill="none" stroke="#BB5222" stroke-width="3.40" />
+  <path d="M 3535.00 1232.00 L 3516.00 1260.00" fill="none" stroke="#B66A1F" stroke-width="3.40" />
+  <path d="M 3070.00 1233.00 L 3109.00 1308.00 L 3072.00 1234.00" fill="none" stroke="#EBB354" stroke-width="3.40" />
+  <path d="M 2641.00 1236.00 L 2662.00 1290.00 L 2641.00 1237.00" fill="none" stroke="#975420" stroke-width="3.40" />
+  <path d="M 1095.00 1238.00 L 1070.00 1261.00 L 1095.00 1241.00" fill="none" stroke="#B8501B" stroke-width="3.40" />
+  <path d="M 3099.00 1238.00 L 3258.00 1275.00 L 3103.00 1238.00" fill="none" stroke="#ECB852" stroke-width="3.40" />
+  <path d="M 3086.00 1246.00 L 3105.00 1291.00 L 3087.00 1246.00" fill="none" stroke="#EEB953" stroke-width="3.40" />
+  <path d="M 1530.00 1249.00 L 1521.00 1254.00" fill="none" stroke="#B05020" stroke-width="3.40" />
+  <path d="M 3095.00 1253.00 L 3118.00 1253.00 L 3095.00 1254.00" fill="none" stroke="#BA762F" stroke-width="3.40" />
+  <path d="M 1200.00 1254.00 L 1250.00 1278.00 L 1199.00 1255.00" fill="none" stroke="#AA491F" stroke-width="3.40" />
+  <path d="M 2852.00 1258.00 L 2850.00 1277.00 L 2846.00 1259.00" fill="none" stroke="#EEC881" stroke-width="3.40" />
+  <path d="M 3534.00 1258.00 L 3522.00 1274.00" fill="none" stroke="#BB7A2A" stroke-width="3.40" />
+  <path d="M 2861.00 1259.00 L 2878.00 1274.00 L 2861.00 1266.00" fill="none" stroke="#E8C07B" stroke-width="3.40" />
+  <path d="M 3484.00 1264.00 L 3456.00 1315.00 L 3482.00 1265.00" fill="none" stroke="#BD782A" stroke-width="3.40" />
+  <path d="M 3061.00 1269.00 L 3085.00 1280.00 L 3060.00 1270.00" fill="none" stroke="#A26627" stroke-width="3.40" />
+  <path d="M 3163.00 1269.00 L 3192.00 1291.00 L 3164.00 1269.00" fill="none" stroke="#B97628" stroke-width="3.40" />
+  <path d="M 2816.00 1270.00 L 2836.00 1287.00 L 2824.00 1276.00 L 2826.00 1309.00 L 2815.00 1271.00" fill="none" stroke="#AF6E1E" stroke-width="3.40" />
+  <path d="M 3088.00 1278.00 L 3091.00 1309.00 L 3093.00 1285.00" fill="none" stroke="#97591C" stroke-width="3.40" />
+  <path d="M 2753.00 1279.00 L 2738.00 1281.00" fill="none" stroke="#8B461F" stroke-width="3.40" />
+  <path d="M 1309.00 1280.00 L 1345.00 1312.00 L 1311.00 1311.00 L 1305.00 1281.00" fill="none" stroke="#C8661F" stroke-width="3.40" />
+  <path d="M 3197.00 1280.00 L 3228.00 1356.00 L 3193.00 1282.00" fill="none" stroke="#773D17" stroke-width="3.40" />
+  <path d="M 3110.00 1281.00 L 3126.00 1299.00 L 3110.00 1284.00" fill="none" stroke="#A06022" stroke-width="3.40" />
+  <path d="M 3253.00 1281.00 L 3294.00 1371.00 L 3265.00 1293.00" fill="none" stroke="#E7AC52" stroke-width="3.40" />
+  <path d="M 3267.00 1282.00 L 3304.00 1342.00 L 3264.00 1284.00" fill="none" stroke="#E6AF4A" stroke-width="3.40" />
+  <path d="M 1199.00 1288.00 L 1179.00 1305.00 L 1199.00 1291.00" fill="none" stroke="#D47420" stroke-width="3.40" />
+  <path d="M 3249.00 1291.00 L 3271.00 1336.00 L 3250.00 1291.00" fill="none" stroke="#975B27" stroke-width="3.40" />
+  <path d="M 3289.00 1293.00 L 3301.00 1310.00 L 3290.00 1293.00" fill="none" stroke="#C98B34" stroke-width="3.40" />
+  <path d="M 3302.00 1294.00 L 3308.00 1310.00 L 3303.00 1294.00" fill="none" stroke="#D8A242" stroke-width="3.40" />
+  <path d="M 1131.00 1297.00 L 1119.00 1315.00 L 1101.00 1300.00 L 1129.00 1299.00" fill="none" stroke="#D27124" stroke-width="3.40" />
+  <path d="M 2071.00 1301.00 L 2061.00 1305.00" fill="none" stroke="#782D16" stroke-width="3.40" />
+  <path d="M 3133.00 1304.00 L 3151.00 1316.00 L 3132.00 1305.00" fill="none" stroke="#BB812F" stroke-width="3.40" />
+  <path d="M 3193.00 1309.00 L 3209.00 1343.00 L 3195.00 1309.00" fill="none" stroke="#B37626" stroke-width="3.40" />
+  <path d="M 3351.00 1311.00 L 3355.00 1322.00" fill="none" stroke="#B2742B" stroke-width="3.40" />
+  <path d="M 1215.00 1312.00 L 1369.00 1320.00 L 1172.00 1316.00" fill="none" stroke="#993D18" stroke-width="3.40" />
+  <path d="M 3005.00 1313.00 L 3020.00 1326.00 L 3004.00 1314.00" fill="none" stroke="#854720" stroke-width="3.40" />
+  <path d="M 3106.00 1314.00 L 3125.00 1352.00 L 3107.00 1314.00" fill="none" stroke="#632F17" stroke-width="3.40" />
+  <path d="M 3160.00 1317.00 L 3167.00 1346.00 L 3157.00 1319.00" fill="none" stroke="#C2873B" stroke-width="3.40" />
+  <path d="M 3373.00 1319.00 L 3382.00 1329.00" fill="none" stroke="#DEAA54" stroke-width="3.40" />
+  <path d="M 1170.00 1320.00 L 1179.00 1340.00 L 1167.00 1321.00" fill="none" stroke="#BC5922" stroke-width="3.40" />
+  <path d="M 1178.00 1320.00 L 1208.00 1343.00 L 1178.00 1321.00" fill="none" stroke="#C35C22" stroke-width="3.40" />
+  <path d="M 3340.00 1320.00 L 3365.00 1356.00 L 3340.00 1321.00" fill="none" stroke="#6E391A" stroke-width="3.40" />
+  <path d="M 3507.00 1322.00 L 3498.00 1330.00" fill="none" stroke="#CA9547" stroke-width="3.40" />
+  <path d="M 3384.00 1325.00 L 3394.00 1336.00" fill="none" stroke="#CD9341" stroke-width="3.40" />
+  <path d="M 3409.00 1328.00 L 3412.00 1345.00" fill="none" stroke="#F1B754" stroke-width="3.40" />
+  <path d="M 3230.00 1329.00 L 3231.00 1340.00" fill="none" stroke="#9A6322" stroke-width="3.40" />
+  <path d="M 3142.00 1330.00 L 3153.00 1350.00 L 3140.00 1331.00" fill="none" stroke="#905125" stroke-width="3.40" />
+  <path d="M 3170.00 1331.00 L 3175.00 1349.00 L 3171.00 1331.00" fill="none" stroke="#864412" stroke-width="3.40" />
+  <path d="M 3377.00 1331.00 L 3405.00 1402.00 L 3379.00 1331.00" fill="none" stroke="#7E4927" stroke-width="3.40" />
+  <path d="M 3213.00 1332.00 L 3221.00 1371.00 L 3215.00 1332.00" fill="none" stroke="#864C26" stroke-width="3.40" />
+  <path d="M 3370.00 1340.00 L 3388.00 1375.00 L 3370.00 1341.00" fill="none" stroke="#6F3D22" stroke-width="3.40" />
+  <path d="M 3156.00 1343.00 L 3182.00 1352.00 L 3156.00 1344.00" fill="none" stroke="#7F3F1B" stroke-width="3.40" />
+  <path d="M 3282.00 1343.00 L 3279.00 1366.00 L 3280.00 1344.00" fill="none" stroke="#8E5124" stroke-width="3.40" />
+  <path d="M 3453.00 1345.00 L 3469.00 1361.00 L 3453.00 1346.00" fill="none" stroke="#F9C363" stroke-width="3.40" />
+  <path d="M 3467.00 1353.00 L 3517.00 1442.00 L 3476.00 1359.00" fill="none" stroke="#E5AF4B" stroke-width="3.40" />
+  <path d="M 1310.00 1354.00 L 1326.00 1361.00 L 1307.00 1357.00" fill="none" stroke="#87351D" stroke-width="3.40" />
+  <path d="M 1401.00 1359.00 L 1419.00 1362.00" fill="none" stroke="#993E1F" stroke-width="3.40" />
+  <path d="M 3479.00 1373.00 L 3490.00 1389.00 L 3480.00 1373.00" fill="none" stroke="#945625" stroke-width="3.40" />
+  <path d="M 3503.00 1386.00 L 3525.00 1449.00 L 3503.00 1387.00" fill="none" stroke="#A6682D" stroke-width="3.40" />
+  <path d="M 3547.00 1388.00 L 3611.00 1444.00 L 3550.00 1388.00" fill="none" stroke="#F1BD5A" stroke-width="3.40" />
+  <path d="M 3493.00 1390.00 L 3500.00 1428.00 L 3492.00 1392.00" fill="none" stroke="#864A18" stroke-width="3.40" />
+  <path d="M 3496.00 1391.00 L 3514.00 1460.00 L 3497.00 1391.00" fill="none" stroke="#A4693D" stroke-width="3.40" />
+  <path d="M 3559.00 1405.00 L 3567.00 1414.00" fill="none" stroke="#D5A044" stroke-width="3.40" />
+  <path d="M 3575.00 1415.00 L 3584.00 1424.00" fill="none" stroke="#F9C861" stroke-width="3.40" />
+  <path d="M 875.00 1442.00 L 1085.00 1494.00 L 1127.00 1526.00 L 1087.00 1494.00 L 875.00 1443.00" fill="none" stroke="#792817" stroke-width="3.40" />
+  <path d="M 3615.00 1456.00 L 3667.00 1548.00 L 3620.00 1462.00" fill="none" stroke="#AD732A" stroke-width="3.40" />
+  <path d="M 2298.00 1468.00 L 2291.00 1478.00" fill="none" stroke="#4C1C0E" stroke-width="3.40" />
+  <path d="M 2258.00 1487.00 L 2375.00 1507.00 L 2262.00 1487.00" fill="none" stroke="#562514" stroke-width="3.40" />
+  <path d="M 1844.00 1507.00 L 1860.00 1512.00 L 1844.00 1510.00" fill="none" stroke="#5D2315" stroke-width="3.40" />
+  <path d="M 3722.00 1511.00 L 3738.00 1524.00 L 3722.00 1512.00" fill="none" stroke="#D59F47" stroke-width="3.40" />
+  <path d="M 3672.00 1519.00 L 3738.00 1532.00 L 3671.00 1520.00" fill="none" stroke="#BE8631" stroke-width="3.40" />
+  <path d="M 1109.00 1521.00 L 1095.00 1527.00" fill="none" stroke="#7D2C19" stroke-width="3.40" />
+  <path d="M 3691.00 1527.00 L 3716.00 1533.00 L 3699.00 1554.00 L 3711.00 1530.00 L 3683.00 1528.00" fill="none" stroke="#CDA44C" stroke-width="3.40" />
+  <path d="M 3826.00 1528.00 L 3858.00 1545.00 L 3824.00 1529.00" fill="none" stroke="#CF9B48" stroke-width="3.40" />
+  <path d="M 2168.00 1546.00 L 2158.00 1552.00" fill="none" stroke="#4E1D0E" stroke-width="3.40" />
+  <path d="M 3667.00 1550.00 L 3667.00 1576.00 L 3668.00 1550.00" fill="none" stroke="#764318" stroke-width="3.40" />
+  <path d="M 899.00 1562.00 L 950.00 1579.00 L 898.00 1563.00" fill="none" stroke="#A8451E" stroke-width="3.40" />
+  <path d="M 1004.00 1577.00 L 1000.00 1589.00" fill="none" stroke="#9F4020" stroke-width="3.40" />
+  <path d="M 664.00 1605.00 L 734.00 1619.00 L 664.00 1606.00" fill="none" stroke="#DC791C" stroke-width="3.40" />
+  <path d="M 811.00 1611.00 L 828.00 1621.00 L 810.00 1612.00" fill="none" stroke="#BA551F" stroke-width="3.40" />
+  <path d="M 829.00 1612.00 L 847.00 1621.00 L 828.00 1613.00" fill="none" stroke="#B55024" stroke-width="3.40" />
+  <path d="M 850.00 1613.00 L 893.00 1616.00 L 851.00 1621.00" fill="none" stroke="#AB4821" stroke-width="3.40" />
+  <path d="M 798.00 1622.00 L 1113.00 1638.00 L 1254.00 1678.00 L 1126.00 1638.00 L 800.00 1622.00" fill="none" stroke="#862C12" stroke-width="3.40" />
+  <path d="M 383.00 1660.00 L 399.00 1671.00 L 382.00 1664.00" fill="none" stroke="#AB4320" stroke-width="3.40" />
+  <path d="M 1348.00 1709.00 L 1470.00 1770.00 L 1648.00 1786.00 L 1470.00 1769.00 L 1353.00 1711.00" fill="none" stroke="#A3471E" stroke-width="3.40" />
+  <path d="M 1358.00 1719.00 L 1369.00 1725.00" fill="none" stroke="#AE531E" stroke-width="3.40" />
+  <path d="M 1106.00 1756.00 L 1311.00 1807.00 L 1106.00 1757.00" fill="none" stroke="#BA551F" stroke-width="3.40" />
+  <path d="M 834.00 1861.00 L 882.00 1918.00 L 938.00 1936.00 L 877.00 1914.00 L 834.00 1862.00" fill="none" stroke="#B55120" stroke-width="3.40" />
+  <path d="M 1145.00 1896.00 L 1162.00 1906.00 L 1145.00 1897.00" fill="none" stroke="#9B411F" stroke-width="3.40" />
+  <path d="M 3834.00 1907.00 L 3744.00 1931.00 L 3833.00 1913.00" fill="none" stroke="#73461D" stroke-width="3.40" />
+  <path d="M 3747.00 1925.00 L 3739.00 1933.00" fill="none" stroke="#6D411C" stroke-width="3.40" />
+  <path d="M 3740.00 1927.00 L 3690.00 1934.00 L 3731.00 1934.00" fill="none" stroke="#72421C" stroke-width="3.40" />
+  <path d="M 2639.00 1941.00 L 2672.00 1948.00 L 2637.00 1942.00 L 2624.00 1971.00 L 2628.00 1949.00" fill="none" stroke="#975521" stroke-width="3.40" />
+  <path d="M 2635.00 1949.00 L 2629.00 1991.00 L 2631.00 1954.00" fill="none" stroke="#522705" stroke-width="3.40" />
+  <path d="M 992.00 1959.00 L 1063.00 1968.00 L 992.00 1960.00" fill="none" stroke="#6D2614" stroke-width="3.40" />
+  <path d="M 1135.00 1964.00 L 1275.00 1990.00 L 1134.00 1965.00" fill="none" stroke="#561B0B" stroke-width="3.40" />
+  <path d="M 2627.00 1985.00 L 2603.00 2006.00" fill="none" stroke="#B36F2E" stroke-width="3.40" />
+  <path d="M 2612.00 2002.00 L 2599.00 2131.00 L 2609.00 2005.00" fill="none" stroke="#331500" stroke-width="3.40" />
+  <path d="M 2680.00 2002.00 L 2744.00 2127.00 L 2684.00 2005.00" fill="none" stroke="#946027" stroke-width="3.40" />
+  <path d="M 2612.00 2070.00 L 2616.00 2128.00 L 2614.00 2071.00" fill="none" stroke="#906342" stroke-width="3.40" />
+  <path d="M 2610.00 2071.00 L 2607.00 2114.00 L 2609.00 2072.00" fill="none" stroke="#784E28" stroke-width="3.40" />
+  <path d="M 2699.00 2072.00 L 2689.00 2083.00" fill="none" stroke="#80401C" stroke-width="3.40" />
+  <path d="M 744.00 2095.00 L 608.00 2111.00 L 751.00 2099.00" fill="none" stroke="#993A1E" stroke-width="3.40" />
+  <path d="M 886.00 2109.00 L 1101.00 2237.00 L 887.00 2109.00" fill="none" stroke="#843318" stroke-width="3.40" />
+  <path d="M 2723.00 2112.00 L 2741.00 2125.00 L 2723.00 2114.00" fill="none" stroke="#9E6025" stroke-width="3.40" />
+  <path d="M 2705.00 2120.00 L 2725.00 2138.00 L 2707.00 2120.00 L 2745.00 2129.00 L 2709.00 2120.00" fill="none" stroke="#6E3311" stroke-width="3.40" />
+  <path d="M 2705.00 2134.00 L 2726.00 2140.00 L 2705.00 2135.00" fill="none" stroke="#74391B" stroke-width="3.40" />
+  <path d="M 2614.00 2138.00 L 2630.00 2241.00 L 2642.00 2146.00 L 2684.00 2195.00 L 2641.00 2146.00 L 2630.00 2240.00 L 2614.00 2139.00" fill="none" stroke="#AF7C3B" stroke-width="3.40" />
+  <path d="M 2707.00 2139.00 L 2725.00 2156.00 L 2709.00 2139.00" fill="none" stroke="#7B3B17" stroke-width="3.40" />
+  <path d="M 2480.00 2143.00 L 2528.00 2159.00 L 2467.00 2151.00" fill="none" stroke="#F1C16F" stroke-width="3.40" />
+  <path d="M 2614.00 2152.00 L 2602.00 2157.00" fill="none" stroke="#C4883F" stroke-width="3.40" />
+  <path d="M 117.00 2154.00 L 133.00 2161.00 L 117.00 2155.00" fill="none" stroke="#9C361D" stroke-width="3.40" />
+  <path d="M 2596.00 2154.00 L 2572.00 2178.00" fill="none" stroke="#CF913A" stroke-width="3.40" />
+  <path d="M 2686.00 2155.00 L 2723.00 2163.00 L 2685.00 2156.00" fill="none" stroke="#976334" stroke-width="3.40" />
+  <path d="M 2478.00 2157.00 L 2482.00 2172.00" fill="none" stroke="#FDE59B" stroke-width="3.40" />
+  <path d="M 1127.00 2158.00 L 1147.00 2167.00 L 1127.00 2159.00" fill="none" stroke="#6C2919" stroke-width="3.40" />
+  <path d="M 2685.00 2158.00 L 2704.00 2218.00 L 2686.00 2158.00" fill="none" stroke="#6F390B" stroke-width="3.40" />
+  <path d="M 192.00 2175.00 L 137.00 2191.00" fill="none" stroke="#751E0B" stroke-width="3.40" />
+  <path d="M 2497.00 2198.00 L 2472.00 2279.00 L 2481.00 2209.00" fill="none" stroke="#B0712E" stroke-width="3.40" />
+  <path d="M 2467.00 2221.00 L 2460.00 2278.00 L 2466.00 2223.00" fill="none" stroke="#6F3B13" stroke-width="3.40" />
+  <path d="M 2479.00 2226.00 L 2472.00 2254.00 L 2477.00 2227.00" fill="none" stroke="#522015" stroke-width="3.40" />
+  <path d="M 1104.00 2242.00 L 1120.00 2282.00 L 1105.00 2242.00" fill="none" stroke="#702414" stroke-width="3.40" />
+  <path d="M 2221.00 2249.00 L 2209.00 2255.00" fill="none" stroke="#C37A2B" stroke-width="3.40" />
+  <path d="M 2579.00 2255.00 L 2489.00 2281.00" fill="none" stroke="#985417" stroke-width="3.40" />
+  <path d="M 2959.00 2263.00 L 2967.00 2279.00 L 2962.00 2263.00" fill="none" stroke="#945627" stroke-width="3.40" />
+  <path d="M 2997.00 2280.00 L 3044.00 2324.00 L 2998.00 2280.00" fill="none" stroke="#995E24" stroke-width="3.40" />
+  <path d="M 1963.00 2292.00 L 1952.00 2299.00" fill="none" stroke="#DE9C3C" stroke-width="3.40" />
+  <path d="M 1925.00 2297.00 L 1914.00 2303.00" fill="none" stroke="#D99736" stroke-width="3.40" />
+  <path d="M 920.00 2306.00 L 941.00 2311.00 L 918.00 2310.00" fill="none" stroke="#8C341C" stroke-width="3.40" />
+  <path d="M 868.00 2307.00 L 858.00 2310.00" fill="none" stroke="#86311C" stroke-width="3.40" />
+  <path d="M 142.00 2308.00 L 326.00 2333.00 L 141.00 2310.00" fill="none" stroke="#D26B1E" stroke-width="3.40" />
+  <path d="M 710.00 2354.00 L 691.00 2361.00" fill="none" stroke="#7E2C17" stroke-width="3.40" />
+  <path d="M 585.00 2355.00 L 571.00 2361.00" fill="none" stroke="#B34F1E" stroke-width="3.40" />
+  <path d="M 879.00 2360.00 L 857.00 2376.00 L 661.00 2366.00 L 872.00 2362.00" fill="none" stroke="#9E441F" stroke-width="3.40" />
+  <path d="M 1099.00 2362.00 L 1001.00 2370.00" fill="none" stroke="#B0501E" stroke-width="3.40" />
+  <path d="M 415.00 2363.00 L 451.00 2372.00 L 416.00 2365.00" fill="none" stroke="#E99C30" stroke-width="3.40" />
+  <path d="M 2510.00 2387.00 L 2502.00 2393.00" fill="none" stroke="#B16B26" stroke-width="3.40" />
+  <path d="M 1833.00 2432.00 L 1821.00 2436.00" fill="none" stroke="#CE892E" stroke-width="3.40" />
+  <path d="M 1242.00 2438.00 L 1227.00 2441.00" fill="none" stroke="#B9621F" stroke-width="3.40" />
+  <path d="M 3560.00 2523.00 L 3572.00 2536.00 L 3558.00 2524.00" fill="none" stroke="#6F3E1E" stroke-width="3.40" />
+  <path d="M 2517.00 2608.00 L 2512.00 2618.00" fill="none" stroke="#B5752B" stroke-width="3.40" />
+  <path d="M 2506.00 2618.00 L 2491.00 2633.00" fill="none" stroke="#A76823" stroke-width="3.40" />
+  <path d="M 2672.00 2687.00 L 2663.00 2692.00" fill="none" stroke="#3D2012" stroke-width="3.40" />
+  <path d="M 2517.00 2718.00 L 2507.00 2724.00" fill="none" stroke="#4C2311" stroke-width="3.40" />
+  <path d="M 2107.00 2758.00 L 2097.00 2765.00" fill="none" stroke="#6D3119" stroke-width="3.40" />
+  <path d="M 1699.00 2785.00 L 1684.00 2789.00" fill="none" stroke="#7F3A1D" stroke-width="3.40" />
+  <path d="M 1375.00 2792.00 L 1370.00 2812.00 L 1376.00 2792.00" fill="none" stroke="#7E311D" stroke-width="3.40" />
+  <path d="M 1379.00 2793.00 L 1395.00 2808.00 L 1379.00 2795.00" fill="none" stroke="#7A2F1A" stroke-width="3.40" />
+  <path d="M 1569.00 2793.00 L 1556.00 2797.00" fill="none" stroke="#7F341D" stroke-width="3.40" />
+  <path d="M 997.00 2800.00 L 974.00 2833.00 L 993.00 2802.00" fill="none" stroke="#7C2E18" stroke-width="3.40" />
+  <path d="M 72.00 2834.00 L 57.00 2837.00" fill="none" stroke="#C75A1F" stroke-width="3.40" />
+  <path d="M 230.00 2863.00 L 206.00 2882.00" fill="none" stroke="#B14C22" stroke-width="3.40" />
+  <path d="M 205.00 2904.00 L 73.00 2931.00" fill="none" stroke="#A84420" stroke-width="3.40" />
+  <path d="M 2982.00 203.00 L 2957.00 294.00 L 3004.00 387.00 L 2959.00 308.00 L 2972.00 218.00" fill="none" stroke="#4D1F0F" stroke-width="3.40" />
+  <path d="M 2969.00 321.00 L 3060.00 394.00 L 2969.00 322.00" fill="none" stroke="#D08F3B" stroke-width="3.40" />
+  <path d="M 3053.00 408.00 L 3094.00 416.00 L 3053.00 409.00" fill="none" stroke="#D79B43" stroke-width="3.40" />
+  <path d="M 3456.00 556.00 L 3470.00 655.00 L 3451.00 561.00" fill="none" stroke="#5F3117" stroke-width="3.40" />
+  <path d="M 3451.00 609.00 L 3483.00 633.00 L 3451.00 610.00" fill="none" stroke="#B77930" stroke-width="3.40" />
+  <path d="M 3555.00 641.00 L 3539.00 656.00" fill="none" stroke="#673117" stroke-width="3.40" />
+  <path d="M 3506.00 650.00 L 3538.00 651.00 L 3506.00 651.00" fill="none" stroke="#995A27" stroke-width="3.40" />
+  <path d="M 1179.00 668.00 L 1123.00 679.00" fill="none" stroke="#F0C459" stroke-width="3.40" />
+  <path d="M 1363.00 678.00 L 1549.00 749.00 L 1863.00 959.00 L 1426.00 699.00" fill="none" stroke="#E18F23" stroke-width="3.40" />
+  <path d="M 1273.00 690.00 L 1519.00 779.00 L 1655.00 1011.00 L 1609.00 882.00 L 1488.00 754.00 L 1206.00 695.00" fill="none" stroke="#ED9E35" stroke-width="3.40" />
+  <path d="M 1293.00 711.00 L 1274.00 714.00" fill="none" stroke="#D68529" stroke-width="3.40" />
+  <path d="M 1168.00 738.00 L 1151.00 745.00" fill="none" stroke="#BB6917" stroke-width="3.40" />
+  <path d="M 1413.00 738.00 L 1577.00 868.00 L 1414.00 738.00" fill="none" stroke="#ECB558" stroke-width="3.40" />
+  <path d="M 1252.00 739.00 L 1358.00 745.00 L 1133.00 765.00" fill="none" stroke="#BF772B" stroke-width="3.40" />
+  <path d="M 1500.00 742.00 L 1618.00 857.00 L 1663.00 984.00 L 1617.00 857.00 L 1500.00 743.00" fill="none" stroke="#F4B653" stroke-width="3.40" />
+  <path d="M 1380.00 749.00 L 1587.00 914.00 L 1390.00 751.00" fill="none" stroke="#EBB459" stroke-width="3.40" />
+  <path d="M 1191.00 754.00 L 969.00 903.00 L 1032.00 835.00" fill="none" stroke="#F2B75B" stroke-width="3.40" />
+  <path d="M 974.00 757.00 L 939.00 791.00" fill="none" stroke="#FBE091" stroke-width="3.40" />
+  <path d="M 1420.00 759.00 L 1436.00 768.00" fill="none" stroke="#BD7529" stroke-width="3.40" />
+  <path d="M 1223.00 771.00 L 1140.00 786.00" fill="none" stroke="#A04016" stroke-width="3.40" />
+  <path d="M 1083.00 784.00 L 1068.00 794.00" fill="none" stroke="#DC8329" stroke-width="3.40" />
+  <path d="M 1368.00 790.00 L 1159.00 806.00 L 1026.00 889.00" fill="none" stroke="#50220A" stroke-width="3.40" />
+  <path d="M 1556.00 793.00 L 1659.00 1000.00 L 1564.00 802.00" fill="none" stroke="#B36F28" stroke-width="3.40" />
+  <path d="M 1142.00 795.00 L 1124.00 808.00" fill="none" stroke="#EBA03B" stroke-width="3.40" />
+  <path d="M 1593.00 795.00 L 1668.00 924.00 L 1597.00 798.00" fill="none" stroke="#D57924" stroke-width="3.40" />
+  <path d="M 1149.00 799.00 L 1132.00 812.00" fill="none" stroke="#BF5B20" stroke-width="3.40" />
+  <path d="M 1348.00 799.00 L 1490.00 883.00 L 1551.00 1022.00 L 1489.00 883.00 L 1375.00 809.00" fill="none" stroke="#C18638" stroke-width="3.40" />
+  <path d="M 1210.00 802.00 L 1177.00 812.00" fill="none" stroke="#7A3009" stroke-width="3.40" />
+  <path d="M 1534.00 802.00 L 1629.00 924.00 L 1649.00 1039.00 L 1555.00 823.00" fill="none" stroke="#C9954A" stroke-width="3.40" />
+  <path d="M 1624.00 810.00 L 1677.00 940.00 L 1625.00 810.00" fill="none" stroke="#FEC763" stroke-width="3.40" />
+  <path d="M 3898.00 810.00 L 3887.00 869.00 L 3897.00 811.00" fill="none" stroke="#985521" stroke-width="3.40" />
+  <path d="M 1036.00 818.00 L 1021.00 834.00" fill="none" stroke="#D16F24" stroke-width="3.40" />
+  <path d="M 1535.00 852.00 L 1604.00 960.00 L 1541.00 857.00" fill="none" stroke="#6B3420" stroke-width="3.40" />
+  <path d="M 1035.00 859.00 L 1002.00 894.00" fill="none" stroke="#E7982F" stroke-width="3.40" />
+  <path d="M 1476.00 876.00 L 1545.00 1005.00 L 1485.00 884.00" fill="none" stroke="#7A4831" stroke-width="3.40" />
+  <path d="M 1735.00 876.00 L 1782.00 990.00 L 1736.00 876.00" fill="none" stroke="#EBAC4D" stroke-width="3.40" />
+  <path d="M 1731.00 878.00 L 1760.00 944.00 L 1730.00 879.00" fill="none" stroke="#D58C2E" stroke-width="3.40" />
+  <path d="M 991.00 882.00 L 972.00 904.00" fill="none" stroke="#BE571C" stroke-width="3.40" />
+  <path d="M 1137.00 884.00 L 1149.00 911.00 L 1130.00 888.00" fill="none" stroke="#9A401E" stroke-width="3.40" />
+  <path d="M 1024.00 886.00 L 1003.00 915.00" fill="none" stroke="#B24D1F" stroke-width="3.40" />
+  <path d="M 1740.00 892.00 L 1770.00 951.00 L 1741.00 892.00" fill="none" stroke="#8D441B" stroke-width="3.40" />
+  <path d="M 1758.00 892.00 L 1783.00 974.00 L 1756.00 897.00" fill="none" stroke="#FEC763" stroke-width="3.40" />
+  <path d="M 3287.00 930.00 L 3296.00 987.00 L 3285.00 933.00" fill="none" stroke="#A86E40" stroke-width="3.40" />
+  <path d="M 3255.00 932.00 L 3244.00 995.00 L 3251.00 934.00" fill="none" stroke="#804213" stroke-width="3.40" />
+  <path d="M 1057.00 942.00 L 1091.00 959.00 L 1054.00 946.00" fill="none" stroke="#832F15" stroke-width="3.40" />
+  <path d="M 1856.00 943.00 L 1909.00 1036.00 L 1862.00 948.00" fill="none" stroke="#DF8E32" stroke-width="3.40" />
+  <path d="M 1864.00 961.00 L 1900.00 1046.00 L 1866.00 962.00" fill="none" stroke="#E5A740" stroke-width="3.40" />
+  <path d="M 1183.00 963.00 L 1196.00 990.00 L 1180.00 966.00" fill="none" stroke="#AC5424" stroke-width="3.40" />
+  <path d="M 3798.00 965.00 L 3683.00 1094.00 L 3699.00 1008.00 L 3666.00 1087.00 L 3696.00 1081.00 L 3795.00 969.00" fill="none" stroke="#71301E" stroke-width="3.40" />
+  <path d="M 3286.00 969.00 L 3279.00 1073.00 L 3287.00 973.00" fill="none" stroke="#C4843D" stroke-width="3.40" />
+  <path d="M 3295.00 989.00 L 3294.00 1009.00" fill="none" stroke="#AE7130" stroke-width="3.40" />
+  <path d="M 970.00 995.00 L 1008.00 1036.00 L 971.00 995.00" fill="none" stroke="#C1591A" stroke-width="3.40" />
+  <path d="M 1922.00 998.00 L 1939.00 1013.00" fill="none" stroke="#EDB143" stroke-width="3.40" />
+  <path d="M 3238.00 1014.00 L 3233.00 1071.00 L 3239.00 1014.00" fill="none" stroke="#935629" stroke-width="3.40" />
+  <path d="M 1019.00 1019.00 L 1042.00 1056.00 L 1020.00 1019.00" fill="none" stroke="#A9421F" stroke-width="3.40" />
+  <path d="M 1989.00 1026.00 L 2022.00 1107.00 L 1989.00 1027.00" fill="none" stroke="#F1B74C" stroke-width="3.40" />
+  <path d="M 3215.00 1026.00 L 3192.00 1055.00" fill="none" stroke="#C18431" stroke-width="3.40" />
+  <path d="M 1983.00 1032.00 L 2019.00 1132.00 L 1984.00 1032.00" fill="none" stroke="#E6AA3C" stroke-width="3.40" />
+  <path d="M 991.00 1038.00 L 1039.00 1103.00 L 991.00 1039.00" fill="none" stroke="#AF441A" stroke-width="3.40" />
+  <path d="M 2006.00 1041.00 L 2020.00 1094.00 L 2007.00 1041.00" fill="none" stroke="#E6A845" stroke-width="3.40" />
+  <path d="M 1003.00 1045.00 L 1033.00 1088.00 L 1004.00 1045.00" fill="none" stroke="#C65B23" stroke-width="3.40" />
+  <path d="M 3983.00 1061.00 L 3953.00 1147.00 L 3982.00 1062.00" fill="none" stroke="#281205" stroke-width="3.40" />
+  <path d="M 3828.00 1076.00 L 3813.00 1088.00" fill="none" stroke="#66311F" stroke-width="3.40" />
+  <path d="M 3757.00 1089.00 L 3734.00 1114.00" fill="none" stroke="#5C2113" stroke-width="3.40" />
+  <path d="M 3794.00 1119.00 L 3778.00 1138.00" fill="none" stroke="#9D4927" stroke-width="3.40" />
+  <path d="M 3589.00 1128.00 L 3573.00 1143.00" fill="none" stroke="#BA7D3E" stroke-width="3.40" />
+  <path d="M 2282.00 1135.00 L 2308.00 1192.00 L 2287.00 1139.00" fill="none" stroke="#F9C562" stroke-width="3.40" />
+  <path d="M 3651.00 1136.00 L 3631.00 1159.00" fill="none" stroke="#B65F2A" stroke-width="3.40" />
+  <path d="M 2296.00 1138.00 L 2312.00 1188.00 L 2294.00 1141.00" fill="none" stroke="#B37626" stroke-width="3.40" />
+  <path d="M 2170.00 1145.00 L 2177.00 1193.00 L 2171.00 1145.00" fill="none" stroke="#BB6D3C" stroke-width="3.40" />
+  <path d="M 2166.00 1147.00 L 2174.00 1187.00 L 2167.00 1147.00" fill="none" stroke="#7C300E" stroke-width="3.40" />
+  <path d="M 2342.00 1149.00 L 2358.00 1194.00 L 2343.00 1149.00" fill="none" stroke="#D8A248" stroke-width="3.40" />
+  <path d="M 3565.00 1149.00 L 3550.00 1162.00" fill="none" stroke="#B47643" stroke-width="3.40" />
+  <path d="M 2416.00 1159.00 L 2430.00 1195.00 L 2414.00 1160.00" fill="none" stroke="#8A4100" stroke-width="3.40" />
+  <path d="M 2503.00 1170.00 L 2536.00 1217.00 L 2504.00 1170.00" fill="none" stroke="#E8B053" stroke-width="3.40" />
+  <path d="M 2624.00 1180.00 L 2645.00 1225.00 L 2625.00 1180.00" fill="none" stroke="#F9C359" stroke-width="3.40" />
+  <path d="M 2747.00 1193.00 L 2778.00 1260.00 L 2750.00 1194.00" fill="none" stroke="#CE9337" stroke-width="3.40" />
+  <path d="M 2775.00 1201.00 L 2802.00 1271.00 L 2776.00 1201.00" fill="none" stroke="#FBC666" stroke-width="3.40" />
+  <path d="M 3558.00 1206.00 L 3524.00 1283.00 L 3557.00 1207.00" fill="none" stroke="#AE5C24" stroke-width="3.40" />
+  <path d="M 3501.00 1207.00 L 3480.00 1233.00" fill="none" stroke="#C27821" stroke-width="3.40" />
+  <path d="M 3689.00 1209.00 L 3640.00 1283.00 L 3684.00 1212.00" fill="none" stroke="#A35620" stroke-width="3.40" />
+  <path d="M 2895.00 1213.00 L 2926.00 1272.00 L 2896.00 1213.00" fill="none" stroke="#E69F43" stroke-width="3.40" />
+  <path d="M 2926.00 1217.00 L 2966.00 1283.00 L 2926.00 1218.00" fill="none" stroke="#FBC153" stroke-width="3.40" />
+  <path d="M 2923.00 1220.00 L 2943.00 1272.00 L 2926.00 1221.00" fill="none" stroke="#EAB74A" stroke-width="3.40" />
+  <path d="M 3087.00 1243.00 L 3104.00 1291.00 L 3086.00 1246.00" fill="none" stroke="#CC9530" stroke-width="3.40" />
+  <path d="M 3263.00 1283.00 L 3299.00 1340.00 L 3264.00 1283.00" fill="none" stroke="#F3C25C" stroke-width="3.40" />
+  <path d="M 3259.00 1286.00 L 3293.00 1360.00 L 3262.00 1289.00" fill="none" stroke="#D49D42" stroke-width="3.40" />
+  <path d="M 3249.00 1292.00 L 3273.00 1336.00 L 3250.00 1292.00" fill="none" stroke="#9E612B" stroke-width="3.40" />
+  <path d="M 3369.00 1316.00 L 3383.00 1331.00" fill="none" stroke="#D29A43" stroke-width="3.40" />
+  <path d="M 3477.00 1360.00 L 3516.00 1439.00 L 3484.00 1366.00" fill="none" stroke="#D89840" stroke-width="3.40" />
+  <path d="M 3563.00 1398.00 L 3606.00 1439.00 L 3563.00 1399.00" fill="none" stroke="#EDB954" stroke-width="3.40" />
+  <path d="M 3574.00 1414.00 L 3596.00 1435.00" fill="none" stroke="#F5C559" stroke-width="3.40" />
+  <path d="M 3615.00 1456.00 L 3666.00 1576.00 L 3620.00 1462.00" fill="none" stroke="#AD732A" stroke-width="3.40" />
+  <path d="M 848.00 1615.00 L 891.00 1621.00 L 845.00 1617.00" fill="none" stroke="#A64620" stroke-width="3.40" />
+  <path d="M 1353.00 1712.00 L 1377.00 1723.00" fill="none" stroke="#A54D1F" stroke-width="3.40" />
+  <path d="M 2640.00 1941.00 L 2626.00 1953.00" fill="none" stroke="#94511D" stroke-width="3.40" />
+  <path d="M 2613.00 2001.00 L 2599.00 2131.00 L 2607.00 2009.00" fill="none" stroke="#634523" stroke-width="3.40" />
+  <path d="M 2680.00 2002.00 L 2743.00 2127.00 L 2685.00 2006.00" fill="none" stroke="#946027" stroke-width="3.40" />
+  <path d="M 2610.00 2070.00 L 2616.00 2129.00 L 2609.00 2072.00" fill="none" stroke="#663F20" stroke-width="3.40" />
+  <path d="M 908.00 2121.00 L 1085.00 2222.00 L 1118.00 2283.00 L 1096.00 2231.00 L 913.00 2123.00" fill="none" stroke="#83361C" stroke-width="3.40" />
+  <path d="M 2644.00 2145.00 L 2684.00 2195.00 L 2642.00 2146.00 L 2640.00 2220.00 L 2641.00 2146.00" fill="none" stroke="#5A2F0F" stroke-width="3.40" />
+  <path d="M 2686.00 2155.00 L 2720.00 2164.00 L 2685.00 2156.00" fill="none" stroke="#976334" stroke-width="3.40" />
+  <path d="M 2595.00 2157.00 L 2578.00 2176.00" fill="none" stroke="#C18232" stroke-width="3.40" />
+  <path d="M 2685.00 2158.00 L 2696.00 2203.00 L 2686.00 2158.00" fill="none" stroke="#6F390B" stroke-width="3.40" />
+  <path d="M 2487.00 2171.00 L 2482.00 2200.00 L 2488.00 2171.00" fill="none" stroke="#9C5C1C" stroke-width="3.40" />
+  <path d="M 2497.00 2198.00 L 2480.00 2211.00" fill="none" stroke="#B0712E" stroke-width="3.40" />
+  <path d="M 2563.00 2261.00 L 2517.00 2275.00" fill="none" stroke="#A5632F" stroke-width="3.40" />
+  <path d="M 845.00 2374.00 L 822.00 2376.00" fill="none" stroke="#B34F1B" stroke-width="3.40" />
+  <path d="M 2962.00 246.00 L 3003.00 386.00 L 2961.00 248.00" fill="none" stroke="#7B3A1C" stroke-width="3.40" />
+  <path d="M 3462.00 550.00 L 3461.00 648.00 L 3448.00 566.00" fill="none" stroke="#532A16" stroke-width="3.40" />
+  <path d="M 3450.00 572.00 L 3518.00 659.00 L 3449.00 574.00" fill="none" stroke="#9D6122" stroke-width="3.40" />
+  <path d="M 1380.00 684.00 L 1690.00 831.00 L 1893.00 1028.00 L 1822.00 921.00 L 1426.00 699.00" fill="none" stroke="#EB9A2F" stroke-width="3.40" />
+  <path d="M 1254.00 719.00 L 1167.00 732.00" fill="none" stroke="#ED9E41" stroke-width="3.40" />
+  <path d="M 1252.00 739.00 L 1140.00 761.00" fill="none" stroke="#BF772B" stroke-width="3.40" />
+  <path d="M 1502.00 743.00 L 1663.00 985.00 L 1502.00 744.00" fill="none" stroke="#E6A841" stroke-width="3.40" />
+  <path d="M 1424.00 744.00 L 1576.00 867.00 L 1426.00 745.00" fill="none" stroke="#E5AB4A" stroke-width="3.40" />
+  <path d="M 1182.00 756.00 L 975.00 894.00" fill="none" stroke="#F8BB60" stroke-width="3.40" />
+  <path d="M 1403.00 757.00 L 1585.00 910.00 L 1407.00 758.00" fill="none" stroke="#E9B258" stroke-width="3.40" />
+  <path d="M 1495.00 760.00 L 1643.00 950.00 L 1500.00 763.00" fill="none" stroke="#F2B354" stroke-width="3.40" />
+  <path d="M 1225.00 771.00 L 1145.00 787.00" fill="none" stroke="#9F3F17" stroke-width="3.40" />
+  <path d="M 1507.00 780.00 L 1532.00 801.00" fill="none" stroke="#E1A34E" stroke-width="3.40" />
+  <path d="M 1546.00 784.00 L 1659.00 999.00 L 1554.00 792.00" fill="none" stroke="#B96922" stroke-width="3.40" />
+  <path d="M 1366.00 790.00 L 1539.00 963.00 L 1342.00 797.00 L 1083.00 841.00" fill="none" stroke="#491903" stroke-width="3.40" />
+  <path d="M 1211.00 802.00 L 1178.00 811.00" fill="none" stroke="#8E451C" stroke-width="3.40" />
+  <path d="M 1534.00 802.00 L 1651.00 1013.00 L 1555.00 821.00" fill="none" stroke="#C9954A" stroke-width="3.40" />
+  <path d="M 1629.00 817.00 L 1673.00 922.00 L 1630.00 817.00" fill="none" stroke="#FFC75E" stroke-width="3.40" />
+  <path d="M 1036.00 818.00 L 1013.00 841.00" fill="none" stroke="#D16F24" stroke-width="3.40" />
+  <path d="M 1613.00 819.00 L 1666.00 920.00 L 1614.00 819.00" fill="none" stroke="#BE611B" stroke-width="3.40" />
+  <path d="M 1055.00 862.00 L 1007.00 915.00" fill="none" stroke="#B34C12" stroke-width="3.40" />
+  <path d="M 1054.00 867.00 L 1034.00 886.00" fill="none" stroke="#9E501F" stroke-width="3.40" />
+  <path d="M 1757.00 895.00 L 1783.00 972.00 L 1756.00 897.00" fill="none" stroke="#D59635" stroke-width="3.40" />
+  <path d="M 1858.00 960.00 L 1885.00 1017.00 L 1859.00 960.00" fill="none" stroke="#C0661A" stroke-width="3.40" />
+  <path d="M 1969.00 1019.00 L 2000.00 1076.00 L 1970.00 1019.00" fill="none" stroke="#E09931" stroke-width="3.40" />
+  <path d="M 1985.00 1034.00 L 2016.00 1112.00 L 1986.00 1034.00" fill="none" stroke="#DD9D33" stroke-width="3.40" />
+  <path d="M 2006.00 1043.00 L 2020.00 1094.00 L 2007.00 1043.00" fill="none" stroke="#F7C05C" stroke-width="3.40" />
+  <path d="M 1002.00 1056.00 L 1036.00 1100.00 L 1003.00 1056.00" fill="none" stroke="#A7401F" stroke-width="3.40" />
+  <path d="M 2065.00 1061.00 L 2086.00 1111.00 L 2066.00 1061.00" fill="none" stroke="#ECAB45" stroke-width="3.40" />
+  <path d="M 2078.00 1070.00 L 2089.00 1116.00 L 2080.00 1070.00" fill="none" stroke="#F0BA56" stroke-width="3.40" />
+  <path d="M 3748.00 1099.00 L 3731.00 1119.00" fill="none" stroke="#652412" stroke-width="3.40" />
+  <path d="M 2293.00 1140.00 L 2311.00 1187.00 L 2294.00 1140.00" fill="none" stroke="#E9B44E" stroke-width="3.40" />
+  <path d="M 2775.00 1201.00 L 2800.00 1266.00 L 2776.00 1201.00" fill="none" stroke="#FBC666" stroke-width="3.40" />
+  <path d="M 2922.00 1219.00 L 2943.00 1273.00 L 2925.00 1220.00" fill="none" stroke="#EFBB4E" stroke-width="3.40" />
+  <path d="M 3265.00 1285.00 L 3296.00 1338.00 L 3266.00 1285.00" fill="none" stroke="#F3BF5C" stroke-width="3.40" />
+  <path d="M 3615.00 1456.00 L 3668.00 1569.00 L 3617.00 1457.00" fill="none" stroke="#AD732A" stroke-width="3.40" />
+  <path d="M 2628.00 1984.00 L 2605.00 2004.00" fill="none" stroke="#AD6928" stroke-width="3.40" />
+  <path d="M 2613.00 2001.00 L 2599.00 2131.00 L 2609.00 2004.00" fill="none" stroke="#634523" stroke-width="3.40" />
+  <path d="M 2688.00 2022.00 L 2744.00 2122.00 L 2688.00 2023.00" fill="none" stroke="#4B1D00" stroke-width="3.40" />
+  <path d="M 2612.00 2070.00 L 2616.00 2129.00 L 2613.00 2070.00" fill="none" stroke="#906342" stroke-width="3.40" />
+  <path d="M 3458.00 554.00 L 3461.00 648.00 L 3450.00 563.00" fill="none" stroke="#5A3018" stroke-width="3.40" />
+  <path d="M 1397.00 690.00 L 1850.00 944.00 L 1457.00 712.00" fill="none" stroke="#EAA13A" stroke-width="3.40" />
+  <path d="M 1234.00 720.00 L 1169.00 732.00" fill="none" stroke="#E99E39" stroke-width="3.40" />
+  <path d="M 1252.00 739.00 L 1142.00 760.00" fill="none" stroke="#BF772B" stroke-width="3.40" />
+  <path d="M 1507.00 747.00 L 1663.00 995.00 L 1538.00 770.00" fill="none" stroke="#EFAF4D" stroke-width="3.40" />
+  <path d="M 1173.00 758.00 L 1032.00 835.00" fill="none" stroke="#F2B55A" stroke-width="3.40" />
+  <path d="M 1520.00 780.00 L 1640.00 941.00 L 1520.00 781.00" fill="none" stroke="#DB9E45" stroke-width="3.40" />
+  <path d="M 1552.00 789.00 L 1659.00 996.00 L 1566.00 802.00" fill="none" stroke="#C17E2F" stroke-width="3.40" />
+  <path d="M 1367.00 790.00 L 1128.00 818.00" fill="none" stroke="#4D1D07" stroke-width="3.40" />
+  <path d="M 1347.00 799.00 L 1484.00 877.00" fill="none" stroke="#D19847" stroke-width="3.40" />
+  <path d="M 1216.00 801.00 L 1178.00 811.00" fill="none" stroke="#8E401C" stroke-width="3.40" />
+  <path d="M 1038.00 816.00 L 1013.00 841.00" fill="none" stroke="#D77627" stroke-width="3.40" />
+  <path d="M 1054.00 863.00 L 1018.00 899.00" fill="none" stroke="#B64F14" stroke-width="3.40" />
+  <path d="M 1048.00 872.00 L 1019.00 904.00" fill="none" stroke="#A4572B" stroke-width="3.40" />
+  <path d="M 1861.00 955.00 L 1892.00 1023.00 L 1862.00 955.00" fill="none" stroke="#E2923D" stroke-width="3.40" />
+  <path d="M 1859.00 961.00 L 1884.00 1013.00 L 1861.00 961.00" fill="none" stroke="#CE7929" stroke-width="3.40" />
+  <path d="M 1990.00 1043.00 L 2014.00 1103.00 L 1991.00 1043.00" fill="none" stroke="#DA9635" stroke-width="3.40" />
+  <path d="M 2777.00 1199.00 L 2800.00 1266.00 L 2775.00 1201.00" fill="none" stroke="#DCA040" stroke-width="3.40" />
+  <path d="M 2894.00 1212.00 L 2925.00 1270.00 L 2895.00 1212.00" fill="none" stroke="#E9A13D" stroke-width="3.40" />
+  <path d="M 2923.00 1221.00 L 2944.00 1274.00 L 2924.00 1221.00" fill="none" stroke="#FED061" stroke-width="3.40" />
+  <path d="M 2613.00 2001.00 L 2599.00 2131.00 L 2608.00 2006.00" fill="none" stroke="#634523" stroke-width="3.40" />
+  <path d="M 2612.00 2070.00 L 2616.00 2129.00 L 2613.00 2070.00" fill="none" stroke="#906342" stroke-width="3.40" />
+  <path d="M 2614.00 2139.00 L 2627.00 2228.00 L 2615.00 2139.00" fill="none" stroke="#B47E3E" stroke-width="3.40" />
+  <path d="M 2643.00 2144.00 L 2682.00 2191.00 L 2641.00 2145.00" fill="none" stroke="#3D1700" stroke-width="3.40" />
+  <path d="M 1210.00 723.00 L 1173.00 731.00" fill="none" stroke="#DA9031" stroke-width="3.40" />
+  <path d="M 1252.00 739.00 L 1142.00 760.00" fill="none" stroke="#BF772B" stroke-width="3.40" />
+  <path d="M 1508.00 748.00 L 1662.00 990.00 L 1519.00 755.00" fill="none" stroke="#F6B652" stroke-width="3.40" />
+  <path d="M 1434.00 750.00 L 1515.00 801.00" fill="none" stroke="#DBA545" stroke-width="3.40" />
+  <path d="M 1173.00 758.00 L 1032.00 835.00" fill="none" stroke="#F2B55A" stroke-width="3.40" />
+  <path d="M 1417.00 763.00 L 1582.00 905.00 L 1430.00 769.00" fill="none" stroke="#EAAD5A" stroke-width="3.40" />
+  <path d="M 1552.00 789.00 L 1659.00 994.00 L 1566.00 802.00" fill="none" stroke="#C17E2F" stroke-width="3.40" />
+  <path d="M 1367.00 790.00 L 1129.00 818.00" fill="none" stroke="#4D1D07" stroke-width="3.40" />
+  <path d="M 1347.00 799.00 L 1538.00 959.00 L 1347.00 800.00" fill="none" stroke="#D19847" stroke-width="3.40" />
+  <path d="M 1216.00 801.00 L 1178.00 811.00" fill="none" stroke="#8E401C" stroke-width="3.40" />
+  <path d="M 1044.00 811.00 L 1013.00 841.00" fill="none" stroke="#DA7928" stroke-width="3.40" />
+  <path d="M 1635.00 825.00 L 1672.00 918.00 L 1636.00 825.00" fill="none" stroke="#F2B34A" stroke-width="3.40" />
+  <path d="M 1053.00 864.00 L 1018.00 899.00" fill="none" stroke="#B65818" stroke-width="3.40" />
+  <path d="M 1862.00 956.00 L 1891.00 1021.00 L 1863.00 956.00" fill="none" stroke="#D8893A" stroke-width="3.40" />
+  <path d="M 2775.00 1201.00 L 2800.00 1266.00 L 2776.00 1201.00" fill="none" stroke="#FBC666" stroke-width="3.40" />
+  <path d="M 2894.00 1212.00 L 2925.00 1269.00 L 2895.00 1212.00" fill="none" stroke="#E9A13D" stroke-width="3.40" />
+  <path d="M 2610.00 2003.00 L 2599.00 2131.00 L 2609.00 2004.00" fill="none" stroke="#855F32" stroke-width="3.40" />
+  <path d="M 2612.00 2070.00 L 2616.00 2129.00 L 2613.00 2070.00" fill="none" stroke="#906342" stroke-width="3.40" />
+  <path d="M 2614.00 2139.00 L 2627.00 2226.00 L 2615.00 2139.00" fill="none" stroke="#B47E3E" stroke-width="3.40" />
+  <path d="M 1252.00 739.00 L 1145.00 759.00" fill="none" stroke="#BF772B" stroke-width="3.40" />
+  <path d="M 1508.00 748.00 L 1662.00 990.00 L 1559.00 789.00" fill="none" stroke="#F6B652" stroke-width="3.40" />
+  <path d="M 1168.00 759.00 L 1032.00 835.00" fill="none" stroke="#E9AE52" stroke-width="3.40" />
+  <path d="M 1419.00 764.00 L 1503.00 817.00" fill="none" stroke="#E4AC59" stroke-width="3.40" />
+  <path d="M 1526.00 786.00 L 1639.00 940.00 L 1529.00 788.00" fill="none" stroke="#EEB25A" stroke-width="3.40" />
+  <path d="M 1551.00 788.00 L 1659.00 993.00 L 1566.00 802.00" fill="none" stroke="#C0762D" stroke-width="3.40" />
+  <path d="M 1367.00 790.00 L 1128.00 818.00" fill="none" stroke="#4D1D07" stroke-width="3.40" />
+  <path d="M 1347.00 800.00 L 1538.00 961.00 L 1360.00 803.00" fill="none" stroke="#EFC06E" stroke-width="3.40" />
+  <path d="M 1636.00 827.00 L 1671.00 916.00 L 1637.00 827.00" fill="none" stroke="#FABB54" stroke-width="3.40" />
+  <path d="M 1049.00 871.00 L 1018.00 905.00" fill="none" stroke="#B5683A" stroke-width="3.40" />
+  <path d="M 1757.00 898.00 L 1781.00 967.00 L 1758.00 898.00" fill="none" stroke="#FBC15D" stroke-width="3.40" />
+  <path d="M 1862.00 956.00 L 1891.00 1020.00 L 1863.00 956.00" fill="none" stroke="#D8893A" stroke-width="3.40" />
+  <path d="M 2775.00 1201.00 L 2800.00 1265.00 L 2776.00 1201.00" fill="none" stroke="#FBC666" stroke-width="3.40" />
+  <path d="M 3076.00 1244.00 L 3108.00 1307.00 L 3077.00 1244.00" fill="none" stroke="#C28131" stroke-width="3.40" />
+  <path d="M 3490.00 1374.00 L 3515.00 1434.00 L 3491.00 1374.00" fill="none" stroke="#C2802C" stroke-width="3.40" />
+  <path d="M 2610.00 2003.00 L 2599.00 2131.00 L 2609.00 2004.00" fill="none" stroke="#855F32" stroke-width="3.40" />
+  <path d="M 2612.00 2070.00 L 2615.00 2136.00 L 2613.00 2070.00" fill="none" stroke="#906342" stroke-width="3.40" />
+  <path d="M 2614.00 2139.00 L 2627.00 2226.00 L 2615.00 2139.00" fill="none" stroke="#B47E3E" stroke-width="3.40" />
+  <path d="M 2957.00 291.00 L 3003.00 386.00 L 2958.00 291.00" fill="none" stroke="#874610" stroke-width="3.40" />
+  <path d="M 3454.00 558.00 L 3466.00 652.00 L 3451.00 561.00" fill="none" stroke="#542E17" stroke-width="3.40" />
+  <path d="M 1252.00 739.00 L 1145.00 759.00" fill="none" stroke="#BF772B" stroke-width="3.40" />
+  <path d="M 1511.00 750.00 L 1662.00 990.00 L 1540.00 772.00" fill="none" stroke="#F3AF4E" stroke-width="3.40" />
+  <path d="M 1172.00 758.00 L 1032.00 835.00" fill="none" stroke="#E6A64E" stroke-width="3.40" />
+  <path d="M 1527.00 787.00 L 1639.00 940.00 L 1529.00 788.00" fill="none" stroke="#F0B75E" stroke-width="3.40" />
+  <path d="M 1551.00 788.00 L 1659.00 991.00 L 1566.00 802.00" fill="none" stroke="#C0762D" stroke-width="3.40" />
+  <path d="M 1367.00 790.00 L 1129.00 818.00" fill="none" stroke="#4D1D07" stroke-width="3.40" />
+  <path d="M 1347.00 800.00 L 1538.00 961.00 L 1411.00 824.00" fill="none" stroke="#EFC06E" stroke-width="3.40" />
+  <path d="M 1638.00 831.00 L 1671.00 916.00 L 1639.00 831.00" fill="none" stroke="#F9BF53" stroke-width="3.40" />
+  <path d="M 2777.00 1200.00 L 2800.00 1265.00 L 2775.00 1201.00" fill="none" stroke="#B97921" stroke-width="3.40" />
+  <path d="M 3077.00 1245.00 L 3108.00 1307.00 L 3078.00 1245.00" fill="none" stroke="#C18330" stroke-width="3.40" />
+  <path d="M 2610.00 2003.00 L 2599.00 2131.00 L 2609.00 2004.00" fill="none" stroke="#855F32" stroke-width="3.40" />
+  <path d="M 2612.00 2070.00 L 2615.00 2136.00 L 2613.00 2070.00" fill="none" stroke="#906342" stroke-width="3.40" />
+  <path d="M 2614.00 2139.00 L 2626.00 2225.00 L 2615.00 2139.00" fill="none" stroke="#B47E3E" stroke-width="3.40" />
+  <path d="M 3454.00 558.00 L 3466.00 652.00 L 3447.00 568.00" fill="none" stroke="#542E17" stroke-width="3.40" />
+  <path d="M 1252.00 739.00 L 1152.00 757.00" fill="none" stroke="#BF772B" stroke-width="3.40" />
+  <path d="M 1513.00 751.00 L 1662.00 990.00 L 1559.00 789.00" fill="none" stroke="#E19B3B" stroke-width="3.40" />
+  <path d="M 1441.00 754.00 L 1484.00 779.00" fill="none" stroke="#D6A046" stroke-width="3.40" />
+  <path d="M 1168.00 759.00 L 1032.00 835.00" fill="none" stroke="#E9AE52" stroke-width="3.40" />
+  <path d="M 1426.00 767.00 L 1503.00 817.00" fill="none" stroke="#C98B40" stroke-width="3.40" />
+  <path d="M 1551.00 788.00 L 1659.00 990.00 L 1566.00 802.00" fill="none" stroke="#C0762D" stroke-width="3.40" />
+  <path d="M 1529.00 789.00 L 1636.00 933.00 L 1530.00 789.00" fill="none" stroke="#F0BA62" stroke-width="3.40" />
+  <path d="M 1364.00 791.00 L 1131.00 817.00" fill="none" stroke="#461200" stroke-width="3.40" />
+  <path d="M 1347.00 800.00 L 1538.00 961.00 L 1349.00 800.00" fill="none" stroke="#EFC06E" stroke-width="3.40" />
+  <path d="M 1050.00 870.00 L 1015.00 909.00" fill="none" stroke="#BC6E3E" stroke-width="3.40" />
+  <path d="M 1861.00 949.00 L 1910.00 1034.00 L 1862.00 949.00" fill="none" stroke="#B16321" stroke-width="3.40" />
+  <path d="M 2777.00 1200.00 L 2800.00 1263.00 L 2775.00 1201.00" fill="none" stroke="#B97921" stroke-width="3.40" />
+  <path d="M 2611.00 2002.00 L 2599.00 2131.00 L 2609.00 2004.00" fill="none" stroke="#906D43" stroke-width="3.40" />
+  <path d="M 2614.00 2139.00 L 2626.00 2223.00 L 2615.00 2139.00" fill="none" stroke="#B47E3E" stroke-width="3.40" />
+  <path d="M 1226.00 742.00 L 1155.00 756.00" fill="none" stroke="#C2792C" stroke-width="3.40" />
+  <path d="M 1517.00 754.00 L 1662.00 989.00 L 1532.00 765.00" fill="none" stroke="#E59F40" stroke-width="3.40" />
+  <path d="M 1444.00 756.00 L 1486.00 782.00" fill="none" stroke="#DBA84F" stroke-width="3.40" />
+  <path d="M 1168.00 759.00 L 1032.00 835.00" fill="none" stroke="#E9AE52" stroke-width="3.40" />
+  <path d="M 1551.00 788.00 L 1659.00 989.00 L 1566.00 802.00" fill="none" stroke="#C0762D" stroke-width="3.40" />
+  <path d="M 1530.00 789.00 L 1627.00 914.00 L 1530.00 790.00" fill="none" stroke="#D79946" stroke-width="3.40" />
+  <path d="M 1364.00 791.00 L 1131.00 817.00" fill="none" stroke="#461200" stroke-width="3.40" />
+  <path d="M 1347.00 800.00 L 1538.00 961.00 L 1399.00 818.00" fill="none" stroke="#EFC06E" stroke-width="3.40" />
+  <path d="M 1738.00 881.00 L 1778.00 967.00 L 1739.00 881.00" fill="none" stroke="#D4913A" stroke-width="3.40" />
+  <path d="M 2777.00 1200.00 L 2800.00 1263.00 L 2775.00 1201.00" fill="none" stroke="#B97921" stroke-width="3.40" />
+  <path d="M 2913.00 1215.00 L 2943.00 1283.00 L 2914.00 1215.00" fill="none" stroke="#C78A2D" stroke-width="3.40" />
+  <path d="M 2611.00 2002.00 L 2599.00 2131.00 L 2609.00 2004.00" fill="none" stroke="#906D43" stroke-width="3.40" />
+  <path d="M 2612.00 2070.00 L 2614.00 2137.00 L 2613.00 2070.00" fill="none" stroke="#906342" stroke-width="3.40" />
+  <path d="M 2614.00 2139.00 L 2626.00 2221.00 L 2615.00 2139.00" fill="none" stroke="#B47E3E" stroke-width="3.40" />
+  <path d="M 2958.00 301.00 L 3003.00 386.00 L 2959.00 301.00" fill="none" stroke="#84420E" stroke-width="3.40" />
+  <path d="M 1218.00 743.00 L 1156.00 756.00" fill="none" stroke="#C3792E" stroke-width="3.40" />
+  <path d="M 1446.00 757.00 L 1538.00 822.00" fill="none" stroke="#D59D4A" stroke-width="3.40" />
+  <path d="M 1163.00 760.00 L 1032.00 835.00" fill="none" stroke="#D89A43" stroke-width="3.40" />
+  <path d="M 1538.00 777.00 L 1659.00 988.00 L 1566.00 802.00" fill="none" stroke="#DB8F37" stroke-width="3.40" />
+  <path d="M 1365.00 791.00 L 1538.00 961.00 L 1344.00 798.00 L 1133.00 816.00" fill="none" stroke="#4C1A00" stroke-width="3.40" />
+  <path d="M 1544.00 810.00 L 1638.00 945.00 L 1544.00 811.00" fill="none" stroke="#D2A759" stroke-width="3.40" />
+  <path d="M 1050.00 870.00 L 1017.00 907.00" fill="none" stroke="#BC6E3E" stroke-width="3.40" />
+  <path d="M 1741.00 885.00 L 1778.00 966.00 L 1742.00 885.00" fill="none" stroke="#D08E38" stroke-width="3.40" />
+  <path d="M 2611.00 2002.00 L 2599.00 2131.00 L 2609.00 2004.00" fill="none" stroke="#906D43" stroke-width="3.40" />
+  <path d="M 2614.00 2139.00 L 2626.00 2220.00 L 2615.00 2139.00" fill="none" stroke="#B47E3E" stroke-width="3.40" />
+</svg>

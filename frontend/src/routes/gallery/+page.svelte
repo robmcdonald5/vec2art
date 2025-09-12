@@ -165,8 +165,9 @@
 		}
 
 		try {
-			// Fetch SVG from API endpoint
-			const response = await fetch(`/api/svg/${category}/${filename}`);
+			// Use direct static file access instead of API to avoid server costs
+			const svgUrl = item.afterSvg; // This is already a static URL like "/gallery/after/animals/file.svg"
+			const response = await fetch(svgUrl);
 			if (!response.ok) throw new Error('Failed to fetch SVG');
 
 			const svgBlob = await response.blob();
