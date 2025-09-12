@@ -298,17 +298,17 @@
 </script>
 
 <!-- Gallery Hero Section -->
-<section class="bg-section-elevated relative py-12 pb-4">
+<section class="bg-section-elevated relative py-8 pb-4 sm:py-12">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 		<!-- Header -->
-		<div class="mb-8 text-center">
-			<h1 class="text-gradient-modern mb-4 text-4xl font-bold">Gallery</h1>
-			<p class="text-premium">Browse example conversions and see what's possible with vec2art</p>
+		<div class="mb-6 text-center sm:mb-8">
+			<h1 class="text-gradient-modern mb-3 text-3xl font-bold sm:mb-4 sm:text-4xl">Gallery</h1>
+			<p class="text-premium text-sm sm:text-base">Browse example conversions and see what's possible with vec2art</p>
 		</div>
 
 		<!-- Controls -->
 		<div class="mb-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<div class="flex items-center gap-4">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
 				<!-- Search -->
 				<div class="relative">
 					<Search class="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-gray-700" />
@@ -316,14 +316,14 @@
 						type="text"
 						placeholder="Search examples..."
 						bind:value={filters.search}
-						class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 placeholder:text-speed-gray-400 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pl-12 transition-all duration-200 focus:ring-1 focus:outline-none"
+						class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 placeholder:text-speed-gray-400 w-full min-h-[44px] rounded-xl border border-gray-200 bg-white px-4 py-3 pl-12 transition-all duration-200 focus:ring-1 focus:outline-none"
 					/>
 				</div>
 
 				<!-- Categories -->
 				<select
 					bind:value={filters.category}
-					class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-all duration-200 focus:ring-1 focus:outline-none"
+					class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 min-h-[44px] rounded-xl border border-gray-200 bg-white px-4 py-3 transition-all duration-200 focus:ring-1 focus:outline-none"
 				>
 					<option value="all">All Categories</option>
 					{#each categories as category (category.value)}
@@ -334,7 +334,7 @@
 				<!-- Algorithm Filter -->
 				<select
 					bind:value={filters.algorithm}
-					class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-all duration-200 focus:ring-1 focus:outline-none"
+					class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 min-h-[44px] rounded-xl border border-gray-200 bg-white px-4 py-3 transition-all duration-200 focus:ring-1 focus:outline-none"
 				>
 					<option value="all">All Algorithms</option>
 					<option value="edgetracing">Edge Tracing</option>
@@ -348,7 +348,7 @@
 				<!-- View Toggle -->
 				<div class="flex overflow-hidden rounded-xl border border-gray-200">
 					<button
-						class="flex items-center px-4 py-3 transition-all duration-200 {viewMode === 'grid'
+						class="flex min-h-[44px] items-center px-4 py-3 transition-all duration-200 {viewMode === 'grid'
 							? 'icon-ferrari-bg text-white'
 							: 'text-speed-gray-600 bg-white hover:bg-gray-50'}"
 						onclick={() => setViewMode('grid')}
@@ -357,7 +357,7 @@
 						<Grid class="h-4 w-4" />
 					</button>
 					<button
-						class="flex items-center px-4 py-3 transition-all duration-200 {viewMode === 'list'
+						class="flex min-h-[44px] items-center px-4 py-3 transition-all duration-200 {viewMode === 'list'
 							? 'icon-ferrari-bg text-white'
 							: 'text-speed-gray-600 bg-white hover:bg-gray-50'}"
 						onclick={() => setViewMode('list')}
@@ -372,12 +372,12 @@
 </section>
 
 <!-- Main Gallery Section -->
-<section class="bg-section-premium py-8">
+<section class="bg-section-premium py-6 sm:py-8">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 		<!-- Gallery Grid -->
 		<div
 			class={viewMode === 'grid'
-				? 'grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+				? 'grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
 				: 'space-y-6'}
 		>
 			{#each displayedItems || [] as item (item.id)}
@@ -416,19 +416,17 @@
 							<div
 								class="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 transform opacity-0 transition-all duration-300 group-hover:opacity-100"
 							>
-								<div class="pointer-events-auto flex items-center">
+								<div class="pointer-events-auto flex items-center gap-3">
 									<button
 										onclick={() => openModal(item)}
-										class="text-ferrari-600 flex items-center justify-center rounded-lg bg-white/90 p-2.5 shadow-lg backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white"
-										style="margin-right: 12px;"
+										class="text-ferrari-600 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-white/90 p-2.5 shadow-lg backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white"
 										aria-label="Expand image"
 									>
 										<Maximize2 class="h-4 w-4" />
 									</button>
 									<button
 										onclick={async () => await downloadSVG(item)}
-										class="bg-ferrari-600 hover:bg-ferrari-700 flex items-center justify-center rounded-lg p-2.5 text-white shadow-lg transition-all duration-200 hover:scale-105"
-										style="margin-left: 12px;"
+										class="bg-ferrari-600 hover:bg-ferrari-700 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2.5 text-white shadow-lg transition-all duration-200 hover:scale-105"
 										aria-label="Download SVG"
 									>
 										<Download class="h-4 w-4" />
@@ -440,7 +438,7 @@
 
 					<!-- Card Details -->
 					<div
-						class="space-y-3 p-6 {viewMode === 'list'
+						class="space-y-3 p-4 sm:p-6 {viewMode === 'list'
 							? 'flex flex-1 items-center justify-between'
 							: ''}"
 					>
