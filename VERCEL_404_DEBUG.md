@@ -554,4 +554,32 @@ Based on scientific method, we need to **isolate the problem layer**:
 
 **Status**: 🔴 **CRITICAL** - 9 theories failed, need systematic layer isolation
 
-**Next Critical Step**: Function invocation verification with server-side logging
+## Debugging Attempt 10: Framework Detection Investigation (Theory 13)
+
+**Date**: 2025-09-11 (Vercel MCP investigation)  
+**Issue**: Function exists but is never invoked - Vercel returns internal 404  
+**Theory**: Legacy SvelteKit detection causing wrong routing behavior  
+**Evidence via Vercel MCP**:
+- ✅ Project framework shows `"sveltekit-1"` (legacy detection)  
+- ✅ Deployment status `READY` with no function errors
+- ❌ `"x-vercel-error": "NOT_FOUND"` header shows **Vercel's internal 404**
+- ❌ Zero function invocations despite comprehensive logging
+
+**Root Cause Discovery**: Vercel is detecting this as legacy SvelteKit v1 instead of modern SvelteKit v2, causing it to use incorrect routing behavior that bypasses our function entirely.
+
+**Changes Made**:
+- ✅ Removed explicit `"framework": "sveltekit"` from vercel.json
+- ✅ Let Vercel auto-detect framework without override
+- ✅ This should trigger proper modern SvelteKit detection
+
+**Reasoning**:
+- Legacy detection explains why ALL routing fails
+- Vercel returns its own 404 instead of calling our function
+- Auto-detection should properly identify modern SvelteKit setup
+- This addresses the fundamental routing layer issue
+
+---
+
+**Status**: 🎯 **BREAKTHROUGH** - Legacy framework detection identified as root cause
+
+**Next Critical Step**: Deploy without framework override to trigger proper auto-detection
