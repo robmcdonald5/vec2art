@@ -8,12 +8,8 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		// Vercel adapter with Node.js runtime for filesystem compatibility
-		adapter: adapter({
-			// Use Node.js runtime for compatibility with filesystem APIs
-			runtime: 'nodejs22.x', // Match Vercel project settings
-			regions: ['iad1']
-		}),
+		// Vercel adapter with default configuration
+		adapter: adapter(),
 
 		// REMOVED: Prerender causing 404 issues - let all routes be handled by server function
 
