@@ -1,6 +1,4 @@
 {
-  "framework": null,
   "buildCommand": "chmod +x scripts/vercel-build.sh && ./scripts/vercel-build.sh && cd frontend && npm run build:frontend-only",
-  "installCommand": "cd frontend && npm ci",
-  "outputDirectory": "frontend/.vercel/output"
+  "installCommand": "cd frontend && npm ci"
 }
