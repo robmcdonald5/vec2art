@@ -71,11 +71,13 @@
 				title: item.title,
 				beforeImage: item.beforeImage,
 				afterImage: item.afterImage,
+				afterSvg: item.afterSvg,
 				category: item.category,
 				algorithm: item.algorithm,
-				tags: item.tags,
-				quality: item.quality,
-				fileSize: item.fileSize
+				algorithmKey: item.algorithmKey,
+				dimensions: item.dimensions,
+				fileSize: item.fileSize,
+				svgSize: item.svgSize
 			}));
 
 			navigator.serviceWorker.controller.postMessage(
