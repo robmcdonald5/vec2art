@@ -2,13 +2,13 @@ name: WASM Build & Test
 
 on:
   push:
-    branches: [main, feature/*]
+    branches: [main, dev]
     paths:
       - "wasm/**"
       - "rebuild-wasm.sh"
       - ".github/workflows/wasm-build.yml"
   pull_request:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - "wasm/**"
       - "rebuild-wasm.sh"
