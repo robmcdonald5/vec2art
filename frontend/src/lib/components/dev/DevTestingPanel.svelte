@@ -774,7 +774,7 @@
 			size="sm"
 			class="mb-2 border-slate-700 bg-slate-900 text-white hover:bg-slate-800"
 		>
-			{#snippet children()}🧪 Dev Tools{/snippet}
+			🧪 Dev Tools
 		</Button>
 
 		<!-- Panel -->
@@ -791,7 +791,7 @@
 							size="sm"
 							class="text-slate-400 hover:text-white"
 						>
-							{#snippet children()}×{/snippet}
+							×
 						</Button>
 					</div>
 				</div>
@@ -846,7 +846,7 @@
 								size="sm"
 								class="text-xs"
 							>
-								{#snippet children()}🔍 Introspect WASM{/snippet}
+								🔍 Introspect WASM
 							</Button>
 							<Button
 								onclick={runQuickValidation}
@@ -856,9 +856,9 @@
 								size="sm"
 								class="text-xs"
 							>
-								{#snippet children()}{isRunningTests
+								{isRunningTests
 										? '⏳ Testing...'
-										: '🧪 Quick Validation'}{/snippet}
+										: '🧪 Quick Validation'}
 							</Button>
 							<Button
 								onclick={testFunctionAvailability}
@@ -866,7 +866,7 @@
 								size="sm"
 								class="text-xs"
 							>
-								{#snippet children()}🔧 Test Functions{/snippet}
+								🔧 Test Functions
 							</Button>
 							<Button
 								onclick={downloadReport}
@@ -875,7 +875,7 @@
 								variant="outline"
 								class="text-xs"
 							>
-								{#snippet children()}📥 Download Report{/snippet}
+								📥 Download Report
 							</Button>
 						</div>
 					</div>

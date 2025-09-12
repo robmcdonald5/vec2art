@@ -388,6 +388,8 @@
 						: ''}"
 					style="animation-delay: {Math.max(0, (item.id - 1) * 0.1)}s"
 					onmouseenter={() => handleItemHover(item)}
+					role="button"
+					tabindex="0"
 				>
 					<!-- Before/After Slider -->
 					<div

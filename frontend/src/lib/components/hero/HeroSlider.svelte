@@ -224,6 +224,7 @@
 
 <div class="relative w-full overflow-hidden">
 	<!-- Slider Container -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		bind:this={containerEl}
 		class="relative h-full w-full cursor-grab active:cursor-grabbing"

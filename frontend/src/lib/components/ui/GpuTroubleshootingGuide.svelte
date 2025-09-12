@@ -107,6 +107,7 @@ Helps users diagnose and fix "GPU: Unavailable" issues
 		tabindex="-1"
 		aria-label="Close troubleshooting guide"
 	>
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			class="mx-4 w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-gray-900"
 			onclick={(e) => e.stopPropagation()}

@@ -80,7 +80,9 @@
 	let detailValue = $state(
 		config.backend === 'dots' ? Math.round((config.detail || 0.5) * 10) : config.detail || 0.6
 	);
+	// eslint-disable-next-line svelte/prefer-writable-derived
 	let strokeWidthValue = $state(config.stroke_width || 2.0);
+	// eslint-disable-next-line svelte/prefer-writable-derived
 	let regionComplexityValue = $state(config.num_superpixels || 150);
 
 	// Update reactive values when config changes
