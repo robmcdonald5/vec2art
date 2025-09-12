@@ -153,9 +153,7 @@
 				type="button"
 			>
 				<div class="flex items-center gap-2">
-					<div class="bg-ferrari-100 rounded p-1">
-						<Eraser class="text-ferrari-600 h-4 w-4" />
-					</div>
+					<Eraser class="text-ferrari-600 h-4 w-4" />
 					<span class="text-converter-primary font-medium">Background Filtering</span>
 					{#if config.enable_background_removal}
 						<Check class="h-4 w-4 text-green-600" />
@@ -328,9 +326,7 @@
 					type="button"
 				>
 					<div class="flex items-center gap-2">
-						<div class="bg-ferrari-100 rounded p-1">
-							<Layers class="text-ferrari-600 h-4 w-4" />
-						</div>
+						<Layers class="text-ferrari-600 h-4 w-4" />
 						<span class="text-converter-primary font-medium">Multi-pass Processing</span>
 						{#if (config.pass_count || 1) > 1}
 							<Check class="h-4 w-4 text-green-600" />

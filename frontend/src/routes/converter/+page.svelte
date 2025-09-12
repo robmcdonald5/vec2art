@@ -1617,68 +1617,6 @@
 			</p>
 		</header>
 
-		<!-- Dev Tools - Clear Persistence Button (TOP RIGHT) -->
-		{#if import.meta.env.DEV}
-			<div class="fixed top-20 right-4 z-50">
-				<button
-					class="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg transition-all hover:bg-red-700 hover:shadow-xl"
-					onclick={() => {
-						// Step 1: Disable auto-save to prevent reactive re-saving
-						converterPersistence.setAutoSave(false);
-
-						// Step 2: Reset all UI state first (clears arrays, resets indices)
-						handleReset();
-
-						// Step 3: Reset all settings to defaults using proper reset method
-						settingsSyncStore.resetConfigs();
-
-						// Step 4: Reset settings sync mode to global
-						settingsSyncStore.switchMode('global', {
-							preserveCurrentConfig: false,
-							initializeFromGlobal: false,
-							confirmDataLoss: false
-						});
-
-						// Step 5: Reset preset selection
-						selectedPreset = 'artistic';
-
-						// Step 6: Reset vectorizer store to clean state
-						vectorizerStore.reset();
-
-						// Step 7: Clear parameter history
-						parameterHistory.clear();
-
-						// Pan/zoom reset is now handled internally by SimplifiedPreviewComparison
-
-						// Step 9: Clear all persistence data AFTER state is reset
-						converterPersistence.clearAll();
-
-						// Step 10: Validate and clean any backend cross-contamination
-						const validation = settingsSyncStore.validateAndCleanConfigs();
-						if (validation.issues.length > 0) {
-							console.log(
-								'🛡️ Clear All found and cleaned cross-contamination issues:',
-								validation.issues
-							);
-						}
-
-						// Step 11: Force component remounting by changing key
-						componentResetKey++;
-
-						// Step 12: Re-enable auto-save after a delay to allow state to settle
-						setTimeout(() => {
-							converterPersistence.setAutoSave(true);
-						}, 500);
-
-						toastStore.info('🧹 Cleared all data and reset all settings to defaults');
-					}}
-					title="Clear all data and reset all settings to defaults"
-				>
-					<RefreshCw class="h-4 w-4" />
-					Clear All
-				</button>
-			</div>
-		{/if}
 
 		<!-- Main Content - Layered State UI -->
 		{#if pageLoaded && !initError}
