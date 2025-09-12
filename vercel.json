@@ -1,4 +1,4 @@
 {
-  "buildCommand": "cd frontend && npm run build",
+  "buildCommand": "cd frontend && npm run build:frontend-only",
   "installCommand": "cd frontend && npm ci"
 }
