@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@config '../tailwind.config.ts';
 
 @layer base {
 	:root {
@@ -112,7 +113,7 @@
 			min-height: 44px !important;
 			min-width: 44px !important;
 		}
-		
+
 		/* Icon buttons need proper padding */
 		.mobile-touch-icon {
 			padding: 10px; /* Centers smaller icons in 44px container */
@@ -410,20 +411,11 @@
 		color: #000000; /* Ensure maximum contrast */
 	}
 
-	/* Footer gradient text with proper fallback */
+	/* Footer gradient text - simplified without glow effect */
 	.footer-gradient-text {
-		/* Strong fallback color for footer */
-		color: #dc143c;
-		background: linear-gradient(to right, #dc143c, #b91c2e, #dc143c);
-		background-clip: text;
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		animation: ferrariGlow 4s ease-in-out infinite alternate;
-
-		/* Fallback for browsers without gradient support */
-		@supports not (-webkit-background-clip: text) {
-			color: #dc143c;
-		}
+		/* Simple text color without gradient or glow */
+		color: #ffffff;
+		font-weight: 700;
 	}
 
 	/* Modern hero section with animated background - Ferrari palette */

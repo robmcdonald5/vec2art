@@ -256,12 +256,12 @@
 
 					<!-- Showcase Content -->
 					<div
-						class="relative z-10 flex min-h-[90vh] items-center justify-center px-4 sm:px-6 lg:px-8"
+						class="relative z-10 flex min-h-[90vh] items-center justify-center px-4 pt-8 pb-20 sm:px-6 lg:px-8"
 					>
 						<div class="mx-auto max-w-screen-xl">
 							<div class="text-center">
 								<!-- Showcase Header -->
-								<div class="mb-8 flex items-center justify-center gap-3">
+								<div class="mb-6 flex items-center justify-center gap-3">
 									<Sparkles class="text-ferrari-600 h-8 w-8" />
 									<h2 class="text-4xl font-bold text-gray-900">See vec2art in Action</h2>
 									<Sparkles class="text-ferrari-600 h-8 w-8" />
@@ -270,7 +270,7 @@
 								<!-- Showcase Card -->
 								<div class="relative mx-auto max-w-4xl">
 									<div
-										class="relative overflow-hidden rounded-3xl border border-white/50 bg-white/80 p-8 shadow-2xl backdrop-blur-md"
+										class="relative overflow-hidden rounded-3xl border border-white/50 bg-white/80 p-6 shadow-2xl backdrop-blur-md"
 									>
 										<!-- Try It Button - Top Right of Card -->
 										<a
@@ -282,7 +282,7 @@
 											<ChevronRight class="h-3 w-3" />
 										</a>
 										<!-- Current Showcase Item -->
-										<div class="mb-6">
+										<div class="mb-4">
 											<h3 class="mb-2 text-2xl font-semibold text-gray-900">
 												{showcaseItems[showcaseIndex].title}
 											</h3>
@@ -318,7 +318,7 @@
 	</div>
 
 	<!-- Panel Indicators/Navigation -->
-	<div class="absolute bottom-8 left-1/2 z-20 -translate-x-1/2">
+	<div class="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 md:bottom-8">
 		<div
 			class="flex items-center gap-4 rounded-full bg-white/90 px-6 py-3 shadow-lg backdrop-blur-sm"
 		>
@@ -329,11 +329,11 @@
 					? 'text-ferrari-600 font-medium'
 					: 'text-gray-500 hover:text-gray-700 active:scale-95'}"
 			>
-				<span
-					class="relative z-10 h-2 w-2 rounded-full {currentPanel === 0
-						? 'bg-ferrari-600'
-						: 'bg-gray-300'}"
-				></span>
+				{#if currentPanel === 0}
+					<span class="bg-ferrari-600 relative z-10 h-2 w-2 rounded-full"></span>
+				{:else}
+					<span class="relative z-10 h-2 w-2 rounded-full bg-gray-300"></span>
+				{/if}
 				<span class="relative z-10">Overview</span>
 				<!-- Mobile touch ripple -->
 				<div
@@ -348,11 +348,11 @@
 					? 'text-ferrari-600 font-medium'
 					: 'text-gray-500 hover:text-gray-700 active:scale-95'}"
 			>
-				<span
-					class="relative z-10 h-2 w-2 rounded-full {currentPanel === 1
-						? 'bg-ferrari-600'
-						: 'bg-gray-300'}"
-				></span>
+				{#if currentPanel === 1}
+					<span class="bg-ferrari-600 relative z-10 h-2 w-2 rounded-full"></span>
+				{:else}
+					<span class="relative z-10 h-2 w-2 rounded-full bg-gray-300"></span>
+				{/if}
 				<span class="relative z-10">Examples</span>
 				<!-- Mobile touch ripple -->
 				<div

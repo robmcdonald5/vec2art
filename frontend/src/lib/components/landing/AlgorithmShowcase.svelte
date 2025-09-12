@@ -37,14 +37,9 @@
 	// Mobile optimization: limit displayed algorithms
 	const MOBILE_LIMIT = 6; // Show 6 algorithms initially on mobile
 
-	// Dynamic algorithm list based on mobile expand state
-	let carouselAlgorithms = $derived(() => {
-		if (showAllAlgorithms) {
-			return algorithms; // Show all algorithms
-		} else {
-			return algorithms.slice(0, MOBILE_LIMIT); // Show limited set on mobile
-		}
-	});
+	// FIXED: Use original algorithms array consistently (no complex derived functions)
+	// This prevents state synchronization bugs between carousel and selection
+	const carouselAlgorithms = algorithms;
 
 	// Function to toggle show more/less
 	function toggleShowMore() {
@@ -52,7 +47,7 @@
 
 		// If collapsing, ensure selected algorithm is within visible range
 		if (!showAllAlgorithms && selectedAlgorithm) {
-			const visibleAlgorithms = algorithms.slice(0, MOBILE_LIMIT);
+			const visibleAlgorithms = carouselAlgorithms.slice(0, MOBILE_LIMIT);
 			const isSelectedVisible = visibleAlgorithms.some((alg) => alg.id === selectedAlgorithm.id);
 
 			// If current selection is not in visible range, select the first visible one
@@ -80,7 +75,7 @@
 
 	// Preload adjacent algorithms for smooth carousel navigation
 	function preloadAdjacentImages(currentIndex: number) {
-		const currentAlgorithms = carouselAlgorithms();
+		const currentAlgorithms = carouselAlgorithms;
 		const totalLength = currentAlgorithms.length;
 
 		// Preload previous and next algorithms (with wrapping)
@@ -113,7 +108,7 @@
 		// Listen for slide changes to update selected algorithm
 		emblaApi.on('select', () => {
 			const selectedIndex = emblaApi.selectedScrollSnap();
-			const currentAlgorithms = carouselAlgorithms();
+			const currentAlgorithms = carouselAlgorithms;
 			// FIXED: Use bounds checking to prevent array access errors
 			if (selectedIndex >= 0 && selectedIndex < currentAlgorithms.length) {
 				selectedAlgorithm = currentAlgorithms[selectedIndex];
@@ -124,7 +119,7 @@
 
 		// Set initial selected algorithm with bounds checking
 		const initialIndex = emblaApi.selectedScrollSnap();
-		const currentAlgorithms = carouselAlgorithms();
+		const currentAlgorithms = carouselAlgorithms;
 		if (initialIndex >= 0 && initialIndex < currentAlgorithms.length) {
 			selectedAlgorithm = currentAlgorithms[initialIndex];
 			// Preload initial adjacent images
@@ -137,7 +132,7 @@
 	function handleTabClick(algorithm: ShowcaseAlgorithm) {
 		if (!emblaApi || !isInitialized) return;
 
-		const currentAlgorithms = carouselAlgorithms();
+		const currentAlgorithms = carouselAlgorithms;
 		// FIXED: Find algorithm index in correct array with validation
 		const algorithmIndex = currentAlgorithms.findIndex((alg) => alg.id === algorithm.id);
 		if (algorithmIndex !== -1 && algorithmIndex < currentAlgorithms.length) {
@@ -202,7 +197,7 @@
 	$effect(() => {
 		if (selectedAlgorithm && emblaApi && isInitialized) {
 			const currentIndex = emblaApi.selectedScrollSnap();
-			const currentAlgorithms = carouselAlgorithms();
+			const currentAlgorithms = carouselAlgorithms;
 			const expectedAlgorithm = currentAlgorithms[currentIndex];
 
 			// Only log warnings for debugging, don't auto-correct to avoid infinite loops
@@ -246,7 +241,7 @@
 		onemblaInit={onEmblaInit}
 	>
 		<div class="embla__container flex gap-4 pt-2 pb-4 pl-4">
-			{#each carouselAlgorithms() as algorithm (algorithm.id)}
+			{#each carouselAlgorithms as algorithm (algorithm.id)}
 				<div class="embla__slide flex-shrink-0" style="flex: 0 0 auto;">
 					<button
 						class="algorithm-tab group relative flex w-44 touch-manipulation items-center gap-2 overflow-hidden rounded-xl border-2 px-4 py-3 transition-all duration-300 sm:w-52 sm:px-6 sm:py-4 {selectedAlgorithm.id ===
@@ -397,31 +392,30 @@
 
 				<!-- CTA -->
 				<div class="mt-auto">
-					<button
-						onclick={handleTryEffect}
-						disabled={!selectedAlgorithm.isAvailable}
-						class="group relative inline-flex w-56 touch-manipulation items-center justify-center gap-2 overflow-hidden rounded-xl px-4 py-2.5 font-semibold text-white shadow-lg transition-all duration-300 {selectedAlgorithm.isAvailable
-							? 'bg-ferrari-600 hover:bg-ferrari-700 cursor-pointer hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:shadow-lg'
-							: 'cursor-not-allowed bg-gray-400 opacity-75'}"
-					>
-						<span class="relative z-10"
-							>{selectedAlgorithm.isAvailable
-								? 'Try This Style'
-								: `Coming Soon: ${selectedAlgorithm.name}`}</span
+					{#if selectedAlgorithm.isAvailable}
+						<button
+							onclick={handleTryEffect}
+							class="group bg-ferrari-600 hover:bg-ferrari-700 relative inline-flex w-56 cursor-pointer touch-manipulation items-center justify-center gap-2 overflow-hidden rounded-xl px-4 py-2.5 font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:shadow-lg"
 						>
-						<ArrowRight
-							class="relative z-10 h-5 w-5 transition-transform {selectedAlgorithm.isAvailable
-								? 'group-hover:translate-x-1'
-								: ''}"
-						/>
-
-						<!-- Mobile touch ripple effect for available buttons -->
-						{#if selectedAlgorithm.isAvailable}
+							<span class="relative z-10">Try This Style</span>
+							<ArrowRight
+								class="relative z-10 h-5 w-5 transition-transform group-hover:translate-x-1"
+							/>
+							<!-- Mobile touch ripple effect -->
 							<div
 								class="pointer-events-none absolute inset-0 scale-0 rounded-xl bg-white opacity-0 transition-all duration-300 group-active:scale-100 group-active:opacity-20 md:hidden"
 							></div>
-						{/if}
-					</button>
+						</button>
+					{:else}
+						<button
+							onclick={handleTryEffect}
+							disabled={true}
+							class="group relative inline-flex w-56 cursor-not-allowed touch-manipulation items-center justify-center gap-2 overflow-hidden rounded-xl bg-gray-400 px-4 py-2.5 font-semibold text-white opacity-75 shadow-lg transition-all duration-300"
+						>
+							<span class="relative z-10">Coming Soon: {selectedAlgorithm.name}</span>
+							<ArrowRight class="relative z-10 h-5 w-5 transition-transform" />
+						</button>
+					{/if}
 				</div>
 			</div>
 		</div>

@@ -104,7 +104,7 @@
 		transition: all 0.2s ease;
 		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 	}
-	
+
 	/* Touch devices only - better UX targeting */
 	@media (pointer: coarse) {
 		.slider-ferrari {

@@ -131,7 +131,7 @@
 	<button
 		bind:this={triggerElement}
 		type="button"
-		class="hover:text-ferrari-600 inline-flex h-4 w-4 items-center justify-center text-gray-400 transition-all duration-200 hover:scale-110 mobile-touch-target {disabled
+		class="hover:text-ferrari-600 mobile-touch-target inline-flex h-4 w-4 items-center justify-center text-gray-400 transition-all duration-200 hover:scale-110 {disabled
 			? 'cursor-not-allowed opacity-50'
 			: 'cursor-help'}"
 		onmouseenter={handleMouseEnter}

@@ -85,19 +85,16 @@
 	<header
 		class="border-speed-gray-200/50 bg-nav-clean sticky top-0 z-50 border-b shadow-sm backdrop-blur-xl transition-all duration-200 supports-[backdrop-filter]:bg-white/95"
 	>
-		<!-- Ferrari accent line -->
-		<div
-			class="via-ferrari-500/30 absolute right-0 bottom-0 left-0 h-0.5 bg-gradient-to-r from-transparent to-transparent"
-		></div>
+		<!-- Remove Ferrari accent line - no longer needed -->
 
 		<div
 			class="mx-auto flex h-14 w-full max-w-screen-xl items-center justify-between px-4 md:h-16 md:px-6 lg:px-8"
 		>
 			<a
 				href="/"
-				class="hover:animate-ferrari-glow flex items-center font-semibold transition-all duration-300 min-h-[44px] py-2"
+				class="flex min-h-[44px] items-center py-2 font-semibold transition-all duration-300 hover:opacity-80"
 			>
-				<span class="footer-gradient-text text-3xl font-bold md:text-3xl"> vec2art </span>
+				<span class="text-3xl font-bold text-ferrari-600 md:text-3xl"> vec2art </span>
 			</a>
 			<nav class="flex items-center gap-2 md:gap-3">
 				<!-- Desktop Navigation (hidden on mobile) -->
@@ -112,11 +109,6 @@
 						aria-current={$page.url.pathname === '/converter' ? 'page' : undefined}
 					>
 						Converter
-						{#if $page.url.pathname === '/converter'}
-							<span
-								class="bg-ferrari-500 animate-speed-pulse absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
-							></span>
-						{/if}
 					</a>
 					<a
 						href="/gallery"
@@ -128,11 +120,6 @@
 						aria-current={$page.url.pathname === '/gallery' ? 'page' : undefined}
 					>
 						Gallery
-						{#if $page.url.pathname === '/gallery'}
-							<span
-								class="bg-ferrari-500 animate-speed-pulse absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
-							></span>
-						{/if}
 					</a>
 					<a
 						href="/about"
@@ -143,11 +130,6 @@
 						aria-current={$page.url.pathname === '/about' ? 'page' : undefined}
 					>
 						About
-						{#if $page.url.pathname === '/about'}
-							<span
-								class="bg-ferrari-500 animate-speed-pulse absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
-							></span>
-						{/if}
 					</a>
 				</div>
 				<!-- Desktop CTA Button -->

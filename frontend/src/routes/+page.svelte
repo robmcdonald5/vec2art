@@ -175,11 +175,14 @@
 	</section>
 
 	<!-- Footer -->
-	<footer class="relative bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white">
-		<!-- Clean premium overlay -->
-		<div
-			class="from-speed-gray-800/20 via-speed-gray-900/10 to-speed-gray-800/20 pointer-events-none absolute inset-0 bg-gradient-to-r"
-		></div>
+	<footer class="relative overflow-hidden bg-gray-900 text-white">
+		<!-- Multi-layer gradient approach - vertical only for even darkness -->
+		<div class="absolute inset-0 bg-gradient-to-b from-gray-800 via-gray-900 to-black"></div>
+		<div class="absolute inset-0 bg-gradient-to-b from-transparent via-gray-900/30 to-black/50"></div>
+		<!-- Centered subtle orb to break up banding without creating left/right imbalance -->
+		<div class="absolute top-1/2 left-1/2 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-gray-800/20 via-transparent to-black/20 blur-3xl"></div>
+		<!-- Noise overlay as final layer -->
+		<div class="pointer-events-none absolute inset-0 bg-noise-overlay opacity-30"></div>
 
 		<!-- Main Footer Content -->
 		<div class="relative py-12 md:py-16">
@@ -188,8 +191,8 @@
 					<!-- Brand Section -->
 					<div class="lg:col-span-1">
 						<div class="mb-6 flex items-center">
-							<a href="/" class="hover:animate-ferrari-glow transition-all duration-300">
-								<h3 class="footer-gradient-text text-3xl font-bold">vec2art</h3>
+							<a href="/" class="transition-all duration-300 hover:opacity-80">
+								<h3 class="text-3xl font-bold text-ferrari-500">vec2art</h3>
 							</a>
 						</div>
 						<p class="mb-6 max-w-sm text-sm leading-relaxed text-gray-300">

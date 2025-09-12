@@ -215,7 +215,9 @@
 						onclick={onConvert}
 						disabled={!canConvert}
 					>
-						<Play class="h-5 w-5 transition-transform group-hover:translate-x-0.5 group-hover:scale-110" />
+						<Play
+							class="h-5 w-5 transition-transform group-hover:translate-x-0.5 group-hover:scale-110"
+						/>
 						<span class="ml-2 font-medium">Convert</span>
 					</Button>
 				{/if}
@@ -237,7 +239,9 @@
 		</div>
 
 		<!-- Mobile Bottom Row: Secondary Controls -->
-		<div class="border-ferrari-100 dark:border-ferrari-800 border-t bg-ferrari-25/50 px-4 py-3 dark:bg-ferrari-950/30">
+		<div
+			class="border-ferrari-100 dark:border-ferrari-800 bg-ferrari-25/50 dark:bg-ferrari-950/30 border-t px-4 py-3"
+		>
 			<div class="flex items-center justify-between">
 				<!-- File Navigation Arrows (Mobile) -->
 				{#if hasMultipleFiles}
@@ -294,7 +298,11 @@
 							disabled={isProcessing}
 						>
 							<span class="text-sm">Manage</span>
-							<ChevronDown class="ml-2 h-4 w-4 transition-transform duration-200 {showMobileManageDropdown ? 'rotate-180' : ''}" />
+							<ChevronDown
+								class="ml-2 h-4 w-4 transition-transform duration-200 {showMobileManageDropdown
+									? 'rotate-180'
+									: ''}"
+							/>
 						</Button>
 
 						{#if showMobileManageDropdown}
@@ -303,19 +311,25 @@
 							>
 								<div class="p-2">
 									<button
-										onclick={() => { onReset(); showMobileManageDropdown = false; }}
+										onclick={() => {
+											onReset();
+											showMobileManageDropdown = false;
+										}}
 										disabled={isProcessing}
 										class="mobile-touch-target hover:bg-ferrari-50 dark:hover:bg-ferrari-800 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium transition-all duration-150 hover:scale-[1.01] hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
 									>
-										<RotateCcw class="h-5 w-5 text-ferrari-600" />
+										<RotateCcw class="text-ferrari-600 h-5 w-5" />
 										<span>Clear All</span>
 									</button>
 									<button
-										onclick={() => { onAddMore(); showMobileManageDropdown = false; }}
+										onclick={() => {
+											onAddMore();
+											showMobileManageDropdown = false;
+										}}
 										disabled={isProcessing}
 										class="mobile-touch-target hover:bg-ferrari-50 dark:hover:bg-ferrari-800 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium transition-all duration-150 hover:scale-[1.01] hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
 									>
-										<Plus class="h-5 w-5 text-ferrari-600" />
+										<Plus class="text-ferrari-600 h-5 w-5" />
 										<span>Add More</span>
 									</button>
 								</div>

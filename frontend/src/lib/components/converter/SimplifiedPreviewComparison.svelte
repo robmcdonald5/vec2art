@@ -228,7 +228,9 @@
 			<div class="absolute inset-x-2 top-2 z-20 md:inset-x-4 md:top-4">
 				<!-- Mobile: Stacked layout -->
 				<div class="flex flex-col gap-2 md:hidden">
-					<div class="text-converter-primary rounded-lg bg-white/95 px-3 py-2 text-center text-sm font-medium shadow-sm backdrop-blur-sm">
+					<div
+						class="text-converter-primary rounded-lg bg-white/95 px-3 py-2 text-center text-sm font-medium shadow-sm backdrop-blur-sm"
+					>
 						Comparison Slider ({Math.round(sliderPosition)}%)
 					</div>
 					<div class="flex items-center justify-center gap-3">
@@ -237,11 +239,17 @@
 							size="default"
 							class="mobile-touch-target border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/95 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 rounded-lg bg-white/95 shadow-sm backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white hover:shadow-md active:scale-95"
 							onclick={() => (isVerticalSplit = !isVerticalSplit)}
-							aria-label={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
+							aria-label={isVerticalSplit
+								? 'Switch to horizontal split'
+								: 'Switch to vertical split'}
 							title={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
 						>
-							<ArrowLeftRight class="h-5 w-5 {isVerticalSplit ? 'rotate-90' : ''} transition-transform" />
-							<span class="ml-2 text-sm font-medium">{isVerticalSplit ? 'Horizontal' : 'Vertical'}</span>
+							<ArrowLeftRight
+								class="h-5 w-5 {isVerticalSplit ? 'rotate-90' : ''} transition-transform"
+							/>
+							<span class="ml-2 text-sm font-medium"
+								>{isVerticalSplit ? 'Horizontal' : 'Vertical'}</span
+							>
 						</Button>
 						{#if onDownload && hasResult}
 							<Button
@@ -271,7 +279,9 @@
 							size="icon"
 							class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
 							onclick={() => (isVerticalSplit = !isVerticalSplit)}
-							aria-label={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
+							aria-label={isVerticalSplit
+								? 'Switch to horizontal split'
+								: 'Switch to vertical split'}
 							title={isVerticalSplit ? 'Switch to horizontal split' : 'Switch to vertical split'}
 						>
 							<ArrowLeftRight class="h-4 w-4 {isVerticalSplit ? 'rotate-90' : ''}" />
@@ -351,7 +361,9 @@
 						<!-- Mobile: Stacked layout -->
 						<div class="flex flex-col gap-3 md:hidden">
 							<div class="flex items-center justify-between">
-								<span class="text-converter-primary text-base font-semibold select-none">Original</span>
+								<span class="text-converter-primary text-base font-semibold select-none"
+									>Original</span
+								>
 								<button
 									class="mobile-touch-target text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {modernPanZoomStore.syncEnabled
 										? 'text-ferrari-600'

@@ -33,10 +33,10 @@
 	// UI state management
 	let isQuickSettingsExpanded = $state(true);
 	let isAdvancedSettingsExpanded = $state(false);
-	
+
 	// Check if we're on mobile
 	let isMobile = $state(false);
-	
+
 	// Update mobile detection
 	if (typeof window !== 'undefined') {
 		const checkMobile = () => {
@@ -117,8 +117,7 @@
 	});
 </script>
 
-<div class="w-full max-w-sm space-y-4 md:space-y-4 space-y-6">
-
+<div class="w-full max-w-sm space-y-4 space-y-6 md:space-y-4">
 	<!-- Quick Settings Panel -->
 	<div
 		class="card-ferrari-static to-ferrari-50/20 border-ferrari-200/50 overflow-hidden rounded-2xl border bg-gradient-to-br from-white shadow-lg"
@@ -172,214 +171,214 @@
 
 				<!-- Style Preset (Disabled - Coming Soon) - STANDARD+ ONLY -->
 				{#if !isMobile || settingsMode !== 'essential'}
-				<div>
-					<div class="mb-3 flex items-center gap-2">
-						<label
-							for="preset-selector"
-							class="text-converter-secondary block text-sm font-medium opacity-60"
-						>
-							Style Preset
-						</label>
-						<span
-							class="text-ferrari-600 bg-ferrari-50 border-ferrari-200 rounded-md border px-2 py-1 text-xs font-semibold"
-						>
-							COMING SOON
-						</span>
-						<PortalTooltipFixed
-							content="Advanced style presets are currently being refined and will be available in a future update. Use the manual parameter controls below for now."
-							position="right"
-							size="md"
-						/>
+					<div>
+						<div class="mb-3 flex items-center gap-2">
+							<label
+								for="preset-selector"
+								class="text-converter-secondary block text-sm font-medium opacity-60"
+							>
+								Style Preset
+							</label>
+							<span
+								class="text-ferrari-600 bg-ferrari-50 border-ferrari-200 rounded-md border px-2 py-1 text-xs font-semibold"
+							>
+								COMING SOON
+							</span>
+							<PortalTooltipFixed
+								content="Advanced style presets are currently being refined and will be available in a future update. Use the manual parameter controls below for now."
+								position="right"
+								size="md"
+							/>
+						</div>
+						<div class="relative">
+							<PresetSelector
+								selectedPresetId={undefined}
+								onPresetSelect={() => {
+									// Disabled - no action
+								}}
+								disabled={true}
+								selectedAlgorithm={config.backend}
+							/>
+							<div class="absolute inset-0 cursor-not-allowed rounded-md bg-gray-100/50"></div>
+						</div>
 					</div>
-					<div class="relative">
-						<PresetSelector
-							selectedPresetId={undefined}
-							onPresetSelect={() => {
-								// Disabled - no action
-							}}
-							disabled={true}
-							selectedAlgorithm={config.backend}
-						/>
-						<div class="absolute inset-0 cursor-not-allowed rounded-md bg-gray-100/50"></div>
-					</div>
-				</div>
 				{/if}
 
 				<!-- Essential Parameters - STANDARD+ LEVEL -->
 				{#if !isMobile || settingsMode !== 'essential'}
-				<div class="grid grid-cols-1 gap-6">
-					<!-- Detail Level (Edge/Centerline backends) OR Dot Density (Dots backend) -->
-					{#if config.backend !== 'superpixel'}
-						<div>
-							<div class="mb-2 flex items-center gap-2">
-								{#if config.backend === 'dots'}
-									<label
-										for="detail-level-slider"
-										class="text-converter-primary block text-sm font-medium"
-									>
-										Dot Density
-									</label>
-									<PortalTooltipFixed
-										content="Controls how many dots are placed in the stippling output. Lower values create fewer, sparse dots. Higher values create denser, more detailed stippling."
-										position="top"
-										size="md"
-									/>
-								{:else}
-									<label
-										for="detail-level-slider"
-										class="text-converter-primary block text-sm font-medium"
-									>
-										Detail Level
-									</label>
-									<PortalTooltipFixed
-										content="Controls how much detail is captured in the conversion. Lower values create simpler, cleaner lines. Higher values preserve more fine details and texture."
-										position="top"
-										size="md"
-									/>
-								{/if}
+					<div class="grid grid-cols-1 gap-6">
+						<!-- Detail Level (Edge/Centerline backends) OR Dot Density (Dots backend) -->
+						{#if config.backend !== 'superpixel'}
+							<div>
+								<div class="mb-2 flex items-center gap-2">
+									{#if config.backend === 'dots'}
+										<label
+											for="detail-level-slider"
+											class="text-converter-primary block text-sm font-medium"
+										>
+											Dot Density
+										</label>
+										<PortalTooltipFixed
+											content="Controls how many dots are placed in the stippling output. Lower values create fewer, sparse dots. Higher values create denser, more detailed stippling."
+											position="top"
+											size="md"
+										/>
+									{:else}
+										<label
+											for="detail-level-slider"
+											class="text-converter-primary block text-sm font-medium"
+										>
+											Detail Level
+										</label>
+										<PortalTooltipFixed
+											content="Controls how much detail is captured in the conversion. Lower values create simpler, cleaner lines. Higher values preserve more fine details and texture."
+											position="top"
+											size="md"
+										/>
+									{/if}
+								</div>
+								<FerrariSlider
+									id="detail-level-slider"
+									bind:value={detailValue}
+									min={config.backend === 'dots' ? 1 : 0.1}
+									max={config.backend === 'dots' ? 10 : 1}
+									step={config.backend === 'dots' ? 1 : 0.1}
+									oninput={config.backend === 'dots'
+										? updateDotDensity
+										: (value) => {
+												onConfigChange({ detail: value });
+												onParameterChange();
+											}}
+									{disabled}
+									class="w-full"
+								/>
+								<div class="text-converter-secondary mt-1 flex justify-between text-xs">
+									{#if config.backend === 'dots'}
+										<span>Sparse</span>
+										<span class="font-medium">{Math.round(detailValue)}/10</span>
+										<span>Dense</span>
+									{:else}
+										<span>Simple</span>
+										<span class="font-medium">{Math.round(detailValue * 10)}/10</span>
+										<span>Detailed</span>
+									{/if}
+								</div>
 							</div>
-							<FerrariSlider
-								id="detail-level-slider"
-								bind:value={detailValue}
-								min={config.backend === 'dots' ? 1 : 0.1}
-								max={config.backend === 'dots' ? 10 : 1}
-								step={config.backend === 'dots' ? 1 : 0.1}
-								oninput={config.backend === 'dots'
-									? updateDotDensity
-									: (value) => {
-											onConfigChange({ detail: value });
-											onParameterChange();
-										}}
-								{disabled}
-								class="w-full"
-							/>
-							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
-								{#if config.backend === 'dots'}
-									<span>Sparse</span>
-									<span class="font-medium">{Math.round(detailValue)}/10</span>
-									<span>Dense</span>
-								{:else}
-									<span>Simple</span>
-									<span class="font-medium">{Math.round(detailValue * 10)}/10</span>
-									<span>Detailed</span>
-								{/if}
-							</div>
-						</div>
-					{/if}
+						{/if}
 
-					<!-- Region Complexity (Superpixel backend only) -->
-					{#if config.backend === 'superpixel'}
+						<!-- Region Complexity (Superpixel backend only) -->
+						{#if config.backend === 'superpixel'}
+							<div>
+								<div class="mb-2 flex items-center gap-2">
+									<label
+										for="region-complexity-slider"
+										class="text-converter-primary block text-sm font-medium"
+									>
+										Region Complexity
+									</label>
+									<PortalTooltipFixed
+										content="Controls the number of regions in the superpixel segmentation. Lower values create fewer, larger regions. Higher values create more detailed segmentation with smaller regions."
+										position="top"
+										size="md"
+									/>
+								</div>
+								<FerrariSlider
+									id="region-complexity-slider"
+									bind:value={regionComplexityValue}
+									min={50}
+									max={500}
+									step={25}
+									oninput={(value) => {
+										onConfigChange({ num_superpixels: value });
+										onParameterChange();
+									}}
+									{disabled}
+									class="w-full"
+								/>
+								<div class="text-converter-secondary mt-1 flex justify-between text-xs">
+									<span>Simple</span>
+									<span class="font-medium">{regionComplexityValue}</span>
+									<span>Complex</span>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Line Width / Dot Width -->
 						<div>
 							<div class="mb-2 flex items-center gap-2">
 								<label
-									for="region-complexity-slider"
+									for="stroke-width-slider"
 									class="text-converter-primary block text-sm font-medium"
 								>
-									Region Complexity
+									{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
 								</label>
 								<PortalTooltipFixed
-									content="Controls the number of regions in the superpixel segmentation. Lower values create fewer, larger regions. Higher values create more detailed segmentation with smaller regions."
+									content={config.backend === 'dots'
+										? 'Controls the size of dots in stippling output. Smaller dots create finer detail, while larger dots create bold effects.'
+										: 'Adjusts the thickness of traced lines in the SVG output. Thinner lines work better for detailed images, while thicker lines are good for bold, graphic styles.'}
 									position="top"
 									size="md"
 								/>
 							</div>
 							<FerrariSlider
-								id="region-complexity-slider"
-								bind:value={regionComplexityValue}
-								min={50}
-								max={500}
-								step={25}
+								id="stroke-width-slider"
+								bind:value={strokeWidthValue}
+								min={0.5}
+								max={10}
+								step={0.1}
 								oninput={(value) => {
-									onConfigChange({ num_superpixels: value });
+									onConfigChange({ stroke_width: value });
 									onParameterChange();
 								}}
 								{disabled}
 								class="w-full"
 							/>
 							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
-								<span>Simple</span>
-								<span class="font-medium">{regionComplexityValue}</span>
-								<span>Complex</span>
+								<span>{config.backend === 'dots' ? 'Small' : 'Thin'}</span>
+								<span class="font-medium">{strokeWidthValue.toFixed(1)}px</span>
+								<span>{config.backend === 'dots' ? 'Large' : 'Thick'}</span>
 							</div>
 						</div>
-					{/if}
 
-					<!-- Line Width / Dot Width -->
-					<div>
-						<div class="mb-2 flex items-center gap-2">
-							<label
-								for="stroke-width-slider"
-								class="text-converter-primary block text-sm font-medium"
-							>
-								{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
-							</label>
-							<PortalTooltipFixed
-								content={config.backend === 'dots'
-									? 'Controls the size of dots in stippling output. Smaller dots create finer detail, while larger dots create bold effects.'
-									: 'Adjusts the thickness of traced lines in the SVG output. Thinner lines work better for detailed images, while thicker lines are good for bold, graphic styles.'}
-								position="top"
-								size="md"
-							/>
-						</div>
-						<FerrariSlider
-							id="stroke-width-slider"
-							bind:value={strokeWidthValue}
-							min={0.5}
-							max={10}
-							step={0.1}
-							oninput={(value) => {
-								onConfigChange({ stroke_width: value });
-								onParameterChange();
-							}}
-							{disabled}
-							class="w-full"
-						/>
-						<div class="text-converter-secondary mt-1 flex justify-between text-xs">
-							<span>{config.backend === 'dots' ? 'Small' : 'Thin'}</span>
-							<span class="font-medium">{strokeWidthValue.toFixed(1)}px</span>
-							<span>{config.backend === 'dots' ? 'Large' : 'Thick'}</span>
+						<!-- Unified Color Toggle (All backends) -->
+						<div>
+							<div class="mb-2 flex items-center gap-2">
+								<label
+									for="preserve-colors-unified"
+									class="text-converter-primary block text-sm font-medium">Color Mode</label
+								>
+								<PortalTooltipFixed
+									content={config.backend === 'edge' || config.backend === 'centerline'
+										? 'Enable to preserve original image colors in line strokes. Disable for traditional black line art.'
+										: config.backend === 'superpixel'
+											? 'Enable to preserve original image colors in regions. Disable for monochrome grayscale output with enhanced contrast.'
+											: 'Enable to preserve original image colors in stippled dots. Disable for monochrome grayscale stippling with enhanced contrast.'}
+									position="top"
+									size="md"
+								/>
+							</div>
+							<div class="flex items-center space-x-3">
+								<input
+									type="checkbox"
+									id="preserve-colors-unified"
+									checked={config.preserve_colors ?? false}
+									onchange={(event) => {
+										const target = event.target as HTMLInputElement;
+										onConfigChange({ preserve_colors: target.checked });
+										onParameterChange();
+									}}
+									{disabled}
+									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+								/>
+								<label
+									for="preserve-colors-unified"
+									class="text-converter-primary cursor-pointer text-sm font-medium"
+								>
+									Enable Color
+								</label>
+							</div>
 						</div>
 					</div>
-
-					<!-- Unified Color Toggle (All backends) -->
-					<div>
-						<div class="mb-2 flex items-center gap-2">
-							<label
-								for="preserve-colors-unified"
-								class="text-converter-primary block text-sm font-medium">Color Mode</label
-							>
-							<PortalTooltipFixed
-								content={config.backend === 'edge' || config.backend === 'centerline'
-									? 'Enable to preserve original image colors in line strokes. Disable for traditional black line art.'
-									: config.backend === 'superpixel'
-										? 'Enable to preserve original image colors in regions. Disable for monochrome grayscale output with enhanced contrast.'
-										: 'Enable to preserve original image colors in stippled dots. Disable for monochrome grayscale stippling with enhanced contrast.'}
-								position="top"
-								size="md"
-							/>
-						</div>
-						<div class="flex items-center space-x-3">
-							<input
-								type="checkbox"
-								id="preserve-colors-unified"
-								checked={config.preserve_colors ?? false}
-								onchange={(event) => {
-									const target = event.target as HTMLInputElement;
-									onConfigChange({ preserve_colors: target.checked });
-									onParameterChange();
-								}}
-								{disabled}
-								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-							/>
-							<label
-								for="preserve-colors-unified"
-								class="text-converter-primary cursor-pointer text-sm font-medium"
-							>
-								Enable Color
-							</label>
-						</div>
-					</div>
-				</div>
 				{/if}
 			</div>
 		{/if}

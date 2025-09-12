@@ -685,7 +685,7 @@
 				checked={value}
 				onchange={(e) => onChange(e.currentTarget.checked)}
 				{disabled}
-				class="border-input rounded mobile-touch-target cursor-pointer"
+				class="border-input mobile-touch-target cursor-pointer rounded"
 			/>
 			<span class="text-muted-foreground text-xs">{meta.description}</span>
 		</label>
