@@ -13,7 +13,11 @@ const debugLogging: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
 
 	console.log(`🚨 Response Status: ${response.status}`);
-	console.log(`🚨 Response Headers:`, Object.fromEntries([...response.headers]));
+	const headersObj: Record<string, string> = {};
+	response.headers.forEach((value, key) => {
+		headersObj[key] = value;
+	});
+	console.log(`🚨 Response Headers:`, headersObj);
 
 	return response;
 };
