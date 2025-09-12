@@ -65,8 +65,21 @@
 
 		try {
 			const channel = new MessageChannel();
+			// Serialize proxy objects to plain objects for service worker transfer
+			const serializableItems = displayedItems.map((item) => ({
+				id: item.id,
+				title: item.title,
+				beforeImage: item.beforeImage,
+				afterImage: item.afterImage,
+				category: item.category,
+				algorithm: item.algorithm,
+				tags: item.tags,
+				quality: item.quality,
+				fileSize: item.fileSize
+			}));
+
 			navigator.serviceWorker.controller.postMessage(
-				{ action: 'cacheGalleryItems', items: displayedItems },
+				{ action: 'cacheGalleryItems', items: serializableItems },
 				[channel.port2]
 			);
 
