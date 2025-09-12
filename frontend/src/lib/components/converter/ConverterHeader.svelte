@@ -312,7 +312,7 @@
 								<div class="p-2">
 									<button
 										onclick={() => {
-											onReset();
+											onReset?.();
 											showMobileManageDropdown = false;
 										}}
 										disabled={isProcessing}
@@ -323,7 +323,7 @@
 									</button>
 									<button
 										onclick={() => {
-											onAddMore();
+											onAddMore?.();
 											showMobileManageDropdown = false;
 										}}
 										disabled={isProcessing}

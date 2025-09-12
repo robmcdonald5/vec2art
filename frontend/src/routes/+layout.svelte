@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { browser } from '$app/environment';
+	import { browser, dev } from '$app/environment';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { afterNavigate } from '$app/navigation';
@@ -52,8 +52,10 @@
 			// Initialize Vercel Analytics
 			inject();
 
-			// Register Service Worker for caching
-			registerServiceWorker();
+			// Register Service Worker for caching (production only)
+			if (!dev) {
+				registerServiceWorker();
+			}
 
 			// Force light mode for now since mobile components don't have dark mode styles
 			// TODO: Implement proper dark mode support for mobile components
@@ -94,7 +96,7 @@
 				href="/"
 				class="flex min-h-[44px] items-center py-2 font-semibold transition-all duration-300 hover:opacity-80"
 			>
-				<span class="text-3xl font-bold text-ferrari-600 md:text-3xl"> vec2art </span>
+				<span class="text-ferrari-600 text-3xl font-bold md:text-3xl"> vec2art </span>
 			</a>
 			<nav class="flex items-center gap-2 md:gap-3">
 				<!-- Desktop Navigation (hidden on mobile) -->

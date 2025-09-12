@@ -36,7 +36,7 @@
 
 	// Check if we're on mobile
 	let isMobile = $state(false);
-	
+
 	// Settings mode for mobile - defaults to 'standard' to show all controls
 	let settingsMode = $state('standard');
 
