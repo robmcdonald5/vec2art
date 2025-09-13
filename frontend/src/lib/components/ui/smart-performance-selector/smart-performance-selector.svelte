@@ -7,19 +7,10 @@
 		type CPUCapabilities,
 		type PerformanceRecommendation
 	} from '$lib/utils/cpu-detection';
-	import {
-		Loader2,
-		Cpu,
-		Battery,
-		Zap,
-		Rocket,
-		AlertTriangle,
-		CheckCircle,
-		Info
-	} from 'lucide-svelte';
+	import { Loader2, Cpu, Battery, Zap, Rocket, AlertTriangle, CheckCircle } from 'lucide-svelte';
 
 	interface Props {
-		onSelect: (threadCount: number, mode: string) => void;
+		onSelect: (_threadCount: number, _mode: string) => void;
 		isInitializing?: boolean;
 		disabled?: boolean;
 	}
@@ -76,7 +67,7 @@
 
 	function handleKeyboardNavigation(
 		event: KeyboardEvent,
-		mode: 'battery' | 'balanced' | 'performance' | 'extreme' | 'custom'
+		_mode: 'battery' | 'balanced' | 'performance' | 'extreme' | 'custom'
 	) {
 		switch (event.key) {
 			case 'ArrowLeft':
@@ -333,7 +324,7 @@
 		<!-- Performance Mode Selection -->
 		<fieldset class="grid grid-cols-1 md:grid-cols-{recommendations.length} gap-3">
 			<legend class="sr-only">Performance Mode Selection</legend>
-			{#each recommendations as recommendation}
+			{#each recommendations as recommendation (recommendation.mode)}
 				{@const IconComponent = modeIcons[recommendation.mode] || Cpu}
 				{@const isSelected = selectedMode === recommendation.mode}
 				{@const isRecommended = recommendation.mode === defaultRecommendation?.mode}
@@ -374,7 +365,7 @@
 
 					<!-- Reasoning -->
 					<div class="mt-3 space-y-1">
-						{#each recommendation.reasoning.slice(0, 2) as reason}
+						{#each recommendation.reasoning.slice(0, 2) as reason, index (index)}
 							<div class="text-xs opacity-75">• {reason}</div>
 						{/each}
 					</div>

@@ -19,6 +19,7 @@ This document provides comprehensive guidance on using all available testing too
 ## 🚀 Quick Start
 
 ### Install Dependencies
+
 ```bash
 npm install
 ```
@@ -68,11 +69,13 @@ npm run test:coverage
 ## 🧪 Unit Testing (Vitest)
 
 ### Overview
+
 We use Vitest for fast unit and component testing with comprehensive coverage reporting.
 
 ### Available Commands
 
 #### Basic Testing
+
 ```bash
 # Run all unit tests
 npm test
@@ -91,6 +94,7 @@ npm test -- --grep "CPU detection"
 ```
 
 #### Coverage Reports
+
 ```bash
 # Generate HTML coverage report
 npm run test:coverage
@@ -100,6 +104,7 @@ open coverage/index.html
 ```
 
 ### Test Files Location
+
 ```
 src/
 ├── lib/
@@ -113,31 +118,34 @@ src/
 ### Writing Tests
 
 #### Component Test Example
+
 ```typescript
 import { render, screen } from '@testing-library/svelte';
 import { expect, test } from 'vitest';
 import MyComponent from './MyComponent.svelte';
 
 test('should render correctly', () => {
-  render(MyComponent, { props: { title: 'Test' } });
-  expect(screen.getByText('Test')).toBeInTheDocument();
+	render(MyComponent, { props: { title: 'Test' } });
+	expect(screen.getByText('Test')).toBeInTheDocument();
 });
 ```
 
 #### Store Test Example
+
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { myStore } from './myStore.svelte.js';
 
 describe('myStore', () => {
-  it('should update state correctly', () => {
-    myStore.setValue('test');
-    expect(myStore.value).toBe('test');
-  });
+	it('should update state correctly', () => {
+		myStore.setValue('test');
+		expect(myStore.value).toBe('test');
+	});
 });
 ```
 
 ### Coverage Thresholds
+
 - **Global**: 80% statements, branches, functions, lines
 - **Utils**: 95% (critical utility functions)
 - **Components**: 90% (UI components)
@@ -145,11 +153,13 @@ describe('myStore', () => {
 ## 🎭 E2E Testing (Playwright)
 
 ### Overview
+
 Playwright provides comprehensive end-to-end testing across multiple browsers and devices.
 
 ### Available Commands
 
 #### Basic E2E Testing
+
 ```bash
 # Run all E2E tests
 npm run test:e2e
@@ -170,6 +180,7 @@ npm run test:e2e -- --debug
 ```
 
 #### Test Suites
+
 ```bash
 # Core functionality tests
 npm run test:e2e:core
@@ -194,6 +205,7 @@ npm run test:smoke
 ```
 
 #### Device Testing
+
 ```bash
 # Mobile testing
 npm run test:e2e -- --project=mobile-chrome
@@ -210,6 +222,7 @@ npm run test:e2e -- --project=high-dpi
 ```
 
 ### Test Files
+
 ```
 tests/
 ├── e2e/
@@ -228,42 +241,45 @@ tests/
 ### Writing E2E Tests
 
 #### Basic Test Structure
+
 ```typescript
 import { test, expect } from '@playwright/test';
 
 test('user can upload and convert image', async ({ page }) => {
-  await page.goto('/converter');
-  
-  // Upload file
-  await page.setInputFiles('input[type="file"]', 'test-image.png');
-  
-  // Wait for processing
-  await page.waitForSelector('.processing-complete');
-  
-  // Verify result
-  await expect(page.locator('.svg-preview')).toBeVisible();
+	await page.goto('/converter');
+
+	// Upload file
+	await page.setInputFiles('input[type="file"]', 'test-image.png');
+
+	// Wait for processing
+	await page.waitForSelector('.processing-complete');
+
+	// Verify result
+	await expect(page.locator('.svg-preview')).toBeVisible();
 });
 ```
 
 #### Using Page Objects
+
 ```typescript
 import { ConverterPage } from '../utils/page-objects';
 
 test('converter workflow', async ({ page }) => {
-  const converterPage = new ConverterPage(page);
-  
-  await converterPage.goto();
-  await converterPage.uploadImage('test.png');
-  await converterPage.selectAlgorithm('edge');
-  await converterPage.startConversion();
-  
-  await expect(converterPage.resultPreview).toBeVisible();
+	const converterPage = new ConverterPage(page);
+
+	await converterPage.goto();
+	await converterPage.uploadImage('test.png');
+	await converterPage.selectAlgorithm('edge');
+	await converterPage.startConversion();
+
+	await expect(converterPage.resultPreview).toBeVisible();
 });
 ```
 
 ### Browser Configuration
 
 #### Supported Browsers
+
 - **Chromium**: Latest Chrome/Edge features, WASM multithreading
 - **Firefox**: Cross-browser compatibility testing
 - **WebKit**: Safari compatibility (desktop)
@@ -271,27 +287,30 @@ test('converter workflow', async ({ page }) => {
 - **Mobile Safari**: iOS device simulation
 
 #### WASM-Specific Settings
+
 ```typescript
 // Chromium with WASM threading support
 use: {
-  launchOptions: {
-    args: [
-      '--enable-features=SharedArrayBuffer',
-      '--enable-unsafe-webassembly',
-      '--js-flags=--experimental-wasm-threads'
-    ]
-  }
+	launchOptions: {
+		args: [
+			'--enable-features=SharedArrayBuffer',
+			'--enable-unsafe-webassembly',
+			'--js-flags=--experimental-wasm-threads'
+		];
+	}
 }
 ```
 
 ## 📚 Component Documentation (Storybook)
 
 ### Overview
+
 Storybook provides interactive component documentation and visual testing.
 
 ### Available Commands
 
 #### Development
+
 ```bash
 # Start Storybook development server
 npm run storybook
@@ -304,6 +323,7 @@ npm run storybook:preview
 ```
 
 #### Testing
+
 ```bash
 # Run Storybook tests (via Vitest)
 npm run test:storybook
@@ -313,6 +333,7 @@ npm run storybook:test
 ```
 
 ### Story Files Location
+
 ```
 src/
 └── stories/
@@ -332,72 +353,77 @@ src/
 ### Writing Stories
 
 #### Basic Story Example
+
 ```typescript
 import type { Meta, StoryObj } from '@storybook/svelte';
 import Button from '../lib/components/ui/button.svelte';
 
 const meta: Meta<Button> = {
-  title: 'UI/Button',
-  component: Button,
-  parameters: {
-    layout: 'centered'
-  },
-  tags: ['autodocs']
+	title: 'UI/Button',
+	component: Button,
+	parameters: {
+		layout: 'centered'
+	},
+	tags: ['autodocs']
 };
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Primary: Story = {
-  args: {
-    variant: 'default',
-    children: 'Click me'
-  }
+	args: {
+		variant: 'default',
+		children: 'Click me'
+	}
 };
 
 export const Secondary: Story = {
-  args: {
-    variant: 'secondary',
-    children: 'Secondary button'
-  }
+	args: {
+		variant: 'secondary',
+		children: 'Secondary button'
+	}
 };
 ```
 
 #### Interactive Stories with Controls
+
 ```typescript
 export const Interactive: Story = {
-  args: {
-    variant: 'default',
-    size: 'default',
-    disabled: false,
-    children: 'Interactive button'
-  },
-  argTypes: {
-    variant: {
-      control: 'select',
-      options: ['default', 'secondary', 'destructive']
-    },
-    size: {
-      control: 'select',
-      options: ['sm', 'default', 'lg']
-    }
-  }
+	args: {
+		variant: 'default',
+		size: 'default',
+		disabled: false,
+		children: 'Interactive button'
+	},
+	argTypes: {
+		variant: {
+			control: 'select',
+			options: ['default', 'secondary', 'destructive']
+		},
+		size: {
+			control: 'select',
+			options: ['sm', 'default', 'lg']
+		}
+	}
 };
 ```
 
 ### Storybook Features
 
 #### Accessibility Testing
+
 - Built-in a11y addon for WCAG compliance
 - Color contrast checking
 - Keyboard navigation testing
 
 #### Theme Testing
+
 - Light/dark theme switcher
 - Responsive design testing
 - Multi-device preview
 
 #### Documentation
+
 - Auto-generated prop tables
 - Interactive controls
 - Code examples
@@ -406,11 +432,13 @@ export const Interactive: Story = {
 ## ♿ Accessibility Testing
 
 ### Overview
+
 Comprehensive accessibility testing using axe-core and manual testing procedures.
 
 ### Automated A11y Testing
 
 #### Axe-Core Integration
+
 ```bash
 # Run accessibility tests
 npm run test:accessibility
@@ -420,6 +448,7 @@ npm run test:accessibility -- --grep "color-contrast"
 ```
 
 #### Storybook A11y Addon
+
 ```bash
 # Start Storybook with a11y panel
 npm run storybook
@@ -429,18 +458,21 @@ npm run storybook
 ### Manual Testing Procedures
 
 #### Keyboard Navigation
+
 ```bash
 # Test keyboard-only navigation
 npm run test:e2e -- accessibility.spec.ts --grep "keyboard"
 ```
 
 #### Screen Reader Testing
+
 1. Enable screen reader (NVDA, JAWS, VoiceOver)
 2. Navigate through application
 3. Verify content is properly announced
 4. Test form interactions
 
 #### Focus Management
+
 - Verify visible focus indicators
 - Test focus trap in modals
 - Ensure logical tab order
@@ -448,11 +480,13 @@ npm run test:e2e -- accessibility.spec.ts --grep "keyboard"
 ### Accessibility Guidelines
 
 #### WCAG 2.1 AA Compliance
+
 - **Level A**: Basic accessibility
 - **Level AA**: Standard accessibility (target)
 - **Level AAA**: Enhanced accessibility
 
 #### Key Requirements
+
 - Color contrast ratio ≥ 4.5:1
 - Keyboard accessible
 - Screen reader compatible
@@ -462,11 +496,13 @@ npm run test:e2e -- accessibility.spec.ts --grep "keyboard"
 ## ⚡ Performance Testing
 
 ### Overview
+
 Performance testing includes Web Vitals monitoring, WASM benchmarks, and load testing.
 
 ### Performance Commands
 
 #### Web Vitals Testing
+
 ```bash
 # Run performance tests
 npm run test:e2e:performance
@@ -476,6 +512,7 @@ npm run lighthouse
 ```
 
 #### WASM Performance Testing
+
 ```bash
 # WASM benchmark tests
 npm run test:wasm:performance
@@ -487,29 +524,33 @@ npm run test:wasm:threading
 ### Performance Metrics
 
 #### Core Web Vitals
+
 - **LCP** (Largest Contentful Paint): < 2.5s
 - **FID** (First Input Delay): < 100ms
 - **CLS** (Cumulative Layout Shift): < 0.1
 
 #### Custom Metrics
+
 - **WASM Load Time**: < 3s
 - **Thread Init Time**: < 1s
 - **Image Processing**: < 5s (typical image)
 
 ### Performance Budgets
+
 ```typescript
 const performanceBudgets = {
-  lcp: 2500,           // 2.5 seconds
-  fid: 100,            // 100 milliseconds
-  cls: 0.1,            // 0.1 cumulative shift
-  wasmLoadTime: 3000,  // 3 seconds
-  processingTime: 5000 // 5 seconds
+	lcp: 2500, // 2.5 seconds
+	fid: 100, // 100 milliseconds
+	cls: 0.1, // 0.1 cumulative shift
+	wasmLoadTime: 3000, // 3 seconds
+	processingTime: 5000 // 5 seconds
 };
 ```
 
 ### Performance Testing Tools
 
 #### Built-in Performance Monitor
+
 ```typescript
 import { PerformanceMonitor } from '$lib/services/performance-monitor';
 
@@ -520,6 +561,7 @@ const metrics = monitor.getMetrics();
 ```
 
 #### Lighthouse Integration
+
 ```bash
 # Run Lighthouse audit
 npm run lighthouse:audit
@@ -531,11 +573,13 @@ npm run performance:report
 ## 🦀 WASM Testing
 
 ### Overview
+
 Specialized testing for WebAssembly module integration and multithreading functionality.
 
 ### WASM Test Commands
 
 #### Basic WASM Testing
+
 ```bash
 # WASM integration tests
 npm run test:wasm
@@ -548,6 +592,7 @@ npm run test:wasm:performance
 ```
 
 #### Manual WASM Testing
+
 ```bash
 # Open WASM test page
 npm run dev
@@ -555,6 +600,7 @@ npm run dev
 ```
 
 ### WASM Test Files
+
 ```
 src/lib/wasm/
 ├── loader.test.ts                # WASM loader tests
@@ -566,44 +612,49 @@ src/lib/wasm/
 ### WASM Testing Scenarios
 
 #### Thread Pool Initialization
+
 ```typescript
 test('should initialize thread pool', async () => {
-  const wasm = await loadVectorizer();
-  const success = await wasm.initThreadPool(8);
-  expect(success).toBe(true);
-  expect(wasm.get_thread_count()).toBe(8);
+	const wasm = await loadVectorizer();
+	const success = await wasm.initThreadPool(8);
+	expect(success).toBe(true);
+	expect(wasm.get_thread_count()).toBe(8);
 });
 ```
 
 #### Cross-Origin Isolation
+
 ```typescript
 test('should support SharedArrayBuffer', () => {
-  expect(window.crossOriginIsolated).toBe(true);
-  expect(typeof SharedArrayBuffer).toBe('function');
+	expect(window.crossOriginIsolated).toBe(true);
+	expect(typeof SharedArrayBuffer).toBe('function');
 });
 ```
 
 #### Algorithm Testing
+
 ```typescript
 test('should process image with edge algorithm', async () => {
-  const vectorizer = new WasmVectorizer();
-  const result = await vectorizer.process(imageData, {
-    backend: 'edge',
-    preset: 'default'
-  });
-  expect(result).toBeTruthy();
+	const vectorizer = new WasmVectorizer();
+	const result = await vectorizer.process(imageData, {
+		backend: 'edge',
+		preset: 'default'
+	});
+	expect(result).toBeTruthy();
 });
 ```
 
 ### WASM Testing Checklist
 
 #### Browser Compatibility
+
 - ✅ Chrome/Chromium (full multithreading)
 - ✅ Firefox (multithreading with flags)
 - ✅ Safari/WebKit (single-threaded fallback)
 - ✅ Mobile browsers (limited threading)
 
 #### Feature Support
+
 - ✅ WebAssembly basic support
 - ✅ WebAssembly SIMD
 - ✅ SharedArrayBuffer
@@ -613,11 +664,13 @@ test('should process image with edge algorithm', async () => {
 ## 🔍 Static Analysis
 
 ### Overview
+
 Code quality and static analysis tools for maintaining high code standards.
 
 ### Linting and Formatting
 
 #### ESLint
+
 ```bash
 # Run ESLint
 npm run lint
@@ -630,6 +683,7 @@ npx eslint src/lib/components/ui/button.svelte
 ```
 
 #### Prettier
+
 ```bash
 # Check formatting
 npm run format:check
@@ -642,6 +696,7 @@ npx prettier --write src/lib/components/ui/
 ```
 
 #### TypeScript
+
 ```bash
 # Type checking
 npm run type-check
@@ -656,11 +711,13 @@ npm run check:watch
 ### Code Quality Rules
 
 #### ESLint Configuration
+
 - **@typescript-eslint**: TypeScript-specific rules
 - **eslint-plugin-svelte**: Svelte component rules
 - **@typescript-eslint/recommended**: Recommended TypeScript rules
 
 #### Prettier Configuration
+
 - **Tab width**: 2 spaces
 - **Line length**: 100 characters
 - **Semicolons**: Always
@@ -670,6 +727,7 @@ npm run check:watch
 ## 🔄 CI/CD Testing
 
 ### Overview
+
 Automated testing in GitHub Actions with comprehensive quality gates. The local CI pipeline can be replicated using the `/frontend-ci` command.
 
 ### Using the `/frontend-ci` Command
@@ -677,6 +735,7 @@ Automated testing in GitHub Actions with comprehensive quality gates. The local 
 The `/frontend-ci` command provides a complete local CI simulation with multiple modes:
 
 #### Command Modes
+
 - **`quick`** - Fast validation (formatting, linting, type-check)
 - **`standard`** - Complete CI validation (default)
 - **`full`** - Everything including E2E and supply chain checks
@@ -684,6 +743,7 @@ The `/frontend-ci` command provides a complete local CI simulation with multiple
 - **`watch`** - Development mode with file watching
 
 #### Examples
+
 ```bash
 # Simulate full CI pipeline locally
 /frontend-ci full
@@ -704,16 +764,19 @@ The `/frontend-ci` command provides a complete local CI simulation with multiple
 The `/frontend-ci` command executes these stages based on the selected mode:
 
 #### 1. Quality Gates
+
 - **Formatting** - Prettier validation
 - **Linting** - ESLint with zero warnings
 - **Type Checking** - TypeScript and SvelteKit sync
 
 #### 2. Testing
+
 - **Unit Tests** - Vitest with coverage
 - **E2E Tests** - Playwright (full mode)
 - **Accessibility** - A11y compliance checks
 
 #### 3. Build & Validation
+
 - **Production Build** - Full build verification
 - **Preview Smoke Test** - Optional runtime validation
 - **Supply Chain Audit** - Security and dependencies (full mode)
@@ -738,6 +801,7 @@ npm run build          # Production build
 ```
 
 ### CI Workflow Files
+
 ```
 .github/workflows/
 ├── frontend-ci.yml       # Main CI pipeline
@@ -746,6 +810,7 @@ npm run build          # Production build
 ```
 
 ### CI Environment Variables
+
 ```bash
 CI=true                 # CI environment flag
 NODE_ENV=test          # Test environment
@@ -755,9 +820,11 @@ COVERAGE_THRESHOLD=80  # Coverage requirement
 ## 🛠️ Test Utilities
 
 ### Overview
+
 Shared utilities and helpers for consistent testing patterns.
 
 ### Test Setup Files
+
 ```
 tests/
 ├── setup.ts              # Global test setup
@@ -771,17 +838,19 @@ tests/
 ### Common Test Utilities
 
 #### Component Testing Helpers
+
 ```typescript
 import { createMockCapabilities } from '@tests/test-utils';
 
 // Create mock CPU capabilities
 const capabilities = createMockCapabilities({
-  cores: 8,
-  threading: true
+	cores: 8,
+	threading: true
 });
 ```
 
 #### WASM Testing Helpers
+
 ```typescript
 import { mockWasmModule } from '@tests/mocks/wasm-mocks';
 
@@ -790,25 +859,28 @@ vi.mock('./vectorize_wasm.js', () => mockWasmModule);
 ```
 
 #### Browser API Mocking
+
 ```typescript
 import { mockNavigator } from '@tests/mocks/browser-mocks';
 
 // Mock navigator properties
 mockNavigator({
-  hardwareConcurrency: 8,
-  userAgent: 'test-browser'
+	hardwareConcurrency: 8,
+	userAgent: 'test-browser'
 });
 ```
 
 ### Custom Matchers
 
 #### Accessibility Matchers
+
 ```typescript
 expect(element).toBeAccessible();
 expect(element).toHaveValidAria();
 ```
 
 #### Performance Matchers
+
 ```typescript
 expect(duration).toBeFasterThan(1000);
 expect(metrics).toMeetWebVitals();
@@ -821,6 +893,7 @@ expect(metrics).toMeetWebVitals();
 #### Test Failures
 
 **WASM Module Loading**
+
 ```bash
 # Issue: WASM module fails to load
 # Solution: Check cross-origin isolation
@@ -828,6 +901,7 @@ npm run dev -- --https
 ```
 
 **Threading Tests Fail**
+
 ```bash
 # Issue: Threading not supported
 # Solution: Enable browser flags
@@ -835,6 +909,7 @@ chromium --enable-features=SharedArrayBuffer
 ```
 
 **E2E Tests Timeout**
+
 ```bash
 # Issue: Tests timeout waiting for WASM
 # Solution: Increase timeout or use headed mode
@@ -844,6 +919,7 @@ npm run test:e2e -- --timeout=90000 --headed
 #### Development Issues
 
 **Type Errors in Tests**
+
 ```bash
 # Issue: TypeScript errors in test files
 # Solution: Check tsconfig.json excludes
@@ -851,6 +927,7 @@ npm run test:e2e -- --timeout=90000 --headed
 ```
 
 **Mock Module Issues**
+
 ```bash
 # Issue: vi.mock not working
 # Solution: Ensure mock is defined before import
@@ -858,6 +935,7 @@ npm run test:e2e -- --timeout=90000 --headed
 ```
 
 **Coverage Issues**
+
 ```bash
 # Issue: Low coverage on components
 # Solution: Test component props and events
@@ -867,6 +945,7 @@ npm run test:e2e -- --timeout=90000 --headed
 ### Debug Commands
 
 #### Verbose Testing
+
 ```bash
 # Detailed test output
 npm test -- --reporter=verbose
@@ -876,6 +955,7 @@ npm test -- --grep "CPU detection" --reporter=verbose
 ```
 
 #### Browser DevTools
+
 ```bash
 # E2E with browser open
 npm run test:e2e -- --headed --debug
@@ -885,6 +965,7 @@ npm run test:e2e -- --debug
 ```
 
 #### Coverage Analysis
+
 ```bash
 # Generate detailed coverage
 npm run test:coverage -- --reporter=html --reporter=lcov
@@ -896,6 +977,7 @@ open coverage/index.html
 ### Performance Optimization
 
 #### Test Performance
+
 ```bash
 # Run tests in parallel
 npm test -- --pool=threads
@@ -908,6 +990,7 @@ npm test -- --exclude="**/*.slow.test.ts"
 ```
 
 #### CI Optimization
+
 ```bash
 # Cache dependencies
 # (configured in GitHub Actions)
@@ -919,12 +1002,14 @@ npm run test:e2e -- --workers=2
 ## 📖 Additional Resources
 
 ### Documentation Links
+
 - [Vitest Documentation](https://vitest.dev/)
 - [Playwright Documentation](https://playwright.dev/)
 - [Storybook Documentation](https://storybook.js.org/)
 - [Testing Library](https://testing-library.com/)
 
 ### Best Practices
+
 - Write tests first (TDD approach)
 - Test behavior, not implementation
 - Use page objects for E2E tests
@@ -933,7 +1018,9 @@ npm run test:e2e -- --workers=2
 - Run tests in CI/CD pipeline
 
 ### Contributing
+
 When adding new features:
+
 1. Write unit tests for logic
 2. Add component tests for UI
 3. Create E2E tests for workflows
@@ -948,6 +1035,7 @@ When adding new features:
 ### `/frontend-ci` Command Reference
 
 #### Modes
+
 - **`quick`** - Formatting, linting, type-check only
 - **`standard`** - Full CI validation (default)
 - **`full`** - Complete pipeline with E2E and audits
@@ -955,6 +1043,7 @@ When adding new features:
 - **`watch`** - Development mode with watching
 
 #### Test Types (for `test` mode)
+
 - `unit` - Unit tests
 - `coverage` - Tests with coverage
 - `e2e` - End-to-end tests
@@ -964,6 +1053,7 @@ When adding new features:
 - `performance` - Performance tests
 
 #### Skip Flags
+
 - `--skip-build` - Skip build step
 - `--skip-tests` - Skip test execution
 - `--skip-lint` - Skip linting
@@ -972,6 +1062,7 @@ When adding new features:
 ### Most Common Commands
 
 #### Using `/frontend-ci`
+
 ```bash
 # Quick checks before commit
 /frontend-ci quick
@@ -988,6 +1079,7 @@ When adding new features:
 ```
 
 #### Direct npm Commands
+
 ```bash
 # Development testing
 npm test                    # Unit tests

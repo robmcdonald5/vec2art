@@ -31,6 +31,12 @@ pub struct CapabilityReport {
     pub is_node_js: bool,
     /// Whether atomics are supported
     pub atomics_supported: bool,
+    /// Whether WebGPU is available
+    pub webgpu_supported: bool,
+    /// Whether WebGL 2.0 is available
+    pub webgl2_supported: bool,
+    /// GPU backend type (webgpu, webgl2, or none)
+    pub gpu_backend: String,
 }
 
 /// WASM-bindgen wrapper for CapabilityReport with proper getter methods
@@ -98,6 +104,21 @@ impl WasmCapabilityReport {
     pub fn atomics_supported(&self) -> bool {
         self.inner.atomics_supported
     }
+
+    #[wasm_bindgen(getter)]
+    pub fn webgpu_supported(&self) -> bool {
+        self.inner.webgpu_supported
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn webgl2_supported(&self) -> bool {
+        self.inner.webgl2_supported
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn gpu_backend(&self) -> String {
+        self.inner.gpu_backend.clone()
+    }
 }
 
 /// Cached capability detection results to avoid repeated expensive checks
@@ -134,6 +155,13 @@ extern "C" {
     /// Check if Deno exists
     #[wasm_bindgen(js_namespace = ["globalThis"], js_name = "Deno", catch)]
     fn get_deno() -> Result<JsValue, JsValue>;
+
+    /// Check if WebGPU is available (navigator.gpu) using js_sys::eval
+    // No binding needed - we'll use js_sys::eval directly
+
+    /// Check if WebGL2RenderingContext exists
+    #[wasm_bindgen(js_namespace = ["globalThis"], js_name = "WebGL2RenderingContext", catch)]
+    fn get_webgl2_context() -> Result<JsValue, JsValue>;
 }
 
 /// Check comprehensive browser capabilities for WebAssembly threading
@@ -231,6 +259,20 @@ pub fn check_threading_requirements() -> WasmCapabilityReport {
         }
     }
 
+    // Check GPU support
+    let webgpu_supported = check_webgpu();
+    let webgl2_supported = check_webgl2();
+    let gpu_backend = if webgpu_supported {
+        diagnostics.push("WebGPU API is available for GPU acceleration".to_string());
+        "webgpu".to_string()
+    } else if webgl2_supported {
+        diagnostics.push("WebGL 2.0 is available for GPU acceleration fallback".to_string());
+        "webgl2".to_string()
+    } else {
+        diagnostics.push("No GPU acceleration available (neither WebGPU nor WebGL 2.0)".to_string());
+        "none".to_string()
+    };
+
     // Additional browser-specific checks
     if check_chrome_memory_api() {
         diagnostics.push(
@@ -274,6 +316,9 @@ pub fn check_threading_requirements() -> WasmCapabilityReport {
         diagnostics,
         is_node_js,
         atomics_supported,
+        webgpu_supported,
+        webgl2_supported,
+        gpu_backend,
     };
 
     // Cache the results
@@ -318,6 +363,28 @@ pub fn is_nodejs_environment() -> bool {
 #[wasm_bindgen]
 pub fn get_environment_type() -> String {
     detect_environment_type()
+}
+
+/// Check if WebGPU is available (internal function)
+pub fn is_webgpu_available() -> bool {
+    check_webgpu()
+}
+
+/// Check if WebGL 2.0 is available (internal function)
+pub fn is_webgl2_available() -> bool {
+    check_webgl2()
+}
+
+/// Get the available GPU backend type (internal function)
+#[allow(dead_code)] // Reserved for future GPU functionality
+pub fn get_gpu_backend() -> String {
+    if check_webgpu() {
+        "webgpu".to_string()
+    } else if check_webgl2() {
+        "webgl2".to_string()
+    } else {
+        "none".to_string()
+    }
 }
 
 // Helper functions for capability detection
@@ -381,6 +448,20 @@ fn check_chrome_memory_api() -> bool {
     // Simplified check - assume Chrome memory API is not critical for our diagnostics
     // This avoids reflection while maintaining the diagnostic flow
     false
+}
+
+fn check_webgpu() -> bool {
+    // Check if navigator.gpu exists using JavaScript evaluation to avoid binding issues
+    use js_sys::eval;
+    match eval("typeof navigator !== 'undefined' && navigator.gpu && typeof navigator.gpu === 'object'") {
+        Ok(result) => !result.is_falsy(),
+        Err(_) => false,
+    }
+}
+
+fn check_webgl2() -> bool {
+    // Check if WebGL2RenderingContext exists
+    get_webgl2_context().is_ok()
 }
 
 /// Force refresh of capability cache

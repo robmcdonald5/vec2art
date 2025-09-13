@@ -5,14 +5,14 @@
 	interface Props {
 		accept?: string;
 		maxSize?: number; // in bytes
-		onFileSelect?: (file: File) => void;
+		onFileSelect?: (_file: File) => void;
 		disabled?: boolean;
 		currentFile?: File | null;
 	}
 
 	let {
 		accept = 'image/*',
-		maxSize = 10 * 1024 * 1024, // 10MB
+		maxSize = 1 * 1024 * 1024 * 1024, // 1GB
 		onFileSelect,
 		disabled = false,
 		currentFile = null
@@ -228,7 +228,9 @@
 				Drag and drop your image here, or click to browse
 			</p>
 			<p class="text-muted-foreground mt-1 text-xs" id="file-upload-instructions">
-				Supports PNG, JPG, WebP up to {Math.round(maxSize / (1024 * 1024))}MB
+				Supports PNG, JPG, WebP, TIFF, BMP, GIF, AVIF up to {maxSize >= 1024 * 1024 * 1024
+					? Math.round(maxSize / (1024 * 1024 * 1024)) + 'GB'
+					: Math.round(maxSize / (1024 * 1024)) + 'MB'}
 			</p>
 			<Button
 				class="mt-4"

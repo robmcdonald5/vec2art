@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 import BeforeAfterSlider from './before-after-slider.svelte';
 import {
-	interactionTestUtils,
+	interactionTestUtils as _interactionTestUtils,
 	assertionUtils,
 	setupBrowserMocks,
 	cleanupBrowserMocks

@@ -2,7 +2,6 @@
 	import {
 		Upload,
 		X,
-		AlertCircle,
 		ChevronLeft,
 		ChevronRight,
 		FileImage,
@@ -16,13 +15,18 @@
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
+	import ErrorState from '$lib/components/ui/ErrorState.svelte';
 	import type { ProcessingProgress, ProcessingResult } from '$lib/types/vectorizer';
+	import {
+		createManagedObjectURL,
+		releaseManagedObjectURL
+	} from '$lib/utils/object-url-manager.js';
 
 	interface Props {
 		// Upload props
 		accept?: string;
 		maxSize?: number;
-		onFilesSelect: (files: File[]) => void;
+		onFilesSelect: (_selectedFiles: File[]) => void;
 		disabled?: boolean;
 		currentFiles?: File[];
 		// Preview props
@@ -31,7 +35,7 @@
 		currentProgress?: ProcessingProgress;
 		results: ProcessingResult[];
 		previewSvgUrls: (string | null)[];
-		onImageIndexChange: (index: number) => void;
+		onImageIndexChange: (_newIndex: number) => void;
 		// Action callbacks - required
 		onConvert: () => void;
 		onDownload: () => void;
@@ -45,11 +49,10 @@
 
 	let {
 		accept = 'image/*',
-		maxSize = 10 * 1024 * 1024,
+		maxSize = 1 * 1024 * 1024 * 1024,
 		onFilesSelect,
 		disabled = false,
 		currentFiles = [],
-		inputImages,
 		currentImageIndex = 0,
 		currentProgress,
 		results = [],
@@ -61,8 +64,7 @@
 		onReset,
 		canConvert = false,
 		canDownload = false,
-		isProcessing = false,
-		...restProps
+		isProcessing = false
 	}: Props = $props();
 
 	// Upload state
@@ -79,8 +81,6 @@
 	let convertedPanOffset = $state({ x: 0, y: 0 });
 	let convertedAutoFitZoom = $state(1);
 
-	let isDragging = $state(false);
-	let dragStart = $state({ x: 0, y: 0 });
 	let imageElement = $state<HTMLImageElement>();
 	let imageContainer = $state<HTMLDivElement>();
 
@@ -88,9 +88,38 @@
 	const hasFiles = $derived(currentFiles.length > 0);
 	const hasMultipleFiles = $derived(currentFiles.length > 1);
 	const currentFile = $derived(currentFiles[currentImageIndex]);
-	const currentImageUrl = $derived(currentFile ? URL.createObjectURL(currentFile) : null);
+	// Managed object URL state
+	let previousFile: File | null = null;
+	let managedObjectUrl: string | null = null;
+
+	// Effect to manage object URL lifecycle
+	$effect(() => {
+		// If file changed, clean up previous URL and create new one
+		if (currentFile !== previousFile) {
+			// Clean up previous URL
+			if (managedObjectUrl && previousFile) {
+				releaseManagedObjectURL(managedObjectUrl);
+			}
+
+			// Create new URL for current file
+			managedObjectUrl = currentFile ? createManagedObjectURL(currentFile) : null;
+			previousFile = currentFile;
+		}
+
+		// Cleanup on component unmount
+		return () => {
+			if (managedObjectUrl) {
+				releaseManagedObjectURL(managedObjectUrl);
+				managedObjectUrl = null;
+			}
+		};
+	});
+
+	const currentImageUrl = $derived(managedObjectUrl);
 	const currentSvgUrl = $derived(previewSvgUrls[currentImageIndex]);
 	const hasResult = $derived(Boolean(currentSvgUrl));
+	const currentResult = $derived(results[currentImageIndex]);
+	const isError = $derived(currentResult?.svg?.includes('Failed to convert') ?? false);
 
 	// Validate callback props
 	$effect(() => {
@@ -218,14 +247,6 @@
 			onAbort();
 		} else {
 			console.error('UnifiedImageProcessor: onAbort callback not provided');
-		}
-	}
-
-	function clickReset() {
-		if (onReset) {
-			onReset();
-		} else {
-			console.error('UnifiedImageProcessor: onReset callback not provided');
 		}
 	}
 
@@ -357,12 +378,8 @@
 	{#if errorMessage}
 		<div
 			class="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950"
-			role="alert"
 		>
-			<div class="flex items-center gap-2">
-				<AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
-				<span class="text-sm text-red-700 dark:text-red-300">{errorMessage}</span>
-			</div>
+			<ErrorState message={errorMessage} size="sm" inline={true} center={false} />
 		</div>
 	{/if}
 
@@ -397,9 +414,7 @@
 					<p class="text-converter-secondary text-sm">
 						Drag and drop your images here, or click to browse
 					</p>
-					<p class="text-ferrari-600 text-xs">
-						Supports JPG, PNG, WebP • Max {Math.round(maxSize / (1024 * 1024))}MB per file
-					</p>
+					<p class="text-ferrari-600 text-xs">Supports JPG, PNG, WebP, TIFF, BMP, GIF</p>
 				</div>
 			</div>
 		</div>
@@ -555,7 +570,13 @@
 					<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 						<div class="absolute inset-2 flex flex-col">
 							<div class="mb-2 flex items-center justify-between px-2">
-								<div class="text-converter-secondary text-xs font-medium">Converted SVG</div>
+								<div
+									class="text-xs font-medium"
+									class:text-red-600={isError}
+									class:text-converter-secondary={!isError}
+								>
+									{isError ? 'Failed to convert' : 'Converted SVG'}
+								</div>
 								<!-- Zoom Controls for Converted SVG -->
 								<div class="flex gap-1">
 									<Button
@@ -646,7 +667,7 @@
 
 						<!-- Primary Actions -->
 						<div class="flex gap-3">
-							{#if canDownload}
+							{#if canDownload && !isError}
 								<Button
 									variant="default"
 									size="sm"

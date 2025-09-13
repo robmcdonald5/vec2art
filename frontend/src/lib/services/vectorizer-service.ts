@@ -26,19 +26,16 @@ import {
 	getMaxThreads,
 	getRecommendedThreadCount,
 	resizeThreadPool,
-	cleanupThreadPool,
-	optimizeThreadCount
+	cleanupThreadPool
 } from '$lib/wasm/loader';
 
 // Import performance monitoring
-import {
-	performanceMonitor,
-	type PerformanceMode,
-	shouldUseProgressiveProcessing
-} from '$lib/utils/performance-monitor';
+import { performanceMonitor, type PerformanceMode } from '$lib/utils/performance-monitor';
 
 // Import Web Worker service for safe WASM execution
 import { wasmWorkerService } from './wasm-worker-service';
+
+// GPU service import removed (unused)
 
 // Dynamic import type for WASM module
 type WasmModule = any; // We'll type this properly after loading
@@ -105,7 +102,7 @@ export class VectorizerService {
 			this.vectorizer = await createVectorizer();
 
 			this.isInitialized = true;
-			console.log('✅ VectorizerService initialized successfully (lazy mode by default)');
+			// VectorizerService initialized successfully
 		} catch (error) {
 			const wasmError: VectorizerError = {
 				type: 'unknown',
@@ -149,7 +146,7 @@ export class VectorizerService {
 
 		try {
 			this.vectorizer[functionName](...args);
-			console.log(`[VectorizerService] Successfully called ${functionName} with args:`, args);
+			// WASM function called successfully
 			return true;
 		} catch (error) {
 			console.error(`[VectorizerService] Error calling ${functionName}:`, error);
@@ -199,7 +196,7 @@ export class VectorizerService {
 
 		// If this is a critical error and we haven't exceeded max failures, try to recover
 		if (this.isCriticalError(error) && this.failureCount <= this.maxFailureCount) {
-			console.log('[VectorizerService] Attempting automatic recovery...');
+			// Attempting automatic recovery
 
 			try {
 				// Mark as uninitialized
@@ -214,7 +211,7 @@ export class VectorizerService {
 				// Reinitialize WASM module
 				await this.initialize();
 
-				console.log('[VectorizerService] ✅ Automatic recovery successful');
+				// Automatic recovery successful
 
 				// Reset failure count on successful recovery
 				this.failureCount = 0;
@@ -402,7 +399,7 @@ export class VectorizerService {
 			if (preset === 'enhanced') {
 				// Try to add superpixel-specific features if available (currently missing)
 				if (typeof this.vectorizer.set_num_superpixels === 'function') {
-					config.num_superpixels = 150;
+					config.num_superpixels = 250;
 				}
 			}
 		}
@@ -518,16 +515,34 @@ export class VectorizerService {
 		if (!browser) {
 			return {
 				threading_supported: false,
-				shared_array_buffer_available: false,
+				shared_array_buffer: false,
 				cross_origin_isolated: false,
-				hardware_concurrency: 1,
+				web_workers: false,
+				proper_headers: false,
+				environment_type: 'server',
+				is_node_js: true,
+				atomics_supported: false,
+				webgpu_supported: false,
+				webgl2_supported: false,
+				gpu_backend: 'none',
 				missing_requirements: ['Browser environment required'],
+				diagnostics: [],
+				// Legacy compatibility
+				shared_array_buffer_available: false,
+				hardware_concurrency: 1,
 				recommendations: ['Run in browser environment']
 			};
 		}
 
 		try {
-			// Use the new capabilities function from loader
+			// Try to use the WASM module's capability detection first
+			await this.initialize();
+
+			if (this.wasmModule && typeof this.wasmModule.check_threading_requirements === 'function') {
+				return this.wasmModule.check_threading_requirements();
+			}
+
+			// Use the capabilities function from loader as fallback
 			const capabilities = await getCapabilities();
 
 			const missingRequirements: string[] = [];
@@ -543,12 +558,26 @@ export class VectorizerService {
 				recommendations.push('Ensure secure context and proper headers');
 			}
 
+			const shared_array_buffer = capabilities.sharedArrayBuffer;
+			const cross_origin_isolated = capabilities.crossOriginIsolated;
+
 			return {
 				threading_supported: capabilities.threading,
-				shared_array_buffer_available: capabilities.sharedArrayBuffer,
-				cross_origin_isolated: capabilities.crossOriginIsolated,
-				hardware_concurrency: navigator.hardwareConcurrency || 1,
+				shared_array_buffer,
+				cross_origin_isolated,
+				web_workers: typeof Worker !== 'undefined',
+				proper_headers: cross_origin_isolated,
+				environment_type: 'browser',
+				is_node_js: false,
+				atomics_supported: typeof Atomics !== 'undefined',
+				webgpu_supported: false, // Will be detected by GPU service
+				webgl2_supported: false, // Will be detected by GPU service
+				gpu_backend: 'none',
 				missing_requirements: missingRequirements,
+				diagnostics: [],
+				// Legacy compatibility
+				shared_array_buffer_available: shared_array_buffer,
+				hardware_concurrency: navigator.hardwareConcurrency || 1,
 				recommendations: recommendations
 			};
 		} catch (error) {
@@ -559,10 +588,21 @@ export class VectorizerService {
 
 			return {
 				threading_supported: false,
-				shared_array_buffer_available: sharedArrayBuffer,
+				shared_array_buffer: sharedArrayBuffer,
 				cross_origin_isolated: crossOriginIsolated,
-				hardware_concurrency: navigator.hardwareConcurrency || 1,
+				web_workers: typeof Worker !== 'undefined',
+				proper_headers: crossOriginIsolated,
+				environment_type: 'browser-error',
+				is_node_js: false,
+				atomics_supported: typeof Atomics !== 'undefined',
+				webgpu_supported: false,
+				webgl2_supported: false,
+				gpu_backend: 'none',
 				missing_requirements: ['WASM initialization failed'],
+				diagnostics: [{ error: String(error) }],
+				// Legacy compatibility
+				shared_array_buffer_available: sharedArrayBuffer,
+				hardware_concurrency: navigator.hardwareConcurrency || 1,
 				recommendations: ['Check console for errors']
 			};
 		}
@@ -610,7 +650,7 @@ export class VectorizerService {
 			if (typeof this.vectorizer.cleanup_state === 'function') {
 				this.vectorizer.cleanup_state();
 			}
-		} catch (e) {
+		} catch (_e) {
 			// Ignore cleanup errors as function may not exist
 		}
 
@@ -664,10 +704,10 @@ export class VectorizerService {
 			}
 
 			// Configure core settings
-			// Invert detail level: UI shows 0.1=Simple, 1.0=Detailed, but backend expects inverse
-			// (higher backend values = more blur = less detail, so we invert for intuitive UI)
-			const invertedDetail = 1.0 - workingConfig.detail;
-			this.vectorizer.set_detail(invertedDetail);
+			// Pass detail directly - backend expects higher values for more detail
+			// UI: 0.1=Simple (less detail), 1.0=Detailed (more detail)
+			// Backend: 0.1=less detail (lower thresholds), 1.0=more detail (higher thresholds)
+			this.vectorizer.set_detail(workingConfig.detail);
 			this.vectorizer.set_stroke_width(workingConfig.stroke_width);
 
 			// Configure multi-pass processing
@@ -676,12 +716,12 @@ export class VectorizerService {
 			this.vectorizer.set_reverse_pass(workingConfig.reverse_pass);
 			this.vectorizer.set_diagonal_pass(workingConfig.diagonal_pass);
 
-			// Configure multipass detail levels if specified (also invert these)
+			// Configure multipass detail levels if specified (pass directly, no inversion)
 			if (workingConfig.conservative_detail !== undefined) {
-				this.safeCall('set_conservative_detail', 1.0 - workingConfig.conservative_detail);
+				this.safeCall('set_conservative_detail', workingConfig.conservative_detail);
 			}
 			if (workingConfig.aggressive_detail !== undefined) {
-				this.safeCall('set_aggressive_detail', 1.0 - workingConfig.aggressive_detail);
+				this.safeCall('set_aggressive_detail', workingConfig.aggressive_detail);
 			}
 
 			// Configure directional strength threshold
@@ -824,13 +864,29 @@ export class VectorizerService {
 				}
 			}
 
+			// Configure background removal preprocessing
+			if (workingConfig.enable_background_removal !== undefined) {
+				this.safeCall('enable_background_removal', workingConfig.enable_background_removal);
+			}
+			if (workingConfig.background_removal_strength !== undefined) {
+				this.safeCall('set_background_removal_strength', workingConfig.background_removal_strength);
+			}
+			if (workingConfig.background_removal_algorithm !== undefined) {
+				this.safeCall(
+					'set_background_removal_algorithm',
+					workingConfig.background_removal_algorithm
+				);
+			}
+			if (workingConfig.background_removal_threshold !== undefined) {
+				this.safeCall(
+					'set_background_removal_threshold',
+					workingConfig.background_removal_threshold
+				);
+			}
+
 			// Configure global output settings (using safeCall for potentially missing functions)
 			if (workingConfig.svg_precision !== undefined) {
 				this.safeCall('set_svg_precision', workingConfig.svg_precision);
-			}
-			if (workingConfig.optimize_svg !== undefined) {
-				// Use safeCall since this function might not exist in WASM
-				this.safeCall('set_optimize_svg', workingConfig.optimize_svg);
 			}
 			if (workingConfig.include_metadata !== undefined) {
 				// Use safeCall since this function might not exist in WASM
@@ -1082,7 +1138,7 @@ export class VectorizerService {
 	private async _processWithProgressiveCallback(
 		imageData: ImageData,
 		progressCallback: (stage: string, progress: number, elapsed: number) => Promise<void>,
-		useProgressive: boolean
+		_useProgressive: boolean
 	): Promise<string> {
 		return new Promise((resolve, reject) => {
 			try {
@@ -1126,7 +1182,7 @@ export class VectorizerService {
 		let totalProgress = 0;
 
 		for (const stageInfo of stages) {
-			const stageStart = performance.now();
+			const _stageStart = performance.now();
 			const stageDuration = 100; // Simulated stage duration
 
 			for (let i = 0; i <= 10; i++) {
@@ -1228,4 +1284,17 @@ export class VectorizerService {
 }
 
 // Export singleton instance
-export const vectorizerService = VectorizerService.getInstance();
+// Lazy getter to avoid SSR instantiation - simple proxy approach
+let _vectorizerServiceInstance: VectorizerService | null = null;
+export const vectorizerService = new Proxy({} as VectorizerService, {
+	get(target, prop) {
+		if (!_vectorizerServiceInstance) {
+			_vectorizerServiceInstance = VectorizerService.getInstance();
+		}
+		const value = (_vectorizerServiceInstance as any)[prop];
+		if (typeof value === 'function') {
+			return value.bind(_vectorizerServiceInstance);
+		}
+		return value;
+	}
+});

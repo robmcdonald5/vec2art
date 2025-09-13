@@ -4,11 +4,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, cleanup, waitFor as _waitFor } from '@testing-library/svelte';
 import ConverterPage from './+page.svelte';
 import {
 	fileTestUtils,
-	componentTestUtils,
+	componentTestUtils as _componentTestUtils,
 	interactionTestUtils,
 	assertionUtils,
 	setupBrowserMocks,

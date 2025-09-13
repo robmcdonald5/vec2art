@@ -5,7 +5,6 @@
 
 import type { WASMPerformanceMetrics, ProcessingAnalytics } from '../types/performance.js';
 import {
-	performanceMonitor,
 	trackWASMMetrics,
 	trackProcessingAnalytics,
 	trackCustomMetric,

@@ -10,17 +10,20 @@
 		Target,
 		Check,
 		AlertTriangle,
-		Palette
+		Palette,
+		Eraser,
+		Filter
 	} from 'lucide-svelte';
 	import type { VectorizerConfig } from '$lib/types/vectorizer';
-	import { calculateMultipassConfig, PASS_COUNT_DESCRIPTIONS } from '$lib/types/vectorizer';
+	import { calculateMultipassConfig } from '$lib/types/vectorizer';
 
 	// Import dots backend parameter ranges (for dot size controls)
 	import { DOTS_PARAMETER_RANGES } from '$lib/types/dots-backend';
+	import FerrariSlider from '$lib/components/ui/FerrariSlider.svelte';
 
 	interface AdvancedControlsProps {
 		config: VectorizerConfig;
-		onConfigChange: (updates: Partial<VectorizerConfig>) => void;
+		onConfigChange: (_config: Partial<VectorizerConfig>) => void;
 		disabled?: boolean;
 		onParameterChange?: () => void;
 	}
@@ -34,8 +37,8 @@
 
 	// Simple section state management
 	let expandedSections = $state({
+		backgroundFiltering: false,
 		multipass: false,
-		directional: false,
 		edgeDetection: false,
 		colorControls: false,
 		centerlineAdvanced: false,
@@ -51,6 +54,18 @@
 		warnings: []
 	});
 
+	// Reactive state for FerrariSlider components
+	let backgroundStrengthValue = $state(0.5);
+	let passCountValue = $state(1);
+	let directionalThresholdValue = $state(0.3);
+	let colorAccuracyValue = $state(0.7);
+	let maxColorsPathValue = $state(3);
+	let colorToleranceValue = $state(0.15);
+	let minRadiusValue = $state(0.5);
+	let maxRadiusValue = $state(3.0);
+	let compactnessValue = $state(20);
+	let maxProcessingTimeValue = $state(30000);
+
 	// Update dots validation when config changes
 	$effect(() => {
 		if (config.backend === 'dots') {
@@ -59,25 +74,18 @@
 		}
 	});
 
-	// Update slider visual fills when radius values change reactively
+	// Update reactive values when config changes
 	$effect(() => {
-		if (config.backend === 'dots') {
-			// Update min radius slider fill when config changes
-			if (minRadiusSliderRef && config.min_radius !== undefined) {
-				if (minRadiusSliderRef.value !== config.min_radius.toString()) {
-					minRadiusSliderRef.value = config.min_radius.toString();
-					updateSliderFill(minRadiusSliderRef);
-				}
-			}
-
-			// Update max radius slider fill when config changes
-			if (maxRadiusSliderRef && config.max_radius !== undefined) {
-				if (maxRadiusSliderRef.value !== config.max_radius.toString()) {
-					maxRadiusSliderRef.value = config.max_radius.toString();
-					updateSliderFill(maxRadiusSliderRef);
-				}
-			}
-		}
+		backgroundStrengthValue = config.background_removal_strength ?? 0.5;
+		passCountValue = config.pass_count || 1;
+		directionalThresholdValue = config.directional_strength_threshold ?? 0.3;
+		colorAccuracyValue = config.color_accuracy ?? 0.7;
+		maxColorsPathValue = config.max_colors_per_path ?? 3;
+		colorToleranceValue = config.color_tolerance ?? 0.15;
+		minRadiusValue = config.min_radius ?? 0.5;
+		maxRadiusValue = config.max_radius ?? 3.0;
+		compactnessValue = config.compactness ?? 20;
+		maxProcessingTimeValue = config.max_processing_time_ms ?? 30000;
 	});
 
 	// Simple section toggle with logging
@@ -96,99 +104,7 @@
 		};
 	}
 
-	// Simple range input handler
-	function handleRangeChange(configKey: keyof VectorizerConfig, scale = 1) {
-		return (event: Event) => {
-			const input = event.target as HTMLInputElement;
-			const value = parseFloat(input.value) * scale;
-
-			// Update progressive fill
-			updateSliderFill(input);
-
-			console.log(`🟡 Advanced Controls - Range change: ${configKey} = ${value}`);
-			onConfigChange({ [configKey]: value } as Partial<VectorizerConfig>);
-			onParameterChange?.();
-		};
-	}
-
 	// Dots-specific parameter handlers with architectural mapping
-
-	// Slider refs for radius controls
-	let minRadiusSliderRef = $state<HTMLInputElement>();
-	let maxRadiusSliderRef = $state<HTMLInputElement>();
-
-	function handleDotRadiusRange(isMin: boolean) {
-		return (event: Event) => {
-			const target = event.target as HTMLInputElement;
-			const value = parseFloat(target.value);
-			updateSliderFill(target);
-
-			if (isMin) {
-				// Ensure max_radius is always larger than min_radius
-				const maxRadius = Math.max(value + 0.1, config.max_radius || value + 1.0);
-				console.log(`🎯 Advanced Controls - Min radius: ${value}, adjusted max: ${maxRadius}`);
-				onConfigChange({
-					min_radius: value,
-					max_radius: maxRadius
-				});
-
-				// Reactive effect will handle visual slider updates
-			} else {
-				// Ensure max_radius is always larger than min_radius
-				const minRadius = Math.min(value - 0.1, config.min_radius || value - 1.0);
-				const constrainedMinRadius = Math.max(0.3, minRadius);
-				console.log(
-					`🎯 Advanced Controls - Max radius: ${value}, adjusted min: ${constrainedMinRadius}`
-				);
-				onConfigChange({
-					min_radius: constrainedMinRadius,
-					max_radius: value
-				});
-
-				// Reactive effect will handle visual slider updates
-			}
-			onParameterChange?.();
-		};
-	}
-
-	// Progressive slider functionality
-	function updateSliderFill(slider: HTMLInputElement) {
-		const min = parseFloat(slider.min);
-		const max = parseFloat(slider.max);
-		const value = parseFloat(slider.value);
-		const percentage = ((value - min) / (max - min)) * 100;
-		slider.style.setProperty('--value', `${percentage}%`);
-	}
-
-	function initializeSliderFill(slider: HTMLInputElement) {
-		updateSliderFill(slider);
-		slider.addEventListener('input', () => updateSliderFill(slider));
-	}
-
-	// Slider refs for multipass controls
-	let passCountSliderRef = $state<HTMLInputElement>();
-
-	// Pass count slider handler
-	function handlePassCountSliderChange(event: Event) {
-		const slider = event.target as HTMLInputElement;
-		const passCount = parseInt(slider.value);
-
-		// Update progressive fill
-		updateSliderFill(slider);
-
-		console.log(`🟡 Advanced Controls - Pass count change: ${passCount}`);
-
-		// Calculate the new multipass configuration
-		const tempConfig = { ...config, pass_count: passCount };
-		const multipassConfig = calculateMultipassConfig(tempConfig);
-
-		// Update configuration with new pass count and computed multipass settings
-		onConfigChange({
-			pass_count: passCount,
-			multipass: multipassConfig.multipass
-		});
-		onParameterChange?.();
-	}
 
 	// Get description for pass count
 	function getPassCountDescription(passCount: number): string {
@@ -222,19 +138,195 @@
 	</p>
 
 	<div class="space-y-3">
+		<!-- Background Filtering (All algorithms) -->
+		<div
+			class="border-ferrari-200/30 border bg-white {expandedSections.backgroundFiltering
+				? 'rounded-t-lg'
+				: 'rounded-lg'}"
+		>
+			<button
+				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.backgroundFiltering
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
+				onclick={() => toggleSection('backgroundFiltering')}
+				{disabled}
+				type="button"
+			>
+				<div class="flex items-center gap-2">
+					<Eraser class="text-ferrari-600 h-4 w-4" />
+					<span class="text-converter-primary font-medium">Background Filtering</span>
+					{#if config.enable_background_removal}
+						<Check class="h-4 w-4 text-green-600" />
+					{/if}
+				</div>
+				<div class="flex-shrink-0">
+					{#if expandedSections.backgroundFiltering}
+						<ChevronUp class="text-ferrari-600 h-4 w-4" />
+					{:else}
+						<ChevronDown class="text-ferrari-600 h-4 w-4" />
+					{/if}
+				</div>
+			</button>
+
+			{#if expandedSections.backgroundFiltering}
+				<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
+					<div class="text-converter-secondary text-xs">
+						Extra background removal pass to further try to isolate larger elements in the image.
+					</div>
+
+					<!-- Enable Background Filtering Toggle -->
+					<div class="flex items-center space-x-3">
+						<input
+							type="checkbox"
+							id="enable-background-filtering"
+							checked={config.enable_background_removal ?? false}
+							onchange={(e) => {
+								const checked = e.currentTarget.checked;
+								console.log(`🟡 Advanced Controls - Background removal toggle: ${checked}`);
+								onConfigChange({ enable_background_removal: checked });
+								onParameterChange?.();
+							}}
+							{disabled}
+							class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+						/>
+						<label
+							for="enable-background-filtering"
+							class="text-converter-primary cursor-pointer text-sm font-medium"
+						>
+							Enable Background Filtering
+						</label>
+					</div>
+
+					<!-- Background Filtering Options (shown when enabled) -->
+					{#if config.enable_background_removal}
+						<div class="ml-7 space-y-4 pt-2">
+							<!-- Algorithm Selection -->
+							<div class="space-y-2">
+								<div id="bg-algorithm-label" class="text-converter-primary text-sm font-medium">
+									Algorithm
+								</div>
+
+								<!-- Algorithm Button Group -->
+								<div
+									class="grid grid-cols-2 gap-2"
+									role="radiogroup"
+									aria-labelledby="bg-algorithm-label"
+								>
+									<button
+										type="button"
+										class="relative rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:ring-0 focus:outline-none {(config.background_removal_algorithm ??
+											'otsu') === 'otsu'
+											? 'border-ferrari-500 bg-ferrari-50 text-ferrari-700'
+											: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}"
+										onclick={() => {
+											console.log('🟡 Advanced Controls - Background removal algorithm: otsu');
+											onConfigChange({ background_removal_algorithm: 'otsu' });
+											onParameterChange?.();
+										}}
+										{disabled}
+										aria-checked={(config.background_removal_algorithm ?? 'otsu') === 'otsu'}
+										role="radio"
+									>
+										{#if (config.background_removal_algorithm ?? 'otsu') === 'otsu'}
+											<div class="bg-ferrari-600 absolute top-2 right-2 h-3 w-3 rounded-full"></div>
+										{/if}
+										<div class="text-center">
+											<div class="font-medium">OTSU</div>
+											<div class="text-xs text-current opacity-75">Fast</div>
+										</div>
+									</button>
+
+									<button
+										type="button"
+										class="relative rounded-lg border-2 p-3 text-sm font-medium transition-all duration-200 hover:bg-gray-50 focus:ring-0 focus:outline-none {config.background_removal_algorithm ===
+										'adaptive'
+											? 'border-ferrari-500 bg-ferrari-50 text-ferrari-700'
+											: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}"
+										onclick={() => {
+											console.log('🟡 Advanced Controls - Background removal algorithm: adaptive');
+											onConfigChange({ background_removal_algorithm: 'adaptive' });
+											onParameterChange?.();
+										}}
+										{disabled}
+										aria-checked={config.background_removal_algorithm === 'adaptive'}
+										role="radio"
+									>
+										{#if config.background_removal_algorithm === 'adaptive'}
+											<div class="bg-ferrari-600 absolute top-2 right-2 h-3 w-3 rounded-full"></div>
+										{/if}
+										<div class="text-center">
+											<div class="font-medium">Adaptive</div>
+											<div class="text-xs text-current opacity-75">Better Quality</div>
+										</div>
+									</button>
+								</div>
+
+								<!-- Algorithm Description -->
+								<div class="text-converter-secondary rounded bg-gray-50 p-2 text-xs">
+									{#if (config.background_removal_algorithm ?? 'otsu') === 'otsu'}
+										Fast automatic thresholding. Works well for simple, uniform backgrounds.
+									{:else if config.background_removal_algorithm === 'adaptive'}
+										Adaptive thresholding for complex lighting. Slower but better quality.
+									{/if}
+								</div>
+							</div>
+
+							<!-- Strength Slider -->
+							<div class="space-y-2">
+								<div class="flex items-center justify-between">
+									<label
+										for="bg-strength-slider"
+										class="text-converter-primary flex items-center gap-2 text-sm font-medium"
+									>
+										<Filter class="text-ferrari-600 h-4 w-4" />
+										Strength
+									</label>
+									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+										{Math.round((config.background_removal_strength ?? 0.5) * 100)}%
+									</span>
+								</div>
+								<FerrariSlider
+									id="bg-strength-slider"
+									bind:value={backgroundStrengthValue}
+									min={0.0}
+									max={1.0}
+									step={0.1}
+									oninput={(value) => {
+										console.log(`🟡 Advanced Controls - Background removal strength: ${value}`);
+										onConfigChange({ background_removal_strength: value });
+										onParameterChange?.();
+									}}
+									{disabled}
+									class="w-full"
+								/>
+								<div class="text-converter-secondary text-xs">
+									Higher values remove more background (more aggressive), lower values are more
+									conservative.
+								</div>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
+
 		<!-- Multi-pass Processing (Edge backend only) -->
 		{#if config.backend === 'edge'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
+			<div
+				class="border-ferrari-200/30 border bg-white {expandedSections.multipass
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
+			>
 				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors duration-200 focus:outline-none"
+					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.multipass
+						? 'rounded-t-lg'
+						: 'rounded-lg'}"
 					onclick={() => toggleSection('multipass')}
 					{disabled}
 					type="button"
 				>
 					<div class="flex items-center gap-2">
-						<div class="bg-ferrari-100 rounded p-1">
-							<Layers class="text-ferrari-600 h-4 w-4" />
-						</div>
+						<Layers class="text-ferrari-600 h-4 w-4" />
 						<span class="text-converter-primary font-medium">Multi-pass Processing</span>
 						{#if (config.pass_count || 1) > 1}
 							<Check class="h-4 w-4 text-green-600" />
@@ -250,7 +342,7 @@
 				</button>
 
 				{#if expandedSections.multipass}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+					<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 						<!-- Pass Count Slider -->
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
@@ -261,154 +353,153 @@
 									{config.pass_count || 1}/10
 								</span>
 							</div>
-							<input
-								bind:this={passCountSliderRef}
-								type="range"
+							<FerrariSlider
 								id="pass-count"
-								min="1"
-								max="10"
-								step="1"
-								value={config.pass_count || 1}
-								oninput={handlePassCountSliderChange}
-								onchange={handlePassCountSliderChange}
+								bind:value={passCountValue}
+								min={1}
+								max={10}
+								step={1}
+								oninput={(value) => {
+									const passCount = parseInt(value.toString());
+									console.log(`🟡 Advanced Controls - Pass count change: ${passCount}`);
+									// Calculate the new multipass configuration
+									const tempConfig = { ...config, pass_count: passCount };
+									const multipassConfig = calculateMultipassConfig(tempConfig);
+									// Update configuration with new pass count and computed multipass settings
+									onConfigChange({
+										pass_count: passCount,
+										multipass: multipassConfig.multipass
+									});
+									onParameterChange?.();
+								}}
 								{disabled}
-								class="slider-ferrari w-full"
-								aria-describedby="pass-count-desc"
-								use:initializeSliderFill
+								class="w-full"
 							/>
 							<div id="pass-count-desc" class="text-converter-secondary text-xs">
 								{getPassCountDescription(config.pass_count || 1)}
 							</div>
 						</div>
-					</div>
-				{/if}
-			</div>
-		{/if}
 
-		<!-- Directional Processing (Edge backend only) -->
-		{#if config.backend === 'edge'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
-				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
-					onclick={() => toggleSection('directional')}
-					{disabled}
-					type="button"
-				>
-					<div class="flex items-center gap-2">
-						<Target class="text-ferrari-600 h-4 w-4" />
-						<span class="text-converter-primary font-medium">Directional Processing</span>
-						{#if config.reverse_pass || config.diagonal_pass}
-							<Check class="h-4 w-4 text-green-600" />
-						{/if}
-					</div>
-					<div class="flex-shrink-0">
-						{#if expandedSections.directional}
-							<ChevronUp class="text-ferrari-600 h-4 w-4" />
-						{:else}
-							<ChevronDown class="text-ferrari-600 h-4 w-4" />
-						{/if}
-					</div>
-				</button>
-
-				{#if expandedSections.directional}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
-						<!-- Reverse Pass -->
-						<div class="flex items-center space-x-3">
-							<input
-								type="checkbox"
-								id="reverse-pass"
-								checked={config.reverse_pass}
-								onchange={handleCheckboxChange('reverse_pass')}
-								{disabled}
-								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-							/>
-							<label
-								for="reverse-pass"
-								class="text-converter-primary cursor-pointer text-sm font-medium"
-							>
-								Enable Reverse Pass
-							</label>
-						</div>
-						<div class="text-converter-secondary ml-7 text-xs">
-							Right-to-left, bottom-to-top scan for shadows and lighting effects.
-						</div>
-						<div class="ml-7 text-xs font-medium text-blue-600">
-							Best for: portraits, objects with directional lighting
-						</div>
-
-						<!-- Diagonal Pass -->
-						<div class="flex items-center space-x-3">
-							<input
-								type="checkbox"
-								id="diagonal-pass"
-								checked={config.diagonal_pass}
-								onchange={handleCheckboxChange('diagonal_pass')}
-								{disabled}
-								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-							/>
-							<label
-								for="diagonal-pass"
-								class="text-converter-primary cursor-pointer text-sm font-medium"
-							>
-								Enable Diagonal Pass
-							</label>
-						</div>
-						<div class="text-converter-secondary ml-7 text-xs">
-							Diagonal scan (NW→SE, NE→SW) for architectural and angled features.
-						</div>
-						<div class="ml-7 text-xs font-medium text-blue-600">
-							Best for: buildings, geometric shapes, technical drawings
-						</div>
-
-						<!-- Directional Sensitivity -->
-						{#if config.reverse_pass || config.diagonal_pass}
-							<div class="border-ferrari-200/20 ml-7 space-y-3 border-t pt-4">
-								<div class="flex items-center justify-between">
-									<label
-										for="directional-threshold"
-										class="text-converter-primary text-sm font-medium"
-										>Directional Sensitivity</label
+						<!-- Directional Processing (shown when pass count > 1) -->
+						{#if (config.pass_count || 1) > 1}
+							<div class="border-ferrari-200/20 space-y-4 border-t pt-4">
+								<div class="flex items-center gap-2">
+									<Target class="text-ferrari-600 h-4 w-4" />
+									<span class="text-converter-primary text-sm font-medium"
+										>Directional Enhancements</span
 									>
-									<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
-										{(config.directional_strength_threshold ?? 0.3).toFixed(1)}
-									</span>
+									{#if config.reverse_pass || config.diagonal_pass}
+										<Check class="h-4 w-4 text-green-600" />
+									{/if}
 								</div>
-								<input
-									type="range"
-									id="directional-threshold"
-									min="0.1"
-									max="0.8"
-									step="0.1"
-									value={config.directional_strength_threshold ?? 0.3}
-									oninput={handleRangeChange('directional_strength_threshold')}
-									{disabled}
-									class="slider-ferrari w-full"
-									use:initializeSliderFill
-								/>
-								<div class="space-y-1 text-xs">
-									<div class="text-converter-secondary">
-										Controls how selective the algorithm is about running directional passes:
+
+								<!-- Reverse Pass -->
+								<div class="space-y-2">
+									<div class="flex items-center space-x-3">
+										<input
+											type="checkbox"
+											id="reverse-pass"
+											checked={config.reverse_pass}
+											onchange={handleCheckboxChange('reverse_pass')}
+											{disabled}
+											class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+										/>
+										<label
+											for="reverse-pass"
+											class="text-converter-primary cursor-pointer text-sm font-medium"
+										>
+											Enable Reverse Pass
+										</label>
 									</div>
-									<div class="grid grid-cols-3 gap-2 text-xs">
-										<div class="text-center">
-											<span class="font-medium text-green-600">Low (0.1-0.3)</span>
-											<div class="text-converter-secondary">Run on most images</div>
-										</div>
-										<div class="text-center">
-											<span class="font-medium text-yellow-600">Med (0.4-0.6)</span>
-											<div class="text-converter-secondary">Run when beneficial</div>
-										</div>
-										<div class="text-center">
-											<span class="font-medium text-red-600">High (0.7-0.8)</span>
-											<div class="text-converter-secondary">Only when clearly beneficial</div>
-										</div>
+									<div class="text-converter-secondary ml-7 text-xs">
+										Right-to-left, bottom-to-top scan for shadows and lighting effects.
+									</div>
+									<div class="ml-7 text-xs font-medium text-blue-600">
+										Best for: portraits, objects with directional lighting
 									</div>
 								</div>
-								<div class="rounded-lg bg-amber-50 p-2">
-									<div class="text-xs text-amber-700">
-										⏱️ Each enabled pass adds ~30% processing time
+
+								<!-- Diagonal Pass -->
+								<div class="space-y-2">
+									<div class="flex items-center space-x-3">
+										<input
+											type="checkbox"
+											id="diagonal-pass"
+											checked={config.diagonal_pass}
+											onchange={handleCheckboxChange('diagonal_pass')}
+											{disabled}
+											class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+										/>
+										<label
+											for="diagonal-pass"
+											class="text-converter-primary cursor-pointer text-sm font-medium"
+										>
+											Enable Diagonal Pass
+										</label>
+									</div>
+									<div class="text-converter-secondary ml-7 text-xs">
+										Diagonal scan (NW→SE, NE→SW) for architectural and angled features.
+									</div>
+									<div class="ml-7 text-xs font-medium text-blue-600">
+										Best for: buildings, geometric shapes, technical drawings
 									</div>
 								</div>
+
+								<!-- Directional Sensitivity -->
+								{#if config.reverse_pass || config.diagonal_pass}
+									<div class="border-ferrari-200/20 ml-7 space-y-3 border-t pt-4">
+										<div class="flex items-center justify-between">
+											<label
+												for="directional-threshold"
+												class="text-converter-primary text-sm font-medium"
+												>Directional Sensitivity</label
+											>
+											<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
+												{(config.directional_strength_threshold ?? 0.3).toFixed(1)}
+											</span>
+										</div>
+										<FerrariSlider
+											id="directional-threshold"
+											bind:value={directionalThresholdValue}
+											min={0.1}
+											max={0.8}
+											step={0.1}
+											oninput={(value) => {
+												console.log(
+													`🟡 Advanced Controls - Range change: directional_strength_threshold = ${value}`
+												);
+												onConfigChange({ directional_strength_threshold: value });
+												onParameterChange?.();
+											}}
+											{disabled}
+											class="w-full"
+										/>
+										<div class="space-y-1 text-xs">
+											<div class="text-converter-secondary">
+												Controls how selective the algorithm is about running directional passes:
+											</div>
+											<div class="grid grid-cols-3 gap-2 text-xs">
+												<div class="text-center">
+													<span class="font-medium text-green-600">Low (0.1-0.3)</span>
+													<div class="text-converter-secondary">Run on most images</div>
+												</div>
+												<div class="text-center">
+													<span class="font-medium text-yellow-600">Med (0.4-0.6)</span>
+													<div class="text-converter-secondary">Run when beneficial</div>
+												</div>
+												<div class="text-center">
+													<span class="font-medium text-red-600">High (0.7-0.8)</span>
+													<div class="text-converter-secondary">Only when clearly beneficial</div>
+												</div>
+											</div>
+										</div>
+										<div class="rounded-lg bg-amber-50 p-2">
+											<div class="text-xs text-amber-700">
+												⏱️ Each enabled pass adds ~30% processing time
+											</div>
+										</div>
+									</div>
+								{/if}
 							</div>
 						{/if}
 					</div>
@@ -417,9 +508,15 @@
 		{/if}
 
 		<!-- Unified Color Controls (All backends) -->
-		<div class="border-ferrari-200/30 rounded-lg border bg-white">
+		<div
+			class="border-ferrari-200/30 border bg-white {expandedSections.colorControls
+				? 'rounded-t-lg'
+				: 'rounded-lg'}"
+		>
 			<button
-				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.colorControls
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
 				onclick={() => toggleSection('colorControls')}
 				{disabled}
 				type="button"
@@ -443,7 +540,7 @@
 			</button>
 
 			{#if expandedSections.colorControls}
-				<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+				<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 					<!-- Color Mode Toggle -->
 					<div class="space-y-2">
 						<div class="flex items-center justify-between">
@@ -527,17 +624,19 @@
 									{Math.round((config.color_accuracy ?? 0.7) * 100)}%
 								</span>
 							</div>
-							<input
-								type="range"
+							<FerrariSlider
 								id="color-accuracy-unified"
-								min="0.3"
-								max="1.0"
-								step="0.1"
-								value={config.color_accuracy ?? 0.7}
-								oninput={handleRangeChange('color_accuracy')}
+								bind:value={colorAccuracyValue}
+								min={0.3}
+								max={1.0}
+								step={0.1}
+								oninput={(value) => {
+									console.log(`🟡 Advanced Controls - Range change: color_accuracy = ${value}`);
+									onConfigChange({ color_accuracy: value });
+									onParameterChange?.();
+								}}
 								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
+								class="w-full"
 							/>
 							<div class="text-converter-secondary text-xs">
 								Higher accuracy preserves more colors but increases processing time
@@ -555,17 +654,21 @@
 										{config.max_colors_per_path ?? 3}
 									</span>
 								</div>
-								<input
-									type="range"
+								<FerrariSlider
 									id="max-colors-path-unified"
-									min="1"
-									max="10"
-									step="1"
-									value={config.max_colors_per_path ?? 3}
-									oninput={handleRangeChange('max_colors_per_path')}
+									bind:value={maxColorsPathValue}
+									min={1}
+									max={10}
+									step={1}
+									oninput={(value) => {
+										console.log(
+											`🟡 Advanced Controls - Range change: max_colors_per_path = ${value}`
+										);
+										onConfigChange({ max_colors_per_path: value });
+										onParameterChange?.();
+									}}
 									{disabled}
-									class="slider-ferrari w-full"
-									use:initializeSliderFill
+									class="w-full"
 								/>
 								<div class="text-converter-secondary text-xs">
 									Limits the number of different colors per individual line path
@@ -583,17 +686,19 @@
 									{Math.round((config.color_tolerance ?? 0.15) * 100)}%
 								</span>
 							</div>
-							<input
-								type="range"
+							<FerrariSlider
 								id="color-tolerance-unified"
-								min="0.05"
-								max="0.4"
-								step="0.05"
-								value={config.color_tolerance ?? 0.15}
-								oninput={handleRangeChange('color_tolerance')}
+								bind:value={colorToleranceValue}
+								min={0.05}
+								max={0.4}
+								step={0.05}
+								oninput={(value) => {
+									console.log(`🟡 Advanced Controls - Range change: color_tolerance = ${value}`);
+									onConfigChange({ color_tolerance: value });
+									onParameterChange?.();
+								}}
 								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
+								class="w-full"
 							/>
 							<div class="text-converter-secondary text-xs">
 								Controls color clustering sensitivity (lower = more distinct colors, higher = more
@@ -607,9 +712,15 @@
 
 		<!-- Advanced Edge Detection (Edge backend only) -->
 		{#if config.backend === 'edge'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
+			<div
+				class="border-ferrari-200/30 border bg-white {expandedSections.edgeDetection
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
+			>
 				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.edgeDetection
+						? 'rounded-t-lg'
+						: 'rounded-lg'}"
 					onclick={() => toggleSection('edgeDetection')}
 					{disabled}
 					type="button"
@@ -650,7 +761,7 @@
 				</button>
 
 				{#if expandedSections.edgeDetection}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+					<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 						<div class="rounded-lg bg-amber-50 p-3">
 							<p class="text-xs text-amber-700">
 								⚠️ Advanced features add 20-50% processing time but can significantly improve
@@ -707,9 +818,15 @@
 
 		<!-- Advanced Dots Controls -->
 		{#if config.backend === 'dots'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
+			<div
+				class="border-ferrari-200/30 border bg-white {expandedSections.dotsAdvanced
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
+			>
 				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.dotsAdvanced
+						? 'rounded-t-lg'
+						: 'rounded-lg'}"
 					onclick={() => toggleSection('dotsAdvanced')}
 					{disabled}
 					type="button"
@@ -728,7 +845,7 @@
 				</button>
 
 				{#if expandedSections.dotsAdvanced}
-					<div class="border-ferrari-200/20 space-y-6 border-t p-4">
+					<div class="border-ferrari-200/20 space-y-6 rounded-b-lg border-t p-4">
 						<!-- Configuration Summary and Validation -->
 						<div class="space-y-3">
 							<!-- Validation Feedback -->
@@ -739,7 +856,7 @@
 										Configuration Issues
 									</div>
 									<ul class="space-y-1 text-xs text-red-600">
-										{#each dotsValidation.errors as error}
+										{#each dotsValidation.errors as error, index (index)}
 											<li>• {error.message}</li>
 										{/each}
 									</ul>
@@ -750,7 +867,7 @@
 								<div class="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
 									<div class="mb-2 text-sm font-medium text-yellow-700">Recommendations</div>
 									<ul class="space-y-1 text-xs text-yellow-600">
-										{#each dotsValidation.warnings as warning}
+										{#each dotsValidation.warnings as warning, index (index)}
 											<li>• {warning}</li>
 										{/each}
 									</ul>
@@ -774,19 +891,26 @@
 											{(config.min_radius ?? 0.5).toFixed(1)}px
 										</span>
 									</div>
-									<input
-										bind:this={minRadiusSliderRef}
+									<FerrariSlider
 										id="min-radius"
-										type="range"
+										bind:value={minRadiusValue}
 										min={DOTS_PARAMETER_RANGES.RADIUS.MIN_ALLOWED}
-										max="4.0"
-										step="0.1"
-										value={config.min_radius ?? 0.5}
-										onchange={handleDotRadiusRange(true)}
-										oninput={handleDotRadiusRange(true)}
+										max={4.0}
+										step={0.1}
+										oninput={(value) => {
+											// Ensure max_radius is always larger than min_radius
+											const maxRadius = Math.max(value + 0.1, config.max_radius || value + 1.0);
+											console.log(
+												`🎯 Advanced Controls - Min radius: ${value}, adjusted max: ${maxRadius}`
+											);
+											onConfigChange({
+												min_radius: value,
+												max_radius: maxRadius
+											});
+											onParameterChange?.();
+										}}
 										{disabled}
-										class="slider-ferrari w-full"
-										use:initializeSliderFill
+										class="w-full"
 									/>
 								</div>
 
@@ -800,19 +924,27 @@
 											{(config.max_radius ?? 3.0).toFixed(1)}px
 										</span>
 									</div>
-									<input
-										bind:this={maxRadiusSliderRef}
+									<FerrariSlider
 										id="max-radius"
-										type="range"
-										min="1.0"
+										bind:value={maxRadiusValue}
+										min={1.0}
 										max={DOTS_PARAMETER_RANGES.RADIUS.MAX_ALLOWED}
-										step="0.1"
-										value={config.max_radius ?? 3.0}
-										onchange={handleDotRadiusRange(false)}
-										oninput={handleDotRadiusRange(false)}
+										step={0.1}
+										oninput={(value) => {
+											// Ensure max_radius is always larger than min_radius
+											const minRadius = Math.min(value - 0.1, config.min_radius || value - 1.0);
+											const constrainedMinRadius = Math.max(0.3, minRadius);
+											console.log(
+												`🎯 Advanced Controls - Max radius: ${value}, adjusted min: ${constrainedMinRadius}`
+											);
+											onConfigChange({
+												min_radius: constrainedMinRadius,
+												max_radius: value
+											});
+											onParameterChange?.();
+										}}
 										{disabled}
-										class="slider-ferrari w-full"
-										use:initializeSliderFill
+										class="w-full"
 									/>
 								</div>
 							</div>
@@ -902,9 +1034,15 @@
 
 		<!-- Advanced Superpixel Controls -->
 		{#if config.backend === 'superpixel'}
-			<div class="border-ferrari-200/30 rounded-lg border bg-white">
+			<div
+				class="border-ferrari-200/30 border bg-white {expandedSections.superpixelAdvanced
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
+			>
 				<button
-					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+					class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.superpixelAdvanced
+						? 'rounded-t-lg'
+						: 'rounded-lg'}"
 					onclick={() => toggleSection('superpixelAdvanced')}
 					{disabled}
 					type="button"
@@ -923,26 +1061,30 @@
 				</button>
 
 				{#if expandedSections.superpixelAdvanced}
-					<div class="border-ferrari-200/20 space-y-4 border-t p-4">
+					<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 						<!-- Compactness -->
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
-								<label for="compactness" class="text-converter-primary text-sm">Region Shape</label>
+								<label for="compactness" class="text-converter-primary text-sm"
+									>Shape Regularity</label
+								>
 								<span class="bg-ferrari-50 rounded px-2 py-1 font-mono text-xs">
 									{config.compactness ?? 20}
 								</span>
 							</div>
-							<input
-								type="range"
+							<FerrariSlider
 								id="compactness"
-								min="5"
-								max="30"
-								step="1"
-								value={config.compactness ?? 20}
-								oninput={handleRangeChange('compactness')}
+								bind:value={compactnessValue}
+								min={5}
+								max={30}
+								step={1}
+								oninput={(value) => {
+									console.log(`🟡 Advanced Controls - Range change: compactness = ${value}`);
+									onConfigChange({ compactness: value });
+									onParameterChange?.();
+								}}
 								{disabled}
-								class="slider-ferrari w-full"
-								use:initializeSliderFill
+								class="w-full"
 							/>
 							<div class="text-converter-secondary text-xs">
 								Region regularity vs color fidelity (5=irregular/accurate, 30=regular/smooth).
@@ -996,9 +1138,15 @@
 		{/if}
 
 		<!-- Performance Settings -->
-		<div class="border-ferrari-200/30 rounded-lg border bg-white">
+		<div
+			class="border-ferrari-200/30 border bg-white {expandedSections.performance
+				? 'rounded-t-lg'
+				: 'rounded-lg'}"
+		>
 			<button
-				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between rounded-lg p-4 text-left transition-colors focus:outline-none"
+				class="hover:bg-ferrari-50/10 flex w-full items-center justify-between p-4 text-left transition-colors focus:ring-0 focus:outline-none {expandedSections.performance
+					? 'rounded-t-lg'
+					: 'rounded-lg'}"
 				onclick={() => toggleSection('performance')}
 				{disabled}
 				type="button"
@@ -1017,30 +1165,7 @@
 			</button>
 
 			{#if expandedSections.performance}
-				<div class="border-ferrari-200/20 space-y-4 border-t p-4">
-					<!-- SVG Optimization (NOT YET IMPLEMENTED) -->
-					<div class="cursor-not-allowed opacity-50" title="This feature is coming soon">
-						<div class="flex items-center space-x-3">
-							<input
-								type="checkbox"
-								id="optimize-svg"
-								checked={false}
-								onchange={handleCheckboxChange('optimize_svg')}
-								disabled={true}
-								class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 cursor-not-allowed rounded"
-							/>
-							<label
-								for="optimize-svg"
-								class="text-converter-primary cursor-not-allowed text-sm font-medium"
-							>
-								Optimize SVG Output <span class="text-ferrari-400 text-xs">(Coming Soon)</span>
-							</label>
-						</div>
-						<div class="text-converter-secondary ml-7 text-xs">
-							Apply output optimization and cleanup for smaller file sizes.
-						</div>
-					</div>
-
+				<div class="border-ferrari-200/20 space-y-4 rounded-b-lg border-t p-4">
 					<!-- Include Metadata (NOT YET IMPLEMENTED) -->
 					<div class="cursor-not-allowed opacity-50" title="This feature is coming soon">
 						<div class="flex items-center space-x-3">
@@ -1080,17 +1205,21 @@
 								{/if}
 							</span>
 						</div>
-						<input
-							type="range"
+						<FerrariSlider
 							id="max-time"
-							min="5000"
-							max="999999"
-							step="5000"
-							value={config.max_processing_time_ms ?? 30000}
-							oninput={handleRangeChange('max_processing_time_ms')}
+							bind:value={maxProcessingTimeValue}
+							min={5000}
+							max={999999}
+							step={5000}
+							oninput={(value) => {
+								console.log(
+									`🟡 Advanced Controls - Range change: max_processing_time_ms = ${value}`
+								);
+								onConfigChange({ max_processing_time_ms: value });
+								onParameterChange?.();
+							}}
 							{disabled}
-							class="slider-ferrari w-full"
-							use:initializeSliderFill
+							class="w-full"
 						/>
 						<div class="text-converter-secondary text-xs">
 							{#if (config.max_processing_time_ms ?? 30000) >= 999999}
@@ -1134,100 +1263,3 @@
 		</div>
 	</div>
 </section>
-
-<style>
-	/* Unified Progressive Ferrari Slider Styles */
-	.slider-ferrari {
-		-webkit-appearance: none;
-		appearance: none;
-		background: linear-gradient(
-			to right,
-			#dc143c 0%,
-			#dc143c var(--value, 0%),
-			#ffe5e0 var(--value, 0%),
-			#ffe5e0 100%
-		);
-		height: 8px;
-		border-radius: 4px;
-		cursor: pointer;
-		outline: none;
-		transition: all 0.2s ease;
-		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari:hover {
-		background: linear-gradient(
-			to right,
-			#ff2800 0%,
-			#ff2800 var(--value, 0%),
-			#ffb5b0 var(--value, 0%),
-			#ffb5b0 100%
-		);
-	}
-
-	.slider-ferrari::-webkit-slider-track {
-		background: transparent;
-	}
-
-	.slider-ferrari::-webkit-slider-thumb {
-		-webkit-appearance: none;
-		appearance: none;
-		background: linear-gradient(135deg, #ff2800, #dc2626);
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		border: 2px solid white;
-		box-shadow:
-			0 2px 4px rgba(0, 0, 0, 0.2),
-			0 1px 2px rgba(0, 0, 0, 0.1);
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		cursor: pointer;
-	}
-
-	.slider-ferrari::-webkit-slider-thumb:hover {
-		transform: scale(1.1);
-		box-shadow:
-			0 4px 8px rgba(255, 40, 0, 0.3),
-			0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari::-moz-range-track {
-		background: transparent;
-		height: 8px;
-		border-radius: 4px;
-	}
-
-	.slider-ferrari::-moz-range-thumb {
-		background: linear-gradient(135deg, #ff2800, #dc2626);
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		border: 2px solid white;
-		box-shadow:
-			0 2px 4px rgba(0, 0, 0, 0.2),
-			0 1px 2px rgba(0, 0, 0, 0.1);
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		cursor: pointer;
-		border: none;
-	}
-
-	.slider-ferrari::-moz-range-thumb:hover {
-		transform: scale(1.1);
-		box-shadow:
-			0 4px 8px rgba(255, 40, 0, 0.3),
-			0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	.slider-ferrari:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.slider-ferrari:disabled::-webkit-slider-thumb {
-		cursor: not-allowed;
-	}
-</style>

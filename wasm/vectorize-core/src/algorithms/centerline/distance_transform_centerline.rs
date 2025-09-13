@@ -457,8 +457,8 @@ fn dp_recursive_simple(
 
 fn bridge_endpoints_smart(
     polylines: Vec<Vec<Point>>,
-    max_distance: f32,
-    max_angle_deg: f32,
+    _max_distance: f32,
+    _max_angle_deg: f32,
 ) -> Vec<Vec<Point>> {
     // TODO: Implement smart endpoint bridging with tangent alignment
     polylines

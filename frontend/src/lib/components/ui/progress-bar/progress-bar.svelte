@@ -6,9 +6,18 @@
 		variant?: 'default' | 'success' | 'warning' | 'error';
 		showValue?: boolean;
 		id?: string;
+		class?: string;
 	}
 
-	let { value, label, size = 'md', variant = 'default', showValue = true, id }: Props = $props();
+	let {
+		value,
+		label,
+		size = 'md',
+		variant = 'default',
+		showValue = true,
+		id,
+		class: className = ''
+	}: Props = $props();
 
 	const sizeClasses = {
 		sm: 'h-2',
@@ -27,7 +36,7 @@
 	const progressId = id || 'progress-bar';
 </script>
 
-<div class="w-full">
+<div class="w-full {className}">
 	{#if label}
 		<div class="mb-2 flex items-center justify-between text-sm">
 			<label for={progressId} class="text-foreground font-medium">{label}</label>

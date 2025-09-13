@@ -219,20 +219,20 @@ impl CenterlineAlgorithm for CompositeCenterlineAlgorithm {
 pub use distance_transform_centerline::DistanceTransformCenterlineAlgorithm;
 
 // Helper functions that will be implemented
-fn rgba_to_gray(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> GrayImage {
+fn rgba_to_gray(_image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> GrayImage {
     // Implementation will be moved from trace_low.rs
     todo!("Move implementation from trace_low.rs")
 }
 
-fn calculate_epsilon(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, config: &TraceLowConfig) -> f32 {
+fn calculate_epsilon(_image: &ImageBuffer<Rgba<u8>, Vec<u8>>, _config: &TraceLowConfig) -> f32 {
     // Implementation will be moved from trace_low.rs
     todo!("Move implementation from trace_low.rs")
 }
 
 fn polylines_to_svg_paths(
-    polylines: Vec<Vec<Point>>,
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-    config: &TraceLowConfig,
+    _polylines: Vec<Vec<Point>>,
+    _image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    _config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     // Implementation will be moved from trace_low.rs
     todo!("Move implementation from trace_low.rs")

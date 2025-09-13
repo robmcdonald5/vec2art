@@ -603,5 +603,51 @@ export interface PrioritizedOptimization {
 	dependencies: string[];
 }
 
-// Export all types for easier imports
-export type * from './performance';
+// Missing types needed by index.ts
+export interface ConsentCategory {
+	id: string;
+	name: string;
+	description: string;
+	required: boolean;
+}
+
+export interface ConsentStatus {
+	[category: string]: boolean;
+}
+
+export interface DataExport {
+	format: 'json' | 'csv' | 'xml';
+	data: any;
+	timestamp: string;
+	user: string;
+}
+
+export interface PerformanceBottleneck {
+	type: 'cpu' | 'memory' | 'network' | 'rendering';
+	function: string;
+	impact: number;
+	suggestions: string[];
+}
+
+export interface MemoryLeakDetection {
+	leaks: MemoryLeak[];
+	severity: 'low' | 'medium' | 'high';
+	totalLeakedMemory: number;
+}
+
+export interface TimelineEntry {
+	timestamp: number;
+	event: string;
+	duration: number;
+	metadata: Record<string, any>;
+}
+
+export interface PerformanceConfig {
+	enableWebVitals: boolean;
+	enableWASMTracking: boolean;
+	enableUXTracking: boolean;
+	enableErrorTracking: boolean;
+	enableResourceMonitoring: boolean;
+	sampleRate: number;
+	debugMode: boolean;
+}

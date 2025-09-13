@@ -247,8 +247,8 @@ export class ResourceMonitor {
 	 * Get resource usage trends
 	 */
 	getResourceTrends(): {
-		memory: { trend: 'increasing' | 'decreasing' | 'stable'; rate: number };
-		cpu: { trend: 'increasing' | 'decreasing' | 'stable'; rate: number };
+		memory: { trend: 'improving' | 'degrading' | 'stable'; rate: number };
+		cpu: { trend: 'improving' | 'degrading' | 'stable'; rate: number };
 		network: { trend: 'improving' | 'degrading' | 'stable'; rate: number };
 	} {
 		if (this.resourceHistory.length < 10) {
@@ -351,7 +351,7 @@ export class ResourceMonitor {
 		recommendations: string[];
 	} {
 		const baseMemory = this.getMemoryMetrics().usedJSHeapSize;
-		const baseCPU = this.getCPUMetrics().estimatedUsage;
+		const _baseCPU = this.getCPUMetrics().estimatedUsage;
 
 		let memoryIncrease = 0;
 		let cpuUsage = 0;
@@ -477,7 +477,11 @@ export class ResourceMonitor {
 
 	private estimateDOMSize(): number {
 		try {
-			const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null);
+			const walker = document.createTreeWalker(
+				document.body,
+				1, // NodeFilter.SHOW_ELEMENT
+				null
+			);
 
 			let nodeCount = 0;
 			while (walker.nextNode()) {
@@ -494,7 +498,7 @@ export class ResourceMonitor {
 		try {
 			let total = 0;
 			for (const key in localStorage) {
-				if (localStorage.hasOwnProperty(key)) {
+				if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
 					total += localStorage[key].length;
 				}
 			}
@@ -508,7 +512,7 @@ export class ResourceMonitor {
 		try {
 			let total = 0;
 			for (const key in sessionStorage) {
-				if (sessionStorage.hasOwnProperty(key)) {
+				if (Object.prototype.hasOwnProperty.call(sessionStorage, key)) {
 					total += sessionStorage[key].length;
 				}
 			}
@@ -659,7 +663,7 @@ export class ResourceMonitor {
 		older: number[],
 		recent: number[],
 		lowerIsBetter = false
-	): { trend: 'increasing' | 'decreasing' | 'stable'; rate: number } {
+	): { trend: 'stable' | 'improving' | 'degrading'; rate: number } {
 		const olderAvg = older.reduce((sum, val) => sum + val, 0) / older.length;
 		const recentAvg = recent.reduce((sum, val) => sum + val, 0) / recent.length;
 
@@ -672,13 +676,13 @@ export class ResourceMonitor {
 
 		if (lowerIsBetter) {
 			return {
-				trend: change > 0 ? ('degrading' as any) : ('improving' as any),
+				trend: change > 0 ? 'degrading' : 'improving',
 				rate: changePercent
 			};
 		}
 
 		return {
-			trend: change > 0 ? 'increasing' : 'decreasing',
+			trend: change > 0 ? 'improving' : 'degrading',
 			rate: changePercent
 		};
 	}

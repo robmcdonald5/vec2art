@@ -103,7 +103,7 @@ test.describe('WASM Integration Tests', () => {
 			await page.click('[data-testid="performance-selector"]');
 			await page.selectOption('[data-testid="thread-count"]', '4');
 			await page.click('[data-testid="initialize-threads"]');
-		} catch (error) {
+		} catch (_error) {
 			// Expected to fail
 		}
 
@@ -240,7 +240,7 @@ test.describe('WASM Integration Tests', () => {
 								detail: 5,
 								stroke_width: 1.0
 							});
-						} catch (error) {
+						} catch (_error) {
 							return { error: error.message };
 						}
 					}

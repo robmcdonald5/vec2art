@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { HelpCircle } from 'lucide-svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade /*, scale */ } from 'svelte/transition';
 
 	interface Props {
 		content: string;
@@ -23,14 +23,11 @@
 	let isVisible = $state(false);
 	let tooltipElement = $state<HTMLDivElement>();
 	let triggerElement = $state<HTMLButtonElement>();
-	let tooltipPosition = $state({ top: 0, left: 0 });
+	let _tooltipPosition = $state({ top: 0, left: 0 });
 
 	// Calculate dynamic position for fixed positioning
-	function calculatePosition() {
-		if (!triggerElement) {
-			console.log('No trigger element found');
-			return;
-		}
+	function _calculatePosition() {
+		if (!triggerElement) return;
 
 		const triggerRect = triggerElement.getBoundingClientRect();
 		const offset = 8; // Gap between trigger and tooltip
@@ -58,7 +55,7 @@
 		}
 
 		console.log('Calculated position:', { top, left, triggerRect, position });
-		tooltipPosition = { top, left };
+		_tooltipPosition = { top, left };
 	}
 
 	// Position calculations for transform classes
@@ -134,7 +131,7 @@
 	<button
 		bind:this={triggerElement}
 		type="button"
-		class="hover:text-ferrari-600 inline-flex h-4 w-4 items-center justify-center text-gray-400 transition-all duration-200 hover:scale-110 {disabled
+		class="hover:text-ferrari-600 mobile-touch-target inline-flex h-4 w-4 items-center justify-center text-gray-400 transition-all duration-200 hover:scale-110 {disabled
 			? 'cursor-not-allowed opacity-50'
 			: 'cursor-help'}"
 		onmouseenter={handleMouseEnter}

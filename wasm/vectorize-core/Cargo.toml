@@ -7,20 +7,25 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/your-org/vec2art"
 
 [features]
-default = ["parallel", "telemetry"]
+# Default features for native builds (CLI tools)
+default = ["single-threaded", "telemetry"]
+# WASM feature set for single-threaded + Web Worker architecture
 wasm = ["single-threaded", "wasm-bindgen", "web-sys", "js-sys"]
-parallel = ["rayon"]
-telemetry = ["file-output"] 
+# Single-threaded processing (primary mode for WASM)
 single-threaded = []
+# Telemetry and logging support
+telemetry = ["file-output"] 
 file-output = []
-# Multi-threading support for WASM with atomics
-wasm-parallel = ["parallel", "wasm-bindgen", "web-sys", "js-sys"]
+# GPU acceleration support
+gpu-acceleration = ["wgpu", "bytemuck", "pollster", "futures-channel"]
+# Enhanced error handling for robust WASM execution
+enhanced-error-handling = []
 
 [dependencies]
 # Core image processing
 image = { workspace = true }
 imageproc = { workspace = true }  # Canny edge detection for trace-low
-rayon = { workspace = true, optional = true }
+# Note: Rayon removed - using single-threaded core + Web Worker parallelism
 nalgebra = { workspace = true }  # Linear algebra for color space conversions
 
 # Error handling
@@ -30,7 +35,7 @@ anyhow = { workspace = true }
 # Serialization
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1"
-chrono = { version = "0.4", features = ["clock"] }
+chrono = { version = "0.4", features = ["clock", "serde"] }
 
 # Utilities
 log = { workspace = true }
@@ -39,6 +44,12 @@ once_cell = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
 rand_distr = "0.4"
+
+# GPU acceleration (optional)
+wgpu = { version = "26.0", optional = true }
+bytemuck = { version = "1.14", optional = true }
+pollster = { version = "0.3", optional = true }
+futures-channel = { version = "0.3", optional = true }
 
 # WebAssembly support (optional)
 wasm-bindgen = { workspace = true, optional = true }

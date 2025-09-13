@@ -117,19 +117,33 @@ fn calculate_gradient_strength(
     if gradient_based_sizing {
         // Enhanced gradient-based sizing uses both magnitude and variance with improved scaling
         let variance = gradient_analysis.get_variance(x, y).unwrap_or(0.0);
-        let variance_factor = variance.sqrt().min(255.0) / 255.0;
+        // Add NaN protection for variance sqrt calculation
+        let variance_factor = if variance.is_finite() && variance >= 0.0 {
+            (variance.sqrt().min(255.0) / 255.0).min(1.0)
+        } else {
+            0.0
+        };
         let magnitude_factor = magnitude.min(362.0) / 362.0;
 
         // Gradient-based sizing emphasizes local detail more strongly
         // Uses a non-linear scaling for better visual results
         let detail_factor = 0.6 * magnitude_factor + 0.4 * variance_factor;
-        // Apply power curve to enhance contrast in detail areas
-        detail_factor.powf(0.8)
+        // Apply power curve to enhance contrast in detail areas - protect against NaN
+        if detail_factor.is_finite() && detail_factor >= 0.0 {
+            detail_factor.powf(0.8).min(1.0)
+        } else {
+            0.0
+        }
     } else if adaptive_sizing {
         let variance = gradient_analysis.get_variance(x, y).unwrap_or(0.0);
         // Combine magnitude and variance for adaptive strength
         // Use square root of variance (standard deviation) for better scaling
-        let variance_factor = variance.sqrt().min(255.0) / 255.0;
+        // Add NaN protection for variance sqrt calculation
+        let variance_factor = if variance.is_finite() && variance >= 0.0 {
+            (variance.sqrt().min(255.0) / 255.0).min(1.0)
+        } else {
+            0.0
+        };
         let magnitude_factor = magnitude.min(362.0) / 362.0; // Max Sobel magnitude for 8-bit
 
         // Weighted combination: 70% magnitude, 30% variance
@@ -172,18 +186,41 @@ struct PoissonDiskSampler {
 
 impl PoissonDiskSampler {
     fn new(width: f32, height: f32, min_distance: f32, seed: u64) -> Self {
+        // Critical safety validation to prevent WASM panics
+        let width = width.max(1.0).min(10000.0);
+        let height = height.max(1.0).min(10000.0);
+        
+        // Clamp min_distance to safe ranges to prevent division/grid issues
+        let min_distance = min_distance.clamp(0.1, width.min(height) * 0.5);
+        
         let grid_size = min_distance / (2.0_f32).sqrt();
-        let grid_width = (width / grid_size).ceil() as usize;
-        let grid_height = (height / grid_size).ceil() as usize;
+        
+        // Cap grid dimensions to prevent memory exhaustion and array bounds issues
+        let max_grid_dim = 2000; // Reasonable upper bound
+        let grid_width = ((width / grid_size).ceil() as usize).clamp(1, max_grid_dim);
+        let grid_height = ((height / grid_size).ceil() as usize).clamp(1, max_grid_dim);
+        
+        // Validate total grid size to prevent massive allocations
+        let total_grid_size = grid_width.saturating_mul(grid_height);
+        let (final_grid_width, final_grid_height) = if total_grid_size > 4_000_000 {
+            // Scale down grid to safe size while preserving aspect ratio
+            let scale = (4_000_000.0 / total_grid_size as f32).sqrt();
+            (
+                ((grid_width as f32 * scale) as usize).max(1),
+                ((grid_height as f32 * scale) as usize).max(1)
+            )
+        } else {
+            (grid_width, grid_height)
+        };
 
         Self {
             width,
             height,
             min_distance,
             grid_size,
-            grid_width,
-            grid_height,
-            grid: vec![None; grid_width * grid_height],
+            grid_width: final_grid_width,
+            grid_height: final_grid_height,
+            grid: vec![None; final_grid_width * final_grid_height],
             active_list: Vec::new(),
             samples: Vec::new(),
             rng_state: seed,
@@ -262,15 +299,43 @@ impl PoissonDiskSampler {
     }
 
     fn generate(&mut self) -> Vec<(f32, f32)> {
-        // Add initial sample
-        let initial_x = self.width * 0.5;
-        let initial_y = self.height * 0.5;
-        self.add_sample(initial_x, initial_y);
+        // Add multiple initial samples distributed across the image for better coverage
+        // This prevents the circular pattern issue where only the center gets filled
+        let grid_seeds = 3; // Create a 3x3 grid of seed points
+        for gy in 0..grid_seeds {
+            for gx in 0..grid_seeds {
+                let x = (gx as f32 + 0.5) * self.width / grid_seeds as f32;
+                let y = (gy as f32 + 0.5) * self.height / grid_seeds as f32;
+                // Add with some random offset to avoid perfect grid
+                let offset_x = (self.next_random() - 0.5) * self.min_distance;
+                let offset_y = (self.next_random() - 0.5) * self.min_distance;
+                let sample_x = (x + offset_x).clamp(0.0, self.width - 1.0);
+                let sample_y = (y + offset_y).clamp(0.0, self.height - 1.0);
+                
+                if self.is_valid_point(sample_x, sample_y) {
+                    self.add_sample(sample_x, sample_y);
+                }
+            }
+        }
+        
+        // If no seeds were added (shouldn't happen), add center as fallback
+        if self.samples.is_empty() {
+            self.add_sample(self.width * 0.5, self.height * 0.5);
+        }
 
         const K: usize = 30; // Number of attempts per active sample
+        // Scale max iterations based on image size to ensure full coverage
+        let pixels_to_cover = (self.width * self.height) as usize;
+        let expected_samples = (pixels_to_cover as f32 / (self.min_distance * self.min_distance)) as usize;
+        // Allow enough iterations for full coverage with safety margin
+        let max_iterations = expected_samples.saturating_mul(K).max(100_000).min(1_000_000);
+        let mut iterations = 0;
 
-        while !self.active_list.is_empty() {
+        while !self.active_list.is_empty() && iterations < max_iterations {
+            iterations += 1;
             let active_idx = (self.next_random() * self.active_list.len() as f32) as usize;
+            // Ensure bounds safety: clamp to valid array index
+            let active_idx = active_idx.min(self.active_list.len().saturating_sub(1));
             let sample_idx = self.active_list[active_idx];
 
             if let Some((x, y)) = self.generate_around(sample_idx, K) {

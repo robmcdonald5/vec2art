@@ -25,7 +25,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      
+
       testing-tools:
         patterns:
           - "@playwright/*"
@@ -35,7 +35,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      
+
       dev-tools:
         patterns:
           - "eslint*"
@@ -45,7 +45,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      
+
       build-tools:
         patterns:
           - "vite*"

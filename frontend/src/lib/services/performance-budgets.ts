@@ -8,7 +8,6 @@ import type {
 	Alert,
 	Recommendation,
 	WebVitalsMetrics,
-	CustomMetrics,
 	WASMPerformanceMetrics,
 	ResourceMonitoring
 } from '../types/performance.js';
@@ -262,6 +261,23 @@ export class PerformanceBudgetsManager {
 	}
 
 	/**
+	 * Check SVG performance budgets
+	 */
+	checkSVGBudgets(elementCount: number, fileSizeBytes: number): BudgetViolation[] {
+		const violations: BudgetViolation[] = [];
+
+		// Check element count budget
+		const elementViolation = this.checkBudget('svg_element_count', elementCount);
+		if (elementViolation) violations.push(elementViolation);
+
+		// Check file size budget
+		const sizeViolation = this.checkBudget('svg_file_size', fileSizeBytes);
+		if (sizeViolation) violations.push(sizeViolation);
+
+		return violations;
+	}
+
+	/**
 	 * Check resource budgets
 	 */
 	checkResourceBudgets(metrics: Partial<ResourceMonitoring>): BudgetViolation[] {
@@ -410,7 +426,7 @@ export class PerformanceBudgetsManager {
 		rules: BudgetRule[];
 		violations: BudgetViolation[];
 		alerts: Alert[];
-		status: ReturnType<typeof this.getBudgetStatus>;
+		status: ReturnType<PerformanceBudgetsManager['getBudgetStatus']>;
 		recommendations: Recommendation[];
 	} {
 		return {
@@ -600,6 +616,31 @@ export class PerformanceBudgetsManager {
 				'Minimize DOM operations',
 				'Use virtual scrolling for long lists',
 				'Debounce expensive operations'
+			]
+		});
+
+		// SVG complexity budgets
+		this.setBudget('svg_element_count', 'custom', 2500, {
+			description: 'SVG DOM element count for smooth preview',
+			warningThreshold: 60, // 1500 elements (60% of 2500)
+			criticalThreshold: 100, // 2500+ elements
+			recommendations: [
+				'Reduce detail level or quality settings',
+				'Use symbol reuse for repeated elements',
+				'Consider alternative rendering backends',
+				'Enable SVG optimization and minification'
+			]
+		});
+
+		this.setBudget('svg_file_size', 'custom', 1024 * 1024, {
+			description: 'SVG file size for efficient transfer and parsing',
+			warningThreshold: 50, // 512KB
+			criticalThreshold: 100, // 1MB+
+			recommendations: [
+				'Enable SVG minification and compression',
+				'Remove unnecessary metadata and attributes',
+				'Use symbol reuse for repeated patterns',
+				'Consider raster fallbacks for complex areas'
 			]
 		});
 	}
@@ -815,4 +856,8 @@ export function getPerformanceRecommendations(): Recommendation[] {
 
 export function exportBudgetData() {
 	return performanceBudgets.exportBudgetData();
+}
+
+export function checkSVGBudgets(elementCount: number, fileSizeBytes: number) {
+	return performanceBudgets.checkSVGBudgets(elementCount, fileSizeBytes);
 }

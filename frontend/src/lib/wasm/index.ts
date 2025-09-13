@@ -46,36 +46,7 @@ async function loadWasmModule() {
 		// This loads the .wasm file and sets up the proper bindings
 		await wasm.default(wasmBinaryUrl);
 
-		console.log('✅ WASM module initialized');
-
-		// Initialize thread pool if available
-		if (typeof window !== 'undefined' && window.crossOriginIsolated) {
-			if (typeof wasm.initThreadPool === 'function') {
-				try {
-					const threadCount = navigator.hardwareConcurrency || 4;
-					const promise = wasm.initThreadPool(threadCount);
-					await promise;
-
-					// Confirm success after promise resolves (important for state management)
-					if (typeof wasm.confirm_threading_success === 'function') {
-						wasm.confirm_threading_success();
-					}
-
-					console.log(`✅ Thread pool initialized with ${threadCount} threads`);
-				} catch (error) {
-					console.warn('⚠️ Thread pool initialization failed:', error);
-
-					// Mark threading as failed for proper fallback
-					if (typeof wasm.mark_threading_failed === 'function') {
-						wasm.mark_threading_failed();
-					}
-				}
-			} else {
-				console.log('ℹ️ initThreadPool not available');
-			}
-		} else {
-			console.log('ℹ️ Not cross-origin isolated, running single-threaded');
-		}
+		console.log('✅ WASM module initialized (single-threaded + Web Worker architecture)');
 
 		return wasm;
 	} catch (error) {
@@ -133,7 +104,7 @@ export async function checkCapabilities() {
  * Re-export threading functions needed by workers
  * These are required by wasm-bindgen-rayon worker helpers
  */
-export { initSync, wbg_rayon_start_worker } from './vectorize_wasm.js';
+export { initSync } from './vectorize_wasm.js';
 
 /**
  * Export the main initialization function as default

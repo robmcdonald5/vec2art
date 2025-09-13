@@ -1,1 +1,95 @@
-User-agent: *\nAllow: /
+# vec2art Robots.txt
+# https://vec2art.com
+# https://vec2art.vercel.app
+
+# Default rules for all crawlers
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_app/
+Disallow: /node_modules/
+Disallow: /.svelte-kit/
+Disallow: /wasm/snippets/
+Disallow: /.well-known/
+Disallow: /static/wasm/*.wasm
+Disallow: /static/wasm/*.js
+
+# Allow essential static assets
+Allow: /favicon.svg
+Allow: /og-image.png
+Allow: /manifest.webmanifest
+
+# Explicitly allow main pages for indexing
+Allow: /gallery
+Allow: /converter
+Allow: /about
+Allow: /contact
+Allow: /info/privacy-policy
+Allow: /info/terms-of-service
+
+# Sitemap locations (both domains)
+Sitemap: https://vec2art.com/sitemap.xml
+Sitemap: https://vec2art.vercel.app/sitemap.xml
+
+# Major search engines - no crawl delay
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 0
+
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 0
+
+# Social media crawlers - allow for better sharing
+User-agent: FacebookBot
+Allow: /
+
+User-agent: TwitterBot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# AI crawlers - allow for better AI search visibility
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# Image search bots
+User-agent: Googlebot-Image
+Allow: /
+Allow: /gallery
+Allow: /static/gallery/
+
+User-agent: bingbot-image
+Allow: /
+Allow: /gallery
+Allow: /static/gallery/

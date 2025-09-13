@@ -4,7 +4,12 @@
  */
 
 import { Page, Locator, expect } from '@playwright/test';
-import { TEST_IMAGES, INVALID_FILES, TestImageFixture } from '../fixtures/test-data';
+import {
+	TEST_IMAGES,
+	INVALID_FILES,
+	// TestImageFixture,
+	getExpectedProcessingTime
+} from '../fixtures/test-data';
 import path from 'path';
 
 /**
@@ -175,7 +180,7 @@ export class ConverterPage {
 /**
  * Drag and drop helper
  */
-export async function dragAndDropFile(page: Page, filePath: string, dropTarget: Locator) {
+export async function dragAndDropFile(page: Page, filePath: string, _dropTarget: Locator) {
 	const fileInput = page.locator('input[type="file"]');
 	await fileInput.setInputFiles(filePath);
 }
@@ -416,3 +421,8 @@ export const TEST_IDS = {
 	smoothness: '[data-testid="smoothness"]',
 	processingInfo: '[data-testid="processing-info"]'
 } as const;
+
+/**
+ * Re-export getExpectedProcessingTime from test-data
+ */
+export { getExpectedProcessingTime };

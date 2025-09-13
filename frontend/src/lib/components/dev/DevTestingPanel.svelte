@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	// import { onMount } from "svelte";
 	import { Button } from '$lib/components/ui/button';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte';
 
@@ -138,7 +138,6 @@
 
 		// Global output settings
 		{ name: 'set_svg_precision', backend: 'all', required: false, type: 'int', range: '0-4' },
-		{ name: 'set_optimize_svg', backend: 'all', required: false, type: 'bool' },
 		{ name: 'set_include_metadata', backend: 'all', required: false, type: 'bool' },
 
 		// Performance settings
@@ -200,8 +199,12 @@
 			// Backend-specific core settings
 			if (backend === 'edge') {
 				minimalConfig.multipass = true;
+				minimalConfig.pass_count = 2; // Default 2 passes for edge backend
+				minimalConfig.multipass_mode = 'auto';
 			} else {
 				minimalConfig.multipass = false; // Other backends don't use multipass
+				minimalConfig.pass_count = 1; // Single pass for other backends
+				minimalConfig.multipass_mode = 'auto';
 			}
 
 			configs.push(minimalConfig);
@@ -219,6 +222,8 @@
 			// Add backend-specific features only if available
 			if (backend === 'edge') {
 				enhancedConfig.multipass = true;
+				enhancedConfig.pass_count = 3; // More passes for enhanced config
+				enhancedConfig.multipass_mode = 'auto';
 				if (availableFunctions.has('set_reverse_pass')) {
 					enhancedConfig.reverse_pass = true;
 				}
@@ -233,6 +238,8 @@
 				}
 			} else if (backend === 'dots') {
 				enhancedConfig.multipass = false;
+				enhancedConfig.pass_count = 1;
+				enhancedConfig.multipass_mode = 'auto';
 				enhancedConfig.hand_drawn_preset = 'none'; // Dots don't benefit from hand-drawn
 				if (availableFunctions.has('set_dot_density')) {
 					enhancedConfig.dot_density = 0.15;
@@ -245,11 +252,15 @@
 				}
 			} else if (backend === 'centerline') {
 				enhancedConfig.multipass = false;
+				enhancedConfig.pass_count = 1;
+				enhancedConfig.multipass_mode = 'auto';
 				if (availableFunctions.has('set_enable_adaptive_threshold')) {
 					enhancedConfig.enable_adaptive_threshold = true;
 				}
 			} else if (backend === 'superpixel') {
 				enhancedConfig.multipass = false;
+				enhancedConfig.pass_count = 1;
+				enhancedConfig.multipass_mode = 'auto';
 				if (availableFunctions.has('set_num_superpixels')) {
 					enhancedConfig.num_superpixels = 150;
 				}
@@ -277,6 +288,8 @@
 				stroke_width: 1.0,
 				noise_filtering: true,
 				multipass: true,
+				pass_count: 2,
+				multipass_mode: 'auto',
 				hand_drawn_preset: 'none'
 				// IMPORTANT: No variable_weights, tremor_strength, or tapering when preset is 'none'
 			},
@@ -287,6 +300,8 @@
 				stroke_width: 1.5,
 				noise_filtering: true,
 				multipass: true,
+				pass_count: 3,
+				multipass_mode: 'auto',
 				reverse_pass: true,
 				diagonal_pass: true,
 				enable_flow_tracing: true,
@@ -304,6 +319,8 @@
 				stroke_width: 0.8,
 				noise_filtering: true,
 				multipass: false, // centerline doesn't use multipass
+				pass_count: 1,
+				multipass_mode: 'auto',
 				hand_drawn_preset: 'none'
 				// IMPORTANT: No hand-drawn parameters when preset is 'none'
 			},
@@ -316,6 +333,8 @@
 				stroke_width: 1.0,
 				noise_filtering: true,
 				multipass: false, // dots doesn't use multipass
+				pass_count: 1,
+				multipass_mode: 'auto',
 				hand_drawn_preset: 'none'
 				// IMPORTANT: Only core parameters, absolutely no hand-drawn effects
 			},
@@ -328,6 +347,8 @@
 				stroke_width: 1.5,
 				noise_filtering: true,
 				multipass: false, // superpixel doesn't use multipass
+				pass_count: 1,
+				multipass_mode: 'auto',
 				hand_drawn_preset: 'none'
 				// IMPORTANT: Only core parameters - all superpixel functions are missing
 			}
@@ -364,6 +385,8 @@
 					stroke_width: 1.0,
 					noise_filtering: true,
 					multipass: true,
+					pass_count: 2,
+					multipass_mode: 'auto',
 					hand_drawn_preset: 'none',
 					// Required boolean fields
 					reverse_pass: false,
@@ -495,7 +518,7 @@
 					await store.vectorizerService.resetConfiguration();
 
 					// Try to configure the service with this test config
-					console.log(`🧪 Testing config: ${config.name}`, config);
+					console.log(`🧪 Testing config: ${config.name}`, JSON.parse(JSON.stringify(config)));
 					await store.vectorizerService.configure(config as any);
 					result.status = 'passed';
 					console.log(`✅ Config ${config.name} passed`);
@@ -546,6 +569,8 @@
 				stroke_width: 1.0,
 				noise_filtering: true,
 				multipass: true,
+				pass_count: 2,
+				multipass_mode: 'auto',
 				hand_drawn_preset: 'none',
 				// Required boolean fields
 				reverse_pass: false,
@@ -749,7 +774,7 @@
 			size="sm"
 			class="mb-2 border-slate-700 bg-slate-900 text-white hover:bg-slate-800"
 		>
-			{#snippet children()}🧪 Dev Tools{/snippet}
+			🧪 Dev Tools
 		</Button>
 
 		<!-- Panel -->
@@ -766,7 +791,7 @@
 							size="sm"
 							class="text-slate-400 hover:text-white"
 						>
-							{#snippet children()}×{/snippet}
+							×
 						</Button>
 					</div>
 				</div>
@@ -821,7 +846,7 @@
 								size="sm"
 								class="text-xs"
 							>
-								{#snippet children()}🔍 Introspect WASM{/snippet}
+								🔍 Introspect WASM
 							</Button>
 							<Button
 								onclick={runQuickValidation}
@@ -831,9 +856,7 @@
 								size="sm"
 								class="text-xs"
 							>
-								{#snippet children()}{isRunningTests
-										? '⏳ Testing...'
-										: '🧪 Quick Validation'}{/snippet}
+								{isRunningTests ? '⏳ Testing...' : '🧪 Quick Validation'}
 							</Button>
 							<Button
 								onclick={testFunctionAvailability}
@@ -841,7 +864,7 @@
 								size="sm"
 								class="text-xs"
 							>
-								{#snippet children()}🔧 Test Functions{/snippet}
+								🔧 Test Functions
 							</Button>
 							<Button
 								onclick={downloadReport}
@@ -850,7 +873,7 @@
 								variant="outline"
 								class="text-xs"
 							>
-								{#snippet children()}📥 Download Report{/snippet}
+								📥 Download Report
 							</Button>
 						</div>
 					</div>
@@ -887,7 +910,7 @@
 									<div class="mt-2">
 										<div class="text-xs font-medium text-red-400">Missing Functions:</div>
 										<div class="max-h-20 overflow-y-auto text-xs text-slate-300">
-											{#each introspectionResults.functions.missing.slice(0, 5) as missing}
+											{#each introspectionResults.functions.missing.slice(0, 5) as missing, index (index)}
 												<div>• {missing.name} ({missing.backend})</div>
 											{/each}
 											{#if introspectionResults.functions.missing.length > 5}
@@ -907,7 +930,7 @@
 						<div class="space-y-2">
 							<h4 class="text-xs font-medium text-slate-400">Quick Tests</h4>
 							<div class="space-y-1 text-xs">
-								{#each validationResults as result}
+								{#each validationResults as result (result.name)}
 									<div class="flex items-center justify-between">
 										<span>{result.name}:</span>
 										<span
@@ -935,7 +958,7 @@
 						<div class="space-y-2">
 							<h4 class="text-xs font-medium text-slate-400">Function Tests</h4>
 							<div class="max-h-32 space-y-1 overflow-y-auto text-xs">
-								{#each functionTestResults as result}
+								{#each functionTestResults as result (result.name)}
 									<div class="flex items-center justify-between">
 										<span class="truncate">{result.name}:</span>
 										<span

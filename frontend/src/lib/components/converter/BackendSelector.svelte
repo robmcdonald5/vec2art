@@ -6,7 +6,7 @@
 
 	interface BackendSelectorProps {
 		selectedBackend: VectorizerBackend;
-		onBackendChange: (backend: VectorizerBackend) => void;
+		onBackendChange: (_backend: VectorizerBackend) => void;
 		disabled?: boolean;
 		compact?: boolean;
 	}
@@ -246,6 +246,7 @@
 <style>
 	.line-clamp-2 {
 		display: -webkit-box;
+		line-clamp: 2;
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;

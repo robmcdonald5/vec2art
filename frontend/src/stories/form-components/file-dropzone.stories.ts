@@ -128,7 +128,7 @@ export const Disabled: Story = {
 
 export const SpecificFileTypes: Story = {
 	args: {
-		accept: '.jpg,.jpeg,.png,.webp',
+		accept: '.jpg,.jpeg,.png,.webp,.avif',
 		maxSize: 5 * 1024 * 1024, // 5MB
 		disabled: false,
 		currentFile: null,

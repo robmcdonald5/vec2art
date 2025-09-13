@@ -95,6 +95,40 @@ export function setupBrowserMocks() {
 		configurable: true
 	});
 
+	// Mock fetch to prevent real network requests (critical for WASM tests)
+	Object.defineProperty(globalThis, 'fetch', {
+		value: vi.fn().mockImplementation((url: string | URL) => {
+			// Mock WASM binary fetch
+			if (url.toString().includes('.wasm')) {
+				console.log(`[Test Mock] Mocked WASM fetch: ${url.toString()}`);
+				return Promise.resolve({
+					ok: true,
+					status: 200,
+					arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024)),
+					blob: () => Promise.resolve(new Blob([new ArrayBuffer(1024)])),
+					json: () => Promise.resolve({}),
+					text: () => Promise.resolve(''),
+					headers: new Map(),
+					url: url.toString()
+				} as Response);
+			}
+			// Mock other network requests
+			console.log(`[Test Mock] Mocked fetch: ${url.toString()}`);
+			return Promise.resolve({
+				ok: true,
+				status: 200,
+				json: () => Promise.resolve({}),
+				text: () => Promise.resolve(''),
+				arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+				blob: () => Promise.resolve(new Blob()),
+				headers: new Map(),
+				url: url.toString()
+			} as Response);
+		}),
+		writable: true,
+		configurable: true
+	});
+
 	// Mock performance for timing
 	if (!window.performance) {
 		Object.defineProperty(window, 'performance', {
@@ -292,6 +326,7 @@ export const fileTestUtils = {
 			png: this.createMockFile('test-image.png', 1024 * 50, 'image/png'),
 			jpg: this.createMockFile('test-image.jpg', 1024 * 30, 'image/jpeg'),
 			webp: this.createMockFile('test-image.webp', 1024 * 25, 'image/webp'),
+			avif: this.createMockFile('test-image.avif', 1024 * 20, 'image/avif'),
 			large: this.createMockFile('large-image.png', 1024 * 1024 * 10, 'image/png'), // 10MB
 			invalid: this.createMockFile('invalid.txt', 1024, 'text/plain')
 		};

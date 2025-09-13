@@ -3,6 +3,7 @@
  * Comprehensive analytics providers integration and automated reporting
  */
 
+import { browser as _browser } from '$app/environment';
 import type {
 	AnalyticsProvider,
 	GA4Config,
@@ -559,7 +560,7 @@ export class AnalyticsIntegrationService {
 		}
 	}
 
-	private async sendReport(report: PerformanceReport, includeCharts: boolean): Promise<void> {
+	private async sendReport(report: PerformanceReport, _includeCharts: boolean): Promise<void> {
 		// Send report to configured delivery methods
 		// Implementation would depend on delivery configuration
 		this.log(`Generated performance report for ${report.timeframe.period}`);
@@ -573,17 +574,17 @@ export class AnalyticsIntegrationService {
 		await this.generatePerformanceReport(timeframe, config.includeCharts);
 	}
 
-	private async aggregateMetrics(timeframe: TimeFrame): Promise<any> {
+	private async aggregateMetrics(_timeframe: TimeFrame): Promise<any> {
 		// Implementation would aggregate metrics from analytics providers
 		return {};
 	}
 
-	private async calculateTrends(timeframe: TimeFrame): Promise<any[]> {
+	private async calculateTrends(_timeframe: TimeFrame): Promise<any[]> {
 		// Implementation would calculate trends from historical data
 		return [];
 	}
 
-	private async generateRecommendations(timeframe: TimeFrame): Promise<any[]> {
+	private async generateRecommendations(_timeframe: TimeFrame): Promise<any[]> {
 		// Implementation would generate recommendations based on data
 		return [];
 	}
@@ -700,7 +701,15 @@ export class AnalyticsIntegrationService {
 				start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
 		}
 
-		return { start, end, period: schedule };
+		// Map schedule format to period format
+		const periodMap = {
+			hourly: 'hour',
+			daily: 'day',
+			weekly: 'week',
+			monthly: 'month'
+		} as const;
+
+		return { start, end, period: periodMap[schedule] };
 	}
 
 	private getCurrentSessionId(): string {

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { ImageViewer } from 'svelte-image-viewer';
-	import { ZoomIn, ZoomOut, Maximize2, Move } from 'lucide-svelte';
+	import ScrollFriendlyImageViewer from '$lib/components/ui/ScrollFriendlyImageViewer.svelte';
+	import { ZoomIn, ZoomOut, Maximize2, Move, Download } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 
 	interface Props {
@@ -11,9 +11,11 @@
 		showRemoveButton?: boolean;
 		isProcessing?: boolean;
 		className?: string;
+		onDownloadOriginal?: () => void;
+		hideControls?: boolean;
 		// For synchronized pan/zoom (keeping interface for compatibility)
 		externalPanZoom?: { scale: number; x: number; y: number };
-		onPanZoomChange?: (state: { scale: number; x: number; y: number }) => void;
+		onPanZoomChange?: (_state: { scale: number; x: number; y: number }) => void;
 		enableSync?: boolean;
 	}
 
@@ -25,6 +27,8 @@
 		showRemoveButton = false,
 		isProcessing = false,
 		className = '',
+		onDownloadOriginal,
+		hideControls = false,
 		externalPanZoom,
 		onPanZoomChange,
 		enableSync = false
@@ -38,27 +42,79 @@
 	let targetScale = $state(1);
 	let targetOffsetX = $state(0);
 	let targetOffsetY = $state(0);
-	let initialFitScale = $state(1);
-	let hasCalculatedInitialFit = $state(false);
+	// let initialFitScale = $state(1);
+	// let hasCalculatedInitialFit = $state(false);
 
-	// Sync external pan/zoom state when provided
-	$effect(() => {
-		if (externalPanZoom && enableSync) {
-			targetScale = externalPanZoom.scale;
-			targetOffsetX = externalPanZoom.x;
-			targetOffsetY = externalPanZoom.y;
-		}
-	});
+	// Track previous sync state to detect changes
+	let prevEnableSync = enableSync;
 
-	// Notify parent of pan/zoom changes when callback is provided
+	// Combined pan/zoom synchronization effect with change detection to prevent infinite loops
+	let previousExternalState = $state<{ scale: number; x: number; y: number } | null>(null);
+	let previousLocalState = $state<{ scale: number; x: number; y: number } | null>(null);
+
 	$effect(() => {
-		if (onPanZoomChange) {
-			onPanZoomChange({
-				scale: targetScale,
-				x: targetOffsetX,
-				y: targetOffsetY
+		// Check if external state has changed
+		const currentExternalState = externalPanZoom
+			? {
+					scale: externalPanZoom.scale,
+					x: externalPanZoom.x,
+					y: externalPanZoom.y
+				}
+			: null;
+
+		// Check if local state has changed
+		const currentLocalState = {
+			scale: targetScale,
+			x: targetOffsetX,
+			y: targetOffsetY
+		};
+
+		// Only update from external if external state actually changed and sync is enabled
+		if (
+			currentExternalState &&
+			enableSync &&
+			(!previousExternalState ||
+				previousExternalState.scale !== currentExternalState.scale ||
+				previousExternalState.x !== currentExternalState.x ||
+				previousExternalState.y !== currentExternalState.y)
+		) {
+			console.log('🔄 [InteractiveImagePanel] Updating from external state:', {
+				external: currentExternalState,
+				previous: $state.snapshot(previousExternalState),
+				syncEnabled: enableSync
 			});
+
+			// Update local state from external
+			targetScale = currentExternalState.scale;
+			targetOffsetX = currentExternalState.x;
+			targetOffsetY = currentExternalState.y;
+
+			previousExternalState = { ...currentExternalState };
 		}
+		// Only notify parent if local state actually changed and we're not just syncing from external
+		else if (
+			onPanZoomChange &&
+			(!previousLocalState ||
+				previousLocalState.scale !== currentLocalState.scale ||
+				previousLocalState.x !== currentLocalState.x ||
+				previousLocalState.y !== currentLocalState.y)
+		) {
+			console.log('📤 [InteractiveImagePanel] Notifying parent of local changes:', {
+				current: currentLocalState,
+				previous: $state.snapshot(previousLocalState)
+			});
+
+			// Notify parent of local changes
+			onPanZoomChange(currentLocalState);
+			previousLocalState = { ...currentLocalState };
+		}
+
+		// Track sync state changes
+		if (prevEnableSync && !enableSync) {
+			// Sync was just disabled - preserve current state
+			console.log('[InteractiveImagePanel] Sync disabled, preserving state:', currentLocalState);
+		}
+		prevEnableSync = enableSync;
 	});
 
 	// Zoom levels for discrete stepping - more granular for better control
@@ -184,14 +240,13 @@
 	}
 
 	// Simple approach: just try to fit the image to container like object-fit: contain would
-	async function fitToContainer() {
-		if (!imageUrl || !containerElement) return;
-
+	async function _fitToContainer() {
 		try {
-			// Get actual image dimensions
+			if (!imageUrl) return;
 			const { width, height } = await waitForImageLoad(imageUrl);
 
 			// Get container dimensions
+			if (!containerElement) return;
 			const containerRect = containerElement.getBoundingClientRect();
 			const containerWidth = containerRect.width - 40; // Some padding
 			const containerHeight = containerRect.height - 40;
@@ -224,9 +279,31 @@
 		if (imageUrl && containerElement) {
 			console.log('[ImageViewer] Image URL changed, calculating proper scale');
 
-			// Reset position immediately
-			targetOffsetX = 0;
-			targetOffsetY = 0;
+			// Check if we should preserve existing zoom/pan state (but still calculate proper dimensions)
+			const shouldPreserveState =
+				(externalPanZoom &&
+					enableSync &&
+					(externalPanZoom.scale !== 1 || externalPanZoom.x !== 0 || externalPanZoom.y !== 0)) ||
+				// Also preserve state if sync was just disabled and we have non-default values
+				(!enableSync && (targetScale !== 1 || targetOffsetX !== 0 || targetOffsetY !== 0));
+
+			// Store current state to preserve it later
+			const preservedScale = shouldPreserveState ? targetScale : null;
+			const preservedX = shouldPreserveState ? targetOffsetX : null;
+			const preservedY = shouldPreserveState ? targetOffsetY : null;
+
+			if (shouldPreserveState) {
+				console.log('[ImageViewer] Will preserve pan/zoom state after calculating dimensions:', {
+					scale: preservedScale,
+					x: preservedX,
+					y: preservedY,
+					syncEnabled: enableSync
+				});
+			} else {
+				// Reset position for new images
+				targetOffsetX = 0;
+				targetOffsetY = 0;
+			}
 
 			// Calculate proper scale asynchronously
 			(async () => {
@@ -247,11 +324,32 @@
 						optimalScale: optimalScale.toFixed(4)
 					});
 
-					// Apply the calculated scale
-					targetScale = Math.max(optimalScale, 0.1);
+					// Apply the calculated scale, but restore preserved state if needed
+					if (shouldPreserveState && preservedScale !== null) {
+						// Preserve the user's zoom/pan state
+						targetScale = preservedScale;
+						targetOffsetX = preservedX || 0;
+						targetOffsetY = preservedY || 0;
+						console.log('[ImageViewer] Restored preserved state:', {
+							scale: targetScale,
+							x: targetOffsetX,
+							y: targetOffsetY
+						});
+					} else {
+						// Use calculated optimal scale for new images
+						targetScale = Math.max(optimalScale, 0.1);
+					}
 				} catch (error) {
 					console.error('[ImageViewer] Failed to calculate proper scale:', error);
-					targetScale = 1.0; // Fallback
+
+					// Fallback: preserve state if requested, otherwise default
+					if (shouldPreserveState && preservedScale !== null) {
+						targetScale = preservedScale;
+						targetOffsetX = preservedX || 0;
+						targetOffsetY = preservedY || 0;
+					} else {
+						targetScale = 1.0;
+					}
 				}
 			})();
 		}
@@ -260,81 +358,121 @@
 
 <div class="relative flex h-full flex-col {className}">
 	<!-- Header with title and controls -->
-	<div class="mb-3 flex items-center justify-between px-2">
-		<div class="text-converter-primary flex flex-1 items-center gap-2 text-sm font-medium" {title}>
-			<span class="truncate">{title}</span>
-			{#if showRemoveButton && onRemove}
-				<button
-					class="ml-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-red-500"
-					onclick={onRemove}
-					disabled={isProcessing}
-					aria-label="Remove image"
-					title="Remove this image"
+	{#if !hideControls}
+		<div class="mb-3 flex items-center justify-between px-2">
+			<div
+				class="text-converter-primary flex flex-1 items-center gap-2 text-sm font-medium"
+				{title}
+			>
+				<span class="truncate">{title}</span>
+				{#if showRemoveButton && onRemove}
+					<button
+						class="ml-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-red-500"
+						onclick={onRemove}
+						disabled={isProcessing}
+						aria-label="Remove image"
+						title="Remove this image"
+					>
+						×
+					</button>
+				{/if}
+			</div>
+
+			<!-- Working control buttons -->
+			<div class="flex gap-1">
+				<Button
+					variant="outline"
+					size="icon"
+					class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+					onclick={zoomOut}
+					disabled={!isInitialized}
+					aria-label="Zoom out"
+					title="Zoom out (- key)"
 				>
-					×
-				</button>
-			{/if}
+					<ZoomOut class="h-4 w-4" />
+				</Button>
+				<Button
+					variant="outline"
+					size="icon"
+					class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+					onclick={zoomIn}
+					disabled={!isInitialized}
+					aria-label="Zoom in"
+					title="Zoom in (+ key)"
+				>
+					<ZoomIn class="h-4 w-4" />
+				</Button>
+				<Button
+					variant="outline"
+					size="icon"
+					class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+					onclick={resetView}
+					disabled={!isInitialized}
+					aria-label="Reset view"
+					title="Reset view (0 key)"
+				>
+					<Maximize2 class="h-4 w-4" />
+				</Button>
+				{#if onDownloadOriginal}
+					<Button
+						variant="outline"
+						size="icon"
+						class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+						onclick={onDownloadOriginal}
+						disabled={!isInitialized}
+						aria-label="Download original image"
+						title="Download original image"
+					>
+						<Download class="h-4 w-4" />
+					</Button>
+				{/if}
+			</div>
 		</div>
+	{/if}
 
-		<!-- Working control buttons -->
-		<div class="flex gap-1">
-			<Button
-				variant="outline"
-				size="icon"
-				class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-				onclick={zoomOut}
-				disabled={!isInitialized}
-				aria-label="Zoom out"
-				title="Zoom out (- key)"
-			>
-				<ZoomOut class="h-4 w-4" />
-			</Button>
-			<Button
-				variant="outline"
-				size="icon"
-				class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-				onclick={zoomIn}
-				disabled={!isInitialized}
-				aria-label="Zoom in"
-				title="Zoom in (+ key)"
-			>
-				<ZoomIn class="h-4 w-4" />
-			</Button>
-			<Button
-				variant="outline"
-				size="icon"
-				class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
-				onclick={resetView}
-				disabled={!isInitialized}
-				aria-label="Reset view"
-				title="Reset view (0 key)"
-			>
-				<Maximize2 class="h-4 w-4" />
-			</Button>
-		</div>
-	</div>
-
-	<!-- Interactive image container with svelte-image-viewer -->
+	<!-- Interactive image container with svelte-image-viewer and scroll fix -->
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		bind:this={containerElement}
 		class="dark:bg-ferrari-900 group relative flex-1 overflow-hidden rounded-lg bg-white"
 		tabindex="0"
 		role="application"
-		aria-label="Interactive {imageAlt} viewer - Use mouse wheel to zoom, drag to pan"
+		aria-label="Interactive {imageAlt} viewer - Use arrow keys to pan, +/- to zoom, 0 to reset, or mouse drag and scroll"
+		style="touch-action: pan-x pan-y; /* Allow page scrolling but enable pan */"
+		onkeydown={(e) => {
+			// Handle keyboard navigation for the image viewer
+			if (e.key === 'ArrowLeft') {
+				e.preventDefault();
+				targetOffsetX += 20;
+			} else if (e.key === 'ArrowRight') {
+				e.preventDefault();
+				targetOffsetX -= 20;
+			} else if (e.key === 'ArrowUp') {
+				e.preventDefault();
+				targetOffsetY += 20;
+			} else if (e.key === 'ArrowDown') {
+				e.preventDefault();
+				targetOffsetY -= 20;
+			} else if (e.key === '=' || e.key === '+') {
+				e.preventDefault();
+				targetScale = Math.min(5.0, targetScale * 1.2);
+			} else if (e.key === '-' || e.key === '_') {
+				e.preventDefault();
+				targetScale = Math.max(0.1, targetScale / 1.2);
+			} else if (e.key === '0' || e.key === 'Home') {
+				e.preventDefault();
+				// Reset to center
+				targetScale = 1;
+				targetOffsetX = 0;
+				targetOffsetY = 0;
+			}
+		}}
 	>
 		{#if imageUrl}
 			<!-- svelte-image-viewer component with programmatic controls -->
 			<div class="h-full w-full">
-				<ImageViewer
-					src={imageUrl}
-					alt={imageAlt}
-					bind:targetScale
-					bind:targetOffsetX
-					bind:targetOffsetY
-					minScale={0.1}
-					maxScale={5.0}
-					scaleSmoothing={800}
-				/>
+				<ScrollFriendlyImageViewer src={imageUrl} alt={imageAlt} panel="original" />
 			</div>
 
 			<!-- Interactive cursor hint -->
@@ -342,7 +480,7 @@
 				class="pointer-events-none absolute bottom-2 left-2 rounded bg-black/75 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
 			>
 				<Move class="mr-1 inline h-3 w-3" />
-				Drag to pan • Wheel to zoom • Use buttons for precise control
+				Drag to pan • Scroll wheel to zoom
 			</div>
 		{:else}
 			<div class="flex h-full items-center justify-center text-gray-400">

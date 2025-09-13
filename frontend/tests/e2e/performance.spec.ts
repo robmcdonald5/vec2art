@@ -221,7 +221,7 @@ test.describe('Performance and Resource Usage Tests', () => {
 			(req) => req.url.includes('.wasm') || req.url.includes('vectorize')
 		);
 
-		const criticalResources = responses.filter(
+		const _criticalResources = responses.filter(
 			(res) => res.url.includes('.wasm') || res.url.includes('main') || res.url.includes('app')
 		);
 

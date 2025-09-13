@@ -4,6 +4,8 @@
 	import { preload } from '$lib/utils/preload';
 	import HeroSlider from '$lib/components/hero/HeroSlider.svelte';
 	import AlgorithmShowcase from '$lib/components/landing/AlgorithmShowcase.svelte';
+	import SEOHead from '$lib/components/seo/SEOHead.svelte';
+	import StructuredData from '$lib/components/seo/StructuredData.svelte';
 
 	// Intersection Observer for scroll animations
 	let observer: IntersectionObserver;
@@ -34,9 +36,19 @@
 	});
 </script>
 
+<SEOHead
+	title="vec2art - Transform Images into SVG Art | Free Online Converter"
+	description="Convert images to artistic SVG graphics instantly with vec2art's free online tool. High-performance WebAssembly-powered vectorization with hand-drawn aesthetics, multiple algorithms, and instant downloads."
+	keywords="SVG converter, image to SVG, vector art generator, line art converter, free SVG tool, WebAssembly image processing, raster to vector, artistic SVG, hand-drawn effect, image vectorization online"
+/>
+
+<StructuredData type="Organization" />
+<StructuredData type="WebApplication" />
+<StructuredData type="BreadcrumbList" />
+
 <div>
 	<!-- Hero Slider Container -->
-	<HeroSlider autoPlay={true} autoPlayDelay={6000}>
+	<HeroSlider autoPlay={true} autoPlayDelay={7000}>
 		<!-- Enhanced Hero Section with Modern Gradients -->
 		<section class="relative min-h-[90vh] overflow-hidden">
 			<!-- Modern gradient background -->
@@ -60,6 +72,7 @@
 			<div class="relative z-10 flex min-h-[90vh] items-center justify-center px-4 sm:px-6 lg:px-8">
 				<div class="mx-auto max-w-screen-xl">
 					<div class="text-center">
+						<!-- Priority load for LCP text -->
 						<h1 class="heading-hero animate-fade-in">
 							Transform Images into
 							<span class="heading-hero-accent animate-gradient-shift">SVG Art</span>
@@ -96,12 +109,26 @@
 	</HeroSlider>
 
 	<!-- Interactive Algorithm Showcase -->
-	<section class="bg-section-elevated animate-on-scroll relative py-24 sm:py-32">
-		<AlgorithmShowcase />
+	<section
+		class="bg-section-elevated animate-on-scroll relative overflow-hidden pt-24 pb-16 sm:pt-32 sm:pb-20"
+	>
+		<div class="relative z-10">
+			<AlgorithmShowcase />
+		</div>
 	</section>
 
+	<!-- Section Divider -->
+	<div class="relative h-32 bg-gradient-to-b from-gray-50 via-gray-100 to-white">
+		<div
+			class="absolute inset-0 bg-gradient-to-r from-blue-50/30 via-purple-50/20 to-pink-50/30"
+		></div>
+		<div
+			class="from-ferrari-200/40 via-ferrari-300/60 to-ferrari-200/40 absolute right-0 bottom-0 left-0 h-px bg-gradient-to-r"
+		></div>
+	</div>
+
 	<!-- Enhanced Features Section -->
-	<section class="bg-section-premium animate-on-scroll relative py-24 sm:py-32">
+	<section class="animate-on-scroll relative bg-white py-24 sm:py-32">
 		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 			<div class="animate-on-scroll mb-20 text-center">
 				<h2 class="heading-section">
@@ -175,11 +202,18 @@
 	</section>
 
 	<!-- Footer -->
-	<footer class="relative bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white">
-		<!-- Clean premium overlay -->
+	<footer class="relative overflow-hidden bg-gray-900 text-white">
+		<!-- Multi-layer gradient approach - vertical only for even darkness -->
+		<div class="absolute inset-0 bg-gradient-to-b from-gray-800 via-gray-900 to-black"></div>
 		<div
-			class="from-speed-gray-800/20 via-speed-gray-900/10 to-speed-gray-800/20 pointer-events-none absolute inset-0 bg-gradient-to-r"
+			class="absolute inset-0 bg-gradient-to-b from-transparent via-gray-900/30 to-black/50"
 		></div>
+		<!-- Centered subtle orb to break up banding without creating left/right imbalance -->
+		<div
+			class="absolute top-1/2 left-1/2 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-gray-800/20 via-transparent to-black/20 blur-3xl"
+		></div>
+		<!-- Noise overlay as final layer -->
+		<div class="bg-noise-overlay pointer-events-none absolute inset-0 opacity-30"></div>
 
 		<!-- Main Footer Content -->
 		<div class="relative py-12 md:py-16">
@@ -188,7 +222,9 @@
 					<!-- Brand Section -->
 					<div class="lg:col-span-1">
 						<div class="mb-6 flex items-center">
-							<h3 class="footer-gradient-text text-3xl font-bold">vec2art</h3>
+							<a href="/" class="transition-all duration-300 hover:opacity-80">
+								<h3 class="text-ferrari-500 text-3xl font-bold">vec2art</h3>
+							</a>
 						</div>
 						<p class="mb-6 max-w-sm text-sm leading-relaxed text-gray-300">
 							Transform any image into beautiful SVG art using advanced vectorization algorithms
@@ -279,11 +315,10 @@
 						<h4 class="mb-4 text-sm font-semibold tracking-wider text-white uppercase">Support</h4>
 						<ul class="space-y-3">
 							<li>
-								<span class="cursor-not-allowed text-sm text-gray-500">Contact (Coming Soon)</span>
-							</li>
-							<li>
-								<span class="cursor-not-allowed text-sm text-gray-500"
-									>Issues Page (Coming Soon)</span
+								<a
+									href="/contact"
+									class="text-sm text-gray-300 transition-colors duration-200 hover:text-white"
+									>Contact</a
 								>
 							</li>
 							<li>
@@ -305,12 +340,26 @@
 				<div class="flex flex-col items-center justify-between gap-4 md:flex-row">
 					<p class="text-sm text-gray-400">© 2025 vec2art. Powered by Rust + WebAssembly.</p>
 					<div class="flex gap-6">
-						<span class="cursor-not-allowed text-sm text-gray-500"
-							>Privacy Policy (Coming Soon)</span
+						<a
+							href="/info/privacy-policy"
+							class="text-sm text-gray-400 transition-colors hover:text-gray-300"
 						>
-						<span class="cursor-not-allowed text-sm text-gray-500"
-							>Terms of Service (Coming Soon)</span
+							Privacy Policy
+						</a>
+						<a
+							href="/info/terms-of-service"
+							class="text-sm text-gray-400 transition-colors hover:text-gray-300"
 						>
+							Terms of Service
+						</a>
+						<a
+							href="https://buymeacoffee.com/vec2art"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="hover:text-ferrari-400 flex items-center gap-1 text-sm text-gray-400 transition-colors"
+						>
+							☕ Support
+						</a>
 					</div>
 				</div>
 			</div>

@@ -7,7 +7,7 @@
 use crate::algorithms::dots::background::{detect_background_advanced, BackgroundConfig};
 use crate::algorithms::dots::dots::{Dot, DotConfig};
 use crate::algorithms::edges::gradients::GradientAnalysis;
-use crate::execution::execute_parallel;
+use crate::execution::{execute_algorithm_parallel, AlgorithmType, ThreadingConfig};
 use image::RgbaImage;
 use std::collections::HashMap;
 
@@ -28,6 +28,8 @@ pub struct AdaptiveConfig {
     pub random_seed: u64,
     /// Whether to use parallel processing for large images
     pub use_parallel: bool,
+    /// Threading configuration for safe parallel processing
+    pub threading_config: ThreadingConfig,
     /// Minimum image size to enable parallel processing
     pub parallel_threshold: usize,
     /// Gaussian blur kernel size for smoothing density transitions
@@ -48,6 +50,7 @@ impl Default for AdaptiveConfig {
             complexity_threshold: 0.3,
             random_seed: 42,
             use_parallel: true,
+            threading_config: ThreadingConfig::safe_defaults(),
             parallel_threshold: 10000,
             blur_kernel_size: 5,
             poisson_iterations: 30,
@@ -216,6 +219,11 @@ pub fn analyze_image_regions(gradient: &GradientAnalysis, region_size: u32) -> V
     let width = gradient.width;
     let height = gradient.height;
 
+    // Add validation to prevent division by zero
+    if region_size == 0 {
+        return Vec::new();
+    }
+
     let regions_x = width.div_ceil(region_size);
     let regions_y = height.div_ceil(region_size);
     let _total_regions = (regions_x * regions_y) as usize;
@@ -225,11 +233,12 @@ pub fn analyze_image_regions(gradient: &GradientAnalysis, region_size: u32) -> V
         .flat_map(|ry| (0..regions_x).map(move |rx| (rx * region_size, ry * region_size)))
         .collect();
 
-    // Use execution abstraction for parallel processing
+    // Use execution abstraction for parallel processing with adaptive threading
     let region_data: Vec<_> = region_coords.into_iter().collect();
-    execute_parallel(region_data, |(x, y)| {
+    let config = ThreadingConfig::safe_defaults();
+    execute_algorithm_parallel(AlgorithmType::Dots, region_data, |(x, y)| {
         analyze_single_region(gradient, x, y, region_size, width, height)
-    })
+    }, &config)
 }
 
 /// Analyze a single region for complexity (optimized helper function)
@@ -360,14 +369,18 @@ pub fn apply_adaptive_density(dots: &mut Vec<Dot>, density_map: &[f32], config: 
     dots.retain(|dot| {
         let x = dot.x as usize;
         let y = dot.y as usize;
-        let sqrt_width = (width as f64).sqrt() as usize;
-        if sqrt_width == 0 {
-            return false; // Prevent division by zero
+        // Calculate actual dimensions from density map length and width
+        // density_map represents the full image, not a square
+        if width == 0 || density_map.is_empty() {
+            return false; // Prevent division by zero and empty map access
         }
-        let height = width / sqrt_width;
+        let actual_height = density_map.len() / width;
+        if actual_height == 0 {
+            return false; // Invalid dimensions
+        }
 
-        if y < height && x < sqrt_width {
-            let index = y.saturating_mul(sqrt_width).saturating_add(x);
+        if y < actual_height && x < width {
+            let index = y.saturating_mul(width).saturating_add(x);
             if index < density_map.len() {
                 let density = density_map[index];
                 let threshold = config.low_detail_density
@@ -385,14 +398,18 @@ pub fn apply_adaptive_density(dots: &mut Vec<Dot>, density_map: &[f32], config: 
     for dot in dots.iter_mut() {
         let x = dot.x as usize;
         let y = dot.y as usize;
-        let sqrt_width = (width as f64).sqrt() as usize;
-        if sqrt_width == 0 {
-            continue; // Skip if invalid width
+        // Calculate actual dimensions from density map length and width
+        // density_map represents the full image, not a square
+        if width == 0 || density_map.is_empty() {
+            continue; // Skip if invalid dimensions
         }
-        let height = width / sqrt_width;
+        let actual_height = density_map.len() / width;
+        if actual_height == 0 {
+            continue; // Skip if invalid dimensions
+        }
 
-        if y < height && x < sqrt_width {
-            let index = y.saturating_mul(sqrt_width).saturating_add(x);
+        if y < actual_height && x < width {
+            let index = y.saturating_mul(width).saturating_add(x);
             if index < density_map.len() {
                 let density = density_map[index];
                 let density_factor = config.low_detail_density
@@ -493,14 +510,15 @@ pub fn smooth_density_transitions(
         *weight /= kernel_sum;
     }
 
-    // First pass: horizontal blur using execution abstraction
+    // First pass: horizontal blur using execution abstraction with safe threading
     let mut temp = vec![0.0; width * height];
     let row_indices: Vec<usize> = (0..height).collect();
-    let processed_rows = execute_parallel(row_indices, |y| {
+    let config = ThreadingConfig::safe_defaults();
+    let processed_rows = execute_algorithm_parallel(AlgorithmType::Superpixel, row_indices, |y| {
         let mut row = vec![0.0; width];
         apply_horizontal_blur(density_map, &mut row, y, width, &kernel_1d, radius);
         (y, row)
-    });
+    }, &config);
 
     // Copy results back to temp buffer
     for (y, row) in processed_rows {
@@ -508,14 +526,14 @@ pub fn smooth_density_transitions(
         temp[row_start..row_start + width].copy_from_slice(&row);
     }
 
-    // Second pass: vertical blur using execution abstraction
+    // Second pass: vertical blur using execution abstraction with safe threading
     let mut smoothed = vec![0.0; width * height];
     let row_indices: Vec<usize> = (0..height).collect();
-    let processed_rows = execute_parallel(row_indices, |y| {
+    let processed_rows = execute_algorithm_parallel(AlgorithmType::Superpixel, row_indices, |y| {
         let mut row = vec![0.0; width];
         apply_vertical_blur(&temp, &mut row, y, width, height, &kernel_1d, radius);
         (y, row)
-    });
+    }, &config);
 
     // Copy results back to smoothed buffer
     for (y, row) in processed_rows {

@@ -8,6 +8,9 @@
 		afterAlt?: string;
 		startPosition?: number;
 		class?: string;
+		loading?: 'lazy' | 'eager';
+		beforePlaceholder?: string;
+		afterPlaceholder?: string;
 	}
 
 	let {
@@ -16,7 +19,10 @@
 		beforeAlt = 'Before',
 		afterAlt = 'After',
 		startPosition = 50,
-		class: className = ''
+		class: className = '',
+		loading = 'lazy',
+		beforePlaceholder = '',
+		afterPlaceholder = ''
 	}: Props = $props();
 
 	let container: HTMLDivElement;
@@ -33,7 +39,12 @@
 	function handleMove(e: MouseEvent | TouchEvent) {
 		if (!isDragging || !containerRect) return;
 
-		e.preventDefault();
+		// Only preventDefault on mouse events, not touch events (passive listeners)
+		const isTouchEvent = 'touches' in e;
+		if (!isTouchEvent) {
+			e.preventDefault();
+		}
+
 		const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
 		const position = ((clientX - containerRect.left) / containerRect.width) * 100;
 		sliderPosition = Math.max(0, Math.min(100, position));
@@ -44,15 +55,15 @@
 	}
 
 	onMount(() => {
-		document.addEventListener('mousemove', handleMove as EventListener);
+		document.addEventListener('mousemove', handleMove as any);
 		document.addEventListener('mouseup', handleEnd);
-		document.addEventListener('touchmove', handleMove as EventListener);
+		document.addEventListener('touchmove', handleMove as any, { passive: true });
 		document.addEventListener('touchend', handleEnd);
 
 		return () => {
-			document.removeEventListener('mousemove', handleMove as EventListener);
+			document.removeEventListener('mousemove', handleMove as any);
 			document.removeEventListener('mouseup', handleEnd);
-			document.removeEventListener('touchmove', handleMove as EventListener);
+			document.removeEventListener('touchmove', handleMove as any);
 			document.removeEventListener('touchend', handleEnd);
 		};
 	});
@@ -66,7 +77,25 @@
 >
 	<!-- After Image (Bottom Layer) -->
 	<div class="relative h-full w-full">
-		<img src={afterImage} alt={afterAlt} class="h-full w-full object-contain" draggable="false" />
+		{#if afterPlaceholder}
+			<img
+				src={afterPlaceholder}
+				alt=""
+				aria-hidden="true"
+				class="absolute inset-0 h-full w-full object-contain blur-xl"
+				draggable="false"
+			/>
+		{/if}
+		<img
+			src={afterImage}
+			alt={afterAlt}
+			{loading}
+			width="800"
+			height="800"
+			class="relative h-full w-full object-contain"
+			draggable="false"
+			decoding="async"
+		/>
 	</div>
 
 	<!-- Before Image (Top Layer with Clip) -->
@@ -74,7 +103,25 @@
 		class="absolute inset-0"
 		style="clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%)"
 	>
-		<img src={beforeImage} alt={beforeAlt} class="h-full w-full object-contain" draggable="false" />
+		{#if beforePlaceholder}
+			<img
+				src={beforePlaceholder}
+				alt=""
+				aria-hidden="true"
+				class="absolute inset-0 h-full w-full object-contain blur-xl"
+				draggable="false"
+			/>
+		{/if}
+		<img
+			src={beforeImage}
+			alt={beforeAlt}
+			{loading}
+			width="800"
+			height="800"
+			class="relative h-full w-full object-contain"
+			draggable="false"
+			decoding="async"
+		/>
 	</div>
 
 	<!-- Before Label (Left Side) - Clipped with before image area -->
@@ -105,7 +152,7 @@
 		</div>
 	</div>
 
-	<!-- Slider Handle -->
+	<!-- Slider Handle with Mobile-Optimized Touch Area -->
 	<div
 		class="absolute top-0 bottom-0 z-20 w-1 cursor-ew-resize border-r border-l border-gray-400 bg-white shadow-lg"
 		style="left: {sliderPosition}%"
@@ -118,18 +165,44 @@
 		aria-label="Comparison slider position"
 		tabindex="0"
 	>
-		<!-- Handle Rectangle and Arrows -->
+		<!-- Invisible Touch Area for Better Mobile Interaction -->
 		<div
-			class="absolute top-1/2 left-1/2 flex h-12 w-3 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded border border-gray-200 bg-white shadow-lg"
+			class="absolute top-0 -left-6 h-full w-12 md:-left-3 md:w-6"
+			role="button"
+			tabindex="-1"
+			aria-label="Drag area for comparison slider"
+			onmousedown={handleStart}
+			ontouchstart={handleStart}
+		></div>
+
+		<!-- Handle Rectangle and Arrows (Enhanced for Touch) -->
+		<div
+			class="absolute top-1/2 left-1/2 flex h-16 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 md:h-12 md:w-3"
 		>
 			<!-- Left Arrow -->
-			<svg class="absolute -left-3 h-3 w-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+			<svg
+				class="absolute -left-4 h-4 w-4 text-white md:-left-3 md:h-3 md:w-3"
+				fill="currentColor"
+				viewBox="0 0 12 12"
+			>
 				<path d="M8 2L4 6l4 4V2z" stroke="#374151" stroke-width="0.5" />
 			</svg>
 			<!-- Right Arrow -->
-			<svg class="absolute -right-3 h-3 w-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+			<svg
+				class="absolute -right-4 h-4 w-4 text-white md:-right-3 md:h-3 md:w-3"
+				fill="currentColor"
+				viewBox="0 0 12 12"
+			>
 				<path d="M4 2l4 4-4 4V2z" stroke="#374151" stroke-width="0.5" />
 			</svg>
 		</div>
+
+		<!-- Mobile Touch Indicator (Shows on Touch Devices) -->
+		<div
+			class="bg-ferrari-500/20 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 transition-opacity duration-200 md:hidden {isDragging
+				? 'opacity-100'
+				: ''}"
+			style="width: 48px; height: 48px; transform: translate(-50%, -50%)"
+		></div>
 	</div>
 </div>

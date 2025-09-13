@@ -26,7 +26,7 @@ test.describe('Cross-Platform Tests', () => {
 
 			// Check for mobile-specific UI elements
 			const mobileMenu = page.getByTestId('mobile-menu');
-			const isMobileMenuVisible = await mobileMenu.isVisible().catch(() => false);
+			const _isMobileMenuVisible = await mobileMenu.isVisible().catch(() => false);
 
 			// Touch interactions for file upload
 			const fileDropzone = page.getByTestId('file-dropzone');
@@ -120,8 +120,8 @@ test.describe('Cross-Platform Tests', () => {
 			const mainPanel = page.getByTestId('main-panel');
 
 			// Tablet should show side-by-side layout
-			const hasSidebar = await sidebar.isVisible().catch(() => false);
-			const hasMainPanel = await mainPanel.isVisible().catch(() => false);
+			const _hasSidebar = await sidebar.isVisible().catch(() => false);
+			const _hasMainPanel = await mainPanel.isVisible().catch(() => false);
 
 			// Should use tablet-optimized thread count
 			await converterPage.initializeThreads(4);
@@ -159,7 +159,7 @@ test.describe('Cross-Platform Tests', () => {
 	test.describe('Desktop Testing', () => {
 		test.use({ ...devices['Desktop Chrome'] });
 
-		test('desktop high-performance workflow', async ({ page }) => {
+		test('desktop high-performance workflow', async ({ page: _page }) => {
 			await converterPage.goto();
 			await converterPage.waitForWasmLoad();
 
@@ -192,7 +192,7 @@ test.describe('Cross-Platform Tests', () => {
 			// Test keyboard shortcuts (if implemented)
 			await page.keyboard.press('Control+o'); // Open file
 			const fileInput = page.locator('input[type="file"]');
-			const isFileInputFocused = await fileInput.evaluate((el) => el === document.activeElement);
+			const _isFileInputFocused = await fileInput.evaluate((el) => el === document.activeElement);
 
 			// Upload file
 			await converterPage.uploadFile('medium-test.jpg');
@@ -213,7 +213,7 @@ test.describe('Cross-Platform Tests', () => {
 			await expect(dropzone).toBeVisible();
 		});
 
-		test('desktop multi-window support', async ({ page, context }) => {
+		test('desktop multi-window support', async ({ page: _page, context }) => {
 			await converterPage.goto();
 			await converterPage.waitForWasmLoad();
 

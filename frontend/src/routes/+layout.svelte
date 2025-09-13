@@ -1,52 +1,76 @@
 <script lang="ts">
 	import '../app.css';
-	import { browser } from '$app/environment';
+	import { browser, dev } from '$app/environment';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { Button } from '$lib/components/ui/button';
+	import { afterNavigate } from '$app/navigation';
 	import MobileMenu from '$lib/components/navigation/MobileMenu.svelte';
 	import ToastContainer from '$lib/components/ui/toast/ToastContainer.svelte';
 	import { inject } from '@vercel/analytics';
 	import { preload } from '$lib/utils/preload';
+	import { registerServiceWorker } from '$lib/utils/service-worker';
+	// Removed scroll-lock - mobile menu uses proper CSS
 
 	let { children } = $props();
 	let mobileMenuOpen = $state(false);
 
+	// No scroll lock tracking needed
+
 	// Toggle mobile menu
 	function toggleMobileMenu() {
+		console.log('Toggle called, current state:', mobileMenuOpen);
 		mobileMenuOpen = !mobileMenuOpen;
-		// Prevent body scroll when menu is open
-		if (browser) {
-			document.body.classList.toggle('menu-open', mobileMenuOpen);
-		}
+		console.log('New state:', mobileMenuOpen);
 	}
 
+	// Mobile menu scroll is handled by CSS (fixed positioning)
+
 	// Close menu on navigation
+	let previousPathname = $state($page.url.pathname);
 	$effect(() => {
-		$page.url.pathname;
-		if (mobileMenuOpen) {
+		const currentPathname = $page.url.pathname;
+		// Only close menu if pathname actually changed (not initial load)
+		if (previousPathname !== currentPathname && mobileMenuOpen) {
+			console.log('Pathname changed, closing menu:', previousPathname, '->', currentPathname);
 			mobileMenuOpen = false;
-			if (browser) {
-				document.body.classList.remove('menu-open');
-			}
+		}
+		previousPathname = currentPathname;
+	});
+
+	// Scroll to top on navigation
+	afterNavigate(() => {
+		// Scroll to top of the page on navigation
+		if (browser) {
+			window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 		}
 	});
+
+	// No cleanup needed
 
 	onMount(() => {
 		if (browser) {
 			// Initialize Vercel Analytics
 			inject();
 
-			// Set initial theme based on system preference
-			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-			const savedTheme = localStorage.getItem('theme');
-			const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-
-			if (theme === 'dark') {
-				document.documentElement.classList.add('dark');
-			} else {
-				document.documentElement.classList.remove('dark');
+			// Register Service Worker for caching (production only)
+			if (!dev) {
+				registerServiceWorker();
 			}
+
+			// Force light mode for now since mobile components don't have dark mode styles
+			// TODO: Implement proper dark mode support for mobile components
+			const savedTheme = localStorage.getItem('theme');
+			const _theme = savedTheme === 'dark' ? 'dark' : 'light'; // Only use saved theme, ignore system preference
+
+			// Always ensure light mode for better mobile compatibility
+			document.documentElement.classList.remove('dark');
+
+			// For future dark mode support, uncomment and design dark mode mobile styles:
+			// if (theme === 'dark') {
+			// 	document.documentElement.classList.add('dark');
+			// } else {
+			// 	document.documentElement.classList.remove('dark');
+			// }
 		}
 	});
 </script>
@@ -63,19 +87,16 @@
 	<header
 		class="border-speed-gray-200/50 bg-nav-clean sticky top-0 z-50 border-b shadow-sm backdrop-blur-xl transition-all duration-200 supports-[backdrop-filter]:bg-white/95"
 	>
-		<!-- Ferrari accent line -->
-		<div
-			class="via-ferrari-500/30 absolute right-0 bottom-0 left-0 h-0.5 bg-gradient-to-r from-transparent to-transparent"
-		></div>
+		<!-- Remove Ferrari accent line - no longer needed -->
 
 		<div
 			class="mx-auto flex h-14 w-full max-w-screen-xl items-center justify-between px-4 md:h-16 md:px-6 lg:px-8"
 		>
 			<a
 				href="/"
-				class="hover:animate-ferrari-glow flex items-center font-semibold transition-all duration-300"
+				class="flex min-h-[44px] items-center py-2 font-semibold transition-all duration-300 hover:opacity-80"
 			>
-				<span class="footer-gradient-text text-3xl font-bold md:text-3xl"> vec2art </span>
+				<span class="text-ferrari-600 text-3xl font-bold md:text-3xl"> vec2art </span>
 			</a>
 			<nav class="flex items-center gap-2 md:gap-3">
 				<!-- Desktop Navigation (hidden on mobile) -->
@@ -90,11 +111,6 @@
 						aria-current={$page.url.pathname === '/converter' ? 'page' : undefined}
 					>
 						Converter
-						{#if $page.url.pathname === '/converter'}
-							<span
-								class="bg-ferrari-500 animate-speed-pulse absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
-							></span>
-						{/if}
 					</a>
 					<a
 						href="/gallery"
@@ -106,11 +122,6 @@
 						aria-current={$page.url.pathname === '/gallery' ? 'page' : undefined}
 					>
 						Gallery
-						{#if $page.url.pathname === '/gallery'}
-							<span
-								class="bg-ferrari-500 animate-speed-pulse absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
-							></span>
-						{/if}
 					</a>
 					<a
 						href="/about"
@@ -121,11 +132,6 @@
 						aria-current={$page.url.pathname === '/about' ? 'page' : undefined}
 					>
 						About
-						{#if $page.url.pathname === '/about'}
-							<span
-								class="bg-ferrari-500 animate-speed-pulse absolute -bottom-3 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
-							></span>
-						{/if}
 					</a>
 				</div>
 				<!-- Desktop CTA Button -->

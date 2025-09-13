@@ -8,8 +8,7 @@ import type {
 	SessionData,
 	UserInteraction,
 	PageView,
-	FlowStep,
-	PerformanceSnapshot
+	FlowStep
 } from '../types/performance.js';
 import { trackCustomMetric, trackUserInteraction } from './performance-monitor.js';
 import { addErrorBreadcrumb } from './error-tracker.js';
@@ -426,7 +425,7 @@ export class UXAnalyticsService {
 	getUXAnalytics(): UXAnalytics {
 		const now = Date.now();
 		const sessionDuration = now - this.engagementStartTime;
-		const timeSinceLastInteraction = now - this.lastInteractionTime;
+		const _timeSinceLastInteraction = now - this.lastInteractionTime;
 
 		const totalInteractions = this.currentSession?.interactions.length || 0;
 		const completedTasks = this.completedTasks.filter((t) => t.completed).length;
@@ -557,7 +556,7 @@ export class UXAnalyticsService {
 		heuristics: UXHeuristics;
 		journey: JourneyStep[];
 		features: FeatureUsage[];
-		tasks: ReturnType<typeof this.getTaskStatistics>;
+		tasks: ReturnType<UXAnalyticsService['getTaskStatistics']>;
 		funnels: Record<string, FlowStep[]>;
 	} {
 		return {
@@ -614,7 +613,7 @@ export class UXAnalyticsService {
 
 	private cleanupEventListeners(): void {
 		document.removeEventListener('click', this.handleClick.bind(this), true);
-		document.removeEventListener('scroll', this.handleScroll.bind(this), { passive: true });
+		document.removeEventListener('scroll', this.handleScroll.bind(this));
 		document.removeEventListener('input', this.handleInput.bind(this), true);
 		document.removeEventListener('focus', this.handleFocus.bind(this), true);
 		document.removeEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
@@ -633,7 +632,7 @@ export class UXAnalyticsService {
 		});
 	}
 
-	private handleScroll(event: Event): void {
+	private handleScroll(_event: Event): void {
 		// Throttle scroll events
 		if (!this.scrollTimeout) {
 			this.scrollTimeout = setTimeout(() => {
@@ -645,7 +644,7 @@ export class UXAnalyticsService {
 			}, 250);
 		}
 	}
-	private scrollTimeout: number | null = null;
+	private scrollTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	private handleInput(event: Event): void {
 		const target = event.target as HTMLInputElement;

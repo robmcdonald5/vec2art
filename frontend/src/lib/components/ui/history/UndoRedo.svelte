@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { Undo2, Redo2, History, RotateCcw } from 'lucide-svelte';
 	import { parameterHistory } from '$lib/stores/parameter-history.svelte';
-	import type { VectorizerConfig } from '$lib/types/vectorizer';
 
 	interface Props {
-		onConfigChange: (config: VectorizerConfig) => void;
+		onConfigChange: (_config: any) => void;
 		disabled?: boolean;
 	}
 

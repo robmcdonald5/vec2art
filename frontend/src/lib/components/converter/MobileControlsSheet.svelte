@@ -1,10 +1,13 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { X, Settings, ChevronUp, ChevronDown } from 'lucide-svelte';
+	import { lockBodyScroll } from '$lib/utils/scroll-lock';
 	import type {
 		VectorizerConfig,
 		VectorizerPreset,
 		VectorizerBackend
 	} from '$lib/types/vectorizer';
+	import type { StylePreset } from '$lib/presets/types';
 	import BackendSelector from './BackendSelector.svelte';
 	import PresetSelector from './PresetSelector.svelte';
 	import ParameterPanel from './ParameterPanel.svelte';
@@ -14,10 +17,10 @@
 		isOpen: boolean;
 		onClose: () => void;
 		config: VectorizerConfig;
-		onConfigChange: (config: Partial<VectorizerConfig>) => void;
+		onConfigChange: (_configUpdates: Partial<VectorizerConfig>) => void;
 		selectedPreset: VectorizerPreset | 'custom';
-		onPresetChange: (preset: VectorizerPreset | 'custom') => void;
-		onBackendChange: (backend: VectorizerBackend) => void;
+		onPresetChange: (_presetValue: string) => void;
+		onBackendChange: (_backendValue: VectorizerBackend) => void;
 		disabled?: boolean;
 		onParameterChange?: () => void;
 	}
@@ -36,7 +39,7 @@
 
 	// Sheet height control
 	let sheetHeight = $state<'collapsed' | 'partial' | 'full'>('partial');
-	let sheetElement: HTMLElement;
+	let sheetElement = $state<HTMLElement>();
 	let startY = 0;
 	let currentY = 0;
 	let isDragging = false;
@@ -105,13 +108,25 @@
 		}
 	}
 
-	// Prevent body scroll when sheet is open
+	// Prevent body scroll when sheet is open using robust scroll lock utility
+	let unlockScroll: (() => void) | null = null;
+
 	$effect(() => {
-		if (isOpen) {
-			document.body.style.overflow = 'hidden';
-			return () => {
-				document.body.style.overflow = '';
-			};
+		if (isOpen && !unlockScroll) {
+			// Lock body scroll and store unlock function
+			unlockScroll = lockBodyScroll();
+		} else if (!isOpen && unlockScroll) {
+			// Unlock body scroll when sheet closes
+			unlockScroll();
+			unlockScroll = null;
+		}
+	});
+
+	// Safety cleanup: ensure body scroll is restored when component unmounts
+	onDestroy(() => {
+		if (unlockScroll) {
+			unlockScroll();
+			unlockScroll = null;
 		}
 	});
 </script>
@@ -121,9 +136,15 @@
 	<div
 		class="fixed inset-0 z-50 lg:hidden"
 		onclick={handleBackdropClick}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') {
+				handleBackdropClick(e as any);
+			}
+		}}
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="mobile-controls-title"
+		tabindex="-1"
 	>
 		<!-- Backdrop -->
 		<div class="absolute inset-0 bg-black/50 transition-opacity duration-300"></div>
@@ -140,7 +161,19 @@
 			ontouchend={handleTouchEnd}
 		>
 			<!-- Handle Bar -->
-			<div class="flex cursor-pointer touch-none justify-center py-3" onclick={toggleSheetHeight}>
+			<div
+				class="flex cursor-pointer touch-none justify-center py-3"
+				onclick={toggleSheetHeight}
+				onkeydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						toggleSheetHeight();
+					}
+				}}
+				tabindex="0"
+				role="button"
+				aria-label="Toggle sheet height"
+			>
 				<div class="bg-muted-foreground/30 h-1 w-12 rounded-full"></div>
 			</div>
 
@@ -198,10 +231,10 @@
 
 						<!-- Style Preset Selection -->
 						<PresetSelector
-							{selectedPreset}
-							{onPresetChange}
+							selectedPresetId={selectedPreset}
+							onPresetSelect={(preset: StylePreset | null) =>
+								onPresetChange((preset?.metadata.id as VectorizerPreset) || 'custom')}
 							{disabled}
-							isCustom={selectedPreset === 'custom'}
 						/>
 
 						<!-- Essential Parameters -->
@@ -242,15 +275,6 @@
 		button {
 			min-height: 44px;
 			min-width: 44px;
-		}
-
-		input[type='range'] {
-			height: 44px;
-		}
-
-		input[type='checkbox'] {
-			width: 20px;
-			height: 20px;
 		}
 	}
 

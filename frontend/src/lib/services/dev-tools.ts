@@ -5,9 +5,9 @@
 
 import type {
 	PerformanceSnapshot,
-	WASMPerformanceMetrics,
-	ResourceMonitoring,
-	ErrorTracking,
+	WASMPerformanceMetrics as _WASMPerformanceMetrics,
+	ResourceMonitoring as _ResourceMonitoring,
+	ErrorTracking as _ErrorTracking,
 	Profiler,
 	ProfileResult,
 	CPUProfile,
@@ -187,7 +187,7 @@ export class DevToolsService {
 
 		// Check Web Vitals
 		Object.entries(snapshot.webVitals).forEach(([metric, value]) => {
-			const threshold = finalThresholds[metric];
+			const threshold = finalThresholds[metric as keyof typeof finalThresholds];
 			if (threshold && value > threshold) {
 				bottlenecks.push({
 					type: 'ui',
@@ -389,7 +389,7 @@ export class DevToolsService {
 
 			// Wait for some time to collect data
 			setTimeout(() => {
-				const memoryProfile = this.profiler!.memoryProfiler.stopTracking();
+				const _memoryProfile = this.profiler!.memoryProfiler.stopTracking();
 				const leaks = this.profiler!.memoryProfiler.detectLeaks();
 				const detectionTime = performance.now() - startTime;
 
@@ -548,7 +548,7 @@ export class DevToolsService {
 			});
 			longTaskObserver.observe({ entryTypes: ['longtask'] });
 			this.performanceObservers.push(longTaskObserver);
-		} catch (error) {
+		} catch (_error) {
 			console.warn('Long task observer not supported');
 		}
 
@@ -563,7 +563,7 @@ export class DevToolsService {
 			});
 			paintObserver.observe({ entryTypes: ['paint'] });
 			this.performanceObservers.push(paintObserver);
-		} catch (error) {
+		} catch (_error) {
 			console.warn('Paint observer not supported');
 		}
 	}
@@ -788,8 +788,10 @@ class DevProfiler implements Profiler {
 			memoryProfile,
 			networkProfile: {
 				requests: [],
-				totalTransferred: 0,
-				totalTime: 0
+				totalBytes: 0,
+				totalDuration: 0,
+				averageLatency: 0,
+				errorRate: 0
 			}
 		};
 	}
@@ -861,12 +863,12 @@ class DevProfiler implements Profiler {
 		try {
 			throw new Error();
 		} catch (error) {
-			const stack = error.stack || '';
+			const stack = (error as Error).stack || '';
 			return stack
 				.split('\n')
 				.slice(2, 10) // Skip error message and this function
-				.map((line) => line.trim())
-				.filter((line) => line.length > 0);
+				.map((line: string) => line.trim())
+				.filter((line: string) => line.length > 0);
 		}
 	}
 

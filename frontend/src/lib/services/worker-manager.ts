@@ -6,7 +6,7 @@
 import { browser } from '$app/environment';
 import type {
 	WorkerMessageType,
-	WorkerInitMessage,
+	WorkerInitMessage as _WorkerInitMessage,
 	WorkerProcessMessage,
 	WorkerProgressMessage,
 	WorkerResultMessage,
@@ -192,31 +192,35 @@ export class WorkerManager {
 		}
 
 		switch (message.type) {
-			case 'result':
+			case 'result': {
 				const resultMessage = message as WorkerResultMessage;
 				pending.resolve(resultMessage.result);
 				this.pendingMessages.delete(message.id);
 				break;
+			}
 
-			case 'error':
+			case 'error': {
 				const errorMessage = message as WorkerErrorMessage;
 				pending.reject(errorMessage.error);
 				this.pendingMessages.delete(message.id);
 				break;
+			}
 
-			case 'progress':
+			case 'progress': {
 				const progressMessage = message as WorkerProgressMessage;
 				if (pending.onProgress) {
 					pending.onProgress(progressMessage.progress);
 				}
 				// Don't delete - we're still waiting for the final result
 				break;
+			}
 
-			case 'capabilities':
+			case 'capabilities': {
 				const capabilitiesMessage = message as WorkerCapabilitiesMessage;
 				pending.resolve(capabilitiesMessage.capabilities);
 				this.pendingMessages.delete(message.id);
 				break;
+			}
 
 			default:
 				console.warn('Unknown message type:', (message as any).type);

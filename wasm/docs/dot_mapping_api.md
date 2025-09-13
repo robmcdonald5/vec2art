@@ -26,7 +26,7 @@ Represents a single dot in the output with complete positioning and styling info
 ```rust
 pub struct Dot {
     pub x: f32,        // X coordinate of dot center
-    pub y: f32,        // Y coordinate of dot center  
+    pub y: f32,        // Y coordinate of dot center
     pub radius: f32,   // Dot radius in pixels
     pub opacity: f32,  // Opacity value (0.0 to 1.0)
     pub color: String, // Color as hex string (e.g., "#FF0000")
@@ -34,6 +34,7 @@ pub struct Dot {
 ```
 
 **Methods:**
+
 - `new(x: f32, y: f32, radius: f32, opacity: f32, color: String) -> Self`
   - Creates a new dot with specified parameters
   - **Parameters:** All positioning and styling values
@@ -50,6 +51,7 @@ pub struct Dot {
   - **Returns:** True if dots overlap based on radii
 
 **Example:**
+
 ```rust
 let dot = Dot::new(10.0, 20.0, 2.5, 0.8, "#FF0000".to_string());
 let distance = dot.distance_to(15.0, 25.0); // Returns ~7.07
@@ -79,12 +81,14 @@ pub struct DotConfig {
 ```
 
 **Default Implementation:**
+
 ```rust
 let config = DotConfig::default();
 // All parameters set to sensible defaults for general use
 ```
 
 **Parameter Guidelines:**
+
 - **min/max_radius**: Use 0.3-1.0 for fine detail, 2.0-6.0 for artistic effect
 - **density_threshold**: Lower = more dots (0.05-0.2), Higher = fewer dots (0.3-0.7)
 - **spacing_factor**: 1.2 = tight spacing, 2.5 = loose spacing
@@ -104,6 +108,7 @@ pub struct GradientAnalysis {
 ```
 
 **Methods:**
+
 - `get_magnitude(&self, x: u32, y: u32) -> Option<f32>`
   - Retrieves gradient magnitude at coordinates
   - **Returns:** Magnitude value or None if out of bounds
@@ -142,6 +147,7 @@ pub fn generate_dots_from_image(
 ```
 
 **Parameters:**
+
 - `rgba`: Input RGBA image
 - `dot_config`: Dot generation configuration
 - `gradient_config`: Optional gradient analysis config (uses default if None)
@@ -150,6 +156,7 @@ pub fn generate_dots_from_image(
 **Returns:** Vector of generated dots
 
 **Example:**
+
 ```rust
 use vectorize_core::algorithms::dots::{generate_dots_from_image, DotConfig};
 
@@ -196,6 +203,7 @@ pub fn generate_dots(
 ```
 
 **Parameters:**
+
 - `rgba`: Input RGBA image
 - `gradient_analysis`: Pre-computed gradient information
 - `background_mask`: Boolean mask where true = background pixel
@@ -204,6 +212,7 @@ pub fn generate_dots(
 **Returns:** Vector of generated dots with spatial distribution applied
 
 **Process:**
+
 1. Filters candidates based on background mask
 2. Calculates gradient strength for each pixel
 3. Applies density threshold filtering
@@ -222,11 +231,13 @@ pub fn analyze_image_gradients(gray: &GrayImage) -> GradientAnalysis
 ```
 
 **Parameters:**
+
 - `gray`: Grayscale input image
 
 **Returns:** Complete gradient analysis with magnitude and variance
 
 **Implementation Details:**
+
 - Uses Sobel operators for gradient calculation
 - Computes local variance using sliding window approach
 - Optimized for performance with SIMD operations where available
@@ -238,7 +249,7 @@ Advanced gradient analysis with customizable parameters.
 
 ```rust
 pub fn analyze_image_gradients_with_config(
-    gray: &GrayImage, 
+    gray: &GrayImage,
     config: &GradientConfig
 ) -> GradientAnalysis
 ```
@@ -266,6 +277,7 @@ pub fn calculate_local_variance(gray: &GrayImage, x: u32, y: u32, radius: u32) -
 ```
 
 **Parameters:**
+
 - `gray`: Grayscale image
 - `x`, `y`: Center coordinates
 - `radius`: Sampling radius in pixels
@@ -283,12 +295,14 @@ pub fn detect_background_advanced(rgba: &RgbaImage, config: &BackgroundConfig) -
 ```
 
 **Parameters:**
+
 - `rgba`: Input RGBA image
 - `config`: Background detection configuration
 
 **Returns:** Boolean mask where true indicates background pixels
 
 **Detection Strategies:**
+
 - **Edge Sampling**: Analyzes edge pixels to determine background colors
 - **Color Clustering**: Groups similar colors and identifies largest cluster as background
 - **Gradient Analysis**: Uses edge gradients to distinguish background from content
@@ -328,6 +342,7 @@ pub fn apply_style_preset(config: &mut DotConfig, style: DotStyle)
 ```
 
 **Example:**
+
 ```rust
 let mut config = DotConfig::default();
 apply_style_preset(&mut config, DotStyle::BoldPointillism);
@@ -343,6 +358,7 @@ pub fn apply_artistic_effects(dots: &mut Vec<Dot>, style: DotStyle)
 ```
 
 **Effects Applied:**
+
 - **Position Jitter**: Random position offsets for organic feel
 - **Size Variation**: Radius variation using normal distribution
 - **Opacity Variation**: Opacity randomization for depth effects
@@ -358,6 +374,7 @@ pub fn add_artistic_jitter(dots: &mut Vec<Dot>, amount: f32)
 ```
 
 **Parameters:**
+
 - `dots`: Mutable reference to dot vector
 - `amount`: Maximum offset in pixels (0.0 = no jitter)
 
@@ -370,6 +387,7 @@ pub fn add_size_variation(dots: &mut Vec<Dot>, variation_factor: f32)
 ```
 
 **Parameters:**
+
 - `variation_factor`: Variation amount (0.0-1.0, where 1.0 = maximum variation)
 
 #### `add_opacity_variation`
@@ -403,12 +421,14 @@ pub fn optimize_dot_svg(dots: &[Dot]) -> String
 ```
 
 **Optimizations:**
+
 - Groups dots by color to reduce redundancy
 - Uses efficient SVG circle syntax
 - Applies coordinate precision optimization
 - Minimizes file size while maintaining quality
 
 **Example:**
+
 ```rust
 let dots = generate_dots_from_image(&rgba_image, &config, None, None);
 let svg_content = optimize_dot_svg(&dots);
@@ -432,6 +452,7 @@ The dot mapping system automatically uses parallel processing for large images:
 Internal spatial indexing structure for efficient distance checking.
 
 **Features:**
+
 - Grid-based spatial partitioning
 - O(1) average lookup time for collision detection
 - Memory-efficient storage for large dot collections
@@ -440,6 +461,7 @@ Internal spatial indexing structure for efficient distance checking.
 ### Memory Management
 
 **Optimization Strategies:**
+
 - Pre-allocated candidate vectors for known image sizes
 - Reusable background mask buffers
 - Efficient dot sorting using partial comparison
@@ -530,6 +552,7 @@ pub fn validate_dot_config(config: &DotConfig) -> Result<(), DotMappingError>
 ```
 
 **Checks:**
+
 - Radius range validity (min < max, both positive)
 - Density threshold bounds (0.0-1.0)
 - Spacing factor positivity
@@ -538,12 +561,14 @@ pub fn validate_dot_config(config: &DotConfig) -> Result<(), DotMappingError>
 ## Performance Characteristics
 
 ### Time Complexity
+
 - **Gradient Analysis**: O(n) where n = pixels
 - **Background Detection**: O(n) with edge sampling
 - **Dot Generation**: O(k log k) where k = candidate pixels
 - **Spatial Distribution**: O(k) average case with spatial grid
 
 ### Memory Usage
+
 - **Base Memory**: ~20 bytes per pixel for analysis
 - **Dot Storage**: ~32 bytes per generated dot
 - **Peak Usage**: During candidate generation and sorting
@@ -553,12 +578,12 @@ pub fn validate_dot_config(config: &DotConfig) -> Result<(), DotMappingError>
 Typical performance on modern hardware:
 
 | Image Size | Processing Time | Memory Usage | Generated Dots |
-|------------|----------------|--------------|----------------|
-| 500x500    | 50-80ms        | 15MB         | 500-2000       |
-| 1000x1000  | 200-350ms      | 60MB         | 2000-8000      |
-| 2000x2000  | 800-1200ms     | 240MB        | 8000-32000     |
+| ---------- | --------------- | ------------ | -------------- |
+| 500x500    | 50-80ms         | 15MB         | 500-2000       |
+| 1000x1000  | 200-350ms       | 60MB         | 2000-8000      |
+| 2000x2000  | 800-1200ms      | 240MB        | 8000-32000     |
 
-*Benchmarks with default DotConfig settings, AMD Ryzen 7 3700X, 32GB RAM*
+_Benchmarks with default DotConfig settings, AMD Ryzen 7 3700X, 32GB RAM_
 
 ### Optimization Recommendations
 
@@ -570,7 +595,7 @@ Typical performance on modern hardware:
 ## Version Compatibility
 
 - **Minimum Rust Version**: 1.70.0
-- **Dependencies**: 
+- **Dependencies**:
   - `image` crate 0.24+
   - `rayon` 1.7+
   - `rand` 0.8+

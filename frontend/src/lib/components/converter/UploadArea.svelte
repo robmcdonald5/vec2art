@@ -8,14 +8,15 @@
 	let {
 		onFilesSelect,
 		disabled = false,
-		maxSize = 10 * 1024 * 1024, // 10MB
-		accept = 'image/jpeg,image/png,image/webp'
+		maxSize: _maxSize = 1 * 1024 * 1024 * 1024, // 1GB
+		accept = 'image/jpeg,image/png,image/webp,image/tiff,image/bmp,image/gif,image/avif'
 	}: Props = $props();
 
 	// Local state for drag and drop
 	let fileInput: HTMLInputElement;
 	let dragOver = $state(false);
 	let errorMessage = $state('');
+	let warningMessage = $state('');
 	let successMessage = $state('');
 
 	// Handle file validation and upload
@@ -23,18 +24,23 @@
 		if (disabled) return;
 
 		errorMessage = '';
+		warningMessage = '';
 		successMessage = '';
 
 		// Use the validation utility
-		const { validFiles, errors } = validateImageFiles(newFiles);
+		const { validFiles, errors, warnings } = validateImageFiles(newFiles);
 
 		if (errors.length > 0) {
 			errorMessage = errors.map((e) => `${e.file}: ${e.error}`).join('\n');
 		}
 
+		if (warnings.length > 0) {
+			warningMessage = warnings.map((w) => `${w.file}: ${w.warning}`).join('\n');
+		}
+
 		if (validFiles.length > 0) {
 			successMessage = `${validFiles.length} file(s) ready for conversion`;
-			onFilesSelect(validFiles);
+			onFilesSelect?.(validFiles);
 		}
 	}
 
@@ -76,13 +82,7 @@
 		}
 	}
 
-	function formatFileSize(bytes: number): string {
-		if (bytes === 0) return '0 B';
-		const k = 1024;
-		const sizes = ['B', 'KB', 'MB', 'GB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-	}
+	// function formatFileSize(bytes: number): string { /* TODO: implement if needed */ }
 </script>
 
 <!-- Hidden file input -->
@@ -94,6 +94,7 @@
 	onchange={handleFileInput}
 	{disabled}
 	multiple
+	data-testid="file-input"
 />
 
 <div class="space-y-4">
@@ -106,6 +107,18 @@
 			<div class="flex items-center gap-2">
 				<FileImage class="h-4 w-4 text-red-600" aria-hidden="true" />
 				<span class="text-sm text-red-700 dark:text-red-300">{errorMessage}</span>
+			</div>
+		</div>
+	{/if}
+
+	{#if warningMessage}
+		<div
+			class="rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950"
+			role="alert"
+		>
+			<div class="flex items-center gap-2">
+				<AlertCircle class="h-4 w-4 text-yellow-600" aria-hidden="true" />
+				<span class="text-sm text-yellow-700 dark:text-yellow-300">{warningMessage}</span>
 			</div>
 		</div>
 	{/if}
@@ -144,12 +157,7 @@
 					Drag and drop your images here, or click to browse
 				</p>
 				<div class="space-y-2">
-					<p class="text-ferrari-600 text-sm">
-						Supports JPG, PNG, WebP • Max {Math.round(maxSize / (1024 * 1024))}MB per file
-					</p>
-					<p class="text-converter-muted text-xs">
-						Transform any raster image into expressive line art SVGs
-					</p>
+					<p class="text-ferrari-600 text-sm">Supports JPG, PNG, WebP, TIFF, BMP, GIF, AVIF</p>
 				</div>
 			</div>
 
@@ -163,12 +171,15 @@
 					<AlertCircle class="h-4 w-4" />
 					<span class="whitespace-pre-line">{errorMessage}</span>
 				</div>
+			{:else if warningMessage}
+				<div class="mt-2 flex items-center gap-2 text-sm text-yellow-600">
+					<AlertCircle class="h-4 w-4" />
+					<span class="whitespace-pre-line">{warningMessage}</span>
+				</div>
 			{:else if successMessage}
 				<div class="mt-2 text-sm text-green-600">
 					{successMessage}
 				</div>
-			{:else}
-				<div class="text-converter-muted text-xs">Multiple files supported</div>
 			{/if}
 		</div>
 	</div>

@@ -18,10 +18,10 @@
 					ferrari: 'btn-ferrari-primary text-white font-semibold shadow hover:bg-primary/90'
 				},
 				size: {
-					default: 'h-9 px-4 py-2',
-					sm: 'h-8 rounded-md px-3 text-xs',
-					lg: 'h-10 rounded-md px-8',
-					icon: 'h-9 w-9'
+					default: 'h-9 px-4 py-2 md:h-9 h-11' /* RESPONSIVE: Desktop h-9, Mobile h-11 */,
+					sm: 'h-8 rounded-md px-3 text-xs md:h-8 h-11' /* RESPONSIVE: Desktop h-8, Mobile h-11 */,
+					lg: 'h-10 rounded-md px-8 md:h-10 h-12' /* RESPONSIVE: Desktop h-10, Mobile h-12 */,
+					icon: 'h-9 w-9 md:h-9 md:w-9 h-11 w-11' /* RESPONSIVE: Desktop h-9 w-9, Mobile h-11 w-11 */
 				}
 			},
 			defaultVariants: {
@@ -35,7 +35,7 @@
 		/**
 		 * The underlying HTML element to render. Defaults to "button".
 		 */
-		as?: keyof HTMLElementTagNameMap;
+		as?: any; // keyof HTMLElementTagNameMap
 		/**
 		 * The button variant.
 		 */
@@ -59,15 +59,15 @@
 		/**
 		 * Click handler.
 		 */
-		onclick?: (event: MouseEvent) => void;
+		onclick?: (_event: MouseEvent) => void;
 		/**
 		 * Mouse enter handler.
 		 */
-		onmouseenter?: (event: MouseEvent) => void;
+		onmouseenter?: (_event: MouseEvent) => void;
 		/**
 		 * Mouse leave handler.
 		 */
-		onmouseleave?: (event: MouseEvent) => void;
+		onmouseleave?: (_event: MouseEvent) => void;
 		/**
 		 * Children snippet for button content
 		 */
@@ -79,7 +79,7 @@
 	}
 
 	let {
-		as = 'button' as keyof HTMLElementTagNameMap,
+		as = 'button' as any, // keyof HTMLElementTagNameMap
 		variant = 'default',
 		size = 'default',
 		disabled = false,
@@ -113,12 +113,11 @@
 <svelte:element
 	this={as}
 	class={cn(buttonVariants({ variant, size }), 'btn-clickable', className)}
-	{disabled}
-	{type}
 	onclick={handleClick}
 	{onmouseenter}
 	{onmouseleave}
 	{...restProps}
+	{...as === 'button' || as === 'input' ? { disabled, type } : {}}
 >
 	{#if children}
 		{@render children()}

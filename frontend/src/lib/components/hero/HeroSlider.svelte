@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { spring } from 'svelte/motion';
-	import BeforeAfterSlider from '$lib/components/ui/before-after-slider/before-after-slider.svelte';
+	import AutoAnimatedBeforeAfterSlider from '$lib/components/ui/before-after-slider/auto-animated-before-after-slider.svelte';
 	import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-svelte';
 	import { preload } from '$lib/utils/preload';
 
@@ -19,6 +19,7 @@
 		showcaseItems?: ShowcaseItem[];
 		autoPlay?: boolean;
 		autoPlayDelay?: number;
+		initialAutoSlideDelay?: number;
 	}
 
 	let {
@@ -26,28 +27,36 @@
 		showcaseItems = [
 			{
 				id: 1,
-				title: 'Logo Conversion',
+				title: 'Portrait Sketching',
 				algorithm: 'Edge Detection',
-				beforeImage: '/gallery-stock-before.png',
-				afterImage: '/gallery-stock-after.svg'
+				beforeImage: '/gallery/before/portraits-real/girl-beach.webp',
+				afterImage: '/gallery/after-webp/portraits-real/girl-beach(edgetracing).webp'
 			},
 			{
 				id: 2,
-				title: 'Portrait Art',
-				algorithm: 'Centerline',
-				beforeImage: '/gallery-stock-before.png',
-				afterImage: '/gallery-stock-after.svg'
+				title: 'Modern Portraits',
+				algorithm: 'Superpixel',
+				beforeImage: '/gallery/before/portraits-real/pool-hall.avif',
+				afterImage: '/gallery/after-webp/portraits-real/pool-hall(superpixel).webp'
 			},
 			{
 				id: 3,
-				title: 'Abstract Design',
-				algorithm: 'Superpixel',
-				beforeImage: '/gallery-stock-before.png',
-				afterImage: '/gallery-stock-after.svg'
+				title: 'Anime Stippling',
+				algorithm: 'Dot Pattern Art',
+				beforeImage: '/gallery/before/anime/anime-girl-portrait.png',
+				afterImage: '/gallery/after-webp/anime/anime-girl-portrait(stippling).webp'
+			},
+			{
+				id: 4,
+				title: 'Character Art',
+				algorithm: 'Edge Detection',
+				beforeImage: '/gallery/before/portraits-real/robert-knox.avif',
+				afterImage: '/gallery/after-webp/portraits-real/robert-knox(edgetracing).webp'
 			}
 		],
 		autoPlay = false,
-		autoPlayDelay = 8000
+		autoPlayDelay = 7500,
+		initialAutoSlideDelay = 15000
 	}: Props = $props();
 
 	// State
@@ -57,7 +66,9 @@
 	let currentX = $state(0);
 	let containerEl: HTMLDivElement;
 	let showcaseIndex = $state(0);
-	let autoPlayInterval: NodeJS.Timeout;
+	let autoPlayInterval: ReturnType<typeof setInterval> | undefined;
+	let initialAutoSlideTimeout: ReturnType<typeof setTimeout> | undefined;
+	let hasUserInteracted = $state(false);
 
 	// Spring for smooth panel transitions
 	const panelOffset = spring(0, {
@@ -92,6 +103,13 @@
 			return;
 		}
 
+		// Mark user interaction and clear initial auto-slide
+		hasUserInteracted = true;
+		if (initialAutoSlideTimeout) {
+			clearTimeout(initialAutoSlideTimeout);
+			initialAutoSlideTimeout = undefined;
+		}
+
 		isDragging = true;
 		startX = 'touches' in e ? e.touches[0].clientX : e.clientX;
 		currentX = startX;
@@ -105,9 +123,11 @@
 	function handleMove(e: MouseEvent | TouchEvent) {
 		if (!isDragging) return;
 
-		// Don't prevent default on interactive elements
+		// Don't prevent default on interactive elements or touch events (passive listeners)
 		const target = e.target as HTMLElement;
+		const isTouchEvent = 'touches' in e;
 		if (
+			!isTouchEvent && // Don't preventDefault on touch events (passive listeners)
 			!target.closest('.before-after-slider') &&
 			!target.closest('button') &&
 			!target.closest('a') &&
@@ -153,16 +173,39 @@
 		}
 	}
 
-	function goToPanel(index: number) {
+	function goToPanel(index: number, isAutoSlide = false) {
+		// Mark user interaction if called manually (not from auto-slide)
+		if (!isAutoSlide) {
+			hasUserInteracted = true;
+			if (initialAutoSlideTimeout) {
+				clearTimeout(initialAutoSlideTimeout);
+				initialAutoSlideTimeout = undefined;
+			}
+		}
+
 		currentPanel = Math.max(0, Math.min(1, index));
 		panelOffset.set(-currentPanel * 100);
+	}
+
+	function startInitialAutoSlide() {
+		if (hasUserInteracted) return;
+
+		initialAutoSlideTimeout = setTimeout(() => {
+			if (!hasUserInteracted && currentPanel === 0) {
+				goToPanel(1, true); // true indicates auto-slide
+				// Start showcase autoplay after sliding to examples
+				if (autoPlay) {
+					startAutoPlay();
+				}
+			}
+		}, initialAutoSlideDelay);
 	}
 
 	function nextShowcase() {
 		showcaseIndex = (showcaseIndex + 1) % showcaseItems.length;
 	}
 
-	function prevShowcase() {
+	function _prevShowcase() {
 		showcaseIndex = (showcaseIndex - 1 + showcaseItems.length) % showcaseItems.length;
 	}
 
@@ -178,9 +221,9 @@
 	// Lifecycle
 	onMount(() => {
 		// Add global mouse/touch listeners
-		document.addEventListener('mousemove', handleMove as EventListener);
+		document.addEventListener('mousemove', handleMove as any);
 		document.addEventListener('mouseup', handleEnd);
-		document.addEventListener('touchmove', handleMove as EventListener, { passive: false });
+		document.addEventListener('touchmove', handleMove as any, { passive: true });
 		document.addEventListener('touchend', handleEnd);
 
 		// Start autoplay if on showcase panel
@@ -188,14 +231,22 @@
 			startAutoPlay();
 		}
 
+		// Start initial auto-slide timer if on overview panel
+		if (currentPanel === 0) {
+			startInitialAutoSlide();
+		}
+
 		return () => {
-			document.removeEventListener('mousemove', handleMove as EventListener);
+			document.removeEventListener('mousemove', handleMove as any);
 			document.removeEventListener('mouseup', handleEnd);
-			document.removeEventListener('touchmove', handleMove as EventListener);
+			document.removeEventListener('touchmove', handleMove as any);
 			document.removeEventListener('touchend', handleEnd);
 
 			if (autoPlayInterval) {
 				clearInterval(autoPlayInterval);
+			}
+			if (initialAutoSlideTimeout) {
+				clearTimeout(initialAutoSlideTimeout);
 			}
 		};
 	});
@@ -215,6 +266,7 @@
 
 <div class="relative w-full overflow-hidden">
 	<!-- Slider Container -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		bind:this={containerEl}
 		class="relative h-full w-full cursor-grab active:cursor-grabbing"
@@ -246,12 +298,12 @@
 
 					<!-- Showcase Content -->
 					<div
-						class="relative z-10 flex min-h-[90vh] items-center justify-center px-4 sm:px-6 lg:px-8"
+						class="relative z-10 flex min-h-[90vh] items-center justify-center px-4 pt-8 pb-20 sm:px-6 lg:px-8"
 					>
 						<div class="mx-auto max-w-screen-xl">
 							<div class="text-center">
 								<!-- Showcase Header -->
-								<div class="mb-8 flex items-center justify-center gap-3">
+								<div class="mb-6 flex items-center justify-center gap-3">
 									<Sparkles class="text-ferrari-600 h-8 w-8" />
 									<h2 class="text-4xl font-bold text-gray-900">See vec2art in Action</h2>
 									<Sparkles class="text-ferrari-600 h-8 w-8" />
@@ -260,62 +312,42 @@
 								<!-- Showcase Card -->
 								<div class="relative mx-auto max-w-4xl">
 									<div
-										class="relative overflow-hidden rounded-3xl border border-white/50 bg-white/80 p-8 shadow-2xl backdrop-blur-md"
+										class="relative overflow-hidden rounded-3xl border border-white/50 bg-white/80 p-6 shadow-2xl backdrop-blur-md"
 									>
 										<!-- Try It Button - Top Right of Card -->
 										<a
 											href="/converter"
 											use:preload
-											class="btn-ferrari-primary absolute top-4 right-4 z-10 inline-flex items-center gap-2 px-4 py-2 text-sm"
+											class="btn-ferrari-primary absolute top-4 right-4 z-10 inline-flex min-h-[44px] items-center gap-2 px-4 py-3 text-sm"
 										>
 											Try It Yourself
 											<ChevronRight class="h-3 w-3" />
 										</a>
 										<!-- Current Showcase Item -->
-										<div class="mb-6">
+										<div class="mb-4">
 											<h3 class="mb-2 text-2xl font-semibold text-gray-900">
 												{showcaseItems[showcaseIndex].title}
 											</h3>
 											<span
-												class="from-ferrari-500 to-ferrari-600 inline-block rounded-full bg-gradient-to-r px-4 py-1 text-sm font-medium text-white shadow-md"
+												class="inline-block rounded-full bg-gray-900 px-4 py-1 text-sm font-medium text-white shadow-md"
 											>
 												{showcaseItems[showcaseIndex].algorithm}
 											</span>
 										</div>
 
-										<!-- Before/After Display with Navigation -->
+										<!-- Before/After Display - Auto-Animated -->
 										<div
 											class="relative aspect-video overflow-hidden rounded-xl bg-gray-50"
 											data-no-hero-drag
 										>
-											<BeforeAfterSlider
+											<AutoAnimatedBeforeAfterSlider
 												beforeImage={showcaseItems[showcaseIndex].beforeImage}
 												afterImage={showcaseItems[showcaseIndex].afterImage}
-												class="before-after-slider h-full w-full"
+												class="h-full w-full"
+												animationDuration={6000}
+												resetTrigger={currentPanel === 1 ? showcaseIndex : -1}
+												loading={currentPanel === 1 && showcaseIndex === 0 ? 'eager' : 'lazy'}
 											/>
-
-											<!-- Showcase Navigation - Top corners -->
-											<!-- Left Arrow -->
-											<button
-												onclick={prevShowcase}
-												class="group hover:bg-ferrari-600 absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:text-white"
-												aria-label="Previous example"
-											>
-												<ChevronLeft
-													class="h-4 w-4 text-gray-700 transition-colors group-hover:text-white"
-												/>
-											</button>
-
-											<!-- Right Arrow -->
-											<button
-												onclick={nextShowcase}
-												class="group hover:bg-ferrari-600 absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:text-white"
-												aria-label="Next example"
-											>
-												<ChevronRight
-													class="h-4 w-4 text-gray-700 transition-colors group-hover:text-white"
-												/>
-											</button>
 										</div>
 									</div>
 								</div>
@@ -328,32 +360,46 @@
 	</div>
 
 	<!-- Panel Indicators/Navigation -->
-	<div class="absolute bottom-8 left-1/2 z-20 -translate-x-1/2">
+	<div class="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 md:bottom-8">
 		<div
 			class="flex items-center gap-4 rounded-full bg-white/90 px-6 py-3 shadow-lg backdrop-blur-sm"
 		>
 			<button
 				onclick={() => goToPanel(0)}
-				class="flex items-center gap-2 transition-all {currentPanel === 0
+				class="relative flex min-h-[44px] touch-manipulation items-center gap-2 overflow-hidden px-2 transition-all {currentPanel ===
+				0
 					? 'text-ferrari-600 font-medium'
-					: 'text-gray-500 hover:text-gray-700'}"
+					: 'text-gray-500 hover:text-gray-700 active:scale-95'}"
 			>
-				<span
-					class="h-2 w-2 rounded-full {currentPanel === 0 ? 'bg-ferrari-600' : 'bg-gray-300'}"
-				/>
-				Overview
+				{#if currentPanel === 0}
+					<span class="bg-ferrari-600 relative z-10 h-2 w-2 rounded-full"></span>
+				{:else}
+					<span class="relative z-10 h-2 w-2 rounded-full bg-gray-300"></span>
+				{/if}
+				<span class="relative z-10">Overview</span>
+				<!-- Mobile touch ripple -->
+				<div
+					class="bg-ferrari-100 pointer-events-none absolute inset-0 scale-0 rounded-full opacity-0 transition-all duration-300 group-active:scale-100 group-active:opacity-20 md:hidden"
+				></div>
 			</button>
-			<div class="h-4 w-px bg-gray-300" />
+			<div class="h-4 w-px bg-gray-300"></div>
 			<button
 				onclick={() => goToPanel(1)}
-				class="flex items-center gap-2 transition-all {currentPanel === 1
+				class="relative flex min-h-[44px] touch-manipulation items-center gap-2 overflow-hidden px-2 transition-all {currentPanel ===
+				1
 					? 'text-ferrari-600 font-medium'
-					: 'text-gray-500 hover:text-gray-700'}"
+					: 'text-gray-500 hover:text-gray-700 active:scale-95'}"
 			>
-				<span
-					class="h-2 w-2 rounded-full {currentPanel === 1 ? 'bg-ferrari-600' : 'bg-gray-300'}"
-				/>
-				Examples
+				{#if currentPanel === 1}
+					<span class="bg-ferrari-600 relative z-10 h-2 w-2 rounded-full"></span>
+				{:else}
+					<span class="relative z-10 h-2 w-2 rounded-full bg-gray-300"></span>
+				{/if}
+				<span class="relative z-10">Examples</span>
+				<!-- Mobile touch ripple -->
+				<div
+					class="bg-ferrari-100 pointer-events-none absolute inset-0 scale-0 rounded-full opacity-0 transition-all duration-300 group-active:scale-100 group-active:opacity-20 md:hidden"
+				></div>
 			</button>
 		</div>
 	</div>
@@ -363,7 +409,7 @@
 		<!-- Right arrow to go to showcase -->
 		<button
 			onclick={() => goToPanel(1)}
-			class="absolute top-1/2 right-4 z-20 -translate-y-1/2 focus:outline-none"
+			class="absolute top-1/2 right-4 z-20 flex min-h-[44px] min-w-[44px] -translate-y-1/2 touch-manipulation items-center justify-center rounded-full focus:outline-none"
 			aria-label="View examples"
 		>
 			<ChevronLeft
@@ -374,7 +420,7 @@
 		<!-- Left arrow to go back to hero -->
 		<button
 			onclick={() => goToPanel(0)}
-			class="absolute top-1/2 left-4 z-20 -translate-y-1/2 focus:outline-none"
+			class="absolute top-1/2 left-4 z-20 flex min-h-[44px] min-w-[44px] -translate-y-1/2 touch-manipulation items-center justify-center rounded-full focus:outline-none"
 			aria-label="Back to overview"
 		>
 			<ChevronRight

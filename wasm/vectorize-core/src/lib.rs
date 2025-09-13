@@ -9,6 +9,9 @@ pub mod config;
 pub mod config_builder;
 pub mod error;
 pub mod execution;
+#[cfg(feature = "gpu-acceleration")]
+pub mod gpu;
+pub mod parameters;
 pub mod performance;
 pub mod preprocessing;
 pub mod svg;
@@ -24,6 +27,10 @@ pub use algorithms::{
 pub use config::SvgConfig;
 pub use config_builder::{ConfigBuilder, ConfigBuilderError, ConfigBuilderResult};
 pub use error::*;
+pub use parameters::{
+    ParameterDefinition, ParameterValidator, ValidationResult, ValidationError, ValidationWarning,
+    ParameterType, ParameterValue, ParameterCategory, PARAMETER_REGISTRY,
+};
 pub use execution::{
     current_num_threads, execute_parallel, execute_parallel_chunks, execute_parallel_filter_map,
     join, join3, par_bridge, par_enumerate, par_extend, par_iter, par_iter_mut, par_sort,
@@ -65,7 +72,7 @@ pub fn vectorize_trace_low_rgba(
     use input_validation::validate_image_input;
     use preprocessing::{
         adjust_trace_low_config, analyze_resolution_requirements, apply_resolution_processing,
-        scale_svg_coordinates, ResolutionConfig,
+        scale_svg_coordinates, ResolutionConfig, apply_background_removal, BackgroundRemovalConfig,
     };
 
     log::info!("Starting trace-low vectorization with config: {config:?}");
@@ -98,11 +105,40 @@ pub fn vectorize_trace_low_rgba(
     let resolution_analysis = analyze_resolution_requirements(image, &resolution_config);
 
     // Apply resolution-aware processing
-    let processing_image = apply_resolution_processing(image, &resolution_analysis)?;
+    let mut processing_image = apply_resolution_processing(image, &resolution_analysis)?;
+
+    // Apply background removal if enabled
+    if config.enable_background_removal {
+        let bg_removal_config = BackgroundRemovalConfig {
+            algorithm: config.background_removal_algorithm,
+            strength: config.background_removal_strength,
+            threshold_override: config.background_removal_threshold,
+        };
+
+        log::info!("Applying background removal with strength {:.2}", config.background_removal_strength);
+        
+        let bg_removal_result = apply_background_removal(&processing_image, &bg_removal_config)?;
+        
+        log::info!(
+            "Background removal completed using algorithm {:?}, threshold {}, took {}ms",
+            bg_removal_result.algorithm_used,
+            bg_removal_result.threshold_used,
+            bg_removal_result.processing_time_ms
+        );
+
+        processing_image = bg_removal_result.image;
+    }
 
     // Adjust configuration based on resolution scaling
-    let adjusted_config =
+    let mut adjusted_config =
         adjust_trace_low_config(config, &resolution_analysis.parameter_adjustments);
+
+    // CRITICAL FIX: Disable background removal in trace-low since we already applied it above
+    // This prevents double processing which causes timeouts/hangs
+    if config.enable_background_removal {
+        log::info!("Background removal already applied in preprocessing - disabling in trace-low");
+        adjusted_config.enable_background_removal = false;
+    }
 
     log::info!(
         "Processing: {}x{} -> {}x{} (scale: {:.3})",

@@ -6,17 +6,23 @@
 		Maximize2,
 		ArrowLeftRight,
 		Download,
-		X,
 		Link,
-		Unlink
+		Unlink,
+		Activity,
+		Image
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
-	import type { ProcessingProgress } from '$lib/types/vectorizer';
-	import type { FileMetadata } from '$lib/stores/converter-persistence';
 	import ConverterHeader from './ConverterHeader.svelte';
 	import InteractiveImagePanel from './InteractiveImagePanel.svelte';
 	import { panZoomStore } from '$lib/stores/pan-zoom-sync.svelte';
 	import type { ConverterComponentProps } from '$lib/types/shared-props';
+	import AdvancedSvgPreview from '../ui/AdvancedSvgPreview.svelte';
+	import SvgImageViewer from '../ui/SvgImageViewer.svelte';
+	// import { analyzeSvgComplexity, assessPerformance } from "$lib/utils/svg-analysis";
+	import {
+		createManagedObjectURL,
+		releaseManagedObjectURL
+	} from '$lib/utils/object-url-manager.js';
 
 	interface Props extends ConverterComponentProps {}
 
@@ -26,6 +32,7 @@
 		filesMetadata,
 		currentImageIndex,
 		currentProgress,
+		results,
 		previewSvgUrls,
 		canConvert,
 		canDownload,
@@ -43,10 +50,6 @@
 		onSettingsModeChange
 	}: Props = $props();
 
-	// Legacy state for slider comparison mode only
-	let imageElement = $state<HTMLImageElement>();
-	let imageContainer = $state<HTMLDivElement>();
-
 	// Comparison slider state
 	let viewMode = $state<'side-by-side' | 'slider'>('side-by-side');
 	let sliderPosition = $state(50); // Percentage from left
@@ -55,39 +58,65 @@
 	let isVerticalSplit = $state(false);
 
 	// Derived states
-	const hasMultipleFiles = $derived(Math.max(files.length, originalImageUrls.length) > 1);
 	const currentFile = $derived(files[currentImageIndex]);
-	const currentImageUrl = $derived(
-		originalImageUrls[currentImageIndex] || (currentFile ? URL.createObjectURL(currentFile) : null)
-	);
-	const currentSvgUrl = $derived(previewSvgUrls[currentImageIndex]);
+
+	// Managed object URL state
+	let previousFile: File | null = null;
+	let managedObjectUrl: string | null = null;
+
+	// Effect to manage object URL lifecycle
+	$effect(() => {
+		// If file changed, clean up previous URL and create new one
+		if (currentFile !== previousFile) {
+			// Clean up previous URL
+			if (managedObjectUrl && previousFile) {
+				releaseManagedObjectURL(managedObjectUrl);
+			}
+
+			// Create new URL for current file
+			managedObjectUrl = currentFile ? createManagedObjectURL(currentFile) : null;
+			previousFile = currentFile;
+		}
+
+		// Cleanup on component unmount
+		return () => {
+			if (managedObjectUrl) {
+				releaseManagedObjectURL(managedObjectUrl);
+				managedObjectUrl = null;
+			}
+		};
+	});
+
+	const currentImageUrl = $derived(originalImageUrls[currentImageIndex] || managedObjectUrl);
+	const currentSvgUrl = $derived(previewSvgUrls?.[currentImageIndex]);
 	const hasResult = $derived(Boolean(currentSvgUrl));
+	const currentResult = $derived(results?.[currentImageIndex]);
+	const isError = $derived(currentResult?.svg?.includes('Failed to convert') ?? false);
+
+	let useAdvancedPreview = $state(true); // Default to advanced preview for performance
+
+	// Reference to SvgImageViewer for control buttons
+	let svgImageViewer = $state<any>();
+
+	// Performance analysis is handled by the PerformanceWarning component
 
 	// Zoom levels
-	const zoomLevels = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
+	// const zoomLevels = [0.5, 0.75, 1, 1.5, 2, 3];
 
-	function findClosestZoomIndex(currentZoom: number): number {
-		return zoomLevels.reduce((closest, level, index) => {
-			return Math.abs(level - currentZoom) < Math.abs(zoomLevels[closest] - currentZoom)
-				? index
-				: closest;
-		}, 0);
-	}
-
-	// Reset pan/zoom store when changing images
-	function resetPanZoomState() {
-		panZoomStore.resetStates();
+	// Reset pan/zoom store when changing images (optional)
+	function resetPanZoomState(force = false) {
+		// Only reset if explicitly forced or user is switching between different images
+		// Don't reset during conversions
+		if (force) {
+			panZoomStore.resetStates();
+		}
 	}
 
 	function handleImageIndexChange(newIndex: number) {
-		onImageIndexChange(newIndex);
-		resetPanZoomState();
-	}
-
-	// Legacy function for slider mode only - basic fit behavior
-	function fitToSliderContainer() {
-		// This is only used for slider comparison mode
-		// The intelligent scaling is now handled by InteractiveImagePanel
+		onImageIndexChange?.(newIndex);
+		// Reset zoom when switching between different images in the gallery
+		// This is expected behavior - user wants fresh view of each image
+		resetPanZoomState(true);
 	}
 
 	// Slider comparison functions
@@ -164,6 +193,47 @@
 			document.removeEventListener('mouseup', handleGlobalMouseUp);
 		};
 	});
+
+	// Download original image functionality
+	function downloadOriginal(file: File | null, imageUrl: string | null) {
+		if (!file && !imageUrl) {
+			console.warn('No file or image URL available for download');
+			return;
+		}
+
+		// If we have the original file, download it directly
+		if (file) {
+			const link = document.createElement('a');
+			const url = URL.createObjectURL(file);
+			link.href = url;
+			link.download = file.name;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+			return;
+		}
+
+		// If we only have an image URL (like from originalImageUrls),
+		// try to download it
+		if (imageUrl) {
+			try {
+				const link = document.createElement('a');
+				link.href = imageUrl;
+				// Try to extract filename from URL or use generic name
+				const urlPath = new URL(imageUrl).pathname;
+				const filename = urlPath.split('/').pop() || 'original-image';
+				link.download = filename;
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+			} catch (error) {
+				console.warn('Failed to download original image:', error);
+				// Fallback: open in new tab
+				window.open(imageUrl, '_blank');
+			}
+		}
+	}
 </script>
 
 <!-- Side-by-Side Preview -->
@@ -178,6 +248,7 @@
 		{viewMode}
 		{hasResult}
 		{canConvert}
+		{canDownload}
 		{isProcessing}
 		onImageIndexChange={handleImageIndexChange}
 		onViewModeToggle={toggleViewMode}
@@ -185,7 +256,7 @@
 		{onAbort}
 		{onReset}
 		{onAddMore}
-		{onRemoveFile}
+		onRemoveFile={onRemoveFile || ((_index: number) => {})}
 		{isPanicked}
 		{onEmergencyRecovery}
 		{settingsSyncMode}
@@ -195,10 +266,12 @@
 	<!-- Image Comparison Content -->
 	{#if viewMode === 'slider' && hasResult && currentImageUrl && currentSvgUrl}
 		<!-- Slider Comparison Mode -->
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			bind:this={sliderContainer}
 			class="relative aspect-video overflow-hidden bg-gray-50"
-			role="img"
+			role="application"
 			aria-label="Interactive image comparison slider"
 			tabindex="0"
 			onkeydown={handleKeydown}
@@ -312,15 +385,22 @@
 			<!-- Original Image -->
 			<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
-					<!-- Sync Controls -->
+					<!-- Original Frame Header with Controls -->
 					<div class="mb-3 flex items-center justify-between px-2">
 						<div class="flex items-center gap-2">
-							<span class="text-converter-primary text-sm font-medium">Original</span>
+							<span class="text-converter-primary text-sm font-medium select-none">Original</span>
 							<button
-								class="text-converter-primary hover:text-ferrari-600 transition-colors duration-200 {panZoomStore.isSyncEnabled
+								class="text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {panZoomStore.isSyncEnabled
 									? 'text-ferrari-600'
 									: 'text-gray-400'}"
-								onclick={panZoomStore.toggleSync}
+								onclick={() => {
+									console.log('🔄 [PreviewComparison] Sync button clicked:', {
+										currentSync: panZoomStore.isSyncEnabled,
+										originalState: panZoomStore.originalState,
+										convertedState: panZoomStore.convertedState
+									});
+									panZoomStore.toggleSync();
+								}}
 								aria-label={panZoomStore.isSyncEnabled ? 'Disable sync' : 'Enable sync'}
 								title={panZoomStore.isSyncEnabled
 									? 'Views are synchronized'
@@ -333,19 +413,99 @@
 								{/if}
 							</button>
 						</div>
+
+						<!-- Original Frame Controls -->
+						<div class="flex gap-1">
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Zoom out original panel
+									panZoomStore.updateOriginalState({
+										...panZoomStore.originalState,
+										scale: Math.max(0.1, panZoomStore.originalState.scale / 1.2)
+									});
+								}}
+								aria-label="Zoom out"
+								title="Zoom out"
+							>
+								<ZoomOut class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Zoom in original panel
+									panZoomStore.updateOriginalState({
+										...panZoomStore.originalState,
+										scale: Math.min(5.0, panZoomStore.originalState.scale * 1.2)
+									});
+								}}
+								aria-label="Zoom in"
+								title="Zoom in"
+							>
+								<ZoomIn class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Reset original panel view
+									panZoomStore.updateOriginalState({ scale: 1, x: 0, y: 0 });
+								}}
+								aria-label="Reset view"
+								title="Reset view"
+							>
+								<Maximize2 class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => downloadOriginal(currentFile, currentImageUrl)}
+								aria-label="Download original"
+								title="Download original image"
+							>
+								<Download class="h-4 w-4" />
+							</Button>
+						</div>
 					</div>
+
+					<!-- File Name and Remove Button -->
+					{#if currentFile}
+						<div class="mb-2 flex items-center justify-between px-2">
+							<span
+								class="text-converter-secondary max-w-[70%] truncate text-xs"
+								title={currentFile.name}
+							>
+								{currentFile.name}
+							</span>
+							<button
+								class="ml-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:scale-110 hover:text-red-500"
+								onclick={() => onRemoveFile?.(currentImageIndex)}
+								disabled={isProcessing}
+								aria-label="Remove image"
+								title="Remove this image"
+							>
+								×
+							</button>
+						</div>
+					{/if}
 
 					<InteractiveImagePanel
 						imageUrl={currentImageUrl}
 						imageAlt={currentFile?.name || 'Original image'}
-						title={currentFile?.name || 'Original'}
-						onRemove={currentFile ? () => onRemoveFile(currentImageIndex) : undefined}
-						showRemoveButton={Boolean(currentFile)}
+						title=""
+						showRemoveButton={false}
 						{isProcessing}
 						className="flex-1"
-						externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.convertedState : undefined}
+						externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}
 						onPanZoomChange={(state) => panZoomStore.updateOriginalState(state)}
 						enableSync={panZoomStore.isSyncEnabled}
+						hideControls={true}
 					/>
 				</div>
 			</div>
@@ -353,33 +513,228 @@
 			<!-- Converted SVG -->
 			<div class="bg-ferrari-50/30 dark:bg-ferrari-950/30 relative aspect-square">
 				<div class="absolute inset-4 flex flex-col">
+					<!-- Converted Frame Header with Controls -->
 					<div class="mb-3 flex items-center justify-between px-2">
-						<div class="text-converter-primary text-sm font-medium">Converted SVG</div>
-						<!-- Download Button (only show when result is available) -->
-						{#if hasResult && canDownload}
-							<Button
-								variant="ferrari"
-								size="sm"
-								class="transition-all duration-200 hover:-translate-y-0.5 hover:scale-105 hover:shadow-lg active:translate-y-0 active:scale-95"
-								onclick={onDownload}
-								disabled={isProcessing}
+						<div class="flex items-center gap-2">
+							<span
+								class="text-sm font-medium select-none"
+								class:text-red-600={isError}
+								class:text-converter-primary={!isError}
 							>
-								<Download class="h-4 w-4 transition-transform group-hover:scale-110" />
-								Download
+								{isError ? 'Failed' : 'Converted'}
+							</span>
+
+							<!-- Preview Mode Toggle next to title -->
+							{#if hasResult && !isError && currentResult?.svg}
+								<button
+									class="text-converter-primary hover:text-ferrari-600 transition-all duration-200 hover:scale-110 {useAdvancedPreview
+										? 'text-ferrari-600'
+										: 'text-gray-400'}"
+									onclick={() => {
+										console.log('🔄 [PreviewComparison] Switching preview mode:', {
+											from: useAdvancedPreview ? 'Advanced' : 'Raw SVG',
+											to: !useAdvancedPreview ? 'Advanced' : 'Raw SVG',
+											currentSync: panZoomStore.isSyncEnabled,
+											originalState: panZoomStore.originalState,
+											convertedState: panZoomStore.convertedState
+										});
+										useAdvancedPreview = !useAdvancedPreview;
+									}}
+									disabled={isProcessing}
+									title={useAdvancedPreview
+										? 'Switch to raw SVG view'
+										: 'Switch to optimized WebP view'}
+								>
+									{#if useAdvancedPreview}
+										<Activity class="h-4 w-4" />
+									{:else}
+										<Image class="h-4 w-4" />
+									{/if}
+								</button>
+							{/if}
+						</div>
+
+						<!-- Converted Frame Controls -->
+						<div class="flex gap-1">
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Zoom out converted panel
+									panZoomStore.updateConvertedState({
+										...panZoomStore.convertedState,
+										scale: Math.max(0.1, panZoomStore.convertedState.scale / 1.2)
+									});
+								}}
+								disabled={!hasResult}
+								aria-label="Zoom out"
+								title="Zoom out"
+							>
+								<ZoomOut class="h-4 w-4" />
 							</Button>
-						{/if}
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Zoom in converted panel
+									panZoomStore.updateConvertedState({
+										...panZoomStore.convertedState,
+										scale: Math.min(5.0, panZoomStore.convertedState.scale * 1.2)
+									});
+								}}
+								disabled={!hasResult}
+								aria-label="Zoom in"
+								title="Zoom in"
+							>
+								<ZoomIn class="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="icon"
+								class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+								onclick={() => {
+									// Reset converted panel view
+									panZoomStore.updateConvertedState({ scale: 1, x: 0, y: 0 });
+								}}
+								disabled={!hasResult}
+								aria-label="Reset view"
+								title="Reset view"
+							>
+								<Maximize2 class="h-4 w-4" />
+							</Button>
+							{#if onDownload && hasResult}
+								<Button
+									variant="outline"
+									size="icon"
+									class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+									onclick={onDownload}
+									disabled={isProcessing}
+									aria-label="Download SVG"
+									title="Download SVG"
+								>
+									<Download class="h-4 w-4" />
+								</Button>
+							{/if}
+						</div>
 					</div>
 
 					{#if hasResult && currentSvgUrl}
-						<InteractiveImagePanel
-							imageUrl={currentSvgUrl}
-							imageAlt="Converted SVG"
-							{isProcessing}
-							className="flex-1"
-							externalPanZoom={panZoomStore.isSyncEnabled ? panZoomStore.originalState : undefined}
-							onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
-							enableSync={panZoomStore.isSyncEnabled}
-						/>
+						<!-- Use conditional rendering instead of CSS hide/show to prevent both components from being active -->
+						<div class="relative flex-1">
+							<!-- Advanced Preview (WebP optimized) -->
+							{#if currentResult?.svg && useAdvancedPreview}
+								<div class="absolute inset-0">
+									<AdvancedSvgPreview
+										svgContent={currentResult.svg}
+										backend={currentResult.config_used?.backend || 'edge'}
+										className="flex-1"
+										showControls={true}
+										{onDownload}
+										externalPanZoom={panZoomStore.isSyncEnabled
+											? panZoomStore.convertedState
+											: undefined}
+										onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
+										enableSync={panZoomStore.isSyncEnabled}
+									/>
+								</div>
+							{/if}
+
+							<!-- Raw SVG View (Blob optimized) -->
+							{#if currentResult?.svg && !useAdvancedPreview}
+								<!-- Controls Header for Raw SVG View - moved outside absolute container -->
+								<div class="mb-3 flex items-center justify-between px-2">
+									<div class="flex items-center gap-2">
+										<!-- Empty space for alignment -->
+									</div>
+									<!-- Control buttons matching AdvancedSvgPreview style -->
+									<div class="flex gap-1">
+										<Button
+											variant="outline"
+											size="icon"
+											class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+											onclick={() => svgImageViewer?.zoomOut()}
+											disabled={false}
+											aria-label="Zoom out"
+											title="Zoom out (- key)"
+										>
+											<ZoomOut class="h-4 w-4" />
+										</Button>
+										<Button
+											variant="outline"
+											size="icon"
+											class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+											onclick={() => svgImageViewer?.zoomIn()}
+											disabled={false}
+											aria-label="Zoom in"
+											title="Zoom in (+ key)"
+										>
+											<ZoomIn class="h-4 w-4" />
+										</Button>
+										<Button
+											variant="outline"
+											size="icon"
+											class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+											onclick={() => svgImageViewer?.resetView()}
+											disabled={false}
+											aria-label="Reset view"
+											title="Reset view (0 key)"
+										>
+											<Maximize2 class="h-4 w-4" />
+										</Button>
+										{#if onDownload}
+											<Button
+												variant="outline"
+												size="icon"
+												class="border-ferrari-300 dark:border-ferrari-600 dark:bg-ferrari-900/90 dark:hover:bg-ferrari-800 hover:border-ferrari-400 dark:hover:border-ferrari-500 h-8 w-8 rounded bg-white/90 transition-all duration-200 hover:scale-110 hover:bg-white hover:shadow-md active:scale-95"
+												onclick={onDownload}
+												disabled={isProcessing}
+												aria-label="Download SVG"
+												title="Download SVG"
+											>
+												<Download class="h-4 w-4" />
+											</Button>
+										{/if}
+									</div>
+								</div>
+
+								<!-- SvgImageViewer in absolute container -->
+								<div class="absolute inset-0">
+									<SvgImageViewer
+										bind:this={svgImageViewer}
+										svgContent={currentResult.svg}
+										renderMethod="blob"
+										alt="Raw SVG Preview"
+										minScale={0.1}
+										maxScale={5.0}
+										scaleSmoothing={800}
+										externalPanZoom={panZoomStore.isSyncEnabled
+											? panZoomStore.convertedState
+											: undefined}
+										onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
+										enableSync={panZoomStore.isSyncEnabled}
+									/>
+								</div>
+							{:else if !useAdvancedPreview}
+								<!-- Fallback for when no SVG content is available -->
+								<div class="absolute inset-0">
+									<InteractiveImagePanel
+										imageUrl={currentSvgUrl}
+										imageAlt="Converted SVG"
+										title=""
+										{isProcessing}
+										className="flex-1"
+										externalPanZoom={panZoomStore.isSyncEnabled
+											? panZoomStore.convertedState
+											: undefined}
+										onPanZoomChange={(state) => panZoomStore.updateConvertedState(state)}
+										enableSync={panZoomStore.isSyncEnabled}
+										hideControls={true}
+									/>
+								</div>
+							{/if}
+						</div>
 					{:else if currentProgress}
 						<div
 							class="dark:bg-ferrari-900 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-white"
@@ -406,14 +761,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.filename-display {
-		word-break: break-all;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-		max-width: 200px;
-	}
-</style>

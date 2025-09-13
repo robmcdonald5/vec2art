@@ -7,16 +7,19 @@
 		ChevronRight,
 		FileImage,
 		Play,
-		Download,
-		RotateCcw
+		Download
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import {
+		createManagedObjectURL,
+		releaseManagedObjectURL
+	} from '$lib/utils/object-url-manager.js';
 
 	interface Props {
 		accept?: string;
 		maxSize?: number; // in bytes
 		maxFiles?: number; // maximum number of files
-		onFilesSelect?: (files: File[]) => void;
+		onFilesSelect?: (_files: File[]) => void;
 		disabled?: boolean;
 		currentFiles?: File[];
 		// Converter actions
@@ -31,7 +34,7 @@
 
 	let {
 		accept = 'image/*',
-		maxSize = 10 * 1024 * 1024, // 10MB
+		maxSize = 1 * 1024 * 1024 * 1024, // 1GB
 		maxFiles = 5,
 		onFilesSelect,
 		disabled = false,
@@ -42,7 +45,7 @@
 		isProcessing = false,
 		onConvert,
 		onDownload,
-		onReset,
+		onReset: _onReset,
 		onAbort
 	}: Props = $props();
 
@@ -51,6 +54,36 @@
 	let announceText = $state<string>('');
 	let errorMessage = $state<string>('');
 	let currentPreviewIndex = $state(0);
+
+	// Managed object URL state
+	let previousPreviewFile: File | null = null;
+	let previewObjectUrl = $state<string | null>(null);
+
+	// Derived current preview file
+	const currentPreviewFile = $derived(currentFiles[currentPreviewIndex] || null);
+
+	// Effect to manage preview object URL lifecycle
+	$effect(() => {
+		// If preview file changed, clean up previous URL and create new one
+		if (currentPreviewFile !== previousPreviewFile) {
+			// Clean up previous URL
+			if (previewObjectUrl && previousPreviewFile) {
+				releaseManagedObjectURL(previewObjectUrl);
+			}
+
+			// Create new URL for current preview file
+			previewObjectUrl = currentPreviewFile ? createManagedObjectURL(currentPreviewFile) : null;
+			previousPreviewFile = currentPreviewFile;
+		}
+
+		// Cleanup on component unmount
+		return () => {
+			if (previewObjectUrl) {
+				releaseManagedObjectURL(previewObjectUrl);
+				previewObjectUrl = null;
+			}
+		};
+	});
 
 	// Accessibility functions
 	function announceToScreenReader(message: string) {
@@ -61,10 +94,10 @@
 	}
 
 	// Prevent event bubbling helper
-	function withEventPrevention<T extends any[]>(fn: (...args: T) => void) {
-		return (event: Event, ...args: T) => {
+	function withEventPrevention<T extends any[]>(fn: (..._args: T) => void) {
+		return (event: Event, ..._args: T) => {
 			event.stopPropagation();
-			fn(...args);
+			fn(..._args);
 		};
 	}
 
@@ -372,7 +405,7 @@
 
 				<!-- File List -->
 				<div class="bg-muted/10 max-h-32 space-y-1 overflow-y-auto rounded-md border p-2">
-					{#each currentFiles as file, index}
+					{#each currentFiles as file, index (index)}
 						<div
 							class="flex items-center justify-between rounded p-2 {index === currentPreviewIndex
 								? 'bg-primary/10 border-primary/20 border'
@@ -449,10 +482,10 @@
 					</div>
 
 					<div class="bg-muted/30 flex min-h-[200px] items-center justify-center rounded-lg p-4">
-						{#if currentFiles[currentPreviewIndex]}
+						{#if previewObjectUrl && currentPreviewFile}
 							<img
-								src={URL.createObjectURL(currentFiles[currentPreviewIndex])}
-								alt="Preview of {currentFiles[currentPreviewIndex].name}"
+								src={previewObjectUrl}
+								alt="Preview of {currentPreviewFile.name}"
 								class="max-h-48 max-w-full rounded object-contain"
 							/>
 						{/if}
@@ -480,7 +513,9 @@
 				Drag and drop your images here, or click to browse
 			</p>
 			<p class="text-muted-foreground mt-1 text-xs" id="file-upload-instructions">
-				Supports PNG, JPG, WebP up to {Math.round(maxSize / (1024 * 1024))}MB per file • Maximum {maxFiles}
+				Supports PNG, JPG, WebP, TIFF, BMP, GIF, AVIF up to {maxSize >= 1024 * 1024 * 1024
+					? Math.round(maxSize / (1024 * 1024 * 1024)) + 'GB'
+					: Math.round(maxSize / (1024 * 1024)) + 'MB'} per file • Maximum {maxFiles}
 				files
 			</p>
 			<Button

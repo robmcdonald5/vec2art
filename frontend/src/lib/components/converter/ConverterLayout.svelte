@@ -3,7 +3,6 @@
 		Settings,
 		Play,
 		Download,
-		RotateCcw,
 		ChevronDown,
 		ChevronUp,
 		Sliders,
@@ -14,11 +13,14 @@
 		RefreshCw
 	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { lockBodyScroll } from '$lib/utils/scroll-lock';
+	import { onDestroy } from 'svelte';
 	import type {
 		VectorizerConfig,
 		VectorizerBackend,
 		VectorizerPreset
 	} from '$lib/types/vectorizer';
+	import type { StylePreset } from '$lib/presets/types';
 	import type { PerformanceMode } from '$lib/utils/performance-monitor';
 	import { performanceMonitor, getOptimalThreadCount } from '$lib/utils/performance-monitor';
 	import BackendSelector from './BackendSelector.svelte';
@@ -76,10 +78,11 @@
 	let isQuickSettingsExpanded = $state(true);
 	let isAdvancedSettingsExpanded = $state(false);
 	let isMobileMenuOpen = $state(false);
+	let unlockScroll: (() => void) | null = null;
 
 	// Performance state
 	let currentPerformanceMode = $state<PerformanceMode>(performanceMode);
-	let currentThreadCount = $state(threadCount);
+	let currentThreadCount = $state(threadCount || 0);
 	const systemCapabilities = performanceMonitor.getSystemCapabilities();
 
 	// Simple button click handlers with explicit logging
@@ -110,6 +113,43 @@
 		isMobileMenuOpen = false;
 	}
 
+	// Manage scroll lock when mobile settings overlay state changes
+	$effect(() => {
+		console.debug(
+			'[ConverterLayout] Mobile menu effect triggered - isMobileMenuOpen:',
+			isMobileMenuOpen
+		);
+
+		if (isMobileMenuOpen && !unlockScroll) {
+			// Lock body scroll when mobile settings opens
+			console.debug('[ConverterLayout] Locking scroll for mobile settings');
+			unlockScroll = lockBodyScroll();
+		} else if (!isMobileMenuOpen && unlockScroll) {
+			// Unlock body scroll when mobile settings closes
+			console.debug('[ConverterLayout] Unlocking scroll for mobile settings');
+			unlockScroll();
+			unlockScroll = null;
+		}
+
+		// Return cleanup function for when effect re-runs or component unmounts
+		return () => {
+			if (unlockScroll) {
+				console.debug('[ConverterLayout] Effect cleanup - unlocking scroll');
+				unlockScroll();
+				unlockScroll = null;
+			}
+		};
+	});
+
+	// Safety cleanup: ensure body scroll is restored when component unmounts
+	onDestroy(() => {
+		console.debug('[ConverterLayout] Component destroying - cleaning up scroll lock');
+		if (unlockScroll) {
+			unlockScroll();
+			unlockScroll = null;
+		}
+	});
+
 	// Thread count handler
 	function updateThreadCount(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -136,6 +176,17 @@
 			onConfigChange({ [key]: value } as Partial<VectorizerConfig>);
 			onParameterChange();
 		};
+	}
+
+	// Helper function to generate performance button classes
+	function getPerformanceButtonClass(mode: PerformanceMode): string {
+		const baseClass =
+			'rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none';
+		const activeClass = 'bg-blue-600 text-white';
+		const inactiveClass =
+			'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600';
+
+		return `${baseClass} ${currentPerformanceMode === mode ? activeClass : inactiveClass}`;
 	}
 </script>
 
@@ -174,7 +225,10 @@
 				<div class="mt-4 space-y-4">
 					<!-- Algorithm Selection -->
 					<div>
-						<label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<label
+							for="backend-selector"
+							class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+						>
 							Algorithm
 						</label>
 						<BackendSelector
@@ -187,15 +241,17 @@
 
 					<!-- Style Preset -->
 					<div>
-						<label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<label
+							for="preset-selector"
+							class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+						>
 							Style Preset
 						</label>
 						<PresetSelector
-							{selectedPreset}
-							{onPresetChange}
+							selectedPresetId={selectedPreset}
+							onPresetSelect={(preset: StylePreset | null) =>
+								onPresetChange((preset?.metadata.id as VectorizerPreset) || 'custom')}
 							disabled={isProcessing}
-							isCustom={selectedPreset === 'custom'}
-							compact={true}
 						/>
 					</div>
 
@@ -203,10 +259,14 @@
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<!-- Detail Level -->
 						<div>
-							<label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+							<label
+								for="detail-level"
+								class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+							>
 								Detail Level
 							</label>
 							<input
+								id="detail-level"
 								type="range"
 								min="0.1"
 								max="1"
@@ -225,10 +285,14 @@
 
 						<!-- Line Width / Dot Width -->
 						<div>
-							<label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+							<label
+								for="stroke-width"
+								class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+							>
 								{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
 							</label>
 							<input
+								id="stroke-width"
 								type="range"
 								min="0.5"
 								max="5"
@@ -300,17 +364,19 @@
 
 						<!-- Performance Mode Buttons -->
 						<div class="space-y-3">
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-								Performance Mode
-							</label>
 							<div
+								id="performance-mode-legend"
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+							>
+								Performance Mode
+							</div>
+							<div
+								role="radiogroup"
+								aria-labelledby="performance-mode-legend"
 								class="grid grid-cols-2 gap-2 rounded-md bg-gray-100 p-1 lg:grid-cols-4 dark:bg-gray-800"
 							>
 								<button
-									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
-									'economy'
-										? 'bg-blue-600 text-white'
-										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class={getPerformanceButtonClass('economy')}
 									onclick={() => clickPerformanceMode('economy')}
 									disabled={isProcessing}
 									type="button"
@@ -318,10 +384,7 @@
 									Economy
 								</button>
 								<button
-									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
-									'balanced'
-										? 'bg-blue-600 text-white'
-										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class={getPerformanceButtonClass('balanced')}
 									onclick={() => clickPerformanceMode('balanced')}
 									disabled={isProcessing}
 									type="button"
@@ -329,10 +392,7 @@
 									Balanced
 								</button>
 								<button
-									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
-									'performance'
-										? 'bg-blue-600 text-white'
-										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class={getPerformanceButtonClass('performance')}
 									onclick={() => clickPerformanceMode('performance')}
 									disabled={isProcessing}
 									type="button"
@@ -341,14 +401,12 @@
 									Performance
 								</button>
 								<button
-									class="rounded px-3 py-2 text-xs font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none {currentPerformanceMode ===
-									'custom'
-										? 'bg-blue-600 text-white'
-										: 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
+									class={getPerformanceButtonClass('custom')}
 									onclick={() => clickPerformanceMode('custom')}
 									disabled={isProcessing}
 									type="button"
 								>
+									<Cpu class="mr-1 inline h-3 w-3" />
 									Custom
 								</button>
 							</div>
@@ -374,8 +432,9 @@
 						{#if currentPerformanceMode === 'custom'}
 							<div class="mt-4 space-y-2">
 								<div class="flex items-center justify-between">
-									<label class="text-sm font-medium text-gray-700 dark:text-gray-300"
-										>Thread Count</label
+									<label
+										for="thread-count"
+										class="text-sm font-medium text-gray-700 dark:text-gray-300">Thread Count</label
 									>
 									<span
 										class="rounded bg-gray-100 px-2 py-1 text-left font-mono text-xs dark:bg-gray-800"
@@ -383,6 +442,7 @@
 									>
 								</div>
 								<input
+									id="thread-count"
 									type="range"
 									min="1"
 									max={systemCapabilities.cores}
@@ -398,13 +458,13 @@
 							</div>
 						{/if}
 					</div>
-
-					<!-- Parameter Panel -->
-					<ParameterPanel {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
-
-					<!-- Advanced Controls -->
-					<AdvancedControls {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
 				</div>
+
+				<!-- Parameter Panel -->
+				<ParameterPanel {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
+
+				<!-- Advanced Controls -->
+				<AdvancedControls {config} {onConfigChange} disabled={isProcessing} {onParameterChange} />
 			{/if}
 		</div>
 	</div>
@@ -481,10 +541,10 @@
 
 					<!-- Style Preset Selection -->
 					<PresetSelector
-						{selectedPreset}
-						{onPresetChange}
+						selectedPresetId={selectedPreset}
+						onPresetSelect={(preset: StylePreset | null) =>
+							onPresetChange((preset?.metadata.id as VectorizerPreset) || 'custom')}
 						disabled={isProcessing}
-						isCustom={selectedPreset === 'custom'}
 					/>
 
 					<!-- Essential Parameters -->

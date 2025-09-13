@@ -5,14 +5,74 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta
 			name="description"
-			content="Transform raster images into expressive line art SVGs with vec2art"
+			content="Transform raster images into expressive line art SVGs with vec2art - High-performance browser-based vectorization powered by WebAssembly"
 		/>
-		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+		<meta
+			name="keywords"
+			content="SVG converter, image vectorization, line art, WebAssembly, image to SVG, vector graphics"
+		/>
+		<meta name="author" content="vec2art" />
+
+		<!-- Favicon -->
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
+		<link rel="icon" href="%sveltekit.assets%/favicon-32x32.svg" sizes="32x32" type="image/svg+xml" />
+		<link rel="icon" href="%sveltekit.assets%/favicon-16x16.svg" sizes="16x16" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/app-icon-192.svg" />
+
+		<!-- PWA -->
 		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
-		<meta name="theme-color" content="#020817" />
+		<meta name="theme-color" content="#DC143C" />
+
+		<!-- Open Graph / Facebook -->
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="vec2art - Transform Images into SVG Art" />
+		<meta
+			property="og:description"
+			content="High-performance browser-based tool that converts images into expressive, hand-drawn style SVG graphics"
+		/>
+		<meta property="og:image" content="%sveltekit.assets%/og-image.png" />
+
+		<!-- Twitter -->
+		<meta property="twitter:card" content="summary_large_image" />
+		<meta property="twitter:title" content="vec2art - Transform Images into SVG Art" />
+		<meta
+			property="twitter:description"
+			content="High-performance browser-based tool that converts images into expressive, hand-drawn style SVG graphics"
+		/>
+		<meta property="twitter:image" content="%sveltekit.assets%/og-image.png" />
+
+		<!-- Resource Hints for Performance (Core Web Vitals) -->
+		<!-- DNS Prefetch for faster resolution -->
+		<link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+		<link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+		<link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
+
+		<!-- Preconnect for critical third-party origins -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+		<!-- Preload critical resources -->
+		<link rel="preload" href="%sveltekit.assets%/favicon.svg" as="image" type="image/svg+xml" />
+
+		<!-- Prefetch WASM module for converter page -->
+		<link rel="prefetch" href="/wasm/vectorize_wasm_bg.wasm" as="fetch" crossorigin />
+		<link rel="modulepreload" href="/wasm/vectorize_wasm.js" />
+
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover" class="min-h-dvh">
 		<div style="display: contents">%sveltekit.body%</div>
+
+		<!-- Service Worker Registration -->
+		<script>
+			if ('serviceWorker' in navigator && !location.hostname.includes('localhost')) {
+				window.addEventListener('load', () => {
+					navigator.serviceWorker
+						.register('/service-worker.js')
+						.then((reg) => console.log('SW registered'))
+						.catch((err) => console.error('SW registration failed:', err));
+				});
+			}
+		</script>
 	</body>
 </html>

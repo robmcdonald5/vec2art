@@ -15,6 +15,7 @@ extern "C" {
 }
 
 /// Set up better panic messages in debug mode
+#[allow(dead_code)] // Utility function for debugging
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
     // `set_panic_hook` function at least once during initialization, and then
@@ -27,11 +28,13 @@ pub fn set_panic_hook() {
 }
 
 /// Start a console timer with the given name
+#[allow(dead_code)] // Utility function for performance debugging
 pub fn console_time(name: &str) {
     time(name);
 }
 
 /// End a console timer with the given name
+#[allow(dead_code)] // Utility function for performance debugging
 pub fn console_time_end(name: &str) {
     timeEnd(name);
 }

@@ -29,9 +29,18 @@ export function validateImageFile(
 	} = {}
 ): FileValidationResult {
 	const {
-		maxSize = 10 * 1024 * 1024, // 10MB default
-		allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
-		allowedExtensions = ['.png', '.jpg', '.jpeg', '.webp']
+		maxSize = 1 * 1024 * 1024 * 1024, // 1GB default
+		allowedTypes = [
+			'image/png',
+			'image/jpeg',
+			'image/jpg',
+			'image/webp',
+			'image/tiff',
+			'image/bmp',
+			'image/gif',
+			'image/avif'
+		],
+		allowedExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.tiff', '.tif', '.bmp', '.gif', '.avif']
 	} = options;
 
 	const warnings: string[] = [];
@@ -66,8 +75,11 @@ export function validateImageFile(
 		warnings.push('File is very small and may not contain enough detail for processing');
 	}
 
-	if (file.size > 5 * 1024 * 1024) {
-		warnings.push('Large file may take longer to process');
+	if (file.size > 10 * 1024 * 1024) {
+		const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+		warnings.push(
+			`Large file detected (${sizeMB}MB). Processing time may be significantly longer than usual.`
+		);
 	}
 
 	return {
@@ -231,9 +243,9 @@ export function downloadBlob(blob: Blob, filename: string): void {
 	a.download = filename;
 	a.style.display = 'none';
 
-	document.body.appendChild(a);
+	document.body.appendChild(a as Node);
 	a.click();
-	document.body.removeChild(a);
+	document.body.removeChild(a as Node);
 
 	// Clean up the URL object
 	setTimeout(() => URL.revokeObjectURL(url), 100);
@@ -415,13 +427,22 @@ export const FILE_SIZE_LIMITS = {
 	SMALL: 1 * 1024 * 1024, // 1MB
 	MEDIUM: 5 * 1024 * 1024, // 5MB
 	LARGE: 10 * 1024 * 1024, // 10MB
-	XLARGE: 50 * 1024 * 1024 // 50MB
+	XLARGE: 50 * 1024 * 1024, // 50MB
+	MAXIMUM: 1 * 1024 * 1024 * 1024 // 1GB
 } as const;
 
 /**
  * Supported image formats
  */
 export const SUPPORTED_IMAGE_FORMATS = {
-	types: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
-	extensions: ['.png', '.jpg', '.jpeg', '.webp']
+	types: [
+		'image/png',
+		'image/jpeg',
+		'image/jpg',
+		'image/webp',
+		'image/tiff',
+		'image/bmp',
+		'image/gif'
+	],
+	extensions: ['.png', '.jpg', '.jpeg', '.webp', '.tiff', '.tif', '.bmp', '.gif']
 } as const;

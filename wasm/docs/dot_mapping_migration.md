@@ -17,13 +17,13 @@ The dot mapping system provides a reliable alternative to the problematic ETF/FD
 
 ### Key Migration Benefits
 
-| Aspect | Line Tracing Issues | Dot Mapping Advantages |
-|--------|-------------------|------------------------|
-| **Reliability** | ETF/FDoG failures, unpredictable results | >95% success rate across image types |
-| **Performance** | Complex algorithms, variable timing | Consistent <1.5s processing times |
-| **Quality** | Artifacts, incomplete paths, noise | Clean, predictable dot patterns |
-| **Artistic Control** | Limited style options | 5 distinct artistic styles + customization |
-| **Maintenance** | Complex algorithm debugging | Simple, well-understood dot placement |
+| Aspect               | Line Tracing Issues                      | Dot Mapping Advantages                     |
+| -------------------- | ---------------------------------------- | ------------------------------------------ |
+| **Reliability**      | ETF/FDoG failures, unpredictable results | >95% success rate across image types       |
+| **Performance**      | Complex algorithms, variable timing      | Consistent <1.5s processing times          |
+| **Quality**          | Artifacts, incomplete paths, noise       | Clean, predictable dot patterns            |
+| **Artistic Control** | Limited style options                    | 5 distinct artistic styles + customization |
+| **Maintenance**      | Complex algorithm debugging              | Simple, well-understood dot placement      |
 
 ### Migration Strategy Types
 
@@ -37,10 +37,11 @@ The dot mapping system provides a reliable alternative to the problematic ETF/FD
 ### Strong Migration Candidates
 
 #### 1. Images with Line Tracing Problems
+
 ```bash
 # Common problematic cases for line tracing:
 # - Complex textures causing ETF instability
-# - Fine details lost in FDoG processing  
+# - Fine details lost in FDoG processing
 # - Noisy images producing path artifacts
 # - Images with subtle gradients
 
@@ -49,6 +50,7 @@ vectorize-cli trace-low --backend dots --dot-density 0.1 problem_image.png outpu
 ```
 
 #### 2. Performance-Critical Applications
+
 ```bash
 # Line tracing performance issues:
 # - Unpredictable processing times (0.5s to 30s+)
@@ -61,6 +63,7 @@ vectorize-cli trace-low --backend dots input.png output.svg
 ```
 
 #### 3. Artistic Style Requirements
+
 ```bash
 # Limited line tracing styles vs rich dot mapping options:
 
@@ -86,6 +89,7 @@ vectorize-cli trace-low --backend dots --dot-density 0.1 --dot-size-range "0.8,2
 ### Direct Parameter Equivalents
 
 #### Detail Level Mapping
+
 ```bash
 # Line tracing detail parameter → Dot mapping density
 --detail 0.1  →  --dot-density 0.3    # Low detail
@@ -97,17 +101,19 @@ vectorize-cli trace-low --backend dots --dot-density 0.1 --dot-size-range "0.8,2
 **Note**: Dot density threshold works inversely to line detail - lower values produce more dots (higher detail).
 
 #### Stroke Width to Dot Size
+
 ```bash
 # Stroke width correlates to dot size range
 --stroke-width 0.8  →  --dot-size-range "0.3,1.0"   # Fine lines
 --stroke-width 1.2  →  --dot-size-range "0.5,2.0"   # Medium lines (default)
---stroke-width 2.0  →  --dot-size-range "1.0,3.5"   # Bold lines  
+--stroke-width 2.0  →  --dot-size-range "1.0,3.5"   # Bold lines
 --stroke-width 3.0  →  --dot-size-range "1.5,5.0"   # Very bold lines
 ```
 
 ### Advanced Parameter Mapping
 
 #### Multi-pass Line Tracing to Dot Styles
+
 ```bash
 # Complex line tracing configuration
 vectorize-cli trace-low --backend edge \
@@ -128,6 +134,7 @@ vectorize-cli trace-low --backend dots \
 ```
 
 #### Hand-Drawn Effects Migration
+
 ```bash
 # Line tracing with hand-drawn effects
 vectorize-cli trace-low --backend edge \
@@ -149,6 +156,7 @@ vectorize-cli trace-low --backend dots \
 ### Visual Quality Assessment
 
 #### Comparison Methodology
+
 ```rust
 // Example quality comparison workflow
 fn compare_line_vs_dot_quality(image: &RgbaImage) -> QualityComparison {
@@ -159,8 +167,8 @@ fn compare_line_vs_dot_quality(image: &RgbaImage) -> QualityComparison {
         ..Default::default()
     };
     let line_result = vectorize_trace_low_rgba(image, &line_config);
-    
-    // Generate dot mapping result  
+
+    // Generate dot mapping result
     let dot_config = TraceLowConfig {
         backend: TraceBackend::Dots,
         dot_density_threshold: 0.1,
@@ -169,7 +177,7 @@ fn compare_line_vs_dot_quality(image: &RgbaImage) -> QualityComparison {
         ..Default::default()
     };
     let dot_result = vectorize_trace_low_rgba(image, &dot_config);
-    
+
     QualityComparison {
         line_quality: assess_quality(&line_result, image),
         dot_quality: assess_quality(&dot_result, image),
@@ -180,19 +188,20 @@ fn compare_line_vs_dot_quality(image: &RgbaImage) -> QualityComparison {
 
 ### Quality Metrics Comparison
 
-| Metric | Line Tracing | Dot Mapping | Winner |
-|--------|-------------|-------------|---------|
-| **Detail Preservation** | Variable (60-90%) | Consistent (80-95%) | **Dots** |
-| **Artifact Frequency** | High (path noise) | Low (clean dots) | **Dots** |
-| **Color Fidelity** | Poor (single color) | Excellent (preserved) | **Dots** |
-| **Processing Reliability** | 70-85% success | 95%+ success | **Dots** |
-| **Style Flexibility** | Limited | Extensive (5 styles) | **Dots** |
-| **File Size** | Smaller (paths) | Larger (individual dots) | **Lines** |
-| **Scalability** | Infinite (vector) | Limited (bitmap-based) | **Lines** |
+| Metric                     | Line Tracing        | Dot Mapping              | Winner    |
+| -------------------------- | ------------------- | ------------------------ | --------- |
+| **Detail Preservation**    | Variable (60-90%)   | Consistent (80-95%)      | **Dots**  |
+| **Artifact Frequency**     | High (path noise)   | Low (clean dots)         | **Dots**  |
+| **Color Fidelity**         | Poor (single color) | Excellent (preserved)    | **Dots**  |
+| **Processing Reliability** | 70-85% success      | 95%+ success             | **Dots**  |
+| **Style Flexibility**      | Limited             | Extensive (5 styles)     | **Dots**  |
+| **File Size**              | Smaller (paths)     | Larger (individual dots) | **Lines** |
+| **Scalability**            | Infinite (vector)   | Limited (bitmap-based)   | **Lines** |
 
 ### Image Type Suitability
 
 #### Photographs
+
 ```bash
 # Line tracing often fails on photos due to complex gradients
 # Result: Incomplete paths, artifacts, poor quality
@@ -206,6 +215,7 @@ vectorize-cli trace-low --backend dots \
 ```
 
 #### Line Art and Logos
+
 ```bash
 # Line tracing works well for clean line art
 vectorize-cli trace-low --backend edge \
@@ -221,6 +231,7 @@ vectorize-cli trace-low --backend dots \
 ```
 
 #### Technical Drawings
+
 ```bash
 # Both approaches work, but dot mapping offers more control
 # Line tracing
@@ -239,6 +250,7 @@ vectorize-cli trace-low --backend dots \
 ### Phase 1: Assessment and Planning
 
 #### 1. Audit Current Line Tracing Usage
+
 ```bash
 # Create inventory of current line tracing commands
 # Example audit script:
@@ -250,13 +262,14 @@ grep -r "backend.*centerline\|superpixel" logs/ > problematic_cases.txt
 ```
 
 #### 2. Classify Images by Type
+
 ```rust
 // Categorize your image corpus
 fn classify_migration_priority(images: &[PathBuf]) -> MigrationPlan {
     let mut high_priority = Vec::new();    // Problematic for line tracing
     let mut medium_priority = Vec::new();  // Could benefit from dots
     let mut low_priority = Vec::new();     // Line tracing works well
-    
+
     for image_path in images {
         let classification = analyze_image_characteristics(image_path);
         match classification.complexity {
@@ -265,17 +278,18 @@ fn classify_migration_priority(images: &[PathBuf]) -> MigrationPlan {
             ImageComplexity::Low => low_priority.push(image_path.clone()),
         }
     }
-    
+
     MigrationPlan { high_priority, medium_priority, low_priority }
 }
 ```
 
 #### 3. Performance Baseline
+
 ```bash
 # Measure current line tracing performance
 time vectorize-cli trace-low --backend edge samples/*.png
 
-# Compare with dot mapping performance  
+# Compare with dot mapping performance
 time vectorize-cli trace-low --backend dots samples/*.png
 
 # Document timing differences for capacity planning
@@ -284,6 +298,7 @@ time vectorize-cli trace-low --backend dots samples/*.png
 ### Phase 2: Parameter Translation
 
 #### Create Migration Mapping Table
+
 ```rust
 // Define parameter translation rules
 struct MigrationMapping {
@@ -316,10 +331,11 @@ const MIGRATION_MAPPINGS: &[MigrationMapping] = &[
 ```
 
 #### Automated Parameter Conversion
+
 ```rust
 fn convert_line_config_to_dots(line_config: &TraceLowConfig) -> TraceLowConfig {
     let mapping = find_best_mapping(line_config.detail);
-    
+
     TraceLowConfig {
         backend: TraceBackend::Dots,
         dot_density_threshold: mapping.dot_density,
@@ -336,6 +352,7 @@ fn convert_line_config_to_dots(line_config: &TraceLowConfig) -> TraceLowConfig {
 ### Phase 3: Testing and Validation
 
 #### Side-by-Side Quality Testing
+
 ```bash
 #!/bin/bash
 # Migration testing script
@@ -346,21 +363,21 @@ mkdir -p "$RESULTS_DIR"
 
 for image in $TEST_IMAGES; do
     basename=$(basename "$image" .png)
-    
+
     # Generate line tracing result
     vectorize-cli trace-low --backend edge \
         --detail 0.3 \
         "$image" \
         "$RESULTS_DIR/${basename}_line.svg"
-    
-    # Generate dot mapping result  
+
+    # Generate dot mapping result
     vectorize-cli trace-low --backend dots \
         --dot-density 0.1 \
         --dot-size-range "0.5,2.0" \
         --preserve-colors \
         "$image" \
         "$RESULTS_DIR/${basename}_dots.svg"
-    
+
     echo "Processed: $basename"
 done
 
@@ -369,6 +386,7 @@ echo "Review side-by-side for quality assessment"
 ```
 
 #### Automated Quality Metrics
+
 ```rust
 // Automated quality comparison
 fn validate_migration_quality(
@@ -382,14 +400,14 @@ fn validate_migration_quality(
         color_accuracy: measure_color_fidelity(original, line_svg),
         file_size: line_svg.len(),
     };
-    
+
     let dot_metrics = QualityMetrics {
         detail_score: calculate_detail_preservation(original, dot_svg),
         artifact_score: count_visual_artifacts(dot_svg),
         color_accuracy: measure_color_fidelity(original, dot_svg),
         file_size: dot_svg.len(),
     };
-    
+
     ValidationReport {
         line_metrics,
         dot_metrics,
@@ -405,6 +423,7 @@ fn validate_migration_quality(
 ### Phase 4: Gradual Rollout
 
 #### Selective Backend Switching
+
 ```rust
 // Intelligent backend selection during migration
 fn select_backend_intelligently(
@@ -412,7 +431,7 @@ fn select_backend_intelligently(
     migration_phase: MigrationPhase
 ) -> TraceBackend {
     let image_analysis = analyze_image_complexity(image);
-    
+
     match migration_phase {
         MigrationPhase::Conservative => {
             // Only migrate clear problem cases
@@ -422,17 +441,17 @@ fn select_backend_intelligently(
                 TraceBackend::Edge
             }
         },
-        
+
         MigrationPhase::Aggressive => {
             // Migrate most cases, keep lines only for simple cases
-            if image_analysis.complexity == ImageComplexity::Low && 
+            if image_analysis.complexity == ImageComplexity::Low &&
                image_analysis.is_clean_line_art() {
                 TraceBackend::Edge
             } else {
                 TraceBackend::Dots
             }
         },
-        
+
         MigrationPhase::Complete => {
             // Always use dots
             TraceBackend::Dots
@@ -442,6 +461,7 @@ fn select_backend_intelligently(
 ```
 
 #### Feature Flag Implementation
+
 ```rust
 // Gradual rollout with feature flags
 struct MigrationConfig {
@@ -452,10 +472,10 @@ struct MigrationConfig {
 }
 
 fn process_with_migration_flags(
-    image: &RgbaImage, 
+    image: &RgbaImage,
     config: &MigrationConfig
 ) -> Result<String, ProcessingError> {
-    let use_dots = if config.force_dots_for_problem_cases && 
+    let use_dots = if config.force_dots_for_problem_cases &&
                       is_problematic_for_lines(image) {
         true
     } else if config.enable_dot_mapping {
@@ -463,7 +483,7 @@ fn process_with_migration_flags(
     } else {
         false
     };
-    
+
     if use_dots {
         match process_with_dots(image) {
             Ok(result) => Ok(result),
@@ -484,6 +504,7 @@ fn process_with_migration_flags(
 ### API Integration Changes
 
 #### Configuration Structure Updates
+
 ```rust
 // Before: Line tracing only
 struct OldConfig {
@@ -496,13 +517,13 @@ struct OldConfig {
 // After: Support both backends
 struct NewConfig {
     backend: TraceBackend,
-    
+
     // Line tracing settings
     detail: f32,
     stroke_width: f32,
     multipass: bool,
     hand_drawn: HandDrawnConfig,
-    
+
     // Dot mapping settings
     dot_density: f32,
     dot_size_range: (f32, f32),
@@ -512,6 +533,7 @@ struct NewConfig {
 ```
 
 #### Backward Compatibility Wrapper
+
 ```rust
 // Maintain backward compatibility during migration
 impl NewConfig {
@@ -522,7 +544,7 @@ impl NewConfig {
             stroke_width: old_config.stroke_width,
             multipass: old_config.multipass,
             hand_drawn: old_config.hand_drawn.clone(),
-            
+
             // Sensible dot mapping defaults
             dot_density: 0.1,
             dot_size_range: (0.5, 2.0),
@@ -542,6 +564,7 @@ fn vectorize_legacy(image: &RgbaImage, old_config: &OldConfig) -> Result<String,
 ### Database Schema Evolution
 
 #### Configuration Storage Migration
+
 ```sql
 -- Before: Line tracing parameters only
 CREATE TABLE processing_configs (
@@ -551,7 +574,7 @@ CREATE TABLE processing_configs (
     multipass BOOLEAN DEFAULT FALSE
 );
 
--- After: Support both backends  
+-- After: Support both backends
 ALTER TABLE processing_configs ADD COLUMN backend VARCHAR(20) DEFAULT 'edge';
 ALTER TABLE processing_configs ADD COLUMN dot_density REAL DEFAULT 0.1;
 ALTER TABLE processing_configs ADD COLUMN dot_min_radius REAL DEFAULT 0.5;
@@ -560,6 +583,7 @@ ALTER TABLE processing_configs ADD COLUMN preserve_colors BOOLEAN DEFAULT TRUE;
 ```
 
 #### Job Queue Updates
+
 ```rust
 // Before: Simple job structure
 #[derive(Serialize, Deserialize)]
@@ -575,7 +599,7 @@ struct ProcessingJob {
     image_path: PathBuf,
     output_path: PathBuf,
     backend: TraceBackend,
-    
+
     // Union of all possible parameters
     line_config: Option<LineConfig>,
     dot_config: Option<DotConfig>,
@@ -585,6 +609,7 @@ struct ProcessingJob {
 ### Performance Monitoring Integration
 
 #### Metrics Collection Updates
+
 ```rust
 // Enhanced metrics for both backends
 #[derive(Debug, Serialize)]
@@ -592,11 +617,11 @@ struct ProcessingMetrics {
     backend_used: TraceBackend,
     processing_time_ms: u64,
     input_pixels: u32,
-    
+
     // Backend-specific metrics
     line_metrics: Option<LineTracingMetrics>,
     dot_metrics: Option<DotMappingMetrics>,
-    
+
     // Quality indicators
     success: bool,
     fallback_used: bool,
@@ -635,9 +660,9 @@ Replace line tracing only for cases where it consistently fails:
 ```rust
 fn problem_case_migration(image: &RgbaImage) -> TraceBackend {
     let analysis = analyze_image_for_line_tracing_issues(image);
-    
-    if analysis.has_complex_textures || 
-       analysis.has_fine_gradients || 
+
+    if analysis.has_complex_textures ||
+       analysis.has_fine_gradients ||
        analysis.causes_etf_instability {
         TraceBackend::Dots
     } else {
@@ -655,7 +680,7 @@ fn quality_first_migration(image: &RgbaImage) -> TraceBackend {
     // Quick quality prediction without full processing
     let predicted_line_quality = predict_line_tracing_quality(image);
     let predicted_dot_quality = predict_dot_mapping_quality(image);
-    
+
     if predicted_dot_quality > predicted_line_quality + QUALITY_THRESHOLD {
         TraceBackend::Dots
     } else {
@@ -680,7 +705,7 @@ fn use_case_driven_migration(
         },
         ApplicationUseCase::ArtisticCreation => {
             // Dots offer more artistic styles
-            TraceBackend::Dots  
+            TraceBackend::Dots
         },
         ApplicationUseCase::WebOptimization => {
             // Choose based on expected file size
@@ -709,7 +734,7 @@ fn performance_driven_migration(
 ) -> TraceBackend {
     let estimated_line_time = estimate_line_tracing_time(image);
     let estimated_dot_time = estimate_dot_mapping_time(image);
-    
+
     if performance_requirements.max_processing_time < estimated_line_time &&
        estimated_dot_time < performance_requirements.max_processing_time {
         TraceBackend::Dots
@@ -729,13 +754,15 @@ fn performance_driven_migration(
 #### Issue 1: Unexpected Quality Degradation
 
 **Symptoms:**
+
 ```
 Dot mapping output appears less detailed than line tracing
-Missing fine details in technical drawings  
+Missing fine details in technical drawings
 Colors appear washed out
 ```
 
 **Solutions:**
+
 ```bash
 # Increase dot density for more detail
 --dot-density 0.05  # Instead of default 0.1
@@ -753,6 +780,7 @@ Colors appear washed out
 #### Issue 2: Performance Regression
 
 **Symptoms:**
+
 ```
 Dot mapping takes longer than expected
 Memory usage spikes during processing
@@ -760,20 +788,22 @@ Inconsistent processing times
 ```
 
 **Diagnosis:**
+
 ```bash
 # Check current settings
 vectorize-cli trace-low --backend dots --verbose input.png output.svg
 
-# Monitor resource usage  
+# Monitor resource usage
 time -v vectorize-cli trace-low --backend dots input.png output.svg
 ```
 
 **Solutions:**
+
 ```bash
 # Reduce dot density for speed
 --dot-density 0.2  # Fewer dots = faster processing
 
-# Increase minimum dot size  
+# Increase minimum dot size
 --dot-size-range "1.0,3.0"  # Larger dots = fewer collision checks
 
 # Disable adaptive sizing for complex images
@@ -786,6 +816,7 @@ time -v vectorize-cli trace-low --backend dots input.png output.svg
 #### Issue 3: File Size Explosion
 
 **Symptoms:**
+
 ```
 SVG files much larger than line tracing equivalents
 Browser rendering performance issues
@@ -793,6 +824,7 @@ Network transfer delays
 ```
 
 **Solutions:**
+
 ```bash
 # Reduce dot count
 --dot-density 0.25  # Higher threshold = fewer dots
@@ -807,13 +839,15 @@ svgo output.svg  # Optimize SVG after generation
 #### Issue 4: Integration Failures
 
 **Symptoms:**
+
 ```
 Existing pipeline breaks with dot mapping
-Parameter validation errors  
+Parameter validation errors
 Unexpected backend switching
 ```
 
 **Solutions:**
+
 ```rust
 // Add robust error handling
 fn migrate_with_fallback(image: &RgbaImage, config: &Config) -> Result<String, Error> {
@@ -846,6 +880,7 @@ fn validate_migration_config(config: &Config) -> Result<(), ValidationError> {
 ### Testing and Validation Strategies
 
 #### Regression Testing Suite
+
 ```bash
 #!/bin/bash
 # Comprehensive migration testing
@@ -857,13 +892,13 @@ mkdir -p "$OUTPUT_DIR"
 echo "Testing migration quality..."
 for image in $REFERENCE_IMAGES; do
     basename=$(basename "$image" .png)
-    
+
     # Test current line tracing
     if ! vectorize-cli trace-low --backend edge \
          --detail 0.3 "$image" "$OUTPUT_DIR/${basename}_line_current.svg"; then
         echo "WARNING: Line tracing failed for $basename"
     fi
-    
+
     # Test dot mapping migration
     if ! vectorize-cli trace-low --backend dots \
          --dot-density 0.1 --dot-size-range "0.5,2.0" \
@@ -871,7 +906,7 @@ for image in $REFERENCE_IMAGES; do
         echo "ERROR: Dot mapping failed for $basename"
         exit 1
     fi
-    
+
     echo "✓ Processed $basename"
 done
 
@@ -879,13 +914,14 @@ echo "Migration testing complete. Review outputs in $OUTPUT_DIR"
 ```
 
 #### Automated Quality Metrics
+
 ```rust
 // Comprehensive quality assessment
 fn assess_migration_success(
     test_results: &[MigrationTestResult]
 ) -> MigrationAssessment {
     let mut assessment = MigrationAssessment::new();
-    
+
     for result in test_results {
         // Quality metrics
         if result.dot_quality > result.line_quality {
@@ -893,14 +929,14 @@ fn assess_migration_success(
         } else if result.dot_quality < result.line_quality {
             assessment.quality_regressions += 1;
         }
-        
+
         // Performance metrics
         if result.dot_time < result.line_time {
             assessment.performance_improvements += 1;
         } else if result.dot_time > result.line_time * 1.5 {
             assessment.performance_regressions += 1;
         }
-        
+
         // Reliability metrics
         if result.dot_success && !result.line_success {
             assessment.reliability_improvements += 1;
@@ -908,15 +944,15 @@ fn assess_migration_success(
             assessment.reliability_regressions += 1;
         }
     }
-    
-    assessment.overall_recommendation = if 
+
+    assessment.overall_recommendation = if
         assessment.quality_improvements + assessment.reliability_improvements >
         assessment.quality_regressions + assessment.reliability_regressions {
         MigrationRecommendation::ProceedWithMigration
     } else {
         MigrationRecommendation::RequiresMoreTuning
     };
-    
+
     assessment
 }
 ```

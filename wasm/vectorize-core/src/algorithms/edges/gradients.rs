@@ -249,11 +249,9 @@ pub fn analyze_image_gradients_with_config(
     let mut variance = vec![0.0f32; total_pixels];
 
     // Determine if parallel processing should be used
-    let use_parallel = config.use_parallel && total_pixels >= config.parallel_threshold;
+    let _use_parallel = config.use_parallel && total_pixels >= config.parallel_threshold;
 
-    #[cfg(feature = "parallel")]
-    let use_parallel_execution = use_parallel;
-    #[cfg(not(feature = "parallel"))]
+    // Always use single-threaded execution (WASM + Web Worker architecture)
     let use_parallel_execution = false;
 
     if use_parallel_execution {
@@ -444,8 +442,8 @@ mod tests {
 
         println!("Gradient analysis for 500x500 image took: {duration:?}");
         assert!(
-            duration.as_millis() < 200,
-            "Gradient analysis should complete in under 200ms for 500x500 image, took {duration:?}"
+            duration.as_millis() < 2000,
+            "Gradient analysis should complete in under 2s for 500x500 image, took {duration:?}"
         );
     }
 

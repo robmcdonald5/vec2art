@@ -9,7 +9,8 @@
 		"skipLibCheck": true,
 		"sourceMap": true,
 		"strict": true,
-		"moduleResolution": "bundler"
+		"moduleResolution": "bundler",
+		"lib": ["esnext", "DOM", "DOM.Iterable", "WebWorker"]
 	},
 	"exclude": [
 		"./src/lib/wasm/vectorize_wasm.js",
@@ -23,16 +24,6 @@
 		"./src/**/*.test.js",
 		"./tests/**/*",
 		"./playwright.config.ts",
-		"./src/lib/services/performance-*.ts",
-		"./src/lib/services/analytics-*.ts",
-		"./src/lib/services/dev-tools.ts",
-		"./src/lib/services/error-tracker.ts",
-		"./src/lib/services/resource-monitor.ts",
-		"./src/lib/services/ux-analytics.ts",
-		"./src/lib/types/performance.ts",
-		"./src/lib/components/ui/performance-dashboard.svelte",
-		"./src/lib/services/index.ts",
-		"./src/lib/utils/performance.ts",
 		"./src/stories/**/*",
 		"./.storybook/**/*"
 	]

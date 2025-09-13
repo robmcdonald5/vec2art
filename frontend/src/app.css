@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@config '../tailwind.config.ts';
 
 @layer base {
 	:root {
@@ -24,6 +25,7 @@
 		--radius: 0.5rem;
 	}
 
+	/* Dark mode variables - preserved for intentional dark contrast areas */
 	.dark {
 		--background: 222.2 84% 4.9%;
 		--foreground: 210 40% 98%;
@@ -62,8 +64,9 @@
 	}
 }
 
-/* Scroll-triggered animations */
+/* Consolidated utility layer */
 @layer utilities {
+	/* Scroll-triggered animations */
 	.animate-fadeInUp {
 		animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 	}
@@ -90,10 +93,8 @@
 			transform: translateY(0);
 		}
 	}
-}
 
-/* Essential utility classes only */
-@layer utilities {
+	/* Essential utility classes */
 	.sr-only {
 		position: absolute;
 		width: 1px;
@@ -106,14 +107,27 @@
 		border: 0;
 	}
 
-	/* Ferrari button text color utility - highest priority */
+	/* Touch Device Target Compliance - Better than width-based */
+	@media (pointer: coarse) {
+		.mobile-touch-target {
+			min-height: 44px !important;
+			min-width: 44px !important;
+		}
+
+		/* Icon buttons need proper padding */
+		.mobile-touch-icon {
+			padding: 10px; /* Centers smaller icons in 44px container */
+		}
+	}
+
+	/* Ferrari button text color utility */
 	.btn-ferrari-primary,
 	button.btn-ferrari-primary,
 	.btn-ferrari-primary.btn-clickable,
 	button[class*='btn-ferrari-primary'],
 	*[class*='btn-ferrari-primary'] {
-		color: white !important;
-		font-weight: 600 !important;
+		color: white;
+		font-weight: 600;
 	}
 }
 
@@ -127,8 +141,8 @@
 		box-shadow:
 			0 10px 25px -5px rgba(220, 20, 60, 0.4),
 			0 0 15px rgba(255, 107, 107, 0.2);
-		color: white !important; /* Force white text */
-		font-weight: 600 !important; /* Force semibold */
+		color: white; /* Force white text */
+		font-weight: 600; /* Force semibold */
 	}
 
 	/* Maximum specificity override for button component text */
@@ -137,13 +151,13 @@
 	button.btn-ferrari-primary.btn-clickable,
 	.btn-ferrari-primary:not(:disabled),
 	button[class*='btn-ferrari-primary'] {
-		color: white !important;
-		font-weight: 600 !important;
+		color: white;
+		font-weight: 600;
 	}
 
 	/* Ensure icons in Ferrari buttons are also white */
 	.btn-ferrari-primary svg {
-		color: white !important;
+		color: white;
 	}
 
 	/* Algorithm badge styling */
@@ -155,8 +169,7 @@
 
 	/* Slider label styling */
 	.slider-labels {
-		@apply mt-1 flex justify-between text-xs;
-		color: #6b7280 !important;
+		@apply mt-1 flex justify-between text-xs text-gray-500;
 	}
 
 	/* Button pointer events fix */
@@ -216,16 +229,7 @@
 		background: linear-gradient(135deg, #dc143c 0%, #ff6b6b 50%, #dc143c 100%);
 	}
 
-	/* Interactive Ferrari cards */
-	.card-ferrari-interactive {
-		@apply relative transform bg-white transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl;
-		border: 1px solid #e5e5e5;
-	}
-
-	.card-ferrari-interactive:hover {
-		border-color: rgba(220, 20, 60, 0.3);
-		box-shadow: 0 25px 50px -12px rgba(220, 20, 60, 0.08);
-	}
+	/* Interactive Ferrari cards - consolidated definition below */
 
 	/* Contact section card - no hover transform */
 	.card-ferrari-contact {
@@ -407,20 +411,11 @@
 		color: #000000; /* Ensure maximum contrast */
 	}
 
-	/* Footer gradient text with proper fallback */
+	/* Footer gradient text - simplified without glow effect */
 	.footer-gradient-text {
-		/* Strong fallback color for footer */
-		color: #dc143c;
-		background: linear-gradient(to right, #dc143c, #b91c2e, #dc143c);
-		background-clip: text;
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		animation: ferrariGlow 4s ease-in-out infinite alternate;
-
-		/* Fallback for browsers without gradient support */
-		@supports not (-webkit-background-clip: text) {
-			color: #dc143c !important;
-		}
+		/* Simple text color without gradient or glow */
+		color: #ffffff;
+		font-weight: 700;
 	}
 
 	/* Modern hero section with animated background - Ferrari palette */
@@ -489,7 +484,7 @@
 
 		/* Feature detection fallback */
 		@supports not (-webkit-background-clip: text) {
-			color: #dc143c !important;
+			color: #dc143c;
 		}
 	}
 
@@ -511,15 +506,14 @@
 		}
 	}
 
-	/* Fix invisible Ferrari red text in conversion pipeline subtitles */
-	.text-ferrari-600 {
-		color: #dc143c !important; /* Strong Ferrari red color */
+	/* Ferrari text utilities - using consistent Tailwind color system */
+	.text-ferrari-primary {
+		color: #dc143c; /* Ferrari 500 from Tailwind config */
 		font-weight: 600;
 	}
 
-	/* Ensure SVG icons in pipeline subtitles are visible */
-	.text-ferrari-600 svg {
-		color: #dc143c !important;
+	.text-ferrari-primary svg {
+		color: #dc143c;
 	}
 
 	/* Converter-specific card styles without movement */
@@ -650,21 +644,7 @@
 		color: #6b7280;
 	}
 
-	/* Enhanced status indicators */
-	.status-indicator-success {
-		color: #059669;
-		font-weight: 600;
-	}
-
-	.status-indicator-warning {
-		color: #d97706;
-		font-weight: 600;
-	}
-
-	.status-indicator-error {
-		color: #dc2626;
-		font-weight: 600;
-	}
+	/* Status indicators - consolidated definition below */
 
 	/* Improved progress bar styling */
 	.progress-ferrari {
@@ -674,8 +654,7 @@
 
 	/* Enhanced form elements for better visibility */
 	.input-ferrari {
-		@apply rounded-lg border-2 border-gray-200 bg-white transition-all duration-200;
-		color: #1a1a1a !important;
+		@apply rounded-lg border-2 border-gray-200 bg-white text-gray-900 transition-all duration-200;
 	}
 
 	.input-ferrari:focus {
@@ -945,48 +924,6 @@
 		animation: pulse-dot 2s ease-in-out infinite;
 	}
 
-	/* Ferrari accent colors for algorithm showcase */
-	.text-ferrari-25 {
-		color: rgba(220, 20, 60, 0.1);
-	}
-
-	.bg-ferrari-25 {
-		background-color: rgba(220, 20, 60, 0.05);
-	}
-
-	.bg-ferrari-50 {
-		background-color: rgba(220, 20, 60, 0.1);
-	}
-
-	.border-ferrari-200 {
-		border-color: rgba(220, 20, 60, 0.2);
-	}
-
-	.border-ferrari-300 {
-		border-color: rgba(220, 20, 60, 0.3);
-	}
-
-	.border-ferrari-500 {
-		border-color: rgb(220, 20, 60);
-	}
-
-	.text-ferrari-600 {
-		color: rgb(185, 28, 28);
-	}
-
-	.text-ferrari-700 {
-		color: rgb(153, 27, 27);
-	}
-
-	.bg-ferrari-600 {
-		background-color: rgb(220, 38, 38);
-	}
-
-	.bg-ferrari-700 {
-		background-color: rgb(185, 28, 28);
-	}
-
-	.hover\:bg-ferrari-700:hover {
-		background-color: rgb(185, 28, 28);
-	}
+	/* Remove conflicting Ferrari color definitions - use Tailwind config colors instead */
+	/* These colors are now defined in tailwind.config.ts under theme.colors.ferrari */
 }

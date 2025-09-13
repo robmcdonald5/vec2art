@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'node:url';
 // TODO: Re-enable Storybook testing in the future
 // import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
-const dirname =
+const _dirname =
 	typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
 // Storybook integration disabled for now due to complexity
@@ -18,6 +18,8 @@ export default defineConfig(({ mode }) => ({
 		environment: 'happy-dom',
 		globals: true,
 		setupFiles: ['./tests/setup.ts'],
+		testTimeout: 15000, // 15 second timeout to prevent hanging tests
+		hookTimeout: 15000, // 15 second timeout for setup/teardown hooks
 		// Force browser mode for Svelte 5 components
 		browser: {
 			enabled: false, // We use happy-dom instead of real browser

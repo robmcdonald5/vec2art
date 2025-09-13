@@ -2,19 +2,19 @@
 
 /**
  * vec2art WASM Node.js Example
- * 
+ *
  * Demonstrates how to use the vec2art line tracing engine in Node.js
  * for batch processing and server-side image conversion.
- * 
+ *
  * Prerequisites:
  * - Node.js 14+
  * - Canvas package: npm install canvas
  * - Built WASM module with nodejs target: wasm-pack build --target nodejs
  */
 
-const fs = require('fs').promises;
-const path = require('path');
-const { createCanvas, loadImage } = require('canvas');
+const fs = require("fs").promises;
+const path = require("path");
+const { createCanvas, loadImage } = require("canvas");
 
 // Import the WASM module (adjust path as needed)
 // const wasm = require('../pkg/vectorize_wasm.js');
@@ -22,390 +22,450 @@ const { createCanvas, loadImage } = require('canvas');
 // For demonstration, we'll create a mock WASM module
 // Replace this with the actual import when the WASM module is built
 const wasm = {
-    ConfigBuilder: class {
-        constructor() {
-            this.config = {
-                backend: 'edge',
-                multipass_enabled: true,
-                reverse_pass_enabled: true,
-                diagonal_pass_enabled: false,
-                hand_drawn_enabled: true,
-                tremor_intensity: 0.3,
-                weight_variation: 0.4,
-                tapering_enabled: true,
-                canny_low_threshold: 0.1,
-                canny_high_threshold: 0.3,
-                gaussian_blur_sigma: 1.2,
-                max_resolution: 2073600,
-                simd_enabled: false // SIMD not available in Node.js
-            };
-        }
-        
-        backend(name) { this.config.backend = name; return this; }
-        multipass_enabled(enabled) { this.config.multipass_enabled = enabled; return this; }
-        reverse_pass_enabled(enabled) { this.config.reverse_pass_enabled = enabled; return this; }
-        diagonal_pass_enabled(enabled) { this.config.diagonal_pass_enabled = enabled; return this; }
-        hand_drawn_enabled(enabled) { this.config.hand_drawn_enabled = enabled; return this; }
-        tremor_intensity(value) { this.config.tremor_intensity = value; return this; }
-        weight_variation(value) { this.config.weight_variation = value; return this; }
-        tapering_enabled(enabled) { this.config.tapering_enabled = enabled; return this; }
-        canny_low_threshold(value) { this.config.canny_low_threshold = value; return this; }
-        canny_high_threshold(value) { this.config.canny_high_threshold = value; return this; }
-        gaussian_blur_sigma(value) { this.config.gaussian_blur_sigma = value; return this; }
-        max_resolution(pixels) { this.config.max_resolution = pixels; return this; }
-        simd_enabled(enabled) { this.config.simd_enabled = enabled; return this; }
-        artistic_preset(preset) { 
-            this.applyPreset(preset);
-            return this;
-        }
-        
-        applyPreset(preset) {
-            switch(preset) {
-                case 'clean':
-                    this.config.hand_drawn_enabled = false;
-                    this.config.tremor_intensity = 0.0;
-                    this.config.weight_variation = 0.1;
-                    break;
-                case 'sketchy':
-                    this.config.hand_drawn_enabled = true;
-                    this.config.tremor_intensity = 0.2;
-                    this.config.weight_variation = 0.3;
-                    break;
-                case 'artistic':
-                    this.config.hand_drawn_enabled = true;
-                    this.config.tremor_intensity = 0.4;
-                    this.config.weight_variation = 0.5;
-                    break;
-                case 'expressive':
-                    this.config.hand_drawn_enabled = true;
-                    this.config.tremor_intensity = 0.6;
-                    this.config.weight_variation = 0.7;
-                    break;
-            }
-        }
-        
-        build() { return this.config; }
-    },
-    
-    process_image_to_svg: async function(imageData, width, height, config) {
-        // Mock processing delay
-        await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
-        
-        // Generate a more realistic SVG based on configuration
-        const paths = [];
-        const numPaths = 20 + Math.floor(Math.random() * 30);
-        
-        for (let i = 0; i < numPaths; i++) {
-            const x1 = Math.random() * width;
-            const y1 = Math.random() * height;
-            const x2 = Math.random() * width;
-            const y2 = Math.random() * height;
-            
-            let strokeWidth = config.hand_drawn_enabled ? 
-                (1 + Math.random() * 2) * (1 + config.weight_variation) : 1.5;
-            
-            paths.push(`<path d="M${x1.toFixed(2)},${y1.toFixed(2)} L${x2.toFixed(2)},${y2.toFixed(2)}" 
+  ConfigBuilder: class {
+    constructor() {
+      this.config = {
+        backend: "edge",
+        multipass_enabled: true,
+        reverse_pass_enabled: true,
+        diagonal_pass_enabled: false,
+        hand_drawn_enabled: true,
+        tremor_intensity: 0.3,
+        weight_variation: 0.4,
+        tapering_enabled: true,
+        canny_low_threshold: 0.1,
+        canny_high_threshold: 0.3,
+        gaussian_blur_sigma: 1.2,
+        max_resolution: 2073600,
+        simd_enabled: false, // SIMD not available in Node.js
+      };
+    }
+
+    backend(name) {
+      this.config.backend = name;
+      return this;
+    }
+    multipass_enabled(enabled) {
+      this.config.multipass_enabled = enabled;
+      return this;
+    }
+    reverse_pass_enabled(enabled) {
+      this.config.reverse_pass_enabled = enabled;
+      return this;
+    }
+    diagonal_pass_enabled(enabled) {
+      this.config.diagonal_pass_enabled = enabled;
+      return this;
+    }
+    hand_drawn_enabled(enabled) {
+      this.config.hand_drawn_enabled = enabled;
+      return this;
+    }
+    tremor_intensity(value) {
+      this.config.tremor_intensity = value;
+      return this;
+    }
+    weight_variation(value) {
+      this.config.weight_variation = value;
+      return this;
+    }
+    tapering_enabled(enabled) {
+      this.config.tapering_enabled = enabled;
+      return this;
+    }
+    canny_low_threshold(value) {
+      this.config.canny_low_threshold = value;
+      return this;
+    }
+    canny_high_threshold(value) {
+      this.config.canny_high_threshold = value;
+      return this;
+    }
+    gaussian_blur_sigma(value) {
+      this.config.gaussian_blur_sigma = value;
+      return this;
+    }
+    max_resolution(pixels) {
+      this.config.max_resolution = pixels;
+      return this;
+    }
+    simd_enabled(enabled) {
+      this.config.simd_enabled = enabled;
+      return this;
+    }
+    artistic_preset(preset) {
+      this.applyPreset(preset);
+      return this;
+    }
+
+    applyPreset(preset) {
+      switch (preset) {
+        case "clean":
+          this.config.hand_drawn_enabled = false;
+          this.config.tremor_intensity = 0.0;
+          this.config.weight_variation = 0.1;
+          break;
+        case "sketchy":
+          this.config.hand_drawn_enabled = true;
+          this.config.tremor_intensity = 0.2;
+          this.config.weight_variation = 0.3;
+          break;
+        case "artistic":
+          this.config.hand_drawn_enabled = true;
+          this.config.tremor_intensity = 0.4;
+          this.config.weight_variation = 0.5;
+          break;
+        case "expressive":
+          this.config.hand_drawn_enabled = true;
+          this.config.tremor_intensity = 0.6;
+          this.config.weight_variation = 0.7;
+          break;
+      }
+    }
+
+    build() {
+      return this.config;
+    }
+  },
+
+  process_image_to_svg: async function (imageData, width, height, config) {
+    // Mock processing delay
+    await new Promise((resolve) =>
+      setTimeout(resolve, 500 + Math.random() * 500),
+    );
+
+    // Generate a more realistic SVG based on configuration
+    const paths = [];
+    const numPaths = 20 + Math.floor(Math.random() * 30);
+
+    for (let i = 0; i < numPaths; i++) {
+      const x1 = Math.random() * width;
+      const y1 = Math.random() * height;
+      const x2 = Math.random() * width;
+      const y2 = Math.random() * height;
+
+      let strokeWidth = config.hand_drawn_enabled
+        ? (1 + Math.random() * 2) * (1 + config.weight_variation)
+        : 1.5;
+
+      paths.push(`<path d="M${x1.toFixed(2)},${y1.toFixed(2)} L${x2.toFixed(2)},${y2.toFixed(2)}" 
                        stroke="black" stroke-width="${strokeWidth.toFixed(2)}" fill="none"/>`);
-        }
-        
-        return `<?xml version="1.0" encoding="UTF-8"?>
+    }
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
     <!-- Generated by vec2art WASM - Backend: ${config.backend} -->
     <!-- Configuration: multipass=${config.multipass_enabled}, hand-drawn=${config.hand_drawn_enabled} -->
-    ${paths.join('\n    ')}
+    ${paths.join("\n    ")}
 </svg>`;
-    },
-    
-    get_last_processing_stats: function() {
-        return {
-            processing_time_ms: 300 + Math.random() * 400,
-            input_resolution: `${this.lastWidth}×${this.lastHeight}`,
-            output_paths: 150 + Math.floor(Math.random() * 300),
-            multipass_enabled: true,
-            hand_drawn_enabled: true,
-            backend_used: 'edge'
-        };
-    },
-    
-    lastWidth: 0,
-    lastHeight: 0
+  },
+
+  get_last_processing_stats: function () {
+    return {
+      processing_time_ms: 300 + Math.random() * 400,
+      input_resolution: `${this.lastWidth}×${this.lastHeight}`,
+      output_paths: 150 + Math.floor(Math.random() * 300),
+      multipass_enabled: true,
+      hand_drawn_enabled: true,
+      backend_used: "edge",
+    };
+  },
+
+  lastWidth: 0,
+  lastHeight: 0,
 };
 
 /**
  * Process a single image file to SVG
  */
 async function processImage(inputPath, outputPath, config = null) {
-    try {
-        console.log(`📸 Loading image: ${inputPath}`);
-        
-        // Load image using canvas
-        const image = await loadImage(inputPath);
-        const canvas = createCanvas(image.width, image.height);
-        const ctx = canvas.getContext('2d');
-        
-        // Draw image to canvas
-        ctx.drawImage(image, 0, 0);
-        const imageData = ctx.getImageData(0, 0, image.width, image.height);
-        
-        // Store dimensions for stats
-        wasm.lastWidth = image.width;
-        wasm.lastHeight = image.height;
-        
-        console.log(`📐 Image dimensions: ${image.width}×${image.height}`);
-        
-        // Use default config if none provided
-        if (!config) {
-            config = new wasm.ConfigBuilder()
-                .backend('edge')
-                .artistic_preset('artistic')
-                .build();
-        }
-        
-        console.log(`⚙️  Configuration: ${config.backend} backend, hand-drawn: ${config.hand_drawn_enabled}`);
-        console.log('🔄 Processing...');
-        
-        const startTime = Date.now();
-        
-        // Process image to SVG
-        const svgResult = wasm.process_image_to_svg(
-            new Uint8Array(imageData.data.buffer),
-            image.width,
-            image.height,
-            config
-        );
-        
-        const processingTime = Date.now() - startTime;
-        
-        // Write SVG to file
-        await fs.writeFile(outputPath, svgResult, 'utf8');
-        
-        // Get processing statistics
-        const stats = wasm.get_last_processing_stats();
-        
-        console.log('✅ Processing complete!');
-        console.log(`⏱️  Processing time: ${processingTime}ms`);
-        console.log(`📊 Output paths: ${stats.output_paths}`);
-        console.log(`💾 Saved to: ${outputPath}`);
-        
-        return {
-            success: true,
-            inputPath,
-            outputPath,
-            processingTime,
-            stats,
-            svgResult
-        };
-        
-    } catch (error) {
-        console.error(`❌ Error processing ${inputPath}:`, error.message);
-        return {
-            success: false,
-            inputPath,
-            error: error.message
-        };
+  try {
+    console.log(`📸 Loading image: ${inputPath}`);
+
+    // Load image using canvas
+    const image = await loadImage(inputPath);
+    const canvas = createCanvas(image.width, image.height);
+    const ctx = canvas.getContext("2d");
+
+    // Draw image to canvas
+    ctx.drawImage(image, 0, 0);
+    const imageData = ctx.getImageData(0, 0, image.width, image.height);
+
+    // Store dimensions for stats
+    wasm.lastWidth = image.width;
+    wasm.lastHeight = image.height;
+
+    console.log(`📐 Image dimensions: ${image.width}×${image.height}`);
+
+    // Use default config if none provided
+    if (!config) {
+      config = new wasm.ConfigBuilder()
+        .backend("edge")
+        .artistic_preset("artistic")
+        .build();
     }
+
+    console.log(
+      `⚙️  Configuration: ${config.backend} backend, hand-drawn: ${config.hand_drawn_enabled}`,
+    );
+    console.log("🔄 Processing...");
+
+    const startTime = Date.now();
+
+    // Process image to SVG
+    const svgResult = wasm.process_image_to_svg(
+      new Uint8Array(imageData.data.buffer),
+      image.width,
+      image.height,
+      config,
+    );
+
+    const processingTime = Date.now() - startTime;
+
+    // Write SVG to file
+    await fs.writeFile(outputPath, svgResult, "utf8");
+
+    // Get processing statistics
+    const stats = wasm.get_last_processing_stats();
+
+    console.log("✅ Processing complete!");
+    console.log(`⏱️  Processing time: ${processingTime}ms`);
+    console.log(`📊 Output paths: ${stats.output_paths}`);
+    console.log(`💾 Saved to: ${outputPath}`);
+
+    return {
+      success: true,
+      inputPath,
+      outputPath,
+      processingTime,
+      stats,
+      svgResult,
+    };
+  } catch (error) {
+    console.error(`❌ Error processing ${inputPath}:`, error.message);
+    return {
+      success: false,
+      inputPath,
+      error: error.message,
+    };
+  }
 }
 
 /**
  * Process multiple images with different configurations
  */
 async function batchProcess(inputDir, outputDir, configurations) {
-    try {
-        // Ensure output directory exists
-        await fs.mkdir(outputDir, { recursive: true });
-        
-        // Get all image files from input directory
-        const files = await fs.readdir(inputDir);
-        const imageFiles = files.filter(file => 
-            /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(file)
-        );
-        
-        if (imageFiles.length === 0) {
-            console.log('No image files found in input directory');
-            return [];
-        }
-        
-        console.log(`🎯 Found ${imageFiles.length} image files`);
-        console.log(`📁 Input directory: ${inputDir}`);
-        console.log(`📂 Output directory: ${outputDir}`);
-        console.log(`⚙️  ${configurations.length} configurations to test`);
-        console.log('');
-        
-        const results = [];
-        let totalProcessed = 0;
-        
-        // Process each image with each configuration
-        for (const imageFile of imageFiles) {
-            const inputPath = path.join(inputDir, imageFile);
-            const baseName = path.parse(imageFile).name;
-            
-            console.log(`🔄 Processing: ${imageFile}`);
-            
-            for (let i = 0; i < configurations.length; i++) {
-                const config = configurations[i];
-                const configName = config.name || `config_${i + 1}`;
-                const outputFileName = `${baseName}_${configName}.svg`;
-                const outputPath = path.join(outputDir, outputFileName);
-                
-                console.log(`  ├─ ${configName}...`);
-                
-                const result = await processImage(inputPath, outputPath, config.builder.build());
-                results.push(result);
-                
-                if (result.success) {
-                    console.log(`  ├─ ✅ ${result.processingTime}ms`);
-                    totalProcessed++;
-                } else {
-                    console.log(`  ├─ ❌ ${result.error}`);
-                }
-            }
-            
-            console.log(`  └─ Done\n`);
-        }
-        
-        // Summary
-        console.log('🎉 Batch processing complete!');
-        console.log(`📊 Processed: ${totalProcessed} out of ${results.length} total jobs`);
-        
-        const successful = results.filter(r => r.success);
-        if (successful.length > 0) {
-            const avgTime = successful.reduce((sum, r) => sum + r.processingTime, 0) / successful.length;
-            console.log(`⏱️  Average processing time: ${avgTime.toFixed(0)}ms`);
-        }
-        
-        return results;
-        
-    } catch (error) {
-        console.error('❌ Batch processing error:', error.message);
-        return [];
+  try {
+    // Ensure output directory exists
+    await fs.mkdir(outputDir, { recursive: true });
+
+    // Get all image files from input directory
+    const files = await fs.readdir(inputDir);
+    const imageFiles = files.filter((file) =>
+      /\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(file),
+    );
+
+    if (imageFiles.length === 0) {
+      console.log("No image files found in input directory");
+      return [];
     }
+
+    console.log(`🎯 Found ${imageFiles.length} image files`);
+    console.log(`📁 Input directory: ${inputDir}`);
+    console.log(`📂 Output directory: ${outputDir}`);
+    console.log(`⚙️  ${configurations.length} configurations to test`);
+    console.log("");
+
+    const results = [];
+    let totalProcessed = 0;
+
+    // Process each image with each configuration
+    for (const imageFile of imageFiles) {
+      const inputPath = path.join(inputDir, imageFile);
+      const baseName = path.parse(imageFile).name;
+
+      console.log(`🔄 Processing: ${imageFile}`);
+
+      for (let i = 0; i < configurations.length; i++) {
+        const config = configurations[i];
+        const configName = config.name || `config_${i + 1}`;
+        const outputFileName = `${baseName}_${configName}.svg`;
+        const outputPath = path.join(outputDir, outputFileName);
+
+        console.log(`  ├─ ${configName}...`);
+
+        const result = await processImage(
+          inputPath,
+          outputPath,
+          config.builder.build(),
+        );
+        results.push(result);
+
+        if (result.success) {
+          console.log(`  ├─ ✅ ${result.processingTime}ms`);
+          totalProcessed++;
+        } else {
+          console.log(`  ├─ ❌ ${result.error}`);
+        }
+      }
+
+      console.log(`  └─ Done\n`);
+    }
+
+    // Summary
+    console.log("🎉 Batch processing complete!");
+    console.log(
+      `📊 Processed: ${totalProcessed} out of ${results.length} total jobs`,
+    );
+
+    const successful = results.filter((r) => r.success);
+    if (successful.length > 0) {
+      const avgTime =
+        successful.reduce((sum, r) => sum + r.processingTime, 0) /
+        successful.length;
+      console.log(`⏱️  Average processing time: ${avgTime.toFixed(0)}ms`);
+    }
+
+    return results;
+  } catch (error) {
+    console.error("❌ Batch processing error:", error.message);
+    return [];
+  }
 }
 
 /**
  * Create sample configurations for testing
  */
 function createSampleConfigurations() {
-    return [
-        {
-            name: 'clean_edge',
-            builder: new wasm.ConfigBuilder()
-                .backend('edge')
-                .artistic_preset('clean')
-                .multipass_enabled(false)
-        },
-        {
-            name: 'sketchy_edge',
-            builder: new wasm.ConfigBuilder()
-                .backend('edge')
-                .artistic_preset('sketchy')
-                .multipass_enabled(true)
-        },
-        {
-            name: 'artistic_edge',
-            builder: new wasm.ConfigBuilder()
-                .backend('edge')
-                .artistic_preset('artistic')
-                .multipass_enabled(true)
-                .reverse_pass_enabled(true)
-        },
-        {
-            name: 'expressive_edge',
-            builder: new wasm.ConfigBuilder()
-                .backend('edge')
-                .artistic_preset('expressive')
-                .multipass_enabled(true)
-                .reverse_pass_enabled(true)
-                .diagonal_pass_enabled(true)
-        },
-        {
-            name: 'centerline_clean',
-            builder: new wasm.ConfigBuilder()
-                .backend('centerline')
-                .artistic_preset('clean')
-        },
-        {
-            name: 'superpixel_artistic',
-            builder: new wasm.ConfigBuilder()
-                .backend('superpixel')
-                .artistic_preset('artistic')
-        },
-        {
-            name: 'dots_stippling',
-            builder: new wasm.ConfigBuilder()
-                .backend('dots')
-                .artistic_preset('clean')
-        }
-    ];
+  return [
+    {
+      name: "clean_edge",
+      builder: new wasm.ConfigBuilder()
+        .backend("edge")
+        .artistic_preset("clean")
+        .multipass_enabled(false),
+    },
+    {
+      name: "sketchy_edge",
+      builder: new wasm.ConfigBuilder()
+        .backend("edge")
+        .artistic_preset("sketchy")
+        .multipass_enabled(true),
+    },
+    {
+      name: "artistic_edge",
+      builder: new wasm.ConfigBuilder()
+        .backend("edge")
+        .artistic_preset("artistic")
+        .multipass_enabled(true)
+        .reverse_pass_enabled(true),
+    },
+    {
+      name: "expressive_edge",
+      builder: new wasm.ConfigBuilder()
+        .backend("edge")
+        .artistic_preset("expressive")
+        .multipass_enabled(true)
+        .reverse_pass_enabled(true)
+        .diagonal_pass_enabled(true),
+    },
+    {
+      name: "centerline_clean",
+      builder: new wasm.ConfigBuilder()
+        .backend("centerline")
+        .artistic_preset("clean"),
+    },
+    {
+      name: "superpixel_artistic",
+      builder: new wasm.ConfigBuilder()
+        .backend("superpixel")
+        .artistic_preset("artistic"),
+    },
+    {
+      name: "dots_stippling",
+      builder: new wasm.ConfigBuilder()
+        .backend("dots")
+        .artistic_preset("clean"),
+    },
+  ];
 }
 
 /**
  * Generate performance benchmark report
  */
 async function generateBenchmarkReport(results, outputPath) {
-    const successful = results.filter(r => r.success);
-    
-    if (successful.length === 0) {
-        console.log('No successful results to report');
-        return;
+  const successful = results.filter((r) => r.success);
+
+  if (successful.length === 0) {
+    console.log("No successful results to report");
+    return;
+  }
+
+  // Group by configuration
+  const byConfig = {};
+  successful.forEach((result) => {
+    const configName = path
+      .parse(result.outputPath)
+      .name.split("_")
+      .slice(-1)[0];
+    if (!byConfig[configName]) {
+      byConfig[configName] = [];
     }
-    
-    // Group by configuration
-    const byConfig = {};
-    successful.forEach(result => {
-        const configName = path.parse(result.outputPath).name.split('_').slice(-1)[0];
-        if (!byConfig[configName]) {
-            byConfig[configName] = [];
-        }
-        byConfig[configName].push(result);
-    });
-    
-    // Generate report
-    let report = '# vec2art WASM Node.js Benchmark Report\n\n';
-    report += `Generated: ${new Date().toISOString()}\n\n`;
-    report += `## Summary\n\n`;
-    report += `- Total processed: ${successful.length}\n`;
-    report += `- Configurations tested: ${Object.keys(byConfig).length}\n`;
-    report += `- Average processing time: ${(successful.reduce((sum, r) => sum + r.processingTime, 0) / successful.length).toFixed(0)}ms\n\n`;
-    
-    report += `## Configuration Performance\n\n`;
-    report += `| Configuration | Count | Avg Time (ms) | Min Time (ms) | Max Time (ms) | Paths/Output |\n`;
-    report += `|---------------|-------|---------------|---------------|---------------|-------------|\n`;
-    
-    for (const [configName, results] of Object.entries(byConfig)) {
-        const times = results.map(r => r.processingTime);
-        const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
-        const minTime = Math.min(...times);
-        const maxTime = Math.max(...times);
-        const avgPaths = results.reduce((sum, r) => sum + r.stats.output_paths, 0) / results.length;
-        
-        report += `| ${configName} | ${results.length} | ${avgTime.toFixed(0)} | ${minTime} | ${maxTime} | ${avgPaths.toFixed(0)} |\n`;
-    }
-    
-    report += `\n## Detailed Results\n\n`;
-    
-    for (const result of successful) {
-        const configName = path.parse(result.outputPath).name.split('_').slice(-1)[0];
-        const fileName = path.parse(result.inputPath).name;
-        
-        report += `### ${fileName} - ${configName}\n\n`;
-        report += `- Processing time: ${result.processingTime}ms\n`;
-        report += `- Output paths: ${result.stats.output_paths}\n`;
-        report += `- Resolution: ${result.stats.input_resolution}\n`;
-        report += `- SVG size: ${(result.svgResult.length / 1024).toFixed(1)}KB\n\n`;
-    }
-    
-    await fs.writeFile(outputPath, report, 'utf8');
-    console.log(`📊 Benchmark report saved to: ${outputPath}`);
+    byConfig[configName].push(result);
+  });
+
+  // Generate report
+  let report = "# vec2art WASM Node.js Benchmark Report\n\n";
+  report += `Generated: ${new Date().toISOString()}\n\n`;
+  report += `## Summary\n\n`;
+  report += `- Total processed: ${successful.length}\n`;
+  report += `- Configurations tested: ${Object.keys(byConfig).length}\n`;
+  report += `- Average processing time: ${(successful.reduce((sum, r) => sum + r.processingTime, 0) / successful.length).toFixed(0)}ms\n\n`;
+
+  report += `## Configuration Performance\n\n`;
+  report += `| Configuration | Count | Avg Time (ms) | Min Time (ms) | Max Time (ms) | Paths/Output |\n`;
+  report += `|---------------|-------|---------------|---------------|---------------|-------------|\n`;
+
+  for (const [configName, results] of Object.entries(byConfig)) {
+    const times = results.map((r) => r.processingTime);
+    const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+    const minTime = Math.min(...times);
+    const maxTime = Math.max(...times);
+    const avgPaths =
+      results.reduce((sum, r) => sum + r.stats.output_paths, 0) /
+      results.length;
+
+    report += `| ${configName} | ${results.length} | ${avgTime.toFixed(0)} | ${minTime} | ${maxTime} | ${avgPaths.toFixed(0)} |\n`;
+  }
+
+  report += `\n## Detailed Results\n\n`;
+
+  for (const result of successful) {
+    const configName = path
+      .parse(result.outputPath)
+      .name.split("_")
+      .slice(-1)[0];
+    const fileName = path.parse(result.inputPath).name;
+
+    report += `### ${fileName} - ${configName}\n\n`;
+    report += `- Processing time: ${result.processingTime}ms\n`;
+    report += `- Output paths: ${result.stats.output_paths}\n`;
+    report += `- Resolution: ${result.stats.input_resolution}\n`;
+    report += `- SVG size: ${(result.svgResult.length / 1024).toFixed(1)}KB\n\n`;
+  }
+
+  await fs.writeFile(outputPath, report, "utf8");
+  console.log(`📊 Benchmark report saved to: ${outputPath}`);
 }
 
 /**
  * Main CLI function
  */
 async function main() {
-    const args = process.argv.slice(2);
-    
-    if (args.length === 0) {
-        console.log(`
+  const args = process.argv.slice(2);
+
+  if (args.length === 0) {
+    console.log(`
 🎨 vec2art WASM Node.js Example
 
 Usage:
@@ -423,116 +483,116 @@ Examples:
   node node-example.js batch ./input ./output
   node node-example.js demo
         `);
-        return;
-    }
-    
-    const command = args[0];
-    
-    switch (command) {
-        case 'single':
-            if (args.length < 3) {
-                console.error('Usage: single <input> <output> [preset]');
-                process.exit(1);
-            }
-            
-            const inputPath = args[1];
-            const outputPath = args[2];
-            const preset = args[3] || 'artistic';
-            
-            const config = new wasm.ConfigBuilder()
-                .backend('edge')
-                .artistic_preset(preset)
-                .build();
-                
-            await processImage(inputPath, outputPath, config);
-            break;
-            
-        case 'batch':
-            if (args.length < 3) {
-                console.error('Usage: batch <input_dir> <output_dir>');
-                process.exit(1);
-            }
-            
-            const inputDir = args[1];
-            const outputDir = args[2];
-            const configurations = createSampleConfigurations();
-            
-            const results = await batchProcess(inputDir, outputDir, configurations);
-            
-            // Generate benchmark report
-            const reportPath = path.join(outputDir, 'benchmark_report.md');
-            await generateBenchmarkReport(results, reportPath);
-            break;
-            
-        case 'demo':
-            console.log('🚀 Running vec2art WASM Node.js demonstration...\n');
-            
-            // Create sample image
-            const canvas = createCanvas(400, 300);
-            const ctx = canvas.getContext('2d');
-            
-            // Draw sample content
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, 400, 300);
-            
-            ctx.strokeStyle = '#333333';
-            ctx.lineWidth = 3;
-            
-            // Draw a house
-            ctx.beginPath();
-            ctx.rect(100, 150, 200, 100);
-            ctx.moveTo(100, 150);
-            ctx.lineTo(200, 80);
-            ctx.lineTo(300, 150);
-            ctx.rect(150, 200, 30, 50);
-            ctx.rect(220, 180, 40, 30);
-            ctx.stroke();
-            
-            // Save sample image
-            const demoDir = './demo_output';
-            await fs.mkdir(demoDir, { recursive: true });
-            
-            const sampleImagePath = path.join(demoDir, 'sample_house.png');
-            const buffer = canvas.toBuffer('image/png');
-            await fs.writeFile(sampleImagePath, buffer);
-            
-            console.log(`📁 Created sample image: ${sampleImagePath}`);
-            
-            // Process with different presets
-            const presets = ['clean', 'sketchy', 'artistic', 'expressive'];
-            
-            for (const preset of presets) {
-                const config = new wasm.ConfigBuilder()
-                    .backend('edge')
-                    .artistic_preset(preset)
-                    .build();
-                
-                const outputPath = path.join(demoDir, `sample_house_${preset}.svg`);
-                await processImage(sampleImagePath, outputPath, config);
-            }
-            
-            console.log(`\n🎉 Demo complete! Check ${demoDir} for results.`);
-            break;
-            
-        default:
-            console.error(`Unknown command: ${command}`);
-            process.exit(1);
-    }
+    return;
+  }
+
+  const command = args[0];
+
+  switch (command) {
+    case "single":
+      if (args.length < 3) {
+        console.error("Usage: single <input> <output> [preset]");
+        process.exit(1);
+      }
+
+      const inputPath = args[1];
+      const outputPath = args[2];
+      const preset = args[3] || "artistic";
+
+      const config = new wasm.ConfigBuilder()
+        .backend("edge")
+        .artistic_preset(preset)
+        .build();
+
+      await processImage(inputPath, outputPath, config);
+      break;
+
+    case "batch":
+      if (args.length < 3) {
+        console.error("Usage: batch <input_dir> <output_dir>");
+        process.exit(1);
+      }
+
+      const inputDir = args[1];
+      const outputDir = args[2];
+      const configurations = createSampleConfigurations();
+
+      const results = await batchProcess(inputDir, outputDir, configurations);
+
+      // Generate benchmark report
+      const reportPath = path.join(outputDir, "benchmark_report.md");
+      await generateBenchmarkReport(results, reportPath);
+      break;
+
+    case "demo":
+      console.log("🚀 Running vec2art WASM Node.js demonstration...\n");
+
+      // Create sample image
+      const canvas = createCanvas(400, 300);
+      const ctx = canvas.getContext("2d");
+
+      // Draw sample content
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, 400, 300);
+
+      ctx.strokeStyle = "#333333";
+      ctx.lineWidth = 3;
+
+      // Draw a house
+      ctx.beginPath();
+      ctx.rect(100, 150, 200, 100);
+      ctx.moveTo(100, 150);
+      ctx.lineTo(200, 80);
+      ctx.lineTo(300, 150);
+      ctx.rect(150, 200, 30, 50);
+      ctx.rect(220, 180, 40, 30);
+      ctx.stroke();
+
+      // Save sample image
+      const demoDir = "./demo_output";
+      await fs.mkdir(demoDir, { recursive: true });
+
+      const sampleImagePath = path.join(demoDir, "sample_house.png");
+      const buffer = canvas.toBuffer("image/png");
+      await fs.writeFile(sampleImagePath, buffer);
+
+      console.log(`📁 Created sample image: ${sampleImagePath}`);
+
+      // Process with different presets
+      const presets = ["clean", "sketchy", "artistic", "expressive"];
+
+      for (const preset of presets) {
+        const config = new wasm.ConfigBuilder()
+          .backend("edge")
+          .artistic_preset(preset)
+          .build();
+
+        const outputPath = path.join(demoDir, `sample_house_${preset}.svg`);
+        await processImage(sampleImagePath, outputPath, config);
+      }
+
+      console.log(`\n🎉 Demo complete! Check ${demoDir} for results.`);
+      break;
+
+    default:
+      console.error(`Unknown command: ${command}`);
+      process.exit(1);
+  }
 }
 
 // Run main function if script is executed directly
 if (require.main === module) {
-    main().catch(error => {
-        console.error('Fatal error:', error);
-        process.exit(1);
-    });
+  main().catch((error) => {
+    console.error("Fatal error:", error);
+    process.exit(1);
+  });
 }
 
 // Export functions for use as a module
 module.exports = {
-    processImage,
-    batchProcess,
-    createSampleConfigurations,
-    generateBenchmarkReport,
-    wasm // Export mock for testing - replace with actual import
+  processImage,
+  batchProcess,
+  createSampleConfigurations,
+  generateBenchmarkReport,
+  wasm, // Export mock for testing - replace with actual import
 };

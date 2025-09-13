@@ -5,7 +5,10 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as cpuDetection from '$lib/utils/cpu-detection';
-import type { CPUCapabilities, PerformanceRecommendation } from '$lib/utils/cpu-detection';
+import type {
+	CPUCapabilities as _CPUCapabilities,
+	PerformanceRecommendation as _PerformanceRecommendation
+} from '$lib/utils/cpu-detection';
 import { createMockCapabilities } from '@tests/test-utils';
 
 describe('SmartPerformanceSelector Core Logic', () => {
@@ -219,7 +222,7 @@ describe('SmartPerformanceSelector Core Logic', () => {
 				}
 			];
 
-			testCases.forEach(({ input, expectation }) => {
+			testCases.forEach(({ input, expectation: _expectation }) => {
 				// Calculate expected thread values based on the input
 				const expectedRecommended =
 					input.isLowEnd || input.cores === 1

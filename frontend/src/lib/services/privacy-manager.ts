@@ -3,7 +3,7 @@
  * GDPR, CCPA, and privacy-first data collection with user consent management
  */
 
-import type { PrivacyConfig } from '../types/performance.js';
+// import type { PrivacyConfig } from '../types/performance.js';
 
 /**
  * Consent categories

@@ -1,22 +1,38 @@
-# sv
+# vec2art Frontend
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+SvelteKit 5 frontend for the vec2art image-to-SVG conversion tool.
 
-## Creating a project
+## Setup
 
-If you're seeing this, you've probably already done this step. Congrats!
+1. Install dependencies:
 
 ```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+npm install
 ```
+
+2. Configure environment variables:
+
+```sh
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env and add your API keys:
+# - PUBLIC_FORMSPARK_ENDPOINT_ID: Get from https://formspark.io/
+# - PUBLIC_TURNSTILE_SITE_KEY: Get from https://dash.cloudflare.com/
+```
+
+## Environment Variables
+
+The following public environment variables are required for the contact form:
+
+- `PUBLIC_FORMSPARK_ENDPOINT_ID`: Your Formspark form endpoint ID
+- `PUBLIC_TURNSTILE_SITE_KEY`: Your Cloudflare Turnstile site key
+
+See `.env.example` for the complete configuration.
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Start the development server:
 
 ```sh
 npm run dev
