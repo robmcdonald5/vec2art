@@ -11,7 +11,11 @@ const config = {
 		// Vercel adapter with default configuration
 		adapter: adapter(),
 
-		// REMOVED: Prerender causing 404 issues - let all routes be handled by server function
+		// Prerender specific routes
+		prerender: {
+			entries: ['/sitemap.xml'],
+			handleUnseenRoutes: 'ignore'
+		},
 
 		// Service Worker configuration
 		serviceWorker: {
