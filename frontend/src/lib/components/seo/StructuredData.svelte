@@ -210,8 +210,12 @@
 
 	// Merge with custom data if provided
 	const finalSchema = $derived(data ? { ...selectedSchema, ...data } : selectedSchema);
+
+	// Create the script content string
+	const scriptContent = $derived(`<${'script'} type="application/ld+json">${JSON.stringify(finalSchema)}</${'script'}>`);
 </script>
 
 <svelte:head>
-	{@html `<script type="application/ld+json">${JSON.stringify(finalSchema)}</script>`}
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+	{@html scriptContent}
 </svelte:head>

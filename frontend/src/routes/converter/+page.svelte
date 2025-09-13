@@ -6,7 +6,6 @@
 	 */
 
 	import { onMount } from 'svelte';
-	import { RefreshCw } from 'lucide-svelte';
 
 	// Import new layered components
 	import UploadArea from '$lib/components/converter/UploadArea.svelte';
