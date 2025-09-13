@@ -73,7 +73,7 @@ test.describe('iPhone Safari Crash Investigation', () => {
 			console.log(`📷 Created large test image: ${Math.round(largeImage.length / 1024)}KB`);
 
 			// Convert to blob and upload
-			const largeImageBlob = await page.evaluate((dataUrl) => {
+			const _largeImageBlob = await page.evaluate((dataUrl) => {
 				const arr = dataUrl.split(',');
 				const mime = arr[0].match(/:(.*?);/)?.[1];
 				const bstr = atob(arr[1]);
@@ -159,7 +159,7 @@ test.describe('iPhone Safari Crash Investigation', () => {
 							if (currentMemory) {
 								console.log(`🧠 During conversion: ${Math.round(currentMemory / 1024 / 1024)}MB`);
 							}
-						} catch (e) {
+						} catch (_e) {
 							clearInterval(memoryMonitor);
 						}
 					}, 1000);
@@ -357,7 +357,7 @@ test.describe('iPhone Safari Crash Investigation', () => {
 						// Test SharedArrayBuffer limits
 						for (let i = 1; i <= 16; i++) {
 							try {
-								const sab = new SharedArrayBuffer(1024 * 1024); // 1MB per thread
+								const _sab = new SharedArrayBuffer(1024 * 1024); // 1MB per thread
 								results.maxThreadsSupported = i;
 							} catch (e: any) {
 								results.errors.push(`Thread ${i}: ${e.message}`);

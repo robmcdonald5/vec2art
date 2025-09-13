@@ -3,7 +3,7 @@
  * Comprehensive tests to identify WASM initialization and processing failures on iOS devices
  */
 
-import { test, expect, type Page, type BrowserContext } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -180,7 +180,7 @@ async function testWasmModuleLoading(page: Page) {
 			if (wasmModule.WasmVectorizer) {
 				results.vectorizerAvailable = true;
 				// Try to create instance
-				const vectorizer = new wasmModule.WasmVectorizer();
+				const _vectorizer = new wasmModule.WasmVectorizer();
 				results.instanceCreated = true;
 			}
 
@@ -208,7 +208,7 @@ async function testWasmModuleLoading(page: Page) {
 // Main test suite
 test.describe('Safari/iOS WASM Debugging', () => {
 	test('Capture device and browser capabilities', async ({ page, browserName }) => {
-		const { logs, errors } = await setupErrorCapture(page);
+		const { logs: _logs, errors: _errors } = await setupErrorCapture(page);
 
 		await page.goto('/converter');
 		await page.waitForLoadState('networkidle');
@@ -254,7 +254,7 @@ test.describe('Safari/iOS WASM Debugging', () => {
 	});
 
 	test('Test WASM module initialization', async ({ page }) => {
-		const { logs, errors } = await setupErrorCapture(page);
+		const { logs: _logs, errors: _errors } = await setupErrorCapture(page);
 
 		await page.goto('/converter');
 		await page.waitForLoadState('networkidle');
@@ -278,7 +278,7 @@ test.describe('Safari/iOS WASM Debugging', () => {
 	});
 
 	test('Test image upload and conversion process', async ({ page, browserName }) => {
-		const { logs, errors } = await setupErrorCapture(page);
+		const { logs: _logs, errors: _errors } = await setupErrorCapture(page);
 
 		await page.goto('/converter');
 		await page.waitForLoadState('networkidle');
@@ -433,7 +433,7 @@ test.describe('Safari/iOS WASM Debugging', () => {
 	});
 
 	test('Test Worker and threading support', async ({ page }) => {
-		const { logs, errors } = await setupErrorCapture(page);
+		const { logs: _logs, errors: _errors } = await setupErrorCapture(page);
 
 		await page.goto('/converter');
 

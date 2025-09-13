@@ -3,7 +3,7 @@
  * Focused test to identify file upload issues on Safari/iOS
  */
 
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 
 test.describe('Safari File Upload Debug', () => {
 	test('Check file input behavior', async ({ page, browserName }) => {

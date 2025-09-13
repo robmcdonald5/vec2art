@@ -340,7 +340,7 @@ test.describe('iPhone 13 Simulation', () => {
 						resolve(results);
 					};
 
-					img.onerror = (error) => {
+					img.onerror = (_error) => {
 						results.errors.push('Image load failed');
 						resolve(results);
 					};

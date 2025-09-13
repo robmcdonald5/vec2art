@@ -136,7 +136,7 @@ test.describe('iPhone 13 Safari Converter Simulation', () => {
 
 							// Try to create an instance
 							try {
-								const instance = new wasmModule.WasmVectorizer();
+								const _instance = new wasmModule.WasmVectorizer();
 								wasmStatus.instanceCreated = true;
 								wasmStatus.logs.push('Instance creation successful');
 							} catch (error: any) {

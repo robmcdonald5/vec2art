@@ -239,7 +239,7 @@ test.describe('Production iPhone Crash Investigation', () => {
 									memoryExceeded = true;
 								}
 							}
-						} catch (e) {
+						} catch (_e) {
 							clearInterval(memoryMonitor);
 						}
 					}, 1000);
