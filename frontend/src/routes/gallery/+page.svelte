@@ -4,6 +4,7 @@
 	import { BeforeAfterSlider } from '$lib/components/ui/before-after-slider';
 	import { Modal } from '$lib/components/ui/modal';
 	import { Grid, List, Search, Download, Maximize2 } from 'lucide-svelte';
+	import SEOHead from '$lib/components/seo/SEOHead.svelte';
 	import {
 		loadGalleryData,
 		filterGalleryItems,
@@ -297,13 +298,21 @@
 	});
 </script>
 
+<SEOHead
+	title="SVG Art Gallery - vec2art Examples & Showcase"
+	description="Explore stunning SVG conversions created with vec2art. Browse examples of different vectorization algorithms including edge detection, centerline tracing, superpixel segmentation, and artistic dot patterns."
+	keywords="SVG gallery, vector art examples, line art showcase, SVG conversion examples, artistic vectors, before after comparison, edge detection examples, centerline tracing examples"
+/>
+
 <!-- Gallery Hero Section -->
 <section class="bg-section-elevated relative pt-8 pb-2 sm:pt-12">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 		<!-- Header -->
 		<div class="mb-4 text-center sm:mb-4">
 			<h1 class="text-gradient-modern mb-3 text-3xl font-bold sm:mb-4 sm:text-4xl">Gallery</h1>
-			<p class="text-premium text-sm sm:text-base">Browse example conversions and see what's possible with vec2art</p>
+			<p class="text-premium text-sm sm:text-base">
+				Browse example conversions and see what's possible with vec2art
+			</p>
 		</div>
 
 		<!-- Controls -->
@@ -316,7 +325,7 @@
 						type="text"
 						placeholder="Search examples..."
 						bind:value={filters.search}
-						class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 placeholder:text-speed-gray-400 w-full min-h-[44px] rounded-xl border border-gray-200 bg-white px-4 py-3 pl-12 transition-all duration-200 focus:ring-1 focus:outline-none"
+						class="focus:border-ferrari-500 focus:ring-ferrari-500/30 text-speed-gray-900 placeholder:text-speed-gray-400 min-h-[44px] w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pl-12 transition-all duration-200 focus:ring-1 focus:outline-none"
 					/>
 				</div>
 
@@ -348,7 +357,8 @@
 				<!-- View Toggle -->
 				<div class="flex overflow-hidden rounded-xl border border-gray-200">
 					<button
-						class="flex min-h-[44px] items-center px-4 py-3 transition-all duration-200 {viewMode === 'grid'
+						class="flex min-h-[44px] items-center px-4 py-3 transition-all duration-200 {viewMode ===
+						'grid'
 							? 'icon-ferrari-bg text-white'
 							: 'text-speed-gray-600 bg-white hover:bg-gray-50'}"
 						onclick={() => setViewMode('grid')}
@@ -357,7 +367,8 @@
 						<Grid class="h-4 w-4" />
 					</button>
 					<button
-						class="flex min-h-[44px] items-center px-4 py-3 transition-all duration-200 {viewMode === 'list'
+						class="flex min-h-[44px] items-center px-4 py-3 transition-all duration-200 {viewMode ===
+						'list'
 							? 'icon-ferrari-bg text-white'
 							: 'text-speed-gray-600 bg-white hover:bg-gray-50'}"
 						onclick={() => setViewMode('list')}
@@ -377,7 +388,7 @@
 		<!-- Gallery Grid -->
 		<div
 			class={viewMode === 'grid'
-				? 'grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+				? 'grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
 				: 'space-y-6'}
 		>
 			{#each displayedItems || [] as item (item.id)}

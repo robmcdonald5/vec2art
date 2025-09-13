@@ -182,14 +182,14 @@
 				initialAutoSlideTimeout = undefined;
 			}
 		}
-		
+
 		currentPanel = Math.max(0, Math.min(1, index));
 		panelOffset.set(-currentPanel * 100);
 	}
 
 	function startInitialAutoSlide() {
 		if (hasUserInteracted) return;
-		
+
 		initialAutoSlideTimeout = setTimeout(() => {
 			if (!hasUserInteracted && currentPanel === 0) {
 				goToPanel(1, true); // true indicates auto-slide

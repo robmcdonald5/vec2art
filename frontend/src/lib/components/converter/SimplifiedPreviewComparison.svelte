@@ -309,6 +309,8 @@
 				alt="Converted SVG"
 				class="absolute inset-0 h-full w-full object-contain"
 				draggable="false"
+				loading="eager"
+				decoding="async"
 			/>
 
 			<!-- Foreground: Original (clipped) -->
@@ -323,6 +325,8 @@
 					alt="Original"
 					class="h-full w-full object-contain"
 					draggable="false"
+					loading="eager"
+					decoding="async"
 				/>
 			</div>
 

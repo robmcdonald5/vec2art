@@ -41,9 +41,22 @@
 		/>
 		<meta property="twitter:image" content="%sveltekit.assets%/og-image.png" />
 
-		<!-- Preconnect to optimize font loading -->
+		<!-- Resource Hints for Performance (Core Web Vitals) -->
+		<!-- DNS Prefetch for faster resolution -->
+		<link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+		<link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+		<link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
+
+		<!-- Preconnect for critical third-party origins -->
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+		<!-- Preload critical resources -->
+		<link rel="preload" href="%sveltekit.assets%/favicon.svg" as="image" type="image/svg+xml" />
+
+		<!-- Prefetch WASM module for converter page -->
+		<link rel="prefetch" href="/wasm/vectorize_wasm_bg.wasm" as="fetch" crossorigin />
+		<link rel="modulepreload" href="/wasm/vectorize_wasm.js" />
 
 		%sveltekit.head%
 	</head>

@@ -14,6 +14,8 @@
 	import SettingsPanel from '$lib/components/converter/SettingsPanel.svelte';
 	import KeyboardShortcuts from '$lib/components/ui/keyboard/KeyboardShortcuts.svelte';
 	import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
+	import SEOHead from '$lib/components/seo/SEOHead.svelte';
+	import StructuredData from '$lib/components/seo/StructuredData.svelte';
 	import { toastStore } from '$lib/stores/toast.svelte';
 	import { parameterHistory } from '$lib/stores/parameter-history.svelte';
 	import { converterPersistence } from '$lib/stores/converter-persistence';
@@ -1593,13 +1595,16 @@
 	*/
 </script>
 
-<svelte:head>
-	<title>Image to SVG Converter - vec2art</title>
-	<meta
-		name="description"
-		content="Convert images to SVG line art using advanced algorithms powered by Rust and WebAssembly"
-	/>
-</svelte:head>
+<SEOHead
+	title="Image to SVG Converter - vec2art"
+	description="Convert PNG, JPG, and WebP images to scalable SVG graphics with artistic effects. Features hand-drawn aesthetics, multiple algorithms, and instant processing powered by WebAssembly."
+	keywords="image to SVG converter, PNG to SVG, JPG to SVG, WebP to SVG, vector converter online, artistic SVG generator, line art converter, edge detection, centerline tracing"
+/>
+
+<StructuredData type="WebApplication" />
+<StructuredData type="HowTo" />
+<StructuredData type="FAQ" />
+<StructuredData type="BreadcrumbList" />
 
 <!-- Screen reader live region -->
 <div aria-live="polite" aria-atomic="true" class="sr-only">
@@ -1616,7 +1621,6 @@
 				Transform any raster image into expressive line art SVGs using advanced algorithms
 			</p>
 		</header>
-
 
 		<!-- Main Content - Layered State UI -->
 		{#if pageLoaded && !initError}

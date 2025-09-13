@@ -90,8 +90,11 @@
 			src={afterImage}
 			alt={afterAlt}
 			{loading}
+			width="800"
+			height="800"
 			class="relative h-full w-full object-contain"
 			draggable="false"
+			decoding="async"
 		/>
 	</div>
 
@@ -113,8 +116,11 @@
 			src={beforeImage}
 			alt={beforeAlt}
 			{loading}
+			width="800"
+			height="800"
 			class="relative h-full w-full object-contain"
 			draggable="false"
+			decoding="async"
 		/>
 	</div>
 
