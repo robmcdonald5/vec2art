@@ -19,6 +19,7 @@
 		showcaseItems?: ShowcaseItem[];
 		autoPlay?: boolean;
 		autoPlayDelay?: number;
+		initialAutoSlideDelay?: number;
 	}
 
 	let {
@@ -54,7 +55,8 @@
 			}
 		],
 		autoPlay = false,
-		autoPlayDelay = 7500
+		autoPlayDelay = 7500,
+		initialAutoSlideDelay = 15000
 	}: Props = $props();
 
 	// State
@@ -65,6 +67,8 @@
 	let containerEl: HTMLDivElement;
 	let showcaseIndex = $state(0);
 	let autoPlayInterval: ReturnType<typeof setInterval> | undefined;
+	let initialAutoSlideTimeout: ReturnType<typeof setTimeout> | undefined;
+	let hasUserInteracted = $state(false);
 
 	// Spring for smooth panel transitions
 	const panelOffset = spring(0, {
@@ -97,6 +101,13 @@
 			target.closest('[data-no-hero-drag]')
 		) {
 			return;
+		}
+
+		// Mark user interaction and clear initial auto-slide
+		hasUserInteracted = true;
+		if (initialAutoSlideTimeout) {
+			clearTimeout(initialAutoSlideTimeout);
+			initialAutoSlideTimeout = undefined;
 		}
 
 		isDragging = true;
@@ -162,9 +173,32 @@
 		}
 	}
 
-	function goToPanel(index: number) {
+	function goToPanel(index: number, isAutoSlide = false) {
+		// Mark user interaction if called manually (not from auto-slide)
+		if (!isAutoSlide) {
+			hasUserInteracted = true;
+			if (initialAutoSlideTimeout) {
+				clearTimeout(initialAutoSlideTimeout);
+				initialAutoSlideTimeout = undefined;
+			}
+		}
+		
 		currentPanel = Math.max(0, Math.min(1, index));
 		panelOffset.set(-currentPanel * 100);
+	}
+
+	function startInitialAutoSlide() {
+		if (hasUserInteracted) return;
+		
+		initialAutoSlideTimeout = setTimeout(() => {
+			if (!hasUserInteracted && currentPanel === 0) {
+				goToPanel(1, true); // true indicates auto-slide
+				// Start showcase autoplay after sliding to examples
+				if (autoPlay) {
+					startAutoPlay();
+				}
+			}
+		}, initialAutoSlideDelay);
 	}
 
 	function nextShowcase() {
@@ -197,6 +231,11 @@
 			startAutoPlay();
 		}
 
+		// Start initial auto-slide timer if on overview panel
+		if (currentPanel === 0) {
+			startInitialAutoSlide();
+		}
+
 		return () => {
 			document.removeEventListener('mousemove', handleMove as any);
 			document.removeEventListener('mouseup', handleEnd);
@@ -205,6 +244,9 @@
 
 			if (autoPlayInterval) {
 				clearInterval(autoPlayInterval);
+			}
+			if (initialAutoSlideTimeout) {
+				clearTimeout(initialAutoSlideTimeout);
 			}
 		};
 	});
