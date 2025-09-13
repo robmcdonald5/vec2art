@@ -22,9 +22,9 @@ const config = {
 		csp: {
 			mode: 'hash',
 			directives: {
-				'script-src': ['self', 'unsafe-eval', 'https://va.vercel-scripts.com'],
+				'script-src': ['self', 'unsafe-eval', 'https://va.vercel-scripts.com', 'https://challenges.cloudflare.com'],
 				'style-src': ['self', 'unsafe-inline'],
-				'connect-src': ['self'],
+				'connect-src': ['self', 'https://challenges.cloudflare.com', 'https://submit-form.com'],
 				'img-src': ['self', 'data:', 'https:', 'blob:'],
 				'font-src': ['self', 'data:'],
 				'worker-src': ['self', 'blob:'],
