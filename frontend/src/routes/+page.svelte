@@ -333,6 +333,14 @@
 						>
 							Terms of Service
 						</a>
+						<a
+							href="https://buymeacoffee.com/vec2art"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="text-sm text-gray-400 transition-colors hover:text-ferrari-400 flex items-center gap-1"
+						>
+							☕ Support
+						</a>
 					</div>
 				</div>
 			</div>

@@ -78,6 +78,61 @@
 	</div>
 </section>
 
+<!-- Support the Project Section -->
+<section class="relative overflow-hidden bg-gradient-to-br from-ferrari-50 via-white to-ferrari-25 py-20 sm:py-24" aria-labelledby="support-heading">
+	<!-- Animated background elements -->
+	<div class="absolute top-0 left-1/4 w-96 h-96 bg-ferrari-100/20 rounded-full blur-3xl animate-pulse"></div>
+	<div class="absolute bottom-0 right-1/4 w-80 h-80 bg-ferrari-50/30 rounded-full blur-2xl animate-pulse" style="animation-delay: 1s;"></div>
+	
+	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
+		<div class="text-center">
+			<!-- Header with heart icon -->
+			<div class="mb-8 flex items-center justify-center gap-4">
+				<div class="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-ferrari-500 to-ferrari-600 shadow-xl">
+					<span class="text-2xl animate-pulse">❤️</span>
+					<div class="absolute inset-0 rounded-full bg-ferrari-500/20 animate-ping"></div>
+				</div>
+				<h2 id="support-heading" class="text-4xl font-bold text-gray-900 sm:text-5xl">
+					Support the Project
+				</h2>
+			</div>
+			
+			<!-- Description -->
+			<p class="mx-auto max-w-2xl text-lg text-gray-600 mb-8 leading-relaxed">
+				vec2art is completely free with no ads or tracking. If this tool has been useful to you, 
+				consider supporting its continued development and hosting costs.
+			</p>
+			
+			<!-- Stats -->
+			<div class="mb-12 flex flex-wrap justify-center gap-8 text-sm text-gray-500">
+				<div class="flex items-center gap-2">
+					<div class="h-3 w-3 rounded-full bg-green-500"></div>
+					<span>100% Free</span>
+				</div>
+				<div class="flex items-center gap-2">
+					<div class="h-3 w-3 rounded-full bg-blue-500"></div>
+					<span>No Ads</span>
+				</div>
+			</div>
+			
+			<!-- CTA Button -->
+			<div class="flex justify-center">
+				<a 
+					href="https://buymeacoffee.com/vec2art" 
+					target="_blank" 
+					rel="noopener noreferrer"
+					class="group relative inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-ferrari-500 to-ferrari-600 px-8 py-4 text-lg font-semibold text-white shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 focus:outline-none focus:ring-4 focus:ring-ferrari-500/30"
+				>
+					<span class="text-xl group-hover:animate-bounce">☕</span>
+					Buy me a coffee
+					<span class="text-sm opacity-80">($5)</span>
+					<div class="absolute inset-0 rounded-full bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+				</a>
+			</div>
+		</div>
+	</div>
+</section>
+
 <!-- Algorithm Pipeline Section -->
 <section class="bg-section-elevated relative py-16 sm:py-20" aria-labelledby="algorithms-heading">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
@@ -869,6 +924,7 @@
 		</div>
 	</div>
 </section>
+
 
 <!-- Get in Touch Section -->
 <section class="bg-section-elevated relative py-16 sm:py-20" aria-labelledby="contact-heading">
