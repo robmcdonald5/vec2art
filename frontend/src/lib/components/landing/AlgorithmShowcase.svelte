@@ -14,8 +14,6 @@
 	// Use the curated showcase algorithms from gallery
 	const algorithms = showcaseAlgorithms;
 
-	// Mobile optimization: show limited algorithms initially
-	let showAllAlgorithms = $state(false);
 	let selectedAlgorithm = $state(algorithms[0] || null);
 	let emblaApi: EmblaCarouselType;
 	let autoplayPlugin = Autoplay({ delay: 4000, stopOnInteraction: true });
@@ -34,29 +32,9 @@
 	let preloadedImages = $state(new Set<string>());
 	let intersectionObserver: IntersectionObserver | undefined;
 
-	// Mobile optimization: limit displayed algorithms
-	const MOBILE_LIMIT = 6; // Show 6 algorithms initially on mobile
-
 	// FIXED: Use original algorithms array consistently (no complex derived functions)
 	// This prevents state synchronization bugs between carousel and selection
 	const carouselAlgorithms = algorithms;
-
-	// Function to toggle show more/less
-	function toggleShowMore() {
-		showAllAlgorithms = !showAllAlgorithms;
-
-		// If collapsing, ensure selected algorithm is within visible range
-		if (!showAllAlgorithms && selectedAlgorithm) {
-			const visibleAlgorithms = carouselAlgorithms.slice(0, MOBILE_LIMIT);
-			const isSelectedVisible = visibleAlgorithms.some((alg) => alg.id === selectedAlgorithm.id);
-
-			// If current selection is not in visible range, select the first visible one
-			if (!isSelectedVisible && emblaApi) {
-				selectedAlgorithm = visibleAlgorithms[0];
-				emblaApi.scrollTo(0);
-			}
-		}
-	}
 
 	// Smart image preloading for mobile performance
 	function preloadAlgorithmImages(algorithm: ShowcaseAlgorithm) {
@@ -284,35 +262,6 @@
 			{/each}
 		</div>
 	</div>
-</div>
-
-<!-- Show More/Less Button for Mobile -->
-<div class="mb-8 flex justify-center md:hidden">
-	<button
-		onclick={toggleShowMore}
-		class="group hover:border-ferrari-300 hover:bg-ferrari-25 hover:text-ferrari-600 focus:ring-ferrari-500 relative inline-flex min-h-[44px] touch-manipulation items-center gap-2 overflow-hidden rounded-full border border-gray-200 bg-white px-6 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-300 hover:shadow-lg focus:ring-2 focus:ring-offset-2 focus:outline-none active:scale-95 active:shadow-sm"
-		aria-expanded={showAllAlgorithms}
-		aria-label={showAllAlgorithms ? 'Show less algorithms' : 'Show more algorithms'}
-	>
-		<span class="relative z-10 transition-colors duration-300"
-			>{showAllAlgorithms ? 'Show Less' : `Show More (${algorithms.length - MOBILE_LIMIT})`}</span
-		>
-		<svg
-			class="group-hover:text-ferrari-600 relative z-10 h-4 w-4 transition-all duration-300 {showAllAlgorithms
-				? 'rotate-180'
-				: ''}"
-			fill="none"
-			stroke="currentColor"
-			viewBox="0 0 24 24"
-		>
-			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-		</svg>
-
-		<!-- Mobile ripple effect indicator -->
-		<div
-			class="bg-ferrari-200 pointer-events-none absolute inset-0 scale-0 rounded-full opacity-0 transition-all duration-300 group-active:scale-100 group-active:opacity-30 md:hidden"
-		></div>
-	</button>
 </div>
 
 <!-- Interactive Preview Area -->

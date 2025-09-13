@@ -212,7 +212,9 @@
 	const finalSchema = $derived(data ? { ...selectedSchema, ...data } : selectedSchema);
 
 	// Create the script content string
-	const scriptContent = $derived(`<${'script'} type="application/ld+json">${JSON.stringify(finalSchema)}</${'script'}>`);
+	const scriptContent = $derived(
+		`<${'script'} type="application/ld+json">${JSON.stringify(finalSchema)}</${'script'}>`
+	);
 </script>
 
 <svelte:head>
