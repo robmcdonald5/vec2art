@@ -210,40 +210,28 @@ export class ConverterWasmStore {
 
 		try {
 			this.clearError();
-			let success: boolean;
 
-			if (this._initState.threadsInitialized) {
-				// Try to resize if thread count is different
-				if (threadCount && threadCount !== this._initState.requestedThreadCount) {
-					console.log(
-						`[ConverterWasmStore] Resizing thread pool from ${this._initState.requestedThreadCount} to ${threadCount} threads`
-					);
-					success = await vectorizerService.resizeThreadPool(threadCount);
-				} else {
-					console.log('[ConverterWasmStore] Threads already initialized with correct count');
-					return true;
-				}
-			} else {
-				// Initialize for the first time
-				success = await vectorizerService.initializeThreadPool(threadCount);
-			}
+			// For single-threaded WASM architecture: threading is handled by Web Workers, not native WASM
+			console.log('[ConverterWasmStore] Single-threaded WASM: Web Workers handle parallelization');
+			console.log(
+				'[ConverterWasmStore] Native thread pool not applicable - marking as initialized'
+			);
 
-			if (success) {
-				this._initState.threadsInitialized = true;
-				this._initState.requestedThreadCount = threadCount || 0;
+			// Mark as "initialized" for compatibility (even though we use Web Workers)
+			this._initState.threadsInitialized = true;
+			this._initState.requestedThreadCount = 1; // Single-threaded WASM
 
-				// Update capabilities
-				const caps = await vectorizerService.checkCapabilities();
-				this._state.capabilities = caps;
+			// Update capabilities to reflect actual architecture
+			const caps = await vectorizerService.checkCapabilities();
+			this._state.capabilities = caps;
 
-				console.log('[ConverterWasmStore] ✅ Thread pool initialized:', {
-					threadCount: threadCount || 'auto',
-					hardwareConcurrency: caps.hardware_concurrency,
-					success
-				});
-			}
+			console.log('[ConverterWasmStore] ✅ Single-threaded initialization complete:', {
+				wasmThreads: 1, // WASM is single-threaded
+				webWorkerSupport: typeof Worker !== 'undefined',
+				hardwareConcurrency: caps.hardware_concurrency
+			});
 
-			return success;
+			return true; // Always successful for single-threaded architecture
 		} catch (error) {
 			const threadError = {
 				type: 'threading' as const,
@@ -611,6 +599,11 @@ export class ConverterWasmStore {
 		this._recoveryState.isRecovering = true;
 
 		try {
+			// Detect iOS first for all recovery decisions
+			const isIOS =
+				/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+				(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 			// Step 1: Force cleanup of current service
 			console.log('[ConverterWasmStore] 🧹 Cleaning up corrupted WASM state...');
 			vectorizerService.cleanup();
@@ -621,9 +614,12 @@ export class ConverterWasmStore {
 			this._initState.threadsInitialized = false;
 			this.clearError();
 
-			// Step 3: Wait longer for complete cleanup (WASM needs time)
-			console.log('[ConverterWasmStore] ⏳ Waiting for WASM cleanup to complete...');
-			await new Promise((resolve) => setTimeout(resolve, 1500)); // Longer wait
+			// Step 3: Wait for complete cleanup (iOS needs extra time)
+			const cleanupDelay = isIOS ? 3000 : 1500; // iOS needs 3 seconds for memory cleanup
+			console.log(
+				`[ConverterWasmStore] ⏳ Waiting ${cleanupDelay}ms for WASM cleanup to complete...`
+			);
+			await new Promise((resolve) => setTimeout(resolve, cleanupDelay));
 
 			// Step 4: Force garbage collection if available
 			if ('gc' in window && typeof window.gc === 'function') {
@@ -635,12 +631,42 @@ export class ConverterWasmStore {
 				}
 			}
 
-			// Step 5: Reinitialize with conservative thread count
+			// Step 4.5: Check memory pressure on iOS before reinitializing
+			if (isIOS && (performance as any).memory) {
+				const memInfo = (performance as any).memory;
+				const usedMB = memInfo.usedJSHeapSize / (1024 * 1024);
+				const limitMB = memInfo.jsHeapSizeLimit / (1024 * 1024);
+				const usagePercent = (usedMB / limitMB) * 100;
+
+				console.log(
+					`[ConverterWasmStore] 🧠 iOS Memory: ${usedMB.toFixed(1)}MB / ${limitMB.toFixed(1)}MB (${usagePercent.toFixed(1)}%)`
+				);
+
+				if (usagePercent > 70) {
+					console.warn(
+						'[ConverterWasmStore] ⚠️ High memory usage detected - extended cleanup delay'
+					);
+					await new Promise((resolve) => setTimeout(resolve, 2000)); // Extra delay for high memory
+				}
+			}
+
+			// Step 5: Reinitialize with single-threaded WASM architecture
 			console.log('[ConverterWasmStore] 🔄 Reinitializing WASM module...');
-			const threadCount = Math.min(this._initState.requestedThreadCount || 4, 4); // Max 4 threads for stability
+
+			if (isIOS) {
+				console.log(
+					'[ConverterWasmStore] 📱 iOS detected - single-threaded WASM (Web Worker parallelization)'
+				);
+			} else {
+				console.log(
+					'[ConverterWasmStore] 💻 Desktop recovery - single-threaded WASM (Web Worker parallelization)'
+				);
+			}
+
+			// Initialize with single-threaded architecture (no threading parameters needed)
 			await this.initialize({
-				threadCount,
-				autoInitThreads: true
+				// Remove all threading parameters - we use Web Workers, not native WASM threading
+				// threadCount and autoInitThreads are not relevant for single-threaded WASM
 			});
 
 			console.log('[ConverterWasmStore] ✅ Enhanced recovery completed successfully');
