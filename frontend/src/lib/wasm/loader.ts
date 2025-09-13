@@ -203,6 +203,18 @@ export async function loadVectorizer(options?: {
 		throw new Error('WASM must load in the browser');
 	}
 
+	// iOS detection and logging
+	const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+	if (isIOS) {
+		console.log('[WASM Loader] 📱 iOS device detected - applying compatibility settings');
+		// Force single-threaded mode on iOS
+		options = {
+			...options,
+			initializeThreads: false,
+			threadCount: 1
+		};
+	}
+
 	if (wasmModule) {
 		// If module is loaded but threads aren't initialized and we want them
 		if (options?.initializeThreads && !isThreadPoolInitialized()) {

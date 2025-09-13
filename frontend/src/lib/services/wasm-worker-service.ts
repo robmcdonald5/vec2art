@@ -64,6 +64,16 @@ export class WasmWorkerService {
 			throw new Error('Web Worker can only be initialized in browser');
 		}
 
+		// iOS compatibility check
+		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+		if (isIOS) {
+			console.log('[WasmWorkerService] iOS detected - limiting resources');
+			options = {
+				...options,
+				threadCount: 1 // Force single thread on iOS
+			};
+		}
+
 		// Allow re-initialization with threading configuration
 		// Initialize called with options
 

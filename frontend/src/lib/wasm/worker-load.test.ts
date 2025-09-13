@@ -232,7 +232,9 @@ describe('Worker WASM Loader - Console Logging', () => {
 
 		await initializeWasm();
 
-		expect(consoleLogSpy).toHaveBeenCalledWith('[Worker WASM] Loading WASM module in worker context...');
+		expect(consoleLogSpy).toHaveBeenCalledWith(
+			'[Worker WASM] Loading WASM module in worker context...'
+		);
 		expect(consoleLogSpy).toHaveBeenCalledWith('[Worker WASM] JS module imported');
 	});
 
@@ -325,15 +327,11 @@ describe('Worker WASM Loader - Performance & Memory', () => {
 		const { initializeWasm } = await import('./worker-load');
 
 		// Initialize multiple times to check for leaks
-		const modules = await Promise.all([
-			initializeWasm(),
-			initializeWasm(),
-			initializeWasm()
-		]);
+		const modules = await Promise.all([initializeWasm(), initializeWasm(), initializeWasm()]);
 
 		// Each initialization should return the same interface
 		expect(modules).toHaveLength(3);
-		modules.forEach(module => {
+		modules.forEach((module) => {
 			expect(module.WasmVectorizer).toBeDefined();
 		});
 	});
@@ -347,7 +345,7 @@ describe('Worker WASM Loader - Performance & Memory', () => {
 		const modules = await Promise.all(promises);
 
 		expect(modules).toHaveLength(5);
-		modules.forEach(module => {
+		modules.forEach((module) => {
 			expect(module.WasmVectorizer).toBeDefined();
 		});
 	});
@@ -420,11 +418,7 @@ describe('Worker WASM Loader - Integration Scenarios', () => {
 describe('Worker WASM Loader - URL and Path Handling', () => {
 	it('should handle different base URL contexts', async () => {
 		// Test with different base URLs
-		const testUrls = [
-			'http://localhost:3000/',
-			'https://example.com/app/',
-			'file:///path/to/app/'
-		];
+		const testUrls = ['http://localhost:3000/', 'https://example.com/app/', 'file:///path/to/app/'];
 
 		for (const baseUrl of testUrls) {
 			vi.stubGlobal('location', { href: baseUrl });
@@ -457,12 +451,15 @@ describe('Worker WASM Loader - URL and Path Handling', () => {
 
 	it('should handle URL constructor edge cases', async () => {
 		// Test with edge case URLs
-		vi.stubGlobal('URL', class URL {
-			href: string;
-			constructor(url: string, base?: string) {
-				this.href = `${base || 'http://localhost/'}${url}`;
+		vi.stubGlobal(
+			'URL',
+			class URL {
+				href: string;
+				constructor(url: string, base?: string) {
+					this.href = `${base || 'http://localhost/'}${url}`;
+				}
 			}
-		});
+		);
 
 		const { initializeWasm } = await import('./worker-load');
 

@@ -126,9 +126,21 @@ async function createVectorizer(imageDataPayload: {
 		dataLength: imageDataPayload.data.length
 	});
 
-	const canvas = new OffscreenCanvas(imageDataPayload.width, imageDataPayload.height);
-	const ctx = canvas.getContext('2d')!;
-	const imageDataObj = ctx.createImageData(imageDataPayload.width, imageDataPayload.height);
+	// iOS Safari compatibility: OffscreenCanvas fallback
+	let imageDataObj: ImageData;
+
+	if (typeof OffscreenCanvas !== 'undefined') {
+		// Modern browsers with OffscreenCanvas support
+		const canvas = new OffscreenCanvas(imageDataPayload.width, imageDataPayload.height);
+		const ctx = canvas.getContext('2d')!;
+		imageDataObj = ctx.createImageData(imageDataPayload.width, imageDataPayload.height);
+	} else {
+		// iOS Safari fallback - create ImageData directly without OffscreenCanvas
+		console.log(
+			`[Worker] iOS Safari detected - using ImageData fallback for ${imageDataPayload.width}x${imageDataPayload.height} image`
+		);
+		imageDataObj = new ImageData(imageDataPayload.width, imageDataPayload.height);
+	}
 
 	// Copy pixel data - convert array back to Uint8ClampedArray
 	const expectedLength = imageDataPayload.width * imageDataPayload.height * 4;
