@@ -95,6 +95,40 @@ export function setupBrowserMocks() {
 		configurable: true
 	});
 
+	// Mock fetch to prevent real network requests (critical for WASM tests)
+	Object.defineProperty(globalThis, 'fetch', {
+		value: vi.fn().mockImplementation((url: string | URL) => {
+			// Mock WASM binary fetch
+			if (url.toString().includes('.wasm')) {
+				console.log(`[Test Mock] Mocked WASM fetch: ${url.toString()}`);
+				return Promise.resolve({
+					ok: true,
+					status: 200,
+					arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024)),
+					blob: () => Promise.resolve(new Blob([new ArrayBuffer(1024)])),
+					json: () => Promise.resolve({}),
+					text: () => Promise.resolve(''),
+					headers: new Map(),
+					url: url.toString()
+				} as Response);
+			}
+			// Mock other network requests
+			console.log(`[Test Mock] Mocked fetch: ${url.toString()}`);
+			return Promise.resolve({
+				ok: true,
+				status: 200,
+				json: () => Promise.resolve({}),
+				text: () => Promise.resolve(''),
+				arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+				blob: () => Promise.resolve(new Blob()),
+				headers: new Map(),
+				url: url.toString()
+			} as Response);
+		}),
+		writable: true,
+		configurable: true
+	});
+
 	// Mock performance for timing
 	if (!window.performance) {
 		Object.defineProperty(window, 'performance', {

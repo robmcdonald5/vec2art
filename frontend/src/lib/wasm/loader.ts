@@ -15,6 +15,11 @@ function detectBrowser(): {
 	isFirefox: boolean;
 	isChrome: boolean;
 } {
+	// Handle Node.js test environment where navigator is undefined
+	if (typeof navigator === 'undefined' || !navigator.userAgent) {
+		return { name: 'Unknown', version: null, isFirefox: false, isChrome: false };
+	}
+
 	const userAgent = navigator.userAgent;
 	const isFirefox = userAgent.includes('Firefox');
 	const isChrome = userAgent.includes('Chrome') && !userAgent.includes('Edge');
@@ -290,7 +295,7 @@ export async function loadVectorizer(options?: {
 			await initializeGPUWithBrowserSupport(wasmJs);
 
 			// Set up cleanup on page unload
-			if (typeof window !== 'undefined') {
+			if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
 				const cleanup = () => cleanupCoordinatedGPU();
 				window.addEventListener('beforeunload', cleanup);
 				window.addEventListener('pagehide', cleanup);
@@ -432,141 +437,68 @@ export async function getAvailablePresets() {
 }
 
 /**
- * Initialize thread pool separately (for lazy loading) with dynamic thread management
+ * Initialize thread pool separately (for lazy loading) - Single-threaded mode
  */
 export async function initializeThreadPool(threadCount?: number): Promise<boolean> {
 	if (!wasmModule) {
 		throw new Error('WASM module not loaded. Call loadVectorizer() first.');
 	}
 
-	// Web Worker mode: no native thread pool initialization needed
-	console.log('[WASM Loader] Using Web Worker parallelization (no native threading)');
-	console.log(
-		`[WASM Loader] Available cores for Web Workers: ${navigator.hardwareConcurrency || 1}`
-	);
+	// Single-threaded mode: no thread pool initialization needed
+	console.log('[WASM Loader] Using single-threaded mode (no threading support)');
+	console.log('[WASM Loader] Thread pool initialization skipped - single-threaded architecture');
 
-	// If already initialized, check if we need to resize
-	if (isThreadPoolInitialized()) {
-		const currentThreads = getCurrentThreadCount();
-		if (threadCount && threadCount !== currentThreads) {
-			console.log(
-				`[WASM Loader] Resizing thread pool from ${currentThreads} to ${threadCount} threads`
-			);
-			return await resizeThreadPool(threadCount!);
-		}
-		console.log('[WASM Loader] Thread pool already initialized with correct count');
-		return true;
-	}
-
-	return true;
-}
-
-/**
- * Check if thread pool is initialized
- */
-export function isThreadPoolInitialized(): boolean {
-	if (!wasmModule) return false;
-
-	try {
-		if (typeof wasmModule.is_threading_supported === 'function') {
-			return wasmModule.is_threading_supported();
-		}
-	} catch (error) {
-		console.warn('[WASM Loader] Error checking thread pool status:', error);
-	}
-
+	// Always return false for single-threaded architecture
 	return false;
 }
 
 /**
- * Get current thread count
+ * Check if thread pool is initialized - Single-threaded mode
+ */
+export function isThreadPoolInitialized(): boolean {
+	// Single-threaded architecture - thread pool never initialized
+	return false;
+}
+
+/**
+ * Get current thread count - Single-threaded mode
  */
 export function getCurrentThreadCount(): number {
-	// Web Worker mode: return available hardware concurrency
-	return navigator.hardwareConcurrency || 1;
+	// Single-threaded architecture - always 1 thread
+	return 1;
 }
 
 /**
- * Get maximum available threads
+ * Get maximum available threads - Single-threaded mode
  */
 export function getMaxThreads(): number {
-	return Math.min(navigator.hardwareConcurrency || 4, 12);
+	// Single-threaded architecture - always 1 thread maximum
+	return 1;
 }
 
 /**
- * Get recommended thread count based on system
+ * Get recommended thread count based on system - Single-threaded mode
  */
 export function getRecommendedThreadCount(): number {
-	const cores = navigator.hardwareConcurrency || 4;
-	// Leave 1-2 cores free for system, max 8 for reasonable performance
-	return Math.min(Math.max(1, cores - 2), 8);
+	// Single-threaded architecture - always recommend 1 thread
+	return 1;
 }
 
 /**
- * Resize thread pool to a new thread count (for performance optimization)
+ * Resize thread pool to a new thread count - Single-threaded mode
  */
 export async function resizeThreadPool(newThreadCount: number): Promise<boolean> {
-	if (!wasmModule || !isThreadPoolInitialized()) {
-		console.warn('[WASM Loader] Cannot resize - thread pool not initialized');
-		return false;
-	}
-
-	try {
-		const cores = navigator.hardwareConcurrency || 4;
-		const safeThreadCount = Math.max(1, Math.min(newThreadCount, cores - 1));
-
-		console.log(`[WASM Loader] Resizing thread pool to ${safeThreadCount} threads...`);
-
-		// If WASM supports dynamic resizing, use it
-		if (wasmModule.resize_thread_pool) {
-			await wasmModule.resize_thread_pool(safeThreadCount);
-			console.log('[WASM Loader] ✅ Thread pool resized successfully');
-			return true;
-		} else {
-			// Fallback: destroy and recreate thread pool
-			console.log('[WASM Loader] Resizing via pool recreation...');
-
-			if (wasmModule.destroy_thread_pool) {
-				await wasmModule.destroy_thread_pool();
-			}
-
-			const initFunction = wasmModule.initThreadPool;
-			await initFunction(safeThreadCount);
-			wasmModule.confirm_threading_success();
-
-			console.log('[WASM Loader] ✅ Thread pool recreated with new size');
-			return true;
-		}
-	} catch (error) {
-		console.error('[WASM Loader] ❌ Thread pool resize failed:', error);
-		if (wasmModule.mark_threading_failed) {
-			wasmModule.mark_threading_failed();
-		}
-		return false;
-	}
+	// Single-threaded architecture - resizing not supported
+	console.log('[WASM Loader] Thread pool resizing skipped - single-threaded architecture');
+	return false;
 }
 
 /**
- * Cleanup thread pool and resources
+ * Cleanup thread pool and resources - Single-threaded mode
  */
 export async function cleanupThreadPool(): Promise<void> {
-	if (!wasmModule) return;
-
-	try {
-		console.log('[WASM Loader] Cleaning up thread pool...');
-
-		if (wasmModule.destroy_thread_pool) {
-			await wasmModule.destroy_thread_pool();
-		}
-
-		if (wasmModule.mark_threading_failed) {
-			wasmModule.mark_threading_failed();
-		}
-
-		console.log('[WASM Loader] ✅ Thread pool cleanup completed');
-	} catch (error) {
-		console.warn('[WASM Loader] Thread pool cleanup warning:', error);
-	}
+	// Single-threaded architecture - no thread pool to cleanup
+	console.log('[WASM Loader] Cleanup skipped - single-threaded architecture');
 }
 
 /**

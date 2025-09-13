@@ -4,20 +4,20 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { setupBrowserMocks, cleanupBrowserMocks, fileTestUtils } from '@tests/test-utils';
+import { setupBrowserMocks, cleanupBrowserMocks, fileTestUtils } from '../../../tests/test-utils';
 
-// Mock the vectorizer service
+// Mock the vectorizer service (single-threaded)
 const mockVectorizerService = {
 	initialize: vi.fn().mockResolvedValue(true),
-	initializeThreads: vi.fn().mockResolvedValue(true),
+	initializeThreads: vi.fn().mockResolvedValue(false), // Single-threaded
 	processImage: vi.fn().mockResolvedValue({ svg: '<svg>test</svg>' }),
 	getCapabilities: vi.fn().mockResolvedValue({
-		threading_supported: true,
-		hardware_concurrency: 8,
+		threading_supported: false, // Single-threaded
+		hardware_concurrency: 1,    // Single-threaded
 		wasm_loaded: true
 	}),
 	isInitialized: vi.fn().mockReturnValue(true),
-	getThreadCount: vi.fn().mockReturnValue(8)
+	getThreadCount: vi.fn().mockReturnValue(1) // Single-threaded
 };
 
 vi.mock('$lib/services/vectorizer-service', () => ({
@@ -33,6 +33,18 @@ describe('Vectorizer Store', () => {
 	beforeEach(() => {
 		setupBrowserMocks();
 		vi.clearAllMocks();
+
+		// Reset mock return values after clearing
+		mockVectorizerService.initialize.mockResolvedValue(true);
+		mockVectorizerService.initializeThreads.mockResolvedValue(false); // Single-threaded
+		mockVectorizerService.processImage.mockResolvedValue({ svg: '<svg>test</svg>' });
+		mockVectorizerService.getCapabilities.mockResolvedValue({
+			threading_supported: false, // Single-threaded
+			hardware_concurrency: 1,    // Single-threaded
+			wasm_loaded: true
+		});
+		mockVectorizerService.isInitialized.mockReturnValue(true);
+		mockVectorizerService.getThreadCount.mockReturnValue(1); // Single-threaded
 	});
 
 	afterEach(() => {
@@ -48,9 +60,9 @@ describe('Vectorizer Store', () => {
 			expect(mockVectorizerService.initialize).toHaveBeenCalled();
 		});
 
-		it('should initialize thread pool', async () => {
+		it('should initialize thread pool (single-threaded)', async () => {
 			const result = await mockVectorizerService.initializeThreads(6);
-			expect(result).toBe(true);
+			expect(result).toBe(false); // Single-threaded returns false
 			expect(mockVectorizerService.initializeThreads).toHaveBeenCalledWith(6);
 		});
 
@@ -84,8 +96,8 @@ describe('Vectorizer Store', () => {
 			const capabilities = await mockVectorizerService.getCapabilities();
 
 			expect(capabilities).toEqual({
-				threading_supported: true,
-				hardware_concurrency: 8,
+				threading_supported: false, // Single-threaded
+				hardware_concurrency: 1,    // Single-threaded
 				wasm_loaded: true
 			});
 		});
@@ -97,7 +109,7 @@ describe('Vectorizer Store', () => {
 
 		it('should get thread count', () => {
 			const threadCount = mockVectorizerService.getThreadCount();
-			expect(threadCount).toBe(8);
+			expect(threadCount).toBe(1); // Single-threaded
 		});
 	});
 

@@ -10,9 +10,10 @@ vi.mock('$app/environment', () => ({
 	browser: true
 }));
 
-// Mock WASM module with better simulation
-const mockWasmModule = {
+// Mock WASM module using vi.hoisted to avoid factory scope issues
+const mockWasmModule = vi.hoisted(() => ({
 	default: vi.fn().mockResolvedValue({}),
+	initSync: vi.fn(), // Add initSync for worker compatibility
 	WasmVectorizer: vi.fn(),
 	WasmBackend: {
 		Edge: 'edge',
@@ -26,12 +27,13 @@ const mockWasmModule = {
 		Fast: 'fast',
 		Artistic: 'artistic'
 	},
-	initThreadPool: vi.fn().mockResolvedValue({}),
-	is_threading_supported: vi.fn().mockReturnValue(true),
-	get_thread_count: vi.fn().mockReturnValue(8),
+	// Single-threaded: no thread pool functions
+	initThreadPool: undefined,
+	is_threading_supported: vi.fn().mockReturnValue(false),
+	get_thread_count: vi.fn().mockReturnValue(1),
 	confirm_threading_success: vi.fn(),
 	mark_threading_failed: vi.fn()
-};
+}));
 
 // Mock dynamic import of WASM module
 vi.mock('./vectorize_wasm.js', () => mockWasmModule);
@@ -64,7 +66,21 @@ beforeEach(() => {
 
 	// Ensure all mock functions exist and are properly reset
 	mockWasmModule.default = vi.fn().mockResolvedValue(undefined);
-	mockWasmModule.initThreadPool = vi.fn().mockResolvedValue(undefined);
+	mockWasmModule.initSync = vi.fn(); // Reset initSync for worker compatibility
+	mockWasmModule.WasmVectorizer = vi.fn(); // Reset to function (not undefined)
+	mockWasmModule.WasmBackend = {
+		Edge: 'edge',
+		Centerline: 'centerline',
+		Superpixel: 'superpixel',
+		Dots: 'dots'
+	};
+	mockWasmModule.WasmPreset = {
+		Default: 'default',
+		Detailed: 'detailed',
+		Fast: 'fast',
+		Artistic: 'artistic'
+	};
+	// Single-threaded: initThreadPool is undefined
 	mockWasmModule.is_threading_supported = vi.fn().mockReturnValue(false);
 	mockWasmModule.get_thread_count = vi.fn().mockReturnValue(1);
 });
@@ -129,12 +145,14 @@ describe('WASM Index - Core Initialization', () => {
 });
 
 describe('WASM Index - Threading Behavior', () => {
-	it('should automatically attempt thread pool initialization when cross-origin isolated', async () => {
+	it('should initialize in single-threaded mode regardless of cross-origin isolation', async () => {
 		const { initWasm } = await import('./index');
 
 		await initWasm();
 
-		expect(mockWasmModule.initThreadPool).toHaveBeenCalledWith(8);
+		// Single-threaded system: no thread pool initialization
+		expect(mockWasmModule.is_threading_supported()).toBe(false);
+		expect(mockWasmModule.get_thread_count()).toBe(1);
 	});
 
 	it('should skip threading when not cross-origin isolated', async () => {
@@ -144,50 +162,53 @@ describe('WASM Index - Threading Behavior', () => {
 
 		await initWasm();
 
-		expect(mockWasmModule.initThreadPool).not.toHaveBeenCalled();
+		// Single-threaded: always false regardless of isolation
+		expect(mockWasmModule.is_threading_supported()).toBe(false);
+		expect(mockWasmModule.get_thread_count()).toBe(1);
 	});
 
 	it('should handle thread pool initialization failure gracefully', async () => {
-		mockWasmModule.initThreadPool.mockRejectedValue(new Error('Thread init failed'));
-
+		// No longer relevant since initThreadPool is undefined
 		const { initWasm } = await import('./index');
 
-		// Should not throw, just log warning
+		// Should not throw, operates in single-threaded mode
 		const module = await initWasm();
 
 		expect(module).toBe(mockWasmModule);
-		expect(mockWasmModule.initThreadPool).toHaveBeenCalled();
+		expect(mockWasmModule.is_threading_supported()).toBe(false);
 	});
 
-	it('should skip threading when initThreadPool not available', async () => {
-		mockWasmModule.initThreadPool = undefined;
-
+	it('should handle missing threading functions gracefully', async () => {
+		// Already undefined, but test graceful handling
 		const { initWasm } = await import('./index');
 
 		const module = await initWasm();
 
 		expect(module).toBe(mockWasmModule);
-		// No error should be thrown
+		expect(mockWasmModule.is_threading_supported()).toBe(false);
+		expect(mockWasmModule.get_thread_count()).toBe(1);
 	});
 
-	it('should use hardware concurrency for thread count', async () => {
+	it('should work regardless of hardware concurrency', async () => {
 		mockNavigator.hardwareConcurrency = 12;
 
 		const { initWasm } = await import('./index');
 
 		await initWasm();
 
-		expect(mockWasmModule.initThreadPool).toHaveBeenCalledWith(12);
+		// Single-threaded: hardware concurrency doesn't affect thread count
+		expect(mockWasmModule.get_thread_count()).toBe(1);
 	});
 
-	it('should fallback to 4 threads when hardware concurrency unavailable', async () => {
+	it('should work when hardware concurrency unavailable', async () => {
 		mockNavigator.hardwareConcurrency = undefined;
 
 		const { initWasm } = await import('./index');
 
 		await initWasm();
 
-		expect(mockWasmModule.initThreadPool).toHaveBeenCalledWith(4);
+		// Single-threaded: always 1 thread
+		expect(mockWasmModule.get_thread_count()).toBe(1);
 	});
 
 	it('should handle missing window object gracefully', async () => {
@@ -198,7 +219,7 @@ describe('WASM Index - Threading Behavior', () => {
 		const module = await initWasm();
 
 		expect(module).toBe(mockWasmModule);
-		expect(mockWasmModule.initThreadPool).not.toHaveBeenCalled();
+		expect(mockWasmModule.is_threading_supported()).toBe(false);
 	});
 });
 
@@ -269,17 +290,18 @@ describe('WASM Index - API Functions', () => {
 });
 
 describe('WASM Index - Capabilities Check', () => {
-	it('should check capabilities with full threading support', async () => {
-		mockWasmModule.is_threading_supported.mockReturnValue(true);
-		mockWasmModule.get_thread_count.mockReturnValue(8);
+	it('should check capabilities with single-threaded support', async () => {
+		// Single-threaded system always returns false
+		mockWasmModule.is_threading_supported.mockReturnValue(false);
+		mockWasmModule.get_thread_count.mockReturnValue(1);
 
 		const { checkCapabilities } = await import('./index');
 
 		const capabilities = await checkCapabilities();
 
 		expect(capabilities).toEqual({
-			threading: true,
-			threadCount: 8,
+			threading: false,
+			threadCount: 1,
 			crossOriginIsolated: true,
 			sharedArrayBuffer: true,
 			wasmAvailable: true
