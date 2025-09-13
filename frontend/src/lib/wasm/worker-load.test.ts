@@ -371,7 +371,7 @@ describe('Worker WASM Loader - Performance & Memory', () => {
 describe('Worker WASM Loader - Integration Scenarios', () => {
 	it('should work in typical worker message handling scenario', async () => {
 		// Mock worker message event
-		const mockEvent = {
+		const _mockEvent = {
 			data: { type: 'initialize-wasm', payload: {} }
 		};
 

@@ -439,7 +439,7 @@ export async function getAvailablePresets() {
 /**
  * Initialize thread pool separately (for lazy loading) - Single-threaded mode
  */
-export async function initializeThreadPool(threadCount?: number): Promise<boolean> {
+export async function initializeThreadPool(_threadCount?: number): Promise<boolean> {
 	if (!wasmModule) {
 		throw new Error('WASM module not loaded. Call loadVectorizer() first.');
 	}
@@ -487,7 +487,7 @@ export function getRecommendedThreadCount(): number {
 /**
  * Resize thread pool to a new thread count - Single-threaded mode
  */
-export async function resizeThreadPool(newThreadCount: number): Promise<boolean> {
+export async function resizeThreadPool(_newThreadCount: number): Promise<boolean> {
 	// Single-threaded architecture - resizing not supported
 	console.log('[WASM Loader] Thread pool resizing skipped - single-threaded architecture');
 	return false;
