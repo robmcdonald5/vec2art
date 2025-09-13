@@ -13,7 +13,7 @@ const mockVectorizerService = {
 	processImage: vi.fn().mockResolvedValue({ svg: '<svg>test</svg>' }),
 	getCapabilities: vi.fn().mockResolvedValue({
 		threading_supported: false, // Single-threaded
-		hardware_concurrency: 1,    // Single-threaded
+		hardware_concurrency: 1, // Single-threaded
 		wasm_loaded: true
 	}),
 	isInitialized: vi.fn().mockReturnValue(true),
@@ -40,7 +40,7 @@ describe('Vectorizer Store', () => {
 		mockVectorizerService.processImage.mockResolvedValue({ svg: '<svg>test</svg>' });
 		mockVectorizerService.getCapabilities.mockResolvedValue({
 			threading_supported: false, // Single-threaded
-			hardware_concurrency: 1,    // Single-threaded
+			hardware_concurrency: 1, // Single-threaded
 			wasm_loaded: true
 		});
 		mockVectorizerService.isInitialized.mockReturnValue(true);
@@ -97,7 +97,7 @@ describe('Vectorizer Store', () => {
 
 			expect(capabilities).toEqual({
 				threading_supported: false, // Single-threaded
-				hardware_concurrency: 1,    // Single-threaded
+				hardware_concurrency: 1, // Single-threaded
 				wasm_loaded: true
 			});
 		});

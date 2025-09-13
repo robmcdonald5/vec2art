@@ -41,12 +41,19 @@ interface WebPConversionResponse {
 class OffscreenSvgToWebPConverter {
 	private canvas: OffscreenCanvas | null = null;
 	private ctx: OffscreenCanvasRenderingContext2D | null = null;
+	private isIOSFallback = false;
 
 	constructor() {
 		// Initialize OffscreenCanvas if supported
 		if (typeof OffscreenCanvas !== 'undefined') {
 			this.canvas = new OffscreenCanvas(1, 1);
 			this.ctx = this.canvas.getContext('2d');
+		} else {
+			// iOS Safari fallback mode
+			this.isIOSFallback = true;
+			console.log(
+				'[SVGWebPConverter] iOS Safari detected - OffscreenCanvas not available, WebP conversion will be disabled'
+			);
 		}
 	}
 
@@ -56,6 +63,14 @@ class OffscreenSvgToWebPConverter {
 		try {
 			// Check OffscreenCanvas support
 			if (!this.canvas || !this.ctx) {
+				if (this.isIOSFallback) {
+					// iOS Safari fallback: Return graceful error instead of throwing
+					return {
+						id: request.id,
+						success: false,
+						error: 'WebP conversion is not supported on iOS Safari. Please use SVG export instead.'
+					};
+				}
 				throw new Error('OffscreenCanvas not supported in this environment');
 			}
 

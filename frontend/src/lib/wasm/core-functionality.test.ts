@@ -61,7 +61,12 @@ beforeEach(() => {
 	mockWasmModule.WasmVectorizer = vi.fn(); // Reset to a function
 	mockWasmModule.is_threading_supported.mockReturnValue(false);
 	mockWasmModule.get_thread_count.mockReturnValue(1);
-	mockWasmModule.get_available_backends.mockReturnValue(['edge', 'centerline', 'superpixel', 'dots']);
+	mockWasmModule.get_available_backends.mockReturnValue([
+		'edge',
+		'centerline',
+		'superpixel',
+		'dots'
+	]);
 	mockWasmModule.get_available_presets.mockReturnValue(['default', 'detailed', 'fast', 'artistic']);
 
 	// Reset browser environment
@@ -105,7 +110,6 @@ describe('WASM Loader - Single-Threaded Loading', () => {
 		expect(mockWasmModule.default).toHaveBeenCalledTimes(1);
 	});
 });
-
 
 describe('WASM Loader - Environment Detection', () => {
 	it('should detect cross-origin isolation requirements', async () => {
@@ -192,8 +196,6 @@ describe('WASM Loader - API Functions', () => {
 		expect(backends).toContain('dots');
 	});
 });
-
-
 
 describe('Integration - Performance Critical Scenarios', () => {
 	it('should maintain performance characteristics under load', async () => {
