@@ -96,12 +96,20 @@
 	</HeroSlider>
 
 	<!-- Interactive Algorithm Showcase -->
-	<section class="bg-section-elevated animate-on-scroll relative py-24 sm:py-32">
-		<AlgorithmShowcase />
+	<section class="bg-section-elevated animate-on-scroll relative overflow-hidden pt-24 pb-16 sm:pt-32 sm:pb-20">
+		<div class="relative z-10">
+			<AlgorithmShowcase />
+		</div>
 	</section>
 
+	<!-- Section Divider -->
+	<div class="relative h-32 bg-gradient-to-b from-gray-50 via-gray-100 to-white">
+		<div class="absolute inset-0 bg-gradient-to-r from-blue-50/30 via-purple-50/20 to-pink-50/30"></div>
+		<div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-ferrari-200/40 via-ferrari-300/60 to-ferrari-200/40"></div>
+	</div>
+
 	<!-- Enhanced Features Section -->
-	<section class="bg-section-premium animate-on-scroll relative py-24 sm:py-32">
+	<section class="bg-white animate-on-scroll relative py-24 sm:py-32">
 		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 			<div class="animate-on-scroll mb-20 text-center">
 				<h2 class="heading-section">
