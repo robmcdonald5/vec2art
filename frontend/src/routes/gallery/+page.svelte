@@ -298,16 +298,16 @@
 </script>
 
 <!-- Gallery Hero Section -->
-<section class="bg-section-elevated relative py-8 pb-4 sm:py-12">
+<section class="bg-section-elevated relative pt-8 pb-2 sm:pt-12">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 		<!-- Header -->
-		<div class="mb-6 text-center sm:mb-8">
+		<div class="mb-4 text-center sm:mb-4">
 			<h1 class="text-gradient-modern mb-3 text-3xl font-bold sm:mb-4 sm:text-4xl">Gallery</h1>
 			<p class="text-premium text-sm sm:text-base">Browse example conversions and see what's possible with vec2art</p>
 		</div>
 
 		<!-- Controls -->
-		<div class="mb-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+		<div class="mb-0 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
 				<!-- Search -->
 				<div class="relative">
@@ -372,7 +372,7 @@
 </section>
 
 <!-- Main Gallery Section -->
-<section class="bg-section-premium py-6 sm:py-8">
+<section class="bg-section-premium pt-4 pb-3 sm:pt-4 sm:pb-4">
 	<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
 		<!-- Gallery Grid -->
 		<div
