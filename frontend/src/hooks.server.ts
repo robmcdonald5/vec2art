@@ -28,8 +28,9 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 		filterSerializedResponseHeaders: (name) => name === 'content-type'
 	});
 
-	// Note: COEP/COOP headers removed as we're using single-threaded WASM
-	// Cross-origin resource policy for same-origin requests
+	// Cross-Origin Isolation headers for Safari WASM compatibility
+	response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+	response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
 	response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
 
 	// Security headers for production
