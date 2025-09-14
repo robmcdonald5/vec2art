@@ -122,7 +122,7 @@ export class WasmWorkerService {
 			// Initializing Web Worker
 
 			// Create Web Worker
-			this.worker = new Worker(new URL('../workers/wasm-processor.worker.ts', import.meta.url), {
+			this.worker = new Worker(new URL('../workers/wasm-processor.worker', import.meta.url), {
 				type: 'module'
 			});
 
@@ -549,7 +549,7 @@ export class WasmWorkerService {
 			console.log('[WasmWorkerService] 🚀 Creating isolated worker for high-intensity operation');
 
 			// Create fresh isolated worker
-			isolatedWorker = new Worker(new URL('../workers/wasm-processor.worker.ts', import.meta.url), {
+			isolatedWorker = new Worker(new URL('../workers/wasm-processor.worker', import.meta.url), {
 				type: 'module'
 			});
 

@@ -56,7 +56,7 @@ export class WorkerManager {
 
 		try {
 			// Create the worker
-			this.worker = new Worker(new URL('../workers/vectorizer.worker.ts', import.meta.url), {
+			this.worker = new Worker(new URL('../workers/vectorizer.worker', import.meta.url), {
 				type: 'module'
 			});
 
