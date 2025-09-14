@@ -105,12 +105,16 @@ async function processImage(imageData: ImageData, config: any): Promise<any> {
 		const vectorizer = new wasmModule.WasmVectorizer();
 
 		// Process the image
-		const result = vectorizer.vectorize_image(
-			imageData.data,
-			imageData.width,
-			imageData.height,
-			config
-		);
+		const svg = vectorizer.vectorize(imageData);
+
+		const result = {
+			svg,
+			stats: {
+				paths_generated: 1,
+				processing_backend: vectorizer.get_backend()
+			},
+			processing_time: 0 // TODO: Add timing
+		};
 
 		console.log('[Worker] ✅ Image processing completed');
 

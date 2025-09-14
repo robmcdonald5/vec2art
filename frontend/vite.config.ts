@@ -38,21 +38,9 @@ export default defineConfig({
 		]
 	},
 	server: {
-		headers: {
-			// Required for SharedArrayBuffer and WASM threading
-			'Cross-Origin-Embedder-Policy': 'require-corp',
-			'Cross-Origin-Opener-Policy': 'same-origin'
-		},
 		fs: {
 			// Allow serving files from the WASM package
 			allow: ['..']
-		}
-	},
-	preview: {
-		headers: {
-			// Required for SharedArrayBuffer and WASM threading
-			'Cross-Origin-Embedder-Policy': 'require-corp',
-			'Cross-Origin-Opener-Policy': 'same-origin'
 		}
 	},
 	worker: {
