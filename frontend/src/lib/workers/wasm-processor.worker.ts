@@ -45,7 +45,11 @@ self.addEventListener('unhandledrejection', (event) => {
 interface WorkerMessage {
 	id: string;
 	type: 'init' | 'process' | 'capabilities';
-	image_data?: ImageData;
+	imageData?: {
+		data: number[];
+		width: number;
+		height: number;
+	};
 	config?: any;
 }
 
@@ -163,12 +167,19 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 				break;
 
 			case 'process':
-				const { image_data, config } = event.data;
-				if (!image_data || !config) {
+				const { imageData, config } = event.data;
+				if (!imageData || !config) {
 					throw new Error('Missing image data or config');
 				}
 
-				const result = await processImage(image_data, config);
+				// Reconstruct ImageData from serialized data
+				const reconstructedImageData = new ImageData(
+					new Uint8ClampedArray(imageData.data),
+					imageData.width,
+					imageData.height
+				);
+
+				const result = await processImage(reconstructedImageData, config);
 				self.postMessage({
 					id,
 					type: 'result',
