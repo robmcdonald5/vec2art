@@ -46,7 +46,9 @@ const config = {
  */
 async function commandExists(cmd) {
   try {
-    await execAsync(`which ${cmd}` || `where ${cmd}`);
+    const isWindows = process.platform === 'win32';
+    const checkCmd = isWindows ? `where ${cmd}` : `which ${cmd}`;
+    await execAsync(checkCmd);
     return true;
   } catch {
     return false;
@@ -54,27 +56,64 @@ async function commandExists(cmd) {
 }
 
 /**
- * Check prerequisites
+ * Check and install prerequisites
  */
 async function checkPrerequisites() {
   log.info('Checking prerequisites...');
 
   // Check for Rust
   if (!await commandExists('rustc')) {
-    log.error('Rust is not installed. Please install from https://rustup.rs/');
-    process.exit(1);
+    log.warning('Rust not found. Installing...');
+    try {
+      // Install Rust
+      await execAsync('curl --proto \'=https\' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y');
+
+      // Source cargo environment
+      const cargoPath = `${process.env.HOME}/.cargo/bin`;
+      process.env.PATH = `${cargoPath}:${process.env.PATH}`;
+
+      // Add wasm32 target
+      await execAsync('rustup target add wasm32-unknown-unknown');
+      log.success('Rust installed');
+    } catch (error) {
+      log.error('Failed to install Rust: ' + error.message);
+      process.exit(1);
+    }
   }
 
   // Check for wasm-pack
   if (!await commandExists('wasm-pack')) {
     log.warning('wasm-pack not found. Installing...');
     try {
-      await execAsync('cargo install wasm-pack');
+      await execAsync('curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh');
       log.success('wasm-pack installed');
     } catch (error) {
-      log.error('Failed to install wasm-pack');
-      process.exit(1);
+      // Fallback to cargo install
+      try {
+        await execAsync('cargo install wasm-pack');
+        log.success('wasm-pack installed via cargo');
+      } catch (fallbackError) {
+        log.error('Failed to install wasm-pack');
+        process.exit(1);
+      }
     }
+  }
+
+  // Ensure tools are in PATH
+  const cargoPath = `${process.env.HOME}/.cargo/bin`;
+  if (!process.env.PATH.includes(cargoPath)) {
+    process.env.PATH = `${cargoPath}:${process.env.PATH}`;
+  }
+
+  // Verify tools are available
+  try {
+    const { stdout: rustVersion } = await execAsync('rustc --version');
+    const { stdout: wasmVersion } = await execAsync('wasm-pack --version');
+    log.info(`Rust: ${rustVersion.trim()}`);
+    log.info(`wasm-pack: ${wasmVersion.trim()}`);
+  } catch (error) {
+    log.error('Failed to verify build tools: ' + error.message);
+    process.exit(1);
   }
 
   // Check for wasm32 target
