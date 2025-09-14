@@ -1,4 +1,11 @@
-// Service Worker for vec2art Gallery Caching
+// DEPRECATED: This service worker is deprecated
+// SvelteKit now handles service worker registration with the built service-worker.js
+// This file is kept for legacy compatibility only
+
+console.warn(
+	'[SW] DEPRECATED: This service worker (sw.js) is deprecated. SvelteKit uses service-worker.js with iPhone fixes.'
+);
+
 const CACHE_VERSION = 'v2';
 const CACHE_NAME = `vec2art-gallery-${CACHE_VERSION}`;
 const IMAGE_CACHE_NAME = `vec2art-images-${CACHE_VERSION}`;

@@ -9,6 +9,7 @@
 import { browser } from '$app/environment';
 import { vectorizerService } from '$lib/services/vectorizer-service';
 import { globalWasmOptimizer, type WasmMetrics } from '$lib/utils/wasm-optimizer';
+import { markThreadingCrash } from '$lib/services/service-worker-client';
 import type { VectorizerError, WasmCapabilityReport } from '$lib/types/vectorizer';
 
 interface InitializationOptions {
@@ -431,6 +432,16 @@ export class ConverterWasmStore {
 
 		// Log error for debugging
 		console.error('[ConverterWasmStore] Error:', error);
+
+		// CRITICAL: Mark threading crashes for cache invalidation on iPhone
+		if (
+			error.type === 'threading' ||
+			(error.message && error.message.toLowerCase().includes('thread')) ||
+			(error.details && error.details.toLowerCase().includes('thread'))
+		) {
+			console.log('[ConverterWasmStore] 📱 Threading crash detected - marking for cache refresh');
+			markThreadingCrash();
+		}
 
 		// Enhanced panic detection for more error patterns
 		const isPanicError = this.isPanicCondition(error);

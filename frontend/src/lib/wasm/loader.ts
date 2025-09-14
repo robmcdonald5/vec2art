@@ -5,6 +5,7 @@
 
 import { browser } from '$app/environment';
 import { analytics, getBrowserInfo, getDeviceType as _getDeviceType } from '$lib/utils/analytics';
+import { iosCompatibility, applyIOSWorkarounds } from '$lib/services/ios-compatibility';
 
 /**
  * Detect browser type for GPU optimization
@@ -203,16 +204,28 @@ export async function loadVectorizer(options?: {
 		throw new Error('WASM must load in the browser');
 	}
 
-	// iOS detection and logging
-	const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-	if (isIOS) {
-		console.log('[WASM Loader] 📱 iOS device detected - applying compatibility settings');
-		// Force single-threaded mode on iOS
+	// iOS detection and compatibility configuration
+	const compatibilityInfo = iosCompatibility.getCompatibilityInfo();
+	if (compatibilityInfo.isIOSSafari) {
+		console.log(
+			'[WASM Loader] 📱 iOS Safari detected - applying comprehensive compatibility settings'
+		);
+		iosCompatibility.logCompatibilityInfo();
+
+		// Apply iOS-specific configuration based on device capabilities and version
 		options = {
 			...options,
-			initializeThreads: false,
-			threadCount: 1
+			initializeThreads: false, // Always disable native threading on iOS
+			threadCount: 1 // Single-threaded architecture
 		};
+
+		console.log('[WASM Loader] iOS Configuration Applied:', {
+			device: compatibilityInfo.isIPad ? 'iPad' : compatibilityInfo.isIPhone ? 'iPhone' : 'iOS',
+			version: compatibilityInfo.iOSVersion,
+			safari: compatibilityInfo.safariVersion,
+			memoryLimit: `${compatibilityInfo.recommendedConfig.memoryPagesLimit * 64}KB`,
+			fallbackMode: compatibilityInfo.recommendedConfig.useFallbackMode
+		});
 	}
 
 	if (wasmModule) {
@@ -242,10 +255,18 @@ export async function loadVectorizer(options?: {
 			// Call default export to initialize wasm-bindgen glue
 			// This loads the .wasm file and sets up the proper bindings
 			// Use new object parameter format to avoid deprecated parameters warning
-			await wasmJs.default({
+			let wasmConfig = {
 				module_or_path: new URL('./vectorize_wasm_bg.wasm', import.meta.url)
-			});
-			console.log('[WASM Loader] WASM module initialized');
+			};
+
+			// Apply iOS workarounds if needed
+			if (compatibilityInfo.isIOSSafari) {
+				console.log('[WASM Loader] 🔧 Applying iOS-specific WASM configuration...');
+				wasmConfig = applyIOSWorkarounds(wasmConfig);
+			}
+
+			await wasmJs.default(wasmConfig);
+			console.log('[WASM Loader] WASM module initialized with platform-specific configuration');
 
 			// Store module reference
 			wasmModule = wasmJs;

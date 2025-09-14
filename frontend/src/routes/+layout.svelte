@@ -8,7 +8,7 @@
 	import ToastContainer from '$lib/components/ui/toast/ToastContainer.svelte';
 	import { inject } from '@vercel/analytics';
 	import { preload } from '$lib/utils/preload';
-	import { registerServiceWorker } from '$lib/utils/service-worker';
+	import { detectAndFixiPhoneCacheIssues } from '$lib/services/service-worker-client';
 	// Removed scroll-lock - mobile menu uses proper CSS
 
 	let { children } = $props();
@@ -47,14 +47,19 @@
 
 	// No cleanup needed
 
-	onMount(() => {
+	onMount(async () => {
 		if (browser) {
 			// Initialize Vercel Analytics
 			inject();
 
-			// Register Service Worker for caching (production only)
+			// CRITICAL: Detect and fix iPhone cache issues (SvelteKit handles service worker registration)
+			// This ensures iPhone users get the latest fixes for threading crashes
 			if (!dev) {
-				registerServiceWorker();
+				try {
+					await detectAndFixiPhoneCacheIssues();
+				} catch (error) {
+					console.warn('[Layout] Failed to detect/fix iPhone cache issues:', error);
+				}
 			}
 
 			// Force light mode for now since mobile components don't have dark mode styles

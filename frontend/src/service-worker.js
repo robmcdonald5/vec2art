@@ -13,11 +13,11 @@ if (typeof location !== 'undefined' && location.hostname === 'localhost') {
 }
 
 // Create a unique cache name for this deployment
-// const CACHE_NAME = `vec2art-cache-v${version}`; // TODO: Re-enable when needed
+// CRITICAL: WASM cache now uses version to ensure iPhone users get latest fixes
 const ASSETS_CACHE = `vec2art-assets-v${version}`;
 const RUNTIME_CACHE = `vec2art-runtime-v${version}`;
 const IMAGE_CACHE = `vec2art-images-v1`; // Persistent across versions
-const WASM_CACHE = `vec2art-wasm-v1`; // Persistent for WASM files
+const WASM_CACHE = `vec2art-wasm-v${version}`; // FIXED: Now version-aware to prevent stale code
 
 // Assets to cache
 const STATIC_ASSETS = [
@@ -65,15 +65,17 @@ sw.addEventListener('activate', (event) => {
 			await Promise.all(
 				cacheNames
 					.filter((name) => {
-						// Keep image and WASM caches, delete old version caches
+						// Keep only image cache and current version caches
+						// CRITICAL: Delete old WASM caches (including persistent v1) to ensure iPhone users get fixes
 						return (
-							name.startsWith('vec2art-') &&
-							!name.includes(version) &&
-							name !== IMAGE_CACHE &&
-							name !== WASM_CACHE
+							name.startsWith('vec2art-') && !name.includes(version) && name !== IMAGE_CACHE
+							// REMOVED: name !== WASM_CACHE - now WASM cache is versioned and old ones should be deleted
 						);
 					})
-					.map((name) => caches.delete(name))
+					.map((name) => {
+						console.log(`[SW] Deleting old cache: ${name}`);
+						return caches.delete(name);
+					})
 			);
 
 			// Take control of all clients immediately
@@ -250,12 +252,38 @@ sw.addEventListener('message', (event) => {
 	if (event.data?.type === 'CLEAR_CACHE') {
 		event.waitUntil(
 			caches.keys().then((cacheNames) => {
+				console.log('[SW] Clearing all caches for fresh start');
 				return Promise.all(
 					cacheNames
 						.filter((name) => name.startsWith('vec2art-'))
-						.map((name) => caches.delete(name))
+						.map((name) => {
+							console.log(`[SW] Force deleting cache: ${name}`);
+							return caches.delete(name);
+						})
 				);
 			})
+		);
+	}
+
+	// CRITICAL: Force refresh for iPhone crash fixes
+	if (event.data?.type === 'FORCE_REFRESH_CRITICAL') {
+		event.waitUntil(
+			(async () => {
+				console.log('[SW] Force refreshing critical files for iPhone fix deployment');
+
+				// Delete WASM and runtime caches to force fresh fetch
+				await caches.delete(WASM_CACHE);
+				await caches.delete(RUNTIME_CACHE);
+				await caches.delete(ASSETS_CACHE);
+
+				console.log('[SW] Critical caches cleared - fresh files will be fetched');
+
+				// Notify client that refresh is complete
+				const clients = await sw.clients.matchAll();
+				clients.forEach((client) => {
+					client.postMessage({ type: 'CRITICAL_REFRESH_COMPLETE' });
+				});
+			})()
 		);
 	}
 });
