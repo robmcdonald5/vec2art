@@ -12,8 +12,8 @@
 // This is the source of truth for WASM files
 // Vite will handle bundling this correctly for both dev and production
 import init, * as wasmModule from '../wasm/vectorize_wasm.js';
-import { calculateMultipassConfig } from '../types/vectorizer.js';
-import { devLog } from '../utils/dev-logger.js';
+import { calculateMultipassConfig } from '../types/vectorizer';
+import { devLog } from '../utils/dev-logger';
 
 // Note: dots backend parameters now handled directly in SettingsPanel.svelte
 
