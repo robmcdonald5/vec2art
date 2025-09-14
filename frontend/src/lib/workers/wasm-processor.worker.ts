@@ -8,12 +8,35 @@
  * - Prevents main thread blocking during intensive operations
  */
 
-// Import the WASM module from lib directory
-// This is the source of truth for WASM files
-// Vite will handle bundling this correctly for both dev and production
+// Early logging to catch import issues
+console.log('[Worker] 🚀 WASM Worker starting up...');
+
+// Global error handler for worker
+self.addEventListener('error', (error) => {
+	console.error('[Worker] ❌ Global error caught:', error);
+	self.postMessage({
+		type: 'error',
+		id: 'worker_error',
+		error: `Worker startup error: ${error.message}`
+	});
+});
+
+// Global unhandled rejection handler
+self.addEventListener('unhandledrejection', (event) => {
+	console.error('[Worker] ❌ Unhandled promise rejection:', event.reason);
+	self.postMessage({
+		type: 'error',
+		id: 'worker_rejection',
+		error: `Worker promise rejection: ${event.reason}`
+	});
+});
+
+// Use regular imports (Vite handles these correctly)
 import init, * as wasmModule from '../wasm/vectorize_wasm.js';
 import { calculateMultipassConfig } from '../types/vectorizer';
 import { devLog } from '../utils/dev-logger';
+
+console.log('[Worker] ✅ Static imports loaded successfully');
 
 // Note: dots backend parameters now handled directly in SettingsPanel.svelte
 
@@ -1437,7 +1460,18 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 });
 
 // Log worker ready
-console.log('[Worker] WASM processor worker ready');
+console.log('[Worker] WASM processor worker ready - message handlers set up');
+
+// Test message handler by sending a test signal
+try {
+	console.log('[Worker] Testing message handler setup...');
+	self.postMessage({
+		type: 'worker_ready',
+		timestamp: Date.now()
+	});
+} catch (error) {
+	console.error('[Worker] ❌ Failed to send ready message:', error);
+}
 
 // Export for TypeScript
 export {};
