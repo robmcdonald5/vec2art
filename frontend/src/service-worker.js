@@ -98,6 +98,9 @@ sw.addEventListener('fetch', (event) => {
 	if (url.pathname.startsWith('/wasm/')) {
 		// WASM files - cache first, network fallback
 		event.respondWith(handleWASM(event.request));
+	} else if (url.pathname.includes('/workers/') || url.pathname.endsWith('.worker.js')) {
+		// CRITICAL FIX: Handle SvelteKit worker files (including wasm-processor.worker-*.js)
+		event.respondWith(handleWorkers(event.request));
 	} else if (url.pathname.startsWith('/gallery/') || isImageRequest(url.pathname)) {
 		// Images - cache first with network update
 		event.respondWith(handleImages(event.request));
@@ -131,6 +134,37 @@ async function handleWASM(/** @type {Request} */ request) {
 	} catch (error) {
 		console.error('Failed to fetch WASM file:', error);
 		return new Response('WASM file not available', { status: 503 });
+	}
+}
+
+// CRITICAL FIX: Handle SvelteKit worker files - network first, no caching for dynamic builds
+async function handleWorkers(/** @type {Request} */ request) {
+	try {
+		// Workers should always be fresh to prevent stale code issues
+		const response = await fetch(request, {
+			cache: 'no-cache' // Force fresh fetch
+		});
+
+		if (response.ok) {
+			console.log(`[SW] Successfully loaded worker: ${request.url}`);
+			return response;
+		} else {
+			console.error(
+				`[SW] Worker load failed: ${response.status} ${response.statusText} for ${request.url}`
+			);
+			return response;
+		}
+	} catch (error) {
+		console.error(`[SW] Worker fetch error for ${request.url}:`, error);
+		// Return a more descriptive error response
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+		return new Response(
+			`Worker load failed: ${errorMessage}. This may be due to ServiceWorker interference.`,
+			{
+				status: 503,
+				statusText: 'Worker Load Failed'
+			}
+		);
 	}
 }
 
