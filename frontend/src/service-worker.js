@@ -242,7 +242,7 @@ async function handleStatic(/** @type {Request} */ request) {
 }
 
 // Handle default requests - stale while revalidate
-async function handleDefault(/** @type {Request} */ request) {
+async function _handleDefault(/** @type {Request} */ request) {
 	const cache = await caches.open(RUNTIME_CACHE);
 	const cached = await cache.match(request);
 
