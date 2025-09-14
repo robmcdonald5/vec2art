@@ -28,10 +28,8 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 		filterSerializedResponseHeaders: (name) => name === 'content-type'
 	});
 
-	// Cross-Origin Isolation headers for Safari WASM compatibility
-	response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-	response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
-	response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
+	// Note: Cross-Origin Isolation headers removed - not needed for single-threaded WASM + Web Worker architecture
+	// Our WASM module runs single-threaded and doesn't require SharedArrayBuffer support
 
 	// Security headers for production
 	if (!dev) {
