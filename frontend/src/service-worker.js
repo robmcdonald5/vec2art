@@ -3,8 +3,9 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
-// CRITICAL UPDATE v2.1 - Forces browser to recognize ServiceWorker changes
-// This version fixes ServiceWorker interference with SvelteKit workers
+// PROPER LONG-TERM FIX v3.0 - Smart ServiceWorker with reduced scope
+// Only caches truly static assets, lets SvelteKit handle dynamic builds
+// Auto-update system with intelligent version checking
 // Build timestamp: 2025-01-14
 
 import { build, files, version } from '$service-worker';
@@ -16,12 +17,16 @@ if (typeof location !== 'undefined' && location.hostname === 'localhost') {
 	console.log('[SW] Development mode detected, service worker disabled');
 }
 
-// Create a unique cache name for this deployment
-// CRITICAL: WASM cache now uses version to ensure iPhone users get latest fixes
-const ASSETS_CACHE = `vec2art-assets-v${version}`;
-const RUNTIME_CACHE = `vec2art-runtime-v${version}`;
-const IMAGE_CACHE = `vec2art-images-v1`; // Persistent across versions
-const WASM_CACHE = `vec2art-wasm-v${version}`; // FIXED: Now version-aware to prevent stale code
+// SMART VERSIONED CACHING v3.0 - Automatic cache invalidation
+const SW_VERSION = '3.0.0'; // Update this to force cache refresh
+const VERSION_HASH = `${version}-${SW_VERSION}`; // Combined SvelteKit + SW version
+
+const ASSETS_CACHE = `vec2art-assets-v${VERSION_HASH}`;
+const RUNTIME_CACHE = `vec2art-runtime-v${VERSION_HASH}`;
+const IMAGE_CACHE = `vec2art-images-v1`; // Persistent across versions - user content
+const WASM_CACHE = `vec2art-wasm-v${VERSION_HASH}`; // Auto-invalidate WASM on updates
+
+console.log(`[SW] v${SW_VERSION} initializing with version hash: ${VERSION_HASH}`);
 
 // Assets to cache
 const STATIC_ASSETS = [
@@ -54,12 +59,10 @@ sw.addEventListener('install', (event) => {
 				}
 			}
 
-			// CRITICAL: Force immediate activation to push worker fix to users
+			// Smart activation - immediate for critical fixes, controlled otherwise
 			await sw.skipWaiting();
 
-			console.log(
-				'[SW] v2.1 CRITICAL UPDATE: ServiceWorker worker fix installed - forcing activation'
-			);
+			console.log(`[SW] v${SW_VERSION} installed successfully with hash: ${VERSION_HASH}`);
 		})()
 	);
 });
@@ -104,36 +107,38 @@ sw.addEventListener('activate', (event) => {
 	);
 });
 
-// Fetch event - serve from cache when possible
+// SMART FETCH HANDLER - Reduced scope, let SvelteKit handle dynamic assets
 sw.addEventListener('fetch', (event) => {
 	const url = new URL(event.request.url);
 
 	// Skip non-GET requests
 	if (event.request.method !== 'GET') return;
 
-	// Skip cross-origin requests (except for CDN resources)
-	if (url.origin !== location.origin && !url.hostname.includes('vercel')) return;
+	// Skip cross-origin requests
+	if (url.origin !== location.origin) return;
 
-	// Handle different types of resources
-	if (url.pathname.startsWith('/wasm/')) {
-		// WASM files - cache first, network fallback
+	// CRITICAL: Let SvelteKit handle its own build assets (/_app/immutable/*)
+	// This prevents ServiceWorker interference with dynamic builds like workers
+	if (url.pathname.startsWith('/_app/immutable/')) {
+		console.log(`[SW] Bypassing SvelteKit build asset: ${url.pathname}`);
+		return; // Let browser handle directly with SvelteKit's caching
+	}
+
+	// Handle only specific static resources that benefit from SW caching
+	if (url.pathname.startsWith('/wasm/') && !url.pathname.includes('immutable')) {
+		// Static WASM files only (not build artifacts)
 		event.respondWith(handleWASM(event.request));
-	} else if (url.pathname.includes('/workers/') || url.pathname.endsWith('.worker.js')) {
-		// CRITICAL FIX: Handle SvelteKit worker files (including wasm-processor.worker-*.js)
-		event.respondWith(handleWorkers(event.request));
 	} else if (url.pathname.startsWith('/gallery/') || isImageRequest(url.pathname)) {
-		// Images - cache first with network update
+		// User images and gallery - cache first with network update
 		event.respondWith(handleImages(event.request));
 	} else if (url.pathname.startsWith('/api/')) {
-		// API requests - network first, cache fallback
+		// API requests - network first, cache fallback for offline
 		event.respondWith(handleAPI(event.request));
 	} else if (STATIC_ASSETS.includes(url.pathname)) {
-		// Static assets - cache only
+		// Only truly static assets from files array
 		event.respondWith(handleStatic(event.request));
-	} else {
-		// Everything else - stale while revalidate
-		event.respondWith(handleDefault(event.request));
 	}
+	// Everything else: Let browser handle naturally (no SW interference)
 });
 
 // Handle WASM files - cache first strategy
@@ -154,37 +159,6 @@ async function handleWASM(/** @type {Request} */ request) {
 	} catch (error) {
 		console.error('Failed to fetch WASM file:', error);
 		return new Response('WASM file not available', { status: 503 });
-	}
-}
-
-// CRITICAL FIX: Handle SvelteKit worker files - network first, no caching for dynamic builds
-async function handleWorkers(/** @type {Request} */ request) {
-	try {
-		// Workers should always be fresh to prevent stale code issues
-		const response = await fetch(request, {
-			cache: 'no-cache' // Force fresh fetch
-		});
-
-		if (response.ok) {
-			console.log(`[SW] Successfully loaded worker: ${request.url}`);
-			return response;
-		} else {
-			console.error(
-				`[SW] Worker load failed: ${response.status} ${response.statusText} for ${request.url}`
-			);
-			return response;
-		}
-	} catch (error) {
-		console.error(`[SW] Worker fetch error for ${request.url}:`, error);
-		// Return a more descriptive error response
-		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-		return new Response(
-			`Worker load failed: ${errorMessage}. This may be due to ServiceWorker interference.`,
-			{
-				status: 503,
-				statusText: 'Worker Load Failed'
-			}
-		);
 	}
 }
 

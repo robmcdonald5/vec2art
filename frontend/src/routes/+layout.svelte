@@ -6,9 +6,11 @@
 	import { afterNavigate } from '$app/navigation';
 	import MobileMenu from '$lib/components/navigation/MobileMenu.svelte';
 	import ToastContainer from '$lib/components/ui/toast/ToastContainer.svelte';
+	import ServiceWorkerUpdateBanner from '$lib/components/ui/ServiceWorkerUpdateBanner.svelte';
 	import { inject } from '@vercel/analytics';
 	import { preload } from '$lib/utils/preload';
-	import { detectAndFixiPhoneCacheIssues } from '$lib/services/service-worker-client';
+	// Import new update manager instead of old service-worker-client
+	import '$lib/services/service-worker-update-manager';
 	// Removed scroll-lock - mobile menu uses proper CSS
 
 	let { children } = $props();
@@ -52,14 +54,10 @@
 			// Initialize Vercel Analytics
 			inject();
 
-			// CRITICAL: Detect and fix iPhone cache issues (SvelteKit handles service worker registration)
-			// This ensures iPhone users get the latest fixes for threading crashes
+			// ServiceWorker v3.0: Automatic update management
+			// The new service-worker-update-manager handles all update detection and user notification
 			if (!dev) {
-				try {
-					await detectAndFixiPhoneCacheIssues();
-				} catch (error) {
-					console.warn('[Layout] Failed to detect/fix iPhone cache issues:', error);
-				}
+				console.log('[Layout] ServiceWorker v3.0 automatic update system active');
 
 				// Initialize iPhone debug logging for production error tracking
 				try {
@@ -95,6 +93,9 @@
 >
 	Skip to main content
 </a>
+
+<!-- ServiceWorker Update Banner - Shows when updates are available -->
+<ServiceWorkerUpdateBanner />
 
 <div class="flex min-h-dvh flex-col">
 	<header
