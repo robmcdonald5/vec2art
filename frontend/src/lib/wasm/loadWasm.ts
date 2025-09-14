@@ -1,8 +1,11 @@
 // src/lib/wasm/loadWasm.ts
 export async function loadWasm(
 	url: string,
-	imports: WebAssembly.Imports = {}
+	wasmJs?: any
 ): Promise<WebAssembly.WebAssemblyInstantiatedSource> {
+	// Create proper imports object if wasmJs module is provided
+	const imports = wasmJs ? wasmJs.__wbindgen_wasm_module || {} : {};
+
 	if ('instantiateStreaming' in WebAssembly) {
 		try {
 			// @ts-ignore - TS doesn't narrow this correctly
