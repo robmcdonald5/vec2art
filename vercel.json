@@ -3,6 +3,12 @@
   "buildCommand": "cd .. && chmod +x scripts/vercel-build.sh && ./scripts/vercel-build.sh && cd frontend && npm run build:frontend-only",
   "installCommand": "npm ci",
   "outputDirectory": ".vercel/output",
+  "rewrites": [
+    {
+      "source": "/_app/immutable/workers/:path*",
+      "destination": "/_app/immutable/workers/:path*"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -19,16 +25,18 @@
       ]
     },
     {
+      "source": "/_app/immutable/workers/(.*)\\.js",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
       "source": "/(.*)\\.wasm",
       "headers": [
         { "key": "Content-Type", "value": "application/wasm" },
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
     }
-  ],
-  "functions": {
-    "frontend/src/routes/service-worker.js": {
-      "memory": 128
-    }
-  }
+  ]
 }
