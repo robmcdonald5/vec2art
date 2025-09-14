@@ -3,6 +3,10 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
+// CRITICAL UPDATE v2.1 - Forces browser to recognize ServiceWorker changes
+// This version fixes ServiceWorker interference with SvelteKit workers
+// Build timestamp: 2025-01-14
+
 import { build, files, version } from '$service-worker';
 
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
@@ -50,8 +54,12 @@ sw.addEventListener('install', (event) => {
 				}
 			}
 
-			// Force the service worker to activate immediately
+			// CRITICAL: Force immediate activation to push worker fix to users
 			await sw.skipWaiting();
+
+			console.log(
+				'[SW] v2.1 CRITICAL UPDATE: ServiceWorker worker fix installed - forcing activation'
+			);
 		})()
 	);
 });
@@ -78,8 +86,20 @@ sw.addEventListener('activate', (event) => {
 					})
 			);
 
-			// Take control of all clients immediately
+			// CRITICAL: Take control of all clients immediately to apply worker fix
 			await sw.clients.claim();
+
+			console.log('[SW] v2.1 CRITICAL UPDATE: ServiceWorker activated and claimed all clients');
+
+			// Notify all clients that the critical fix is active
+			const clients = await sw.clients.matchAll();
+			clients.forEach((client) => {
+				client.postMessage({
+					type: 'SW_CRITICAL_UPDATE_ACTIVE',
+					version: '2.1',
+					fix: 'ServiceWorker worker loading fix applied'
+				});
+			});
 		})()
 	);
 });
