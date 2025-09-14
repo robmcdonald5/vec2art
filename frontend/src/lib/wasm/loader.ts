@@ -252,17 +252,20 @@ export async function loadVectorizer(options?: {
 			const wasmJs = await import('./vectorize_wasm.js');
 			console.log('[WASM Loader] JS module imported');
 
-			// Call default export to initialize wasm-bindgen glue
-			// This loads the .wasm file and sets up the proper bindings
-			// Use new object parameter format to avoid deprecated parameters warning
-			let wasmConfig = {
-				module_or_path: new URL('./vectorize_wasm_bg.wasm', import.meta.url)
-			};
+			// Use robust WASM loading with Safari fallback
+			const { loadWasm } = await import('./loadWasm');
+			const wasmUrl = new URL('./vectorize_wasm_bg.wasm', import.meta.url).href;
+
+			console.log('[WASM Loader] Using robust WASM loader with streaming fallback');
+			const wasmResult = await loadWasm(wasmUrl, {});
 
 			// Apply iOS workarounds if needed
+			let wasmConfig: any;
 			if (compatibilityInfo.isIOSSafari) {
 				console.log('[WASM Loader] 🔧 Applying iOS-specific WASM configuration...');
-				wasmConfig = applyIOSWorkarounds(wasmConfig);
+				wasmConfig = applyIOSWorkarounds({ module: wasmResult.module });
+			} else {
+				wasmConfig = { module: wasmResult.module };
 			}
 
 			await wasmJs.default(wasmConfig);

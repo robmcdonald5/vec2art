@@ -1,5 +1,22 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "cd .. && chmod +x scripts/vercel-build.sh && ./scripts/vercel-build.sh && cd frontend && npm run build:frontend-only",
   "installCommand": "npm ci",
-  "outputDirectory": ".vercel/output"
+  "outputDirectory": ".vercel/output",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.wasm",
+      "headers": [
+        { "key": "Content-Type", "value": "application/wasm" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
 }
