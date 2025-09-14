@@ -63,7 +63,7 @@
 
 				// Initialize iPhone debug logging for production error tracking
 				try {
-					const { default: iPhoneDebugLogger } = await import('$lib/services/iphone-debug-logger');
+					const { default: _iPhoneDebugLogger } = await import('$lib/services/iphone-debug-logger');
 					console.log('[Layout] iPhone debug logger initialized');
 				} catch (error) {
 					console.warn('[Layout] Failed to initialize iPhone debug logger:', error);

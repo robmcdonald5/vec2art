@@ -151,7 +151,7 @@ test.describe('iPhone Production-Only Errors', () => {
 		// Simulate production environment constraints that cause errors
 		await page.addInitScript(() => {
 			// Simulate stricter CSP that might break WASM in production
-			const originalEval = window.eval;
+			const _originalEval = window.eval;
 			(window as any).eval = function () {
 				throw new Error('CSP: eval() blocked in production');
 			};

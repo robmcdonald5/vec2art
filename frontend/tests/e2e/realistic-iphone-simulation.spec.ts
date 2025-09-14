@@ -22,7 +22,7 @@ test.use({
 });
 
 test.describe('Realistic iPhone Safari Environment', () => {
-	test.beforeEach(async ({ page, context }) => {
+	test.beforeEach(async ({ page }) => {
 		// Simulate realistic iPhone conditions
 
 		// 1. Network throttling - iPhone users often on cellular
@@ -66,12 +66,12 @@ test.describe('Realistic iPhone Safari Environment', () => {
 		});
 
 		// 3. Add realistic error handlers that iPhone users experience
-		let connectionErrors = 0;
-		let memoryWarnings = 0;
+		let _connectionErrors = 0;
+		let _memoryWarnings = 0;
 
 		page.on('response', (response) => {
 			if (response.status() >= 400) {
-				connectionErrors++;
+				_connectionErrors++;
 				console.log(`[iPhone Sim] Connection error ${response.status()} for ${response.url()}`);
 			}
 		});
@@ -79,7 +79,7 @@ test.describe('Realistic iPhone Safari Environment', () => {
 		page.on('console', (msg) => {
 			const text = msg.text();
 			if (text.includes('memory') || text.includes('heap') || text.includes('OutOfMemory')) {
-				memoryWarnings++;
+				_memoryWarnings++;
 				console.log(`[iPhone Sim] Memory warning: ${text}`);
 			}
 		});
