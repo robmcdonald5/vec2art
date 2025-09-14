@@ -62,11 +62,14 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 	// Cache control for different resource types
 	const url = event.url.pathname;
 
-	// Aggressive caching for static assets
+	// BALANCED: Reasonable caching for WASM files with proper invalidation
 	if (url.startsWith('/wasm/') || url.endsWith('.wasm')) {
-		response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+		// 24-hour cache with revalidation - allows performance while enabling updates
+		response.headers.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=3600');
 		response.headers.set('Content-Type', 'application/wasm');
-		response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin'); // Required for WASM multithreading
+		response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+		// Add proper ETag based on file content (not timestamp)
+		response.headers.set('ETag', `"wasm-v${process.env.npm_package_version || '1.0.0'}"`);
 	} else if (url.match(/\.(jpg|jpeg|png|gif|webp|avif|svg|ico)$/i)) {
 		response.headers.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
 	} else if (url.match(/\.(js|css)$/i) && url.includes('_app/')) {

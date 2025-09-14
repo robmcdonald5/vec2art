@@ -164,18 +164,17 @@ export async function detectAndFixiPhoneCacheIssues(): Promise<void> {
 	if (isIOSSafari) {
 		console.log('[SW Client] 📱 iOS Safari detected - checking for cache issues');
 
-		// Check if this might be a user with stale cached code
-		// We can detect this by checking for the threading architecture fix
+		// SMART: Only refresh when we detect actual problems, not always
 		try {
-			// Try to check if we have the old broken code
+			// Check if this user previously had threading crashes (indicating stale code)
 			const hasOldCode = localStorage.getItem('vec2art-had-threading-crash') === 'true';
 
 			if (hasOldCode) {
-				console.log('[SW Client] 🚨 Detected potential stale code on iPhone - forcing refresh');
+				console.log('[SW Client] 🚨 Detected previous threading crash - forcing critical refresh');
 				await forceCriticalRefresh();
-
-				// Clear the flag after forcing refresh
 				localStorage.setItem('vec2art-had-threading-crash', 'false');
+			} else {
+				console.log('[SW Client] 📱 iPhone user has clean cache state - no refresh needed');
 			}
 		} catch (error) {
 			console.warn('[SW Client] Could not check cache issues:', error);
