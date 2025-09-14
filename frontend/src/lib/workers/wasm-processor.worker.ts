@@ -8,10 +8,10 @@
  * - Prevents main thread blocking during intensive operations
  */
 
-// Import the WASM module from static location for production compatibility
-// In production, workers are compiled to /_app/immutable/workers/ and relative imports break
-// Using absolute path to static WASM files ensures it works in both dev and production
-import init, * as wasmModule from '/wasm/vectorize_wasm.js';
+// Import the WASM module from lib directory
+// This is the source of truth for WASM files
+// Vite will handle bundling this correctly for both dev and production
+import init, * as wasmModule from '../wasm/vectorize_wasm.js';
 import { calculateMultipassConfig } from '../types/vectorizer.js';
 import { devLog } from '../utils/dev-logger.js';
 

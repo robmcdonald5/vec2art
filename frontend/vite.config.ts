@@ -33,7 +33,7 @@ export default defineConfig({
 		include: ['class-variance-authority', 'tailwind-merge', 'clsx', 'svelte-image-viewer'],
 		exclude: [
 			'vectorize-wasm',
-			'/wasm/vectorize_wasm.js', // Exclude our static WASM files
+			'$lib/wasm/vectorize_wasm.js', // Exclude our WASM JS wrapper
 			'svelte/motion' // Exclude svelte/motion from optimization
 		]
 	},
@@ -59,8 +59,8 @@ export default defineConfig({
 		format: 'es',
 		rollupOptions: {
 			output: {
-				// Ensure workers maintain proper module URLs
-				entryFileNames: '[name].js'
+				// Ensure workers are properly versioned for cache busting
+				entryFileNames: '[name]-[hash].js'
 			}
 		}
 	},

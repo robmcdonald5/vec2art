@@ -18,7 +18,7 @@ if (typeof location !== 'undefined' && location.hostname === 'localhost') {
 }
 
 // SMART VERSIONED CACHING v3.0 - Automatic cache invalidation
-const SW_VERSION = '3.1.0'; // FORCE CACHE BUST - Updated to ensure Vercel serves new SW
+const SW_VERSION = '3.2.0'; // v3.2: Fixed worker bypassing and WASM serving
 const VERSION_HASH = `${version}-${SW_VERSION}`; // Combined SvelteKit + SW version
 
 const ASSETS_CACHE = `vec2art-assets-v${VERSION_HASH}`;
@@ -121,8 +121,17 @@ sw.addEventListener('fetch', (event) => {
 	// CRITICAL: Let SvelteKit handle its own build assets (/_app/immutable/*)
 	// This prevents ServiceWorker interference with dynamic builds like workers
 	if (url.pathname.startsWith('/_app/immutable/')) {
-		console.log(`[SW] Bypassing SvelteKit build asset: ${url.pathname}`);
+		// Extra logging for worker files to debug issues
+		if (url.pathname.includes('/workers/')) {
+			console.log(`[SW] Bypassing worker file: ${url.pathname}`);
+		}
 		return; // Let browser handle directly with SvelteKit's caching
+	}
+
+	// Also bypass any .worker.js files regardless of location
+	if (url.pathname.includes('.worker') || url.pathname.includes('worker-')) {
+		console.log(`[SW] Bypassing worker-related file: ${url.pathname}`);
+		return;
 	}
 
 	// Handle only specific static resources that benefit from SW caching
