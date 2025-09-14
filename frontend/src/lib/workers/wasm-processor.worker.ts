@@ -31,12 +31,55 @@ self.addEventListener('unhandledrejection', (event) => {
 	});
 });
 
-// Restored: Worker executes fine, imports are not the problem
-import init, * as wasmModule from '../wasm/vectorize_wasm.js';
-import { calculateMultipassConfig } from '../types/vectorizer';
-import { devLog } from '../utils/dev-logger';
+// Add detailed error handling around imports
+console.log('[Worker] 🚀 Starting worker initialization...');
 
-console.log('[Worker] ✅ Worker startup with full imports restored');
+try {
+	console.log('[Worker] 📦 Loading WASM module...');
+	// Restored: Worker executes fine, imports are not the problem
+	var init, wasmModule;
+	import('../wasm/vectorize_wasm.js').then((module) => {
+		console.log('[Worker] ✅ WASM module imported successfully');
+		init = module.default;
+		wasmModule = module;
+		console.log('[Worker] 📋 Available WASM exports:', Object.keys(module));
+	}).catch((error) => {
+		console.error('[Worker] ❌ WASM module import failed:', error);
+		self.postMessage({
+			type: 'error',
+			id: 'import_error',
+			error: `WASM import failed: ${error.message}`
+		});
+	});
+
+	console.log('[Worker] 📦 Loading helper modules...');
+	import('../types/vectorizer').then((vectorizerModule) => {
+		console.log('[Worker] ✅ Vectorizer types imported successfully');
+		// Store for later use
+		self.calculateMultipassConfig = vectorizerModule.calculateMultipassConfig;
+	}).catch((error) => {
+		console.error('[Worker] ⚠️ Vectorizer types import failed (non-critical):', error);
+	});
+
+	import('../utils/dev-logger').then((loggerModule) => {
+		console.log('[Worker] ✅ Dev logger imported successfully');
+		// Store for later use
+		self.devLog = loggerModule.devLog;
+	}).catch((error) => {
+		console.error('[Worker] ⚠️ Dev logger import failed (non-critical):', error);
+		// Fallback dev logger
+		self.devLog = () => {};
+	});
+
+	console.log('[Worker] ✅ Worker startup with dynamic imports completed');
+} catch (topLevelError) {
+	console.error('[Worker] ❌ Top-level worker initialization failed:', topLevelError);
+	self.postMessage({
+		type: 'error',
+		id: 'worker_startup_error',
+		error: `Worker startup failed: ${topLevelError.message}`
+	});
+}
 
 // Note: dots backend parameters now handled directly in SettingsPanel.svelte
 
@@ -76,8 +119,20 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 
 	if (wasmInitializationNeeded) {
 		try {
-			devLog('wasm_operations', 'Initializing WASM module (single-threaded + Web Worker)');
+			// Use fallback devLog if not available
+			const devLogFunc = self.devLog || (() => {});
+			devLogFunc('wasm_operations', 'Initializing WASM module (single-threaded + Web Worker)');
 
+			// Check if WASM module is available
+			if (!init) {
+				console.error('[Worker] ❌ WASM init function not available - module may not have loaded');
+				return {
+					success: false,
+					error: 'WASM module not loaded - init function unavailable'
+				};
+			}
+
+			console.log('[Worker] 🔧 Calling WASM init()...');
 			// Initialize WASM module (single-threaded architecture)
 			await init();
 			console.log('[Worker] ✅ WASM module initialized (single-threaded + Web Worker)');
@@ -88,7 +143,12 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 
 			wasmInitialized = true;
 		} catch (error) {
-			console.error('[Worker] WASM initialization failed:', error);
+			console.error('[Worker] ❌ WASM initialization failed:', error);
+			console.error('[Worker] ❌ Error details:', {
+				name: error.name,
+				message: error.message,
+				stack: error.stack
+			});
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Unknown error'
