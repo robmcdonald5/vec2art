@@ -656,7 +656,7 @@
 <div class="space-y-2">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-2">
-			<label class="text-foreground text-sm font-medium" for={parameter}>
+			<label class="text-foreground text-sm font-medium" for={String(parameter)}>
 				{meta.label}
 			</label>
 			{#if showOverride}
@@ -681,7 +681,7 @@
 		<label class="flex cursor-pointer items-center gap-2">
 			<input
 				type="checkbox"
-				id={parameter}
+				id={String(parameter)}
 				checked={value}
 				onchange={(e) => onChange(e.currentTarget.checked)}
 				{disabled}
@@ -691,7 +691,7 @@
 		</label>
 	{:else if meta.type === 'select'}
 		<select
-			id={parameter}
+			id={String(parameter)}
 			{value}
 			onchange={(e) => {
 				const val = e.currentTarget.value;
@@ -710,7 +710,7 @@
 		<div class="space-y-1">
 			<input
 				type="range"
-				id={parameter}
+				id={String(parameter)}
 				min={meta.min}
 				max={meta.max}
 				step={meta.step}
@@ -728,7 +728,7 @@
 		<!-- Fallback numeric input -->
 		<input
 			type="number"
-			id={parameter}
+			id={String(parameter)}
 			{value}
 			onchange={(e) => onChange(Number(e.currentTarget.value))}
 			{disabled}

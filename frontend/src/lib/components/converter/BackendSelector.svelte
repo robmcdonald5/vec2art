@@ -98,7 +98,7 @@
 			aria-labelledby="backend-selector-heading"
 		>
 			{#each Object.keys(backendIcons) as backend (backend)}
-				{@const BackendIcon = backendIcons[backend as VectorizerBackend]}
+				{@const BackendIcon = backendIcons[backend as LegacyVectorizerBackend]}
 				{@const isSelected = selectedBackend === backend}
 
 				<button
@@ -107,7 +107,7 @@
 						? 'border-primary bg-primary/5 shadow-sm'
 						: 'border-border hover:border-primary/50 hover:bg-accent/50'} 
 					{disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}"
-					onclick={() => handleBackendClick(backend as VectorizerBackend)}
+					onclick={() => handleBackendClick(backend as LegacyVectorizerBackend)}
 					role="radio"
 					aria-checked={isSelected}
 					aria-describedby="backend-{backend}-desc"
@@ -126,7 +126,7 @@
 						</div>
 						<div class="min-w-0 flex-1">
 							<h4 class="text-sm font-semibold {isSelected ? 'text-primary' : 'text-foreground'}">
-								{backendTitles[backend as VectorizerBackend]}
+								{backendTitles[backend as LegacyVectorizerBackend]}
 							</h4>
 						</div>
 						{#if isSelected}
@@ -143,12 +143,12 @@
 						id="backend-{backend}-desc"
 						class="text-converter-secondary line-clamp-2 text-xs leading-relaxed"
 					>
-						{BACKEND_DESCRIPTIONS[backend as VectorizerBackend]}
+						{BACKEND_DESCRIPTIONS[backend as LegacyVectorizerBackend]}
 					</p>
 
 					<!-- Feature Tags -->
 					<div class="flex flex-wrap gap-1">
-						{#each backendFeatures[backend as VectorizerBackend].slice(0, 3) as feature (feature)}
+						{#each backendFeatures[backend as LegacyVectorizerBackend].slice(0, 3) as feature (feature)}
 							<span
 								class="inline-flex items-center rounded px-2 py-1 text-xs font-medium
 							{isSelected

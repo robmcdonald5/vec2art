@@ -2,13 +2,14 @@
 	import { Eye, PenTool, Filter, Target, Puzzle, Droplets } from 'lucide-svelte';
 	import type { VectorizerConfig } from '$lib/stores/converter-settings.svelte';
 	// Legacy hand-drawn preset types - will be migrated to worker-protocol
-	type HandDrawnPreset = 'none' | 'subtle' | 'medium' | 'strong' | 'sketchy';
+	import type { HandDrawnPreset } from '$lib/types/vectorizer';
 	const HAND_DRAWN_DESCRIPTIONS: Record<HandDrawnPreset, string> = {
 		none: 'Clean, precise lines with no artistic effects',
 		subtle: 'Minimal line variation and organic feel',
 		medium: 'Moderate thickness variation and natural tapering',
 		strong: 'Pronounced line weight changes and artistic styling',
-		sketchy: 'Maximum artistic character with loose, sketchy appearance'
+		sketchy: 'Maximum artistic character with loose, sketchy appearance',
+		custom: 'Custom hand-drawn settings based on manual adjustments'
 	};
 	import { CustomSelect } from '$lib/components/ui/custom-select';
 	import FerrariSlider from '$lib/components/ui/FerrariSlider.svelte';
