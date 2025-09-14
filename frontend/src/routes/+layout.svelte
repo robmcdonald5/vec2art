@@ -60,6 +60,14 @@
 				} catch (error) {
 					console.warn('[Layout] Failed to detect/fix iPhone cache issues:', error);
 				}
+
+				// Initialize iPhone debug logging for production error tracking
+				try {
+					const { default: iPhoneDebugLogger } = await import('$lib/services/iphone-debug-logger');
+					console.log('[Layout] iPhone debug logger initialized');
+				} catch (error) {
+					console.warn('[Layout] Failed to initialize iPhone debug logger:', error);
+				}
 			}
 
 			// Force light mode for now since mobile components don't have dark mode styles

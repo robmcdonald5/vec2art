@@ -52,6 +52,24 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 		response.headers.set('X-Download-Options', 'noopen');
 		response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
 
+		// Content Security Policy optimized for iPhone Safari WASM compatibility
+		response.headers.set(
+			'Content-Security-Policy',
+			[
+				"default-src 'self'",
+				"script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data:", // Allow WASM and workers
+				"worker-src 'self' blob: data:", // Required for Web Workers
+				"object-src 'none'",
+				"style-src 'self' 'unsafe-inline'", // Allow inline styles
+				"img-src 'self' data: blob: https:", // Allow images
+				"font-src 'self' data:",
+				"connect-src 'self' https: wss: ws:", // Allow API connections
+				"media-src 'self' blob: data:",
+				"frame-src 'none'",
+				"base-uri 'self'"
+			].join('; ')
+		);
+
 		// Permissions Policy (formerly Feature Policy)
 		response.headers.set(
 			'Permissions-Policy',
