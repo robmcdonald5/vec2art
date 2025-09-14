@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { Settings, Sliders, ChevronDown, ChevronUp } from 'lucide-svelte';
-	import type {
-		VectorizerConfig,
-		VectorizerBackend,
-		VectorizerPreset
-	} from '$lib/types/vectorizer';
+	import type { VectorizerConfig } from '$lib/stores/converter-settings.svelte';
+
+	// Legacy types for compatibility
+	type VectorizerBackend = 'edge' | 'dots' | 'superpixel' | 'centerline';
+	type VectorizerPreset = 'sketch' | 'technical' | 'artistic' | 'poster' | 'comic';
 	import BackendSelector from './BackendSelector.svelte';
 	import PresetSelector from './PresetSelector.svelte';
 	import ParameterPanel from './ParameterPanel.svelte';

@@ -14,7 +14,7 @@
 	import { vectorizerSettings } from '$lib/stores/vectorizer-settings.svelte';
 	// import PresetSelector from "./PresetSelector.svelte";
 	import ParameterControl from './ParameterControl.svelte';
-	import type { VectorizerConfig } from '$lib/types/vectorizer';
+	import type { VectorizerConfig } from '$lib/stores/converter-settings.svelte';
 
 	interface Props {
 		onConfigChange: (_config: VectorizerConfig) => void;

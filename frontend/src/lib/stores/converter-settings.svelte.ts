@@ -7,10 +7,103 @@
  */
 
 import type { StylePreset } from '$lib/presets/types';
-import type { VectorizerConfig as LegacyConfig, VectorizerBackend } from '$lib/types/vectorizer';
-import type { VectorizerConfig as GeneratedConfig } from '$lib/types/generated-parameters';
+import type { VectorizerConfiguration } from '$lib/types/worker-protocol';
+import { VectorizerBackend } from '$lib/types/worker-protocol';
 import { presetToVectorizerConfig, mergeWithUserConfig } from '$lib/presets/converter';
-import { DEFAULT_CONFIG, getDefaultConfigForBackend, PRESET_CONFIGS } from '$lib/types/vectorizer';
+import {
+	legacyToModern,
+	modernToLegacy,
+	DEFAULT_MODERN_CONFIG,
+	getDefaultConfigForBackend as getModernDefaultForBackend,
+	type LegacyVectorizerConfig
+} from '$lib/utils/config-converter';
+
+// Legacy compatibility constants
+export const DEFAULT_CONFIG: VectorizerConfig = modernToLegacy(DEFAULT_MODERN_CONFIG);
+
+export function getDefaultConfigForBackend(backend: any): VectorizerConfig {
+	// Convert backend string to modern enum, get modern config, then convert back
+	const modernBackend =
+		backend === 'edge'
+			? VectorizerBackend.EDGE
+			: backend === 'centerline'
+				? VectorizerBackend.CENTERLINE
+				: backend === 'superpixel'
+					? VectorizerBackend.SUPERPIXEL
+					: backend === 'dots'
+						? VectorizerBackend.DOTS
+						: VectorizerBackend.EDGE;
+	return modernToLegacy(getModernDefaultForBackend(modernBackend));
+}
+
+export const PRESET_CONFIGS: Record<string, Partial<VectorizerConfig>> = {
+	sketch: {
+		backend: 'edge',
+		detail: 0.6,
+		stroke_width: 1.5,
+		hand_drawn_preset: 'subtle',
+		pass_count: 2,
+		multipass: true,
+		multipass_mode: 'auto',
+		noise_filtering: true,
+		variable_weights: 0.3,
+		tremor_strength: 0.1,
+		tapering: 0.2,
+		enable_etf_fdog: false,
+		enable_flow_tracing: false,
+		enable_bezier_fitting: false
+	},
+	technical: {
+		backend: 'centerline',
+		detail: 0.6,
+		stroke_width: 1.0,
+		hand_drawn_preset: 'none',
+		pass_count: 1,
+		multipass: false,
+		multipass_mode: 'auto',
+		noise_filtering: true,
+		enable_etf_fdog: false,
+		enable_flow_tracing: false,
+		enable_bezier_fitting: false
+	},
+	artistic: {
+		backend: 'dots',
+		detail: 0.3,
+		stroke_width: 1.0,
+		preserve_colors: true,
+		multipass: false,
+		multipass_mode: 'auto',
+		pass_count: 1,
+		enable_etf_fdog: false,
+		enable_flow_tracing: false,
+		enable_bezier_fitting: false
+	},
+	poster: {
+		backend: 'superpixel',
+		detail: 0.2,
+		stroke_width: 1.5,
+		preserve_colors: true,
+		multipass: false,
+		multipass_mode: 'auto',
+		pass_count: 1,
+		enable_etf_fdog: false,
+		enable_flow_tracing: false,
+		enable_bezier_fitting: false
+	},
+	comic: {
+		backend: 'edge',
+		detail: 0.7,
+		stroke_width: 1.5,
+		hand_drawn_preset: 'medium',
+		pass_count: 2,
+		multipass: true,
+		multipass_mode: 'auto',
+		preserve_colors: true,
+		enable_etf_fdog: false,
+		enable_flow_tracing: false,
+		enable_bezier_fitting: false
+	}
+};
 
 // Phase 3: Import performance optimization utilities
 import {
@@ -20,8 +113,8 @@ import {
 } from '$lib/utils/parameter-diff';
 import { globalValidationCache } from '$lib/utils/validation-cache';
 
-// Phase 2 Migration: Bridge type for parameter system transition
-export type VectorizerConfig = LegacyConfig; // Will transition to GeneratedConfig
+// Bridge legacy and modern config types
+export type VectorizerConfig = LegacyVectorizerConfig;
 
 // Parameter validation and conversion utilities
 function validateConfig(config: VectorizerConfig): { isValid: boolean; errors: string[] } {

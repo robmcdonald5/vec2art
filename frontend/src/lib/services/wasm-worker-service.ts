@@ -176,9 +176,9 @@ export class WasmWorkerService {
 			pendingRequests.delete(id);
 			// Resolving pending request
 
-			if (type === 'success') {
-				// Success response
-				pending.resolve(data);
+			if (type === 'ready' || type === 'result') {
+				// Success response from worker
+				pending.resolve({ success: true, ...data });
 			} else if (type === 'error') {
 				console.log(`[WasmWorkerService] ❌ Error response for ${id}:`, error);
 				pending.reject(new Error(error || 'Unknown worker error'));
@@ -390,6 +390,18 @@ export class WasmWorkerService {
 				plainConfig.pass_count = 1;
 				console.log('[WasmWorkerService] 🔧 Adding missing pass_count default=1 to config');
 			}
+
+			// DEBUG: Log the config being sent to worker
+			console.log('[WasmWorkerService] 🔍 [SETTINGS DEBUG] Sending config to worker:', {
+				backend: plainConfig.backend,
+				detail: plainConfig.detail,
+				stroke_width: plainConfig.stroke_width,
+				noise_filtering: plainConfig.noise_filtering,
+				multipass: plainConfig.multipass,
+				pass_count: plainConfig.pass_count,
+				hand_drawn_preset: plainConfig.hand_drawn_preset,
+				fullConfig: plainConfig
+			});
 
 			// Send processing request to worker
 			const result = await this.sendMessage('process', {

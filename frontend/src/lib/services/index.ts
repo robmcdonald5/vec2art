@@ -1,7 +1,168 @@
 /**
- * Performance Monitoring Services Index
- * Centralized exports for all performance monitoring components
+ * Service Layer Entry Point
+ * Centralized exports for all services including new refactored architecture
+ * and legacy performance monitoring components
  */
+
+// === NEW REFACTORED ARCHITECTURE ===
+
+// Core Refactored Services
+import { VectorizerServiceRefactored } from './vectorizer-service-refactored';
+import { WorkerPool } from './worker-pool';
+import { ProcessingQueue } from './processing-queue';
+import { VectorizerCache } from './vectorizer-cache';
+import { ProgressAggregator } from './progress-aggregator';
+
+// Utility Services
+import { ValidationService } from './validation-service';
+import { ErrorService } from './error-service';
+
+// Re-export for external usage
+export {
+	VectorizerServiceRefactored,
+	WorkerPool,
+	ProcessingQueue,
+	VectorizerCache,
+	ProgressAggregator,
+	ValidationService,
+	ErrorService
+};
+
+// Legacy Services (for gradual migration)
+export { WasmWorkerService } from './wasm-worker-service';
+
+// Service Factory
+export class ServiceContainer {
+	private static instance: ServiceContainer;
+
+	private workerPool: WorkerPool;
+	private cache: VectorizerCache;
+	private queue: ProcessingQueue;
+	private progressAggregator: ProgressAggregator;
+	private validationService: ValidationService;
+	private errorService: ErrorService;
+	private vectorizerService: VectorizerServiceRefactored;
+
+	private constructor() {
+		// Initialize utility services first
+		this.validationService = new ValidationService();
+		this.errorService = new ErrorService();
+
+		// Initialize vectorizer service with configuration
+		this.vectorizerService = new VectorizerServiceRefactored({
+			workerCount: 4,
+			maxQueueSize: 100,
+			cacheEnabled: true,
+			cacheMaxSize: 50,
+			defaultTimeout: 120000,
+			retryAttempts: 3,
+			retryDelay: 1000
+		});
+
+		// Get references to the internal services for direct access
+		this.workerPool = (this.vectorizerService as any).workerPool;
+		this.cache = (this.vectorizerService as any).cache;
+		this.queue = (this.vectorizerService as any).processingQueue;
+		this.progressAggregator = (this.vectorizerService as any).progressAggregator;
+	}
+
+	static getInstance(): ServiceContainer {
+		if (!ServiceContainer.instance) {
+			ServiceContainer.instance = new ServiceContainer();
+		}
+		return ServiceContainer.instance;
+	}
+
+	// Service Accessors
+	getVectorizerService(): VectorizerServiceRefactored {
+		return this.vectorizerService;
+	}
+
+	getWorkerPool(): WorkerPool {
+		return this.workerPool;
+	}
+
+	getCache(): VectorizerCache {
+		return this.cache;
+	}
+
+	getQueue(): ProcessingQueue {
+		return this.queue;
+	}
+
+	getProgressAggregator(): ProgressAggregator {
+		return this.progressAggregator;
+	}
+
+	getValidationService(): ValidationService {
+		return this.validationService;
+	}
+
+	getErrorService(): ErrorService {
+		return this.errorService;
+	}
+
+	// Lifecycle Management
+	async initialize(): Promise<void> {
+		await this.workerPool.initialize();
+		await this.vectorizerService.initialize();
+	}
+
+	async shutdown(): Promise<void> {
+		await this.vectorizerService.shutdown();
+		await this.workerPool.shutdown();
+		this.cache.clear();
+		this.queue.clear();
+	}
+
+	// Health Check
+	getHealthStatus() {
+		return {
+			workerPool: this.workerPool.getStats(),
+			cache: this.cache.getStats(),
+			queue: this.queue.getStats(),
+			errors: this.errorService.getErrorStats()
+		};
+	}
+}
+
+// Migration Utilities
+export class MigrationHelper {
+	/**
+	 * Migrate from old WasmWorkerService to new architecture
+	 */
+	static async migrateFromLegacy(): Promise<ServiceContainer> {
+		const container = ServiceContainer.getInstance();
+		await container.initialize();
+		return container;
+	}
+
+	/**
+	 * Check if new architecture is available and ready
+	 */
+	static async isNewArchitectureReady(): Promise<boolean> {
+		try {
+			const container = ServiceContainer.getInstance();
+			const health = container.getHealthStatus();
+			return health.workerPool.readyWorkers > 0;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Gradual feature flag for migration
+	 */
+	static shouldUseLegacyService(): boolean {
+		// Check for feature flag or environment variable
+		return typeof globalThis !== 'undefined' && (globalThis as any).__VEC2ART_USE_LEGACY__ === true;
+	}
+}
+
+// Convenience exports for direct usage
+export const serviceContainer = ServiceContainer.getInstance();
+
+// === LEGACY PERFORMANCE MONITORING SERVICES ===
 
 // Core performance monitoring
 export {
@@ -385,3 +546,34 @@ export async function exportAllPerformanceData(): Promise<{
 		}
 	};
 }
+
+// === INTEGRATED SERVICE EXPORT ===
+
+/**
+ * Default export combining new architecture with legacy services
+ */
+export default {
+	// New Architecture
+	ServiceContainer,
+	MigrationHelper,
+	serviceContainer,
+
+	// Quick access to new services
+	VectorizerService: VectorizerServiceRefactored,
+	WorkerPool,
+	ProcessingQueue,
+	VectorizerCache,
+	ProgressAggregator,
+	ValidationService,
+	ErrorService,
+
+	// Migration utilities
+	migrateFromLegacy: MigrationHelper.migrateFromLegacy,
+	isNewArchitectureReady: MigrationHelper.isNewArchitectureReady,
+	shouldUseLegacyService: MigrationHelper.shouldUseLegacyService,
+
+	// Legacy performance monitoring initialization
+	quickStartPerformanceMonitoring,
+	getPerformanceStatus,
+	exportAllPerformanceData
+};

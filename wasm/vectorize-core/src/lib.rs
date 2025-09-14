@@ -7,6 +7,7 @@
 pub mod algorithms;
 pub mod config;
 pub mod config_builder;
+pub mod config_immutable;
 pub mod error;
 pub mod execution;
 #[cfg(feature = "gpu-acceleration")]
@@ -26,6 +27,7 @@ pub use algorithms::{
 };
 pub use config::SvgConfig;
 pub use config_builder::{ConfigBuilder, ConfigBuilderError, ConfigBuilderResult};
+pub use config_immutable::{VectorizerConfig, ConfigError, ConfigResult};
 pub use error::*;
 pub use parameters::{
     ParameterDefinition, ParameterValidator, ValidationResult, ValidationError, ValidationWarning,

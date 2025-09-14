@@ -12,8 +12,6 @@
 // Dynamic imports cause workers to load 404 HTML pages in Vercel production builds
 // This addresses GPT's analysis of "dev OK, Vercel broken" worker pattern
 import init, * as wasmModule from '../wasm/vectorize_wasm.js';
-import { calculateMultipassConfig } from '../types/vectorizer';
-import { devLog } from '../utils/dev-logger';
 
 // Early logging to confirm worker execution
 console.log('[Worker] 🚀 WASM Worker starting up with STATIC imports...');
@@ -44,7 +42,17 @@ self.addEventListener('unhandledrejection', (event) => {
  */
 interface WorkerMessage {
 	id: string;
-	type: 'init' | 'process' | 'capabilities';
+	type: 'init' | 'process' | 'capabilities' | 'cleanup';
+	payload?: {
+		imageData?: {
+			data: number[];
+			width: number;
+			height: number;
+		};
+		config?: any;
+		preferGpu?: boolean;
+	};
+	// Legacy direct properties for backward compatibility
 	imageData?: {
 		data: number[];
 		width: number;
@@ -63,7 +71,7 @@ interface WorkerResponse {
 
 // WASM module state
 let wasmInitialized = false;
-let wasmInstance: any = null;
+let _wasmInstance: any = null;
 
 /**
  * Initialize WASM module
@@ -78,7 +86,7 @@ async function initializeWasm(): Promise<void> {
 		console.log('[Worker] 🔧 Initializing WASM module...');
 
 		// Initialize WASM
-		wasmInstance = await init();
+		_wasmInstance = await init();
 
 		console.log('[Worker] ✅ WASM module initialized successfully');
 		console.log('[Worker] 📋 Available WASM exports:', Object.keys(wasmModule));
@@ -107,6 +115,47 @@ async function processImage(imageData: ImageData, config: any): Promise<any> {
 
 		// Create WASM vectorizer
 		const vectorizer = new wasmModule.WasmVectorizer();
+
+		// CRITICAL FIX: Apply the config to the vectorizer before processing
+		// This was the missing piece causing settings to be ignored
+		console.log('[Worker] 🔧 Applying config to vectorizer:', config);
+
+		// Apply backend
+		if (config.backend) {
+			vectorizer.set_backend(config.backend);
+		}
+
+		// Apply core settings
+		if (config.detail !== undefined) {
+			vectorizer.set_detail(config.detail);
+		}
+		if (config.stroke_width !== undefined) {
+			vectorizer.set_stroke_width(config.stroke_width);
+		}
+		if (config.noise_filtering !== undefined) {
+			vectorizer.set_noise_filtering(config.noise_filtering);
+		}
+
+		// Apply multipass settings
+		if (config.multipass !== undefined) {
+			vectorizer.set_multipass(config.multipass);
+		}
+		if (config.pass_count !== undefined && config.pass_count > 0) {
+			vectorizer.set_pass_count(config.pass_count);
+		}
+		if (config.reverse_pass !== undefined) {
+			vectorizer.set_reverse_pass(config.reverse_pass);
+		}
+		if (config.diagonal_pass !== undefined) {
+			vectorizer.set_diagonal_pass(config.diagonal_pass);
+		}
+
+		// Apply hand-drawn settings
+		if (config.hand_drawn_preset !== undefined) {
+			vectorizer.set_hand_drawn_preset(config.hand_drawn_preset);
+		}
+
+		console.log('[Worker] ✅ Config applied to vectorizer, starting processing...');
 
 		// Process the image
 		const svg = vectorizer.vectorize(imageData);
@@ -166,8 +215,28 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 				} as WorkerResponse);
 				break;
 
-			case 'process':
-				const { imageData, config } = event.data;
+			case 'process': {
+				// DEBUG: Log raw message data to check structure
+				console.log('[Worker] 🔍 [SETTINGS DEBUG] Raw message data:', {
+					hasPayload: !!event.data.payload,
+					eventDataKeys: Object.keys(event.data),
+					payloadKeys: event.data.payload ? Object.keys(event.data.payload) : null
+				});
+
+				const { imageData, config } = event.data.payload || event.data;
+
+				// DEBUG: Log the config being received to check if settings are passed correctly
+				console.log('[Worker] 🔍 [SETTINGS DEBUG] Received config:', {
+					hasConfig: !!config,
+					backend: config?.backend,
+					detail: config?.detail,
+					stroke_width: config?.stroke_width,
+					noise_filtering: config?.noise_filtering,
+					multipass: config?.multipass,
+					pass_count: config?.pass_count,
+					hand_drawn_preset: config?.hand_drawn_preset
+				});
+
 				if (!imageData || !config) {
 					throw new Error('Missing image data or config');
 				}
@@ -186,14 +255,31 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 					data: result
 				} as WorkerResponse);
 				break;
+			}
 
-			case 'capabilities':
+			case 'capabilities': {
 				self.postMessage({
 					id,
 					type: 'result',
 					data: getCapabilities()
 				} as WorkerResponse);
 				break;
+			}
+
+			case 'cleanup': {
+				console.log('[Worker] 🧹 Received cleanup request');
+				// Reset worker state if needed
+				wasmInitialized = false;
+				_wasmInstance = null;
+				self.postMessage({
+					id,
+					type: 'result',
+					data: {
+						cleaned: true
+					}
+				} as WorkerResponse);
+				break;
+			}
 
 			default:
 				throw new Error(`Unknown message type: ${type}`);

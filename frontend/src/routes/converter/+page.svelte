@@ -26,14 +26,23 @@
 	import ErrorState from '$lib/components/ui/ErrorState.svelte';
 
 	// Types and stores
-	import type {
-		ProcessingProgress,
-		ProcessingResult,
-		VectorizerConfig,
-		VectorizerBackend,
-		VectorizerPreset
-	} from '$lib/types/vectorizer';
-	import { DEFAULT_CONFIG } from '$lib/types/vectorizer';
+	import type { VectorizerConfig } from '$lib/stores/converter-settings.svelte';
+	import { DEFAULT_CONFIG } from '$lib/stores/converter-settings.svelte';
+
+	// Legacy types for compatibility
+	type ProcessingProgress = {
+		stage: string;
+		progress: number;
+		elapsed_ms: number;
+		message?: string;
+	};
+	type ProcessingResult = {
+		svg: string;
+		processing_time_ms: number;
+		config_used: VectorizerConfig;
+	};
+	type VectorizerBackend = 'edge' | 'dots' | 'superpixel' | 'centerline';
+	type VectorizerPreset = 'sketch' | 'technical' | 'artistic' | 'poster' | 'comic';
 	import { vectorizerStore } from '$lib/stores/vectorizer.svelte.js';
 	import { wasmWorkerService } from '$lib/services/wasm-worker-service';
 	import { settingsSyncStore } from '$lib/stores/settings-sync.svelte';
@@ -461,12 +470,16 @@
 
 			// Initialize WASM using Web Worker (prevents main thread blocking)
 			try {
-				console.log('🔧 Initializing WASM in Web Worker...', {
-					initialized: wasmWorkerService.initialized
+				console.log('🔧 [CRITICAL DEBUG] About to initialize WASM worker...', {
+					initialized: wasmWorkerService.initialized,
+					workerServiceType: typeof wasmWorkerService,
+					workerServiceMethods: Object.getOwnPropertyNames(wasmWorkerService)
 				});
 
 				// Initialize WASM worker
+				console.log('🔧 [CRITICAL DEBUG] Calling wasmWorkerService.initialize({}) now...');
 				await wasmWorkerService.initialize({});
+				console.log('🔧 [CRITICAL DEBUG] wasmWorkerService.initialize() promise resolved!');
 
 				console.log('✅ WASM Web Worker initialized successfully');
 			} catch (error) {
@@ -475,9 +488,22 @@
 				throw error;
 			}
 
+			console.log('🔍 [CRITICAL DEBUG] After WASM init - about to check files', {
+				filesLength: files.length,
+				hasFiles,
+				canConvert,
+				isProcessing
+			});
+
 			// Check if we have any actual files to process
+			console.log('🔍 [CRITICAL DEBUG] Checking files for processing...', {
+				filesLength: files.length,
+				originalImageUrlsLength: originalImageUrls.length,
+				filesMetadataLength: filesMetadata.length
+			});
+
 			if (files.length === 0) {
-				console.log('🔍 [DEBUG] No files available for conversion');
+				console.log('❌ [CRITICAL] No files available for conversion - execution stops here!');
 				if (originalImageUrls.length > 0 || filesMetadata.length > 0) {
 					// We have restored state but no File objects - this is the bug!
 					console.log(
@@ -493,6 +519,8 @@
 				return;
 			}
 
+			console.log('🔍 [CRITICAL DEBUG] Files check passed - continuing to settings sync...');
+
 			// Settings sync-aware conversion logic:
 			// CRITICAL FIX: Use the current reactive config to ensure we have the latest settings
 			// that the user sees in the UI, preventing stale settings bug
@@ -507,8 +535,16 @@
 
 			console.log(
 				`🎯 Settings Sync Conversion (${convertConfig.mode}): Processing ${imagesToProcess.length} images`,
-				{ mode: convertConfig.mode, imageIndices: imagesToProcess }
+				{ mode: convertConfig.mode, imageIndices: imagesToProcess, convertConfig }
 			);
+
+			// DEBUG: Add detailed logging for the critical issue
+			console.log('🔍 [CRITICAL DEBUG] Settings sync analysis:', {
+				imagesToProcessLength: imagesToProcess.length,
+				filesLength: files.length,
+				settingsSyncStoreState: settingsSyncStore.getStatistics(),
+				convertConfigFull: convertConfig
+			});
 
 			// Debug settings sync store state
 			const syncStats = settingsSyncStore.getStatistics();
@@ -522,7 +558,14 @@
 			});
 
 			if (imagesToProcess.length === 0) {
-				console.error('❌ [DEBUG] No images to process - settings sync store issue detected');
+				console.error('❌ [CRITICAL] No images to process - this is the root cause of the hang!');
+				console.error('❌ [CRITICAL DEBUG] Detailed state:', {
+					imagesToProcessLength: imagesToProcess.length,
+					filesLength: files.length,
+					hasFiles,
+					settingsSyncMode: convertConfig.mode,
+					settingsSyncStats: settingsSyncStore.getStatistics()
+				});
 
 				// DEFENSIVE FALLBACK: If settings sync is broken, try to process available files directly
 				if (files.length > 0) {
@@ -634,6 +677,9 @@
 					...configsToProcess[0]
 				};
 				vectorizerStore.updateConfig(globalConfig);
+				console.log(
+					'🚀 [CRITICAL] About to call vectorizerStore.processBatch() - this should trigger worker processing'
+				);
 				const batchResults = await vectorizerStore.processBatch(
 					(imageIndex, totalImages, progress) => {
 						const originalIndex = indexMapping[imageIndex];

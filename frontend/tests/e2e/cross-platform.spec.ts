@@ -14,27 +14,31 @@ test.describe('Cross-Platform Tests', () => {
 	});
 
 	test.describe('Mobile Device Testing', () => {
-		test.use({ ...devices['iPhone 12'] });
-
-		test('mobile workflow with touch interactions', async ({ page }) => {
-			await converterPage.goto();
-			await converterPage.waitForWasmLoad();
+		test('mobile workflow with touch interactions', async ({ page, browser }) => {
+			// Create new context with iPhone 12 settings for this test
+			const context = await browser.newContext({
+				...devices['iPhone 12']
+			});
+			const mobilePage = await context.newPage();
 
 			// Check mobile-optimized interface
-			const viewport = page.viewportSize();
+			const viewport = mobilePage.viewportSize();
 			expect(viewport?.width).toBeLessThan(500);
 
 			// Check for mobile-specific UI elements
-			const mobileMenu = page.getByTestId('mobile-menu');
+			const mobileMenu = mobilePage.getByTestId('mobile-menu');
 			const _isMobileMenuVisible = await mobileMenu.isVisible().catch(() => false);
 
 			// Touch interactions for file upload
-			const fileDropzone = page.getByTestId('file-dropzone');
+			const fileDropzone = mobilePage.getByTestId('file-dropzone');
 			await fileDropzone.tap();
 
 			// Upload file using mobile interface
-			await converterPage.uploadFile('small-test.png');
-			await expect(page.getByText(/small-test\.png/)).toBeVisible();
+			const mobileConverterPage = new ConverterPage(mobilePage);
+			await mobileConverterPage.goto();
+			await mobileConverterPage.waitForWasmLoad();
+			await mobileConverterPage.uploadFile('small-test.png');
+			await expect(mobilePage.getByText(/small-test\.png/)).toBeVisible();
 
 			// Initialize threading with mobile-appropriate settings
 			await converterPage.initializeThreads(2); // Fewer threads for mobile

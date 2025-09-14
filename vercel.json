@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd .. && chmod +x scripts/vercel-build.sh && ./scripts/vercel-build.sh && cd frontend && npm run build:frontend-only",
+  "buildCommand": "cd .. && node scripts/rebuild-wasm.js && cd frontend && npm run build:frontend-only",
   "installCommand": "npm ci",
   "outputDirectory": ".vercel/output",
   "headers": [

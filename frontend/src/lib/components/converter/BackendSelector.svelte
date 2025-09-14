@@ -1,12 +1,21 @@
 <script lang="ts">
 	import { Settings, PenTool, Palette, Grid, Sparkles, Terminal } from 'lucide-svelte';
-	import type { VectorizerBackend } from '$lib/types/vectorizer';
-	import { BACKEND_DESCRIPTIONS } from '$lib/types/vectorizer';
+	// Legacy backend type for compatibility
+	type LegacyVectorizerBackend = 'edge' | 'dots' | 'superpixel' | 'centerline';
+
+	// Legacy backend descriptions
+	const BACKEND_DESCRIPTIONS: Record<LegacyVectorizerBackend, string> = {
+		edge: 'Edge detection with Canny algorithm. Best for line art and low contrast drawings.',
+		centerline:
+			'Zhang-Suen skeleton-based tracing. Ideal for bold shapes, logos, text, and high-contrast imagery.',
+		superpixel: 'SLIC region-based approach. Perfect for stylized art and bold abstract shapes.',
+		dots: 'Adaptive stippling with content-aware placement. Great for cinematic images, texture emphasis, and vintage styles.'
+	};
 	import { CustomSelect } from '$lib/components/ui/custom-select';
 
 	interface BackendSelectorProps {
-		selectedBackend: VectorizerBackend;
-		onBackendChange: (_backend: VectorizerBackend) => void;
+		selectedBackend: LegacyVectorizerBackend;
+		onBackendChange: (_backend: LegacyVectorizerBackend) => void;
 		disabled?: boolean;
 		compact?: boolean;
 	}
@@ -39,7 +48,7 @@
 		centerline: ['Skeleton extraction', 'Precise lines', 'Shape analysis', 'Technical drawings']
 	} as const;
 
-	function handleBackendClick(backend: VectorizerBackend) {
+	function handleBackendClick(backend: LegacyVectorizerBackend) {
 		if (!disabled) {
 			onBackendChange(backend);
 		}
@@ -54,7 +63,7 @@
 			options={[
 				...Object.keys(backendIcons).map((backend) => ({
 					value: backend,
-					label: backendTitles[backend as VectorizerBackend]
+					label: backendTitles[backend as LegacyVectorizerBackend]
 				})),
 				{
 					value: 'ascii',
@@ -62,7 +71,7 @@
 					disabled: true
 				}
 			]}
-			onchange={(value) => handleBackendClick(value as VectorizerBackend)}
+			onchange={(value) => handleBackendClick(value as LegacyVectorizerBackend)}
 			{disabled}
 			placeholder="Select an algorithm"
 		/>

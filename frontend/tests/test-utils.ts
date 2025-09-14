@@ -30,6 +30,166 @@ export interface TestRenderOptions {
  * Mock browser APIs consistently across tests
  */
 export function setupBrowserMocks() {
+	// Mock Blob API for file operations
+	if (!globalThis.Blob) {
+		globalThis.Blob = class MockBlob implements Blob {
+			public size: number;
+			public type: string;
+
+			constructor(blobParts?: BlobPart[], options?: BlobPropertyBag) {
+				this.type = options?.type || '';
+				this.size = blobParts
+					? blobParts.reduce((size, part) => {
+							if (typeof part === 'string') return size + part.length;
+							if (part instanceof ArrayBuffer) return size + part.byteLength;
+							if (part instanceof Uint8Array) return size + part.length;
+							return size;
+						}, 0)
+					: 0;
+			}
+
+			slice(start?: number, end?: number, contentType?: string): Blob {
+				return new MockBlob([], { type: contentType || this.type });
+			}
+
+			stream(): ReadableStream<Uint8Array> {
+				return new ReadableStream({
+					start(controller) {
+						controller.enqueue(new Uint8Array(0));
+						controller.close();
+					}
+				});
+			}
+
+			text(): Promise<string> {
+				return Promise.resolve('');
+			}
+
+			arrayBuffer(): Promise<ArrayBuffer> {
+				return Promise.resolve(new ArrayBuffer(this.size));
+			}
+		} as any;
+	}
+
+	// Mock Image API for image processing tests
+	if (!globalThis.Image) {
+		globalThis.Image = class MockImage extends EventTarget implements HTMLImageElement {
+			public src: string = '';
+			public width: number = 0;
+			public height: number = 0;
+			public naturalWidth: number = 0;
+			public naturalHeight: number = 0;
+			public complete: boolean = false;
+			public onload: ((ev: Event) => any) | null = null;
+			public onerror: ((ev: string | Event) => any) | null = null;
+
+			constructor() {
+				super();
+				// Simulate async image loading
+				setTimeout(() => {
+					this.width = 100;
+					this.height = 100;
+					this.naturalWidth = 100;
+					this.naturalHeight = 100;
+					this.complete = true;
+					if (this.onload) {
+						this.onload(new Event('load'));
+					}
+					this.dispatchEvent(new Event('load'));
+				}, 0);
+			}
+
+			// Add all required HTMLImageElement properties as needed
+			addEventListener(
+				type: string,
+				listener: EventListenerOrEventListenerObject | null,
+				options?: boolean | AddEventListenerOptions
+			): void {
+				super.addEventListener(type, listener, options);
+			}
+
+			removeEventListener(
+				type: string,
+				listener: EventListenerOrEventListenerObject | null,
+				options?: boolean | EventListenerOptions
+			): void {
+				super.removeEventListener(type, listener, options);
+			}
+		} as any;
+	}
+
+	// Mock File API
+	if (!globalThis.File) {
+		globalThis.File = class MockFile extends globalThis.Blob implements File {
+			public name: string;
+			public lastModified: number;
+			public webkitRelativePath: string = '';
+
+			constructor(fileBits: BlobPart[], fileName: string, options?: FilePropertyBag) {
+				super(fileBits, options);
+				this.name = fileName;
+				this.lastModified = options?.lastModified || Date.now();
+			}
+		} as any;
+	}
+
+	// Mock FileReader API
+	if (!globalThis.FileReader) {
+		globalThis.FileReader = class MockFileReader extends EventTarget implements FileReader {
+			public readyState: number = 0;
+			public result: string | ArrayBuffer | null = null;
+			public error: DOMException | null = null;
+			public onload: ((ev: ProgressEvent<FileReader>) => any) | null = null;
+			public onerror: ((ev: ProgressEvent<FileReader>) => any) | null = null;
+			public onprogress: ((ev: ProgressEvent<FileReader>) => any) | null = null;
+
+			static readonly EMPTY = 0;
+			static readonly LOADING = 1;
+			static readonly DONE = 2;
+
+			readAsDataURL(_file: Blob): void {
+				this.readyState = 1;
+				setTimeout(() => {
+					this.result =
+						'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+					this.readyState = 2;
+					if (this.onload) {
+						this.onload(new ProgressEvent('load'));
+					}
+					this.dispatchEvent(new ProgressEvent('load'));
+				}, 0);
+			}
+
+			readAsArrayBuffer(file: Blob): void {
+				this.readyState = 1;
+				setTimeout(() => {
+					this.result = new ArrayBuffer(file.size);
+					this.readyState = 2;
+					if (this.onload) {
+						this.onload(new ProgressEvent('load'));
+					}
+					this.dispatchEvent(new ProgressEvent('load'));
+				}, 0);
+			}
+
+			readAsText(_file: Blob): void {
+				this.readyState = 1;
+				setTimeout(() => {
+					this.result = '';
+					this.readyState = 2;
+					if (this.onload) {
+						this.onload(new ProgressEvent('load'));
+					}
+					this.dispatchEvent(new ProgressEvent('load'));
+				}, 0);
+			}
+
+			abort(): void {
+				this.readyState = 2;
+			}
+		} as any;
+	}
+
 	// Mock document.createElement for WebGL detection
 	const originalCreateElement = document.createElement;
 	vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {

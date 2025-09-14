@@ -15,6 +15,8 @@ mod error;
 mod gpu_backend;
 mod processing_manager;
 mod utils;
+mod wasm_config;
+mod vectorizer_refactored;
 
 use crate::error::ErrorRecoveryManager;
 use image::ImageBuffer;
@@ -1348,7 +1350,10 @@ pub use crate::gpu_backend::{
     reset_gpu_backend,
 };
 
-// Re-export capability functions  
+// Re-export capability functions
 pub use crate::capabilities::{
     check_threading_requirements, is_webgl2_available, is_webgpu_available,
 };
+
+// Re-export refactored vectorizer for gradual migration
+pub use crate::vectorizer_refactored::WasmVectorizerRefactored;

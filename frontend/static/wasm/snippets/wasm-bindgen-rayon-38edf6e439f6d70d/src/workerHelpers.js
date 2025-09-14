@@ -39,7 +39,7 @@ function waitForMsgType(target, type) {
 // and temporary bugs so that you don't need to deal with them in your code.
 import { initSync, wbg_rayon_start_worker } from "../../..";
 
-if (typeof self !== 'undefined' && self.name === "wasm_bindgen_worker") {
+if (name === "wasm_bindgen_worker") {
   waitForMsgType(self, "wasm_bindgen_worker_init").then(async (data) => {
     initSync(data.init);
     postMessage({ type: "wasm_bindgen_worker_ready" });

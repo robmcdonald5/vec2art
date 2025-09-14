@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Info } from 'lucide-svelte';
-	import type { VectorizerConfig } from '$lib/types/vectorizer';
+	import type { VectorizerConfig } from '$lib/stores/converter-settings.svelte';
 
 	interface Props {
 		parameter: keyof VectorizerConfig;

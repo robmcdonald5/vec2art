@@ -14,12 +14,23 @@
 		Eraser,
 		Filter
 	} from 'lucide-svelte';
-	import type { VectorizerConfig } from '$lib/types/vectorizer';
-	import { calculateMultipassConfig } from '$lib/types/vectorizer';
+	import type { VectorizerConfig } from '$lib/stores/converter-settings.svelte';
 
 	// Import dots backend parameter ranges (for dot size controls)
 	import { DOTS_PARAMETER_RANGES } from '$lib/types/dots-backend';
 	import FerrariSlider from '$lib/components/ui/FerrariSlider.svelte';
+
+	// Legacy utility function for multipass config calculation
+	function calculateMultipassConfig(config: VectorizerConfig): {
+		multipass: boolean;
+		pass_count: number;
+	} {
+		const { pass_count, backend } = config;
+		return {
+			multipass: backend === 'edge' && pass_count > 1,
+			pass_count: pass_count
+		};
+	}
 
 	interface AdvancedControlsProps {
 		config: VectorizerConfig;
@@ -98,7 +109,9 @@
 	function handleCheckboxChange(configKey: keyof VectorizerConfig) {
 		return (event: Event) => {
 			const checkbox = event.target as HTMLInputElement;
-			console.log(`🟡 Advanced Controls - Checkbox change: ${configKey} = ${checkbox.checked}`);
+			console.log(
+				`🟡 Advanced Controls - Checkbox change: ${String(configKey)} = ${checkbox.checked}`
+			);
 			onConfigChange({ [configKey]: checkbox.checked } as Partial<VectorizerConfig>);
 			onParameterChange?.();
 		};
