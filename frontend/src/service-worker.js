@@ -18,7 +18,7 @@ if (typeof location !== 'undefined' && location.hostname === 'localhost') {
 }
 
 // SMART VERSIONED CACHING v3.0 - Automatic cache invalidation
-const SW_VERSION = '3.0.0'; // Update this to force cache refresh
+const SW_VERSION = '3.1.0'; // FORCE CACHE BUST - Updated to ensure Vercel serves new SW
 const VERSION_HASH = `${version}-${SW_VERSION}`; // Combined SvelteKit + SW version
 
 const ASSETS_CACHE = `vec2art-assets-v${VERSION_HASH}`;
@@ -76,11 +76,10 @@ sw.addEventListener('activate', (event) => {
 			await Promise.all(
 				cacheNames
 					.filter((name) => {
-						// Keep only image cache and current version caches
-						// CRITICAL: Delete old WASM caches (including persistent v1) to ensure iPhone users get fixes
+						// AGGRESSIVE v3.1: Force delete ALL old caches except current VERSION_HASH
+						// This fixes Vercel deployment staleness by ensuring complete cache refresh
 						return (
-							name.startsWith('vec2art-') && !name.includes(version) && name !== IMAGE_CACHE
-							// REMOVED: name !== WASM_CACHE - now WASM cache is versioned and old ones should be deleted
+							name.startsWith('vec2art-') && !name.includes(VERSION_HASH) && name !== IMAGE_CACHE // Only preserve user images
 						);
 					})
 					.map((name) => {
@@ -92,15 +91,17 @@ sw.addEventListener('activate', (event) => {
 			// CRITICAL: Take control of all clients immediately to apply worker fix
 			await sw.clients.claim();
 
-			console.log('[SW] v2.1 CRITICAL UPDATE: ServiceWorker activated and claimed all clients');
+			console.log(
+				`[SW] v${SW_VERSION} VERCEL DEPLOYMENT FIX: ServiceWorker activated and claimed all clients`
+			);
 
-			// Notify all clients that the critical fix is active
+			// Notify all clients that the v3.1 fix is active
 			const clients = await sw.clients.matchAll();
 			clients.forEach((client) => {
 				client.postMessage({
 					type: 'SW_CRITICAL_UPDATE_ACTIVE',
-					version: '2.1',
-					fix: 'ServiceWorker worker loading fix applied'
+					version: SW_VERSION,
+					fix: 'ServiceWorker v3.1 - Vercel cache refresh and worker loading fix applied'
 				});
 			});
 		})()
@@ -310,6 +311,33 @@ sw.addEventListener('message', (event) => {
 				const clients = await sw.clients.matchAll();
 				clients.forEach((client) => {
 					client.postMessage({ type: 'CRITICAL_REFRESH_COMPLETE' });
+				});
+			})()
+		);
+	}
+
+	// NEW v3.1: AGGRESSIVE VERCEL CACHE CLEARING for deployment staleness
+	if (event.data?.type === 'FORCE_VERCEL_CACHE_REFRESH') {
+		event.waitUntil(
+			(async () => {
+				console.log('[SW] v3.1 FORCE clearing ALL caches for Vercel deployment refresh');
+
+				// Nuclear option: Delete ALL vec2art caches except user images
+				const cacheNames = await caches.keys();
+				const deletePromises = cacheNames
+					.filter((name) => name.startsWith('vec2art-') && name !== IMAGE_CACHE)
+					.map((name) => {
+						console.log(`[SW] FORCE deleting cache: ${name}`);
+						return caches.delete(name);
+					});
+
+				await Promise.all(deletePromises);
+				console.log('[SW] v3.1 ALL caches cleared - forcing complete refresh');
+
+				// Notify client that nuclear refresh is complete
+				const clients = await sw.clients.matchAll();
+				clients.forEach((client) => {
+					client.postMessage({ type: 'VERCEL_CACHE_REFRESH_COMPLETE' });
 				});
 			})()
 		);

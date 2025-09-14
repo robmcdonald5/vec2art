@@ -208,7 +208,7 @@ class ServiceWorkerUpdateManager {
 			swUpdateState.update((state) => ({
 				...state,
 				updateAvailable: false,
-				version: '3.0'
+				version: '3.1'
 			}));
 
 			// Reload page to use new ServiceWorker
@@ -228,7 +228,7 @@ class ServiceWorkerUpdateManager {
 		// Dispatch custom event for UI components to listen to
 		window.dispatchEvent(
 			new CustomEvent('sw-update-available', {
-				detail: { version: '3.0' }
+				detail: { version: '3.1' }
 			})
 		);
 	}
