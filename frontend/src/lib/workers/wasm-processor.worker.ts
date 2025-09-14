@@ -31,12 +31,12 @@ self.addEventListener('unhandledrejection', (event) => {
 	});
 });
 
-// TEMPORARY: Comment out imports to test basic worker execution
-// import init, * as wasmModule from '../wasm/vectorize_wasm.js';
-// import { calculateMultipassConfig } from '../types/vectorizer';
-// import { devLog } from '../utils/dev-logger';
+// Restored: Worker executes fine, imports are not the problem
+import init, * as wasmModule from '../wasm/vectorize_wasm.js';
+import { calculateMultipassConfig } from '../types/vectorizer';
+import { devLog } from '../utils/dev-logger';
 
-console.log('[Worker] ✅ Basic worker startup - no imports');
+console.log('[Worker] ✅ Worker startup with full imports restored');
 
 // Note: dots backend parameters now handled directly in SettingsPanel.svelte
 
@@ -71,9 +71,32 @@ async function initializeWasm(config?: { threadCount?: number; backend?: string 
 	);
 	console.log('[Worker] 🔧 Current wasmInitialized status:', wasmInitialized);
 
-	// TEMPORARY: Just return success without actual WASM initialization
-	console.log('[Worker] 🧪 TEMPORARY: Skipping WASM init for import testing');
-	wasmInitialized = true;
+	// Always attempt threading setup, even if WASM was previously initialized
+	let wasmInitializationNeeded = !wasmInitialized;
+
+	if (wasmInitializationNeeded) {
+		try {
+			devLog('wasm_operations', 'Initializing WASM module (single-threaded + Web Worker)');
+
+			// Initialize WASM module (single-threaded architecture)
+			await init();
+			console.log('[Worker] ✅ WASM module initialized (single-threaded + Web Worker)');
+
+			// GPU operations require main thread context and cannot run in Web Workers
+			console.log('[Worker] ℹ️ Skipping GPU initialization (Web Worker uses CPU processing)');
+			console.log('[Worker] ✅ CPU-only processing enabled for Web Worker compatibility');
+
+			wasmInitialized = true;
+		} catch (error) {
+			console.error('[Worker] WASM initialization failed:', error);
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Unknown error'
+			};
+		}
+	} else {
+		console.log('[Worker] 🔧 WASM already initialized (single-threaded + Web Worker)');
+	}
 
 	// Return success
 	try {
