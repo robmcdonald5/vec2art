@@ -18,7 +18,9 @@ test.describe('Algorithm Cross-Contamination Prevention', () => {
 		await converterPage.waitForWasmLoad();
 	});
 
-	test('should prevent settings cross-contamination between Edge Tracing and Stippling', async ({ page }) => {
+	test('should prevent settings cross-contamination between Edge Tracing and Stippling', async ({
+		page
+	}) => {
 		// Initialize threads for processing
 		await converterPage.initializeThreads(4);
 
@@ -45,14 +47,19 @@ test.describe('Algorithm Cross-Contamination Prevention', () => {
 		const edgeNoiseFilter = await noiseFilterSlider.inputValue();
 		const edgeThreshold = await edgeThresholdSlider.inputValue();
 
-		console.log(`Edge Tracing settings: Noise Filter=${edgeNoiseFilter}, Edge Threshold=${edgeThreshold}`);
+		console.log(
+			`Edge Tracing settings: Noise Filter=${edgeNoiseFilter}, Edge Threshold=${edgeThreshold}`
+		);
 
 		// Run Edge Tracing conversion
 		await page.click('[data-testid="convert-button"]');
 
 		// Wait for conversion to complete
 		await expect(page.locator('[data-testid="svg-output"]')).toBeVisible({ timeout: 15000 });
-		await expect(page.locator('[data-testid="conversion-status"]')).toContainText('Conversion completed', { timeout: 15000 });
+		await expect(page.locator('[data-testid="conversion-status"]')).toContainText(
+			'Conversion completed',
+			{ timeout: 15000 }
+		);
 
 		// Test 2: Switch to Stippling and verify settings isolation
 		console.log('Switching to Stippling algorithm...');
@@ -87,7 +94,10 @@ test.describe('Algorithm Cross-Contamination Prevention', () => {
 
 		// Wait for conversion to complete
 		await expect(page.locator('[data-testid="svg-output"]')).toBeVisible({ timeout: 15000 });
-		await expect(page.locator('[data-testid="conversion-status"]')).toContainText('Conversion completed', { timeout: 15000 });
+		await expect(page.locator('[data-testid="conversion-status"]')).toContainText(
+			'Conversion completed',
+			{ timeout: 15000 }
+		);
 
 		// Test 3: Switch back to Edge Tracing and verify settings reset
 		console.log('Switching back to Edge Tracing...');
@@ -108,7 +118,9 @@ test.describe('Algorithm Cross-Contamination Prevention', () => {
 		const resetNoiseFilter = await noiseFilterSlider.inputValue();
 		const resetEdgeThreshold = await edgeThresholdSlider.inputValue();
 
-		console.log(`Reset Edge Tracing settings: Noise Filter=${resetNoiseFilter}, Edge Threshold=${resetEdgeThreshold}`);
+		console.log(
+			`Reset Edge Tracing settings: Noise Filter=${resetNoiseFilter}, Edge Threshold=${resetEdgeThreshold}`
+		);
 
 		// Verify settings were reset (should be default values, not the previously set values)
 		expect(resetNoiseFilter).not.toBe(edgeNoiseFilter);
@@ -145,7 +157,10 @@ test.describe('Algorithm Cross-Contamination Prevention', () => {
 
 		// Wait for successful conversion
 		await expect(page.locator('[data-testid="svg-output"]')).toBeVisible({ timeout: 15000 });
-		await expect(page.locator('[data-testid="conversion-status"]')).toContainText('Conversion completed', { timeout: 15000 });
+		await expect(page.locator('[data-testid="conversion-status"]')).toContainText(
+			'Conversion completed',
+			{ timeout: 15000 }
+		);
 
 		// Check for any error messages
 		const errorMessages = page.locator('[data-testid="error-message"]');
@@ -159,7 +174,10 @@ test.describe('Algorithm Cross-Contamination Prevention', () => {
 
 		// Wait for successful conversion
 		await expect(page.locator('[data-testid="svg-output"]')).toBeVisible({ timeout: 15000 });
-		await expect(page.locator('[data-testid="conversion-status"]')).toContainText('Conversion completed', { timeout: 15000 });
+		await expect(page.locator('[data-testid="conversion-status"]')).toContainText(
+			'Conversion completed',
+			{ timeout: 15000 }
+		);
 
 		// Check for any error messages
 		await expect(errorMessages).toHaveCount(0);
@@ -201,7 +219,10 @@ test.describe('Algorithm Cross-Contamination Prevention', () => {
 
 			// Wait for conversion to complete
 			await expect(page.locator('[data-testid="svg-output"]')).toBeVisible({ timeout: 15000 });
-			await expect(page.locator('[data-testid="conversion-status"]')).toContainText('Conversion completed', { timeout: 15000 });
+			await expect(page.locator('[data-testid="conversion-status"]')).toContainText(
+				'Conversion completed',
+				{ timeout: 15000 }
+			);
 
 			// Check for any error messages
 			const errorMessages = page.locator('[data-testid="error-message"]');

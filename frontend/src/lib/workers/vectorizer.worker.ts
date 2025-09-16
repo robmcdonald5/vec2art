@@ -42,7 +42,13 @@ export interface WorkerCapabilitiesMessage {
 	capabilities: WasmCapabilityReport;
 }
 
-export type WorkerMessageType = WorkerInitMessage | WorkerProcessMessage | WorkerProgressMessage | WorkerResultMessage | WorkerErrorMessage | WorkerCapabilitiesMessage;
+export type WorkerMessageType =
+	| WorkerInitMessage
+	| WorkerProcessMessage
+	| WorkerProgressMessage
+	| WorkerResultMessage
+	| WorkerErrorMessage
+	| WorkerCapabilitiesMessage;
 
 export interface ProcessingProgress {
 	stage: string;
@@ -301,8 +307,11 @@ class VectorizerWorker {
 	// Keep legacy method as fallback for compatibility
 	private configureVectorizerLegacy(config: AlgorithmConfig): void {
 		// Apply preset if specified through hand-drawn preset (only for edge and centerline)
-		if ((config.algorithm === 'edge' || config.algorithm === 'centerline') &&
-		    'handDrawnPreset' in config && config.handDrawnPreset !== 'none') {
+		if (
+			(config.algorithm === 'edge' || config.algorithm === 'centerline') &&
+			'handDrawnPreset' in config &&
+			config.handDrawnPreset !== 'none'
+		) {
 			this.vectorizer.use_preset(config.handDrawnPreset);
 		}
 
@@ -328,8 +337,11 @@ class VectorizerWorker {
 		}
 
 		// Configure artistic effects (only for edge and centerline)
-		if ((config.algorithm === 'edge' || config.algorithm === 'centerline') &&
-		    'handDrawnPreset' in config && config.handDrawnPreset) {
+		if (
+			(config.algorithm === 'edge' || config.algorithm === 'centerline') &&
+			'handDrawnPreset' in config &&
+			config.handDrawnPreset
+		) {
 			this.vectorizer.set_hand_drawn_preset(config.handDrawnPreset);
 		}
 		if ('handDrawnVariableWeights' in config) {

@@ -64,7 +64,6 @@ interface WorkerMessage {
 	config?: AlgorithmConfig;
 }
 
-
 interface WorkerResponse {
 	id: string;
 	type: 'ready' | 'result' | 'error' | 'progress';
@@ -121,9 +120,11 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 		const vectorizer = new wasmModule.WasmVectorizer();
 
 		// Log available methods on the vectorizer for debugging
-		console.log('[Worker] 📋 Available vectorizer methods:',
-			Object.getOwnPropertyNames(Object.getPrototypeOf(vectorizer))
-				.filter(name => typeof (vectorizer as any)[name] === 'function')
+		console.log(
+			'[Worker] 📋 Available vectorizer methods:',
+			Object.getOwnPropertyNames(Object.getPrototypeOf(vectorizer)).filter(
+				(name) => typeof (vectorizer as any)[name] === 'function'
+			)
 		);
 
 		// Apply AlgorithmConfig directly to WASM (new unified system)
@@ -177,7 +178,8 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 					// When custom values are set, the preset should be "custom"
 					// but the WASM doesn't have individual setters for tremor/weights/tapering
 					if (
-						(config.handDrawnVariableWeights !== undefined && config.handDrawnVariableWeights > 0) ||
+						(config.handDrawnVariableWeights !== undefined &&
+							config.handDrawnVariableWeights > 0) ||
 						(config.handDrawnTremorStrength !== undefined && config.handDrawnTremorStrength > 0) ||
 						(config.handDrawnTapering !== undefined && config.handDrawnTapering > 0)
 					) {
@@ -202,7 +204,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 
 			// Apply Background removal settings (Edge config only)
 			if (config.backgroundRemovalStrength !== undefined) {
-				console.log('[Worker] 🗑️ Setting background_removal_strength:', config.backgroundRemovalStrength);
+				console.log(
+					'[Worker] 🗑️ Setting background_removal_strength:',
+					config.backgroundRemovalStrength
+				);
 				try {
 					if (typeof vectorizer.set_background_removal_strength === 'function') {
 						vectorizer.set_background_removal_strength(config.backgroundRemovalStrength);
@@ -218,7 +223,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 		// Apply Centerline backend specific settings
 		if (config.algorithm === 'centerline') {
 			if (config.enableAdaptiveThreshold !== undefined) {
-				console.log('[Worker] 📐 Setting enable_adaptive_threshold:', config.enableAdaptiveThreshold);
+				console.log(
+					'[Worker] 📐 Setting enable_adaptive_threshold:',
+					config.enableAdaptiveThreshold
+				);
 				vectorizer.set_enable_adaptive_threshold(config.enableAdaptiveThreshold);
 			}
 			if (config.adaptiveThresholdWindowSize !== undefined) {

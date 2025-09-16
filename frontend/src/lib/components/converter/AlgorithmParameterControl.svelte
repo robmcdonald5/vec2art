@@ -59,7 +59,7 @@
 		<div class="flex items-center gap-2">
 			<label
 				for={`param-${name}`}
-				class="text-sm font-medium text-speed-gray-900 dark:text-speed-gray-100"
+				class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium"
 			>
 				{metadata.label}
 			</label>
@@ -73,7 +73,7 @@
 		</div>
 
 		<div class="flex items-center gap-2">
-			<span class="font-mono text-xs text-speed-gray-600 dark:text-speed-gray-400">
+			<span class="text-speed-gray-600 dark:text-speed-gray-400 font-mono text-xs">
 				{formatDisplayValue(value)}
 			</span>
 			{#if showDescription}
@@ -97,10 +97,10 @@
 				checked={value}
 				onchange={(e) => handleChange(e.currentTarget.checked)}
 				{disabled}
-				class="h-4 w-4 rounded border-speed-gray-300 text-ferrari-500 focus:ring-2 focus:ring-ferrari-500 focus:ring-offset-0 disabled:opacity-50"
+				class="border-speed-gray-300 text-ferrari-500 focus:ring-ferrari-500 h-4 w-4 rounded focus:ring-2 focus:ring-offset-0 disabled:opacity-50"
 			/>
 			{#if showDescription}
-				<span class="text-xs text-speed-gray-600 dark:text-speed-gray-400">
+				<span class="text-speed-gray-600 dark:text-speed-gray-400 text-xs">
 					{metadata.description}
 				</span>
 			{/if}
@@ -108,10 +108,10 @@
 	{:else if metadata.type === 'select'}
 		<select
 			id={`param-${name}`}
-			value={value}
+			{value}
 			onchange={(e) => handleChange(e.currentTarget.value)}
 			{disabled}
-			class="w-full rounded-lg border border-speed-gray-300 bg-speed-white px-3 py-2 text-sm text-speed-gray-900 focus:border-ferrari-500 focus:outline-none focus:ring-1 focus:ring-ferrari-500 disabled:opacity-50 dark:border-speed-gray-600 dark:bg-speed-gray-800 dark:text-speed-gray-100"
+			class="border-speed-gray-300 bg-speed-white text-speed-gray-900 focus:border-ferrari-500 focus:ring-ferrari-500 dark:border-speed-gray-600 dark:bg-speed-gray-800 dark:text-speed-gray-100 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none disabled:opacity-50"
 		>
 			{#if metadata.options}
 				{#each metadata.options as option}
@@ -127,14 +127,14 @@
 				min={metadata.min}
 				max={metadata.max}
 				step={metadata.step}
-				value={value}
+				{value}
 				oninput={(e) => handleChange(e.currentTarget.value)}
 				{disabled}
-				class="slider h-2 w-full cursor-pointer appearance-none rounded-lg bg-speed-gray-200 outline-none disabled:opacity-50 dark:bg-speed-gray-700"
+				class="slider bg-speed-gray-200 dark:bg-speed-gray-700 h-2 w-full cursor-pointer appearance-none rounded-lg outline-none disabled:opacity-50"
 			/>
-			<div class="flex justify-between text-xs text-speed-gray-500 dark:text-speed-gray-400">
+			<div class="text-speed-gray-500 dark:text-speed-gray-400 flex justify-between text-xs">
 				<span>{metadata.min}{metadata.unit || ''}</span>
-				<span class="font-medium text-speed-gray-700 dark:text-speed-gray-300">
+				<span class="text-speed-gray-700 dark:text-speed-gray-300 font-medium">
 					{formatDisplayValue(value)}
 				</span>
 				<span>{metadata.max}{metadata.unit || ''}</span>
@@ -147,16 +147,16 @@
 			min={metadata.min}
 			max={metadata.max}
 			step={metadata.step}
-			value={value}
+			{value}
 			onchange={(e) => handleChange(e.currentTarget.value)}
 			{disabled}
-			class="w-full rounded-lg border border-speed-gray-300 bg-speed-white px-3 py-2 text-sm text-speed-gray-900 focus:border-ferrari-500 focus:outline-none focus:ring-1 focus:ring-ferrari-500 disabled:opacity-50 dark:border-speed-gray-600 dark:bg-speed-gray-800 dark:text-speed-gray-100"
+			class="border-speed-gray-300 bg-speed-white text-speed-gray-900 focus:border-ferrari-500 focus:ring-ferrari-500 dark:border-speed-gray-600 dark:bg-speed-gray-800 dark:text-speed-gray-100 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none disabled:opacity-50"
 		/>
 	{/if}
 
 	<!-- Description (if not inline) -->
 	{#if showDescription && metadata.type !== 'boolean' && metadata.description}
-		<p class="text-xs text-speed-gray-600 dark:text-speed-gray-400">
+		<p class="text-speed-gray-600 dark:text-speed-gray-400 text-xs">
 			{metadata.description}
 		</p>
 	{/if}

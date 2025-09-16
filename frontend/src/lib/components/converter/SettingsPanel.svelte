@@ -1,5 +1,14 @@
 <script lang="ts">
-	import { Settings, Sliders, ChevronDown, ChevronUp, Eye, PenTool, Puzzle, Droplets } from 'lucide-svelte';
+	import {
+		Settings,
+		Sliders,
+		ChevronDown,
+		ChevronUp,
+		Eye,
+		PenTool,
+		Puzzle,
+		Droplets
+	} from 'lucide-svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 
 	import BackendSelector from './BackendSelector.svelte';
@@ -78,13 +87,15 @@
 	// Reactive values for FerrariSlider components
 	const detailValue = $derived(
 		currentAlgorithm === 'dots'
-			? ((config as any).dotDensity || Math.round((config.detail || 0.5) * 10))
-			: (config.detail || 0.6)
+			? (config as any).dotDensity || Math.round((config.detail || 0.5) * 10)
+			: config.detail || 0.6
 	);
 
 	const strokeWidthValue = $derived(config.strokeWidth || 2.0);
 	const regionComplexityValue = $derived(
-		currentAlgorithm === 'superpixel' ? ((config as any).regionCount || (config as any).numSuperpixels || 150) : 150
+		currentAlgorithm === 'superpixel'
+			? (config as any).regionCount || (config as any).numSuperpixels || 150
+			: 150
 	);
 
 	// Panel state persistence functions
@@ -170,7 +181,6 @@
 						compact={true}
 					/>
 				</div>
-
 
 				<!-- Essential Parameters - STANDARD+ LEVEL -->
 				{#if !isMobile || settingsMode !== 'essential'}
@@ -381,18 +391,22 @@
 
 				<!-- Core Processing Parameters -->
 				<div class="space-y-4">
-					<div class="mb-4 flex items-center gap-2 border-b border-ferrari-200/30 pb-2">
+					<div class="border-ferrari-200/30 mb-4 flex items-center gap-2 border-b pb-2">
 						<div class="bg-ferrari-100 rounded-md p-1.5">
 							<Settings class="text-ferrari-600 h-3.5 w-3.5" />
 						</div>
-						<h4 class="text-converter-primary text-sm font-semibold uppercase tracking-wide">Core Processing</h4>
+						<h4 class="text-converter-primary text-sm font-semibold tracking-wide uppercase">
+							Core Processing
+						</h4>
 					</div>
 
 					<!-- Noise Filtering -->
 					{#if config.noiseFiltering !== undefined}
 						<div>
 							<div class="mb-2 flex items-center gap-2">
-								<label class="text-converter-primary block text-sm font-medium">Noise Filtering</label>
+								<label class="text-converter-primary block text-sm font-medium"
+									>Noise Filtering</label
+								>
 								<PortalTooltipFixed
 									content="Enable noise reduction to clean up image artifacts and smooth noisy regions before processing."
 									position="top"
@@ -405,12 +419,16 @@
 									checked={config.noiseFiltering ?? false}
 									onchange={(event) => {
 										const target = event.target as HTMLInputElement;
-										algorithmConfigStore.updateConfig(currentAlgorithm, { noiseFiltering: target.checked });
+										algorithmConfigStore.updateConfig(currentAlgorithm, {
+											noiseFiltering: target.checked
+										});
 									}}
 									{disabled}
 									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
 								/>
-								<label class="text-converter-primary cursor-pointer text-sm">Enable Noise Reduction</label>
+								<label class="text-converter-primary cursor-pointer text-sm"
+									>Enable Noise Reduction</label
+								>
 							</div>
 						</div>
 					{/if}
@@ -419,7 +437,9 @@
 					{#if config.enableBackgroundRemoval !== undefined}
 						<div>
 							<div class="mb-2 flex items-center gap-2">
-								<label class="text-converter-primary block text-sm font-medium">Background Removal</label>
+								<label class="text-converter-primary block text-sm font-medium"
+									>Background Removal</label
+								>
 								<PortalTooltipFixed
 									content="Automatically detect and remove uniform backgrounds for cleaner line extraction."
 									position="top"
@@ -432,12 +452,16 @@
 									checked={config.enableBackgroundRemoval ?? false}
 									onchange={(event) => {
 										const target = event.target as HTMLInputElement;
-										algorithmConfigStore.updateConfig(currentAlgorithm, { enableBackgroundRemoval: target.checked });
+										algorithmConfigStore.updateConfig(currentAlgorithm, {
+											enableBackgroundRemoval: target.checked
+										});
 									}}
 									{disabled}
 									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
 								/>
-								<label class="text-converter-primary cursor-pointer text-sm">Remove Background</label>
+								<label class="text-converter-primary cursor-pointer text-sm"
+									>Remove Background</label
+								>
 							</div>
 						</div>
 					{/if}
@@ -446,7 +470,9 @@
 					{#if config.enableBackgroundRemoval && (config as any).backgroundRemovalStrength !== undefined}
 						<div>
 							<div class="mb-2 flex items-center gap-2">
-								<label class="text-converter-primary block text-sm font-medium">Background Removal Strength</label>
+								<label class="text-converter-primary block text-sm font-medium"
+									>Background Removal Strength</label
+								>
 								<PortalTooltipFixed
 									content="Controls how aggressively the background removal algorithm operates. Higher values remove more background but may affect foreground details."
 									position="top"
@@ -458,13 +484,18 @@
 								min={0}
 								max={1}
 								step={0.1}
-								oninput={(value) => algorithmConfigStore.updateConfig(currentAlgorithm, { backgroundRemovalStrength: value })}
+								oninput={(value) =>
+									algorithmConfigStore.updateConfig(currentAlgorithm, {
+										backgroundRemovalStrength: value
+									})}
 								{disabled}
 								class="w-full"
 							/>
 							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
 								<span>Gentle</span>
-								<span class="font-medium">{Math.round(((config as any).backgroundRemovalStrength || 0.5) * 10)}/10</span>
+								<span class="font-medium"
+									>{Math.round(((config as any).backgroundRemovalStrength || 0.5) * 10)}/10</span
+								>
 								<span>Aggressive</span>
 							</div>
 						</div>

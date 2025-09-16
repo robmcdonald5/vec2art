@@ -330,7 +330,12 @@ export class WasmWorkerService {
 				console.log('[WasmWorkerService] 🔧 Large image detected, applying optimizations...');
 
 				// For very large images, reduce detail automatically to prevent memory issues
-				if (isVeryLargeImage && config.algorithm === 'dots' && config.detail && config.detail > 0.4) {
+				if (
+					isVeryLargeImage &&
+					config.algorithm === 'dots' &&
+					config.detail &&
+					config.detail > 0.4
+				) {
 					console.log(
 						`[WasmWorkerService] ⚡ Very large image: reducing detail from ${config.detail} to 0.4 for stability`
 					);
@@ -346,7 +351,8 @@ export class WasmWorkerService {
 			// This prevents thread pool corruption during intensive processing
 			const passCount = (config as any).passCount; // Only EdgeConfig has passCount
 			if ((passCount && passCount >= 7) || isVeryLargeImage) {
-				const reason = (passCount && passCount >= 7) ? 'high-intensity multipass' : 'very large image';
+				const reason =
+					passCount && passCount >= 7 ? 'high-intensity multipass' : 'very large image';
 				console.log(`[WasmWorkerService] ${reason} operation detected, using isolated worker`);
 				return this.processImageWithIsolatedWorker(imageData, config, onProgress, preferGpu);
 			}
@@ -428,8 +434,11 @@ export class WasmWorkerService {
 
 			// Extract SVG data - check both direct access and payload
 			const svgData = result.svg || (result.payload && result.payload.svg);
-			const processingTime = result.processingTime || (result.payload && result.payload.processingTime);
-			const pathCount = result.pathCount || (result.payload && result.payload.stats && result.payload.stats.pathCount);
+			const processingTime =
+				result.processingTime || (result.payload && result.payload.processingTime);
+			const pathCount =
+				result.pathCount ||
+				(result.payload && result.payload.stats && result.payload.stats.pathCount);
 
 			console.log('[WasmWorkerService] 🔍 [DEBUG] SVG data extraction:', {
 				hasSvgData: !!svgData,

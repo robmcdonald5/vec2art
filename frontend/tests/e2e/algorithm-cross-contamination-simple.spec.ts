@@ -10,7 +10,9 @@ test.describe('Algorithm Cross-Contamination Prevention - Browser Test', () => {
 		await page.waitForTimeout(3000); // Give time for WASM to load
 	});
 
-	test('should prevent settings cross-contamination between Edge Tracing and Stippling', async ({ page }) => {
+	test('should prevent settings cross-contamination between Edge Tracing and Stippling', async ({
+		page
+	}) => {
 		console.log('Starting algorithm cross-contamination test...');
 
 		// Take a screenshot to see the current state
@@ -20,7 +22,8 @@ test.describe('Algorithm Cross-Contamination Prevention - Browser Test', () => {
 		await expect(page.locator('body')).toBeVisible();
 
 		// Create a simple test image file
-		const testImagePath = 'C:\\Users\\McDon\\Repos\\vec2art\\frontend\\tests\\fixtures\\test-image-small.jpg';
+		const testImagePath =
+			'C:\\Users\\McDon\\Repos\\vec2art\\frontend\\tests\\fixtures\\test-image-small.jpg';
 
 		// Upload the test image
 		const fileInput = page.locator('input[type="file"]');
@@ -33,16 +36,16 @@ test.describe('Algorithm Cross-Contamination Prevention - Browser Test', () => {
 
 		// Look for Edge Tracing algorithm button
 		let edgeButton = page.getByRole('button', { name: /edge.*tracing/i });
-		if (await edgeButton.count() === 0) {
+		if ((await edgeButton.count()) === 0) {
 			// Try alternative selectors
 			edgeButton = page.locator('button:has-text("Edge")');
 		}
-		if (await edgeButton.count() === 0) {
+		if ((await edgeButton.count()) === 0) {
 			// Try radio button approach
 			edgeButton = page.locator('input[value="edge"]');
 		}
 
-		if (await edgeButton.count() > 0) {
+		if ((await edgeButton.count()) > 0) {
 			console.log('Found Edge Tracing button, clicking it...');
 			await edgeButton.first().click();
 			await page.waitForTimeout(1000);
@@ -53,14 +56,14 @@ test.describe('Algorithm Cross-Contamination Prevention - Browser Test', () => {
 
 		// Look for Stippling/Dots algorithm button
 		let stipplingButton = page.getByRole('button', { name: /stippling/i });
-		if (await stipplingButton.count() === 0) {
+		if ((await stipplingButton.count()) === 0) {
 			stipplingButton = page.locator('button:has-text("Stippling")');
 		}
-		if (await stipplingButton.count() === 0) {
+		if ((await stipplingButton.count()) === 0) {
 			stipplingButton = page.locator('input[value="dots"]');
 		}
 
-		if (await stipplingButton.count() > 0) {
+		if ((await stipplingButton.count()) > 0) {
 			console.log('Found Stippling button, clicking it...');
 			await stipplingButton.first().click();
 			await page.waitForTimeout(1000);
@@ -71,11 +74,11 @@ test.describe('Algorithm Cross-Contamination Prevention - Browser Test', () => {
 
 		// Look for a convert button
 		let convertButton = page.getByRole('button', { name: /convert/i });
-		if (await convertButton.count() === 0) {
+		if ((await convertButton.count()) === 0) {
 			convertButton = page.locator('button:has-text("Convert")');
 		}
 
-		if (await convertButton.count() > 0) {
+		if ((await convertButton.count()) > 0) {
 			console.log('Found Convert button, attempting conversion...');
 
 			// Test multiple algorithm switches
@@ -83,14 +86,14 @@ test.describe('Algorithm Cross-Contamination Prevention - Browser Test', () => {
 				console.log(`Switch iteration ${i + 1}`);
 
 				// Switch to Edge if available
-				if (await edgeButton.count() > 0) {
+				if ((await edgeButton.count()) > 0) {
 					await edgeButton.first().click();
 					await page.waitForTimeout(500);
 					console.log('Switched to Edge Tracing');
 				}
 
 				// Switch to Stippling if available
-				if (await stipplingButton.count() > 0) {
+				if ((await stipplingButton.count()) > 0) {
 					await stipplingButton.first().click();
 					await page.waitForTimeout(500);
 					console.log('Switched to Stippling');
@@ -113,7 +116,9 @@ test.describe('Algorithm Cross-Contamination Prevention - Browser Test', () => {
 			});
 
 			// Check if there are any visible error messages on the page
-			const errorMessages = page.locator('*:has-text("error"), *:has-text("Error"), *:has-text("ERROR")');
+			const errorMessages = page.locator(
+				'*:has-text("error"), *:has-text("Error"), *:has-text("ERROR")'
+			);
 			const errorCount = await errorMessages.count();
 
 			if (errorCount > 0) {
@@ -131,7 +136,6 @@ test.describe('Algorithm Cross-Contamination Prevention - Browser Test', () => {
 
 			// The test passes if we don't encounter any blocking errors
 			console.log('Algorithm cross-contamination test completed');
-
 		} else {
 			console.log('Convert button not found, test incomplete');
 			await page.screenshot({ path: 'convert-button-not-found.png', fullPage: true });
@@ -146,7 +150,8 @@ test.describe('Algorithm Cross-Contamination Prevention - Browser Test', () => {
 		console.log('Starting rapid algorithm switching test...');
 
 		// Create a simple test image file
-		const testImagePath = 'C:\\Users\\McDon\\Repos\\vec2art\\frontend\\tests\\fixtures\\test-image-small.jpg';
+		const testImagePath =
+			'C:\\Users\\McDon\\Repos\\vec2art\\frontend\\tests\\fixtures\\test-image-small.jpg';
 
 		// Upload the test image
 		const fileInput = page.locator('input[type="file"]');
@@ -155,7 +160,9 @@ test.describe('Algorithm Cross-Contamination Prevention - Browser Test', () => {
 		await page.waitForTimeout(2000);
 
 		// Find all available algorithm buttons/options
-		const algorithmButtons = page.locator('button:has-text("Edge"), button:has-text("Stippling"), button:has-text("Superpixel"), button:has-text("Centerline")');
+		const algorithmButtons = page.locator(
+			'button:has-text("Edge"), button:has-text("Stippling"), button:has-text("Superpixel"), button:has-text("Centerline")'
+		);
 		const buttonCount = await algorithmButtons.count();
 
 		console.log(`Found ${buttonCount} algorithm buttons`);

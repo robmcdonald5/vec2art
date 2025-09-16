@@ -51,9 +51,7 @@
 			: 'LOADED'
 	);
 	const hasFiles = $derived(files.length > 0 || originalImageUrls.length > 0);
-	const canConvert = $derived(
-		hasFiles && !isProcessing && pageLoaded && !initError
-	);
+	const canConvert = $derived(hasFiles && !isProcessing && pageLoaded && !initError);
 	const canDownload = $derived(results.length > 0 && !isProcessing);
 
 	// Accessibility announcements
@@ -75,81 +73,43 @@
 			// Initialize WASM worker service
 			await wasmWorkerService.initialize({});
 
-			// NEW: Try to load saved images from previous session
-			console.log('[Converter] Attempting to load saved images...');
+			// Try to load saved images from previous session using IndexedDB
+			console.log('[Converter] Attempting to load saved images from IndexedDB...');
 			const hasRestoredImages = await converterState.loadSavedImageState();
 			if (hasRestoredImages) {
-				console.log('[Converter] Successfully restored images from previous session');
+				console.log('[Converter] Successfully restored images from IndexedDB');
 
-				// Get the restored images - could be single or multiple
+				// Get the restored images - already loaded in converterState
 				const restoredFiles = converterState.inputFiles;
 				const restoredImages = converterState.inputImages;
 				const restoredIndex = converterState.currentImageIndex;
 
-				if (restoredFiles && restoredFiles.length > 0 && restoredImages && restoredImages.length > 0) {
-					console.log(`[Converter] Restoring ${restoredFiles.length} image(s) to UI...`);
-
-					// Convert all ImageData back to displayable URLs and proper File objects
-					const restoredFilePromises = restoredImages.map(async (imageData, index) => {
-						const originalFile = restoredFiles[index];
-						if (!originalFile || !imageData) return null;
-
-						const canvas = document.createElement('canvas');
-						const ctx = canvas.getContext('2d');
-						if (!ctx) return null;
-
-						canvas.width = imageData.width;
-						canvas.height = imageData.height;
-						ctx.putImageData(imageData, 0, 0);
-
-						return new Promise<{ file: File; url: string } | null>((resolve) => {
-							canvas.toBlob((blob) => {
-								if (blob) {
-									// Create a proper File object from the blob with original metadata
-									const restoredFileWithContent = new File([blob], originalFile.name, {
-										type: originalFile.type || 'image/png',
-										lastModified: Date.now()
-									});
-
-									resolve({
-										file: restoredFileWithContent,
-										url: URL.createObjectURL(blob)
-									});
-								} else {
-									console.warn(`[Converter] Failed to create blob for image ${index}: ${originalFile.name}`);
-									resolve(null);
-								}
-							}, 'image/png', 0.8);
-						});
-					});
-
-					// Wait for all image conversions to complete
-					const restoredResults = await Promise.all(restoredFilePromises);
-					const validResults = restoredResults.filter(result => result !== null) as { file: File; url: string }[];
-
-					if (validResults.length > 0) {
-						// Update UI state with all restored images
-						files = validResults.map(result => result.file);
-						originalImageUrls = validResults.map(result => result.url);
-						currentImageIndex = Math.min(restoredIndex || 0, validResults.length - 1);
-
-						// Clear previous results since these are new/restored images
-						results = [];
-						previewSvgUrls = [];
-
-						const message = validResults.length === 1
-							? `Restored image "${validResults[0].file.name}" from previous session`
-							: `Restored ${validResults.length} images from previous session`;
-
-						toastStore.add(message, { type: 'info' });
-
-						console.log(`[Converter] Successfully restored ${validResults.length} image(s) to UI`);
-					} else {
-						console.warn('[Converter] No valid images could be restored to UI');
+				if (restoredFiles.length > 0 && restoredImages.length > 0) {
+					// Create display URLs for the restored files
+					const urls: string[] = [];
+					for (const file of restoredFiles) {
+						urls.push(URL.createObjectURL(file));
 					}
-				} else {
-					console.log('[Converter] No valid image data found in restored state');
+
+					// Update UI state with restored data
+					files = restoredFiles;
+					originalImageUrls = urls;
+					currentImageIndex = Math.min(restoredIndex, restoredFiles.length - 1);
+
+					// Clear previous results since these are restored images
+					results = [];
+					previewSvgUrls = [];
+
+					const message =
+						restoredFiles.length === 1
+							? `Restored "${restoredFiles[0].name}" from previous session`
+							: `Restored ${restoredFiles.length} images from previous session`;
+
+					toastStore.add(message, { type: 'info' });
+					console.log(`[Converter] Successfully restored ${restoredFiles.length} image(s) to UI`);
 				}
+			} else {
+				console.log('[Converter] No saved images to restore');
 			}
 
 			pageLoaded = true;
@@ -163,45 +123,48 @@
 	async function handleFilesSelect(selectedFiles: File[]) {
 		console.log(`[Converter] Selected ${selectedFiles.length} files`);
 
-		files = selectedFiles;
-
-		// Create original image URLs for display
-		const newImageUrls: (string | null)[] = [];
-		for (const file of selectedFiles) {
-			if (file.type.startsWith('image/')) {
-				newImageUrls.push(URL.createObjectURL(file));
-			} else {
-				newImageUrls.push(null);
-			}
-		}
-		originalImageUrls = newImageUrls;
-		currentImageIndex = 0;
-
-		// Clear previous results
-		results = [];
-		previewSvgUrls = [];
-
-		// NEW: Save to converter state store for persistence
+		// Save to converter state store for persistence with IndexedDB
 		try {
-			console.log('[Converter] Saving to converter state store for persistence...');
-			// Use setInputFiles for both single and multiple files
+			console.log('[Converter] Saving files to IndexedDB...');
 			await converterState.setInputFiles(selectedFiles);
-			console.log('[Converter] Successfully saved to converter state store');
-		} catch (error) {
-			console.warn('[Converter] Failed to save to converter state store:', error);
-		}
+			console.log('[Converter] Successfully saved to IndexedDB');
 
-		if (selectedFiles.length > 0) {
-			toastStore.add(`${selectedFiles.length} file(s) ready for conversion`, {
-				type: 'success'
-			});
+			// Update local UI state after successful save
+			files = selectedFiles;
+
+			// Create original image URLs for display
+			const newImageUrls: (string | null)[] = [];
+			for (const file of selectedFiles) {
+				if (file.type.startsWith('image/')) {
+					newImageUrls.push(URL.createObjectURL(file));
+				} else {
+					newImageUrls.push(null);
+				}
+			}
+			originalImageUrls = newImageUrls;
+			currentImageIndex = 0;
+
+			// Clear previous results
+			results = [];
+			previewSvgUrls = [];
+
+			if (selectedFiles.length > 0) {
+				toastStore.add(`${selectedFiles.length} file(s) ready for conversion`, {
+					type: 'success'
+				});
+			}
+			announceToScreenReader(`${selectedFiles.length} file(s) selected`);
+		} catch (error) {
+			console.error('[Converter] Failed to save files:', error);
+			toastStore.add('Failed to save images. Please try again.', { type: 'error' });
 		}
-		announceToScreenReader(`${selectedFiles.length} file(s) selected`);
 	}
 
-	function handleImageIndexChange(index: number) {
+	async function handleImageIndexChange(index: number) {
 		if (index >= 0 && index < files.length) {
 			currentImageIndex = index;
+			// Update the session index in IndexedDB
+			await converterState.setCurrentImageIndex(index);
 		}
 	}
 
@@ -220,7 +183,7 @@
 		input.click();
 	}
 
-	function handleRemoveFile(index: number) {
+	async function handleRemoveFile(index: number) {
 		if (index < 0 || index >= files.length || isProcessing) {
 			return;
 		}
@@ -286,7 +249,9 @@
 			// Get current algorithm configuration
 			const currentAlgorithm = algorithmConfigStore.currentAlgorithm;
 			const config = algorithmConfigStore.getConfig(currentAlgorithm);
-			console.log(`[Converter] Converting ${files.length} files using ${currentAlgorithm} algorithm`);
+			console.log(
+				`[Converter] Converting ${files.length} files using ${currentAlgorithm} algorithm`
+			);
 
 			// Process each file
 			const processedResults: ProcessingResult[] = [];
@@ -332,7 +297,6 @@
 					} else {
 						newPreviewUrls.push(null);
 					}
-
 				} catch (error) {
 					console.error(`Failed to process ${file.name}:`, error);
 					processedResults.push(null);
@@ -351,19 +315,22 @@
 				firstResultSvgLength: results[0]?.svg?.length
 			});
 
-			const successCount = processedResults.filter(r => r && r.svg).length;
-			const message = successCount === 1
-				? `Successfully converted image to SVG`
-				: `Successfully converted ${successCount} image(s) to SVG`;
+			const successCount = processedResults.filter((r) => r && r.svg).length;
+			const message =
+				successCount === 1
+					? `Successfully converted image to SVG`
+					: `Successfully converted ${successCount} image(s) to SVG`;
 
 			toastStore.add(message, { type: 'success' });
 			announceToScreenReader(`Conversion completed: ${successCount} images processed`);
-
 		} catch (error) {
 			console.error('[Converter] Processing failed:', error);
-			toastStore.add(`Processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-				type: 'error'
-			});
+			toastStore.add(
+				`Processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				{
+					type: 'error'
+				}
+			);
 		} finally {
 			isProcessing = false;
 			currentProgress = null;
@@ -432,10 +399,10 @@
 
 	function handleReset() {
 		// Clean up URLs
-		originalImageUrls.forEach(url => {
+		originalImageUrls.forEach((url) => {
 			if (url) URL.revokeObjectURL(url);
 		});
-		previewSvgUrls.forEach(url => {
+		previewSvgUrls.forEach((url) => {
 			if (url) URL.revokeObjectURL(url);
 		});
 
@@ -488,7 +455,9 @@
 </div>
 
 <!-- Main Content -->
-<div class="flex min-h-screen flex-col bg-gradient-to-br from-speed-gray-50 to-speed-gray-100 dark:from-speed-gray-900 dark:to-speed-gray-800">
+<div
+	class="from-speed-gray-50 to-speed-gray-100 dark:from-speed-gray-900 dark:to-speed-gray-800 flex min-h-screen flex-col bg-gradient-to-br"
+>
 	<div class="flex-1">
 		{#if pageLoaded}
 			{#if uiState === 'EMPTY'}
@@ -497,15 +466,20 @@
 					<div class="w-full max-w-4xl text-center">
 						<!-- Hero Title Section -->
 						<div class="mb-12">
-							<h1 class="mb-4 text-4xl font-bold text-speed-gray-900 dark:text-speed-gray-100 md:text-5xl">
+							<h1
+								class="text-speed-gray-900 dark:text-speed-gray-100 mb-4 text-4xl font-bold md:text-5xl"
+							>
 								Transform Images to
-								<span class="bg-gradient-to-r from-ferrari-500 to-ferrari-600 bg-clip-text text-transparent">
+								<span
+									class="from-ferrari-500 to-ferrari-600 bg-gradient-to-r bg-clip-text text-transparent"
+								>
 									Vector Art
 								</span>
 							</h1>
-							<p class="mx-auto max-w-2xl text-lg text-speed-gray-600 dark:text-speed-gray-400">
-								Convert raster images to scalable SVG graphics using advanced line tracing algorithms.
-								Perfect for logos, illustrations, and artwork that needs to scale beautifully.
+							<p class="text-speed-gray-600 dark:text-speed-gray-400 mx-auto max-w-2xl text-lg">
+								Convert raster images to scalable SVG graphics using advanced line tracing
+								algorithms. Perfect for logos, illustrations, and artwork that needs to scale
+								beautifully.
 							</p>
 						</div>
 
@@ -514,50 +488,80 @@
 
 						<!-- Features Grid -->
 						<div class="mt-16 grid gap-6 md:grid-cols-3">
-							<div class="rounded-lg bg-speed-white/80 p-6 dark:bg-speed-gray-800/80">
+							<div class="bg-speed-white/80 dark:bg-speed-gray-800/80 rounded-lg p-6">
 								<div class="mb-4 flex justify-center">
-									<div class="rounded-full bg-ferrari-500/10 p-3">
-										<svg class="h-6 w-6 text-ferrari-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+									<div class="bg-ferrari-500/10 rounded-full p-3">
+										<svg
+											class="text-ferrari-500 h-6 w-6"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M13 10V3L4 14h7v7l9-11h-7z"
+											/>
 										</svg>
 									</div>
 								</div>
-								<h3 class="mb-2 font-semibold text-speed-gray-900 dark:text-speed-gray-100">
+								<h3 class="text-speed-gray-900 dark:text-speed-gray-100 mb-2 font-semibold">
 									Lightning Fast
 								</h3>
-								<p class="text-sm text-speed-gray-600 dark:text-speed-gray-400">
+								<p class="text-speed-gray-600 dark:text-speed-gray-400 text-sm">
 									High-performance WASM processing with multi-threaded algorithms
 								</p>
 							</div>
 
-							<div class="rounded-lg bg-speed-white/80 p-6 dark:bg-speed-gray-800/80">
+							<div class="bg-speed-white/80 dark:bg-speed-gray-800/80 rounded-lg p-6">
 								<div class="mb-4 flex justify-center">
-									<div class="rounded-full bg-ferrari-500/10 p-3">
-										<svg class="h-6 w-6 text-ferrari-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"/>
+									<div class="bg-ferrari-500/10 rounded-full p-3">
+										<svg
+											class="text-ferrari-500 h-6 w-6"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"
+											/>
 										</svg>
 									</div>
 								</div>
-								<h3 class="mb-2 font-semibold text-speed-gray-900 dark:text-speed-gray-100">
+								<h3 class="text-speed-gray-900 dark:text-speed-gray-100 mb-2 font-semibold">
 									Multiple Algorithms
 								</h3>
-								<p class="text-sm text-speed-gray-600 dark:text-speed-gray-400">
+								<p class="text-speed-gray-600 dark:text-speed-gray-400 text-sm">
 									Choose from edge detection, centerline, superpixel, and dots algorithms
 								</p>
 							</div>
 
-							<div class="rounded-lg bg-speed-white/80 p-6 dark:bg-speed-gray-800/80">
+							<div class="bg-speed-white/80 dark:bg-speed-gray-800/80 rounded-lg p-6">
 								<div class="mb-4 flex justify-center">
-									<div class="rounded-full bg-ferrari-500/10 p-3">
-										<svg class="h-6 w-6 text-ferrari-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"/>
+									<div class="bg-ferrari-500/10 rounded-full p-3">
+										<svg
+											class="text-ferrari-500 h-6 w-6"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"
+											/>
 										</svg>
 									</div>
 								</div>
-								<h3 class="mb-2 font-semibold text-speed-gray-900 dark:text-speed-gray-100">
+								<h3 class="text-speed-gray-900 dark:text-speed-gray-100 mb-2 font-semibold">
 									Fine Control
 								</h3>
-								<p class="text-sm text-speed-gray-600 dark:text-speed-gray-400">
+								<p class="text-speed-gray-600 dark:text-speed-gray-400 text-sm">
 									Extensive parameter controls for precise artistic results
 								</p>
 							</div>
@@ -573,7 +577,7 @@
 							<ConverterInterface
 								{files}
 								{originalImageUrls}
-								filesMetadata={files.map(f => ({
+								filesMetadata={files.map((f) => ({
 									name: f.name,
 									size: f.size,
 									type: f.type,
@@ -604,9 +608,7 @@
 					<!-- Settings panel with error boundary -->
 					<div class="space-y-4 xl:w-80">
 						<ErrorBoundary onError={handleSettingsError}>
-							<SettingsPanel
-								disabled={isProcessing}
-							/>
+							<SettingsPanel disabled={isProcessing} />
 						</ErrorBoundary>
 					</div>
 				</main>

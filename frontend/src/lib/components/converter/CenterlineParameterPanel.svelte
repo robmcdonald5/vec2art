@@ -33,24 +33,26 @@
 
 <div class="space-y-4">
 	<!-- Core Parameters -->
-	<div class="rounded-lg border border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800">
+	<div
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+	>
 		<button
 			type="button"
 			onclick={() => (coreExpanded = !coreExpanded)}
-			class="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700"
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
 		>
-			<span class="text-sm font-semibold text-speed-gray-900 dark:text-speed-gray-100">
+			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
 				Core Settings
 			</span>
 			<ChevronDown
-				class="h-4 w-4 text-speed-gray-500 transition-transform dark:text-speed-gray-400 {coreExpanded
+				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {coreExpanded
 					? 'rotate-180'
 					: ''}"
 			/>
 		</button>
 
 		{#if coreExpanded}
-			<div class="border-t border-speed-gray-200 px-4 py-4 dark:border-speed-gray-700">
+			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
 					{#each coreParams as param}
 						{#if CENTERLINE_METADATA[param]}
@@ -69,24 +71,26 @@
 	</div>
 
 	<!-- Processing Parameters -->
-	<div class="rounded-lg border border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800">
+	<div
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+	>
 		<button
 			type="button"
 			onclick={() => (processingExpanded = !processingExpanded)}
-			class="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700"
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
 		>
-			<span class="text-sm font-semibold text-speed-gray-900 dark:text-speed-gray-100">
+			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
 				Processing
 			</span>
 			<ChevronDown
-				class="h-4 w-4 text-speed-gray-500 transition-transform dark:text-speed-gray-400 {processingExpanded
+				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {processingExpanded
 					? 'rotate-180'
 					: ''}"
 			/>
 		</button>
 
 		{#if processingExpanded}
-			<div class="border-t border-speed-gray-200 px-4 py-4 dark:border-speed-gray-700">
+			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
 					{#each processingParams as param}
 						{#if CENTERLINE_METADATA[param]}
@@ -105,24 +109,26 @@
 	</div>
 
 	<!-- Artistic Parameters -->
-	<div class="rounded-lg border border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800">
+	<div
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+	>
 		<button
 			type="button"
 			onclick={() => (artisticExpanded = !artisticExpanded)}
-			class="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700"
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
 		>
-			<span class="text-sm font-semibold text-speed-gray-900 dark:text-speed-gray-100">
+			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
 				Artistic Effects
 			</span>
 			<ChevronDown
-				class="h-4 w-4 text-speed-gray-500 transition-transform dark:text-speed-gray-400 {artisticExpanded
+				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {artisticExpanded
 					? 'rotate-180'
 					: ''}"
 			/>
 		</button>
 
 		{#if artisticExpanded}
-			<div class="border-t border-speed-gray-200 px-4 py-4 dark:border-speed-gray-700">
+			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
 					{#each artisticParams as param}
 						{#if CENTERLINE_METADATA[param]}
@@ -141,24 +147,26 @@
 	</div>
 
 	<!-- Advanced Parameters -->
-	<div class="rounded-lg border border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800">
+	<div
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+	>
 		<button
 			type="button"
 			onclick={() => (advancedExpanded = !advancedExpanded)}
-			class="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700"
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
 		>
-			<span class="text-sm font-semibold text-speed-gray-900 dark:text-speed-gray-100">
+			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
 				Advanced Settings
 			</span>
 			<ChevronDown
-				class="h-4 w-4 text-speed-gray-500 transition-transform dark:text-speed-gray-400 {advancedExpanded
+				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {advancedExpanded
 					? 'rotate-180'
 					: ''}"
 			/>
 		</button>
 
 		{#if advancedExpanded}
-			<div class="border-t border-speed-gray-200 px-4 py-4 dark:border-speed-gray-700">
+			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
 					{#each advancedParams as param}
 						{#if CENTERLINE_METADATA[param]}

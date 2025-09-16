@@ -235,10 +235,14 @@ export class VectorizerService {
 		const hasHandDrawnEffects =
 			config.algorithm === 'edge' &&
 			((config as any).variableWeights > 0 ||
-			(config as any).tremorStrength > 0 ||
-			(config as any).tapering > 0);
+				(config as any).tremorStrength > 0 ||
+				(config as any).tapering > 0);
 
-		if (hasHandDrawnEffects && config.algorithm === 'edge' && (config as any).handDrawnPreset === 'none') {
+		if (
+			hasHandDrawnEffects &&
+			config.algorithm === 'edge' &&
+			(config as any).handDrawnPreset === 'none'
+		) {
 			// Auto-fix: Set a default hand-drawn preset when custom effects are used
 			console.warn(
 				'[VectorizerService] Auto-setting hand-drawn preset to "subtle" due to custom hand-drawn effects'
@@ -293,7 +297,7 @@ export class VectorizerService {
 			...defaultConfig,
 			detail: preset === 'minimal' ? defaultConfig.detail * 0.5 : defaultConfig.detail,
 			strokeWidth:
-				preset === 'minimal' ? defaultConfig.strokeWidth * 0.67 : defaultConfig.strokeWidth,
+				preset === 'minimal' ? defaultConfig.strokeWidth * 0.67 : defaultConfig.strokeWidth
 		};
 
 		// Add backend-specific features only if available
@@ -303,7 +307,10 @@ export class VectorizerService {
 				if (typeof this.vectorizer.set_reverse_pass === 'function' && config.algorithm === 'edge') {
 					(config as any).reversePass = true;
 				}
-				if (typeof this.vectorizer.set_diagonal_pass === 'function' && config.algorithm === 'edge') {
+				if (
+					typeof this.vectorizer.set_diagonal_pass === 'function' &&
+					config.algorithm === 'edge'
+				) {
 					(config as any).diagonalPass = true;
 				}
 			}
@@ -315,10 +322,16 @@ export class VectorizerService {
 				if (typeof this.vectorizer.set_preserve_colors === 'function') {
 					config.preserveColors = true;
 				}
-				if (typeof this.vectorizer.set_adaptive_sizing === 'function' && config.algorithm === 'dots') {
+				if (
+					typeof this.vectorizer.set_adaptive_sizing === 'function' &&
+					config.algorithm === 'dots'
+				) {
 					(config as any).adaptiveSizing = true;
 				}
-				if (typeof this.vectorizer.set_background_tolerance === 'function' && config.algorithm === 'dots') {
+				if (
+					typeof this.vectorizer.set_background_tolerance === 'function' &&
+					config.algorithm === 'dots'
+				) {
 					(config as any).backgroundTolerance = 0.1;
 				}
 			}
