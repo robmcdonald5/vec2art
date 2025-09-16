@@ -329,6 +329,21 @@ class VectorizerWorker {
 		if ('noiseFiltering' in config) {
 			this.vectorizer.set_noise_filtering(config.noiseFiltering || false);
 		}
+		// Set noise filter parameters if noise filtering is enabled
+		if (config.noiseFiltering) {
+			if ('noiseFilterSpatialSigma' in config && config.noiseFilterSpatialSigma !== undefined) {
+				// Check if the method exists before calling
+				if (typeof this.vectorizer.set_noise_filter_spatial_sigma === 'function') {
+					this.vectorizer.set_noise_filter_spatial_sigma(config.noiseFilterSpatialSigma);
+				}
+			}
+			if ('noiseFilterRangeSigma' in config && config.noiseFilterRangeSigma !== undefined) {
+				// Check if the method exists before calling
+				if (typeof this.vectorizer.set_noise_filter_range_sigma === 'function') {
+					this.vectorizer.set_noise_filter_range_sigma(config.noiseFilterRangeSigma);
+				}
+			}
+		}
 		if ('enableReversePass' in config) {
 			this.vectorizer.set_reverse_pass(config.enableReversePass || false);
 		}

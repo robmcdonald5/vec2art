@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		ChevronDown,
+		Check, // For checkmark indicators
 		Filter, // For Preprocessing
 		Layers, // For Layer Processing
 		Palette, // For Color Controls
@@ -38,8 +39,10 @@
 	const preprocessingParams = [
 		'noiseFiltering',
 		'noiseFilterSpatialSigma',
+		'noiseFilterRangeSigma',
 		'enableBackgroundRemoval',
-		'backgroundRemovalStrength'
+		'backgroundRemovalStrength',
+		'backgroundRemovalAlgorithm'
 	];
 	const layerProcessingParams = ['enableMultipass', 'passCount'];
 	const colorControlParams = [
@@ -103,17 +106,96 @@
 		{#if preprocessingExpanded}
 			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
-					{#each preprocessingParams as param}
-						{#if EDGE_METADATA[param] && (!EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn])}
-							<AlgorithmParameterControl
-								name={param}
-								value={config[param]}
-								metadata={EDGE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
+					<!-- Noise Filtering -->
+					<div class="space-y-3">
+						<div class="flex items-center justify-between">
+							<label class="flex cursor-pointer items-center gap-2">
+								<input
+									type="checkbox"
+									checked={config.noiseFiltering ?? false}
+									onchange={(e) =>
+										handleParameterChange('noiseFiltering', (e.target as HTMLInputElement).checked)}
+									{disabled}
+									class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+								/>
+								<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
+									Noise Filtering
+								</span>
+							</label>
+							{#if config.noiseFiltering}
+								<div class="flex items-center gap-1">
+									<Check class="h-4 w-4 text-green-500" />
+									<span class="text-xs font-medium text-green-600 dark:text-green-400">Active</span>
+								</div>
+							{/if}
+						</div>
+
+						{#if config.noiseFiltering}
+							<div class="ml-6 space-y-3 border-l-2 border-blue-100 pl-2 dark:border-blue-900">
+								<AlgorithmParameterControl
+									name="noiseFilterSpatialSigma"
+									value={config.noiseFilterSpatialSigma}
+									metadata={EDGE_METADATA.noiseFilterSpatialSigma}
+									onChange={(value) => handleParameterChange('noiseFilterSpatialSigma', value)}
+									{disabled}
+								/>
+								<AlgorithmParameterControl
+									name="noiseFilterRangeSigma"
+									value={config.noiseFilterRangeSigma}
+									metadata={EDGE_METADATA.noiseFilterRangeSigma}
+									onChange={(value) => handleParameterChange('noiseFilterRangeSigma', value)}
+									{disabled}
+								/>
+							</div>
 						{/if}
-					{/each}
+					</div>
+
+					<!-- Background Removal -->
+					<div class="space-y-3">
+						<div class="flex items-center justify-between">
+							<label class="flex cursor-pointer items-center gap-2">
+								<input
+									type="checkbox"
+									checked={config.enableBackgroundRemoval ?? false}
+									onchange={(e) =>
+										handleParameterChange(
+											'enableBackgroundRemoval',
+											(e.target as HTMLInputElement).checked
+										)}
+									{disabled}
+									class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+								/>
+								<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
+									Background Removal
+								</span>
+							</label>
+							{#if config.enableBackgroundRemoval}
+								<div class="flex items-center gap-1">
+									<Check class="h-4 w-4 text-green-500" />
+									<span class="text-xs font-medium text-green-600 dark:text-green-400">Active</span>
+								</div>
+							{/if}
+						</div>
+
+						{#if config.enableBackgroundRemoval}
+							<div class="ml-6 space-y-3 border-l-2 border-blue-100 pl-2 dark:border-blue-900">
+								<AlgorithmParameterControl
+									name="backgroundRemovalAlgorithm"
+									value={config.backgroundRemovalAlgorithm}
+									metadata={EDGE_METADATA.backgroundRemovalAlgorithm}
+									onChange={(value) => handleParameterChange('backgroundRemovalAlgorithm', value)}
+									{disabled}
+								/>
+								<AlgorithmParameterControl
+									name="backgroundRemovalStrength"
+									value={config.backgroundRemovalStrength}
+									metadata={EDGE_METADATA.backgroundRemovalStrength}
+									onChange={(value) => handleParameterChange('backgroundRemovalStrength', value)}
+									{disabled}
+								/>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</div>
 		{/if}

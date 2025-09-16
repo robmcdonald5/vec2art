@@ -323,6 +323,19 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		algorithms: ['edge'],
 		dependsOn: 'noiseFiltering'
 	},
+	noiseFilterRangeSigma: {
+		name: 'noiseFilterRangeSigma',
+		label: 'Range Sigma',
+		description:
+			'Controls how much difference in pixel values is allowed. Higher values preserve edges better.',
+		type: 'range',
+		min: 10.0,
+		max: 200.0,
+		step: 10.0,
+		category: 'core',
+		algorithms: ['edge'],
+		dependsOn: 'noiseFiltering'
+	},
 
 	// Edge Detection Parameters
 	enableReversePass: {
@@ -514,6 +527,20 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		min: 0.0,
 		max: 1.0,
 		step: 0.1,
+		category: 'color',
+		algorithms: ['edge'],
+		dependsOn: 'enableBackgroundRemoval'
+	},
+	backgroundRemovalAlgorithm: {
+		name: 'backgroundRemovalAlgorithm',
+		label: 'Removal Algorithm',
+		description: 'Algorithm to use for background removal.',
+		type: 'select',
+		options: [
+			{ value: 'otsu', label: 'OTSU Thresholding' },
+			{ value: 'adaptive', label: 'Adaptive Filtering' },
+			{ value: 'auto', label: 'Auto Select' }
+		],
 		category: 'color',
 		algorithms: ['edge'],
 		dependsOn: 'enableBackgroundRemoval'
