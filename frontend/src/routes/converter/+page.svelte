@@ -142,7 +142,11 @@
 				}
 			}
 			originalImageUrls = newImageUrls;
-			currentImageIndex = 0;
+
+			// Only reset to index 0 for initial uploads, not when adding more
+			if (currentImageIndex >= selectedFiles.length) {
+				currentImageIndex = 0;
+			}
 
 			// Clear previous results
 			results = [];
@@ -168,16 +172,23 @@
 		}
 	}
 
-	function handleAddMore() {
+	async function handleAddMore() {
 		const input = document.createElement('input');
 		input.type = 'file';
 		input.accept = 'image/*';
 		input.multiple = true;
-		input.onchange = (e) => {
+		input.onchange = async (e) => {
 			const newFiles = Array.from((e.target as HTMLInputElement).files || []);
 			if (newFiles.length > 0) {
+				const oldFilesCount = files.length;
 				const allFiles = [...files, ...newFiles];
-				handleFilesSelect(allFiles);
+
+				// Save all files to IndexedDB
+				await handleFilesSelect(allFiles);
+
+				// Automatically select the first newly uploaded image
+				const newImageIndex = oldFilesCount; // Index of first new image
+				await handleImageIndexChange(newImageIndex);
 			}
 		};
 		input.click();
@@ -223,6 +234,14 @@
 		if (newFiles.length === 0) {
 			handleReset();
 			return;
+		}
+
+		// Update IndexedDB session with the new file list
+		try {
+			await converterState.setInputFiles(newFiles);
+			console.log(`[Converter] Updated IndexedDB session after removing ${removedFileName}`);
+		} catch (error) {
+			console.error('[Converter] Failed to update IndexedDB after file removal:', error);
 		}
 
 		toastStore.add(`Removed ${removedFileName}`, { type: 'info' });
