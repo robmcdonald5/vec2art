@@ -65,7 +65,17 @@
 	}
 
 	function updatePreserveColors(value: boolean) {
-		algorithmConfigStore.updateConfig(currentAlgorithm, { preserveColors: value });
+		// Different algorithms use different property names for color preservation
+		const colorProperty =
+			currentAlgorithm === 'edge' || currentAlgorithm === 'centerline'
+				? 'linePreserveColors'
+				: currentAlgorithm === 'superpixel'
+					? 'superpixelPreserveColors'
+					: currentAlgorithm === 'dots'
+						? 'dotPreserveColors'
+						: 'preserveColors';
+
+		algorithmConfigStore.updateConfig(currentAlgorithm, { [colorProperty]: value });
 	}
 
 	// Special handler for dots backend detail/density mapping
@@ -334,7 +344,13 @@
 								<input
 									type="checkbox"
 									id="preserve-colors-unified"
-									checked={config.preserveColors ?? false}
+									checked={currentAlgorithm === 'edge' || currentAlgorithm === 'centerline'
+										? (config.linePreserveColors ?? false)
+										: currentAlgorithm === 'superpixel'
+											? (config.superpixelPreserveColors ?? true)
+											: currentAlgorithm === 'dots'
+												? (config.dotPreserveColors ?? true)
+												: false}
 									onchange={(event) => {
 										const target = event.target as HTMLInputElement;
 										updatePreserveColors(target.checked);
@@ -387,121 +403,6 @@
 
 		{#if isAdvancedSettingsExpanded}
 			<div id="advanced-settings-content" class="space-y-6 bg-white/50 p-4 backdrop-blur-sm">
-				<!-- Unified Advanced Parameters with Ferrari Styling -->
-
-				<!-- Core Processing Parameters -->
-				<div class="space-y-4">
-					<div class="border-ferrari-200/30 mb-4 flex items-center gap-2 border-b pb-2">
-						<div class="bg-ferrari-100 rounded-md p-1.5">
-							<Settings class="text-ferrari-600 h-3.5 w-3.5" />
-						</div>
-						<h4 class="text-converter-primary text-sm font-semibold tracking-wide uppercase">
-							Core Processing
-						</h4>
-					</div>
-
-					<!-- Noise Filtering -->
-					{#if config.noiseFiltering !== undefined}
-						<div>
-							<div class="mb-2 flex items-center gap-2">
-								<label class="text-converter-primary block text-sm font-medium"
-									>Noise Filtering</label
-								>
-								<PortalTooltipFixed
-									content="Enable noise reduction to clean up image artifacts and smooth noisy regions before processing."
-									position="top"
-									size="md"
-								/>
-							</div>
-							<div class="flex items-center space-x-3">
-								<input
-									type="checkbox"
-									checked={config.noiseFiltering ?? false}
-									onchange={(event) => {
-										const target = event.target as HTMLInputElement;
-										algorithmConfigStore.updateConfig(currentAlgorithm, {
-											noiseFiltering: target.checked
-										});
-									}}
-									{disabled}
-									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-								/>
-								<label class="text-converter-primary cursor-pointer text-sm"
-									>Enable Noise Reduction</label
-								>
-							</div>
-						</div>
-					{/if}
-
-					<!-- Background Removal -->
-					{#if config.enableBackgroundRemoval !== undefined}
-						<div>
-							<div class="mb-2 flex items-center gap-2">
-								<label class="text-converter-primary block text-sm font-medium"
-									>Background Removal</label
-								>
-								<PortalTooltipFixed
-									content="Automatically detect and remove uniform backgrounds for cleaner line extraction."
-									position="top"
-									size="md"
-								/>
-							</div>
-							<div class="flex items-center space-x-3">
-								<input
-									type="checkbox"
-									checked={config.enableBackgroundRemoval ?? false}
-									onchange={(event) => {
-										const target = event.target as HTMLInputElement;
-										algorithmConfigStore.updateConfig(currentAlgorithm, {
-											enableBackgroundRemoval: target.checked
-										});
-									}}
-									{disabled}
-									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-								/>
-								<label class="text-converter-primary cursor-pointer text-sm"
-									>Remove Background</label
-								>
-							</div>
-						</div>
-					{/if}
-
-					<!-- Background Removal Strength -->
-					{#if config.enableBackgroundRemoval && (config as any).backgroundRemovalStrength !== undefined}
-						<div>
-							<div class="mb-2 flex items-center gap-2">
-								<label class="text-converter-primary block text-sm font-medium"
-									>Background Removal Strength</label
-								>
-								<PortalTooltipFixed
-									content="Controls how aggressively the background removal algorithm operates. Higher values remove more background but may affect foreground details."
-									position="top"
-									size="md"
-								/>
-							</div>
-							<FerrariSlider
-								value={(config as any).backgroundRemovalStrength || 0.5}
-								min={0}
-								max={1}
-								step={0.1}
-								oninput={(value) =>
-									algorithmConfigStore.updateConfig(currentAlgorithm, {
-										backgroundRemovalStrength: value
-									})}
-								{disabled}
-								class="w-full"
-							/>
-							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
-								<span>Gentle</span>
-								<span class="font-medium"
-									>{Math.round(((config as any).backgroundRemovalStrength || 0.5) * 10)}/10</span
-								>
-								<span>Aggressive</span>
-							</div>
-						</div>
-					{/if}
-				</div>
-
 				<!-- Algorithm-Specific Parameters -->
 				{#if currentAlgorithm === 'edge'}
 					<EdgeParameterPanel {disabled} />

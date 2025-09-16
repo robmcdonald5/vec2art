@@ -10,8 +10,10 @@
 
 	let { disabled = false }: Props = $props();
 
-	// Section expansion states - following the same pattern as other panels
-	let coreExpanded = $state(true);
+	// Section expansion states
+	let preprocessingExpanded = $state(true);
+	let layerProcessingExpanded = $state(false);
+	let colorControlsExpanded = $state(false);
 	let edgeDetectionExpanded = $state(false);
 	let advancedExpanded = $state(false);
 	let artisticExpanded = $state(false);
@@ -24,8 +26,21 @@
 		algorithmConfigStore.updateConfig('edge', { [name]: value });
 	}
 
-	// Group parameters by category - organized into 4 clean sections
-	const coreParams = ['enableMultipass', 'passCount', 'noiseFiltering', 'noiseFilterSpatialSigma'];
+	// Group parameters by category - new organization
+	const preprocessingParams = [
+		'noiseFiltering',
+		'noiseFilterSpatialSigma',
+		'enableBackgroundRemoval',
+		'backgroundRemovalStrength'
+	];
+	const layerProcessingParams = ['enableMultipass', 'passCount'];
+	const colorControlParams = [
+		'linePreserveColors',
+		'lineColorAccuracy',
+		'maxColorsPerPath',
+		'colorTolerance',
+		'lineColorSampling'
+	];
 	const edgeDetectionParams = [
 		'enableReversePass',
 		'enableDiagonalPass',
@@ -46,36 +61,110 @@
 		'handDrawnPreset',
 		'handDrawnVariableWeights',
 		'handDrawnTremorStrength',
-		'handDrawnTapering',
-		'enableBackgroundRemoval',
-		'backgroundRemovalStrength'
+		'handDrawnTapering'
 	];
 </script>
 
 <div class="space-y-4">
-	<!-- Core Settings -->
+	<!-- Preprocessing -->
 	<div
 		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
 	>
 		<button
 			type="button"
-			onclick={() => (coreExpanded = !coreExpanded)}
+			onclick={() => (preprocessingExpanded = !preprocessingExpanded)}
 			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
 		>
 			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Core Settings
+				Preprocessing
 			</span>
 			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {coreExpanded
+				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {preprocessingExpanded
 					? 'rotate-180'
 					: ''}"
 			/>
 		</button>
 
-		{#if coreExpanded}
+		{#if preprocessingExpanded}
 			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
-					{#each coreParams as param}
+					{#each preprocessingParams as param}
+						{#if EDGE_METADATA[param] && (!EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn])}
+							<AlgorithmParameterControl
+								name={param}
+								value={config[param]}
+								metadata={EDGE_METADATA[param]}
+								onChange={(value) => handleParameterChange(param, value)}
+								{disabled}
+							/>
+						{/if}
+					{/each}
+				</div>
+			</div>
+		{/if}
+	</div>
+
+	<!-- Layer Processing -->
+	<div
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+	>
+		<button
+			type="button"
+			onclick={() => (layerProcessingExpanded = !layerProcessingExpanded)}
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
+		>
+			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
+				Layer Processing
+			</span>
+			<ChevronDown
+				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {layerProcessingExpanded
+					? 'rotate-180'
+					: ''}"
+			/>
+		</button>
+
+		{#if layerProcessingExpanded}
+			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
+				<div class="space-y-4">
+					{#each layerProcessingParams as param}
+						{#if EDGE_METADATA[param] && (!EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn])}
+							<AlgorithmParameterControl
+								name={param}
+								value={config[param]}
+								metadata={EDGE_METADATA[param]}
+								onChange={(value) => handleParameterChange(param, value)}
+								{disabled}
+							/>
+						{/if}
+					{/each}
+				</div>
+			</div>
+		{/if}
+	</div>
+
+	<!-- Color Controls -->
+	<div
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+	>
+		<button
+			type="button"
+			onclick={() => (colorControlsExpanded = !colorControlsExpanded)}
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
+		>
+			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
+				Color Controls
+			</span>
+			<ChevronDown
+				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {colorControlsExpanded
+					? 'rotate-180'
+					: ''}"
+			/>
+		</button>
+
+		{#if colorControlsExpanded}
+			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
+				<div class="space-y-4">
+					{#each colorControlParams as param}
 						{#if EDGE_METADATA[param] && (!EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn])}
 							<AlgorithmParameterControl
 								name={param}

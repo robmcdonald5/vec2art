@@ -517,6 +517,67 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		category: 'color',
 		algorithms: ['edge'],
 		dependsOn: 'enableBackgroundRemoval'
+	},
+
+	// Color Control Parameters
+	linePreserveColors: {
+		name: 'linePreserveColors',
+		label: 'Full Color Mode',
+		description:
+			'Enable full color mode to preserve original image colors. When disabled, outputs monochrome.',
+		type: 'boolean',
+		category: 'color',
+		algorithms: ['edge', 'centerline']
+	},
+	lineColorAccuracy: {
+		name: 'lineColorAccuracy',
+		label: 'Color Accuracy',
+		description: 'How accurately to match original colors (0 = loose, 1 = exact).',
+		type: 'slider',
+		min: 0.0,
+		max: 1.0,
+		step: 0.1,
+		category: 'color',
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'linePreserveColors'
+	},
+	maxColorsPerPath: {
+		name: 'maxColorsPerPath',
+		label: 'Colors Per Path',
+		description: 'Maximum number of colors to use per path.',
+		type: 'slider',
+		min: 1,
+		max: 10,
+		step: 1,
+		category: 'color',
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'linePreserveColors'
+	},
+	colorTolerance: {
+		name: 'colorTolerance',
+		label: 'Color Tolerance',
+		description: 'Tolerance for color matching (higher = more colors merged).',
+		type: 'slider',
+		min: 0.0,
+		max: 1.0,
+		step: 0.05,
+		category: 'color',
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'linePreserveColors'
+	},
+	lineColorSampling: {
+		name: 'lineColorSampling',
+		label: 'Color Sampling Method',
+		description: 'How to sample colors from the source image.',
+		type: 'select',
+		options: [
+			{ value: 'average', label: 'Average' },
+			{ value: 'dominant', label: 'Dominant' },
+			{ value: 'gradient', label: 'Gradient' }
+		],
+		category: 'color',
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'linePreserveColors'
 	}
 };
 
