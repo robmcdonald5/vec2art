@@ -2,7 +2,7 @@
  * Settings synchronization types and interfaces for multi-image configuration management
  */
 
-import type { VectorizerConfig } from './vectorizer';
+import type { AlgorithmConfig as VectorizerConfig } from './algorithm-configs';
 
 /**
  * Settings synchronization modes

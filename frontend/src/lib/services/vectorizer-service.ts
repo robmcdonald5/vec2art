@@ -5,13 +5,13 @@
 
 import { browser } from '$app/environment';
 import type {
-	VectorizerConfig,
 	VectorizerError,
 	WasmCapabilityReport,
 	ProcessingResult,
 	ProcessingProgress
-} from '$lib/types/vectorizer';
-import { DEFAULT_CONFIG } from '$lib/types/vectorizer';
+} from '$lib/workers/vectorizer.worker';
+import type { AlgorithmConfig, AlgorithmType } from '$lib/types/algorithm-configs';
+import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 
 // Import WASM initialization utilities
 import {
@@ -225,7 +225,7 @@ export class VectorizerService {
 	/**
 	 * Validate configuration before applying to WASM
 	 */
-	private validateConfigurationForBackend(config: VectorizerConfig): {
+	private validateConfigurationForBackend(config: AlgorithmConfig): {
 		isValid: boolean;
 		errors: string[];
 	} {
@@ -233,11 +233,12 @@ export class VectorizerService {
 
 		// Check hand-drawn preset logic - WASM requires preset to be set if using custom effects
 		const hasHandDrawnEffects =
-			(config.variable_weights !== undefined && config.variable_weights > 0) ||
-			(config.tremor_strength !== undefined && config.tremor_strength > 0) ||
-			(config.tapering !== undefined && config.tapering > 0);
+			config.algorithm === 'edge' &&
+			((config as any).variableWeights > 0 ||
+			(config as any).tremorStrength > 0 ||
+			(config as any).tapering > 0);
 
-		if (hasHandDrawnEffects && config.hand_drawn_preset === 'none') {
+		if (hasHandDrawnEffects && config.algorithm === 'edge' && (config as any).handDrawnPreset === 'none') {
 			// Auto-fix: Set a default hand-drawn preset when custom effects are used
 			console.warn(
 				'[VectorizerService] Auto-setting hand-drawn preset to "subtle" due to custom hand-drawn effects'
@@ -245,50 +246,9 @@ export class VectorizerService {
 			// We'll fix this in the applyConfiguration method instead of erroring
 		}
 
-		// Flow tracing validation - ETF/FDoG requires flow tracing to be enabled
-		if (
-			config.enable_flow_tracing &&
-			(config.enable_bezier_fitting || config.enable_etf_fdog) &&
-			config.backend === 'edge'
-		) {
-			// Flow tracing is enabled, this is valid
-		} else if (
-			(config.enable_bezier_fitting || config.enable_etf_fdog) &&
-			config.backend === 'edge' &&
-			!config.enable_flow_tracing
-		) {
-			// Auto-fix: Enable flow tracing when ETF/FDoG or Bezier fitting is requested
-			console.warn(
-				'[VectorizerService] Auto-enabling flow tracing due to ETF/FDoG or Bezier fitting being enabled'
-			);
-			// We'll fix this in the applyConfiguration method instead of erroring
-		}
-
-		// Backend-specific validation
-		if (config.backend === 'centerline') {
-			// Warn about edge-specific features being used (but don't error)
-			if (config.enable_flow_tracing || config.enable_bezier_fitting || config.enable_etf_fdog) {
-				console.warn(
-					'[VectorizerService] Flow tracing, Bézier fitting, and ETF/FDoG are not applicable to centerline backend'
-				);
-			}
-		}
-
-		if (config.backend === 'superpixel') {
-			// Warn about edge-specific features being used (but don't error)
-			if (config.enable_flow_tracing || config.enable_bezier_fitting || config.enable_etf_fdog) {
-				console.warn(
-					'[VectorizerService] Flow tracing, Bézier fitting, and ETF/FDoG are not applicable to superpixel backend'
-				);
-			}
-		}
-
-		if (config.backend === 'dots') {
-			// Dots backend doesn't really benefit from hand-drawn effects
-			if (config.hand_drawn_preset !== 'none') {
-				console.warn('[VectorizerService] Hand-drawn effects are not recommended for dots backend');
-			}
-		}
+		// Legacy validation - commented out as these properties don't exist in AlgorithmConfig
+		// These validations were for the old VectorizerConfig system
+		// TODO: Add algorithm-specific validation based on new AlgorithmConfig structure if needed
 
 		return { isValid: errors.length === 0, errors };
 	}
@@ -303,12 +263,12 @@ export class VectorizerService {
 
 		try {
 			// Reset to proper default configuration
-			this.vectorizer.set_backend(DEFAULT_CONFIG.backend);
-			this.vectorizer.set_detail(DEFAULT_CONFIG.detail);
-			this.vectorizer.set_stroke_width(DEFAULT_CONFIG.stroke_width);
-			this.vectorizer.set_noise_filtering(DEFAULT_CONFIG.noise_filtering);
-			this.vectorizer.set_multipass(DEFAULT_CONFIG.multipass);
-			this.vectorizer.set_hand_drawn_preset(DEFAULT_CONFIG.hand_drawn_preset);
+			this.vectorizer.set_backend('edge');
+			this.vectorizer.set_detail(0.5);
+			this.vectorizer.set_stroke_width(1.2);
+			this.vectorizer.set_noise_filtering(false);
+			this.vectorizer.set_multipass(false);
+			this.vectorizer.set_hand_drawn_preset('none');
 			// Don't set any custom hand-drawn parameters when preset is 'none'
 			console.log('[VectorizerService] Configuration reset to clean state');
 		} catch (error) {
@@ -322,84 +282,64 @@ export class VectorizerService {
 	async generateSmartConfiguration(
 		backend: string,
 		preset: 'minimal' | 'enhanced' = 'minimal'
-	): Promise<VectorizerConfig> {
+	): Promise<AlgorithmConfig> {
 		if (!this.vectorizer) {
 			throw new Error('Vectorizer not initialized');
 		}
 
 		// Base configuration that should always work
-		const config: VectorizerConfig = {
-			...DEFAULT_CONFIG,
-			backend: backend as any,
-			detail: preset === 'minimal' ? DEFAULT_CONFIG.detail * 0.5 : DEFAULT_CONFIG.detail,
-			stroke_width:
-				preset === 'minimal' ? DEFAULT_CONFIG.stroke_width * 0.67 : DEFAULT_CONFIG.stroke_width,
-			multipass: backend === 'edge', // Only edge backend uses multipass
-			pass_count: 1,
-			multipass_mode: 'auto',
-			hand_drawn_preset: preset === 'minimal' ? 'none' : DEFAULT_CONFIG.hand_drawn_preset,
-			// Required boolean fields
-			reverse_pass: false,
-			diagonal_pass: false,
-			enable_etf_fdog: false,
-			enable_flow_tracing: false,
-			enable_bezier_fitting: false,
-			// Required numeric fields
-			variable_weights: 0.0,
-			tremor_strength: 0.0,
-			tapering: 0.0
+		const defaultConfig = algorithmConfigStore.getConfig(backend as AlgorithmType);
+		const config: AlgorithmConfig = {
+			...defaultConfig,
+			detail: preset === 'minimal' ? defaultConfig.detail * 0.5 : defaultConfig.detail,
+			strokeWidth:
+				preset === 'minimal' ? defaultConfig.strokeWidth * 0.67 : defaultConfig.strokeWidth,
 		};
 
 		// Add backend-specific features only if available
 		if (backend === 'edge') {
 			// Edge backend - most functions available
 			if (preset === 'enhanced') {
-				if (typeof this.vectorizer.set_reverse_pass === 'function') {
-					config.reverse_pass = true;
+				if (typeof this.vectorizer.set_reverse_pass === 'function' && config.algorithm === 'edge') {
+					(config as any).reversePass = true;
 				}
-				if (typeof this.vectorizer.set_diagonal_pass === 'function') {
-					config.diagonal_pass = true;
-				}
-				if (typeof this.vectorizer.set_enable_flow_tracing === 'function') {
-					config.enable_flow_tracing = true;
-				}
-				if (typeof this.vectorizer.set_enable_bezier_fitting === 'function') {
-					config.enable_bezier_fitting = true;
+				if (typeof this.vectorizer.set_diagonal_pass === 'function' && config.algorithm === 'edge') {
+					(config as any).diagonalPass = true;
 				}
 			}
 		} else if (backend === 'dots') {
 			// Dots backend - some functions available
-			config.hand_drawn_preset = 'none'; // Dots don't benefit from hand-drawn
-			if (preset === 'enhanced') {
-				if (typeof this.vectorizer.set_dot_density === 'function') {
-					config.dot_density = 0.15;
-				}
+			if (preset === 'enhanced' && config.algorithm === 'dots') {
+				// Dots backend enhancements
+				(config as any).dotDensityThreshold = 0.15;
 				if (typeof this.vectorizer.set_preserve_colors === 'function') {
-					config.preserve_colors = true;
+					config.preserveColors = true;
 				}
-				if (typeof this.vectorizer.set_adaptive_sizing === 'function') {
-					config.adaptive_sizing = true;
+				if (typeof this.vectorizer.set_adaptive_sizing === 'function' && config.algorithm === 'dots') {
+					(config as any).adaptiveSizing = true;
 				}
-				if (typeof this.vectorizer.set_background_tolerance === 'function') {
-					config.background_tolerance = 0.1;
+				if (typeof this.vectorizer.set_background_tolerance === 'function' && config.algorithm === 'dots') {
+					(config as any).backgroundTolerance = 0.1;
 				}
 			}
 		} else if (backend === 'centerline') {
 			// Centerline backend - most functions missing, use minimal config
-			config.hand_drawn_preset = 'none'; // Keep it simple
 			if (preset === 'enhanced') {
 				// Try to add centerline-specific features if available (currently missing)
 				if (typeof this.vectorizer.set_enable_adaptive_threshold === 'function') {
-					config.enable_adaptive_threshold = true;
+					if (config.algorithm === 'centerline') {
+						(config as any).enableAdaptiveThreshold = true;
+					}
 				}
 			}
 		} else if (backend === 'superpixel') {
 			// Superpixel backend - most functions missing, use minimal config
-			config.hand_drawn_preset = 'none'; // Keep it simple
 			if (preset === 'enhanced') {
 				// Try to add superpixel-specific features if available (currently missing)
 				if (typeof this.vectorizer.set_num_superpixels === 'function') {
-					config.num_superpixels = 250;
+					if (config.algorithm === 'superpixel') {
+						(config as any).numSuperpixels = 250;
+					}
 				}
 			}
 		}
@@ -638,7 +578,7 @@ export class VectorizerService {
 	/**
 	 * Configure the vectorizer with given settings
 	 */
-	async configure(config: VectorizerConfig): Promise<void> {
+	async configure(config: AlgorithmConfig): Promise<void> {
 		await this.initialize();
 
 		if (!this.vectorizer) {
@@ -686,7 +626,7 @@ export class VectorizerService {
 		const validation = this.validateConfigurationForBackend(workingConfig);
 		if (!validation.isValid) {
 			const configError: VectorizerError = {
-				type: 'config',
+				type: 'validation',
 				message: 'Configuration validation failed',
 				details: `Validation failed: ${validation.errors.join('. ')}`
 			};
@@ -913,7 +853,7 @@ export class VectorizerService {
 			}
 
 			const configError: VectorizerError = {
-				type: 'config',
+				type: 'validation',
 				message: 'Failed to configure vectorizer',
 				details: error instanceof Error ? error.message : String(error)
 			};
@@ -926,7 +866,7 @@ export class VectorizerService {
 	 */
 	async processImage(
 		imageData: ImageData,
-		config: VectorizerConfig,
+		config: AlgorithmConfig,
 		onProgress?: (progress: ProcessingProgress) => void
 	): Promise<ProcessingResult> {
 		// Use Web Worker service for processing to prevent main thread blocking
@@ -947,7 +887,7 @@ export class VectorizerService {
 			performanceMonitor.recordProcessingTime(0);
 
 			// Process via Web Worker (runs WASM off main thread)
-			// Pass the complete ImageData object to maintain structure
+			// Pass AlgorithmConfig directly - the worker will handle WASM translation
 			const result = await wasmWorkerService.processImage(imageData, config, onProgress);
 
 			const endTime = performance.now();
@@ -969,7 +909,7 @@ export class VectorizerService {
 			}
 
 			// Add dots count for dots backend
-			if (config.backend === 'dots') {
+			if (config.algorithm === 'dots') {
 				result.statistics.dots_generated = this._countSvgDots(result.svg);
 			}
 
@@ -1026,7 +966,7 @@ export class VectorizerService {
 			this.vectorizer.import_config(configJson);
 		} catch (error) {
 			const configError: VectorizerError = {
-				type: 'config',
+				type: 'validation',
 				message: 'Failed to import configuration',
 				details: error instanceof Error ? error.message : String(error)
 			};

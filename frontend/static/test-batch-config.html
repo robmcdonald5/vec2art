@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM Batch Configuration Test</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #4ec9b0;
+            border-bottom: 2px solid #4ec9b0;
+            padding-bottom: 10px;
+        }
+        #output {
+            background: #2d2d30;
+            border: 1px solid #464647;
+            border-radius: 4px;
+            padding: 15px;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        .success { color: #4ec9b0; }
+        .error { color: #f48771; }
+        .warning { color: #dcdcaa; }
+        .info { color: #9cdcfe; }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 WASM Batch Configuration API Test</h1>
+    <p>This test validates the new batch configuration API that reduces WASM boundary crossings from 20+ to 1.</p>
+    <button onclick="runTest()">Run Test</button>
+    <div id="output">Click "Run Test" to start...</div>
+
+    <script type="module">
+        import init, { WasmVectorizer } from '/src/lib/wasm/vectorize_wasm.js';
+
+        window.runTest = async function() {
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+
+            function log(message, type = 'info') {
+                const span = document.createElement('span');
+                span.className = type;
+                span.textContent = message + '\n';
+                output.appendChild(span);
+            }
+
+            try {
+                log('🧪 Testing WASM Batch Configuration API...', 'info');
+                log('');
+
+                // Initialize WASM module
+                await init();
+                log('✅ WASM module initialized', 'success');
+
+                // Create vectorizer instance
+                const vectorizer = new WasmVectorizer();
+                log('✅ WasmVectorizer instance created', 'success');
+                log('');
+
+                // Test 1: Get default config for each backend
+                log('📋 Test 1: Getting default configurations...', 'info');
+                const backends = ['edge', 'centerline', 'superpixel', 'dots'];
+
+                for (const backend of backends) {
+                    try {
+                        const defaultConfig = vectorizer.get_default_config_json(backend);
+                        const config = JSON.parse(defaultConfig);
+                        log(`  ✓ ${backend}: ${Object.keys(config).length} parameters`, 'success');
+                    } catch (error) {
+                        log(`  ✗ ${backend}: ${error.message}`, 'error');
+                    }
+                }
+
+                // Test 2: Apply configuration using batch API
+                log('');
+                log('📋 Test 2: Applying batch configuration...', 'info');
+                const testConfig = {
+                    backend: 'edge',
+                    detail: 0.75,
+                    strokeWidth: 1.5,
+                    enableMultipass: true,
+                    passCount: 3,
+                    enableReversePass: true,
+                    enableDiagonalPass: false,
+                    noiseFiltering: true,
+                    enableBackgroundRemoval: true,
+                    backgroundRemovalStrength: 0.5,
+                    handDrawnPreset: 'subtle'
+                };
+
+                const startBatch = performance.now();
+                try {
+                    vectorizer.apply_config_json(JSON.stringify(testConfig));
+                    const endBatch = performance.now();
+                    log(`  ✓ Batch config applied in ${(endBatch - startBatch).toFixed(2)}ms`, 'success');
+                } catch (error) {
+                    log(`  ✗ Batch config failed: ${error.message}`, 'error');
+                }
+
+                // Test 3: Compare with individual setter approach
+                log('');
+                log('📋 Test 3: Comparing with individual setters...', 'info');
+                const vectorizer2 = new WasmVectorizer();
+
+                const startIndividual = performance.now();
+                try {
+                    vectorizer2.set_backend('edge');
+                    vectorizer2.set_detail(0.75);
+                    vectorizer2.set_stroke_width(1.5);
+                    vectorizer2.set_multipass(true);
+                    vectorizer2.set_pass_count(3);
+                    vectorizer2.set_reverse_pass(true);
+                    vectorizer2.set_diagonal_pass(false);
+                    vectorizer2.set_noise_filtering(true);
+                    vectorizer2.enable_background_removal(true);
+                    vectorizer2.set_background_removal_strength(0.5);
+                    vectorizer2.set_hand_drawn_preset('subtle');
+                    const endIndividual = performance.now();
+                    log(`  ✓ Individual setters completed in ${(endIndividual - startIndividual).toFixed(2)}ms`, 'success');
+
+                    // Calculate speedup
+                    const batchTime = endBatch - startBatch;
+                    const individualTime = endIndividual - startIndividual;
+                    const speedup = individualTime / batchTime;
+                    log(`  📊 Batch API is ${speedup.toFixed(1)}x faster than individual setters`, 'warning');
+                } catch (error) {
+                    log(`  ✗ Individual setters failed: ${error.message}`, 'error');
+                }
+
+                // Test 4: Validate configuration
+                log('');
+                log('📋 Test 4: Validating configuration...', 'info');
+                const validConfig = {
+                    backend: 'dots',
+                    detail: 0.5,
+                    strokeWidth: 1.2,
+                    dotDensityThreshold: 0.15,
+                    dotMinRadius: 0.5,
+                    dotMaxRadius: 3.0,
+                    dotAdaptiveSizing: true
+                };
+
+                try {
+                    const validationResult = vectorizer.validate_config_json(JSON.stringify(validConfig));
+                    const validation = JSON.parse(validationResult);
+                    log(`  ✓ Validation passed: ${validation.valid}`, 'success');
+                    if (validation.warnings.length > 0) {
+                        log(`  ⚠️  Warnings: ${validation.warnings.join(', ')}`, 'warning');
+                    }
+                } catch (error) {
+                    log(`  ✗ Validation failed: ${error.message}`, 'error');
+                }
+
+                // Test 5: Test invalid configuration
+                log('');
+                log('📋 Test 5: Testing invalid configuration...', 'info');
+                const invalidConfig = {
+                    backend: 'invalid_backend',
+                    detail: 2.0, // Out of range
+                    strokeWidth: -1 // Negative value
+                };
+
+                try {
+                    const validationResult = vectorizer.validate_config_json(JSON.stringify(invalidConfig));
+                    const validation = JSON.parse(validationResult);
+                    log(`  ✓ Invalid config detected: valid=${validation.valid}`, 'success');
+                    if (validation.errors.length > 0) {
+                        log(`  ✓ Errors: ${validation.errors.join(', ')}`, 'success');
+                    }
+                    if (validation.warnings.length > 0) {
+                        log(`  ⚠️  Warnings: ${validation.warnings.join(', ')}`, 'warning');
+                    }
+                } catch (error) {
+                    log(`  ✗ Validation check failed: ${error.message}`, 'error');
+                }
+
+                // Test 6: Get current configuration
+                log('');
+                log('📋 Test 6: Getting current configuration...', 'info');
+                try {
+                    const currentConfig = vectorizer.get_current_config_json();
+                    const config = JSON.parse(currentConfig);
+                    log(`  ✓ Current config retrieved: ${config.backend} backend with detail=${config.detail}`, 'success');
+                    log(`  ℹ️  Config has ${Object.keys(config).length} total parameters`, 'info');
+                } catch (error) {
+                    log(`  ✗ Failed to get current config: ${error.message}`, 'error');
+                }
+
+                log('');
+                log('✅ All batch configuration tests completed!', 'success');
+
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        // Auto-run test on load
+        window.addEventListener('load', () => {
+            setTimeout(runTest, 500);
+        });
+    </script>
+</body>
+</html>

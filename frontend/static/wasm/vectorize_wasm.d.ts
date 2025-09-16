@@ -603,6 +603,27 @@ export class WasmVectorizer {
    * Validate current configuration and return validation results
    */
   validate_config(): string;
+  /**
+   * Apply a complete configuration from JSON in a single call
+   * This is the most efficient way to configure the vectorizer, reducing 20+ individual
+   * setter calls to a single boundary crossing.
+   */
+  apply_config_json(config_json: string): void;
+  /**
+   * Validate a configuration JSON without applying it
+   * Returns a JSON string with validation results
+   */
+  validate_config_json(config_json: string): string;
+  /**
+   * Get default configuration JSON for a specific backend
+   * Returns a JSON string with all default parameters for the specified backend
+   */
+  get_default_config_json(backend: string): string;
+  /**
+   * Get current configuration as JSON
+   * Returns the current configuration state as a JSON string
+   */
+  get_current_config_json(): string;
 }
 /**
  * Clean WASM vectorizer interface using immutable configuration
@@ -723,6 +744,19 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
+  readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$13peek_position17hdb7bd38934f18b99E: (a: number, b: number) => void;
+  readonly _ZN10serde_json5error5Error6syntax17h2a258a7a176bf02aE: (a: number, b: number, c: number) => number;
+  readonly _ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAlloc$GT$7dealloc17h9a2c8df90178cb8dE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN10serde_json2de21Deserializer$LT$R$GT$22parse_decimal_overflow17h564d1e18de64442bE: (a: number, b: number, c: number, d: bigint, e: number) => void;
+  readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$8position17h69d4e38458bd7354E: (a: number, b: number) => void;
+  readonly _ZN10serde_json2de21Deserializer$LT$R$GT$18parse_long_integer17h046e642fa70d1e85E: (a: number, b: number, c: number, d: bigint) => void;
+  readonly _ZN10serde_json2de21Deserializer$LT$R$GT$23parse_exponent_overflow17h86e5b100f3ded8e3E: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly _ZN10serde_json6number6Number8from_f6417hf9ae68aa36117e9bE: (a: number, b: number) => void;
+  readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$9parse_str17h03ad451ddc97d15bE: (a: number, b: number, c: number) => void;
+  readonly _RNvCsihszUHWOIem_7___rustc35___rust_no_alloc_shim_is_unstable_v2: () => void;
+  readonly _ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAlloc$GT$5alloc17hcd4fbdbb00b7446eE: (a: number, b: number, c: number) => number;
+  readonly _ZN5alloc7raw_vec12handle_error17h7f4b2a30dbb79ac6E: (a: number, b: number, c: number) => void;
+  readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h5090e1c7b0fbe0e9E: (a: number, b: number) => void;
   readonly _ZN3ryu6pretty8format6417h6ad0ae7200794b51E: (a: number, b: number) => number;
   readonly _ZN4core6option13unwrap_failed17h7133f3b8ad3376bdE: (a: number) => void;
   readonly _ZN82_$LT$$RF$serde_wasm_bindgen..ser..Serializer$u20$as$u20$serde..ser..Serializer$GT$13serialize_u6417h8b4bed7a579a4f04E: (a: number, b: number, c: bigint) => void;
@@ -735,10 +769,6 @@ export interface InitOutput {
   readonly _ZN18serde_wasm_bindgen9ObjectExt3set17ha669f4d7baa56893E: (a: number, b: number, c: number) => void;
   readonly _ZN6js_sys3Map3set17h13fbb4d94cd6f7baE: (a: number, b: number, c: number) => number;
   readonly _ZN83_$LT$serde_wasm_bindgen..ser..MapSerializer$u20$as$u20$serde..ser..SerializeMap$GT$3end17hb62675e73d8f3582E: (a: number, b: number) => void;
-  readonly _RNvCsihszUHWOIem_7___rustc35___rust_no_alloc_shim_is_unstable_v2: () => void;
-  readonly _ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAlloc$GT$5alloc17hcd4fbdbb00b7446eE: (a: number, b: number, c: number) => number;
-  readonly _ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAlloc$GT$7dealloc17h9a2c8df90178cb8dE: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN5alloc7raw_vec12handle_error17h7f4b2a30dbb79ac6E: (a: number, b: number, c: number) => void;
   readonly _ZN4core3fmt9Formatter9write_str17h932d0930c4ad7d8eE: (a: number, b: number, c: number) => number;
   readonly _ZN83_$LT$wgpu_types..instance..InstanceDescriptor$u20$as$u20$core..default..Default$GT$7default17habe85327145f1307E: (a: number) => void;
   readonly _ZN4wgpu3api8instance8Instance3new17h335cd788d1bdc2f0E: (a: number, b: number) => void;
@@ -1140,6 +1170,14 @@ export interface InitOutput {
   readonly wasmvectorizer_get_backend: (a: number) => [number, number];
   readonly wasmvectorizer_debug_dump_config: (a: number) => [number, number];
   readonly wasmvectorizer_validate_config: (a: number) => [number, number];
+  readonly _ZN55_$LT$str$u20$as$u20$serde_json..value..index..Index$GT$10index_into17hc132868f62002ae9E: (a: number, b: number, c: number) => number;
+  readonly wasmvectorizer_apply_config_json: (a: number, b: number, c: number) => [number, number];
+  readonly wasmvectorizer_validate_config_json: (a: number, b: number, c: number) => [number, number, number, number];
+  readonly _ZN55_$LT$str$u20$as$u20$serde_json..value..index..Index$GT$15index_or_insert17h06077947e4493ae0E: (a: number, b: number, c: number) => number;
+  readonly _ZN4core3fmt5float52_$LT$impl$u20$core..fmt..Display$u20$for$u20$f64$GT$3fmt17h35c471ee5876beaeE: (a: number, b: number) => number;
+  readonly wasmvectorizer_get_default_config_json: (a: number, b: number, c: number) => [number, number, number, number];
+  readonly _ZN10serde_json5value4from85_$LT$impl$u20$core..convert..From$LT$f32$GT$$u20$for$u20$serde_json..value..Value$GT$4from17h6b13a6ebcaf5c64cE: (a: number, b: number) => void;
+  readonly wasmvectorizer_get_current_config_json: (a: number) => [number, number, number, number];
   readonly get_available_backends: () => [number, number];
   readonly _ZN12wasm_bindgen7convert6slices100_$LT$impl$u20$wasm_bindgen..convert..traits..VectorIntoWasmAbi$u20$for$u20$alloc..string..String$GT$15vector_into_abi17h4218a16e03f869c7E: (a: number, b: number, c: number) => void;
   readonly _ZN12wasm_bindgen7convert6slices94_$LT$impl$u20$wasm_bindgen..describe..WasmDescribeVector$u20$for$u20$alloc..string..String$GT$15describe_vector17hb3b803753327ed3fE: () => void;
@@ -1152,7 +1190,6 @@ export interface InitOutput {
   readonly wasmgpuselector_new: () => number;
   readonly wasmgpuselector_init_with_gpu: () => any;
   readonly wasmgpuselector_analyze_image_characteristics: (a: number, b: any) => [number, number];
-  readonly _ZN4core3fmt5float52_$LT$impl$u20$core..fmt..Display$u20$for$u20$f64$GT$3fmt17h35c471ee5876beaeE: (a: number, b: number) => number;
   readonly wasmgpuselector_select_strategy: (a: number, b: number, c: number, d: number, e: number) => [number, number];
   readonly wasmgpuselector_record_performance: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
   readonly wasmgpuselector_get_performance_summary: (a: number) => [number, number];
@@ -1165,6 +1202,7 @@ export interface InitOutput {
   readonly _ZN4core3str16slice_error_fail17h105a77752e5b85e3E: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly vectorize_with_gpu_acceleration: (a: number, b: any, c: number) => any;
   readonly _ZN58_$LT$console_log..WebConsoleLogger$u20$as$u20$log..Log$GT$3log17h974d571f161c3388E: (a: number, b: number) => void;
+  readonly _ZN61_$LT$serde_json..error..Error$u20$as$u20$core..fmt..Debug$GT$3fmt17hf88706c273dbfe20E: (a: number, b: number) => number;
   readonly wasmprogress_processing_time_ms: (a: number) => [number, number];
   readonly __wbg_wasmvectorizerrefactored_free: (a: number, b: number) => void;
   readonly _RNvCsihszUHWOIem_7___rustc26___rust_alloc_error_handler: (a: number, b: number) => void;
@@ -1316,7 +1354,6 @@ export interface InitOutput {
   readonly _ZN14regex_automata4meta5regex5Regex15create_captures17h5f18796fbabcb8c2E: (a: number, b: number) => void;
   readonly _ZN58_$LT$$RF$str$u20$as$u20$regex..regex..string..Replacer$GT$14replace_append17h79daa53f3b3c527aE: (a: number, b: number, c: number) => void;
   readonly _ZN77_$LT$serde_json..value..ser..Serializer$u20$as$u20$serde..ser..Serializer$GT$13serialize_seq17hb6fa9af5628673c5E: (a: number, b: number, c: number) => void;
-  readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h5090e1c7b0fbe0e9E: (a: number, b: number) => void;
   readonly _ZN6chrono5naive8datetime13NaiveDateTime22overflowing_add_offset17h265f8be6cea955ecE: (a: number, b: number, c: number) => void;
   readonly _ZN4core5slice6memchr14memchr_aligned17h2aad6fc1e8ecef89E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN3ryu6pretty8format3217he566f4d871da3489E: (a: number, b: number) => number;
@@ -1749,7 +1786,6 @@ export interface InitOutput {
   readonly _ZN205_$LT$vectorize_core..parameters..audit.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..parameters..audit..PerformanceImpact$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hfe1b27b30239faf5E: (a: number, b: number) => number;
   readonly _ZN210_$LT$vectorize_core..parameters..audit.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..parameters..audit..OptimizationSuggestion$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h271dcbd51d0d672bE: (a: number, b: number) => number;
   readonly _ZN206_$LT$vectorize_core..parameters..audit.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..parameters..audit..OptimizationImpact$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h9516cda3ab187e54E: (a: number, b: number) => number;
-  readonly _ZN61_$LT$serde_json..error..Error$u20$as$u20$core..fmt..Debug$GT$3fmt17hf88706c273dbfe20E: (a: number, b: number) => number;
   readonly _ZN56_$LT$regex..error..Error$u20$as$u20$core..fmt..Debug$GT$3fmt17h04d346793bcc1e32E: (a: number, b: number) => number;
   readonly _ZN14vectorize_core13preprocessing3old12lab_distance17hbc15bb7efe7719e3E: (a: number, b: number) => number;
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h0ae6da55c21b5d89E: (a: number, b: number) => void;
@@ -11742,10 +11778,6 @@ export interface InitOutput {
   readonly _ZN65_$LT$serde_json..number..Number$u20$as$u20$core..fmt..Display$GT$3fmt17h35881e4b13e7774eE: (a: number, b: number) => number;
   readonly _ZN10serde_json2de12ParserNumber12invalid_type17h67a391251abb5327E: (a: number, b: number, c: number) => number;
   readonly _ZN61_$LT$serde_json..error..Error$u20$as$u20$serde..de..Error$GT$12invalid_type17hbcc8d1d84ded2b2eE: (a: number, b: number, c: number) => number;
-  readonly _ZN10serde_json5error5Error6syntax17h2a258a7a176bf02aE: (a: number, b: number, c: number) => number;
-  readonly _ZN10serde_json2de21Deserializer$LT$R$GT$18parse_long_integer17h046e642fa70d1e85E: (a: number, b: number, c: number, d: bigint) => void;
-  readonly _ZN10serde_json2de21Deserializer$LT$R$GT$22parse_decimal_overflow17h564d1e18de64442bE: (a: number, b: number, c: number, d: bigint, e: number) => void;
-  readonly _ZN10serde_json2de21Deserializer$LT$R$GT$23parse_exponent_overflow17h86e5b100f3ded8e3E: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN10serde_json2de83_$LT$impl$u20$core..str..traits..FromStr$u20$for$u20$serde_json..number..Number$GT$8from_str17h19087b5175884b88E: (a: number, b: number, c: number) => void;
   readonly _ZN10serde_json5error5Error13io_error_kind17hffa7a17c914c628eE: (a: number) => number;
   readonly _ZN10serde_json5error103_$LT$impl$u20$core..convert..From$LT$serde_json..error..Error$GT$$u20$for$u20$std..io..error..Error$GT$4from17h47b4bf50dcdf6a50E: (a: number, b: number) => void;
@@ -11764,7 +11796,6 @@ export interface InitOutput {
   readonly _ZN119_$LT$$LT$serde_json..value..Value$u20$as$u20$core..fmt..Display$GT$..fmt..WriterFormatter$u20$as$u20$std..io..Write$GT$5write17h80d5cde543991eceE: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN10serde_json5value5Value7pointer17he3bcb6dc1233dd8cE: (a: number, b: number, c: number) => number;
   readonly _ZN10serde_json5value5Value11pointer_mut17h5e4a7238b860806fE: (a: number, b: number, c: number) => number;
-  readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$9parse_str17h03ad451ddc97d15bE: (a: number, b: number, c: number) => void;
   readonly _ZN165_$LT$serde_json..value..de..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$serde_json..value..Value$GT$..deserialize..ValueVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h14a2f65f15966ed3E: (a: number, b: number) => number;
   readonly _ZN10serde_json5value2de81_$LT$impl$u20$core..str..traits..FromStr$u20$for$u20$serde_json..value..Value$GT$8from_str17hd31487a48486ea28E: (a: number, b: number, c: number) => void;
   readonly _ZN87_$LT$serde_json..value..de..VariantDeserializer$u20$as$u20$serde..de..VariantAccess$GT$12unit_variant17he9bab2b4277d0f1bE: (a: number) => number;
@@ -11773,14 +11804,11 @@ export interface InitOutput {
   readonly _ZN82_$LT$serde_json..value..de..SeqRefDeserializer$u20$as$u20$serde..de..SeqAccess$GT$9size_hint17he90e1e9340656cbdE: (a: number, b: number) => void;
   readonly _ZN75_$LT$serde_json..value..de..KeyClassifier$u20$as$u20$serde..de..Visitor$GT$9expecting17h0aa62a42633e2395E: (a: number, b: number) => number;
   readonly _ZN10serde_json5value2de42_$LT$impl$u20$serde_json..value..Value$GT$10unexpected17h5cb3a668fcb0b943E: (a: number, b: number) => void;
-  readonly _ZN10serde_json5value4from85_$LT$impl$u20$core..convert..From$LT$f32$GT$$u20$for$u20$serde_json..value..Value$GT$4from17h6b13a6ebcaf5c64cE: (a: number, b: number) => void;
   readonly _ZN10serde_json5value4from89_$LT$impl$u20$core..convert..From$LT$$RF$str$GT$$u20$for$u20$serde_json..value..Value$GT$4from17hdc8cd83656ba7f95E: (a: number, b: number, c: number) => void;
   readonly _ZN10serde_json5value4from111_$LT$impl$u20$core..convert..From$LT$alloc..borrow..Cow$LT$str$GT$$GT$$u20$for$u20$serde_json..value..Value$GT$4from17hdfb63add915626c9E: (a: number, b: number) => void;
   readonly _ZN57_$LT$usize$u20$as$u20$serde_json..value..index..Index$GT$15index_or_insert17h5c1db8103df6ba7eE: (a: number, b: number) => number;
   readonly _ZN69_$LT$serde_json..value..index..Type$u20$as$u20$core..fmt..Display$GT$3fmt17he091cd595b77d90eE: (a: number, b: number) => number;
-  readonly _ZN55_$LT$str$u20$as$u20$serde_json..value..index..Index$GT$10index_into17hc132868f62002ae9E: (a: number, b: number, c: number) => number;
   readonly _ZN55_$LT$str$u20$as$u20$serde_json..value..index..Index$GT$14index_into_mut17hf40c6aafa520276cE: (a: number, b: number, c: number) => number;
-  readonly _ZN55_$LT$str$u20$as$u20$serde_json..value..index..Index$GT$15index_or_insert17h06077947e4493ae0E: (a: number, b: number, c: number) => number;
   readonly _ZN73_$LT$alloc..string..String$u20$as$u20$serde_json..value..index..Index$GT$10index_into17h16a199ad7dd12789E: (a: number, b: number) => number;
   readonly _ZN73_$LT$alloc..string..String$u20$as$u20$serde_json..value..index..Index$GT$14index_into_mut17he2df3683241a9dafE: (a: number, b: number) => number;
   readonly _ZN73_$LT$alloc..string..String$u20$as$u20$serde_json..value..index..Index$GT$15index_or_insert17hda1de9b522cab7d6E: (a: number, b: number) => number;
@@ -11818,7 +11846,6 @@ export interface InitOutput {
   readonly _ZN83_$LT$serde_json..value..ser..MapKeySerializer$u20$as$u20$serde..ser..Serializer$GT$16serialize_struct17ha7b7bccd43aade70E: (a: number, b: number, c: number) => number;
   readonly _ZN84_$LT$serde_json..value..ser..SerializeMap$u20$as$u20$serde..ser..SerializeStruct$GT$3end17hda8d565a827fd0bdE: (a: number, b: number) => void;
   readonly _ZN101_$LT$serde_json..value..ser..SerializeStructVariant$u20$as$u20$serde..ser..SerializeStructVariant$GT$3end17he050123519241d83E: (a: number, b: number) => void;
-  readonly _ZN10serde_json6number6Number8from_f6417hf9ae68aa36117e9bE: (a: number, b: number) => void;
   readonly _ZN63_$LT$serde_json..number..Number$u20$as$u20$core..fmt..Debug$GT$3fmt17h40e9bf69e18ea6acE: (a: number, b: number) => number;
   readonly _ZN135_$LT$$LT$serde_json..number..Number$u20$as$u20$serde..de..Deserialize$GT$..deserialize..NumberVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h79253d15206e1f43E: (a: number, b: number) => number;
   readonly _ZN70_$LT$serde_json..read..SliceRead$u20$as$u20$serde_json..read..Read$GT$8position17hbf2bde2f1e20cc58E: (a: number, b: number) => void;
@@ -11826,8 +11853,6 @@ export interface InitOutput {
   readonly _ZN70_$LT$serde_json..read..SliceRead$u20$as$u20$serde_json..read..Read$GT$9parse_str17h275df3fd44061236E: (a: number, b: number, c: number) => void;
   readonly _ZN70_$LT$serde_json..read..SliceRead$u20$as$u20$serde_json..read..Read$GT$13parse_str_raw17hb077150c944df964E: (a: number, b: number, c: number) => void;
   readonly _ZN70_$LT$serde_json..read..SliceRead$u20$as$u20$serde_json..read..Read$GT$10ignore_str17he5d0c83f44623b3fE: (a: number) => number;
-  readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$8position17h69d4e38458bd7354E: (a: number, b: number) => void;
-  readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$13peek_position17hdb7bd38934f18b99E: (a: number, b: number) => void;
   readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$13parse_str_raw17hbe163179d9b32635E: (a: number, b: number, c: number) => void;
   readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$10ignore_str17h37b4370f2f5421fbE: (a: number) => number;
   readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$17decode_hex_escape17h405b0dfede838f70E: (a: number, b: number) => void;
@@ -12809,26 +12834,26 @@ export interface InitOutput {
   readonly __externref_heap_live_count: () => number;
   readonly __externref_drop_slice: (a: number, b: number) => void;
   readonly __externref_table_dealloc: (a: number) => void;
-  readonly closure2011_externref_shim: (a: number, b: number, c: any) => void;
-  readonly closure2814_externref_shim: (a: number, b: number, c: any) => void;
-  readonly closure4449_externref_shim: (a: number, b: number, c: any, d: number, e: any) => number;
-  readonly closure4450_externref_shim_multivalue_shim: (a: number, b: number, c: any, d: number, e: any) => [number, number];
-  readonly closure4451_externref_shim: (a: number, b: number, c: any, d: number, e: any) => void;
-  readonly closure4452_externref_shim: (a: number, b: number, c: any, d: number, e: any) => any;
-  readonly closure4453_externref_shim: (a: number, b: number, c: any, d: any, e: number, f: any) => any;
-  readonly closure4454_externref_shim: (a: number, b: number, c: any) => number;
-  readonly closure4455_externref_shim: (a: number, b: number, c: any, d: any) => void;
-  readonly closure4451_externref_shim20: (a: number, b: number, c: any, d: any, e: any) => void;
-  readonly closure4456_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4457_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4451_externref_shim23: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4456_externref_shim24: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4457_externref_shim25: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4451_externref_shim26: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure2013_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure2816_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure4451_externref_shim: (a: number, b: number, c: any, d: number, e: any) => number;
+  readonly closure4452_externref_shim_multivalue_shim: (a: number, b: number, c: any, d: number, e: any) => [number, number];
+  readonly closure4453_externref_shim: (a: number, b: number, c: any, d: number, e: any) => void;
+  readonly closure4454_externref_shim: (a: number, b: number, c: any, d: number, e: any) => any;
+  readonly closure4455_externref_shim: (a: number, b: number, c: any, d: any, e: number, f: any) => any;
+  readonly closure4456_externref_shim: (a: number, b: number, c: any) => number;
+  readonly closure4457_externref_shim: (a: number, b: number, c: any, d: any) => void;
+  readonly closure4453_externref_shim20: (a: number, b: number, c: any, d: any, e: any) => void;
   readonly closure4458_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
   readonly closure4459_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4460_externref_shim: (a: number, b: number, c: bigint, d: number, e: any) => void;
-  readonly closure4460_externref_shim30: (a: number, b: number, c: bigint, d: number, e: any) => void;
+  readonly closure4453_externref_shim23: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4458_externref_shim24: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4459_externref_shim25: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4453_externref_shim26: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4460_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4461_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4462_externref_shim: (a: number, b: number, c: bigint, d: number, e: any) => void;
+  readonly closure4462_externref_shim30: (a: number, b: number, c: bigint, d: number, e: any) => void;
   readonly __wbindgen_thread_destroy: (a?: number, b?: number, c?: number) => void;
   readonly __wbindgen_start: (a: number) => void;
 }

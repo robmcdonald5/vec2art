@@ -7,7 +7,7 @@
  * The pipeline is predictable, maintainable, and provides clear error handling.
  */
 
-import type { VectorizerConfig } from '../types/vectorizer.js';
+import type { AlgorithmConfig as VectorizerConfig } from '../types/algorithm-configs';
 import type { UISliderConfig, DotsBackendConfig } from '../types/dots-backend.js';
 import { mapUIConfigToDotsConfig, validateDotsConfig, describeDotsConfig } from './dots-mapping.js';
 
@@ -56,8 +56,8 @@ export function processConfiguration(rawConfig: VectorizerConfig): ConfigPipelin
 			// Extract UI configuration
 			const uiConfig: UISliderConfig = {
 				detail_level: rawConfig.detail || 0.5,
-				dot_width: rawConfig.stroke_width || 2.0,
-				color_mode: rawConfig.preserve_colors || true
+				dot_width: rawConfig.strokeWidth || 2.0,
+				color_mode: rawConfig.preserveColors || true
 			};
 
 			// Apply architectural mapping
@@ -77,8 +77,8 @@ export function processConfiguration(rawConfig: VectorizerConfig): ConfigPipelin
 				...processedConfig,
 				// Keep original UI parameters for other processing
 				detail: uiConfig.detail_level,
-				stroke_width: uiConfig.dot_width,
-				preserve_colors: uiConfig.color_mode,
+				strokeWidth: uiConfig.dot_width,
+				preserveColors: uiConfig.color_mode,
 
 				// Add backend-specific parameters (will be used by WASM worker)
 				dot_density_threshold: backendConfig.dot_density_threshold,
@@ -105,14 +105,14 @@ export function processConfiguration(rawConfig: VectorizerConfig): ConfigPipelin
 				}
 			}
 
-			if (typeof rawConfig.stroke_width === 'number') {
-				if (rawConfig.stroke_width < 0.1 || rawConfig.stroke_width > 10) {
+			if (typeof rawConfig.strokeWidth === 'number') {
+				if (rawConfig.strokeWidth < 0.1 || rawConfig.strokeWidth > 10) {
 					warnings.push('Stroke width outside normal range (0.1-10.0)');
-					processedConfig.stroke_width = Math.max(0.1, Math.min(10, rawConfig.stroke_width));
+					processedConfig.strokeWidth = Math.max(0.1, Math.min(10, rawConfig.strokeWidth));
 				}
 			}
 
-			description = `${rawConfig.backend || 'edge'} backend with detail=${rawConfig.detail?.toFixed(2)}, stroke=${rawConfig.stroke_width?.toFixed(1)}`;
+			description = `${rawConfig.backend || 'edge'} backend with detail=${rawConfig.detail?.toFixed(2)}, stroke=${rawConfig.strokeWidth?.toFixed(1)}`;
 			break;
 		}
 	}
@@ -153,12 +153,12 @@ export function validateCompleteConfiguration(config: VectorizerConfig): {
 		additionalErrors.push('Detail level is required');
 	}
 
-	if (typeof config.stroke_width !== 'number') {
+	if (typeof config.strokeWidth !== 'number') {
 		additionalErrors.push('Stroke width is required');
 	}
 
 	// Check for potentially problematic combinations
-	if (config.backend === 'dots' && config.detail !== undefined && config.detail > 0.95) {
+	if (config.algorithm === 'dots' && config.detail !== undefined && config.detail > 0.95) {
 		additionalWarnings.push('Very high detail level may cause slow processing for dots backend');
 	}
 
@@ -196,8 +196,8 @@ export function demonstrateConfigurationPipeline(): void {
 	const dotsConfig: Partial<VectorizerConfig> & { backend: 'dots' } = {
 		backend: 'dots',
 		detail: 0.8, // High detail (UI slider at 80%)
-		stroke_width: 2.0, // Medium dot width
-		preserve_colors: true
+		strokeWidth: 2.0, // Medium dot width
+		preserveColors: true
 	};
 
 	const result1 = processConfiguration(dotsConfig as VectorizerConfig);
@@ -209,8 +209,8 @@ export function demonstrateConfigurationPipeline(): void {
 	const edgeCaseConfig: Partial<VectorizerConfig> & { backend: 'dots' } = {
 		backend: 'dots',
 		detail: 1.0, // Maximum detail
-		stroke_width: 0.5, // Minimum width
-		preserve_colors: false
+		strokeWidth: 0.5, // Minimum width
+		preserveColors: false
 	};
 
 	const result2 = processConfiguration(edgeCaseConfig as VectorizerConfig);
@@ -222,7 +222,7 @@ export function demonstrateConfigurationPipeline(): void {
 	const edgeConfig: Partial<VectorizerConfig> & { backend: 'edge' } = {
 		backend: 'edge',
 		detail: 0.6,
-		stroke_width: 1.5
+		strokeWidth: 1.5
 	};
 
 	const result3 = processConfiguration(edgeConfig as VectorizerConfig);

@@ -10,11 +10,11 @@
 
 import { browser } from '$app/environment';
 import type {
-	VectorizerConfig,
 	ProcessingProgress,
 	ProcessingResult,
 	VectorizerError
-} from '$lib/types/vectorizer';
+} from '$lib/workers/vectorizer.worker';
+import type { AlgorithmConfig } from '$lib/types/algorithm-configs';
 
 // Message ID generator for request/response matching
 let messageIdCounter = 0;
@@ -279,15 +279,14 @@ export class WasmWorkerService {
 	 */
 	async processImage(
 		imageData: ImageData,
-		config: VectorizerConfig,
+		config: AlgorithmConfig,
 		onProgress?: (progress: ProcessingProgress) => void
 	): Promise<ProcessingResult> {
 		// Use queue to prevent race conditions when spamming converter
 		return this.addToQueue(async () => {
 			if (!this.isInitialized) {
 				await this.initialize({
-					threadCount: config.thread_count || 1,
-					backend: config.backend
+					backend: config.algorithm
 				});
 			}
 
@@ -296,6 +295,7 @@ export class WasmWorkerService {
 			const megapixels = pixelCount / 1_000_000;
 			const isLargeImage = megapixels > 10; // 10MP+ is considered large
 			const isVeryLargeImage = megapixels > 20; // 20MP+ is very large
+			let processingTimeoutMs = 60000; // Default 60 seconds
 
 			// Processing image
 
@@ -312,7 +312,7 @@ export class WasmWorkerService {
 					const strategy = gpuService.getProcessingStrategy(
 						imageData.width,
 						imageData.height,
-						config.backend
+						config.algorithm
 					);
 					if (strategy.includes('gpu-preferred')) {
 						preferGpu = true;
@@ -330,24 +330,23 @@ export class WasmWorkerService {
 				console.log('[WasmWorkerService] 🔧 Large image detected, applying optimizations...');
 
 				// For very large images, reduce detail automatically to prevent memory issues
-				if (isVeryLargeImage && config.backend === 'dots' && config.detail && config.detail > 0.4) {
+				if (isVeryLargeImage && config.algorithm === 'dots' && config.detail && config.detail > 0.4) {
 					console.log(
 						`[WasmWorkerService] ⚡ Very large image: reducing detail from ${config.detail} to 0.4 for stability`
 					);
 					config = { ...config, detail: 0.4 };
 				}
 
-				// Increase max processing time for large images
-				if (!config.max_processing_time_ms || config.max_processing_time_ms < 180000) {
-					console.log('[WasmWorkerService] ⏱️ Extending processing timeout for large image');
-					config = { ...config, max_processing_time_ms: 300000 }; // 5 minutes
-				}
+				// Set processing timeout for large images (separate from config)
+				processingTimeoutMs = 300000; // 5 minutes
+				console.log('[WasmWorkerService] ⏱️ Extended processing timeout for large image');
 			}
 
 			// Use isolated worker for high-intensity operations (7+ passes) OR very large images
 			// This prevents thread pool corruption during intensive processing
-			if (config.pass_count >= 7 || isVeryLargeImage) {
-				const reason = config.pass_count >= 7 ? 'high-intensity multipass' : 'very large image';
+			const passCount = (config as any).passCount; // Only EdgeConfig has passCount
+			if ((passCount && passCount >= 7) || isVeryLargeImage) {
+				const reason = (passCount && passCount >= 7) ? 'high-intensity multipass' : 'very large image';
 				console.log(`[WasmWorkerService] ${reason} operation detected, using isolated worker`);
 				return this.processImageWithIsolatedWorker(imageData, config, onProgress, preferGpu);
 			}
@@ -361,7 +360,7 @@ export class WasmWorkerService {
 	 */
 	private async processImageInternal(
 		imageData: ImageData,
-		config: VectorizerConfig,
+		config: AlgorithmConfig,
 		onProgress?: (progress: ProcessingProgress) => void,
 		retryAttempt: number = 0,
 		preferGpu: boolean = false
@@ -376,30 +375,29 @@ export class WasmWorkerService {
 				config
 			});
 
-			// Threading configuration passed through (emergency fallback removed)
-			console.log('[WasmWorkerService] Threading configuration:', {
-				thread_count: config.thread_count,
-				backend: config.backend
+			// Processing configuration
+			console.log('[WasmWorkerService] Processing configuration:', {
+				backend: config.algorithm
 			});
 
 			// Serialize config to plain object (removes Proxy wrapper from Svelte stores)
 			const plainConfig = JSON.parse(JSON.stringify(config));
 
 			// Ensure critical defaults are included (in case they got lost in serialization)
-			if (plainConfig.pass_count === undefined) {
-				plainConfig.pass_count = 1;
-				console.log('[WasmWorkerService] 🔧 Adding missing pass_count default=1 to config');
+			// Note: passCount only exists on EdgeConfig, not on all AlgorithmConfig types
+			if (plainConfig.algorithm === 'edge' && plainConfig.passCount === undefined) {
+				plainConfig.passCount = 1;
+				console.log('[WasmWorkerService] 🔧 Adding missing passCount default=1 to Edge config');
 			}
 
 			// DEBUG: Log the config being sent to worker
 			console.log('[WasmWorkerService] 🔍 [SETTINGS DEBUG] Sending config to worker:', {
-				backend: plainConfig.backend,
+				algorithm: plainConfig.algorithm,
 				detail: plainConfig.detail,
-				stroke_width: plainConfig.stroke_width,
-				noise_filtering: plainConfig.noise_filtering,
-				multipass: plainConfig.multipass,
-				pass_count: plainConfig.pass_count,
-				hand_drawn_preset: plainConfig.hand_drawn_preset,
+				strokeWidth: plainConfig.strokeWidth,
+				// Edge-specific properties (only exist on EdgeConfig)
+				passCount: (plainConfig as any).passCount,
+				handDrawnPreset: (plainConfig as any).handDrawnPreset,
 				fullConfig: plainConfig
 			});
 
@@ -414,12 +412,40 @@ export class WasmWorkerService {
 				preferGpu: preferGpu
 			});
 
+			// DEBUG: Log the actual result structure
+			console.log('[WasmWorkerService] 🔍 [DEBUG] Received result structure:', {
+				hasResult: !!result,
+				resultKeys: result ? Object.keys(result) : null,
+				hasSuccess: result ? 'success' in result : false,
+				hasPayload: result ? 'payload' in result : false,
+				hasSvg: result ? 'svg' in result : false,
+				resultType: typeof result
+			});
+
 			if (!result.success) {
 				throw new Error(result.error || 'Processing failed');
 			}
 
+			// Extract SVG data - check both direct access and payload
+			const svgData = result.svg || (result.payload && result.payload.svg);
+			const processingTime = result.processingTime || (result.payload && result.payload.processingTime);
+			const pathCount = result.pathCount || (result.payload && result.payload.stats && result.payload.stats.pathCount);
+
+			console.log('[WasmWorkerService] 🔍 [DEBUG] SVG data extraction:', {
+				hasSvgData: !!svgData,
+				svgDataType: typeof svgData,
+				svgDataLength: svgData ? svgData.length : 0,
+				processingTime,
+				pathCount
+			});
+
+			if (!svgData) {
+				console.error('[WasmWorkerService] ❌ No SVG data found in result:', result);
+				throw new Error('No SVG data returned from worker');
+			}
+
 			// Check for large result and add memory management
-			const svgSize = new Blob([result.svg]).size;
+			const svgSize = new Blob([svgData]).size;
 			const sizeMB = svgSize / (1024 * 1024);
 
 			if (sizeMB > 10) {
@@ -436,12 +462,13 @@ export class WasmWorkerService {
 
 			// Return successful result
 			return {
-				svg: result.svg,
-				processing_time_ms: result.processingTime || 0,
-				config_used: config,
+				svg: svgData,
+				processing_time_ms: processingTime || 0,
+				// config_used will be set by the higher-level vectorizer-service
+				config_used: {} as any, // Placeholder - will be overwritten by vectorizer-service
 				statistics: {
 					input_dimensions: [imageData.width, imageData.height] as [number, number],
-					paths_generated: result.pathCount || 0,
+					paths_generated: pathCount || 0,
 					compression_ratio: svgSize / (imageData.width * imageData.height * 4)
 				}
 			};
@@ -475,16 +502,17 @@ export class WasmWorkerService {
 				const fallbackConfig = {
 					...config,
 					detail: Math.min(config.detail || 0.5, 0.3), // Reduce detail
-					thread_count: 1, // Single thread for stability
-					max_processing_time_ms: 600000, // 10 minutes maximum
-					pass_count: 1 // Single pass only
+					threadCount: 1, // Single thread for stability
+					maxProcessingTimeMs: 600000, // 10 minutes maximum
+					// Add passCount only for Edge algorithm
+					...(config.algorithm === 'edge' ? { passCount: 1 } : {})
 				};
 
 				try {
 					console.log('[WasmWorkerService] 🎯 Retrying with fallback config:', {
 						detail: fallbackConfig.detail,
-						threads: fallbackConfig.thread_count,
-						timeout: fallbackConfig.max_processing_time_ms / 1000 + 's'
+						threads: fallbackConfig.threadCount,
+						timeout: fallbackConfig.maxProcessingTimeMs / 1000 + 's'
 					});
 
 					// Force worker restart for clean state
@@ -540,7 +568,7 @@ export class WasmWorkerService {
 	 */
 	private async processImageWithIsolatedWorker(
 		imageData: ImageData,
-		config: VectorizerConfig,
+		config: AlgorithmConfig,
 		onProgress?: (progress: ProcessingProgress) => void,
 		preferGpu: boolean = false
 	): Promise<ProcessingResult> {
@@ -609,7 +637,8 @@ export class WasmWorkerService {
 					let timeout = 60000; // Base 1 minute
 
 					// Increase timeout for multi-pass processing
-					if (config.pass_count >= 8) timeout = 120000; // 2 minutes for 8+ passes
+					const passCount = (config as any).passCount; // Only EdgeConfig has passCount
+					if (passCount && passCount >= 8) timeout = 120000; // 2 minutes for 8+ passes
 
 					// Further increase timeout for very large images
 					if (megapixels > 20) {
@@ -629,8 +658,7 @@ export class WasmWorkerService {
 			// Initialize isolated worker WASM
 			console.log('[WasmWorkerService] 🔧 Initializing isolated worker WASM module');
 			await sendIsolatedMessage('init', {
-				threadCount: config.thread_count || 1,
-				backend: config.backend
+				backend: config.algorithm
 			});
 
 			// Process with isolated worker
@@ -638,10 +666,10 @@ export class WasmWorkerService {
 			const plainConfig = JSON.parse(JSON.stringify(config));
 
 			// Ensure critical defaults are included for isolated worker too
-			if (plainConfig.pass_count === undefined) {
-				plainConfig.pass_count = 1;
+			if (plainConfig.algorithm === 'edge' && plainConfig.passCount === undefined) {
+				plainConfig.passCount = 1;
 				console.log(
-					'[WasmWorkerService] 🔧 Adding missing pass_count default=1 to isolated config'
+					'[WasmWorkerService] 🔧 Adding missing passCount default=1 to isolated Edge config'
 				);
 			}
 

@@ -9,10 +9,10 @@
  */
 
 // Re-export everything from the new unified store
-export * from './converter.svelte';
+export * from './converter-state.svelte';
 
 // Maintain the original export name for full backwards compatibility
-export { vectorizerStore } from './converter.svelte';
+export { converterState as vectorizerStore } from './converter-state.svelte';
 
 /**
  * ARCHITECTURAL NOTE:

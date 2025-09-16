@@ -25,16 +25,16 @@ cp -r wasm/vectorize-wasm/pkg src/lib/wasm/
 
 ```javascript
 // src/lib/wasm.js
-import init, { WasmVectorizer } from '$lib/wasm/vectorize_wasm.js';
+import init, { WasmVectorizer } from "$lib/wasm/vectorize_wasm.js";
 
 let wasmModule = null;
 
 export async function initWasm() {
-	if (!wasmModule) {
-		await init();
-		wasmModule = new WasmVectorizer();
-	}
-	return wasmModule;
+  if (!wasmModule) {
+    await init();
+    wasmModule = new WasmVectorizer();
+  }
+  return wasmModule;
 }
 ```
 
@@ -42,21 +42,21 @@ export async function initWasm() {
 
 ```svelte
 <script>
-	import { initWasm } from '$lib/wasm.js';
+  import { initWasm } from '$lib/wasm.js';
 
-	let vectorizer = null;
+  let vectorizer = null;
 
-	onMount(async () => {
-		vectorizer = await initWasm();
-	});
+  onMount(async () => {
+    vectorizer = await initWasm();
+  });
 
-	async function processImage(imageData) {
-		if (!vectorizer) return;
+  async function processImage(imageData) {
+    if (!vectorizer) return;
 
-		vectorizer.set_backend('edge');
-		const svg = vectorizer.vectorize(imageData);
-		return svg;
-	}
+    vectorizer.set_backend('edge');
+    const svg = vectorizer.vectorize(imageData);
+    return svg;
+  }
 </script>
 ```
 
@@ -66,15 +66,15 @@ Add to your `vite.config.js`:
 
 ```javascript
 export default {
-	server: {
-		headers: {
-			'Cross-Origin-Embedder-Policy': 'require-corp',
-			'Cross-Origin-Opener-Policy': 'same-origin'
-		}
-	},
-	optimizeDeps: {
-		exclude: ['$lib/wasm/vectorize_wasm.js']
-	}
+  server: {
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
+  },
+  optimizeDeps: {
+    exclude: ["$lib/wasm/vectorize_wasm.js"],
+  },
 };
 ```
 
@@ -85,99 +85,106 @@ export default {
 ```html
 <!DOCTYPE html>
 <html>
-	<head>
-		<title>vec2art Line Tracing Demo</title>
-	</head>
-	<body>
-		<input type="file" id="imageInput" accept="image/*" />
-		<div id="output"></div>
+  <head>
+    <title>vec2art Line Tracing Demo</title>
+  </head>
+  <body>
+    <input type="file" id="imageInput" accept="image/*" />
+    <div id="output"></div>
 
-		<script type="module">
-			import * as wasm from './pkg/vectorize_wasm.js';
+    <script type="module">
+      import * as wasm from "./pkg/vectorize_wasm.js";
 
-			document.getElementById('imageInput').addEventListener('change', async (e) => {
-				const file = e.target.files[0];
-				if (!file) return;
+      document
+        .getElementById("imageInput")
+        .addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
 
-				// Convert image to ImageData
-				const image = new Image();
-				const canvas = document.createElement('canvas');
-				const ctx = canvas.getContext('2d');
+          // Convert image to ImageData
+          const image = new Image();
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
 
-				image.onload = async () => {
-					canvas.width = image.width;
-					canvas.height = image.height;
-					ctx.drawImage(image, 0, 0);
+          image.onload = async () => {
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
 
-					const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(
+              0,
+              0,
+              canvas.width,
+              canvas.height,
+            );
 
-					// Create configuration for line tracing
-					const config = new wasm.ConfigBuilder()
-						.backend('edge')
-						.multipass_enabled(true)
-						.hand_drawn_enabled(true)
-						.tremor_intensity(0.3)
-						.weight_variation(0.4)
-						.build();
+            // Create configuration for line tracing
+            const config = new wasm.ConfigBuilder()
+              .backend("edge")
+              .multipass_enabled(true)
+              .hand_drawn_enabled(true)
+              .tremor_intensity(0.3)
+              .weight_variation(0.4)
+              .build();
 
-					// Process image to SVG
-					const svgString = wasm.process_image_to_svg(
-						new Uint8Array(imageData.data.buffer),
-						imageData.width,
-						imageData.height,
-						config
-					);
+            // Process image to SVG
+            const svgString = wasm.process_image_to_svg(
+              new Uint8Array(imageData.data.buffer),
+              imageData.width,
+              imageData.height,
+              config,
+            );
 
-					// Display result
-					document.getElementById('output').innerHTML = svgString;
-				};
+            // Display result
+            document.getElementById("output").innerHTML = svgString;
+          };
 
-				image.src = URL.createObjectURL(file);
-			});
-		</script>
-	</body>
+          image.src = URL.createObjectURL(file);
+        });
+    </script>
+  </body>
 </html>
 ```
 
 ### Node.js Example
 
 ```javascript
-const fs = require('fs');
-const { createCanvas, loadImage } = require('canvas');
-const wasm = require('@vec2art/vectorize-wasm');
+const fs = require("fs");
+const { createCanvas, loadImage } = require("canvas");
+const wasm = require("@vec2art/vectorize-wasm");
 
 async function processImage(inputPath, outputPath) {
-	// Load image
-	const image = await loadImage(inputPath);
-	const canvas = createCanvas(image.width, image.height);
-	const ctx = canvas.getContext('2d');
+  // Load image
+  const image = await loadImage(inputPath);
+  const canvas = createCanvas(image.width, image.height);
+  const ctx = canvas.getContext("2d");
 
-	ctx.drawImage(image, 0, 0);
-	const imageData = ctx.getImageData(0, 0, image.width, image.height);
+  ctx.drawImage(image, 0, 0);
+  const imageData = ctx.getImageData(0, 0, image.width, image.height);
 
-	// Create configuration
-	const config = new wasm.ConfigBuilder()
-		.backend('edge')
-		.multipass_enabled(true)
-		.hand_drawn_enabled(true)
-		.artistic_preset('sketchy')
-		.build();
+  // Create configuration
+  const config = new wasm.ConfigBuilder()
+    .backend("edge")
+    .multipass_enabled(true)
+    .hand_drawn_enabled(true)
+    .artistic_preset("sketchy")
+    .build();
 
-	// Process to SVG
-	const svgString = wasm.process_image_to_svg(
-		new Uint8Array(imageData.data.buffer),
-		imageData.width,
-		imageData.height,
-		config
-	);
+  // Process to SVG
+  const svgString = wasm.process_image_to_svg(
+    new Uint8Array(imageData.data.buffer),
+    imageData.width,
+    imageData.height,
+    config,
+  );
 
-	// Save result
-	fs.writeFileSync(outputPath, svgString);
-	console.log(`Processed ${inputPath} -> ${outputPath}`);
+  // Save result
+  fs.writeFileSync(outputPath, svgString);
+  console.log(`Processed ${inputPath} -> ${outputPath}`);
 }
 
 // Usage
-processImage('input.jpg', 'output.svg');
+processImage("input.jpg", "output.svg");
 ```
 
 ## API Reference
@@ -188,34 +195,36 @@ The `ConfigBuilder` provides a fluent interface for configuring line tracing par
 
 ```typescript
 class ConfigBuilder {
-	// Backend selection
-	backend(name: 'edge' | 'centerline' | 'superpixel' | 'dots'): ConfigBuilder;
+  // Backend selection
+  backend(name: "edge" | "centerline" | "superpixel" | "dots"): ConfigBuilder;
 
-	// Multi-pass processing
-	multipass_enabled(enabled: boolean): ConfigBuilder;
-	reverse_pass_enabled(enabled: boolean): ConfigBuilder;
-	diagonal_pass_enabled(enabled: boolean): ConfigBuilder;
+  // Multi-pass processing
+  multipass_enabled(enabled: boolean): ConfigBuilder;
+  reverse_pass_enabled(enabled: boolean): ConfigBuilder;
+  diagonal_pass_enabled(enabled: boolean): ConfigBuilder;
 
-	// Hand-drawn aesthetics
-	hand_drawn_enabled(enabled: boolean): ConfigBuilder;
-	tremor_intensity(value: number): ConfigBuilder; // 0.0-1.0
-	weight_variation(value: number): ConfigBuilder; // 0.0-1.0
-	tapering_enabled(enabled: boolean): ConfigBuilder;
+  // Hand-drawn aesthetics
+  hand_drawn_enabled(enabled: boolean): ConfigBuilder;
+  tremor_intensity(value: number): ConfigBuilder; // 0.0-1.0
+  weight_variation(value: number): ConfigBuilder; // 0.0-1.0
+  tapering_enabled(enabled: boolean): ConfigBuilder;
 
-	// Artistic presets
-	artistic_preset(preset: 'clean' | 'sketchy' | 'artistic' | 'expressive'): ConfigBuilder;
+  // Artistic presets
+  artistic_preset(
+    preset: "clean" | "sketchy" | "artistic" | "expressive",
+  ): ConfigBuilder;
 
-	// Performance settings
-	max_resolution(pixels: number): ConfigBuilder;
-	simd_enabled(enabled: boolean): ConfigBuilder;
+  // Performance settings
+  max_resolution(pixels: number): ConfigBuilder;
+  simd_enabled(enabled: boolean): ConfigBuilder;
 
-	// Edge detection parameters
-	canny_low_threshold(value: number): ConfigBuilder; // 0.0-1.0
-	canny_high_threshold(value: number): ConfigBuilder; // 0.0-1.0
-	gaussian_blur_sigma(value: number): ConfigBuilder; // 0.5-3.0
+  // Edge detection parameters
+  canny_low_threshold(value: number): ConfigBuilder; // 0.0-1.0
+  canny_high_threshold(value: number): ConfigBuilder; // 0.0-1.0
+  gaussian_blur_sigma(value: number): ConfigBuilder; // 0.5-3.0
 
-	// Build configuration
-	build(): Config;
+  // Build configuration
+  build(): Config;
 }
 ```
 
@@ -224,10 +233,10 @@ class ConfigBuilder {
 ```typescript
 // Main processing function
 function process_image_to_svg(
-	image_data: Uint8Array,
-	width: number,
-	height: number,
-	config: Config
+  image_data: Uint8Array,
+  width: number,
+  height: number,
+  config: Config,
 ): string;
 
 // Get processing statistics
@@ -241,12 +250,12 @@ function validate_config(config: Config): boolean;
 
 ```typescript
 interface ProcessingStats {
-	processing_time_ms: number;
-	input_resolution: string;
-	output_paths: number;
-	multipass_enabled: boolean;
-	hand_drawn_enabled: boolean;
-	backend_used: string;
+  processing_time_ms: number;
+  input_resolution: string;
+  output_paths: number;
+  multipass_enabled: boolean;
+  hand_drawn_enabled: boolean;
+  backend_used: string;
 }
 ```
 
@@ -260,11 +269,11 @@ Best for detailed line art, drawings, and sketches:
 
 ```javascript
 const config = new wasm.ConfigBuilder()
-	.backend('edge')
-	.multipass_enabled(true)
-	.canny_low_threshold(0.1)
-	.canny_high_threshold(0.3)
-	.build();
+  .backend("edge")
+  .multipass_enabled(true)
+  .canny_low_threshold(0.1)
+  .canny_high_threshold(0.3)
+  .build();
 ```
 
 #### Centerline Backend
@@ -272,7 +281,7 @@ const config = new wasm.ConfigBuilder()
 Best for bold shapes, logos, and high-contrast images:
 
 ```javascript
-const config = new wasm.ConfigBuilder().backend('centerline').build();
+const config = new wasm.ConfigBuilder().backend("centerline").build();
 ```
 
 #### Superpixel Backend
@@ -280,7 +289,7 @@ const config = new wasm.ConfigBuilder().backend('centerline').build();
 Best for stylized art and abstract representations:
 
 ```javascript
-const config = new wasm.ConfigBuilder().backend('superpixel').build();
+const config = new wasm.ConfigBuilder().backend("superpixel").build();
 ```
 
 #### Dots Backend
@@ -288,7 +297,7 @@ const config = new wasm.ConfigBuilder().backend('superpixel').build();
 Best for stippling and pointillism effects:
 
 ```javascript
-const config = new wasm.ConfigBuilder().backend('dots').build();
+const config = new wasm.ConfigBuilder().backend("dots").build();
 ```
 
 ### Artistic Presets
@@ -298,7 +307,7 @@ const config = new wasm.ConfigBuilder().backend('dots').build();
 Minimal artistic enhancement for technical drawings:
 
 ```javascript
-const config = new wasm.ConfigBuilder().artistic_preset('clean').build();
+const config = new wasm.ConfigBuilder().artistic_preset("clean").build();
 ```
 
 #### Sketchy
@@ -306,7 +315,7 @@ const config = new wasm.ConfigBuilder().artistic_preset('clean').build();
 Light hand-drawn feel with subtle tremor:
 
 ```javascript
-const config = new wasm.ConfigBuilder().artistic_preset('sketchy').build();
+const config = new wasm.ConfigBuilder().artistic_preset("sketchy").build();
 ```
 
 #### Artistic
@@ -314,7 +323,7 @@ const config = new wasm.ConfigBuilder().artistic_preset('sketchy').build();
 Balanced artistic enhancement:
 
 ```javascript
-const config = new wasm.ConfigBuilder().artistic_preset('artistic').build();
+const config = new wasm.ConfigBuilder().artistic_preset("artistic").build();
 ```
 
 #### Expressive
@@ -322,7 +331,7 @@ const config = new wasm.ConfigBuilder().artistic_preset('artistic').build();
 Maximum artistic enhancement:
 
 ```javascript
-const config = new wasm.ConfigBuilder().artistic_preset('expressive').build();
+const config = new wasm.ConfigBuilder().artistic_preset("expressive").build();
 ```
 
 ### Custom Configuration
@@ -331,20 +340,20 @@ Fine-tune all parameters:
 
 ```javascript
 const config = new wasm.ConfigBuilder()
-	.backend('edge')
-	.multipass_enabled(true)
-	.reverse_pass_enabled(true)
-	.diagonal_pass_enabled(false)
-	.hand_drawn_enabled(true)
-	.tremor_intensity(0.4)
-	.weight_variation(0.3)
-	.tapering_enabled(true)
-	.canny_low_threshold(0.1)
-	.canny_high_threshold(0.25)
-	.gaussian_blur_sigma(1.2)
-	.max_resolution(1920 * 1080)
-	.simd_enabled(true)
-	.build();
+  .backend("edge")
+  .multipass_enabled(true)
+  .reverse_pass_enabled(true)
+  .diagonal_pass_enabled(false)
+  .hand_drawn_enabled(true)
+  .tremor_intensity(0.4)
+  .weight_variation(0.3)
+  .tapering_enabled(true)
+  .canny_low_threshold(0.1)
+  .canny_high_threshold(0.25)
+  .gaussian_blur_sigma(1.2)
+  .max_resolution(1920 * 1080)
+  .simd_enabled(true)
+  .build();
 ```
 
 ## Performance Considerations
@@ -373,17 +382,17 @@ const fastConfig = new wasm.ConfigBuilder().multipass_enabled(false).build();
 
 // Balanced - standard + reverse pass
 const balancedConfig = new wasm.ConfigBuilder()
-	.multipass_enabled(true)
-	.reverse_pass_enabled(true)
-	.diagonal_pass_enabled(false)
-	.build();
+  .multipass_enabled(true)
+  .reverse_pass_enabled(true)
+  .diagonal_pass_enabled(false)
+  .build();
 
 // Highest quality - all passes
 const qualityConfig = new wasm.ConfigBuilder()
-	.multipass_enabled(true)
-	.reverse_pass_enabled(true)
-	.diagonal_pass_enabled(true)
-	.build();
+  .multipass_enabled(true)
+  .reverse_pass_enabled(true)
+  .diagonal_pass_enabled(true)
+  .build();
 ```
 
 ## Browser Compatibility
@@ -406,29 +415,33 @@ const qualityConfig = new wasm.ConfigBuilder()
 ```javascript
 // Check for WASM support
 const wasmSupported = (() => {
-	try {
-		if (typeof WebAssembly === 'object' && typeof WebAssembly.instantiate === 'function') {
-			const module = new WebAssembly.Module(
-				new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00])
-			);
-			return module instanceof WebAssembly.Module;
-		}
-	} catch (e) {}
-	return false;
+  try {
+    if (
+      typeof WebAssembly === "object" &&
+      typeof WebAssembly.instantiate === "function"
+    ) {
+      const module = new WebAssembly.Module(
+        new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]),
+      );
+      return module instanceof WebAssembly.Module;
+    }
+  } catch (e) {}
+  return false;
 })();
 
 // Check for SIMD support
 const simdSupported = (() => {
-	try {
-		return WebAssembly.validate(
-			new Uint8Array([
-				0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x05, 0x01, 0x60, 0x01, 0x7b, 0x00,
-				0x03, 0x02, 0x01, 0x00, 0x0a, 0x0a, 0x01, 0x08, 0x00, 0x20, 0x00, 0x1a, 0x0b
-			])
-		);
-	} catch (e) {
-		return false;
-	}
+  try {
+    return WebAssembly.validate(
+      new Uint8Array([
+        0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x05, 0x01, 0x60,
+        0x01, 0x7b, 0x00, 0x03, 0x02, 0x01, 0x00, 0x0a, 0x0a, 0x01, 0x08, 0x00,
+        0x20, 0x00, 0x1a, 0x0b,
+      ]),
+    );
+  } catch (e) {
+    return false;
+  }
 })();
 ```
 
@@ -436,18 +449,18 @@ const simdSupported = (() => {
 
 ```javascript
 try {
-	const config = new wasm.ConfigBuilder().backend('edge').build();
+  const config = new wasm.ConfigBuilder().backend("edge").build();
 
-	const svgResult = wasm.process_image_to_svg(imageData, width, height, config);
-	console.log('Processing successful');
+  const svgResult = wasm.process_image_to_svg(imageData, width, height, config);
+  console.log("Processing successful");
 } catch (error) {
-	if (error.message.includes('Invalid image dimensions')) {
-		console.error('Image dimensions are invalid');
-	} else if (error.message.includes('Processing timeout')) {
-		console.error('Processing took too long, try reducing image size');
-	} else {
-		console.error('Processing failed:', error.message);
-	}
+  if (error.message.includes("Invalid image dimensions")) {
+    console.error("Image dimensions are invalid");
+  } else if (error.message.includes("Processing timeout")) {
+    console.error("Processing took too long, try reducing image size");
+  } else {
+    console.error("Processing failed:", error.message);
+  }
 }
 ```
 
@@ -459,41 +472,46 @@ Process images in a Web Worker to avoid blocking the main thread:
 
 ```javascript
 // worker.js
-import * as wasm from './pkg/vectorize_wasm.js';
+import * as wasm from "./pkg/vectorize_wasm.js";
 
 self.onmessage = async function (e) {
-	const { imageData, width, height, configParams } = e.data;
+  const { imageData, width, height, configParams } = e.data;
 
-	try {
-		const config = new wasm.ConfigBuilder()
-			.backend(configParams.backend)
-			.multipass_enabled(configParams.multipass)
-			.build();
+  try {
+    const config = new wasm.ConfigBuilder()
+      .backend(configParams.backend)
+      .multipass_enabled(configParams.multipass)
+      .build();
 
-		const svgResult = wasm.process_image_to_svg(new Uint8Array(imageData), width, height, config);
+    const svgResult = wasm.process_image_to_svg(
+      new Uint8Array(imageData),
+      width,
+      height,
+      config,
+    );
 
-		self.postMessage({ success: true, svg: svgResult });
-	} catch (error) {
-		self.postMessage({ success: false, error: error.message });
-	}
+    self.postMessage({ success: true, svg: svgResult });
+  } catch (error) {
+    self.postMessage({ success: false, error: error.message });
+  }
 };
 
 // main.js
-const worker = new Worker('worker.js', { type: 'module' });
+const worker = new Worker("worker.js", { type: "module" });
 
 worker.postMessage({
-	imageData: imageData.data,
-	width: imageData.width,
-	height: imageData.height,
-	configParams: { backend: 'edge', multipass: true }
+  imageData: imageData.data,
+  width: imageData.width,
+  height: imageData.height,
+  configParams: { backend: "edge", multipass: true },
 });
 
 worker.onmessage = function (e) {
-	if (e.data.success) {
-		console.log('Processing complete:', e.data.svg);
-	} else {
-		console.error('Processing failed:', e.data.error);
-	}
+  if (e.data.success) {
+    console.log("Processing complete:", e.data.svg);
+  } else {
+    console.error("Processing failed:", e.data.error);
+  }
 };
 ```
 
@@ -501,33 +519,33 @@ worker.onmessage = function (e) {
 
 ```javascript
 async function processBatch(images, config) {
-	const results = [];
+  const results = [];
 
-	for (const imageData of images) {
-		try {
-			const svg = wasm.process_image_to_svg(
-				new Uint8Array(imageData.data),
-				imageData.width,
-				imageData.height,
-				config
-			);
+  for (const imageData of images) {
+    try {
+      const svg = wasm.process_image_to_svg(
+        new Uint8Array(imageData.data),
+        imageData.width,
+        imageData.height,
+        config,
+      );
 
-			const stats = wasm.get_last_processing_stats();
-			results.push({
-				success: true,
-				svg,
-				stats,
-				processingTime: stats.processing_time_ms
-			});
-		} catch (error) {
-			results.push({
-				success: false,
-				error: error.message
-			});
-		}
-	}
+      const stats = wasm.get_last_processing_stats();
+      results.push({
+        success: true,
+        svg,
+        stats,
+        processingTime: stats.processing_time_ms,
+      });
+    } catch (error) {
+      results.push({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
 
-	return results;
+  return results;
 }
 ```
 
@@ -600,13 +618,13 @@ Use the provided build scripts for automated building:
 ### Performance Debugging
 
 ```javascript
-console.time('wasm-processing');
+console.time("wasm-processing");
 
 const svg = wasm.process_image_to_svg(imageData, width, height, config);
 const stats = wasm.get_last_processing_stats();
 
-console.timeEnd('wasm-processing');
-console.log('Stats:', stats);
+console.timeEnd("wasm-processing");
+console.log("Stats:", stats);
 ```
 
 ## License

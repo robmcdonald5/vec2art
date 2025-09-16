@@ -12,12 +12,12 @@ import type {
 	WorkerResultMessage,
 	WorkerErrorMessage,
 	WorkerCapabilitiesMessage,
-	VectorizerConfig,
 	ProcessingResult,
 	ProcessingProgress,
 	VectorizerError,
 	WasmCapabilityReport
-} from '$lib/types/vectorizer';
+} from '$lib/workers/vectorizer.worker';
+import type { AlgorithmConfig } from '$lib/types/algorithm-configs';
 
 export class WorkerManager {
 	private static instance: WorkerManager | null = null;
@@ -116,7 +116,7 @@ export class WorkerManager {
 	 */
 	async processImage(
 		imageData: ImageData,
-		config: VectorizerConfig,
+		config: AlgorithmConfig,
 		onProgress?: (progress: ProcessingProgress) => void
 	): Promise<ProcessingResult> {
 		if (!this.worker) {

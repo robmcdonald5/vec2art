@@ -628,7 +628,7 @@
 								<div class="absolute inset-0">
 									<AdvancedSvgPreview
 										svgContent={currentResult.svg}
-										backend={currentResult.config_used?.backend || 'edge'}
+										backend={currentResult.config_used?.algorithm || 'edge'}
 										className="flex-1"
 										showControls={true}
 										{onDownload}

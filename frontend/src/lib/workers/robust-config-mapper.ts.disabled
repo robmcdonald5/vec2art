@@ -9,7 +9,7 @@
  * 5. Provides comprehensive validation and rollback
  */
 
-import type { VectorizerConfig } from '../types/vectorizer';
+import type { AlgorithmConfig as VectorizerConfig } from '../types/algorithm-configs';
 
 interface WasmVectorizer {
 	// Backend setting

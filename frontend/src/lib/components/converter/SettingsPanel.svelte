@@ -1,38 +1,30 @@
 <script lang="ts">
-	import { Settings, Sliders, ChevronDown, ChevronUp } from 'lucide-svelte';
-	import type { VectorizerConfig } from '$lib/stores/converter-settings.svelte';
+	import { Settings, Sliders, ChevronDown, ChevronUp, Eye, PenTool, Puzzle, Droplets } from 'lucide-svelte';
+	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 
-	// Legacy types for compatibility
-	type VectorizerBackend = 'edge' | 'dots' | 'superpixel' | 'centerline';
-	type VectorizerPreset = 'sketch' | 'technical' | 'artistic' | 'poster' | 'comic';
 	import BackendSelector from './BackendSelector.svelte';
-	import PresetSelector from './PresetSelector.svelte';
-	import ParameterPanel from './ParameterPanel.svelte';
-	import AdvancedControls from './AdvancedControls.svelte';
 	import PortalTooltipFixed from '$lib/components/ui/tooltip/PortalTooltipFixed.svelte';
 	import FerrariSlider from '$lib/components/ui/FerrariSlider.svelte';
 
+	// Import algorithm-specific parameter panels
+	import EdgeParameterPanel from './EdgeParameterPanel.svelte';
+	import CenterlineParameterPanel from './CenterlineParameterPanel.svelte';
+	import SuperpixelParameterPanel from './SuperpixelParameterPanel.svelte';
+	import DotsParameterPanel from './DotsParameterPanel.svelte';
+
 	interface Props {
-		config: VectorizerConfig;
-		selectedPreset: VectorizerPreset | 'custom';
 		disabled?: boolean;
-		onConfigChange: (_config: Partial<VectorizerConfig>) => void;
-		onPresetChange: (_presetValue: VectorizerPreset | 'custom') => void;
-		onBackendChange: (_backendValue: VectorizerBackend) => void;
-		onParameterChange: () => void;
 	}
 
-	let {
-		config,
-		disabled = false,
-		onConfigChange,
-		onBackendChange,
-		onParameterChange
-	}: Props = $props();
+	let { disabled = false }: Props = $props();
 
-	// UI state management
-	let isQuickSettingsExpanded = $state(true);
-	let isAdvancedSettingsExpanded = $state(false);
+	// Get current algorithm from store
+	const currentAlgorithm = $derived(algorithmConfigStore.currentAlgorithm);
+	const config = $derived(algorithmConfigStore.getConfig(currentAlgorithm));
+
+	// UI state management with persistence
+	let isQuickSettingsExpanded = $state(loadPanelState('isQuickSettingsExpanded', true));
+	let isAdvancedSettingsExpanded = $state(loadPanelState('isAdvancedSettingsExpanded', false));
 
 	// Check if we're on mobile
 	let isMobile = $state(false);
@@ -49,75 +41,82 @@
 		window.addEventListener('resize', checkMobile);
 	}
 
-	// Parameter update handler
-	function _updateConfig(key: keyof VectorizerConfig) {
-		return (event: Event) => {
-			const target = event.target as HTMLInputElement;
-			let value: any = target.value;
-
-			// Convert value based on input type
-			if (target.type === 'checkbox') {
-				value = target.checked;
-			} else if (target.type === 'range' || target.type === 'number') {
-				value = parseFloat(target.value);
-			}
-
-			onConfigChange({ [key]: value } as Partial<VectorizerConfig>);
-			onParameterChange();
-		};
+	// Handle algorithm change
+	function handleBackendChange(backend: string) {
+		algorithmConfigStore.setCurrentAlgorithm(backend as any);
 	}
 
-	// Legacy mapping functions removed - using direct StylePreset ID tracking instead
+	// Handle quick setting changes
+	function updateDetail(value: number) {
+		algorithmConfigStore.updateConfig(currentAlgorithm, { detail: value });
+	}
+
+	function updateStrokeWidth(value: number) {
+		algorithmConfigStore.updateConfig(currentAlgorithm, { strokeWidth: value });
+	}
+
+	function updatePreserveColors(value: boolean) {
+		algorithmConfigStore.updateConfig(currentAlgorithm, { preserveColors: value });
+	}
 
 	// Special handler for dots backend detail/density mapping
 	function updateDotDensity(value: number) {
-		const uiValue = value; // UI slider value (1 to 10, same as Advanced Settings)
-
-		// Apply the same mapping as Advanced Settings (1-10 to 0.4-0.02)
-		// This ensures both Quick and Advanced Settings are perfectly synced
+		const uiValue = value; // UI slider value (1 to 10)
 		const threshold = 0.4 - ((uiValue - 1) / 9) * (0.4 - 0.02);
-
-		console.log(
-			`🎯 Quick Settings Dot Density mapping (SYNC FIX): UI=${uiValue}/10 → threshold=${threshold.toFixed(3)}`
-		);
-
-		// Update both parameters for consistency (same as Advanced Settings)
-		// Convert back to detail scale (0.1-1.0) for consistency
 		const detailValue = uiValue / 10;
-		onConfigChange({
-			detail: detailValue, // Keep detail in sync for other logic
-			dot_density_threshold: threshold
+		algorithmConfigStore.updateConfig('dots', {
+			detail: detailValue,
+			dotDensity: uiValue
 		});
-		onParameterChange();
+	}
+
+	// Handle superpixel region count
+	function updateRegionCount(value: number) {
+		algorithmConfigStore.updateConfig('superpixel', { regionCount: value });
 	}
 
 	// Reactive values for FerrariSlider components
-	let detailValue = $state(
-		config.backend === 'dots' ? Math.round((config.detail || 0.5) * 10) : config.detail || 0.6
+	const detailValue = $derived(
+		currentAlgorithm === 'dots'
+			? ((config as any).dotDensity || Math.round((config.detail || 0.5) * 10))
+			: (config.detail || 0.6)
 	);
-	// eslint-disable-next-line svelte/prefer-writable-derived
-	let strokeWidthValue = $state(config.stroke_width || 2.0);
-	// eslint-disable-next-line svelte/prefer-writable-derived
-	let regionComplexityValue = $state(config.num_superpixels || 150);
 
-	// Update reactive values when config changes
-	$effect(() => {
-		if (config.backend === 'dots') {
-			// For dots backend, convert from detail (0.1-1.0) to UI scale (1-10) to match Advanced Settings
-			detailValue = Math.round((config.detail || 0.5) * 10);
-		} else {
-			// For other backends, use detail directly (0.1-1.0)
-			detailValue = config.detail || 0.6;
+	const strokeWidthValue = $derived(config.strokeWidth || 2.0);
+	const regionComplexityValue = $derived(
+		currentAlgorithm === 'superpixel' ? ((config as any).regionCount || (config as any).numSuperpixels || 150) : 150
+	);
+
+	// Panel state persistence functions
+	function loadPanelState(key: string, defaultValue: boolean): boolean {
+		if (typeof window === 'undefined') return defaultValue;
+		try {
+			const saved = localStorage.getItem(`vec2art-panel-${key}`);
+			return saved !== null ? JSON.parse(saved) : defaultValue;
+		} catch {
+			return defaultValue;
 		}
-	});
+	}
 
-	$effect(() => {
-		strokeWidthValue = config.stroke_width || 2.0;
-	});
+	function savePanelState(key: string, value: boolean): void {
+		if (typeof window === 'undefined') return;
+		try {
+			localStorage.setItem(`vec2art-panel-${key}`, JSON.stringify(value));
+		} catch (error) {
+			console.warn('Failed to save panel state:', error);
+		}
+	}
 
-	$effect(() => {
-		regionComplexityValue = config.num_superpixels || 150;
-	});
+	// Handler functions for panel toggles
+	function toggleQuickSettings() {
+		isQuickSettingsExpanded = !isQuickSettingsExpanded;
+		savePanelState('isQuickSettingsExpanded', isQuickSettingsExpanded);
+	}
+
+	function toggleAdvancedSettings() {
+		isAdvancedSettingsExpanded = !isAdvancedSettingsExpanded;
+		savePanelState('isAdvancedSettingsExpanded', isAdvancedSettingsExpanded);
+	}
 </script>
 
 <div class="w-full max-w-sm space-y-4 space-y-6 md:space-y-4">
@@ -130,7 +129,7 @@
 				? 'ring-ferrari-500 ring-2 ring-offset-2'
 				: ''}"
 			style="z-index: 5; position: relative;"
-			onclick={() => (isQuickSettingsExpanded = !isQuickSettingsExpanded)}
+			onclick={toggleQuickSettings}
 			type="button"
 			aria-expanded={isQuickSettingsExpanded}
 			aria-controls="quick-settings-content"
@@ -165,56 +164,22 @@
 						/>
 					</div>
 					<BackendSelector
-						selectedBackend={config.backend}
-						{onBackendChange}
+						selectedBackend={currentAlgorithm}
+						onBackendChange={handleBackendChange}
 						{disabled}
 						compact={true}
 					/>
 				</div>
 
-				<!-- Style Preset (Disabled - Coming Soon) - STANDARD+ ONLY -->
-				{#if !isMobile || settingsMode !== 'essential'}
-					<div>
-						<div class="mb-3 flex items-center gap-2">
-							<label
-								for="preset-selector"
-								class="text-converter-secondary block text-sm font-medium opacity-60"
-							>
-								Style Preset
-							</label>
-							<span
-								class="text-ferrari-600 bg-ferrari-50 border-ferrari-200 rounded-md border px-2 py-1 text-xs font-semibold"
-							>
-								COMING SOON
-							</span>
-							<PortalTooltipFixed
-								content="Advanced style presets are currently being refined and will be available in a future update. Use the manual parameter controls below for now."
-								position="right"
-								size="md"
-							/>
-						</div>
-						<div class="relative">
-							<PresetSelector
-								selectedPresetId={undefined}
-								onPresetSelect={() => {
-									// Disabled - no action
-								}}
-								disabled={true}
-								selectedAlgorithm={config.backend}
-							/>
-							<div class="absolute inset-0 cursor-not-allowed rounded-md bg-gray-100/50"></div>
-						</div>
-					</div>
-				{/if}
 
 				<!-- Essential Parameters - STANDARD+ LEVEL -->
 				{#if !isMobile || settingsMode !== 'essential'}
 					<div class="grid grid-cols-1 gap-6">
 						<!-- Detail Level (Edge/Centerline backends) OR Dot Density (Dots backend) -->
-						{#if config.backend !== 'superpixel'}
+						{#if currentAlgorithm !== 'superpixel'}
 							<div>
 								<div class="mb-2 flex items-center gap-2">
-									{#if config.backend === 'dots'}
+									{#if currentAlgorithm === 'dots'}
 										<label
 											for="detail-level-slider"
 											class="text-converter-primary block text-sm font-medium"
@@ -242,21 +207,22 @@
 								</div>
 								<FerrariSlider
 									id="detail-level-slider"
-									bind:value={detailValue}
-									min={config.backend === 'dots' ? 1 : 0.1}
-									max={config.backend === 'dots' ? 10 : 1}
-									step={config.backend === 'dots' ? 1 : 0.1}
-									oninput={config.backend === 'dots'
-										? updateDotDensity
-										: (value) => {
-												onConfigChange({ detail: value });
-												onParameterChange();
-											}}
+									value={detailValue}
+									min={currentAlgorithm === 'dots' ? 1 : 0.1}
+									max={currentAlgorithm === 'dots' ? 10 : 1}
+									step={currentAlgorithm === 'dots' ? 1 : 0.1}
+									oninput={(value) => {
+										if (currentAlgorithm === 'dots') {
+											updateDotDensity(value);
+										} else {
+											updateDetail(value);
+										}
+									}}
 									{disabled}
 									class="w-full"
 								/>
 								<div class="text-converter-secondary mt-1 flex justify-between text-xs">
-									{#if config.backend === 'dots'}
+									{#if currentAlgorithm === 'dots'}
 										<span>Sparse</span>
 										<span class="font-medium">{Math.round(detailValue)}/10</span>
 										<span>Dense</span>
@@ -270,7 +236,7 @@
 						{/if}
 
 						<!-- Region Complexity (Superpixel backend only) -->
-						{#if config.backend === 'superpixel'}
+						{#if currentAlgorithm === 'superpixel'}
 							<div>
 								<div class="mb-2 flex items-center gap-2">
 									<label
@@ -287,14 +253,11 @@
 								</div>
 								<FerrariSlider
 									id="region-complexity-slider"
-									bind:value={regionComplexityValue}
+									value={regionComplexityValue}
 									min={50}
 									max={500}
 									step={25}
-									oninput={(value) => {
-										onConfigChange({ num_superpixels: value });
-										onParameterChange();
-									}}
+									oninput={(value) => updateRegionCount(value)}
 									{disabled}
 									class="w-full"
 								/>
@@ -313,10 +276,10 @@
 									for="stroke-width-slider"
 									class="text-converter-primary block text-sm font-medium"
 								>
-									{config.backend === 'dots' ? 'Dot Width' : 'Line Width'}
+									{currentAlgorithm === 'dots' ? 'Dot Width' : 'Line Width'}
 								</label>
 								<PortalTooltipFixed
-									content={config.backend === 'dots'
+									content={currentAlgorithm === 'dots'
 										? 'Controls the size of dots in stippling output. Smaller dots create finer detail, while larger dots create bold effects.'
 										: 'Adjusts the thickness of traced lines in the SVG output. Thinner lines work better for detailed images, while thicker lines are good for bold, graphic styles.'}
 									position="top"
@@ -325,21 +288,18 @@
 							</div>
 							<FerrariSlider
 								id="stroke-width-slider"
-								bind:value={strokeWidthValue}
+								value={strokeWidthValue}
 								min={0.5}
 								max={10}
 								step={0.1}
-								oninput={(value) => {
-									onConfigChange({ stroke_width: value });
-									onParameterChange();
-								}}
+								oninput={(value) => updateStrokeWidth(value)}
 								{disabled}
 								class="w-full"
 							/>
 							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
-								<span>{config.backend === 'dots' ? 'Small' : 'Thin'}</span>
+								<span>{currentAlgorithm === 'dots' ? 'Small' : 'Thin'}</span>
 								<span class="font-medium">{strokeWidthValue.toFixed(1)}px</span>
-								<span>{config.backend === 'dots' ? 'Large' : 'Thick'}</span>
+								<span>{currentAlgorithm === 'dots' ? 'Large' : 'Thick'}</span>
 							</div>
 						</div>
 
@@ -351,9 +311,9 @@
 									class="text-converter-primary block text-sm font-medium">Color Mode</label
 								>
 								<PortalTooltipFixed
-									content={config.backend === 'edge' || config.backend === 'centerline'
+									content={currentAlgorithm === 'edge' || currentAlgorithm === 'centerline'
 										? 'Enable to preserve original image colors in line strokes. Disable for traditional black line art.'
-										: config.backend === 'superpixel'
+										: currentAlgorithm === 'superpixel'
 											? 'Enable to preserve original image colors in regions. Disable for monochrome grayscale output with enhanced contrast.'
 											: 'Enable to preserve original image colors in stippled dots. Disable for monochrome grayscale stippling with enhanced contrast.'}
 									position="top"
@@ -364,11 +324,10 @@
 								<input
 									type="checkbox"
 									id="preserve-colors-unified"
-									checked={config.preserve_colors ?? false}
+									checked={config.preserveColors ?? false}
 									onchange={(event) => {
 										const target = event.target as HTMLInputElement;
-										onConfigChange({ preserve_colors: target.checked });
-										onParameterChange();
+										updatePreserveColors(target.checked);
 									}}
 									{disabled}
 									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
@@ -396,7 +355,7 @@
 				? 'ring-ferrari-500 ring-2 ring-offset-2'
 				: ''}"
 			style="z-index: 5; position: relative;"
-			onclick={() => (isAdvancedSettingsExpanded = !isAdvancedSettingsExpanded)}
+			onclick={toggleAdvancedSettings}
 			type="button"
 			aria-expanded={isAdvancedSettingsExpanded}
 			aria-controls="advanced-settings-content"
@@ -418,11 +377,110 @@
 
 		{#if isAdvancedSettingsExpanded}
 			<div id="advanced-settings-content" class="space-y-6 bg-white/50 p-4 backdrop-blur-sm">
-				<!-- Parameter Panel -->
-				<ParameterPanel {config} {onConfigChange} {disabled} {onParameterChange} />
+				<!-- Unified Advanced Parameters with Ferrari Styling -->
 
-				<!-- Advanced Controls -->
-				<AdvancedControls {config} {onConfigChange} {disabled} {onParameterChange} />
+				<!-- Core Processing Parameters -->
+				<div class="space-y-4">
+					<div class="mb-4 flex items-center gap-2 border-b border-ferrari-200/30 pb-2">
+						<div class="bg-ferrari-100 rounded-md p-1.5">
+							<Settings class="text-ferrari-600 h-3.5 w-3.5" />
+						</div>
+						<h4 class="text-converter-primary text-sm font-semibold uppercase tracking-wide">Core Processing</h4>
+					</div>
+
+					<!-- Noise Filtering -->
+					{#if config.noiseFiltering !== undefined}
+						<div>
+							<div class="mb-2 flex items-center gap-2">
+								<label class="text-converter-primary block text-sm font-medium">Noise Filtering</label>
+								<PortalTooltipFixed
+									content="Enable noise reduction to clean up image artifacts and smooth noisy regions before processing."
+									position="top"
+									size="md"
+								/>
+							</div>
+							<div class="flex items-center space-x-3">
+								<input
+									type="checkbox"
+									checked={config.noiseFiltering ?? false}
+									onchange={(event) => {
+										const target = event.target as HTMLInputElement;
+										algorithmConfigStore.updateConfig(currentAlgorithm, { noiseFiltering: target.checked });
+									}}
+									{disabled}
+									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+								/>
+								<label class="text-converter-primary cursor-pointer text-sm">Enable Noise Reduction</label>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Background Removal -->
+					{#if config.enableBackgroundRemoval !== undefined}
+						<div>
+							<div class="mb-2 flex items-center gap-2">
+								<label class="text-converter-primary block text-sm font-medium">Background Removal</label>
+								<PortalTooltipFixed
+									content="Automatically detect and remove uniform backgrounds for cleaner line extraction."
+									position="top"
+									size="md"
+								/>
+							</div>
+							<div class="flex items-center space-x-3">
+								<input
+									type="checkbox"
+									checked={config.enableBackgroundRemoval ?? false}
+									onchange={(event) => {
+										const target = event.target as HTMLInputElement;
+										algorithmConfigStore.updateConfig(currentAlgorithm, { enableBackgroundRemoval: target.checked });
+									}}
+									{disabled}
+									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
+								/>
+								<label class="text-converter-primary cursor-pointer text-sm">Remove Background</label>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Background Removal Strength -->
+					{#if config.enableBackgroundRemoval && (config as any).backgroundRemovalStrength !== undefined}
+						<div>
+							<div class="mb-2 flex items-center gap-2">
+								<label class="text-converter-primary block text-sm font-medium">Background Removal Strength</label>
+								<PortalTooltipFixed
+									content="Controls how aggressively the background removal algorithm operates. Higher values remove more background but may affect foreground details."
+									position="top"
+									size="md"
+								/>
+							</div>
+							<FerrariSlider
+								value={(config as any).backgroundRemovalStrength || 0.5}
+								min={0}
+								max={1}
+								step={0.1}
+								oninput={(value) => algorithmConfigStore.updateConfig(currentAlgorithm, { backgroundRemovalStrength: value })}
+								{disabled}
+								class="w-full"
+							/>
+							<div class="text-converter-secondary mt-1 flex justify-between text-xs">
+								<span>Gentle</span>
+								<span class="font-medium">{Math.round(((config as any).backgroundRemovalStrength || 0.5) * 10)}/10</span>
+								<span>Aggressive</span>
+							</div>
+						</div>
+					{/if}
+				</div>
+
+				<!-- Algorithm-Specific Parameters -->
+				{#if currentAlgorithm === 'edge'}
+					<EdgeParameterPanel {disabled} />
+				{:else if currentAlgorithm === 'centerline'}
+					<CenterlineParameterPanel {disabled} />
+				{:else if currentAlgorithm === 'superpixel'}
+					<SuperpixelParameterPanel {disabled} />
+				{:else if currentAlgorithm === 'dots'}
+					<DotsParameterPanel {disabled} />
+				{/if}
 			</div>
 		{/if}
 	</div>

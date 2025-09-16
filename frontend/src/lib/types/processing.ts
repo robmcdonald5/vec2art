@@ -4,12 +4,12 @@
  * Shared type definitions for the processing queue system to avoid circular dependencies.
  */
 
-import type { VectorizerConfig } from './vectorizer';
+import type { AlgorithmConfig } from './algorithm-configs';
 
 export interface ProcessingJob {
 	id: string;
 	imageData: ImageData | ArrayBuffer;
-	config: VectorizerConfig;
+	config: AlgorithmConfig;
 	priority: 'low' | 'normal' | 'high';
 	status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
 	progress?: number;

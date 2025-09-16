@@ -1,7 +1,7 @@
-import type { VectorizerConfig } from '$lib/types/vectorizer';
+import type { AlgorithmConfig } from '$lib/types/algorithm-configs';
 
 export interface HistoryEntry {
-	config: VectorizerConfig;
+	config: AlgorithmConfig;
 	timestamp: Date;
 	description: string;
 }
@@ -29,7 +29,7 @@ class ParameterHistory {
 	}
 
 	// Add new entry to history
-	push(config: VectorizerConfig, description: string = 'Parameter change') {
+	push(config: AlgorithmConfig, description: string = 'Parameter change') {
 		// Use JSON parse/stringify for deep clone to avoid structuredClone issues
 		const entry: HistoryEntry = {
 			config: JSON.parse(JSON.stringify(config)), // Deep clone to prevent mutations
@@ -54,7 +54,7 @@ class ParameterHistory {
 	}
 
 	// Undo to previous state
-	undo(): VectorizerConfig | null {
+	undo(): AlgorithmConfig | null {
 		if (!this.canUndo) return null;
 
 		this.currentIndex--;
@@ -62,7 +62,7 @@ class ParameterHistory {
 	}
 
 	// Redo to next state
-	redo(): VectorizerConfig | null {
+	redo(): AlgorithmConfig | null {
 		if (!this.canRedo) return null;
 
 		this.currentIndex++;
@@ -81,7 +81,7 @@ class ParameterHistory {
 	}
 
 	// Initialize with initial config
-	initialize(config: VectorizerConfig) {
+	initialize(config: AlgorithmConfig) {
 		this.clear();
 		this.push(config, 'Initial configuration');
 	}

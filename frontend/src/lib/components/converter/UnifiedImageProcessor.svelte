@@ -16,7 +16,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { ProgressBar } from '$lib/components/ui/progress-bar';
 	import ErrorState from '$lib/components/ui/ErrorState.svelte';
-	import type { ProcessingProgress, ProcessingResult } from '$lib/types/vectorizer';
+	import type { ProcessingProgress, ProcessingResult } from '$lib/workers/vectorizer.worker';
 	import {
 		createManagedObjectURL,
 		releaseManagedObjectURL

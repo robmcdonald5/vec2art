@@ -1,11 +1,1 @@
-# Generated WASM files (large binaries)
-*.wasm
-vectorize_wasm_bg.wasm.d.ts
-
-# Generated build artifacts
-__wbindgen_placeholder__.js
-snippets/
-
-# Build metadata that changes frequently
-package.json
-README.md
+*

@@ -13,6 +13,9 @@
 // This addresses GPT's analysis of "dev OK, Vercel broken" worker pattern
 import init, * as wasmModule from '../wasm/vectorize_wasm.js';
 
+// Import vectorizer configuration types
+import type { AlgorithmConfig } from '../types/algorithm-configs';
+
 // Early logging to confirm worker execution
 console.log('[Worker] 🚀 WASM Worker starting up with STATIC imports...');
 console.log('[Worker] ✅ All imports loaded successfully');
@@ -42,14 +45,14 @@ self.addEventListener('unhandledrejection', (event) => {
  */
 interface WorkerMessage {
 	id: string;
-	type: 'init' | 'process' | 'capabilities' | 'cleanup';
+	type: 'init' | 'process' | 'capabilities' | 'cleanup' | 'abort';
 	payload?: {
 		imageData?: {
 			data: number[];
 			width: number;
 			height: number;
 		};
-		config?: any;
+		config?: AlgorithmConfig;
 		preferGpu?: boolean;
 	};
 	// Legacy direct properties for backward compatibility
@@ -58,8 +61,9 @@ interface WorkerMessage {
 		width: number;
 		height: number;
 	};
-	config?: any;
+	config?: AlgorithmConfig;
 }
+
 
 interface WorkerResponse {
 	id: string;
@@ -101,7 +105,7 @@ async function initializeWasm(): Promise<void> {
 /**
  * Process image using WASM
  */
-async function processImage(imageData: ImageData, config: any): Promise<any> {
+async function processImage(imageData: ImageData, config: AlgorithmConfig): Promise<any> {
 	if (!wasmInitialized) {
 		await initializeWasm();
 	}
@@ -116,43 +120,149 @@ async function processImage(imageData: ImageData, config: any): Promise<any> {
 		// Create WASM vectorizer
 		const vectorizer = new wasmModule.WasmVectorizer();
 
-		// CRITICAL FIX: Apply the config to the vectorizer before processing
-		// This was the missing piece causing settings to be ignored
-		console.log('[Worker] 🔧 Applying config to vectorizer:', config);
+		// Log available methods on the vectorizer for debugging
+		console.log('[Worker] 📋 Available vectorizer methods:',
+			Object.getOwnPropertyNames(Object.getPrototypeOf(vectorizer))
+				.filter(name => typeof (vectorizer as any)[name] === 'function')
+		);
 
-		// Apply backend
-		if (config.backend) {
-			vectorizer.set_backend(config.backend);
+		// Apply AlgorithmConfig directly to WASM (new unified system)
+		console.log('[Worker] 🔧 Applying AlgorithmConfig to WASM:', config);
+
+		// Debug: Log vectorizer config values
+		console.log('[Worker] 🔍 Vectorizer config values:', {
+			algorithm: config.algorithm,
+			preserveColors: config.preserveColors,
+			strokeWidth: config.strokeWidth,
+			detail: config.detail
+		});
+
+		// Apply backend using vectorizer config
+		vectorizer.set_backend(config.algorithm);
+
+		// Apply core settings using vectorizer config
+		vectorizer.set_detail(config.detail);
+		vectorizer.set_stroke_width(config.strokeWidth);
+
+		// Apply color settings
+		try {
+			if (typeof vectorizer.set_preserve_colors === 'function') {
+				vectorizer.set_preserve_colors(config.preserveColors || false);
+			} else {
+				console.error('[Worker] ❌ set_preserve_colors method does not exist on vectorizer');
+			}
+		} catch (error) {
+			console.error('[Worker] ❌ Error calling set_preserve_colors:', error);
 		}
 
-		// Apply core settings
-		if (config.detail !== undefined) {
-			vectorizer.set_detail(config.detail);
-		}
-		if (config.stroke_width !== undefined) {
-			vectorizer.set_stroke_width(config.stroke_width);
-		}
-		if (config.noise_filtering !== undefined) {
-			vectorizer.set_noise_filtering(config.noise_filtering);
+		// Apply backend-specific settings based on backend type
+		if (config.algorithm === 'edge') {
+			// Edge-specific settings
+			if (config.passCount !== undefined) {
+				vectorizer.set_multipass(config.passCount > 1);
+			}
+			if (config.passCount !== undefined && config.passCount > 0) {
+				vectorizer.set_pass_count(config.passCount);
+			}
+			if (config.enableReversePass !== undefined) {
+				vectorizer.set_reverse_pass(config.enableReversePass);
+			}
+			if (config.enableDiagonalPass !== undefined) {
+				vectorizer.set_diagonal_pass(config.enableDiagonalPass);
+			}
+
+			// Apply hand-drawn settings (Edge-specific)
+			if (config.handDrawnPreset !== undefined) {
+				try {
+					// When custom values are set, the preset should be "custom"
+					// but the WASM doesn't have individual setters for tremor/weights/tapering
+					if (
+						(config.handDrawnVariableWeights !== undefined && config.handDrawnVariableWeights > 0) ||
+						(config.handDrawnTremorStrength !== undefined && config.handDrawnTremorStrength > 0) ||
+						(config.handDrawnTapering !== undefined && config.handDrawnTapering > 0)
+					) {
+						console.log('[Worker] ✏️ Setting hand_drawn_preset: custom (with custom values)');
+						if (typeof vectorizer.set_hand_drawn_preset === 'function') {
+							vectorizer.set_hand_drawn_preset('custom');
+						} else {
+							console.error('[Worker] ❌ set_hand_drawn_preset method does not exist');
+						}
+					} else {
+						console.log('[Worker] ✏️ Setting hand_drawn_preset:', config.handDrawnPreset);
+						if (typeof vectorizer.set_hand_drawn_preset === 'function') {
+							vectorizer.set_hand_drawn_preset(config.handDrawnPreset);
+						} else {
+							console.error('[Worker] ❌ set_hand_drawn_preset method does not exist');
+						}
+					}
+				} catch (error) {
+					console.error('[Worker] ❌ Error setting hand_drawn_preset:', error);
+				}
+			}
+
+			// Apply Background removal settings (Edge config only)
+			if (config.backgroundRemovalStrength !== undefined) {
+				console.log('[Worker] 🗑️ Setting background_removal_strength:', config.backgroundRemovalStrength);
+				try {
+					if (typeof vectorizer.set_background_removal_strength === 'function') {
+						vectorizer.set_background_removal_strength(config.backgroundRemovalStrength);
+					} else {
+						console.error('[Worker] ❌ set_background_removal_strength method does not exist');
+					}
+				} catch (error) {
+					console.error('[Worker] ❌ Error calling set_background_removal_strength:', error);
+				}
+			}
 		}
 
-		// Apply multipass settings
-		if (config.multipass !== undefined) {
-			vectorizer.set_multipass(config.multipass);
-		}
-		if (config.pass_count !== undefined && config.pass_count > 0) {
-			vectorizer.set_pass_count(config.pass_count);
-		}
-		if (config.reverse_pass !== undefined) {
-			vectorizer.set_reverse_pass(config.reverse_pass);
-		}
-		if (config.diagonal_pass !== undefined) {
-			vectorizer.set_diagonal_pass(config.diagonal_pass);
+		// Apply Centerline backend specific settings
+		if (config.algorithm === 'centerline') {
+			if (config.enableAdaptiveThreshold !== undefined) {
+				console.log('[Worker] 📐 Setting enable_adaptive_threshold:', config.enableAdaptiveThreshold);
+				vectorizer.set_enable_adaptive_threshold(config.enableAdaptiveThreshold);
+			}
+			if (config.adaptiveThresholdWindowSize !== undefined) {
+				console.log('[Worker] 📐 Setting window_size:', config.adaptiveThresholdWindowSize);
+				vectorizer.set_window_size(config.adaptiveThresholdWindowSize);
+			}
+			if (config.adaptiveThresholdK !== undefined) {
+				console.log('[Worker] 📐 Setting sensitivity_k:', config.adaptiveThresholdK);
+				vectorizer.set_sensitivity_k(config.adaptiveThresholdK);
+			}
 		}
 
-		// Apply hand-drawn settings
-		if (config.hand_drawn_preset !== undefined) {
-			vectorizer.set_hand_drawn_preset(config.hand_drawn_preset);
+		// Apply Superpixel backend specific settings
+		if (config.algorithm === 'superpixel') {
+			if (config.numSuperpixels !== undefined) {
+				console.log('[Worker] 🎨 Setting num_superpixels:', config.numSuperpixels);
+				vectorizer.set_num_superpixels(config.numSuperpixels);
+			}
+			if (config.compactness !== undefined) {
+				console.log('[Worker] 🎨 Setting compactness:', config.compactness);
+				vectorizer.set_compactness(config.compactness);
+			}
+			if (config.iterations !== undefined) {
+				console.log('[Worker] 🎨 Setting slic_iterations:', config.iterations);
+				vectorizer.set_slic_iterations(config.iterations);
+			}
+		}
+
+		// Apply Dots backend specific settings
+		if (config.algorithm === 'dots') {
+			if (config.minRadius !== undefined || config.maxRadius !== undefined) {
+				const minRadius = config.minRadius ?? 0.5;
+				const maxRadius = config.maxRadius ?? 3.0;
+				console.log('[Worker] 🔵 Setting dot_size_range:', minRadius, maxRadius);
+				try {
+					if (typeof vectorizer.set_dot_size_range === 'function') {
+						vectorizer.set_dot_size_range(minRadius, maxRadius);
+					} else {
+						console.error('[Worker] ❌ set_dot_size_range method does not exist');
+					}
+				} catch (error) {
+					console.error('[Worker] ❌ Error calling set_dot_size_range:', error);
+				}
+			}
 		}
 
 		console.log('[Worker] ✅ Config applied to vectorizer, starting processing...');
@@ -226,20 +336,19 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 				const { imageData, config } = event.data.payload || event.data;
 
 				// DEBUG: Log the config being received to check if settings are passed correctly
-				console.log('[Worker] 🔍 [SETTINGS DEBUG] Received config:', {
+				console.log('[Worker] 🔍 [SETTINGS DEBUG] Received AlgorithmConfig:', {
 					hasConfig: !!config,
-					backend: config?.backend,
+					algorithm: config?.algorithm,
 					detail: config?.detail,
-					stroke_width: config?.stroke_width,
-					noise_filtering: config?.noise_filtering,
-					multipass: config?.multipass,
-					pass_count: config?.pass_count,
-					hand_drawn_preset: config?.hand_drawn_preset
+					strokeWidth: config?.strokeWidth
 				});
 
 				if (!imageData || !config) {
 					throw new Error('Missing image data or config');
 				}
+
+				// Use AlgorithmConfig directly (new unified system)
+				const wasmConfig = config;
 
 				// Reconstruct ImageData from serialized data
 				const reconstructedImageData = new ImageData(
@@ -248,7 +357,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 					imageData.height
 				);
 
-				const result = await processImage(reconstructedImageData, config);
+				const result = await processImage(reconstructedImageData, wasmConfig);
 				self.postMessage({
 					id,
 					type: 'result',
@@ -276,6 +385,19 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 					type: 'result',
 					data: {
 						cleaned: true
+					}
+				} as WorkerResponse);
+				break;
+			}
+
+			case 'abort': {
+				console.log('[Worker] 🛑 Received abort request');
+				// Acknowledge abort request
+				self.postMessage({
+					id,
+					type: 'result',
+					data: {
+						aborted: true
 					}
 				} as WorkerResponse);
 				break;

@@ -379,26 +379,9 @@
 				console.log('🔧 Vectorizer instance not created yet, triggering lazy initialization...');
 
 				// Trigger vectorizer creation by running a minimal configuration
-				await store.vectorizerService.configure({
-					backend: 'edge',
-					detail: 0.4,
-					stroke_width: 1.0,
-					noise_filtering: true,
-					multipass: true,
-					pass_count: 2,
-					multipass_mode: 'auto',
-					hand_drawn_preset: 'none',
-					// Required boolean fields
-					reverse_pass: false,
-					diagonal_pass: false,
-					enable_etf_fdog: false,
-					enable_flow_tracing: false,
-					enable_bezier_fitting: false,
-					// Required numeric fields
-					variable_weights: 0.0,
-					tremor_strength: 0.0,
-					tapering: 0.0
-				});
+				const { algorithmConfigStore } = await import('$lib/stores/algorithm-config-store.svelte');
+				const defaultConfig = algorithmConfigStore.getConfig('edge');
+				await store.vectorizerService.configure(defaultConfig);
 
 				wasmModule = store.vectorizerService.getVectorizerInstance();
 
@@ -563,26 +546,9 @@
 
 		if (!wasmModule) {
 			console.log('🔧 Creating vectorizer instance for function testing...');
-			await store.vectorizerService.configure({
-				backend: 'edge',
-				detail: 0.4,
-				stroke_width: 1.0,
-				noise_filtering: true,
-				multipass: true,
-				pass_count: 2,
-				multipass_mode: 'auto',
-				hand_drawn_preset: 'none',
-				// Required boolean fields
-				reverse_pass: false,
-				diagonal_pass: false,
-				enable_etf_fdog: false,
-				enable_flow_tracing: false,
-				enable_bezier_fitting: false,
-				// Required numeric fields
-				variable_weights: 0.0,
-				tremor_strength: 0.0,
-				tapering: 0.0
-			});
+			const { algorithmConfigStore } = await import('$lib/stores/algorithm-config-store.svelte');
+			const defaultConfig = algorithmConfigStore.getConfig('edge');
+			await store.vectorizerService.configure(defaultConfig);
 			wasmModule = store.vectorizerService.getVectorizerInstance();
 		}
 

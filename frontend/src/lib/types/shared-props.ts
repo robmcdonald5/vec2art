@@ -3,11 +3,22 @@
  * Eliminates duplication across component Props interfaces
  */
 
-import type { ProcessingProgress, ProcessingResult } from './vectorizer';
-import type { FileMetadata } from '$lib/stores/converter-persistence';
-import type { VectorizerConfig, VectorizerPreset } from './vectorizer';
+import type { ProcessingProgress, ProcessingResult } from '$lib/workers/vectorizer.worker';
+import type { AlgorithmConfig } from './algorithm-configs';
 import type { SettingsSyncMode } from './settings-sync';
 import type { PerformanceMode } from '../utils/performance-monitor';
+
+// Define missing types
+export interface FileMetadata {
+	name: string;
+	size: number;
+	type: string;
+	lastModified: number;
+	dimensions?: { width: number; height: number };
+}
+
+export type VectorizerConfig = AlgorithmConfig;
+export type VectorizerPreset = 'detailed' | 'balanced' | 'simple' | 'minimal';
 
 // File/Image Data - used across converter components
 export interface FileDataProps {

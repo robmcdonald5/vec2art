@@ -5,8 +5,7 @@
  * and advanced optimization. Delivers 3x throughput improvement over Phase 2.
  */
 
-import type { VectorizerConfig } from './converter-settings.svelte';
-import type { ConverterWasmStore } from './converter-wasm.svelte';
+import type { AlgorithmConfig } from '$lib/types/algorithm-configs';
 
 // Phase 3 Performance Optimizations
 import { BatchOptimizer, type ProcessingBatch } from '$lib/utils/batch-optimizer';
@@ -14,6 +13,7 @@ import { globalImagePool, type PooledImageData } from '$lib/utils/image-pool';
 
 // Import shared processing types
 import type { ProcessingJob, ProcessingQueueState, ProcessingStats } from '$lib/types/processing';
+import { WasmWorkerService } from '$lib/services/wasm-worker-service';
 
 interface QueueState {
 	// Job management
@@ -53,7 +53,7 @@ export class ProcessingQueueStore {
 		averageProcessingTime: 0
 	});
 
-	private wasmStore: ConverterWasmStore | null = null;
+	private wasmWorkerService: WasmWorkerService | null = null;
 	private processInterval: number | null = null;
 	private cleanupInterval: number | null = null;
 
@@ -75,20 +75,20 @@ export class ProcessingQueueStore {
 	}
 
 	/**
-	 * Initialize with WASM store reference
+	 * Initialize with WASM worker service reference
 	 */
-	initialize(wasmStore: ConverterWasmStore): void {
-		this.wasmStore = wasmStore;
+	initialize(wasmWorkerService: WasmWorkerService): void {
+		this.wasmWorkerService = wasmWorkerService;
 
 		// Update concurrency based on available threads
-		if (wasmStore.capabilities?.hardware_concurrency) {
+		if (wasmWorkerService.capabilities?.hardware_concurrency) {
 			// Use half the available threads for queue processing
 			this._state.maxConcurrency = Math.max(
 				1,
-				Math.floor(wasmStore.capabilities.hardware_concurrency / 2)
+				Math.floor(wasmWorkerService.capabilities.hardware_concurrency / 2)
 			);
 			console.log(
-				`[ProcessingQueue] Set concurrency to ${this._state.maxConcurrency} based on ${wasmStore.capabilities.hardware_concurrency} threads`
+				`[ProcessingQueue] Set concurrency to ${this._state.maxConcurrency} based on ${wasmWorkerService.capabilities.hardware_concurrency} threads`
 			);
 		}
 	}
@@ -125,7 +125,7 @@ export class ProcessingQueueStore {
 	 */
 	async addJob(
 		imageData: ImageData | ArrayBuffer,
-		config: VectorizerConfig,
+		config: AlgorithmConfig,
 		priority: 'low' | 'normal' | 'high' = 'normal'
 	): Promise<string> {
 		if (!this.canAcceptJobs) {
@@ -138,7 +138,7 @@ export class ProcessingQueueStore {
 		const job: ProcessingJob = {
 			id: crypto.randomUUID(),
 			imageData: optimizedImageData,
-			config,
+			config: config,
 			priority,
 			status: 'queued',
 			createdAt: Date.now(),
@@ -265,14 +265,14 @@ export class ProcessingQueueStore {
 			const batchData = batch.jobs.map((job) => ({
 				imageData: job.imageData as ImageData,
 				config: job.config,
-				jobType: job.config.backend || 'edge'
+				jobType: job.config.algorithm || 'edge'
 			}));
 
-			const results = await this.wasmStore!.processBatchOptimized(
+			const results = await this.wasmWorkerService!.processBatchOptimized(
 				batchData,
-				(overallProgress, individualProgress) => {
+				(overallProgress: number, individualProgress: number[]) => {
 					// Update individual job progress
-					individualProgress.forEach((progress, index) => {
+					individualProgress.forEach((progress: number, index: number) => {
 						if (index < batch.jobs.length) {
 							batch.jobs[index].progress = Math.round(progress);
 						}
@@ -281,7 +281,7 @@ export class ProcessingQueueStore {
 			);
 
 			// Process results and complete jobs
-			results.forEach((result, index) => {
+			results.forEach((result: any, index: number) => {
 				const job = batch.jobs[index];
 				if (result.error) {
 					this.completeJob(job, result.error);
@@ -397,11 +397,11 @@ export class ProcessingQueueStore {
 			console.log(`[ProcessingQueue] Processing job ${job.id}`);
 
 			// Phase 3.3: Use optimized WASM processing with SharedArrayBuffer and thread affinity
-			const jobType = job.config.backend || 'edge';
-			const result = await this.wasmStore.processImageOptimized(
+			const jobType = job.config.algorithm || 'edge';
+			const result = await this.wasmWorkerService.processImageOptimized(
 				job.imageData as ImageData,
 				job.config,
-				(progress) => {
+				(progress: number) => {
 					// Update job progress
 					job.progress = Math.round(progress);
 				},

@@ -3,20 +3,90 @@
  * Handles image processing without blocking the UI
  */
 
-import type {
-	WorkerMessageType,
-	WorkerInitMessage,
-	WorkerProcessMessage,
-	WorkerProgressMessage,
-	WorkerResultMessage,
-	WorkerErrorMessage,
-	WorkerCapabilitiesMessage,
-	VectorizerError,
-	ProcessingProgress,
-	VectorizerConfig,
-	ProcessingResult,
-	WasmCapabilityReport
-} from '../types/vectorizer';
+import type { AlgorithmConfig } from '../types/algorithm-configs';
+
+// Worker message types (simplified for new system)
+export interface WorkerInitMessage {
+	id: string;
+	type: 'init';
+}
+
+export interface WorkerProcessMessage {
+	id: string;
+	type: 'process';
+	config: AlgorithmConfig;
+	image_data: ImageData;
+}
+
+export interface WorkerProgressMessage {
+	id: string;
+	type: 'progress';
+	progress: ProcessingProgress;
+}
+
+export interface WorkerResultMessage {
+	id: string;
+	type: 'result';
+	result: ProcessingResult;
+}
+
+export interface WorkerErrorMessage {
+	id: string;
+	type: 'error';
+	error: VectorizerError;
+}
+
+export interface WorkerCapabilitiesMessage {
+	id: string;
+	type: 'capabilities';
+	capabilities: WasmCapabilityReport;
+}
+
+export type WorkerMessageType = WorkerInitMessage | WorkerProcessMessage | WorkerProgressMessage | WorkerResultMessage | WorkerErrorMessage | WorkerCapabilitiesMessage;
+
+export interface ProcessingProgress {
+	stage: string;
+	progress: number; // 0-100
+	elapsed_ms: number;
+	estimated_remaining_ms?: number;
+}
+
+export interface ProcessingResult {
+	svg: string;
+	processing_time_ms: number;
+	config_used: AlgorithmConfig;
+	statistics?: {
+		input_dimensions: [number, number];
+		paths_generated: number;
+		dots_generated?: number;
+		compression_ratio: number;
+	};
+}
+
+export interface VectorizerError {
+	type: 'unknown' | 'processing' | 'validation';
+	message: string;
+	details?: string;
+}
+
+export interface WasmCapabilityReport {
+	threading_supported: boolean;
+	shared_array_buffer: boolean;
+	cross_origin_isolated: boolean;
+	web_workers: boolean;
+	proper_headers: boolean;
+	environment_type: string;
+	is_node_js: boolean;
+	atomics_supported: boolean;
+	webgpu_supported: boolean;
+	webgl2_supported: boolean;
+	gpu_backend: string;
+	missing_requirements: string[];
+	diagnostics: any[];
+	shared_array_buffer_available: boolean;
+	hardware_concurrency: number;
+	recommendations: string[];
+}
 
 // Dynamic import type for WASM module - will be imported at runtime
 // @ts-ignore - WASM module types
@@ -191,98 +261,127 @@ class VectorizerWorker {
 		}
 	}
 
-	private configureVectorizer(config: VectorizerConfig): void {
+	private configureVectorizer(config: AlgorithmConfig): void {
 		if (!this.vectorizer) {
 			throw new Error('Vectorizer not initialized');
 		}
 
-		// Apply preset if specified
-		if (config.preset) {
-			this.vectorizer.use_preset(config.preset);
+		// NEW OPTIMIZED APPROACH: Use batch configuration API
+		// This reduces WASM boundary crossings from 20+ to 1
+		try {
+			// Convert directly to JSON format expected by WASM
+			// The AlgorithmConfig already uses camelCase as expected by apply_config_json
+			const configJson = JSON.stringify(config);
+
+			// Single WASM call instead of 20+ individual setter calls
+			console.log('[VectorizerWorker] Applying batch configuration with single WASM call');
+			const startTime = performance.now();
+
+			this.vectorizer.apply_config_json(configJson);
+
+			const endTime = performance.now();
+			console.log(
+				`[VectorizerWorker] Configuration applied in ${(endTime - startTime).toFixed(2)}ms`
+			);
+
+			// Optional: Validate the configuration was applied correctly
+			const validation = this.vectorizer.validate_config();
+			if (validation && validation.includes('warnings')) {
+				console.warn('[VectorizerWorker] Configuration warnings:', validation);
+			}
+		} catch (error) {
+			console.error('[VectorizerWorker] Failed to apply batch configuration:', error);
+
+			// Fallback to legacy individual setter approach if batch fails
+			console.warn('[VectorizerWorker] Falling back to individual setter methods');
+			this.configureVectorizerLegacy(config);
+		}
+	}
+
+	// Keep legacy method as fallback for compatibility
+	private configureVectorizerLegacy(config: AlgorithmConfig): void {
+		// Apply preset if specified through hand-drawn preset (only for edge and centerline)
+		if ((config.algorithm === 'edge' || config.algorithm === 'centerline') &&
+		    'handDrawnPreset' in config && config.handDrawnPreset !== 'none') {
+			this.vectorizer.use_preset(config.handDrawnPreset);
 		}
 
 		// Configure backend
-		this.vectorizer.set_backend(config.backend);
+		this.vectorizer.set_backend(config.algorithm);
 
 		// Configure core settings
-		this.vectorizer.set_detail(config.detail);
-		this.vectorizer.set_stroke_width(config.stroke_width);
+		this.vectorizer.set_detail(config.detail || 0.5);
+		this.vectorizer.set_stroke_width(config.strokeWidth || 1.2);
 
-		// Configure multi-pass processing
-		this.vectorizer.set_multipass(config.multipass);
-		this.vectorizer.set_noise_filtering(config.noise_filtering);
-		this.vectorizer.set_reverse_pass(config.reverse_pass);
-		this.vectorizer.set_diagonal_pass(config.diagonal_pass);
-
-		// Configure artistic effects
-		if (config.hand_drawn_preset) {
-			this.vectorizer.set_hand_drawn_preset(config.hand_drawn_preset);
+		// Configure multi-pass processing (Edge/Centerline specific)
+		if ('enableMultipass' in config) {
+			this.vectorizer.set_multipass(config.enableMultipass || false);
 		}
-		if (config.variable_weights) {
-			this.vectorizer.set_custom_variable_weights(config.variable_weights);
+		if ('noiseFiltering' in config) {
+			this.vectorizer.set_noise_filtering(config.noiseFiltering || false);
 		}
-		if (config.tremor_strength) {
-			this.vectorizer.set_custom_tremor(config.tremor_strength);
+		if ('enableReversePass' in config) {
+			this.vectorizer.set_reverse_pass(config.enableReversePass || false);
 		}
-		if (config.tapering) {
-			this.vectorizer.set_custom_tapering(config.tapering);
+		if ('enableDiagonalPass' in config) {
+			this.vectorizer.set_diagonal_pass(config.enableDiagonalPass || false);
 		}
 
-		this.vectorizer.set_enable_etf_fdog(config.enable_etf_fdog);
-		this.vectorizer.set_enable_flow_tracing(config.enable_flow_tracing);
-		this.vectorizer.set_enable_bezier_fitting(config.enable_bezier_fitting);
+		// Configure artistic effects (only for edge and centerline)
+		if ((config.algorithm === 'edge' || config.algorithm === 'centerline') &&
+		    'handDrawnPreset' in config && config.handDrawnPreset) {
+			this.vectorizer.set_hand_drawn_preset(config.handDrawnPreset);
+		}
+		if ('handDrawnVariableWeights' in config) {
+			this.vectorizer.set_custom_variable_weights(config.handDrawnVariableWeights || 0);
+		}
+		if ('handDrawnTremorStrength' in config) {
+			this.vectorizer.set_custom_tremor(config.handDrawnTremorStrength || 0);
+		}
+		if ('handDrawnTapering' in config) {
+			this.vectorizer.set_custom_tapering(config.handDrawnTapering || 0);
+		}
+
+		// Configure advanced features (Edge specific)
+		if ('enableEtfFdog' in config) {
+			this.vectorizer.set_enable_etf_fdog(config.enableEtfFdog || false);
+		}
+		if ('enableFlowTracing' in config) {
+			this.vectorizer.set_enable_flow_tracing(config.enableFlowTracing || false);
+		}
+		if ('enableBezierFitting' in config) {
+			this.vectorizer.set_enable_bezier_fitting(config.enableBezierFitting || false);
+		}
 
 		// Configure background removal preprocessing
-		if (config.enable_background_removal !== undefined) {
-			console.log(
-				`[VectorizerWorker] Setting background removal: ${config.enable_background_removal}`
-			);
-			this.vectorizer.enable_background_removal(config.enable_background_removal);
+		if ('enableBackgroundRemoval' in config && config.enableBackgroundRemoval !== undefined) {
+			this.vectorizer.enable_background_removal(config.enableBackgroundRemoval);
 		}
-		if (config.background_removal_strength !== undefined) {
-			console.log(
-				`[VectorizerWorker] Setting background removal strength: ${config.background_removal_strength}`
-			);
-			this.vectorizer.set_background_removal_strength(config.background_removal_strength);
+		if ('backgroundRemovalStrength' in config && config.backgroundRemovalStrength !== undefined) {
+			this.vectorizer.set_background_removal_strength(config.backgroundRemovalStrength);
 		}
-		if (config.background_removal_algorithm !== undefined) {
-			console.log(
-				`[VectorizerWorker] Setting background removal algorithm: ${config.background_removal_algorithm}`
-			);
-			this.vectorizer.set_background_removal_algorithm(config.background_removal_algorithm);
-		}
-		if (config.background_removal_threshold !== undefined) {
-			console.log(
-				`[VectorizerWorker] Setting background removal threshold: ${config.background_removal_threshold}`
-			);
-			this.vectorizer.set_background_removal_threshold(config.background_removal_threshold);
+		if ('backgroundRemovalAlgorithm' in config && config.backgroundRemovalAlgorithm !== undefined) {
+			this.vectorizer.set_background_removal_algorithm(config.backgroundRemovalAlgorithm);
 		}
 
 		// Configure dots-specific settings
-		if (config.backend === 'dots') {
-			if (config.dot_density !== undefined) {
-				this.vectorizer.set_dot_density(config.dot_density);
+		if (config.algorithm === 'dots') {
+			const dotsConfig = config as any; // Type assertion for dots-specific properties
+			if (dotsConfig.dotDensityThreshold !== undefined) {
+				this.vectorizer.set_dot_density(dotsConfig.dotDensityThreshold);
 			}
-			if (config.dot_size_range) {
-				this.vectorizer.set_dot_size_range(config.dot_size_range[0], config.dot_size_range[1]);
+			if (dotsConfig.dotMinRadius !== undefined && dotsConfig.dotMaxRadius !== undefined) {
+				this.vectorizer.set_dot_size_range(dotsConfig.dotMinRadius, dotsConfig.dotMaxRadius);
 			}
-			if (config.preserve_colors !== undefined) {
-				this.vectorizer.set_preserve_colors(config.preserve_colors);
+			if (dotsConfig.dotPreserveColors !== undefined) {
+				this.vectorizer.set_preserve_colors(dotsConfig.dotPreserveColors);
 			}
-			if (config.adaptive_sizing !== undefined) {
-				this.vectorizer.set_adaptive_sizing(config.adaptive_sizing);
+			if (dotsConfig.dotAdaptiveSizing !== undefined) {
+				this.vectorizer.set_adaptive_sizing(dotsConfig.dotAdaptiveSizing);
 			}
-			if (config.background_tolerance !== undefined) {
-				this.vectorizer.set_background_tolerance(config.background_tolerance);
+			if (dotsConfig.dotBackgroundTolerance !== undefined) {
+				this.vectorizer.set_background_tolerance(dotsConfig.dotBackgroundTolerance);
 			}
-		}
-
-		// Configure performance settings
-		if (config.max_processing_time_ms !== undefined) {
-			this.vectorizer.set_max_processing_time_ms(BigInt(config.max_processing_time_ms));
-		}
-		if (config.thread_count !== undefined) {
-			this.vectorizer.set_thread_count(config.thread_count);
 		}
 
 		// Validate configuration
@@ -340,7 +439,7 @@ class VectorizerWorker {
 			};
 
 			// Add dots count for dots backend
-			if (message.config.backend === 'dots') {
+			if (message.config.algorithm === 'dots') {
 				result.statistics!.dots_generated = this.countSvgDots(svg);
 			}
 

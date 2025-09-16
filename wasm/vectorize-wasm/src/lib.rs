@@ -991,11 +991,11 @@ impl WasmVectorizer {
 
                 // Check background removal configuration
                 if config.enable_background_removal {
-                    info.push(format!("Background removal enabled: {:?} algorithm, strength: {}", 
+                    info.push(format!("Background removal enabled: {:?} algorithm, strength: {}",
                         config.background_removal_algorithm, config.background_removal_strength));
-                    
+
                     if config.background_removal_strength < 0.0 || config.background_removal_strength > 1.0 {
-                        warnings.push(format!("Background removal strength {} outside valid range 0.0-1.0", 
+                        warnings.push(format!("Background removal strength {} outside valid range 0.0-1.0",
                             config.background_removal_strength));
                     }
                 } else {
@@ -1044,6 +1044,274 @@ impl WasmVectorizer {
                 error_msg
             }
         }
+    }
+
+    // ===== BATCH CONFIGURATION API =====
+    // These methods provide efficient batch configuration updates to minimize WASM boundary crossings
+
+    /// Apply a complete configuration from JSON in a single call
+    /// This is the most efficient way to configure the vectorizer, reducing 20+ individual
+    /// setter calls to a single boundary crossing.
+    #[wasm_bindgen]
+    pub fn apply_config_json(&mut self, config_json: &str) -> Result<(), JsValue> {
+        log::info!("🚀 WASM: apply_config_json called with {} bytes of JSON", config_json.len());
+
+        // Parse the JSON configuration
+        let config: serde_json::Value = serde_json::from_str(config_json)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse configuration JSON: {}", e)))?;
+
+        // Create a fresh ConfigBuilder to avoid state issues
+        let mut builder = ConfigBuilder::new();
+
+        // Apply backend first if present
+        if let Some(backend) = config.get("backend").and_then(|v| v.as_str()) {
+            builder = builder.backend(match backend.to_lowercase().as_str() {
+                "edge" => TraceBackend::Edge,
+                "centerline" => TraceBackend::Centerline,
+                "superpixel" => TraceBackend::Superpixel,
+                "dots" => TraceBackend::Dots,
+                _ => return Err(JsValue::from_str(&format!("Unknown backend: {}", backend)))
+            });
+            self.backend = match backend.to_lowercase().as_str() {
+                "edge" => TraceBackend::Edge,
+                "centerline" => TraceBackend::Centerline,
+                "superpixel" => TraceBackend::Superpixel,
+                "dots" => TraceBackend::Dots,
+                _ => TraceBackend::Edge,
+            };
+        }
+
+        // Apply core parameters
+        if let Some(detail) = config.get("detail").and_then(|v| v.as_f64()) {
+            builder = builder.detail(detail as f32)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set detail: {}", e)))?;
+        }
+
+        if let Some(stroke_width) = config.get("strokeWidth").and_then(|v| v.as_f64()) {
+            builder = builder.stroke_width(stroke_width as f32)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set stroke width: {}", e)))?;
+        }
+
+        // Apply multipass settings
+        if let Some(enable_multipass) = config.get("enableMultipass").and_then(|v| v.as_bool()) {
+            builder = builder.multipass(enable_multipass);
+        }
+
+        if let Some(pass_count) = config.get("passCount").and_then(|v| v.as_u64()) {
+            builder = builder.pass_count(pass_count as u32)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set pass count: {}", e)))?;
+        }
+
+        // Apply edge-specific parameters
+        if let Some(enable_reverse) = config.get("enableReversePass").and_then(|v| v.as_bool()) {
+            builder = builder.reverse_pass(enable_reverse);
+        }
+
+        if let Some(enable_diagonal) = config.get("enableDiagonalPass").and_then(|v| v.as_bool()) {
+            builder = builder.diagonal_pass(enable_diagonal);
+        }
+
+        // Apply dots-specific parameters
+        if let Some(dot_density) = config.get("dotDensityThreshold").and_then(|v| v.as_f64()) {
+            builder = builder.dot_density(dot_density as f32)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set dot density: {}", e)))?;
+        }
+
+        if let Some(min_radius) = config.get("dotMinRadius").and_then(|v| v.as_f64()) {
+            if let Some(max_radius) = config.get("dotMaxRadius").and_then(|v| v.as_f64()) {
+                builder = builder.dot_size_range(min_radius as f32, max_radius as f32)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to set dot size range: {}", e)))?;
+            }
+        }
+
+        // Apply centerline-specific parameters
+        if let Some(enable_adaptive) = config.get("enableAdaptiveThreshold").and_then(|v| v.as_bool()) {
+            builder = builder.enable_adaptive_threshold(enable_adaptive);
+        }
+
+        if let Some(window_size) = config.get("adaptiveThresholdWindowSize").and_then(|v| v.as_u64()) {
+            builder = builder.window_size(window_size as u32)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set window size: {}", e)))?;
+        }
+
+        // Apply superpixel-specific parameters
+        if let Some(num_superpixels) = config.get("numSuperpixels").and_then(|v| v.as_u64()) {
+            builder = builder.num_superpixels(num_superpixels as u32)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set num superpixels: {}", e)))?;
+        }
+
+        if let Some(compactness) = config.get("superpixelCompactness").and_then(|v| v.as_f64()) {
+            builder = builder.compactness(compactness as f32)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set compactness: {}", e)))?;
+        }
+
+        // Apply background removal settings
+        if let Some(enable_bg_removal) = config.get("enableBackgroundRemoval").and_then(|v| v.as_bool()) {
+            builder = builder.background_removal(enable_bg_removal);
+        }
+
+        if let Some(bg_strength) = config.get("backgroundRemovalStrength").and_then(|v| v.as_f64()) {
+            builder = builder.background_removal_strength(bg_strength as f32)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set background removal strength: {}", e)))?;
+        }
+
+        // Apply hand-drawn effects
+        if let Some(preset) = config.get("handDrawnPreset").and_then(|v| v.as_str()) {
+            builder = builder.hand_drawn_preset(preset)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set hand-drawn preset: {}", e)))?;
+        }
+
+        // Store the new config builder
+        self.config_builder = builder;
+
+        log::info!("✅ WASM: Configuration applied successfully from JSON");
+        Ok(())
+    }
+
+    /// Validate a configuration JSON without applying it
+    /// Returns a JSON string with validation results
+    #[wasm_bindgen]
+    pub fn validate_config_json(&self, config_json: &str) -> Result<String, JsValue> {
+        log::info!("🔍 WASM: validate_config_json called");
+
+        // Parse the JSON to validate structure
+        let config: serde_json::Value = serde_json::from_str(config_json)
+            .map_err(|e| JsValue::from_str(&format!("Invalid JSON: {}", e)))?;
+
+        let mut validation = serde_json::json!({
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "info": []
+        });
+
+        // Validate backend
+        if let Some(backend) = config.get("backend").and_then(|v| v.as_str()) {
+            if !["edge", "centerline", "superpixel", "dots"].contains(&backend.to_lowercase().as_str()) {
+                validation["valid"] = serde_json::json!(false);
+                validation["errors"].as_array_mut().unwrap().push(
+                    serde_json::json!(format!("Invalid backend: {}", backend))
+                );
+            }
+        }
+
+        // Validate detail range
+        if let Some(detail) = config.get("detail").and_then(|v| v.as_f64()) {
+            if detail < 0.0 || detail > 1.0 {
+                validation["warnings"].as_array_mut().unwrap().push(
+                    serde_json::json!(format!("Detail {} outside range [0.0, 1.0]", detail))
+                );
+            }
+        }
+
+        // Validate stroke width
+        if let Some(stroke) = config.get("strokeWidth").and_then(|v| v.as_f64()) {
+            if stroke <= 0.0 || stroke > 10.0 {
+                validation["warnings"].as_array_mut().unwrap().push(
+                    serde_json::json!(format!("Stroke width {} outside recommended range (0, 10]", stroke))
+                );
+            }
+        }
+
+        Ok(serde_json::to_string(&validation).unwrap())
+    }
+
+    /// Get default configuration JSON for a specific backend
+    /// Returns a JSON string with all default parameters for the specified backend
+    #[wasm_bindgen]
+    pub fn get_default_config_json(&self, backend: &str) -> Result<String, JsValue> {
+        log::info!("📋 WASM: get_default_config_json called for backend: {}", backend);
+
+        let backend_enum = match backend.to_lowercase().as_str() {
+            "edge" => TraceBackend::Edge,
+            "centerline" => TraceBackend::Centerline,
+            "superpixel" => TraceBackend::Superpixel,
+            "dots" => TraceBackend::Dots,
+            _ => return Err(JsValue::from_str(&format!("Unknown backend: {}", backend)))
+        };
+
+        // Build default configuration for the backend
+        let config = ConfigBuilder::new()
+            .backend(backend_enum)
+            .build()
+            .map_err(|e| JsValue::from_str(&format!("Failed to build default config: {}", e)))?;
+
+        // Convert to JSON with camelCase field names for frontend compatibility
+        let config_json = serde_json::json!({
+            "backend": backend,
+            "detail": config.detail,
+            "strokeWidth": config.stroke_px_at_1080p,
+            "enableMultipass": config.enable_multipass,
+            "passCount": config.pass_count,
+            "enableReversePass": config.enable_reverse_pass,
+            "enableDiagonalPass": config.enable_diagonal_pass,
+            "noiseFiltering": config.noise_filtering,
+            "enableBackgroundRemoval": config.enable_background_removal,
+            "backgroundRemovalStrength": config.background_removal_strength,
+
+            // Backend-specific defaults
+            "dotDensityThreshold": config.dot_density_threshold,
+            "dotMinRadius": config.dot_min_radius,
+            "dotMaxRadius": config.dot_max_radius,
+            "dotAdaptiveSizing": config.dot_adaptive_sizing,
+
+            "enableAdaptiveThreshold": config.enable_adaptive_threshold,
+            "adaptiveThresholdWindowSize": config.adaptive_threshold_window_size,
+            "adaptiveThresholdK": config.adaptive_threshold_k,
+
+            "numSuperpixels": config.num_superpixels,
+            "superpixelCompactness": config.superpixel_compactness,
+            "superpixelFillRegions": config.superpixel_fill_regions,
+            "superpixelStrokeRegions": config.superpixel_stroke_regions,
+        });
+
+        Ok(serde_json::to_string(&config_json).unwrap())
+    }
+
+    /// Get current configuration as JSON
+    /// Returns the current configuration state as a JSON string
+    #[wasm_bindgen]
+    pub fn get_current_config_json(&self) -> Result<String, JsValue> {
+        log::info!("📋 WASM: get_current_config_json called");
+
+        let config = self.config_builder.clone().build()
+            .map_err(|e| JsValue::from_str(&format!("Failed to build current config: {}", e)))?;
+
+        // Convert to JSON with camelCase field names
+        let config_json = serde_json::json!({
+            "backend": match config.backend {
+                TraceBackend::Edge => "edge",
+                TraceBackend::Centerline => "centerline",
+                TraceBackend::Superpixel => "superpixel",
+                TraceBackend::Dots => "dots",
+            },
+            "detail": config.detail,
+            "strokeWidth": config.stroke_px_at_1080p,
+            "enableMultipass": config.enable_multipass,
+            "passCount": config.pass_count,
+            "enableReversePass": config.enable_reverse_pass,
+            "enableDiagonalPass": config.enable_diagonal_pass,
+            "noiseFiltering": config.noise_filtering,
+            "enableBackgroundRemoval": config.enable_background_removal,
+            "backgroundRemovalStrength": config.background_removal_strength,
+
+            // Include all backend-specific parameters
+            "dotDensityThreshold": config.dot_density_threshold,
+            "dotMinRadius": config.dot_min_radius,
+            "dotMaxRadius": config.dot_max_radius,
+            "dotAdaptiveSizing": config.dot_adaptive_sizing,
+
+            "enableAdaptiveThreshold": config.enable_adaptive_threshold,
+            "adaptiveThresholdWindowSize": config.adaptive_threshold_window_size,
+            "adaptiveThresholdK": config.adaptive_threshold_k,
+
+            "numSuperpixels": config.num_superpixels,
+            "superpixelCompactness": config.superpixel_compactness,
+            "superpixelFillRegions": config.superpixel_fill_regions,
+            "superpixelStrokeRegions": config.superpixel_stroke_regions,
+        });
+
+        Ok(serde_json::to_string(&config_json).unwrap())
     }
 }
 

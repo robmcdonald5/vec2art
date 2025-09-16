@@ -273,6 +273,9 @@ export interface VectorizerConfiguration {
 	svgPrecision: number;
 	maxProcessingTime?: number;
 
+	// Color settings
+	preserveColors?: boolean;
+
 	// Hand-drawn aesthetics
 	handDrawnPreset?: 'none' | 'subtle' | 'medium' | 'strong' | 'sketchy';
 	customTremor?: number;

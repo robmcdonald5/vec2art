@@ -7,11 +7,12 @@
  */
 
 import { browser } from '$app/environment';
-import type { VectorizerError, ProcessingResult, ProcessingProgress } from '$lib/types/vectorizer';
+import type { VectorizerError, ProcessingResult, ProcessingProgress } from '$lib/workers/vectorizer.worker';
+import type { AlgorithmConfig } from '$lib/types/algorithm-configs';
 
-// Import the other stores for coordination
-import { converterWasm } from './converter-wasm.svelte';
-import { converterSettings } from './converter-settings.svelte';
+// Import the algorithm config store
+import { algorithmConfigStore } from './algorithm-config-store.svelte';
+import { WasmWorkerService } from '$lib/services/wasm-worker-service';
 
 interface ProcessingState {
 	is_processing: boolean;
@@ -34,6 +35,18 @@ interface ErrorState {
 }
 
 export class ConverterStateStore {
+	// WASM worker service
+	private wasmWorkerService = WasmWorkerService.getInstance();
+
+	constructor() {
+		// Load saved image state on initialization (browser only)
+		if (browser) {
+			this.loadSavedImageState().catch(error => {
+				console.warn('[ConverterStateStore] Failed to load saved image state during initialization:', error);
+			});
+		}
+	}
+
 	// Core processing state
 	private _processingState = $state<ProcessingState>({
 		is_processing: false,
@@ -144,6 +157,9 @@ export class ConverterStateStore {
 			const imageData = await this.fileToImageData(file);
 			this._imageState.input_image = imageData;
 
+			// Save to localStorage for persistence
+			await this.saveImageState();
+
 			console.log(
 				`[ConverterStateStore] Set input file: ${file.name} (${imageData.width}x${imageData.height})`
 			);
@@ -170,6 +186,9 @@ export class ConverterStateStore {
 		this._imageState.current_image_index = 0;
 		this.clearError();
 
+		// Save to localStorage for persistence
+		this.saveImageState();
+
 		console.log(`[ConverterStateStore] Set input image: ${imageData.width}x${imageData.height}`);
 	}
 
@@ -182,25 +201,53 @@ export class ConverterStateStore {
 			this._imageState.input_files = files;
 			this._imageState.current_image_index = 0;
 
-			// Convert all files to ImageData
+			// Convert all files to ImageData - continue on individual failures for restored files
 			const imageDataArray: ImageData[] = [];
-			for (const file of files) {
-				const imageData = await this.fileToImageData(file);
-				imageDataArray.push(imageData);
+			const successfulFiles: File[] = [];
+			const failedFiles: string[] = [];
+
+			for (let i = 0; i < files.length; i++) {
+				const file = files[i];
+				try {
+					const imageData = await this.fileToImageData(file);
+					imageDataArray.push(imageData);
+					successfulFiles.push(file);
+				} catch (error) {
+					console.error(`Failed to load file ${file.name}:`, error);
+					failedFiles.push(file.name);
+
+					// For restored files that fail, skip them instead of failing entire batch
+					console.warn(`Skipping failed file ${file.name} - continuing with remaining files`);
+				}
 			}
 
+			// If ALL files failed, throw error
+			if (imageDataArray.length === 0 && files.length > 0) {
+				const fileList = failedFiles.join(', ');
+				throw new Error(`Failed to load any image files. Failed files: ${fileList}. Please re-upload your images.`);
+			}
+
+			// Update state with successful files only
+			this._imageState.input_files = successfulFiles;
 			this._imageState.input_images = imageDataArray;
 
 			// Set current single-image state to first image for backward compatibility
-			if (files.length > 0) {
-				this._imageState.input_file = files[0];
+			if (successfulFiles.length > 0) {
+				this._imageState.input_file = successfulFiles[0];
 				this._imageState.input_image = imageDataArray[0];
 			}
 
 			// Clear batch results when new files are set
 			this._processingState.batch_results = [];
 
-			console.log(`[ConverterStateStore] Set ${files.length} input files for batch processing`);
+			// Save to localStorage for persistence
+			await this.saveImageState();
+
+			// Log results
+			if (failedFiles.length > 0) {
+				console.warn(`[ConverterStateStore] ${failedFiles.length} file(s) failed to load and were skipped: ${failedFiles.join(', ')}`);
+			}
+			console.log(`[ConverterStateStore] Set ${successfulFiles.length} input files for batch processing (${failedFiles.length} skipped)`);
 		} catch (error) {
 			const filesError = {
 				type: 'processing' as const,
@@ -240,6 +287,9 @@ export class ConverterStateStore {
 		this._processingState.batch_results = [];
 		this.clearError();
 
+		// Clear saved state from localStorage
+		this.clearSavedImageState();
+
 		console.log('[ConverterStateStore] Cleared all input images');
 	}
 
@@ -262,28 +312,14 @@ export class ConverterStateStore {
 	 * CRITICAL: Coordinates with WASM and Settings stores
 	 */
 	async processImage(): Promise<ProcessingResult> {
-		// Check WASM initialization
-		if (!converterWasm.isInitialized) {
-			throw new Error('Vectorizer not initialized');
-		}
-
 		// Check input image
 		if (!this._imageState.input_image) {
 			throw new Error('No input image set');
 		}
 
-		// Get and validate configuration from settings store
-		const config = converterSettings.config;
-		const validation = converterSettings.validateConfig();
-		if (!validation.isValid) {
-			const configError: VectorizerError = {
-				type: 'config',
-				message: 'Configuration validation failed',
-				details: validation.errors.join('. ')
-			};
-			this.setError(configError);
-			throw configError;
-		}
+		// Get configuration from algorithm config store
+		const config = algorithmConfigStore.getConfig(algorithmConfigStore.currentAlgorithm);
+		// Note: Algorithm config store provides validated configuration
 
 		let processingTimeoutId: NodeJS.Timeout | null = null;
 		let isAborted = false;
@@ -295,12 +331,12 @@ export class ConverterStateStore {
 
 			console.log('[ConverterStateStore] Starting image processing...', {
 				dimensions: `${this._imageState.input_image.width}x${this._imageState.input_image.height}`,
-				backend: config.backend,
+				algorithm: config.algorithm,
 				detail: config.detail
 			});
 
-			// Set up processing timeout with cleanup
-			const timeoutMs = config.max_processing_time_ms || 30000;
+			// Set up processing timeout with cleanup (separate from algorithm config)
+			const timeoutMs = 60000; // Default 60 seconds timeout
 			processingTimeoutId = setTimeout(() => {
 				isAborted = true;
 				console.log(`[ConverterStateStore] Processing timeout after ${timeoutMs}ms, aborting...`);
@@ -308,7 +344,7 @@ export class ConverterStateStore {
 			}, timeoutMs);
 
 			// Use the WASM service through the WASM store
-			const result = await converterWasm.vectorizerService.processImage(
+			const result = await this.wasmWorkerService.processImage(
 				this._imageState.input_image,
 				config,
 				(progress) => {
@@ -366,27 +402,16 @@ export class ConverterStateStore {
 		onProgress?: (imageIndex: number, totalImages: number, progress: ProcessingProgress) => void
 	): Promise<ProcessingResult[]> {
 		// Check WASM initialization
-		if (!converterWasm.isInitialized) {
-			throw new Error('Vectorizer not initialized');
-		}
+		// WASM worker service handles initialization internally
 
 		const images = this._imageState.input_images;
 		if (!images || images.length === 0) {
 			throw new Error('No input images set');
 		}
 
-		// Get and validate configuration from settings store
-		const config = converterSettings.config;
-		const validation = converterSettings.validateConfig();
-		if (!validation.isValid) {
-			const configError: VectorizerError = {
-				type: 'config',
-				message: 'Configuration validation failed',
-				details: validation.errors.join('. ')
-			};
-			this.setError(configError);
-			throw configError;
-		}
+		// Get configuration from unified config store
+		const config = algorithmConfigStore.getConfig(algorithmConfigStore.currentAlgorithm);
+		// Note: Unified config uses Zod validation internally, no separate validation needed
 
 		let batchTimeoutId: NodeJS.Timeout | null = null;
 		let isAborted = false;
@@ -400,10 +425,10 @@ export class ConverterStateStore {
 			console.log(`[ConverterStateStore] Starting batch processing of ${images.length} images...`);
 
 			// Set up batch processing timeout (longer than single image)
-			const singleImageTimeoutMs = config.max_processing_time_ms || 30000;
-			// Use much longer timeout for complex backends (dots, superpixel) that may need more time
+			const singleImageTimeoutMs = 60000; // Default 60 seconds per image
+			// Use much longer timeout for complex algorithms (dots, superpixel) that may need more time
 			const backendMultiplier =
-				config.backend === 'dots' || config.backend === 'superpixel' ? 10 : 3;
+				config.algorithm === 'dots' || config.algorithm === 'superpixel' ? 10 : 3;
 			const batchTimeoutMs = Math.max(
 				singleImageTimeoutMs * images.length * backendMultiplier,
 				300000
@@ -442,15 +467,14 @@ export class ConverterStateStore {
 					// Update progress to show optimization notice
 					this._processingState.current_progress = {
 						progress: 0,
-						stage: 'initialization' as const,
-						elapsed_ms: 0,
-						message: `Optimizing ${megapixels.toFixed(1)}MP image for processing...`
+						stage: `Optimizing ${megapixels.toFixed(1)}MP image for processing...`,
+						elapsed_ms: 0
 					};
 					onProgress?.(i, images.length, this._processingState.current_progress!);
 				}
 
 				try {
-					const result = await converterWasm.vectorizerService.processImage(
+					const result = await this.wasmWorkerService.processImage(
 						imageData,
 						config,
 						(progress) => {
@@ -539,12 +563,12 @@ export class ConverterStateStore {
 		console.error('[ConverterStateStore] Error:', error);
 
 		// Auto-clear certain types of errors after a delay
-		if (error.type === 'config') {
+		if (error.type === 'validation') {
 			setTimeout(() => {
 				if (this._errorState.error === error) {
 					this.clearError();
 				}
-			}, 3000); // Clear config errors after 3 seconds
+			}, 3000); // Clear validation errors after 3 seconds
 		}
 	}
 
@@ -564,11 +588,8 @@ export class ConverterStateStore {
 		if (!err) return '';
 
 		const baseMessages: Record<VectorizerError['type'], string> = {
-			config: 'Configuration error. Please check your settings and try again.',
+			validation: 'Configuration error. Please check your settings and try again.',
 			processing: 'Processing failed. The image might be too complex or corrupted.',
-			memory:
-				'Not enough memory to process this image. Try a smaller image or reduce quality settings.',
-			threading: 'Multi-threading setup failed. Processing will continue in single-threaded mode.',
 			unknown: 'An unexpected error occurred. Please try again.'
 		};
 
@@ -600,16 +621,16 @@ export class ConverterStateStore {
 				suggestions.push('Use a simpler algorithm like "centerline"');
 				break;
 
-			case 'memory':
-				suggestions.push('Reduce image size before uploading');
-				suggestions.push('Lower quality settings');
-				suggestions.push('Close other browser tabs to free memory');
+			case 'validation':
+				suggestions.push('Check your parameter settings');
+				suggestions.push('Try using a preset configuration');
+				suggestions.push('Reset to default settings');
 				break;
 
-			case 'config':
-			case 'threading':
 			case 'unknown':
-				// These are handled by other stores
+				suggestions.push('Try refreshing the page');
+				suggestions.push('Check your internet connection');
+				suggestions.push('Clear browser cache if the problem persists');
 				break;
 		}
 
@@ -662,7 +683,7 @@ export class ConverterStateStore {
 		this._processingState.current_progress = undefined;
 
 		// Call WASM service abort through the WASM store
-		converterWasm.vectorizerService.abortProcessing();
+		this.wasmWorkerService.abort();
 
 		// Set error state
 		this.setError({
@@ -700,7 +721,7 @@ export class ConverterStateStore {
 			this.reset();
 
 			// Abort vectorizer service processing (this handles the Web Worker internally)
-			converterWasm.vectorizerService.abortProcessing();
+			this.wasmWorkerService.abort();
 
 			// Also force reset the worker service queue for thorough cleanup
 			const { wasmWorkerService } = await import('$lib/services/wasm-worker-service');
@@ -725,7 +746,7 @@ export class ConverterStateStore {
 		this.clearError();
 
 		// Determine what to retry based on current state
-		if (this._imageState.input_image && converterWasm.isInitialized) {
+		if (this._imageState.input_image) {
 			// Retry processing
 			await this.processImage();
 		}
@@ -753,9 +774,24 @@ export class ConverterStateStore {
 				return;
 			}
 
+			// Create object URL from file
 			const objectUrl = URL.createObjectURL(file);
 
+			// Add debug logging to help diagnose issues
+			console.log('[fileToImageData] Processing file:', {
+				name: file.name,
+				type: file.type,
+				size: file.size,
+				objectUrl: objectUrl
+			});
+
 			img.onload = () => {
+				console.log('[fileToImageData] Image loaded successfully:', {
+					width: img.width,
+					height: img.height,
+					name: file.name
+				});
+
 				canvas.width = img.width;
 				canvas.height = img.height;
 				ctx.drawImage(img, 0, 0);
@@ -763,22 +799,75 @@ export class ConverterStateStore {
 				try {
 					const imageData = ctx.getImageData(0, 0, img.width, img.height);
 					URL.revokeObjectURL(objectUrl); // Clean up
+					console.log('[fileToImageData] ImageData created successfully');
 					resolve(imageData);
 				} catch (error) {
 					URL.revokeObjectURL(objectUrl); // Clean up
+					console.error('[fileToImageData] Failed to get image data:', error);
 					reject(error);
 				}
 			};
 
-			img.onerror = () => {
+			img.onerror = (event) => {
 				URL.revokeObjectURL(objectUrl); // Clean up
-				reject(
-					new Error(
-						`Failed to load image: ${file.name}. Please ensure it's a valid JPG, PNG, WebP, TIFF, BMP, or GIF file.`
-					)
-				);
+				console.error('[fileToImageData] Image load error:', {
+					file: file.name,
+					type: file.type,
+					size: file.size,
+					event: event
+				});
+
+				// Try alternative approach for restored files
+				console.log('[fileToImageData] Attempting fallback with FileReader...');
+				const reader = new FileReader();
+
+				reader.onload = (e) => {
+					const dataUrl = e.target?.result as string;
+					if (!dataUrl) {
+						reject(new Error(`Failed to read file: ${file.name}`));
+						return;
+					}
+
+					// Try loading from data URL
+					const img2 = new Image();
+					img2.onload = () => {
+						console.log('[fileToImageData] Fallback successful, image loaded from FileReader');
+						canvas.width = img2.width;
+						canvas.height = img2.height;
+						ctx.drawImage(img2, 0, 0);
+
+						try {
+							const imageData = ctx.getImageData(0, 0, img2.width, img2.height);
+							console.log('[fileToImageData] ImageData created successfully via fallback');
+							resolve(imageData);
+						} catch (error) {
+							console.error('[fileToImageData] Fallback failed to get image data:', error);
+							reject(error);
+						}
+					};
+
+					img2.onerror = () => {
+						console.error('[fileToImageData] Fallback also failed');
+						reject(
+							new Error(
+								`Failed to load image: ${file.name}. Please ensure it's a valid JPG, PNG, WebP, TIFF, BMP, or GIF file.`
+							)
+						);
+					};
+
+					img2.src = dataUrl;
+				};
+
+				reader.onerror = () => {
+					reject(new Error(`Failed to read file: ${file.name}`));
+				};
+
+				// Read file as data URL for fallback
+				reader.readAsDataURL(file);
 			};
 
+			// Enable CORS to handle cross-origin issues with restored files
+			img.crossOrigin = 'anonymous';
 			img.src = objectUrl;
 		});
 	}
@@ -789,6 +878,330 @@ export class ConverterStateStore {
 		const sizes = ['B', 'KB', 'MB', 'GB'];
 		const i = Math.floor(Math.log(bytes) / Math.log(k));
 		return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+	}
+
+	/**
+	 * IMAGE PERSISTENCE METHODS
+	 */
+
+	/**
+	 * Save current image state to localStorage
+	 */
+	private async saveImageState(): Promise<void> {
+		console.log('[ConverterStateStore] saveImageState called - browser:', browser);
+		if (!browser) return;
+
+		try {
+			console.log('[ConverterStateStore] saveImageState - input_image:', !!this._imageState.input_image, 'input_file:', !!this._imageState.input_file);
+			const imageState: any = {
+				hasImages: false,
+				currentImageIndex: this._imageState.current_image_index,
+				timestamp: Date.now()
+			};
+
+			// Save single image if exists - now with better compression
+			if (this._imageState.input_image && this._imageState.input_file) {
+				console.log('[ConverterStateStore] saveImageState - converting to dataURL...');
+				try {
+					const dataUrl = await this.imageDataToDataUrl(this._imageState.input_image);
+
+					// Check if the compressed data URL fits in localStorage
+					const dataUrlSize = new TextEncoder().encode(dataUrl).length;
+					const maxDataUrlSize = 3 * 1024 * 1024; // 3MB limit for data URL
+
+					console.log('[ConverterStateStore] saveImageState - data URL size:', dataUrlSize, 'limit:', maxDataUrlSize);
+
+					if (dataUrlSize <= maxDataUrlSize) {
+						imageState.singleImage = {
+							dataUrl,
+							fileName: this._imageState.input_file.name,
+							fileSize: this._imageState.input_file.size,
+							fileType: this._imageState.input_file.type,
+							width: this._imageState.input_image.width,
+							height: this._imageState.input_image.height
+						};
+						imageState.hasImages = true;
+						console.log('[ConverterStateStore] saveImageState - image saved successfully');
+					} else {
+						console.warn('[ConverterStateStore] saveImageState - compressed image still too large for storage');
+						// Store metadata only for very large files
+						imageState.singleImageMeta = {
+							fileName: this._imageState.input_file.name,
+							fileSize: this._imageState.input_file.size,
+							fileType: this._imageState.input_file.type,
+							width: this._imageState.input_image.width,
+							height: this._imageState.input_image.height,
+							tooLarge: true
+						};
+					}
+				} catch (compressionError) {
+					console.warn('[ConverterStateStore] saveImageState - compression failed:', compressionError);
+					// Store metadata as fallback
+					imageState.singleImageMeta = {
+						fileName: this._imageState.input_file.name,
+						fileSize: this._imageState.input_file.size,
+						fileType: this._imageState.input_file.type,
+						width: this._imageState.input_image.width,
+						height: this._imageState.input_image.height,
+						compressionFailed: true
+					};
+				}
+			}
+
+			// Save multiple images with compression
+			if (this._imageState.input_files && this._imageState.input_files.length > 1) {
+				console.log(`[ConverterStateStore] saveImageState - saving ${this._imageState.input_files.length} batch images...`);
+
+				const batchImages = [];
+				const maxImagesWithData = 5; // Limit to prevent localStorage overflow
+
+				for (let i = 0; i < this._imageState.input_files.length; i++) {
+					const file = this._imageState.input_files[i];
+					const imageData = this._imageState.input_images[i];
+
+					const imageInfo: any = {
+						fileName: file.name,
+						fileSize: file.size,
+						fileType: file.type,
+						width: imageData?.width || 0,
+						height: imageData?.height || 0,
+						index: i
+					};
+
+					// For first few images, try to save full data
+					if (i < maxImagesWithData && imageData) {
+						try {
+							const dataUrl = await this.imageDataToDataUrl(imageData);
+							const dataUrlSize = new TextEncoder().encode(dataUrl).length;
+
+							// Only include data URL if it's reasonably sized
+							if (dataUrlSize <= 500 * 1024) { // 500KB limit per image in batch
+								imageInfo.dataUrl = dataUrl;
+								console.log(`[ConverterStateStore] saveImageState - batch image ${i} data saved (${dataUrlSize} bytes)`);
+							} else {
+								console.log(`[ConverterStateStore] saveImageState - batch image ${i} too large for data storage`);
+							}
+						} catch (error) {
+							console.warn(`[ConverterStateStore] saveImageState - failed to compress batch image ${i}:`, error);
+						}
+					}
+
+					batchImages.push(imageInfo);
+				}
+
+				imageState.batchImages = batchImages;
+				imageState.hasImages = true;
+				console.log(`[ConverterStateStore] saveImageState - saved ${batchImages.length} batch image entries`);
+			}
+
+			localStorage.setItem('vec2art-image-state', JSON.stringify(imageState));
+			console.log('[ConverterStateStore] Image state saved to localStorage');
+		} catch (error) {
+			console.warn('[ConverterStateStore] Failed to save image state:', error);
+			// If localStorage is full, try clearing old data
+			try {
+				this.clearSavedImageState();
+				console.log('[ConverterStateStore] Cleared old image state due to storage error');
+			} catch (clearError) {
+				console.warn('[ConverterStateStore] Failed to clear image state:', clearError);
+			}
+		}
+	}
+
+	/**
+	 * Load saved image state from localStorage
+	 */
+	async loadSavedImageState(): Promise<boolean> {
+		console.log('[ConverterStateStore] loadSavedImageState called - browser:', browser);
+		if (!browser) return false;
+
+		try {
+			const saved = localStorage.getItem('vec2art-image-state');
+			console.log('[ConverterStateStore] loadSavedImageState - found saved data:', !!saved);
+			if (!saved) return false;
+
+			const imageState = JSON.parse(saved);
+			console.log('[ConverterStateStore] loadSavedImageState - hasImages:', imageState.hasImages);
+			if (!imageState.hasImages) return false;
+
+			// Check if saved state is recent (within 24 hours)
+			const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+			if (Date.now() - imageState.timestamp > maxAge) {
+				console.log('[ConverterStateStore] Saved image state expired, clearing');
+				this.clearSavedImageState();
+				return false;
+			}
+
+			// Prioritize batch images over single image to restore full context
+			// Restore batch images if available
+			if (imageState.batchImages && Array.isArray(imageState.batchImages)) {
+				try {
+					console.log(`[ConverterStateStore] Restoring ${imageState.batchImages.length} batch images...`);
+
+					const restoredFiles: File[] = [];
+					const restoredImages: ImageData[] = [];
+					let restoredCount = 0;
+
+					for (const imageInfo of imageState.batchImages) {
+						try {
+							// Create mock File object
+							const mockFile = new File([], imageInfo.fileName, {
+								type: imageInfo.fileType || 'image/png'
+							});
+
+							if (imageInfo.dataUrl) {
+								// Restore full image data
+								const imageData = await this.dataUrlToImageData(imageInfo.dataUrl);
+								restoredFiles.push(mockFile);
+								restoredImages.push(imageData);
+								restoredCount++;
+								console.log(`[ConverterStateStore] Restored batch image: ${imageInfo.fileName}`);
+							} else {
+								// Only metadata available - still add to list but will need re-upload
+								restoredFiles.push(mockFile);
+								// Create placeholder ImageData
+								const placeholderCanvas = document.createElement('canvas');
+								placeholderCanvas.width = imageInfo.width || 200;
+								placeholderCanvas.height = imageInfo.height || 200;
+								const placeholderCtx = placeholderCanvas.getContext('2d');
+								if (placeholderCtx) {
+									const placeholderImageData = placeholderCtx.getImageData(0, 0, placeholderCanvas.width, placeholderCanvas.height);
+									restoredImages.push(placeholderImageData);
+								}
+								console.log(`[ConverterStateStore] Restored metadata for: ${imageInfo.fileName} (data needs re-upload)`);
+							}
+						} catch (error) {
+							console.warn(`[ConverterStateStore] Failed to restore batch image ${imageInfo.fileName}:`, error);
+						}
+					}
+
+					if (restoredFiles.length > 0) {
+						this._imageState.input_files = restoredFiles;
+						this._imageState.input_images = restoredImages;
+						this._imageState.current_image_index = imageState.currentImageIndex || 0;
+
+						// Set current single-image state to first image for backward compatibility
+						this._imageState.input_file = restoredFiles[0];
+						this._imageState.input_image = restoredImages[0];
+
+						console.log(`[ConverterStateStore] Successfully restored ${restoredCount}/${restoredFiles.length} batch images with data`);
+						return true;
+					}
+				} catch (error) {
+					console.warn('[ConverterStateStore] Failed to restore batch images:', error);
+				}
+			}
+
+			// Fallback: Restore single image if no batch images available
+			if (imageState.singleImage) {
+				try {
+					const imageData = await this.dataUrlToImageData(imageState.singleImage.dataUrl);
+					this._imageState.input_image = imageData;
+					// Create a mock File object for compatibility
+					const mockFile = new File([], imageState.singleImage.fileName, {
+						type: imageState.singleImage.fileType
+					});
+					this._imageState.input_file = mockFile;
+					console.log(`[ConverterStateStore] Restored single image: ${imageState.singleImage.fileName}`);
+					return true;
+				} catch (error) {
+					console.warn('[ConverterStateStore] Failed to restore single image:', error);
+				}
+			}
+
+			// Handle large single image metadata or other metadata-only cases
+			if (imageState.singleImageMeta) {
+				console.log('[ConverterStateStore] Found single image metadata but file needs re-upload');
+				return false;
+			}
+
+			return false;
+		} catch (error) {
+			console.warn('[ConverterStateStore] Failed to load saved image state:', error);
+			return false;
+		}
+	}
+
+	/**
+	 * Clear saved image state from localStorage
+	 */
+	private clearSavedImageState(): void {
+		if (!browser) return;
+		try {
+			localStorage.removeItem('vec2art-image-state');
+			console.log('[ConverterStateStore] Cleared saved image state');
+		} catch (error) {
+			console.warn('[ConverterStateStore] Failed to clear saved image state:', error);
+		}
+	}
+
+	/**
+	 * Convert ImageData to data URL for storage with aggressive compression
+	 */
+	private async imageDataToDataUrl(imageData: ImageData): Promise<string> {
+		const canvas = document.createElement('canvas');
+		const ctx = canvas.getContext('2d');
+		if (!ctx) throw new Error('Failed to get canvas context');
+
+		// For large images, scale down for storage to reduce size
+		const maxDimension = 800; // Maximum width or height for storage
+		let targetWidth = imageData.width;
+		let targetHeight = imageData.height;
+
+		if (imageData.width > maxDimension || imageData.height > maxDimension) {
+			const scale = Math.min(maxDimension / imageData.width, maxDimension / imageData.height);
+			targetWidth = Math.round(imageData.width * scale);
+			targetHeight = Math.round(imageData.height * scale);
+			console.log(`[ConverterStateStore] Scaling image for storage: ${imageData.width}x${imageData.height} -> ${targetWidth}x${targetHeight}`);
+		}
+
+		canvas.width = targetWidth;
+		canvas.height = targetHeight;
+
+		// If scaling, use image smoothing for better quality
+		if (targetWidth !== imageData.width || targetHeight !== imageData.height) {
+			// Create temporary canvas with original size
+			const tempCanvas = document.createElement('canvas');
+			const tempCtx = tempCanvas.getContext('2d');
+			if (!tempCtx) throw new Error('Failed to get temp canvas context');
+
+			tempCanvas.width = imageData.width;
+			tempCanvas.height = imageData.height;
+			tempCtx.putImageData(imageData, 0, 0);
+
+			// Scale down to target canvas with smoothing
+			ctx.imageSmoothingEnabled = true;
+			ctx.imageSmoothingQuality = 'medium';
+			ctx.drawImage(tempCanvas, 0, 0, targetWidth, targetHeight);
+		} else {
+			// Use original size
+			ctx.putImageData(imageData, 0, 0);
+		}
+
+		// Use JPEG with aggressive compression for smaller size
+		return canvas.toDataURL('image/jpeg', 0.6); // Lower quality for smaller size
+	}
+
+	/**
+	 * Convert data URL back to ImageData
+	 */
+	private async dataUrlToImageData(dataUrl: string): Promise<ImageData> {
+		const img = new Image();
+		const canvas = document.createElement('canvas');
+		const ctx = canvas.getContext('2d');
+		if (!ctx) throw new Error('Failed to get canvas context');
+
+		return new Promise((resolve, reject) => {
+			img.onload = () => {
+				canvas.width = img.width;
+				canvas.height = img.height;
+				ctx.drawImage(img, 0, 0);
+				const imageData = ctx.getImageData(0, 0, img.width, img.height);
+				resolve(imageData);
+			};
+			img.onerror = reject;
+			img.src = dataUrl;
+		});
 	}
 }
 

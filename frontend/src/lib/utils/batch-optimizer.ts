@@ -6,7 +6,7 @@
  */
 
 import type { ProcessingJob } from '$lib/types/processing';
-import type { VectorizerConfig } from '$lib/types/vectorizer';
+import type { AlgorithmConfig } from '$lib/types/algorithm-configs';
 
 export interface ProcessingBatch {
 	id: string;
@@ -154,7 +154,7 @@ export class BatchOptimizer {
 		const config2 = job2.config;
 
 		// Backend compatibility (required)
-		const sameBackend = config1.backend === config2.backend;
+		const sameBackend = config1.algorithm === config2.algorithm;
 		if (!sameBackend) {
 			return {
 				backend: 'incompatible',
@@ -185,7 +185,7 @@ export class BatchOptimizer {
 		score += samePriority ? 0.1 : 0;
 
 		return {
-			backend: config1.backend,
+			backend: config1.algorithm,
 			similarImageSizes,
 			compatibleParameters: parameterCompatibility > 0.7,
 			samePriority,
@@ -197,16 +197,16 @@ export class BatchOptimizer {
 	 * Calculate parameter compatibility score
 	 */
 	private calculateParameterCompatibility(
-		config1: VectorizerConfig,
-		config2: VectorizerConfig
+		config1: AlgorithmConfig,
+		config2: AlgorithmConfig
 	): number {
 		const criticalParams = [
 			'detail',
-			'stroke_width',
-			'noise_filtering',
-			'hand_drawn_preset',
-			'variable_weights',
-			'tremor_strength',
+			'strokeWidth',
+			'preserveColors',
+			'handDrawnPreset',
+			'variableWeights',
+			'tremorStrength',
 			'tapering'
 		];
 
@@ -248,7 +248,7 @@ export class BatchOptimizer {
 			jobs.length > 1
 				? this.calculateCompatibility(jobs[0], jobs[1])
 				: {
-						backend: jobs[0].config.backend,
+						backend: jobs[0].config.algorithm,
 						similarImageSizes: true,
 						compatibleParameters: true,
 						samePriority: true,
@@ -302,7 +302,7 @@ export class BatchOptimizer {
 	/**
 	 * Get complexity multiplier based on configuration
 	 */
-	private getComplexityMultiplier(config: VectorizerConfig): number {
+	private getComplexityMultiplier(config: AlgorithmConfig): number {
 		let multiplier = 1.0;
 
 		// Detail level affects processing time
@@ -310,22 +310,23 @@ export class BatchOptimizer {
 			multiplier *= 0.5 + config.detail * 1.5; // 0.5x to 2x
 		}
 
-		// Hand-drawn effects add complexity
-		if (config.variable_weights && config.variable_weights > 0) {
-			multiplier *= 1 + config.variable_weights * 0.3;
-		}
-
-		if (config.tremor_strength && config.tremor_strength > 0) {
-			multiplier *= 1 + config.tremor_strength * 0.2;
-		}
-
-		// Noise filtering adds time
-		if (config.noise_filtering) {
-			multiplier *= 1.2;
+		// Hand-drawn effects add complexity (edge-specific)
+		if (config.algorithm === 'edge') {
+			const edgeConfig = config as any;
+			if (edgeConfig.variableWeights && edgeConfig.variableWeights > 0) {
+				multiplier *= 1 + edgeConfig.variableWeights * 0.3;
+			}
+			if (edgeConfig.tremorStrength && edgeConfig.tremorStrength > 0) {
+				multiplier *= 1 + edgeConfig.tremorStrength * 0.2;
+			}
+			// Noise filtering adds time
+			if (edgeConfig.noiseFiltering) {
+				multiplier *= 1.2;
+			}
 		}
 
 		// Backend-specific multipliers
-		switch (config.backend) {
+		switch (config.algorithm) {
 			case 'edge':
 				multiplier *= 1.0; // Base
 				break;
