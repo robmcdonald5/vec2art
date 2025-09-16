@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { ChevronDown } from 'lucide-svelte';
+	import {
+		ChevronDown,
+		Filter, // For Preprocessing
+		Layers, // For Layer Processing
+		Palette, // For Color Controls
+		ScanLine, // For Edge Detection
+		Sparkles, // For Advanced Processing
+		Brush // For Artistic Effects
+	} from 'lucide-svelte';
 	import AlgorithmParameterControl from './AlgorithmParameterControl.svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { EDGE_METADATA } from '$lib/types/algorithm-configs';
@@ -68,18 +76,25 @@
 <div class="space-y-4">
 	<!-- Preprocessing -->
 	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
 	>
 		<button
 			type="button"
 			onclick={() => (preprocessingExpanded = !preprocessingExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
 		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Preprocessing
-			</span>
+			<div class="flex items-center gap-3">
+				<div
+					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
+				>
+					<Filter class="h-4 w-4 text-blue-600 dark:text-blue-400" />
+				</div>
+				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
+					Preprocessing
+				</span>
+			</div>
 			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {preprocessingExpanded
+				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {preprocessingExpanded
 					? 'rotate-180'
 					: ''}"
 			/>
@@ -106,18 +121,25 @@
 
 	<!-- Layer Processing -->
 	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
 	>
 		<button
 			type="button"
 			onclick={() => (layerProcessingExpanded = !layerProcessingExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
 		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Layer Processing
-			</span>
+			<div class="flex items-center gap-3">
+				<div
+					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
+				>
+					<Layers class="h-4 w-4 text-purple-600 dark:text-purple-400" />
+				</div>
+				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
+					Layer Processing
+				</span>
+			</div>
 			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {layerProcessingExpanded
+				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {layerProcessingExpanded
 					? 'rotate-180'
 					: ''}"
 			/>
@@ -144,18 +166,25 @@
 
 	<!-- Color Controls -->
 	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
 	>
 		<button
 			type="button"
 			onclick={() => (colorControlsExpanded = !colorControlsExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
 		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Color Controls
-			</span>
+			<div class="flex items-center gap-3">
+				<div
+					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20"
+				>
+					<Palette class="h-4 w-4 text-pink-600 dark:text-pink-400" />
+				</div>
+				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
+					Color Controls
+				</span>
+			</div>
 			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {colorControlsExpanded
+				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {colorControlsExpanded
 					? 'rotate-180'
 					: ''}"
 			/>
@@ -182,18 +211,25 @@
 
 	<!-- Edge Detection -->
 	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
 	>
 		<button
 			type="button"
 			onclick={() => (edgeDetectionExpanded = !edgeDetectionExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
 		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Edge Detection
-			</span>
+			<div class="flex items-center gap-3">
+				<div
+					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20"
+				>
+					<ScanLine class="h-4 w-4 text-green-600 dark:text-green-400" />
+				</div>
+				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
+					Edge Detection
+				</span>
+			</div>
 			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {edgeDetectionExpanded
+				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {edgeDetectionExpanded
 					? 'rotate-180'
 					: ''}"
 			/>
@@ -220,18 +256,25 @@
 
 	<!-- Advanced Processing -->
 	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
 	>
 		<button
 			type="button"
 			onclick={() => (advancedExpanded = !advancedExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
 		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Advanced Processing
-			</span>
+			<div class="flex items-center gap-3">
+				<div
+					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20"
+				>
+					<Sparkles class="h-4 w-4 text-amber-600 dark:text-amber-400" />
+				</div>
+				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
+					Advanced Processing
+				</span>
+			</div>
 			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {advancedExpanded
+				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {advancedExpanded
 					? 'rotate-180'
 					: ''}"
 			/>
@@ -258,18 +301,25 @@
 
 	<!-- Artistic Effects -->
 	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
 	>
 		<button
 			type="button"
 			onclick={() => (artisticExpanded = !artisticExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
 		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Artistic Effects
-			</span>
+			<div class="flex items-center gap-3">
+				<div
+					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20"
+				>
+					<Brush class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+				</div>
+				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
+					Artistic Effects
+				</span>
+			</div>
 			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {artisticExpanded
+				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {artisticExpanded
 					? 'rotate-180'
 					: ''}"
 			/>
