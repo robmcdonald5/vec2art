@@ -29,7 +29,8 @@
 
 	// Get current algorithm from store
 	const currentAlgorithm = $derived(algorithmConfigStore.currentAlgorithm);
-	const config = $derived(algorithmConfigStore.getConfig(currentAlgorithm));
+	// Get the current config using the derived currentConfig property
+	const config = $derived(algorithmConfigStore.currentConfig);
 
 	// UI state management with persistence
 	let isQuickSettingsExpanded = $state(loadPanelState('isQuickSettingsExpanded', true));
@@ -344,13 +345,7 @@
 								<input
 									type="checkbox"
 									id="preserve-colors-unified"
-									checked={currentAlgorithm === 'edge' || currentAlgorithm === 'centerline'
-										? (config.linePreserveColors ?? false)
-										: currentAlgorithm === 'superpixel'
-											? (config.superpixelPreserveColors ?? true)
-											: currentAlgorithm === 'dots'
-												? (config.dotPreserveColors ?? true)
-												: false}
+									checked={config.preserveColors ?? false}
 									onchange={(event) => {
 										const target = event.target as HTMLInputElement;
 										updatePreserveColors(target.checked);

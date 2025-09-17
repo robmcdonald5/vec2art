@@ -1,19 +1,21 @@
 {
-	"name": "vectorize-wasm",
-	"type": "module",
-	"description": "WebAssembly wrapper for vectorize-core",
-	"version": "0.1.0",
-	"license": "MIT OR Apache-2.0",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/your-org/vec2art"
-	},
-	"files": [
-		"vectorize_wasm_bg.wasm",
-		"vectorize_wasm.js"
-	],
-	"main": "vectorize_wasm.js",
-	"sideEffects": [
-		"./snippets/*"
-	]
+  "name": "vectorize-wasm",
+  "type": "module",
+  "description": "WebAssembly wrapper for vectorize-core",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/vec2art"
+  },
+  "files": [
+    "vectorize_wasm_bg.wasm",
+    "vectorize_wasm.js",
+    "vectorize_wasm.d.ts"
+  ],
+  "main": "vectorize_wasm.js",
+  "types": "vectorize_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
 }

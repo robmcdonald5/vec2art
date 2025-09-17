@@ -418,16 +418,6 @@ export class WasmWorkerService {
 				preferGpu: preferGpu
 			});
 
-			// DEBUG: Log the actual result structure
-			console.log('[WasmWorkerService] 🔍 [DEBUG] Received result structure:', {
-				hasResult: !!result,
-				resultKeys: result ? Object.keys(result) : null,
-				hasSuccess: result ? 'success' in result : false,
-				hasPayload: result ? 'payload' in result : false,
-				hasSvg: result ? 'svg' in result : false,
-				resultType: typeof result
-			});
-
 			if (!result.success) {
 				throw new Error(result.error || 'Processing failed');
 			}
@@ -439,14 +429,6 @@ export class WasmWorkerService {
 			const pathCount =
 				result.pathCount ||
 				(result.payload && result.payload.stats && result.payload.stats.pathCount);
-
-			console.log('[WasmWorkerService] 🔍 [DEBUG] SVG data extraction:', {
-				hasSvgData: !!svgData,
-				svgDataType: typeof svgData,
-				svgDataLength: svgData ? svgData.length : 0,
-				processingTime,
-				pathCount
-			});
 
 			if (!svgData) {
 				console.error('[WasmWorkerService] ❌ No SVG data found in result:', result);

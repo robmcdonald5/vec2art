@@ -67,8 +67,6 @@
 		}
 	];
 
-	// function formatKeys(keys: string[]): string { /* TODO: implement if needed */ }
-
 	function getKeyIcon(key: string) {
 		switch (key.toLowerCase()) {
 			case 'arrow keys':

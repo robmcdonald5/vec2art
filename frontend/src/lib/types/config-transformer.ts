@@ -1,0 +1,268 @@
+/**
+ * Config Transformer - Converts between frontend and WASM config formats
+ *
+ * This module handles the transformation between:
+ * - Frontend format: camelCase naming, UI-friendly structure
+ * - WASM format: snake_case naming, Rust-compatible structure
+ */
+
+import type { TraceLowConfig } from './generated/TraceLowConfig';
+import type { TraceBackend } from './generated/TraceBackend';
+import type { BackgroundRemovalAlgorithm } from './generated/BackgroundRemovalAlgorithm';
+import type { ColorSamplingMethod } from './generated/ColorSamplingMethod';
+import type {
+	AlgorithmConfig,
+	EdgeConfig,
+	CenterlineConfig,
+	SuperpixelConfig,
+	DotsConfig
+} from './algorithm-configs';
+
+/**
+ * Map frontend algorithm names to WASM TraceBackend enum values
+ */
+function mapAlgorithmToBackend(algorithm: AlgorithmConfig['algorithm']): TraceBackend {
+	switch (algorithm) {
+		case 'edge':
+			return 'Edge';
+		case 'centerline':
+			return 'Centerline';
+		case 'superpixel':
+			return 'Superpixel';
+		case 'dots':
+			return 'Dots';
+		default:
+			return 'Edge';
+	}
+}
+
+/**
+ * Map WASM TraceBackend enum to frontend algorithm names
+ */
+function mapBackendToAlgorithm(backend: TraceBackend): AlgorithmConfig['algorithm'] {
+	switch (backend) {
+		case 'Edge':
+			return 'edge';
+		case 'Centerline':
+			return 'centerline';
+		case 'Superpixel':
+			return 'superpixel';
+		case 'Dots':
+			return 'dots';
+		default:
+			return 'edge';
+	}
+}
+
+/**
+ * Transform frontend AlgorithmConfig to WASM TraceLowConfig format
+ *
+ * Handles:
+ * - Naming convention conversion (camelCase → snake_case)
+ * - Type mapping (string enums → Rust enums)
+ * - Default value application
+ * - Removal of UI-only fields
+ */
+export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
+	// Start with defaults for all fields
+	const wasmConfig: TraceLowConfig = {
+		// Core fields
+		backend: mapAlgorithmToBackend(config.algorithm),
+		detail: config.detail ?? 5.0,
+		stroke_px_at_1080p: config.strokeWidth ?? 1.5,
+
+		// Multi-pass processing
+		enable_multipass:
+			config.algorithm === 'edge' && (config as EdgeConfig).passCount
+				? (config as EdgeConfig).passCount > 1
+				: false,
+		pass_count: config.algorithm === 'edge' ? ((config as EdgeConfig).passCount ?? 1) : 1,
+		conservative_detail: null,
+		aggressive_detail: null,
+
+		// Noise filtering
+		noise_filtering: config.noiseFiltering ?? false,
+		noise_filter_spatial_sigma: 2.0,
+		noise_filter_range_sigma: 50.0,
+
+		// Directional processing
+		enable_reverse_pass:
+			config.algorithm === 'edge' ? ((config as EdgeConfig).enableReversePass ?? false) : false,
+		enable_diagonal_pass:
+			config.algorithm === 'edge' ? ((config as EdgeConfig).enableDiagonalPass ?? false) : false,
+		directional_strength_threshold: 0.3,
+		max_processing_time_ms: 10000, // Now properly typed as number
+
+		// Advanced edge detection (ETF/FDoG)
+		enable_etf_fdog: false,
+		etf_radius: 4,
+		etf_iterations: 4,
+		etf_coherency_tau: 0.2,
+		fdog_sigma_s: 1.2,
+		fdog_sigma_c: 2.0,
+		fdog_tau: 0.9,
+		nms_low: 0.08,
+		nms_high: 0.16,
+
+		// Flow tracing
+		enable_flow_tracing: false,
+		trace_min_grad: 0.08,
+		trace_min_coherency: 0.15,
+		trace_max_gap: 4,
+		trace_max_len: 10000,
+
+		// Bezier fitting
+		enable_bezier_fitting: false,
+		fit_lambda_curv: 0.02,
+		fit_max_err: 0.8,
+		fit_split_angle: 32.0,
+
+		// Dots backend specific
+		dot_density_threshold: 0.1,
+		dot_min_radius: config.algorithm === 'dots' ? ((config as DotsConfig).minRadius ?? 0.5) : 0.5,
+		dot_max_radius: config.algorithm === 'dots' ? ((config as DotsConfig).maxRadius ?? 3.0) : 3.0,
+		dot_preserve_colors: config.preserveColors ?? false,
+		dot_adaptive_sizing: true,
+		dot_background_tolerance: 0.1,
+		dot_poisson_disk_sampling: false,
+		dot_gradient_based_sizing: false,
+
+		// Centerline backend specific
+		enable_adaptive_threshold:
+			config.algorithm === 'centerline'
+				? ((config as CenterlineConfig).enableAdaptiveThreshold ?? true)
+				: true,
+		adaptive_threshold_window_size:
+			config.algorithm === 'centerline'
+				? ((config as CenterlineConfig).adaptiveThresholdWindowSize ?? 25)
+				: 25,
+		adaptive_threshold_k:
+			config.algorithm === 'centerline'
+				? ((config as CenterlineConfig).adaptiveThresholdK ?? 0.4)
+				: 0.4,
+		adaptive_threshold_use_optimized: true,
+		enable_width_modulation: false,
+		min_branch_length: 8.0,
+		douglas_peucker_epsilon: 1.5,
+		enable_distance_transform_centerline: false,
+
+		// Superpixel backend specific
+		num_superpixels:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).numSuperpixels ?? 200)
+				: 200,
+		superpixel_compactness:
+			config.algorithm === 'superpixel' ? ((config as SuperpixelConfig).compactness ?? 10.0) : 10.0,
+		superpixel_slic_iterations:
+			config.algorithm === 'superpixel' ? ((config as SuperpixelConfig).iterations ?? 10) : 10,
+		superpixel_initialization_pattern: 'Hexagonal',
+		superpixel_fill_regions: true,
+		superpixel_stroke_regions: true,
+		superpixel_simplify_boundaries: true,
+		superpixel_boundary_epsilon: 1.0,
+		superpixel_preserve_colors: config.preserveColors ?? false,
+
+		// Line tracing color configuration
+		line_preserve_colors: config.preserveColors ?? false,
+		line_color_sampling: 'Adaptive' as ColorSamplingMethod,
+		line_color_accuracy: 0.7,
+		max_colors_per_path: 3,
+		color_tolerance: 0.15,
+		enable_palette_reduction: false,
+		palette_target_colors: 16,
+
+		// Background removal
+		enable_background_removal: config.enableBackgroundRemoval ?? false,
+		background_removal_strength: config.backgroundRemovalStrength ?? 0.5,
+		background_removal_algorithm: 'Auto' as BackgroundRemovalAlgorithm,
+		background_removal_threshold: null,
+
+		// Safety and optimization
+		max_image_size: 4096,
+		svg_precision: 2
+	};
+
+	return wasmConfig;
+}
+
+/**
+ * Transform WASM TraceLowConfig to frontend AlgorithmConfig format
+ *
+ * Used when:
+ * - Loading saved configs
+ * - Receiving config from WASM
+ * - Debugging/logging
+ */
+export function fromWasmConfig(config: TraceLowConfig): Partial<AlgorithmConfig> {
+	return {
+		// Core fields
+		algorithm: mapBackendToAlgorithm(config.backend),
+		detail: config.detail,
+		strokeWidth: config.stroke_px_at_1080p,
+
+		// Processing options
+		passCount: config.pass_count,
+		enableReversePass: config.enable_reverse_pass,
+		enableDiagonalPass: config.enable_diagonal_pass,
+
+		// Preprocessing
+		noiseFiltering: config.noise_filtering,
+		enableBackgroundRemoval: config.enable_background_removal,
+		backgroundRemovalStrength: config.background_removal_strength,
+
+		// Color options
+		preserveColors: config.line_preserve_colors || config.dot_preserve_colors,
+
+		// Algorithm-specific fields
+		// Dots
+		minRadius: config.dot_min_radius,
+		maxRadius: config.dot_max_radius,
+
+		// Centerline
+		enableAdaptiveThreshold: config.enable_adaptive_threshold,
+		adaptiveThresholdWindowSize: config.adaptive_threshold_window_size,
+		adaptiveThresholdK: config.adaptive_threshold_k,
+
+		// Superpixel
+		numSuperpixels: config.num_superpixels,
+		compactness: config.superpixel_compactness,
+		iterations: config.superpixel_slic_iterations
+	};
+}
+
+/**
+ * Validate that a config can be safely transformed
+ * Returns validation errors if any
+ */
+export function validateConfigTransform(config: AlgorithmConfig): string[] {
+	const errors: string[] = [];
+
+	if (config.detail < 0 || config.detail > 10) {
+		errors.push(`Detail must be between 0 and 10, got ${config.detail}`);
+	}
+
+	if (config.strokeWidth && (config.strokeWidth < 0.1 || config.strokeWidth > 10)) {
+		errors.push(`Stroke width must be between 0.1 and 10, got ${config.strokeWidth}`);
+	}
+
+	if (config.algorithm === 'edge') {
+		const edgeConfig = config as EdgeConfig;
+		if (edgeConfig.passCount && (edgeConfig.passCount < 1 || edgeConfig.passCount > 10)) {
+			errors.push(`Pass count must be between 1 and 10, got ${edgeConfig.passCount}`);
+		}
+	}
+
+	// Algorithm-specific validations
+	if (config.algorithm === 'dots') {
+		const dotsConfig = config as DotsConfig;
+		if (
+			dotsConfig.minRadius &&
+			dotsConfig.maxRadius &&
+			dotsConfig.minRadius > dotsConfig.maxRadius
+		) {
+			errors.push('Min radius cannot be greater than max radius');
+		}
+	}
+
+	return errors;
+}

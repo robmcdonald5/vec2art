@@ -6,6 +6,9 @@ description = "WebAssembly wrapper for vectorize-core"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/your-org/vec2art"
 
+[package.metadata.wasm-pack]
+wasm-opt = false
+
 [lib]
 crate-type = ["cdylib"]
 
@@ -53,6 +56,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
 
+# TypeScript generation
+ts-rs = { version = "9.0", features = ["serde-compat"], optional = true }
+
 # Logging
 log = { workspace = true }
 console_log = "0.2"
@@ -82,6 +88,8 @@ gpu-acceleration = ["wgpu", "bytemuck", "pollster", "futures-channel", "futures-
 # Separate GPU backends for better control and fallback
 webgpu-backend = ["gpu-acceleration"]
 webgl-backend = ["gpu-acceleration"]
+# TypeScript generation feature
+generate-ts = ["ts-rs", "vectorize-core/generate-ts"]
 
 # Enable optimizations for wasm builds
 [package.metadata.wasm-pack.profile.release]

@@ -182,7 +182,8 @@ class ImagePersistenceService {
 
 		if (this.useIndexedDB) {
 			try {
-				return await db.images.add(storedImage);
+				const id = await db.images.add(storedImage);
+				return id as number;
 			} catch (error) {
 				console.error('[ImagePersistence] Failed to save to IndexedDB:', error);
 				// Fall back to memory storage
@@ -221,7 +222,8 @@ class ImagePersistenceService {
 
 			if (this.useIndexedDB) {
 				try {
-					sessionId = await db.sessions.add(session);
+					const id = await db.sessions.add(session);
+					sessionId = id as number;
 				} catch (error) {
 					console.error('[ImagePersistence] Failed to save session to IndexedDB:', error);
 					sessionId = await this.memoryStorage.addSession(session);

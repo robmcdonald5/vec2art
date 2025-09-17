@@ -694,90 +694,90 @@ export function vectorize_with_gpu_acceleration(vectorizer, image_data, prefer_g
 }
 
 function __wbg_adapter_100(arg0, arg1, arg2) {
-    wasm.closure2013_externref_shim(arg0, arg1, arg2);
+    wasm.closure2028_externref_shim(arg0, arg1, arg2);
 }
 
 function __wbg_adapter_103(arg0, arg1, arg2) {
-    wasm.closure2816_externref_shim(arg0, arg1, arg2);
+    wasm.closure2831_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_7264(arg0, arg1, arg2, arg3, arg4) {
-    const ret = wasm.closure4451_externref_shim(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_7267(arg0, arg1, arg2, arg3, arg4) {
+    const ret = wasm.closure4466_externref_shim(arg0, arg1, arg2, arg3, arg4);
     return ret !== 0;
 }
 
-function __wbg_adapter_7281(arg0, arg1, arg2, arg3, arg4) {
-    const ret = wasm.closure4452_externref_shim_multivalue_shim(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_7284(arg0, arg1, arg2, arg3, arg4) {
+    const ret = wasm.closure4467_externref_shim_multivalue_shim(arg0, arg1, arg2, arg3, arg4);
     var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
     return v1;
 }
 
-function __wbg_adapter_7284(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4453_externref_shim(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_7287(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4468_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
-function __wbg_adapter_7301(arg0, arg1, arg2, arg3, arg4) {
-    const ret = wasm.closure4454_externref_shim(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_7304(arg0, arg1, arg2, arg3, arg4) {
+    const ret = wasm.closure4469_externref_shim(arg0, arg1, arg2, arg3, arg4);
     return ret;
 }
 
-function __wbg_adapter_7318(arg0, arg1, arg2, arg3, arg4, arg5) {
-    const ret = wasm.closure4455_externref_shim(arg0, arg1, arg2, arg3, arg4, arg5);
+function __wbg_adapter_7321(arg0, arg1, arg2, arg3, arg4, arg5) {
+    const ret = wasm.closure4470_externref_shim(arg0, arg1, arg2, arg3, arg4, arg5);
     return ret;
 }
 
-function __wbg_adapter_7329(arg0, arg1, arg2) {
-    const ret = wasm.closure4456_externref_shim(arg0, arg1, arg2);
+function __wbg_adapter_7332(arg0, arg1, arg2) {
+    const ret = wasm.closure4471_externref_shim(arg0, arg1, arg2);
     return ret !== 0;
 }
 
-function __wbg_adapter_7590(arg0, arg1, arg2, arg3) {
-    wasm.closure4457_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_7593(arg0, arg1, arg2, arg3) {
+    wasm.closure4472_externref_shim(arg0, arg1, arg2, arg3);
 }
 
-function __wbg_adapter_8031(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4453_externref_shim20(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_8034(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4468_externref_shim20(arg0, arg1, arg2, arg3, arg4);
 }
 
-function __wbg_adapter_8448(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4458_externref_shim(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_8451(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4473_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
-function __wbg_adapter_8485(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4459_externref_shim(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_8488(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4474_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
-function __wbg_adapter_8522(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4453_externref_shim23(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_8525(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4468_externref_shim23(arg0, arg1, arg2, arg3, arg4);
 }
 
-function __wbg_adapter_8559(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4458_externref_shim24(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_8562(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4473_externref_shim24(arg0, arg1, arg2, arg3, arg4);
 }
 
-function __wbg_adapter_8632(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4459_externref_shim25(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_8635(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4474_externref_shim25(arg0, arg1, arg2, arg3, arg4);
 }
 
-function __wbg_adapter_8669(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4453_externref_shim26(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_8672(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4468_externref_shim26(arg0, arg1, arg2, arg3, arg4);
 }
 
-function __wbg_adapter_8706(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4460_externref_shim(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_8709(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4475_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
-function __wbg_adapter_8743(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4461_externref_shim(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_8746(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4476_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
-function __wbg_adapter_8780(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4462_externref_shim(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_8783(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4477_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
-function __wbg_adapter_8817(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure4462_externref_shim30(arg0, arg1, arg2, arg3, arg4);
+function __wbg_adapter_8820(arg0, arg1, arg2, arg3, arg4) {
+    wasm.closure4477_externref_shim30(arg0, arg1, arg2, arg3, arg4);
 }
 
 /**
@@ -1793,6 +1793,55 @@ export class WasmVectorizer {
         return this;
     }
     /**
+     * Apply complete configuration from JSON
+     * This is the PRIMARY configuration method - replaces all individual setters
+     * @param {string} config_json
+     */
+    apply_config_json(config_json) {
+        const ptr0 = passStringToWasm0(config_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.wasmvectorizer_apply_config_json(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * Get the current configuration as JSON
+     * @returns {string}
+     */
+    get_config_json() {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ret = wasm.wasmvectorizer_get_config_json(this.__wbg_ptr);
+            var ptr1 = ret[0];
+            var len1 = ret[1];
+            if (ret[3]) {
+                ptr1 = 0; len1 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred2_0 = ptr1;
+            deferred2_1 = len1;
+            return getStringFromWasm0(ptr1, len1);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
+     * Validate configuration JSON without applying it
+     * @param {string} config_json
+     * @returns {boolean}
+     */
+    static validate_config_json(config_json) {
+        const ptr0 = passStringToWasm0(config_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.wasmvectorizer_validate_config_json(ptr0, len0);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] !== 0;
+    }
+    /**
      * Set the vectorization backend
      * @param {string} backend
      */
@@ -1923,6 +1972,28 @@ export class WasmVectorizer {
      */
     set_noise_filtering(enabled) {
         wasm.wasmvectorizer_set_noise_filtering(this.__wbg_ptr, enabled);
+    }
+    /**
+     * Set noise filter spatial sigma (for bilateral filter)
+     * Note: This parameter is for future implementation
+     * @param {number} sigma
+     */
+    set_noise_filter_spatial_sigma(sigma) {
+        const ret = wasm.wasmvectorizer_set_noise_filter_spatial_sigma(this.__wbg_ptr, sigma);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * Set noise filter range sigma (for bilateral filter)
+     * Note: This parameter is for future implementation
+     * @param {number} sigma
+     */
+    set_noise_filter_range_sigma(sigma) {
+        const ret = wasm.wasmvectorizer_set_noise_filter_range_sigma(this.__wbg_ptr, sigma);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
     }
     /**
      * Set SVG precision
@@ -2389,43 +2460,8 @@ export class WasmVectorizer {
      * Apply a complete configuration from JSON in a single call
      * This is the most efficient way to configure the vectorizer, reducing 20+ individual
      * setter calls to a single boundary crossing.
-     * @param {string} config_json
-     */
-    apply_config_json(config_json) {
-        const ptr0 = passStringToWasm0(config_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.wasmvectorizer_apply_config_json(this.__wbg_ptr, ptr0, len0);
-        if (ret[1]) {
-            throw takeFromExternrefTable0(ret[0]);
-        }
-    }
-    /**
      * Validate a configuration JSON without applying it
      * Returns a JSON string with validation results
-     * @param {string} config_json
-     * @returns {string}
-     */
-    validate_config_json(config_json) {
-        let deferred3_0;
-        let deferred3_1;
-        try {
-            const ptr0 = passStringToWasm0(config_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-            const len0 = WASM_VECTOR_LEN;
-            const ret = wasm.wasmvectorizer_validate_config_json(this.__wbg_ptr, ptr0, len0);
-            var ptr2 = ret[0];
-            var len2 = ret[1];
-            if (ret[3]) {
-                ptr2 = 0; len2 = 0;
-                throw takeFromExternrefTable0(ret[2]);
-            }
-            deferred3_0 = ptr2;
-            deferred3_1 = len2;
-            return getStringFromWasm0(ptr2, len2);
-        } finally {
-            wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
-        }
-    }
-    /**
      * Get default configuration JSON for a specific backend
      * Returns a JSON string with all default parameters for the specified backend
      * @param {string} backend
@@ -5785,7 +5821,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7264(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_7267(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -5938,7 +5974,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7264(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_7267(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -5960,7 +5996,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7264(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_7267(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -5978,7 +6014,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7264(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_7267(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -5996,7 +6032,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7264(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_7267(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6014,7 +6050,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7264(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_7267(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6070,7 +6106,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7281(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_7284(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6108,7 +6144,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8669(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8672(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6128,7 +6164,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8706(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8709(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6145,7 +6181,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8780(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8783(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6162,7 +6198,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8559(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8562(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6179,7 +6215,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8817(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8820(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6196,7 +6232,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8031(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8034(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6213,7 +6249,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8743(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8746(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6233,7 +6269,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8485(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8488(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6250,7 +6286,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8559(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8562(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6267,7 +6303,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8448(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8451(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6284,7 +6320,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8522(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8525(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6304,7 +6340,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7284(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_7287(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -6321,7 +6357,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7590(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_7593(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -6338,7 +6374,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_8632(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_8635(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -11660,7 +11696,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7301(a, state0.b, arg0, arg1, arg2);
+                    return __wbg_adapter_7304(a, state0.b, arg0, arg1, arg2);
                 } finally {
                     state0.a = a;
                 }
@@ -11992,7 +12028,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7590(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_7593(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -14496,7 +14532,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7318(a, state0.b, arg0, arg1, arg2, arg3);
+                    return __wbg_adapter_7321(a, state0.b, arg0, arg1, arg2, arg3);
                 } finally {
                     state0.a = a;
                 }
@@ -14514,7 +14550,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7318(a, state0.b, arg0, arg1, arg2, arg3);
+                    return __wbg_adapter_7321(a, state0.b, arg0, arg1, arg2, arg3);
                 } finally {
                     state0.a = a;
                 }
@@ -17847,7 +17883,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_7329(a, state0.b, arg0);
+                    return __wbg_adapter_7332(a, state0.b, arg0);
                 } finally {
                     state0.a = a;
                 }
@@ -20221,16 +20257,16 @@ function __wbg_get_imports() {
         const ret = result;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper12784 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 2817, __wbg_adapter_103);
+    imports.wbg.__wbindgen_closure_wrapper12857 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 2832, __wbg_adapter_103);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper12786 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 2817, __wbg_adapter_103);
+    imports.wbg.__wbindgen_closure_wrapper12859 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 2832, __wbg_adapter_103);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper9897 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 2014, __wbg_adapter_100);
+    imports.wbg.__wbindgen_closure_wrapper9970 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 2029, __wbg_adapter_100);
         return ret;
     };
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {

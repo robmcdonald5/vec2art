@@ -11,7 +11,6 @@
  * - Real-time validation using WASM validate method
  */
 
-import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import type {
 	EdgeConfig,
@@ -152,28 +151,23 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 	} as DotsConfig
 };
 
-// Create stores for each algorithm
+// Create stores for each algorithm using Svelte 5 runes
 class AlgorithmConfigStore {
-	private configs = writable<Record<AlgorithmType, AlgorithmConfig>>({ ...DEFAULT_CONFIGS });
-	private activeAlgorithm = writable<AlgorithmType>('edge');
-	private validationErrors = writable<string[]>([]);
-	private validationWarnings = writable<string[]>([]);
-	private isInitialized = writable<boolean>(false);
-
-	// Derived store for current active configuration
-	public currentConfig = derived(
-		[this.configs, this.activeAlgorithm],
-		([$configs, $activeAlgorithm]) => $configs[$activeAlgorithm]
-	);
-
-	// Derived stores for individual algorithm configs (runes compatible)
-	public edge = derived(this.configs, ($configs) => $configs.edge as EdgeConfig);
-	public centerline = derived(this.configs, ($configs) => $configs.centerline as CenterlineConfig);
-	public superpixel = derived(this.configs, ($configs) => $configs.superpixel as SuperpixelConfig);
-	public dots = derived(this.configs, ($configs) => $configs.dots as DotsConfig);
-
-	// Current algorithm as reactive state for runes compatibility
+	// Use $state for reactive state
+	private configs = $state<Record<AlgorithmType, AlgorithmConfig>>({ ...DEFAULT_CONFIGS });
 	public currentAlgorithm = $state<AlgorithmType>('edge');
+	private validationErrors = $state<string[]>([]);
+	private validationWarnings = $state<string[]>([]);
+	private isInitialized = $state<boolean>(false);
+
+	// Derived values for current active configuration using $derived
+	public currentConfig = $derived(this.configs[this.currentAlgorithm]);
+
+	// Derived values for individual algorithm configs
+	public edge = $derived(this.configs.edge as EdgeConfig);
+	public centerline = $derived(this.configs.centerline as CenterlineConfig);
+	public superpixel = $derived(this.configs.superpixel as SuperpixelConfig);
+	public dots = $derived(this.configs.dots as DotsConfig);
 
 	constructor() {
 		console.log(
@@ -188,7 +182,7 @@ class AlgorithmConfigStore {
 			this.loadSavedConfigs();
 			this.loadSavedActiveAlgorithm();
 		}
-		this.isInitialized.set(true);
+		this.isInitialized = true;
 	}
 
 	/**
@@ -196,7 +190,7 @@ class AlgorithmConfigStore {
 	 */
 	async initialize(): Promise<void> {
 		// For now this is synchronous, but could load from remote config in future
-		this.isInitialized.set(true);
+		this.isInitialized = true;
 		return Promise.resolve();
 	}
 
@@ -204,7 +198,6 @@ class AlgorithmConfigStore {
 	 * Set the active algorithm
 	 */
 	setActiveAlgorithm(algorithm: AlgorithmType) {
-		this.activeAlgorithm.set(algorithm);
 		this.currentAlgorithm = algorithm;
 		this.saveActiveAlgorithm(algorithm);
 	}
@@ -227,14 +220,14 @@ class AlgorithmConfigStore {
 	 * Update configuration for a specific algorithm
 	 */
 	updateConfig(algorithm: AlgorithmType, updates: Partial<AlgorithmConfig>) {
-		this.configs.update((configs) => {
-			configs[algorithm] = {
-				...configs[algorithm],
+		this.configs = {
+			...this.configs,
+			[algorithm]: {
+				...this.configs[algorithm],
 				...updates
-			} as AlgorithmConfig;
-			this.saveConfigs(configs);
-			return configs;
-		});
+			} as AlgorithmConfig
+		};
+		this.saveConfigs(this.configs);
 	}
 
 	/**
@@ -249,7 +242,7 @@ class AlgorithmConfigStore {
 	 * Get configuration for a specific algorithm
 	 */
 	getConfig(algorithm: AlgorithmType): AlgorithmConfig {
-		return get(this.configs)[algorithm];
+		return this.configs[algorithm];
 	}
 
 	/**
@@ -264,37 +257,57 @@ class AlgorithmConfigStore {
 	 * Reset configuration for a specific algorithm to defaults
 	 */
 	resetConfig(algorithm: AlgorithmType) {
-		this.configs.update((configs) => {
-			configs[algorithm] = { ...DEFAULT_CONFIGS[algorithm] };
-			this.saveConfigs(configs);
-			return configs;
-		});
+		this.configs = {
+			...this.configs,
+			[algorithm]: { ...DEFAULT_CONFIGS[algorithm] }
+		};
+		this.saveConfigs(this.configs);
 	}
 
 	/**
 	 * Reset all configurations to defaults
 	 */
 	resetAllConfigs() {
-		this.configs.set({ ...DEFAULT_CONFIGS });
+		this.configs = { ...DEFAULT_CONFIGS };
 		this.saveConfigs(DEFAULT_CONFIGS);
 	}
 
 	/**
-	 * Export configuration as JSON for WASM
+	 * Export configuration as JSON for WASM using the new unified config system
 	 * This is the single point where configuration is converted for WASM consumption
 	 */
-	exportConfigForWasm(): string {
+	async exportConfigForWasm(): Promise<string> {
 		const config = this.getCurrentConfig();
-		return JSON.stringify(config);
+		// Use the new config transformer to convert to WASM format
+		const { toWasmConfig } = await import('$lib/types/config-transformer');
+		const wasmConfig = toWasmConfig(config);
+		return JSON.stringify(wasmConfig);
+	}
+
+	/**
+	 * Get configuration as WASM config object (synchronous)
+	 * This returns the current config in frontend format - transformation happens in the worker
+	 */
+	getConfigForWasm(): AlgorithmConfig {
+		return this.getCurrentConfig();
 	}
 
 	/**
 	 * Import configuration from JSON
 	 */
-	importConfig(algorithm: AlgorithmType, jsonConfig: string) {
+	async importConfig(algorithm: AlgorithmType, jsonConfig: string) {
 		try {
 			const config = JSON.parse(jsonConfig);
-			this.updateConfig(algorithm, config);
+			// Check if this is a WASM format config and transform it back
+			if (config.backend && config.stroke_px_at_1080p !== undefined) {
+				// This looks like a WASM config, transform it back
+				const { fromWasmConfig } = await import('$lib/types/config-transformer');
+				const frontendConfig = fromWasmConfig(config);
+				this.updateConfig(algorithm, frontendConfig);
+			} else {
+				// This is already frontend format
+				this.updateConfig(algorithm, config);
+			}
 		} catch (error) {
 			console.error('Failed to import configuration:', error);
 			throw new Error(`Invalid configuration JSON: ${error}`);
@@ -307,17 +320,17 @@ class AlgorithmConfigStore {
 	 */
 	async validateConfig(vectorizer: any): Promise<boolean> {
 		try {
-			const configJson = this.exportConfigForWasm();
+			const configJson = await this.exportConfigForWasm();
 			const validationResult = await vectorizer.validate_config_json(configJson);
 			const validation = JSON.parse(validationResult);
 
-			this.validationErrors.set(validation.errors || []);
-			this.validationWarnings.set(validation.warnings || []);
+			this.validationErrors = validation.errors || [];
+			this.validationWarnings = validation.warnings || [];
 
 			return validation.valid;
 		} catch (error) {
 			console.error('Configuration validation failed:', error);
-			this.validationErrors.set([`Validation error: ${error}`]);
+			this.validationErrors = [`Validation error: ${error}`];
 			return false;
 		}
 	}
@@ -326,14 +339,14 @@ class AlgorithmConfigStore {
 	 * Get validation errors
 	 */
 	getValidationErrors(): string[] {
-		return get(this.validationErrors);
+		return this.validationErrors;
 	}
 
 	/**
 	 * Get validation warnings
 	 */
 	getValidationWarnings(): string[] {
-		return get(this.validationWarnings);
+		return this.validationWarnings;
 	}
 
 	/**
@@ -408,7 +421,7 @@ class AlgorithmConfigStore {
 						...(configs[algorithm] || {})
 					} as AlgorithmConfig;
 				}
-				this.configs.set(mergedConfigs);
+				this.configs = mergedConfigs;
 				console.log('[AlgorithmConfigStore] Successfully loaded saved configs');
 			}
 		} catch (error) {
@@ -436,7 +449,6 @@ class AlgorithmConfigStore {
 		try {
 			const saved = localStorage.getItem('vec2art-active-algorithm');
 			if (saved && ['edge', 'centerline', 'superpixel', 'dots'].includes(saved)) {
-				this.activeAlgorithm.set(saved as AlgorithmType);
 				this.currentAlgorithm = saved as AlgorithmType;
 			}
 		} catch (error) {
@@ -445,10 +457,11 @@ class AlgorithmConfigStore {
 	}
 
 	/**
-	 * Subscribe to configuration changes
+	 * Get a reactive reference to a specific algorithm config
+	 * This returns the config object that will automatically update
 	 */
-	subscribe(callback: (config: AlgorithmConfig) => void) {
-		return this.currentConfig.subscribe(callback);
+	getReactiveConfig(algorithm: AlgorithmType) {
+		return () => this.configs[algorithm];
 	}
 }
 

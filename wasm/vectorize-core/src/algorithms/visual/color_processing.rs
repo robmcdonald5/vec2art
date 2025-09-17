@@ -9,9 +9,13 @@ use crate::algorithms::visual::simd_color::{
 };
 use crate::algorithms::Point;
 use image::Rgba;
+#[cfg(feature = "generate-ts")]
+use ts_rs::TS;
 
 /// Color sampling method determines how colors are extracted from paths
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "generate-ts", derive(TS))]
+#[cfg_attr(feature = "generate-ts", ts(export, export_to = "../../../frontend/src/lib/types/generated/"))]
 pub enum ColorSamplingMethod {
     /// Single dominant color per path (fastest, basic)
     DominantColor,

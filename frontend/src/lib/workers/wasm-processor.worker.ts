@@ -15,6 +15,7 @@ import init, * as wasmModule from '../wasm/vectorize_wasm.js';
 
 // Import vectorizer configuration types
 import type { AlgorithmConfig } from '../types/algorithm-configs';
+import { toWasmConfig } from '../types/config-transformer';
 
 // Early logging to confirm worker execution
 console.log('[Worker] 🚀 WASM Worker starting up with STATIC imports...');
@@ -119,158 +120,200 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 		// Create WASM vectorizer
 		const vectorizer = new wasmModule.WasmVectorizer();
 
-		// Log available methods on the vectorizer for debugging
-		console.log(
-			'[Worker] 📋 Available vectorizer methods:',
-			Object.getOwnPropertyNames(Object.getPrototypeOf(vectorizer)).filter(
-				(name) => typeof (vectorizer as any)[name] === 'function'
-			)
-		);
+		// ===== NEW UNIFIED CONFIG SYSTEM =====
+		// Transform frontend config to WASM format
+		const wasmConfig = toWasmConfig(config);
+		const configJson = JSON.stringify(wasmConfig);
 
-		// Apply AlgorithmConfig directly to WASM (new unified system)
-		console.log('[Worker] 🔧 Applying AlgorithmConfig to WASM:', config);
-
-		// Debug: Log vectorizer config values
-		console.log('[Worker] 🔍 Vectorizer config values:', {
-			algorithm: config.algorithm,
-			preserveColors: config.preserveColors,
-			strokeWidth: config.strokeWidth,
-			detail: config.detail
+		console.log('[Worker] 🔧 Applying unified config to WASM');
+		console.log('[Worker] 📋 Config summary:', {
+			backend: wasmConfig.backend,
+			detail: wasmConfig.detail,
+			stroke_width: wasmConfig.stroke_px_at_1080p,
+			noise_filtering: wasmConfig.noise_filtering,
+			background_removal: wasmConfig.enable_background_removal
 		});
 
-		// Apply backend using vectorizer config
-		vectorizer.set_backend(config.algorithm);
-
-		// Apply core settings using vectorizer config
-		vectorizer.set_detail(config.detail);
-		vectorizer.set_stroke_width(config.strokeWidth);
-
-		// Apply color settings
+		// Apply entire configuration with single call
 		try {
-			if (typeof vectorizer.set_preserve_colors === 'function') {
-				vectorizer.set_preserve_colors(config.preserveColors || false);
+			if (typeof vectorizer.apply_config_json === 'function') {
+				vectorizer.apply_config_json(configJson);
+				console.log('[Worker] ✅ Unified config applied successfully');
 			} else {
-				console.error('[Worker] ❌ set_preserve_colors method does not exist on vectorizer');
+				// Fallback to old method if new method doesn't exist yet
+				console.log(
+					'[Worker] ⚠️ Falling back to individual setters (apply_config_json not available)'
+				);
+
+				// Apply backend using vectorizer config
+				vectorizer.set_backend(config.algorithm);
+
+				// Apply core settings using vectorizer config
+				vectorizer.set_detail(config.detail);
+				vectorizer.set_stroke_width(config.strokeWidth);
+
+				// Apply color settings
+				try {
+					if (typeof vectorizer.set_preserve_colors === 'function') {
+						vectorizer.set_preserve_colors(config.preserveColors || false);
+					} else {
+						console.error('[Worker] ❌ set_preserve_colors method does not exist on vectorizer');
+					}
+				} catch (error) {
+					console.error('[Worker] ❌ Error calling set_preserve_colors:', error);
+				}
+
+				// Apply backend-specific settings based on backend type
+				if (config.algorithm === 'edge') {
+					// Edge-specific settings
+					if (config.passCount !== undefined) {
+						vectorizer.set_multipass(config.passCount > 1);
+					}
+					if (config.passCount !== undefined && config.passCount > 0) {
+						vectorizer.set_pass_count(config.passCount);
+					}
+					if (config.enableReversePass !== undefined) {
+						vectorizer.set_reverse_pass(config.enableReversePass);
+					}
+					if (config.enableDiagonalPass !== undefined) {
+						vectorizer.set_diagonal_pass(config.enableDiagonalPass);
+					}
+
+					// Apply hand-drawn settings (Edge-specific)
+					if (config.handDrawnPreset !== undefined) {
+						try {
+							// When custom values are set, the preset should be "custom"
+							// but the WASM doesn't have individual setters for tremor/weights/tapering
+							if (
+								(config.handDrawnVariableWeights !== undefined &&
+									config.handDrawnVariableWeights > 0) ||
+								(config.handDrawnTremorStrength !== undefined &&
+									config.handDrawnTremorStrength > 0) ||
+								(config.handDrawnTapering !== undefined && config.handDrawnTapering > 0)
+							) {
+								console.log('[Worker] ✏️ Setting hand_drawn_preset: custom (with custom values)');
+								if (typeof vectorizer.set_hand_drawn_preset === 'function') {
+									vectorizer.set_hand_drawn_preset('custom');
+								} else {
+									console.error('[Worker] ❌ set_hand_drawn_preset method does not exist');
+								}
+							} else {
+								console.log('[Worker] ✏️ Setting hand_drawn_preset:', config.handDrawnPreset);
+								if (typeof vectorizer.set_hand_drawn_preset === 'function') {
+									vectorizer.set_hand_drawn_preset(config.handDrawnPreset);
+								} else {
+									console.error('[Worker] ❌ set_hand_drawn_preset method does not exist');
+								}
+							}
+						} catch (error) {
+							console.error('[Worker] ❌ Error setting hand_drawn_preset:', error);
+						}
+					}
+
+					// Apply preprocessing parameters
+					if (config.noiseFiltering !== undefined) {
+						console.log('[Worker] 🔧 Setting noise_filtering:', config.noiseFiltering);
+						try {
+							if (typeof vectorizer.set_noise_filtering === 'function') {
+								vectorizer.set_noise_filtering(config.noiseFiltering);
+							} else {
+								console.error('[Worker] ❌ set_noise_filtering method does not exist');
+							}
+						} catch (error) {
+							console.error('[Worker] ❌ Error calling set_noise_filtering:', error);
+						}
+					}
+
+					if (config.enableBackgroundRemoval !== undefined) {
+						console.log(
+							'[Worker] 🗑️ Setting enable_background_removal:',
+							config.enableBackgroundRemoval
+						);
+						try {
+							if (typeof vectorizer.enable_background_removal === 'function') {
+								vectorizer.enable_background_removal(config.enableBackgroundRemoval);
+							} else {
+								console.error('[Worker] ❌ enable_background_removal method does not exist');
+							}
+						} catch (error) {
+							console.error('[Worker] ❌ Error calling enable_background_removal:', error);
+						}
+					}
+
+					// Apply Background removal settings (Edge config only)
+					if (config.backgroundRemovalStrength !== undefined) {
+						console.log(
+							'[Worker] 🗑️ Setting background_removal_strength:',
+							config.backgroundRemovalStrength
+						);
+						try {
+							if (typeof vectorizer.set_background_removal_strength === 'function') {
+								vectorizer.set_background_removal_strength(config.backgroundRemovalStrength);
+							} else {
+								console.error('[Worker] ❌ set_background_removal_strength method does not exist');
+							}
+						} catch (error) {
+							console.error('[Worker] ❌ Error calling set_background_removal_strength:', error);
+						}
+					}
+				}
+
+				// Apply Centerline backend specific settings
+				if (config.algorithm === 'centerline') {
+					if (config.enableAdaptiveThreshold !== undefined) {
+						console.log(
+							'[Worker] 📐 Setting enable_adaptive_threshold:',
+							config.enableAdaptiveThreshold
+						);
+						vectorizer.set_enable_adaptive_threshold(config.enableAdaptiveThreshold);
+					}
+					if (config.adaptiveThresholdWindowSize !== undefined) {
+						console.log('[Worker] 📐 Setting window_size:', config.adaptiveThresholdWindowSize);
+						vectorizer.set_window_size(config.adaptiveThresholdWindowSize);
+					}
+					if (config.adaptiveThresholdK !== undefined) {
+						console.log('[Worker] 📐 Setting sensitivity_k:', config.adaptiveThresholdK);
+						vectorizer.set_sensitivity_k(config.adaptiveThresholdK);
+					}
+				}
+
+				// Apply Superpixel backend specific settings
+				if (config.algorithm === 'superpixel') {
+					if (config.numSuperpixels !== undefined) {
+						console.log('[Worker] 🎨 Setting num_superpixels:', config.numSuperpixels);
+						vectorizer.set_num_superpixels(config.numSuperpixels);
+					}
+					if (config.compactness !== undefined) {
+						console.log('[Worker] 🎨 Setting compactness:', config.compactness);
+						vectorizer.set_compactness(config.compactness);
+					}
+					if (config.iterations !== undefined) {
+						console.log('[Worker] 🎨 Setting slic_iterations:', config.iterations);
+						vectorizer.set_slic_iterations(config.iterations);
+					}
+				}
+
+				// Apply Dots backend specific settings
+				if (config.algorithm === 'dots') {
+					if (config.minRadius !== undefined || config.maxRadius !== undefined) {
+						const minRadius = config.minRadius ?? 0.5;
+						const maxRadius = config.maxRadius ?? 3.0;
+						console.log('[Worker] 🔵 Setting dot_size_range:', minRadius, maxRadius);
+						try {
+							if (typeof vectorizer.set_dot_size_range === 'function') {
+								vectorizer.set_dot_size_range(minRadius, maxRadius);
+							} else {
+								console.error('[Worker] ❌ set_dot_size_range method does not exist');
+							}
+						} catch (error) {
+							console.error('[Worker] ❌ Error calling set_dot_size_range:', error);
+						}
+					}
+				}
 			}
 		} catch (error) {
-			console.error('[Worker] ❌ Error calling set_preserve_colors:', error);
-		}
-
-		// Apply backend-specific settings based on backend type
-		if (config.algorithm === 'edge') {
-			// Edge-specific settings
-			if (config.passCount !== undefined) {
-				vectorizer.set_multipass(config.passCount > 1);
-			}
-			if (config.passCount !== undefined && config.passCount > 0) {
-				vectorizer.set_pass_count(config.passCount);
-			}
-			if (config.enableReversePass !== undefined) {
-				vectorizer.set_reverse_pass(config.enableReversePass);
-			}
-			if (config.enableDiagonalPass !== undefined) {
-				vectorizer.set_diagonal_pass(config.enableDiagonalPass);
-			}
-
-			// Apply hand-drawn settings (Edge-specific)
-			if (config.handDrawnPreset !== undefined) {
-				try {
-					// When custom values are set, the preset should be "custom"
-					// but the WASM doesn't have individual setters for tremor/weights/tapering
-					if (
-						(config.handDrawnVariableWeights !== undefined &&
-							config.handDrawnVariableWeights > 0) ||
-						(config.handDrawnTremorStrength !== undefined && config.handDrawnTremorStrength > 0) ||
-						(config.handDrawnTapering !== undefined && config.handDrawnTapering > 0)
-					) {
-						console.log('[Worker] ✏️ Setting hand_drawn_preset: custom (with custom values)');
-						if (typeof vectorizer.set_hand_drawn_preset === 'function') {
-							vectorizer.set_hand_drawn_preset('custom');
-						} else {
-							console.error('[Worker] ❌ set_hand_drawn_preset method does not exist');
-						}
-					} else {
-						console.log('[Worker] ✏️ Setting hand_drawn_preset:', config.handDrawnPreset);
-						if (typeof vectorizer.set_hand_drawn_preset === 'function') {
-							vectorizer.set_hand_drawn_preset(config.handDrawnPreset);
-						} else {
-							console.error('[Worker] ❌ set_hand_drawn_preset method does not exist');
-						}
-					}
-				} catch (error) {
-					console.error('[Worker] ❌ Error setting hand_drawn_preset:', error);
-				}
-			}
-
-			// Apply Background removal settings (Edge config only)
-			if (config.backgroundRemovalStrength !== undefined) {
-				console.log(
-					'[Worker] 🗑️ Setting background_removal_strength:',
-					config.backgroundRemovalStrength
-				);
-				try {
-					if (typeof vectorizer.set_background_removal_strength === 'function') {
-						vectorizer.set_background_removal_strength(config.backgroundRemovalStrength);
-					} else {
-						console.error('[Worker] ❌ set_background_removal_strength method does not exist');
-					}
-				} catch (error) {
-					console.error('[Worker] ❌ Error calling set_background_removal_strength:', error);
-				}
-			}
-		}
-
-		// Apply Centerline backend specific settings
-		if (config.algorithm === 'centerline') {
-			if (config.enableAdaptiveThreshold !== undefined) {
-				console.log(
-					'[Worker] 📐 Setting enable_adaptive_threshold:',
-					config.enableAdaptiveThreshold
-				);
-				vectorizer.set_enable_adaptive_threshold(config.enableAdaptiveThreshold);
-			}
-			if (config.adaptiveThresholdWindowSize !== undefined) {
-				console.log('[Worker] 📐 Setting window_size:', config.adaptiveThresholdWindowSize);
-				vectorizer.set_window_size(config.adaptiveThresholdWindowSize);
-			}
-			if (config.adaptiveThresholdK !== undefined) {
-				console.log('[Worker] 📐 Setting sensitivity_k:', config.adaptiveThresholdK);
-				vectorizer.set_sensitivity_k(config.adaptiveThresholdK);
-			}
-		}
-
-		// Apply Superpixel backend specific settings
-		if (config.algorithm === 'superpixel') {
-			if (config.numSuperpixels !== undefined) {
-				console.log('[Worker] 🎨 Setting num_superpixels:', config.numSuperpixels);
-				vectorizer.set_num_superpixels(config.numSuperpixels);
-			}
-			if (config.compactness !== undefined) {
-				console.log('[Worker] 🎨 Setting compactness:', config.compactness);
-				vectorizer.set_compactness(config.compactness);
-			}
-			if (config.iterations !== undefined) {
-				console.log('[Worker] 🎨 Setting slic_iterations:', config.iterations);
-				vectorizer.set_slic_iterations(config.iterations);
-			}
-		}
-
-		// Apply Dots backend specific settings
-		if (config.algorithm === 'dots') {
-			if (config.minRadius !== undefined || config.maxRadius !== undefined) {
-				const minRadius = config.minRadius ?? 0.5;
-				const maxRadius = config.maxRadius ?? 3.0;
-				console.log('[Worker] 🔵 Setting dot_size_range:', minRadius, maxRadius);
-				try {
-					if (typeof vectorizer.set_dot_size_range === 'function') {
-						vectorizer.set_dot_size_range(minRadius, maxRadius);
-					} else {
-						console.error('[Worker] ❌ set_dot_size_range method does not exist');
-					}
-				} catch (error) {
-					console.error('[Worker] ❌ Error calling set_dot_size_range:', error);
-				}
-			}
+			console.error('[Worker] ❌ Error applying config:', error);
+			// Continue with processing even if unified config fails
 		}
 
 		console.log('[Worker] ✅ Config applied to vectorizer, starting processing...');

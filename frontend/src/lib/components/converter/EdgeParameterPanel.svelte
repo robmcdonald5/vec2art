@@ -27,16 +27,17 @@
 	let advancedExpanded = $state(false);
 	let artisticExpanded = $state(false);
 
-	// Get config from store
-	const config = $derived(algorithmConfigStore.edge) as any;
+	// Get reactive config from the store using $derived
+	const config = $derived(algorithmConfigStore.edge) as Record<string, any>;
 
 	// Handle parameter changes
 	function handleParameterChange(name: string, value: any) {
+		console.log('[EdgeParameterPanel] Updating parameter:', name, 'to value:', value);
 		algorithmConfigStore.updateConfig('edge', { [name]: value });
 	}
 
 	// Group parameters by category - new organization
-	const preprocessingParams = [
+	const preprocessingParams: string[] = [
 		'noiseFiltering',
 		'noiseFilterSpatialSigma',
 		'noiseFilterRangeSigma',
@@ -44,22 +45,22 @@
 		'backgroundRemovalStrength',
 		'backgroundRemovalAlgorithm'
 	];
-	const layerProcessingParams = ['enableMultipass', 'passCount'];
-	const colorControlParams = [
+	const layerProcessingParams: string[] = ['enableMultipass', 'passCount'];
+	const colorControlParams: string[] = [
 		'linePreserveColors',
 		'lineColorAccuracy',
 		'maxColorsPerPath',
 		'colorTolerance',
 		'lineColorSampling'
 	];
-	const edgeDetectionParams = [
+	const edgeDetectionParams: string[] = [
 		'enableReversePass',
 		'enableDiagonalPass',
 		'nmsLow',
 		'nmsHigh',
 		'nmsSmoothBeforeNms'
 	];
-	const advancedParams = [
+	const advancedParams: string[] = [
 		'enableEtfFdog',
 		'etfRadius',
 		'etfIterations',
@@ -68,7 +69,7 @@
 		'enableFlowTracing',
 		'enableBezierFitting'
 	];
-	const artisticParams = [
+	const artisticParams: string[] = [
 		'handDrawnPreset',
 		'handDrawnVariableWeights',
 		'handDrawnTremorStrength',

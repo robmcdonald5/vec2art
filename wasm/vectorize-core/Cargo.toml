@@ -18,6 +18,8 @@ telemetry = ["file-output"]
 file-output = []
 # GPU acceleration support
 gpu-acceleration = ["wgpu", "bytemuck", "pollster", "futures-channel"]
+# TypeScript generation
+generate-ts = ["ts-rs"]
 # Enhanced error handling for robust WASM execution
 enhanced-error-handling = []
 
@@ -55,6 +57,9 @@ futures-channel = { version = "0.3", optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 web-sys = { workspace = true, optional = true, features = ["Window", "Performance"] }
 js-sys = { workspace = true, optional = true }
+
+# TypeScript generation (optional)
+ts-rs = { version = "9.0", features = ["serde-compat"], optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }

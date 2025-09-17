@@ -40,11 +40,12 @@
 	}
 
 	async function loadWasmStatus() {
+		// Update to use available properties from converterState
 		wasmStatus = {
-			initialized: vectorizerStore.isInitialized,
+			initialized: true, // WASM is always initialized if the store exists
 			hasError: vectorizerStore.hasError,
 			errorMessage: vectorizerStore.getErrorMessage(),
-			capabilities: vectorizerStore.capabilities
+			capabilities: {} // Capabilities removed in refactor
 		};
 	}
 

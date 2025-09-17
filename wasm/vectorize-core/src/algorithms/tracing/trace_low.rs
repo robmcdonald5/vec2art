@@ -28,6 +28,9 @@ use crate::svg_gradients::{ColorStop, GradientDefinition};
 use crate::utils::Instant;
 use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba};
 use std::collections::{HashMap, VecDeque};
+use serde::{Deserialize, Serialize};
+#[cfg(feature = "generate-ts")]
+use ts_rs::TS;
 
 /// Rectangle structure for region identification
 #[derive(Debug, Clone, Copy)]
@@ -123,6 +126,8 @@ struct CachedPathData {
 
 /// Available tracing backends for low-detail vectorization
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "generate-ts", derive(TS))]
+#[cfg_attr(feature = "generate-ts", ts(export, export_to = "../../../frontend/src/lib/types/generated/"))]
 pub enum TraceBackend {
     /// Canny edge detection + contour following (sparse outlines)
     Edge,
@@ -149,6 +154,8 @@ pub enum ProcessingDirection {
 
 /// Available background removal algorithms for pre-processing
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "generate-ts", derive(TS))]
+#[cfg_attr(feature = "generate-ts", ts(export, export_to = "../../../frontend/src/lib/types/generated/"))]
 pub enum BackgroundRemovalAlgorithm {
     /// OTSU automatic thresholding (fast, works well for simple backgrounds)
     Otsu,
@@ -160,6 +167,8 @@ pub enum BackgroundRemovalAlgorithm {
 
 /// Superpixel cluster initialization patterns for SLIC algorithm
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "generate-ts", derive(TS))]
+#[cfg_attr(feature = "generate-ts", ts(export, export_to = "../../../frontend/src/lib/types/generated/"))]
 pub enum SuperpixelInitPattern {
     /// Traditional square grid - may create diagonal artifacts
     Square,
@@ -171,6 +180,8 @@ pub enum SuperpixelInitPattern {
 
 /// Configuration for trace-low algorithms
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "generate-ts", derive(TS))]
+#[cfg_attr(feature = "generate-ts", ts(export, export_to = "../../../frontend/src/lib/types/generated/"))]
 pub struct TraceLowConfig {
     /// Selected tracing backend
     pub backend: TraceBackend,
@@ -199,6 +210,7 @@ pub struct TraceLowConfig {
     /// Threshold for directional strength - skip pass if not beneficial (0.0-1.0)
     pub directional_strength_threshold: f32,
     /// Maximum total processing time budget in milliseconds
+    #[cfg_attr(feature = "generate-ts", ts(type = "number"))]
     pub max_processing_time_ms: u64,
     /// Enable ETF/FDoG advanced edge detection (default: false for compatibility)
     pub enable_etf_fdog: bool,

@@ -81,8 +81,6 @@
 			fileInput.click();
 		}
 	}
-
-	// function formatFileSize(bytes: number): string { /* TODO: implement if needed */ }
 </script>
 
 <!-- Hidden file input -->

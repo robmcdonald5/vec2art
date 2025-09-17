@@ -1,9 +1,9 @@
 //! WebAssembly wrapper for vectorize-core
 //!
 //! This crate provides a WebAssembly interface for the vec2art vectorization algorithms.
-//! 
+//!
 //! # Architecture
-//! 
+//!
 //! This module uses a **single-threaded WASM + Web Worker** architecture:
 //! - WASM module runs single-threaded (no Rayon/threading complexity)
 //! - Web Workers provide JavaScript-level parallelism
@@ -14,9 +14,13 @@ mod capabilities;
 mod error;
 mod gpu_backend;
 mod processing_manager;
+mod unified_config;
 mod utils;
 mod wasm_config;
 mod vectorizer_refactored;
+
+#[cfg(feature = "generate-ts")]
+mod type_generation;
 
 use crate::error::ErrorRecoveryManager;
 use image::ImageBuffer;
@@ -119,6 +123,30 @@ impl WasmVectorizer {
         }
     }
 
+    // ===== NEW UNIFIED CONFIG INTERFACE =====
+
+    /// Apply complete configuration from JSON
+    /// This is the PRIMARY configuration method - replaces all individual setters
+    #[wasm_bindgen]
+    pub fn apply_config_json(&mut self, config_json: &str) -> Result<(), JsValue> {
+        unified_config::apply_config_json(&mut self.config_builder, config_json)
+    }
+
+    /// Get the current configuration as JSON
+    #[wasm_bindgen]
+    pub fn get_config_json(&self) -> Result<String, JsValue> {
+        unified_config::get_config_json(&self.config_builder)
+    }
+
+    /// Validate configuration JSON without applying it
+    #[wasm_bindgen]
+    pub fn validate_config_json(config_json: &str) -> Result<bool, JsValue> {
+        unified_config::validate_config_json(config_json)
+    }
+
+    // ===== DEPRECATED INDIVIDUAL SETTERS (to be removed) =====
+    // These remain temporarily for backward compatibility but should be removed
+    // once frontend is fully migrated to the unified config system
 
     /// Set the vectorization backend
     #[wasm_bindgen]
@@ -327,6 +355,24 @@ impl WasmVectorizer {
     #[wasm_bindgen]
     pub fn set_noise_filtering(&mut self, enabled: bool) {
         self.config_builder = self.config_builder.clone().noise_filtering(enabled);
+    }
+
+    /// Set noise filter spatial sigma (for bilateral filter)
+    /// Note: This parameter is for future implementation
+    #[wasm_bindgen]
+    pub fn set_noise_filter_spatial_sigma(&mut self, sigma: f32) -> Result<(), JsValue> {
+        // TODO: Implement in ConfigBuilder when bilateral filter is added
+        log::info!("🔧 WASM: set_noise_filter_spatial_sigma called with sigma={} (not yet implemented)", sigma);
+        Ok(())
+    }
+
+    /// Set noise filter range sigma (for bilateral filter)
+    /// Note: This parameter is for future implementation
+    #[wasm_bindgen]
+    pub fn set_noise_filter_range_sigma(&mut self, sigma: f32) -> Result<(), JsValue> {
+        // TODO: Implement in ConfigBuilder when bilateral filter is added
+        log::info!("🔧 WASM: set_noise_filter_range_sigma called with sigma={} (not yet implemented)", sigma);
+        Ok(())
     }
 
     /// Set SVG precision
@@ -815,9 +861,18 @@ impl WasmVectorizer {
             .map_err(|e| JsValue::from_str(&format!("Configuration error: {}", e)))?;
 
         // Log final configuration being used for processing
-        log::info!("🚀 WASM: Final config for processing - Backend: {:?}, Detail: {}, Multipass: {}, Hand-drawn: {}", 
-            config.backend, config.detail, config.enable_multipass, 
+        log::info!("🚀 WASM: Final config for processing - Backend: {:?}, Detail: {}, Multipass: {}, Hand-drawn: {}",
+            config.backend, config.detail, config.enable_multipass,
             if hand_drawn_config.is_some() { "ENABLED" } else { "disabled" });
+
+        // DEBUG: Log preprocessing parameters
+        log::info!("🔍 WASM DEBUG: Preprocessing parameters:");
+        log::info!("  - noise_filtering: {}", config.noise_filtering);
+        log::info!("  - noise_filter_spatial_sigma: {}", config.noise_filter_spatial_sigma);
+        log::info!("  - noise_filter_range_sigma: {}", config.noise_filter_range_sigma);
+        log::info!("  - enable_background_removal: {}", config.enable_background_removal);
+        log::info!("  - background_removal_strength: {}", config.background_removal_strength);
+        log::info!("  - background_removal_algorithm: {:?}", config.background_removal_algorithm);
             
         // Log hand-drawn configuration details if present
         if let Some(ref hd_config) = hand_drawn_config {
@@ -1052,6 +1107,8 @@ impl WasmVectorizer {
     /// Apply a complete configuration from JSON in a single call
     /// This is the most efficient way to configure the vectorizer, reducing 20+ individual
     /// setter calls to a single boundary crossing.
+    // DUPLICATE - Commented out in favor of unified_config module
+    /*
     #[wasm_bindgen]
     pub fn apply_config_json(&mut self, config_json: &str) -> Result<(), JsValue> {
         log::info!("🚀 WASM: apply_config_json called with {} bytes of JSON", config_json.len());
@@ -1111,6 +1168,14 @@ impl WasmVectorizer {
             builder = builder.diagonal_pass(enable_diagonal);
         }
 
+        // Apply noise filtering
+        if let Some(noise_filtering) = config.get("noiseFiltering").and_then(|v| v.as_bool()) {
+            log::info!("🔍 WASM DEBUG: Setting noise_filtering to {} from JSON config", noise_filtering);
+            builder = builder.noise_filtering(noise_filtering);
+        } else {
+            log::info!("🔍 WASM DEBUG: noiseFiltering not found in JSON config");
+        }
+
         // Apply dots-specific parameters
         if let Some(dot_density) = config.get("dotDensityThreshold").and_then(|v| v.as_f64()) {
             builder = builder.dot_density(dot_density as f32)
@@ -1147,13 +1212,19 @@ impl WasmVectorizer {
 
         // Apply background removal settings
         if let Some(enable_bg_removal) = config.get("enableBackgroundRemoval").and_then(|v| v.as_bool()) {
+            log::info!("🔍 WASM DEBUG: Setting background_removal to {} from JSON config", enable_bg_removal);
             builder = builder.background_removal(enable_bg_removal);
+        } else {
+            log::info!("🔍 WASM DEBUG: enableBackgroundRemoval not found in JSON config");
         }
 
         if let Some(bg_strength) = config.get("backgroundRemovalStrength").and_then(|v| v.as_f64()) {
             builder = builder.background_removal_strength(bg_strength as f32)
                 .map_err(|e| JsValue::from_str(&format!("Failed to set background removal strength: {}", e)))?;
         }
+
+        // Note: backgroundRemovalAlgorithm is currently handled via individual setter
+        // as it's not part of the ConfigBuilder yet
 
         // Apply hand-drawn effects
         if let Some(preset) = config.get("handDrawnPreset").and_then(|v| v.as_str()) {
@@ -1167,9 +1238,12 @@ impl WasmVectorizer {
         log::info!("✅ WASM: Configuration applied successfully from JSON");
         Ok(())
     }
+    */
 
     /// Validate a configuration JSON without applying it
     /// Returns a JSON string with validation results
+    // DUPLICATE - Commented out (different signature from unified_config version)
+    /*
     #[wasm_bindgen]
     pub fn validate_config_json(&self, config_json: &str) -> Result<String, JsValue> {
         log::info!("🔍 WASM: validate_config_json called");
@@ -1215,6 +1289,7 @@ impl WasmVectorizer {
 
         Ok(serde_json::to_string(&validation).unwrap())
     }
+    */
 
     /// Get default configuration JSON for a specific backend
     /// Returns a JSON string with all default parameters for the specified backend

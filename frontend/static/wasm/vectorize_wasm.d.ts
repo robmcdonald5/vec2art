@@ -364,6 +364,19 @@ export class WasmVectorizer {
   free(): void;
   constructor();
   /**
+   * Apply complete configuration from JSON
+   * This is the PRIMARY configuration method - replaces all individual setters
+   */
+  apply_config_json(config_json: string): void;
+  /**
+   * Get the current configuration as JSON
+   */
+  get_config_json(): string;
+  /**
+   * Validate configuration JSON without applying it
+   */
+  static validate_config_json(config_json: string): boolean;
+  /**
    * Set the vectorization backend
    */
   set_backend(backend: string): void;
@@ -423,6 +436,16 @@ export class WasmVectorizer {
    * Enable or disable noise filtering
    */
   set_noise_filtering(enabled: boolean): void;
+  /**
+   * Set noise filter spatial sigma (for bilateral filter)
+   * Note: This parameter is for future implementation
+   */
+  set_noise_filter_spatial_sigma(sigma: number): void;
+  /**
+   * Set noise filter range sigma (for bilateral filter)
+   * Note: This parameter is for future implementation
+   */
+  set_noise_filter_range_sigma(sigma: number): void;
   /**
    * Set SVG precision
    */
@@ -607,14 +630,8 @@ export class WasmVectorizer {
    * Apply a complete configuration from JSON in a single call
    * This is the most efficient way to configure the vectorizer, reducing 20+ individual
    * setter calls to a single boundary crossing.
-   */
-  apply_config_json(config_json: string): void;
-  /**
    * Validate a configuration JSON without applying it
    * Returns a JSON string with validation results
-   */
-  validate_config_json(config_json: string): string;
-  /**
    * Get default configuration JSON for a specific backend
    * Returns a JSON string with all default parameters for the specified backend
    */
@@ -751,12 +768,9 @@ export interface InitOutput {
   readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$8position17h69d4e38458bd7354E: (a: number, b: number) => void;
   readonly _ZN10serde_json2de21Deserializer$LT$R$GT$18parse_long_integer17h046e642fa70d1e85E: (a: number, b: number, c: number, d: bigint) => void;
   readonly _ZN10serde_json2de21Deserializer$LT$R$GT$23parse_exponent_overflow17h86e5b100f3ded8e3E: (a: number, b: number, c: number, d: number, e: number) => void;
-  readonly _ZN10serde_json6number6Number8from_f6417hf9ae68aa36117e9bE: (a: number, b: number) => void;
+  readonly _ZN61_$LT$serde_json..error..Error$u20$as$u20$serde..de..Error$GT$12invalid_type17hbcc8d1d84ded2b2eE: (a: number, b: number, c: number) => number;
+  readonly _ZN10serde_json2de12ParserNumber12invalid_type17h67a391251abb5327E: (a: number, b: number, c: number) => number;
   readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$9parse_str17h03ad451ddc97d15bE: (a: number, b: number, c: number) => void;
-  readonly _RNvCsihszUHWOIem_7___rustc35___rust_no_alloc_shim_is_unstable_v2: () => void;
-  readonly _ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAlloc$GT$5alloc17hcd4fbdbb00b7446eE: (a: number, b: number, c: number) => number;
-  readonly _ZN5alloc7raw_vec12handle_error17h7f4b2a30dbb79ac6E: (a: number, b: number, c: number) => void;
-  readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h5090e1c7b0fbe0e9E: (a: number, b: number) => void;
   readonly _ZN3ryu6pretty8format6417h6ad0ae7200794b51E: (a: number, b: number) => number;
   readonly _ZN4core6option13unwrap_failed17h7133f3b8ad3376bdE: (a: number) => void;
   readonly _ZN82_$LT$$RF$serde_wasm_bindgen..ser..Serializer$u20$as$u20$serde..ser..Serializer$GT$13serialize_u6417h8b4bed7a579a4f04E: (a: number, b: number, c: bigint) => void;
@@ -769,6 +783,9 @@ export interface InitOutput {
   readonly _ZN18serde_wasm_bindgen9ObjectExt3set17ha669f4d7baa56893E: (a: number, b: number, c: number) => void;
   readonly _ZN6js_sys3Map3set17h13fbb4d94cd6f7baE: (a: number, b: number, c: number) => number;
   readonly _ZN83_$LT$serde_wasm_bindgen..ser..MapSerializer$u20$as$u20$serde..ser..SerializeMap$GT$3end17hb62675e73d8f3582E: (a: number, b: number) => void;
+  readonly _RNvCsihszUHWOIem_7___rustc35___rust_no_alloc_shim_is_unstable_v2: () => void;
+  readonly _ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAlloc$GT$5alloc17hcd4fbdbb00b7446eE: (a: number, b: number, c: number) => number;
+  readonly _ZN5alloc7raw_vec12handle_error17h7f4b2a30dbb79ac6E: (a: number, b: number, c: number) => void;
   readonly _ZN4core3fmt9Formatter9write_str17h932d0930c4ad7d8eE: (a: number, b: number, c: number) => number;
   readonly _ZN83_$LT$wgpu_types..instance..InstanceDescriptor$u20$as$u20$core..default..Default$GT$7default17habe85327145f1307E: (a: number) => void;
   readonly _ZN4wgpu3api8instance8Instance3new17h335cd788d1bdc2f0E: (a: number, b: number) => void;
@@ -831,8 +848,21 @@ export interface InitOutput {
   readonly _ZN5alloc4sync16Arc$LT$T$C$A$GT$9drop_slow17h8411306c496e18fdE: (a: number) => void;
   readonly _ZN14vectorize_core3gpu6device9GpuDevice11info_string17had53ebadcba416e6E: (a: number, b: number) => void;
   readonly _ZN6js_sys4Date3now17hf2638de2a21ab902E: () => number;
+  readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$10ignore_str17h37b4370f2f5421fbE: (a: number) => number;
   readonly _ZN3std9panicking8set_hook17h25a14f0d444c7f33E: (a: number, b: number) => void;
   readonly _ZN3std3sys4sync4once5futex4Once4call17h4b4834d523028c7fE: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly _ZN68_$LT$serde..de..impls..UnitVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h796d821c310fa378E: (a: number, b: number) => number;
+  readonly _ZN68_$LT$serde..de..impls..BoolVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h257f7a7293ffc997E: (a: number, b: number) => number;
+  readonly _ZN143_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$u64$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17he7f57c23f43202c4E: (a: number, b: number) => number;
+  readonly _ZN231_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..TraceBackend$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h60b2e2a9879a3193E: (a: number, b: number) => number;
+  readonly _ZN143_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$f32$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h8cfb3843433170bbE: (a: number, b: number) => number;
+  readonly _ZN145_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$usize$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h5c7f450dc6263eeeE: (a: number, b: number) => number;
+  readonly _ZN245_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..BackgroundRemovalAlgorithm$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h2b0e76fe08dc90adE: (a: number, b: number) => number;
+  readonly _ZN240_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..SuperpixelInitPattern$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h2295bafceeac194fE: (a: number, b: number) => number;
+  readonly _ZN250_$LT$vectorize_core..algorithms..visual..color_processing.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..visual..color_processing..ColorSamplingMethod$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hb41eed65abe05082E: (a: number, b: number) => number;
+  readonly _ZN142_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$u8$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h5e8381e85e0e5167E: (a: number, b: number) => number;
+  readonly _ZN228_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..TraceLowConfig$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$9expecting17haef24afa52d2fc9aE: (a: number, b: number) => number;
+  readonly _ZN143_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$u32$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hfc2a9658ce209367E: (a: number, b: number) => number;
   readonly _ZN43_$LT$bool$u20$as$u20$core..fmt..Display$GT$3fmt17h9bde3a48b6ab5f95E: (a: number, b: number) => number;
   readonly _ZN4core3fmt9Formatter25debug_tuple_field1_finish17hc8c085dab670456aE: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly _ZN4core3fmt9Formatter26debug_struct_field2_finish17h29b8c43c96265af5E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
@@ -881,6 +911,7 @@ export interface InitOutput {
   readonly _ZN79_$LT$naga..valid..analyzer.._..InternalBitFlags$u20$as$u20$core..fmt..Debug$GT$3fmt17hfd34a7582c1290d2E: (a: number, b: number) => number;
   readonly _ZN68_$LT$wgpu_types.._..InternalBitFlags$u20$as$u20$core..fmt..Debug$GT$3fmt17h387a32d7c4086f12E: (a: number, b: number) => number;
   readonly _ZN68_$LT$wgpu_types.._..InternalBitFlags$u20$as$u20$core..fmt..Debug$GT$3fmt17h65719cc76ebc04afE: (a: number, b: number) => number;
+  readonly _ZN66_$LT$dyn$u20$serde..de..Expected$u20$as$u20$core..fmt..Display$GT$3fmt17h9cdc9e4e01e1a6b0E: (a: number, b: number, c: number) => number;
   readonly _ZN42_$LT$str$u20$as$u20$core..fmt..Display$GT$3fmt17hcbc8897bf5cc07f3E: (a: number, b: number, c: number) => number;
   readonly _ZN24console_error_panic_hook4hook17h902e2bf8c43d2d16E: (a: number) => void;
   readonly _ZN5alloc4sync16Arc$LT$T$C$A$GT$9drop_slow17hbd8a5c9401c1ba79E: (a: number) => void;
@@ -906,8 +937,12 @@ export interface InitOutput {
   readonly _ZN106_$LT$vectorize_core..gpu..kernels..edge_detection..GpuEdgeDetectionError$u20$as$u20$core..fmt..Display$GT$3fmt17ha1ca03067137af04E: (a: number, b: number) => number;
   readonly _ZN4core5slice5index24slice_end_index_len_fail17h26e926f109887fb8E: (a: number, b: number, c: number) => void;
   readonly _ZN87_$LT$wgpu..backend..wgpu_core..CoreComputePipeline$u20$as$u20$core..ops..drop..Drop$GT$4drop17hbbae42977003a40bE: (a: number) => void;
+  readonly _ZN55_$LT$serde..de..OneOf$u20$as$u20$core..fmt..Display$GT$3fmt17ha9a0aefc4e4bb638E: (a: number, b: number) => number;
+  readonly _ZN61_$LT$serde_json..error..Error$u20$as$u20$serde..de..Error$GT$13invalid_value17hcbe5275166d16df2E: (a: number, b: number, c: number) => number;
   readonly _ZN4core3fmt9Formatter26debug_struct_fields_finish17h6b98c7cdd5adbcf3E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
+  readonly _ZN10serde_json5error10make_error17hc64b9d8e9dc97408E: (a: number) => number;
   readonly _ZN60_$LT$alloc..string..String$u20$as$u20$core..clone..Clone$GT$5clone17hc20a7d5013d7539bE: (a: number, b: number, c: number) => void;
+  readonly _ZN3ryu6pretty8format3217he566f4d871da3489E: (a: number, b: number) => number;
   readonly _ZN9hashbrown3raw11Fallibility17capacity_overflow17ha3dc53e5c84cffb7E: (a: number, b: number) => void;
   readonly _ZN9hashbrown3raw11Fallibility9alloc_err17h74fb1a7fb61ccb58E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder5build17h46b96a6191928507E: (a: number, b: number) => void;
@@ -921,6 +956,7 @@ export interface InitOutput {
   readonly _ZN14vectorize_core3gpu7kernels9stippling12GpuStippling21render_stippled_image17hae534ee46faf881eE: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
   readonly _ZN14vectorize_core3gpu7kernels10superpixel19GpuSlicSegmentation3new17he80cc91a28393c9aE: (a: number, b: number) => void;
   readonly _ZN4wgpu3api16compute_pipeline15ComputePipeline21get_bind_group_layout17h416dbeaaea0c6936E: (a: number, b: number, c: number) => void;
+  readonly _ZN89_$LT$vectorize_core..config_builder..ConfigBuilderError$u20$as$u20$core..fmt..Display$GT$3fmt17h9103421861e3da29E: (a: number, b: number) => number;
   readonly __wbg_wasmcapabilityreport_free: (a: number, b: number) => void;
   readonly wasmcapabilityreport_threading_supported: (a: number) => number;
   readonly wasmcapabilityreport_shared_array_buffer: (a: number) => number;
@@ -1077,56 +1113,61 @@ export interface InitOutput {
   readonly _ZN62_$LT$usize$u20$as$u20$wasm_bindgen..describe..WasmDescribe$GT$8describe17h65c06fb8fc780e79E: () => void;
   readonly __wbg_wasmvectorizer_free: (a: number, b: number) => void;
   readonly wasmvectorizer_new: () => number;
+  readonly wasmvectorizer_apply_config_json: (a: number, b: number, c: number) => [number, number];
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder6detail17h717dc10c51012fbbE: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder12stroke_width17ha7e8b7d6ef4dde01E: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder27background_removal_strength17hcd0ea781db2b1796E: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder10pass_count17hdd4dac77d62ebd6dE: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder19conservative_detail17hf22477aa168f4770E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder17aggressive_detail17h21cc0ae25034b4afE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11window_size17hd952a3b6f02f775fE: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder13sensitivity_k17h92e0d90434b5c8e3E: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder15num_superpixels17h24a7f8bceee7a72eE: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11compactness17hfd22fb98cfba5a02E: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder15slic_iterations17hf8c6972371087621E: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder14dot_size_range17h3c93c9b0b4c5920cE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11dot_density17he2ed8abd434960caE: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_get_config_json: (a: number) => [number, number, number, number];
+  readonly wasmvectorizer_validate_config_json: (a: number, b: number) => [number, number, number];
   readonly wasmvectorizer_set_backend: (a: number, b: number, c: number) => [number, number];
   readonly _ZN7web_sys8features11gen_console7console5log_117h6e7522c42e412d8cE: (a: number) => void;
-  readonly _ZN89_$LT$vectorize_core..config_builder..ConfigBuilderError$u20$as$u20$core..fmt..Display$GT$3fmt17h9103421861e3da29E: (a: number, b: number) => number;
   readonly wasmvectorizer_set_detail: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder6detail17h717dc10c51012fbbE: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_stroke_width: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder12stroke_width17ha7e8b7d6ef4dde01E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_multipass: (a: number, b: number) => void;
   readonly wasmvectorizer_set_pass_count: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder10pass_count17hdd4dac77d62ebd6dE: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_dot_size_range: (a: number, b: number, c: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder14dot_size_range17h3c93c9b0b4c5920cE: (a: number, b: number, c: number, d: number) => void;
   readonly wasmvectorizer_set_reverse_pass: (a: number, b: number) => void;
   readonly wasmvectorizer_set_diagonal_pass: (a: number, b: number) => void;
   readonly wasmvectorizer_set_enable_etf_fdog: (a: number, b: number) => void;
   readonly wasmvectorizer_set_enable_flow_tracing: (a: number, b: number) => void;
   readonly wasmvectorizer_set_enable_bezier_fitting: (a: number, b: number) => void;
   readonly wasmvectorizer_set_conservative_detail: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder19conservative_detail17hf22477aa168f4770E: (a: number, b: number, c: number, d: number) => void;
   readonly wasmvectorizer_set_aggressive_detail: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder17aggressive_detail17h21cc0ae25034b4afE: (a: number, b: number, c: number, d: number) => void;
   readonly wasmvectorizer_set_directional_strength_threshold: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder21directional_threshold17h021fec1bcec87538E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_noise_filtering: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_noise_filter_spatial_sigma: (a: number, b: number) => [number, number];
+  readonly wasmvectorizer_set_noise_filter_range_sigma: (a: number, b: number) => [number, number];
   readonly wasmvectorizer_set_svg_precision: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder13svg_precision17hcd3a6e22a5e4f93cE: (a: number, b: number, c: number) => void;
   readonly _ZN59_$LT$u8$u20$as$u20$wasm_bindgen..describe..WasmDescribe$GT$8describe17h56205ff33713218bE: () => void;
   readonly wasmvectorizer_set_enable_adaptive_threshold: (a: number, b: number) => void;
   readonly wasmvectorizer_set_window_size: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11window_size17hd952a3b6f02f775fE: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_sensitivity_k: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder13sensitivity_k17h92e0d90434b5c8e3E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_enable_width_modulation: (a: number, b: number) => void;
   readonly wasmvectorizer_set_min_branch_length: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder17min_branch_length17h8182c70ccef7aa95E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_douglas_peucker_epsilon: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder23douglas_peucker_epsilon17h434d73fc54c139c6E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_dot_density: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11dot_density17he2ed8abd434960caE: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_adaptive_sizing: (a: number, b: number) => void;
   readonly wasmvectorizer_set_background_tolerance: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder20background_tolerance17hc713a4baeca92f15E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_poisson_disk_sampling: (a: number, b: number) => void;
   readonly wasmvectorizer_set_gradient_based_sizing: (a: number, b: number) => void;
   readonly wasmvectorizer_set_num_superpixels: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder15num_superpixels17h24a7f8bceee7a72eE: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_compactness: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder11compactness17hfd22fb98cfba5a02E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_slic_iterations: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder15slic_iterations17hf8c6972371087621E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_boundary_epsilon: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder16boundary_epsilon17h6156afe21988f12fE: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder33superpixel_initialization_pattern17h4a6b1bc3fb0e9b33E: (a: number, b: number, c: number, d: number) => void;
@@ -1146,7 +1187,6 @@ export interface InitOutput {
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder19max_colors_per_path17he2c9c75c66178557E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_enable_background_removal: (a: number, b: number) => void;
   readonly wasmvectorizer_set_background_removal_strength: (a: number, b: number) => [number, number];
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder27background_removal_strength17hcd0ea781db2b1796E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_background_removal_algorithm: (a: number, b: number, c: number) => [number, number];
   readonly wasmvectorizer_set_background_removal_threshold: (a: number, b: number) => [number, number];
   readonly wasmvectorizer_set_hand_drawn_preset: (a: number, b: number, c: number) => [number, number];
@@ -1170,11 +1210,6 @@ export interface InitOutput {
   readonly wasmvectorizer_get_backend: (a: number) => [number, number];
   readonly wasmvectorizer_debug_dump_config: (a: number) => [number, number];
   readonly wasmvectorizer_validate_config: (a: number) => [number, number];
-  readonly _ZN55_$LT$str$u20$as$u20$serde_json..value..index..Index$GT$10index_into17hc132868f62002ae9E: (a: number, b: number, c: number) => number;
-  readonly wasmvectorizer_apply_config_json: (a: number, b: number, c: number) => [number, number];
-  readonly wasmvectorizer_validate_config_json: (a: number, b: number, c: number) => [number, number, number, number];
-  readonly _ZN55_$LT$str$u20$as$u20$serde_json..value..index..Index$GT$15index_or_insert17h06077947e4493ae0E: (a: number, b: number, c: number) => number;
-  readonly _ZN4core3fmt5float52_$LT$impl$u20$core..fmt..Display$u20$for$u20$f64$GT$3fmt17h35c471ee5876beaeE: (a: number, b: number) => number;
   readonly wasmvectorizer_get_default_config_json: (a: number, b: number, c: number) => [number, number, number, number];
   readonly _ZN10serde_json5value4from85_$LT$impl$u20$core..convert..From$LT$f32$GT$$u20$for$u20$serde_json..value..Value$GT$4from17h6b13a6ebcaf5c64cE: (a: number, b: number) => void;
   readonly wasmvectorizer_get_current_config_json: (a: number) => [number, number, number, number];
@@ -1190,6 +1225,7 @@ export interface InitOutput {
   readonly wasmgpuselector_new: () => number;
   readonly wasmgpuselector_init_with_gpu: () => any;
   readonly wasmgpuselector_analyze_image_characteristics: (a: number, b: any) => [number, number];
+  readonly _ZN4core3fmt5float52_$LT$impl$u20$core..fmt..Display$u20$for$u20$f64$GT$3fmt17h35c471ee5876beaeE: (a: number, b: number) => number;
   readonly wasmgpuselector_select_strategy: (a: number, b: number, c: number, d: number, e: number) => [number, number];
   readonly wasmgpuselector_record_performance: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
   readonly wasmgpuselector_get_performance_summary: (a: number) => [number, number];
@@ -1202,6 +1238,7 @@ export interface InitOutput {
   readonly _ZN4core3str16slice_error_fail17h105a77752e5b85e3E: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly vectorize_with_gpu_acceleration: (a: number, b: any, c: number) => any;
   readonly _ZN58_$LT$console_log..WebConsoleLogger$u20$as$u20$log..Log$GT$3log17h974d571f161c3388E: (a: number, b: number) => void;
+  readonly _ZN47_$LT$$RF$str$u20$as$u20$serde..de..Expected$GT$3fmt17h56cbdbc3d311d1b6E: (a: number, b: number) => number;
   readonly _ZN61_$LT$serde_json..error..Error$u20$as$u20$core..fmt..Debug$GT$3fmt17hf88706c273dbfe20E: (a: number, b: number) => number;
   readonly wasmprogress_processing_time_ms: (a: number) => [number, number];
   readonly __wbg_wasmvectorizerrefactored_free: (a: number, b: number) => void;
@@ -1226,8 +1263,6 @@ export interface InitOutput {
   readonly _ZN71_$LT$serde_wasm_bindgen..error..Error$u20$as$u20$core..fmt..Display$GT$3fmt17h8a2be0bd2c8baa07E: (a: number, b: number) => number;
   readonly _ZN18serde_wasm_bindgen3ser13MapSerializer3new17h684cb88535a69bc1E: (a: number, b: number, c: number) => void;
   readonly _ZN3std3sys12thread_local11destructors4list8register17hbaf31a7f988cbb13E: (a: number, b: number) => void;
-  readonly _ZN68_$LT$serde..de..impls..UnitVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h796d821c310fa378E: (a: number, b: number) => number;
-  readonly _ZN66_$LT$dyn$u20$serde..de..Expected$u20$as$u20$core..fmt..Display$GT$3fmt17h9cdc9e4e01e1a6b0E: (a: number, b: number, c: number) => number;
   readonly _ZN60_$LT$serde..de..Unexpected$u20$as$u20$core..fmt..Display$GT$3fmt17h99bf05f50d0cde23E: (a: number, b: number) => number;
   readonly _ZN6js_sys5Array3get17hc1df1704f6612de5E: (a: number, b: number) => number;
   readonly _ZN6js_sys6Object7entries17h2994120e28f8b613E: (a: number) => number;
@@ -1354,9 +1389,9 @@ export interface InitOutput {
   readonly _ZN14regex_automata4meta5regex5Regex15create_captures17h5f18796fbabcb8c2E: (a: number, b: number) => void;
   readonly _ZN58_$LT$$RF$str$u20$as$u20$regex..regex..string..Replacer$GT$14replace_append17h79daa53f3b3c527aE: (a: number, b: number, c: number) => void;
   readonly _ZN77_$LT$serde_json..value..ser..Serializer$u20$as$u20$serde..ser..Serializer$GT$13serialize_seq17hb6fa9af5628673c5E: (a: number, b: number, c: number) => void;
+  readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h5090e1c7b0fbe0e9E: (a: number, b: number) => void;
   readonly _ZN6chrono5naive8datetime13NaiveDateTime22overflowing_add_offset17h265f8be6cea955ecE: (a: number, b: number, c: number) => void;
   readonly _ZN4core5slice6memchr14memchr_aligned17h2aad6fc1e8ecef89E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN3ryu6pretty8format3217he566f4d871da3489E: (a: number, b: number) => number;
   readonly _ZN9hashbrown3raw21RawTable$LT$T$C$A$GT$14reserve_rehash17h3b42c4a2d178a8abE: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN9hashbrown3raw21RawTable$LT$T$C$A$GT$14reserve_rehash17h9923a0143f93313eE: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN9hashbrown3raw21RawTable$LT$T$C$A$GT$14reserve_rehash17h091255e0ff2db2abE: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -1736,7 +1771,6 @@ export interface InitOutput {
   readonly _ZN233_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..ProcessingDirection$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hcd8a66f8fd4c1e16E: (a: number, b: number) => number;
   readonly _ZN240_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..BackgroundRemovalAlgorithm$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h270a0cef37f754ffE: (a: number, b: number) => number;
   readonly _ZN235_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..SuperpixelInitPattern$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h4b68d81092ecbbf8E: (a: number, b: number) => number;
-  readonly _ZN228_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..TraceLowConfig$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$9expecting17haef24afa52d2fc9aE: (a: number, b: number) => number;
   readonly _ZN245_$LT$vectorize_core..algorithms..visual..color_processing.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..visual..color_processing..ColorSamplingMethod$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h3f5959ff03af9739E: (a: number, b: number) => number;
   readonly _ZN179_$LT$vectorize_core..algorithms.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..Point$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h037060e7b338da32E: (a: number, b: number) => number;
   readonly _ZN193_$LT$vectorize_core..algorithms.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..SvgElementType$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h50cbd7082e018c10E: (a: number, b: number) => number;
@@ -1813,12 +1847,8 @@ export interface InitOutput {
   readonly _ZN218_$LT$vectorize_core..algorithms..tracing..fit.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..fit..CubicBezier$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h57e3f9cec8f2c57dE: (a: number, b: number) => number;
   readonly _ZN222_$LT$vectorize_core..algorithms..tracing..trace.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace..TraceConfig$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h79ff0b6629c15f8fE: (a: number, b: number) => number;
   readonly _ZN238_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..ProcessingDirection$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hd1242c1617e5d717E: (a: number, b: number) => number;
-  readonly _ZN245_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..BackgroundRemovalAlgorithm$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h2b0e76fe08dc90adE: (a: number, b: number) => number;
-  readonly _ZN240_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..SuperpixelInitPattern$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h2295bafceeac194fE: (a: number, b: number) => number;
   readonly _ZN233_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..TraceLowConfig$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h58268077ba396675E: (a: number, b: number) => number;
-  readonly _ZN250_$LT$vectorize_core..algorithms..visual..color_processing.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..visual..color_processing..ColorSamplingMethod$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hb41eed65abe05082E: (a: number, b: number) => number;
   readonly _ZN212_$LT$vectorize_core..algorithms..edges..etf.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..edges..etf..EtfConfig$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h3677d85577189bfaE: (a: number, b: number) => number;
-  readonly _ZN231_$LT$vectorize_core..algorithms..tracing..trace_low.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..tracing..trace_low..TraceBackend$GT$..deserialize..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h60b2e2a9879a3193E: (a: number, b: number) => number;
   readonly _ZN254_$LT$$LT$vectorize_core..algorithms.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..SvgElementType$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$..visit_enum..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h685b683d4cbdd14fE: (a: number, b: number) => number;
   readonly _ZN254_$LT$$LT$vectorize_core..algorithms.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..SvgElementType$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$..visit_enum..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hadadb0cf7b87357fE: (a: number, b: number) => number;
   readonly _ZN254_$LT$$LT$vectorize_core..algorithms.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$vectorize_core..algorithms..SvgElementType$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$..visit_enum..__FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17he6cbf5d7c842e62fE: (a: number, b: number) => number;
@@ -11776,17 +11806,13 @@ export interface InitOutput {
   readonly _ZN3std2io5error5Error3new17h4a2fd2aaa71f6232E: (a: number, b: number, c: number) => void;
   readonly _ZN61_$LT$serde_json..value..Value$u20$as$u20$core..fmt..Debug$GT$3fmt17h5ec75b10dc3f004eE: (a: number, b: number) => number;
   readonly _ZN65_$LT$serde_json..number..Number$u20$as$u20$core..fmt..Display$GT$3fmt17h35881e4b13e7774eE: (a: number, b: number) => number;
-  readonly _ZN10serde_json2de12ParserNumber12invalid_type17h67a391251abb5327E: (a: number, b: number, c: number) => number;
-  readonly _ZN61_$LT$serde_json..error..Error$u20$as$u20$serde..de..Error$GT$12invalid_type17hbcc8d1d84ded2b2eE: (a: number, b: number, c: number) => number;
   readonly _ZN10serde_json2de83_$LT$impl$u20$core..str..traits..FromStr$u20$for$u20$serde_json..number..Number$GT$8from_str17h19087b5175884b88E: (a: number, b: number, c: number) => void;
   readonly _ZN10serde_json5error5Error13io_error_kind17hffa7a17c914c628eE: (a: number) => number;
   readonly _ZN10serde_json5error103_$LT$impl$u20$core..convert..From$LT$serde_json..error..Error$GT$$u20$for$u20$std..io..error..Error$GT$4from17h47b4bf50dcdf6a50E: (a: number, b: number) => void;
   readonly _ZN67_$LT$serde_json..error..ErrorCode$u20$as$u20$core..fmt..Display$GT$3fmt17hbd4bca02499994beE: (a: number, b: number) => number;
   readonly _ZN63_$LT$serde_json..error..Error$u20$as$u20$core..error..Error$GT$6source17h3fca83ee9038d951E: (a: number, b: number) => void;
   readonly _ZN67_$LT$serde_json..error..ErrorImpl$u20$as$u20$core..fmt..Display$GT$3fmt17h8169b041666930d0E: (a: number, b: number) => number;
-  readonly _ZN10serde_json5error10make_error17hc64b9d8e9dc97408E: (a: number) => number;
   readonly _ZN72_$LT$serde_json..error..JsonUnexpected$u20$as$u20$core..fmt..Display$GT$3fmt17h88966e3ed3c1e3e3E: (a: number, b: number) => number;
-  readonly _ZN61_$LT$serde_json..error..Error$u20$as$u20$serde..de..Error$GT$13invalid_value17hcbe5275166d16df2E: (a: number, b: number, c: number) => number;
   readonly _ZN179_$LT$$LT$serde_json..map..Map$LT$alloc..string..String$C$serde_json..value..Value$GT$$u20$as$u20$serde..de..Deserialize$GT$..deserialize..Visitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hd033a9bf42251d68E: (a: number, b: number) => number;
   readonly _ZN10serde_json3map5Entry3key17hc86c29c99c00aeafE: (a: number) => number;
   readonly _ZN10serde_json3map5Entry9or_insert17h3ec832b310f98ffaE: (a: number, b: number) => number;
@@ -11808,7 +11834,9 @@ export interface InitOutput {
   readonly _ZN10serde_json5value4from111_$LT$impl$u20$core..convert..From$LT$alloc..borrow..Cow$LT$str$GT$$GT$$u20$for$u20$serde_json..value..Value$GT$4from17hdfb63add915626c9E: (a: number, b: number) => void;
   readonly _ZN57_$LT$usize$u20$as$u20$serde_json..value..index..Index$GT$15index_or_insert17h5c1db8103df6ba7eE: (a: number, b: number) => number;
   readonly _ZN69_$LT$serde_json..value..index..Type$u20$as$u20$core..fmt..Display$GT$3fmt17he091cd595b77d90eE: (a: number, b: number) => number;
+  readonly _ZN55_$LT$str$u20$as$u20$serde_json..value..index..Index$GT$10index_into17hc132868f62002ae9E: (a: number, b: number, c: number) => number;
   readonly _ZN55_$LT$str$u20$as$u20$serde_json..value..index..Index$GT$14index_into_mut17hf40c6aafa520276cE: (a: number, b: number, c: number) => number;
+  readonly _ZN55_$LT$str$u20$as$u20$serde_json..value..index..Index$GT$15index_or_insert17h06077947e4493ae0E: (a: number, b: number, c: number) => number;
   readonly _ZN73_$LT$alloc..string..String$u20$as$u20$serde_json..value..index..Index$GT$10index_into17h16a199ad7dd12789E: (a: number, b: number) => number;
   readonly _ZN73_$LT$alloc..string..String$u20$as$u20$serde_json..value..index..Index$GT$14index_into_mut17he2df3683241a9dafE: (a: number, b: number) => number;
   readonly _ZN73_$LT$alloc..string..String$u20$as$u20$serde_json..value..index..Index$GT$15index_or_insert17hda1de9b522cab7d6E: (a: number, b: number) => number;
@@ -11846,6 +11874,7 @@ export interface InitOutput {
   readonly _ZN83_$LT$serde_json..value..ser..MapKeySerializer$u20$as$u20$serde..ser..Serializer$GT$16serialize_struct17ha7b7bccd43aade70E: (a: number, b: number, c: number) => number;
   readonly _ZN84_$LT$serde_json..value..ser..SerializeMap$u20$as$u20$serde..ser..SerializeStruct$GT$3end17hda8d565a827fd0bdE: (a: number, b: number) => void;
   readonly _ZN101_$LT$serde_json..value..ser..SerializeStructVariant$u20$as$u20$serde..ser..SerializeStructVariant$GT$3end17he050123519241d83E: (a: number, b: number) => void;
+  readonly _ZN10serde_json6number6Number8from_f6417hf9ae68aa36117e9bE: (a: number, b: number) => void;
   readonly _ZN63_$LT$serde_json..number..Number$u20$as$u20$core..fmt..Debug$GT$3fmt17h40e9bf69e18ea6acE: (a: number, b: number) => number;
   readonly _ZN135_$LT$$LT$serde_json..number..Number$u20$as$u20$serde..de..Deserialize$GT$..deserialize..NumberVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h79253d15206e1f43E: (a: number, b: number) => number;
   readonly _ZN70_$LT$serde_json..read..SliceRead$u20$as$u20$serde_json..read..Read$GT$8position17hbf2bde2f1e20cc58E: (a: number, b: number) => void;
@@ -11854,7 +11883,6 @@ export interface InitOutput {
   readonly _ZN70_$LT$serde_json..read..SliceRead$u20$as$u20$serde_json..read..Read$GT$13parse_str_raw17hb077150c944df964E: (a: number, b: number, c: number) => void;
   readonly _ZN70_$LT$serde_json..read..SliceRead$u20$as$u20$serde_json..read..Read$GT$10ignore_str17he5d0c83f44623b3fE: (a: number) => number;
   readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$13parse_str_raw17hbe163179d9b32635E: (a: number, b: number, c: number) => void;
-  readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$10ignore_str17h37b4370f2f5421fbE: (a: number) => number;
   readonly _ZN68_$LT$serde_json..read..StrRead$u20$as$u20$serde_json..read..Read$GT$17decode_hex_escape17h405b0dfede838f70E: (a: number, b: number) => void;
   readonly _ZN10serde_json4read22decode_four_hex_digits17h070f574f86c1b9ebE: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN83_$LT$serde_json..value..ser..MapKeySerializer$u20$as$u20$serde..ser..Serializer$GT$13serialize_seq17h9589ba0cf5d65f04E: (a: number, b: number) => number;
@@ -11881,7 +11909,6 @@ export interface InitOutput {
   readonly _ZN71_$LT$serde..de..value..ExpectedInSeq$u20$as$u20$serde..de..Expected$GT$3fmt17h5f90db0f2b1671a4E: (a: number, b: number) => number;
   readonly _ZN71_$LT$serde..de..value..ExpectedInMap$u20$as$u20$serde..de..Expected$GT$3fmt17h41546c80061bb973E: (a: number, b: number) => number;
   readonly _ZN73_$LT$serde..de..ignored_any..IgnoredAny$u20$as$u20$serde..de..Visitor$GT$9expecting17h5512f28272018ecfE: (a: number, b: number) => number;
-  readonly _ZN68_$LT$serde..de..impls..BoolVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h257f7a7293ffc997E: (a: number, b: number) => number;
   readonly _ZN68_$LT$serde..de..impls..CharVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h641919bf8febb39fE: (a: number, b: number) => number;
   readonly _ZN70_$LT$serde..de..impls..StringVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hf5df5a0267fca239E: (a: number, b: number) => number;
   readonly _ZN77_$LT$serde..de..impls..StringInPlaceVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h1b8e1cc2c342319dE: (a: number, b: number) => number;
@@ -11900,8 +11927,6 @@ export interface InitOutput {
   readonly _ZN230_$LT$$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$core..ops..range..Bound$LT$T$GT$$GT$..deserialize..Field$u20$as$u20$serde..de..Deserialize$GT$..deserialize..FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h488292e4fb50971bE: (a: number, b: number) => number;
   readonly _ZN231_$LT$$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$core..result..Result$LT$T$C$E$GT$$GT$..deserialize..Field$u20$as$u20$serde..de..Deserialize$GT$..deserialize..FieldVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h4b9714cd2ecf961dE: (a: number, b: number) => number;
   readonly _ZN66_$LT$serde..de..WithDecimalPoint$u20$as$u20$core..fmt..Display$GT$3fmt17hc07978ce0b9c0b9bE: (a: number, b: number) => number;
-  readonly _ZN47_$LT$$RF$str$u20$as$u20$serde..de..Expected$GT$3fmt17h56cbdbc3d311d1b6E: (a: number, b: number) => number;
-  readonly _ZN55_$LT$serde..de..OneOf$u20$as$u20$core..fmt..Display$GT$3fmt17ha9a0aefc4e4bb638E: (a: number, b: number) => number;
   readonly _ZN128_$LT$$LT$serde..de..WithDecimalPoint$u20$as$u20$core..fmt..Display$GT$..fmt..LookForDecimalPoint$u20$as$u20$core..fmt..Write$GT$9write_str17h8e16df2d891b1ae1E: (a: number, b: number, c: number) => number;
   readonly _ZN128_$LT$$LT$serde..de..WithDecimalPoint$u20$as$u20$core..fmt..Display$GT$..fmt..LookForDecimalPoint$u20$as$u20$core..fmt..Write$GT$10write_char17h3ff6cb1cc077f52eE: (a: number, b: number) => number;
   readonly _ZN5serde3ser3fmt85_$LT$impl$u20$serde..ser..Serializer$u20$for$u20$$RF$mut$u20$core..fmt..Formatter$GT$22serialize_unit_variant17h1efbb7fefefe2165E: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
@@ -11931,16 +11956,11 @@ export interface InitOutput {
   readonly _ZN178_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$core..num..nonzero..NonZero$LT$isize$GT$$GT$..deserialize..NonZeroVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h87776fe63de693a4E: (a: number, b: number) => number;
   readonly _ZN145_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$isize$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hab688f2f04149b70E: (a: number, b: number) => number;
   readonly _ZN175_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$core..num..nonzero..NonZero$LT$u8$GT$$GT$..deserialize..NonZeroVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h6323b39cb0dd2fe2E: (a: number, b: number) => number;
-  readonly _ZN142_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$u8$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h5e8381e85e0e5167E: (a: number, b: number) => number;
   readonly _ZN176_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$core..num..nonzero..NonZero$LT$u16$GT$$GT$..deserialize..NonZeroVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h52469f6c858e97c5E: (a: number, b: number) => number;
   readonly _ZN143_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$u16$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h870d45ebfd8cfce1E: (a: number, b: number) => number;
   readonly _ZN176_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$core..num..nonzero..NonZero$LT$u32$GT$$GT$..deserialize..NonZeroVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h05b8f8d764ad0695E: (a: number, b: number) => number;
-  readonly _ZN143_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$u32$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hfc2a9658ce209367E: (a: number, b: number) => number;
   readonly _ZN176_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$core..num..nonzero..NonZero$LT$u64$GT$$GT$..deserialize..NonZeroVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h13f2682b6f1edcb8E: (a: number, b: number) => number;
-  readonly _ZN143_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$u64$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17he7f57c23f43202c4E: (a: number, b: number) => number;
   readonly _ZN178_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$core..num..nonzero..NonZero$LT$usize$GT$$GT$..deserialize..NonZeroVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h57f64ed0d9c055eeE: (a: number, b: number) => number;
-  readonly _ZN145_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$usize$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h5c7f450dc6263eeeE: (a: number, b: number) => number;
-  readonly _ZN143_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$f32$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h8cfb3843433170bbE: (a: number, b: number) => number;
   readonly _ZN143_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$f64$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17h2172401dd9893b20E: (a: number, b: number) => number;
   readonly _ZN177_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$core..num..nonzero..NonZero$LT$i128$GT$$GT$..deserialize..NonZeroVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hd08b3ef3ebfedfaaE: (a: number, b: number) => number;
   readonly _ZN144_$LT$serde..de..impls..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$i128$GT$..deserialize..PrimitiveVisitor$u20$as$u20$serde..de..Visitor$GT$9expecting17hb2d936f88b216f81E: (a: number, b: number) => number;
@@ -12834,26 +12854,26 @@ export interface InitOutput {
   readonly __externref_heap_live_count: () => number;
   readonly __externref_drop_slice: (a: number, b: number) => void;
   readonly __externref_table_dealloc: (a: number) => void;
-  readonly closure2013_externref_shim: (a: number, b: number, c: any) => void;
-  readonly closure2816_externref_shim: (a: number, b: number, c: any) => void;
-  readonly closure4451_externref_shim: (a: number, b: number, c: any, d: number, e: any) => number;
-  readonly closure4452_externref_shim_multivalue_shim: (a: number, b: number, c: any, d: number, e: any) => [number, number];
-  readonly closure4453_externref_shim: (a: number, b: number, c: any, d: number, e: any) => void;
-  readonly closure4454_externref_shim: (a: number, b: number, c: any, d: number, e: any) => any;
-  readonly closure4455_externref_shim: (a: number, b: number, c: any, d: any, e: number, f: any) => any;
-  readonly closure4456_externref_shim: (a: number, b: number, c: any) => number;
-  readonly closure4457_externref_shim: (a: number, b: number, c: any, d: any) => void;
-  readonly closure4453_externref_shim20: (a: number, b: number, c: any, d: any, e: any) => void;
-  readonly closure4458_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4459_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4453_externref_shim23: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4458_externref_shim24: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4459_externref_shim25: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4453_externref_shim26: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4460_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4461_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
-  readonly closure4462_externref_shim: (a: number, b: number, c: bigint, d: number, e: any) => void;
-  readonly closure4462_externref_shim30: (a: number, b: number, c: bigint, d: number, e: any) => void;
+  readonly closure2028_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure2831_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure4466_externref_shim: (a: number, b: number, c: any, d: number, e: any) => number;
+  readonly closure4467_externref_shim_multivalue_shim: (a: number, b: number, c: any, d: number, e: any) => [number, number];
+  readonly closure4468_externref_shim: (a: number, b: number, c: any, d: number, e: any) => void;
+  readonly closure4469_externref_shim: (a: number, b: number, c: any, d: number, e: any) => any;
+  readonly closure4470_externref_shim: (a: number, b: number, c: any, d: any, e: number, f: any) => any;
+  readonly closure4471_externref_shim: (a: number, b: number, c: any) => number;
+  readonly closure4472_externref_shim: (a: number, b: number, c: any, d: any) => void;
+  readonly closure4468_externref_shim20: (a: number, b: number, c: any, d: any, e: any) => void;
+  readonly closure4473_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4474_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4468_externref_shim23: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4473_externref_shim24: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4474_externref_shim25: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4468_externref_shim26: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4475_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4476_externref_shim: (a: number, b: number, c: number, d: number, e: any) => void;
+  readonly closure4477_externref_shim: (a: number, b: number, c: bigint, d: number, e: any) => void;
+  readonly closure4477_externref_shim30: (a: number, b: number, c: bigint, d: number, e: any) => void;
   readonly __wbindgen_thread_destroy: (a?: number, b?: number, c?: number) => void;
   readonly __wbindgen_start: (a: number) => void;
 }

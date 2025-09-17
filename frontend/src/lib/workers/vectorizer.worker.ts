@@ -272,40 +272,56 @@ class VectorizerWorker {
 			throw new Error('Vectorizer not initialized');
 		}
 
-		// NEW OPTIMIZED APPROACH: Use batch configuration API
-		// This reduces WASM boundary crossings from 20+ to 1
-		try {
-			// Convert directly to JSON format expected by WASM
-			// The AlgorithmConfig already uses camelCase as expected by apply_config_json
-			const configJson = JSON.stringify(config);
+		// Debug: Log the configuration being sent
+		console.log('[VectorizerWorker] Configuration being sent to WASM:', {
+			algorithm: config.algorithm,
+			noiseFiltering: config.noiseFiltering,
+			noiseFilterSpatialSigma: config.noiseFilterSpatialSigma,
+			noiseFilterRangeSigma: config.noiseFilterRangeSigma,
+			enableBackgroundRemoval: config.enableBackgroundRemoval,
+			backgroundRemovalStrength: config.backgroundRemovalStrength,
+			backgroundRemovalAlgorithm: config.backgroundRemovalAlgorithm
+		});
 
-			// Single WASM call instead of 20+ individual setter calls
-			console.log('[VectorizerWorker] Applying batch configuration with single WASM call');
-			const startTime = performance.now();
+		// Try to use the batch API first (now supports noiseFiltering)
+		const hasBatchAPI = typeof this.vectorizer.apply_config_json === 'function';
 
-			this.vectorizer.apply_config_json(configJson);
+		if (hasBatchAPI) {
+			try {
+				const configJson = JSON.stringify(config);
+				console.log('[VectorizerWorker] Using batch configuration API');
+				const startTime = performance.now();
+				this.vectorizer.apply_config_json(configJson);
+				const endTime = performance.now();
+				console.log(
+					`[VectorizerWorker] Batch config applied in ${(endTime - startTime).toFixed(2)}ms`
+				);
 
-			const endTime = performance.now();
-			console.log(
-				`[VectorizerWorker] Configuration applied in ${(endTime - startTime).toFixed(2)}ms`
-			);
-
-			// Optional: Validate the configuration was applied correctly
-			const validation = this.vectorizer.validate_config();
-			if (validation && validation.includes('warnings')) {
-				console.warn('[VectorizerWorker] Configuration warnings:', validation);
+				// Note: backgroundRemovalAlgorithm still needs individual setter
+				if (
+					'backgroundRemovalAlgorithm' in config &&
+					config.backgroundRemovalAlgorithm !== undefined
+				) {
+					if (typeof this.vectorizer.set_background_removal_algorithm === 'function') {
+						this.vectorizer.set_background_removal_algorithm(config.backgroundRemovalAlgorithm);
+					}
+				}
+				return;
+			} catch (error) {
+				console.error('[VectorizerWorker] Batch configuration failed:', error);
 			}
-		} catch (error) {
-			console.error('[VectorizerWorker] Failed to apply batch configuration:', error);
-
-			// Fallback to legacy individual setter approach if batch fails
-			console.warn('[VectorizerWorker] Falling back to individual setter methods');
-			this.configureVectorizerLegacy(config);
 		}
+
+		// Fallback to detailed individual setter approach
+		console.log(
+			'[VectorizerWorker] Using individual setter methods (batch API unavailable or failed)'
+		);
+		this.configureVectorizerDetailed(config);
 	}
 
-	// Keep legacy method as fallback for compatibility
-	private configureVectorizerLegacy(config: AlgorithmConfig): void {
+	// Detailed configuration method that sets each parameter individually
+	// This ensures ALL parameters are properly applied, including preprocessing
+	private configureVectorizerDetailed(config: AlgorithmConfig): void {
 		// Apply preset if specified through hand-drawn preset (only for edge and centerline)
 		if (
 			(config.algorithm === 'edge' || config.algorithm === 'centerline') &&
@@ -332,13 +348,11 @@ class VectorizerWorker {
 		// Set noise filter parameters if noise filtering is enabled
 		if (config.noiseFiltering) {
 			if ('noiseFilterSpatialSigma' in config && config.noiseFilterSpatialSigma !== undefined) {
-				// Check if the method exists before calling
 				if (typeof this.vectorizer.set_noise_filter_spatial_sigma === 'function') {
 					this.vectorizer.set_noise_filter_spatial_sigma(config.noiseFilterSpatialSigma);
 				}
 			}
 			if ('noiseFilterRangeSigma' in config && config.noiseFilterRangeSigma !== undefined) {
-				// Check if the method exists before calling
 				if (typeof this.vectorizer.set_noise_filter_range_sigma === 'function') {
 					this.vectorizer.set_noise_filter_range_sigma(config.noiseFilterRangeSigma);
 				}

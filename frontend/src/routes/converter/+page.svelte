@@ -24,14 +24,14 @@
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { converterState } from '$lib/stores/converter-state.svelte';
 	import { wasmWorkerService } from '$lib/services/wasm-worker-service';
-	import type { ProcessingProgress, ProcessingResult } from '$lib/types/processing';
+	import type { ProcessingProgress, ProcessingResult } from '$lib/workers/vectorizer.worker';
 	import type { AlgorithmConfig } from '$lib/types/algorithm-configs';
 
 	// UI State Management - Using Svelte 5 runes (adapted from original sophisticated structure)
 	let files = $state<File[]>([]);
 	let originalImageUrls = $state<(string | null)[]>([]);
 	let currentImageIndex = $state(0);
-	let currentProgress = $state<ProcessingProgress | null>(null);
+	let currentProgress = $state<ProcessingProgress | undefined>(undefined);
 	let results = $state<(ProcessingResult | null)[]>([]);
 	let previewSvgUrls = $state<(string | null)[]>([]);
 	let isProcessing = $state(false);
@@ -281,9 +281,9 @@
 
 				// Update progress
 				currentProgress = {
-					stage: 'preprocessing',
+					stage: `Processing ${file.name}`,
 					progress: 0,
-					message: `Processing ${file.name}...`
+					elapsed_ms: 0
 				};
 
 				try {
@@ -318,7 +318,7 @@
 					}
 				} catch (error) {
 					console.error(`Failed to process ${file.name}:`, error);
-					processedResults.push(null);
+					// Skip failed files - don't add to results
 					newPreviewUrls.push(null);
 				}
 			}
@@ -352,7 +352,7 @@
 			);
 		} finally {
 			isProcessing = false;
-			currentProgress = null;
+			currentProgress = undefined;
 		}
 	}
 
@@ -411,7 +411,7 @@
 	function handleAbort() {
 		if (isProcessing) {
 			isProcessing = false;
-			currentProgress = null;
+			currentProgress = undefined;
 			toastStore.add('Processing aborted', { type: 'info' });
 		}
 	}
@@ -430,7 +430,7 @@
 		results = [];
 		previewSvgUrls = [];
 		currentImageIndex = 0;
-		currentProgress = null;
+		currentProgress = undefined;
 
 		toastStore.add('All files cleared', { type: 'info' });
 		announceToScreenReader('All files cleared');
@@ -461,11 +461,13 @@
 
 <StructuredData
 	type="WebApplication"
-	name="vec2art"
-	description="High-performance image to SVG conversion with advanced algorithms"
-	url="https://vec2art.com/converter"
-	applicationCategory="GraphicsApplication"
-	operatingSystem="Any"
+	data={{
+		name: 'vec2art',
+		description: 'High-performance image to SVG conversion with advanced algorithms',
+		url: 'https://vec2art.com/converter',
+		applicationCategory: 'GraphicsApplication',
+		operatingSystem: 'Any'
+	}}
 />
 
 <!-- Accessibility announcements -->
@@ -683,8 +685,13 @@
 	<DownloadFormatSelector
 		filename={pendingDownloadData.filename}
 		svgContent={pendingDownloadData.svgContent}
-		onDownloadSvg={handleDownloadSvg}
-		onDownloadWebP={handleDownloadWebP}
+		onDownloadSvg={() =>
+			pendingDownloadData &&
+			handleDownloadSvg(pendingDownloadData.filename, pendingDownloadData.svgContent)}
+		onDownloadWebP={async () => {
+			if (pendingDownloadData)
+				await handleDownloadWebP(pendingDownloadData.filename, pendingDownloadData.svgContent);
+		}}
 		onCancel={handleDownloadCancel}
 		show={showDownloadSelector}
 		{isProcessing}

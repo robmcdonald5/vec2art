@@ -66,7 +66,6 @@
 	const totalFiles = $derived(
 		Math.max(files.length, originalImageUrls.length, filesMetadata.length)
 	);
-	// const currentFile = $derived(files[currentImageIndex]); // TODO: may be needed later
 
 	// Create unified file info for dropdown display
 	const fileDisplayInfo = $derived.by(() => {
