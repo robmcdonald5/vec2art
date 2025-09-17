@@ -123,7 +123,7 @@ impl CenterlineAlgorithm for DistanceTransformCenterlineAlgorithm {
 
         // Log performance metrics
         log::info!(
-            "{} completed in {:.1}ms: gray={:.1}ms, blur={:.1}ms, threshold={:.1}ms, preproc={:.1}ms, extract={:.1}ms, simplify={:.1}ms, bridge={:.1}ms, svg={:.1}ms", 
+            "{} completed in {:.1}ms: gray={:.1}ms, blur={:.1}ms, threshold={:.1}ms, preproc={:.1}ms, extract={:.1}ms, simplify={:.1}ms, bridge={:.1}ms, svg={:.1}ms",
             self.name,
             total_time.as_secs_f64() * 1000.0,
             grayscale_time.as_secs_f64() * 1000.0,
@@ -333,15 +333,15 @@ fn morphological_erosion_3x3_optimized(binary: &GrayImage) -> GrayImage {
 
     // Handle borders by copying
     for x in 0..width {
-        result.put_pixel(x, 0, binary.get_pixel(x, 0).clone());
+        result.put_pixel(x, 0, *binary.get_pixel(x, 0));
         if height > 1 {
-            result.put_pixel(x, height - 1, binary.get_pixel(x, height - 1).clone());
+            result.put_pixel(x, height - 1, *binary.get_pixel(x, height - 1));
         }
     }
     for y in 0..height {
-        result.put_pixel(0, y, binary.get_pixel(0, y).clone());
+        result.put_pixel(0, y, *binary.get_pixel(0, y));
         if width > 1 {
-            result.put_pixel(width - 1, y, binary.get_pixel(width - 1, y).clone());
+            result.put_pixel(width - 1, y, *binary.get_pixel(width - 1, y));
         }
     }
 
@@ -374,15 +374,15 @@ fn morphological_dilation_3x3_optimized(binary: &GrayImage) -> GrayImage {
 
     // Handle borders by copying
     for x in 0..width {
-        result.put_pixel(x, 0, binary.get_pixel(x, 0).clone());
+        result.put_pixel(x, 0, *binary.get_pixel(x, 0));
         if height > 1 {
-            result.put_pixel(x, height - 1, binary.get_pixel(x, height - 1).clone());
+            result.put_pixel(x, height - 1, *binary.get_pixel(x, height - 1));
         }
     }
     for y in 0..height {
-        result.put_pixel(0, y, binary.get_pixel(0, y).clone());
+        result.put_pixel(0, y, *binary.get_pixel(0, y));
         if width > 1 {
-            result.put_pixel(width - 1, y, binary.get_pixel(width - 1, y).clone());
+            result.put_pixel(width - 1, y, *binary.get_pixel(width - 1, y));
         }
     }
 

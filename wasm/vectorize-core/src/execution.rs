@@ -1,7 +1,7 @@
 //! Execution abstraction layer for single-threaded WASM + Web Worker architecture
 //!
 //! This module provides a unified interface for execution that was previously complex
-//! parallel/single-threaded, now simplified for our single-threaded WASM + Web Worker 
+//! parallel/single-threaded, now simplified for our single-threaded WASM + Web Worker
 //! architecture. All functions provide sequential execution with the same API as before
 //! for backward compatibility.
 //!
@@ -36,7 +36,7 @@ impl ThreadingConfig {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     pub fn is_enabled_for(&self, algorithm: AlgorithmType) -> bool {
         match algorithm {
             AlgorithmType::EdgeDetection => self.edge_detection_enabled,
@@ -45,7 +45,7 @@ impl ThreadingConfig {
             AlgorithmType::Dots => self.dots_enabled,
         }
     }
-    
+
     pub fn enable_for(mut self, algorithm: AlgorithmType) -> Self {
         match algorithm {
             AlgorithmType::EdgeDetection => self.edge_detection_enabled = true,
@@ -55,7 +55,7 @@ impl ThreadingConfig {
         }
         self
     }
-    
+
     /// Create safe defaults for single-threaded mode
     pub fn safe_defaults() -> Self {
         Self::new()
@@ -75,7 +75,9 @@ pub enum ThreadingError {
 impl std::fmt::Display for ThreadingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ThreadingError::NotSupported => write!(f, "Threading not supported in single-threaded mode"),
+            ThreadingError::NotSupported => {
+                write!(f, "Threading not supported in single-threaded mode")
+            }
             ThreadingError::Panic => write!(f, "Operation panicked"),
         }
     }
@@ -312,14 +314,14 @@ where
     {
         self.iter.into_iter().map(func).collect()
     }
-    
+
     pub fn filter_map<F, R>(self, func: F) -> Vec<R>
     where
         F: Fn(I::Item) -> Option<R>,
     {
         self.iter.into_iter().filter_map(func).collect()
     }
-    
+
     pub fn collect<C>(self) -> C
     where
         C: FromIterator<I::Item>,
@@ -403,10 +405,10 @@ where
 
 /// Process overlapping windows (single-threaded)
 pub fn par_windows_with_overlap<T, F, R>(
-    data: &[T], 
-    window_size: usize, 
-    overlap: usize, 
-    func: F
+    data: &[T],
+    window_size: usize,
+    overlap: usize,
+    func: F,
 ) -> Vec<R>
 where
     T: Send + Sync,
@@ -416,12 +418,12 @@ where
     let step = window_size - overlap;
     let mut results = Vec::new();
     let mut i = 0;
-    
+
     while i + window_size <= data.len() {
         results.push(func(&data[i..i + window_size]));
         i += step;
     }
-    
+
     results
 }
 
@@ -430,11 +432,7 @@ where
 // ==============================================================================
 
 /// Batch process items (single-threaded)
-pub fn batch_process<T, F, R>(
-    items: Vec<T>,
-    batch_size: usize,
-    func: F
-) -> Vec<R>
+pub fn batch_process<T, F, R>(items: Vec<T>, batch_size: usize, func: F) -> Vec<R>
 where
     T: Send + Sync,
     F: Fn(&[T]) -> R + Send + Sync,
@@ -444,11 +442,7 @@ where
 }
 
 /// Pipeline operations (single-threaded)
-pub fn pipeline<T, F1, F2, R1, R2>(
-    items: Vec<T>,
-    stage1: F1,
-    stage2: F2
-) -> Vec<R2>
+pub fn pipeline<T, F1, F2, R1, R2>(items: Vec<T>, stage1: F1, stage2: F2) -> Vec<R2>
 where
     T: Send + Sync,
     F1: Fn(T) -> R1 + Send + Sync,
@@ -456,28 +450,18 @@ where
     R1: Send + Sync,
     R2: Send,
 {
-    items.into_iter()
-        .map(stage1)
-        .map(stage2)
-        .collect()
+    items.into_iter().map(stage1).map(stage2).collect()
 }
 
 /// Map-reduce pattern (single-threaded)
-pub fn map_reduce<T, M, R, F, G>(
-    items: Vec<T>,
-    map_func: M,
-    reduce_func: R,
-    identity: G
-) -> G
+pub fn map_reduce<T, M, R, F, G>(items: Vec<T>, map_func: M, reduce_func: R, identity: G) -> G
 where
     T: Send + Sync,
     M: Fn(T) -> G + Send + Sync,
     R: Fn(G, G) -> G + Send + Sync,
     G: Send + Clone,
 {
-    items.into_iter()
-        .map(map_func)
-        .fold(identity, reduce_func)
+    items.into_iter().map(map_func).fold(identity, reduce_func)
 }
 
 // ==============================================================================
@@ -500,7 +484,10 @@ pub fn par_enumerate<T>(items: &[T]) -> std::iter::Enumerate<std::slice::Iter<'_
 }
 
 /// Parallel zip (single-threaded implementation)
-pub fn par_zip<'a, T, U>(a: &'a [T], b: &'a [U]) -> std::iter::Zip<std::slice::Iter<'a, T>, std::slice::Iter<'a, U>> {
+pub fn par_zip<'a, T, U>(
+    a: &'a [T],
+    b: &'a [U],
+) -> std::iter::Zip<std::slice::Iter<'a, T>, std::slice::Iter<'a, U>> {
     a.iter().zip(b.iter())
 }
 

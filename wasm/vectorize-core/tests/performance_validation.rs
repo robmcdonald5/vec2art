@@ -23,7 +23,7 @@ use vectorize_core::performance::{
 struct PerformanceTestConfig {
     /// Target processing time for 500x500 images
     target_500x500_ms: u64,
-    /// Target processing time for 1000x1000 images  
+    /// Target processing time for 1000x1000 images
     target_1000x1000_ms: u64,
     /// Maximum acceptable memory usage per dot
     max_memory_per_dot_bytes: usize,

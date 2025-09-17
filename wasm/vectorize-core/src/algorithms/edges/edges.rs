@@ -140,7 +140,7 @@ pub struct MultiDirectionEdges {
     pub dominant_orientation: Vec<f32>,
     /// Image width
     pub width: u32,
-    /// Image height  
+    /// Image height
     pub height: u32,
 }
 
@@ -206,7 +206,7 @@ pub fn compute_fdog(gray: &GrayImage, etf: &EtfField, config: &FdogConfig) -> Ed
 ///
 /// # Arguments
 /// * `gray` - Input grayscale image
-/// * `etf` - Edge Tangent Flow field  
+/// * `etf` - Edge Tangent Flow field
 /// * `config` - XDoG configuration
 ///
 /// # Returns
@@ -433,7 +433,7 @@ pub fn apply_nms(edge_response: &EdgeResponse, etf: &EtfField, config: &NmsConfi
 /// Uses double thresholding with connectivity analysis to preserve
 /// strong connected edge structures while removing noise.
 ///
-/// # Arguments  
+/// # Arguments
 /// * `nms_edges` - Non-maximum suppressed edge map
 /// * `width` - Image width
 /// * `height` - Image height
@@ -524,7 +524,7 @@ pub fn hysteresis_threshold(
 /// response at each pixel rather than summing responses.
 ///
 /// # Arguments
-/// * `gray` - Input grayscale image  
+/// * `gray` - Input grayscale image
 /// * `orientations` - List of orientations to test (in radians)
 /// * `fdog_config` - FDoG configuration
 /// * `nms_config` - NMS configuration

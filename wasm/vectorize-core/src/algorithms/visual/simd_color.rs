@@ -120,7 +120,7 @@ fn rgba_to_lab_simd(rgba: &Rgba<u8>) -> [f32; 3] {
     // Convert linear RGB to XYZ using sRGB matrix
     let x = r_linear * 0.4124564 + g_linear * 0.3575761 + b_linear * 0.1804375;
     let y = r_linear * 0.2126729 + g_linear * 0.7151522 + b_linear * 0.0721750;
-    let z = r_linear * 0.0193339 + g_linear * 0.1191920 + b_linear * 0.9503041;
+    let z = r_linear * 0.0193339 + g_linear * 0.119_192 + b_linear * 0.9503041;
 
     // Normalize by D65 white point
     let x_n = x / 0.95047;
@@ -409,7 +409,7 @@ fn update_centroids(
 
 /// SIMD-accelerated gradient analysis for smooth color transitions
 ///
-/// # Arguments  
+/// # Arguments
 /// * `colors` - Color samples along a path
 /// * `threshold` - Minimum gradient strength to detect
 ///

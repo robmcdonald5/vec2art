@@ -745,13 +745,16 @@ mod tests {
         // Generate gradient analysis and background mask
         let gray = image::imageops::grayscale(&img);
         let gradient_config = GradientConfig::default();
-        let gradient_analysis = crate::algorithms::edges::gradients::analyze_image_gradients_with_config(
-            &gray,
-            &gradient_config,
-        );
+        let gradient_analysis =
+            crate::algorithms::edges::gradients::analyze_image_gradients_with_config(
+                &gray,
+                &gradient_config,
+            );
         let background_config = BackgroundConfig::default();
-        let background_mask =
-            crate::algorithms::dots::background::detect_background_advanced(&img, &background_config);
+        let background_mask = crate::algorithms::dots::background::detect_background_advanced(
+            &img,
+            &background_config,
+        );
 
         let dots = generator.generate_dots_optimized(&img, &gradient_analysis, &background_mask);
 

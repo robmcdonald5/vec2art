@@ -6,9 +6,9 @@
 use crate::gpu::device::GpuDevice;
 use crate::gpu::kernels::edge_detection::{GpuCannyEdgeDetector, GpuEdgeDetectionError};
 use crate::gpu::kernels::stippling::{GpuStippling, GpuStipplingError, StipplingConfig};
-use image::{ImageBuffer, Rgba, Luma};
-use thiserror::Error;
+use image::{ImageBuffer, Luma, Rgba};
 use std::sync::Arc;
+use thiserror::Error;
 use wgpu::{util::DeviceExt, PollType};
 
 #[derive(Debug, Error)]
@@ -81,9 +81,9 @@ impl GpuProcessor {
     /// Check if GPU should be used for given image size
     pub fn should_use_gpu(&self, width: u32, height: u32) -> bool {
         let pixel_count = width * height;
-        pixel_count >= self.config.min_gpu_size &&
-        width <= self.config.max_texture_size &&
-        height <= self.config.max_texture_size
+        pixel_count >= self.config.min_gpu_size
+            && width <= self.config.max_texture_size
+            && height <= self.config.max_texture_size
     }
 
     /// Process edge detection on GPU (Canny algorithm)
@@ -97,16 +97,18 @@ impl GpuProcessor {
 
         if !self.should_use_gpu(width, height) {
             return Err(GpuProcessorError::ExecutionFailed(
-                "Image too small for GPU processing".to_string()
+                "Image too small for GPU processing".to_string(),
             ));
         }
 
         // Create GPU Canny edge detector
         let edge_detector = GpuCannyEdgeDetector::new(self.device.clone())?;
-        
+
         // Perform edge detection on GPU
-        let result = edge_detector.detect_edges(image, low_threshold, high_threshold).await?;
-        
+        let result = edge_detector
+            .detect_edges(image, low_threshold, high_threshold)
+            .await?;
+
         Ok(result)
     }
 
@@ -120,13 +122,13 @@ impl GpuProcessor {
 
         if !self.should_use_gpu(width, height) {
             return Err(GpuProcessorError::ExecutionFailed(
-                "Image too small for GPU processing".to_string()
+                "Image too small for GPU processing".to_string(),
             ));
         }
 
         // This will be implemented with actual GPU compute shaders
         Err(GpuProcessorError::ExecutionFailed(
-            "GPU Gaussian blur not yet implemented".to_string()
+            "GPU Gaussian blur not yet implemented".to_string(),
         ))
     }
 
@@ -140,16 +142,16 @@ impl GpuProcessor {
 
         if !self.should_use_gpu(width, height) {
             return Err(GpuProcessorError::ExecutionFailed(
-                "Image too small for GPU processing".to_string()
+                "Image too small for GPU processing".to_string(),
             ));
         }
 
         // Create GPU stippling processor
         let stippling_processor = GpuStippling::new(self.device.clone())?;
-        
+
         // Perform stippling on GPU
         let result = stippling_processor.process_image(image, config).await?;
-        
+
         Ok(result)
     }
 
@@ -164,13 +166,13 @@ impl GpuProcessor {
 
         if !self.should_use_gpu(width, height) {
             return Err(GpuProcessorError::ExecutionFailed(
-                "Image too small for GPU processing".to_string()
+                "Image too small for GPU processing".to_string(),
             ));
         }
 
         // This will be implemented with actual GPU compute shaders
         Err(GpuProcessorError::ExecutionFailed(
-            "GPU superpixel segmentation not yet implemented".to_string()
+            "GPU superpixel segmentation not yet implemented".to_string(),
         ))
     }
 
@@ -206,7 +208,7 @@ pub fn create_gpu_image_buffer(
 ) -> wgpu::Buffer {
     let (_width, _height) = image.dimensions();
     let data = image.as_raw();
-    
+
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Image Buffer"),
         contents: data,
@@ -238,13 +240,15 @@ pub async fn read_gpu_image_buffer(
     queue.submit(Some(encoder.finish()));
 
     let buffer_slice = staging_buffer.slice(..);
-    
+
     // Use pollster for blocking wait in both native and WASM
     let _map_result = pollster::block_on(async {
         buffer_slice.map_async(wgpu::MapMode::Read, |_result| {
             // Handle result
         });
-        device.poll(PollType::Wait).map_err(|_| GpuProcessorError::ExecutionFailed("GPU polling failed".to_string()))?;
+        device
+            .poll(PollType::Wait)
+            .map_err(|_| GpuProcessorError::ExecutionFailed("GPU polling failed".to_string()))?;
         Ok(()) as Result<(), GpuProcessorError>
     })?;
 
@@ -253,6 +257,7 @@ pub async fn read_gpu_image_buffer(
     drop(data);
     staging_buffer.unmap();
 
-    ImageBuffer::from_raw(width, height, image_data)
-        .ok_or_else(|| GpuProcessorError::ExecutionFailed("Failed to create image from GPU data".to_string()))
+    ImageBuffer::from_raw(width, height, image_data).ok_or_else(|| {
+        GpuProcessorError::ExecutionFailed("Failed to create image from GPU data".to_string())
+    })
 }

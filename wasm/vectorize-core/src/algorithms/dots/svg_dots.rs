@@ -277,7 +277,7 @@ fn generate_symbol_reuse_svg_content(dots: &[&Dot], config: &SvgDotConfig, svg: 
         }
 
         for symbol in &symbols {
-            write_symbol_definition(&symbol, config, svg);
+            write_symbol_definition(symbol, config, svg);
         }
 
         if config.compact_output {
@@ -537,12 +537,7 @@ fn round_to_precision(value: f32, precision: u8) -> f32 {
 fn write_symbol_definition(symbol: &SvgSymbol, config: &SvgDotConfig, svg: &mut String) {
     let indent = if config.compact_output { "" } else { "    " };
 
-    write!(
-        svg,
-        r#"{}<symbol id="{}">"#,
-        indent,
-        symbol.id
-    ).unwrap();
+    write!(svg, r#"{}<symbol id="{}">"#, indent, symbol.id).unwrap();
 
     write!(
         svg,
@@ -550,7 +545,8 @@ fn write_symbol_definition(symbol: &SvgSymbol, config: &SvgDotConfig, svg: &mut 
         symbol.radius,
         symbol.fill,
         prec = config.precision as usize
-    ).unwrap();
+    )
+    .unwrap();
 
     // Add opacity if not full opacity and config allows it
     if config.use_opacity && (symbol.opacity - 1.0).abs() > 0.01 {
@@ -559,7 +555,8 @@ fn write_symbol_definition(symbol: &SvgSymbol, config: &SvgDotConfig, svg: &mut 
             r#" opacity="{:.prec$}""#,
             symbol.opacity,
             prec = config.precision as usize
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     if config.compact_output {
@@ -583,7 +580,8 @@ fn write_symbol_use(symbol_use: &SvgSymbolUse, config: &SvgDotConfig, svg: &mut 
             symbol_use.x,
             symbol_use.y,
             prec = config.precision as usize
-        ).unwrap();
+        )
+        .unwrap();
     } else {
         write!(
             svg,
@@ -594,7 +592,8 @@ fn write_symbol_use(symbol_use: &SvgSymbolUse, config: &SvgDotConfig, svg: &mut 
             symbol_use.x,
             symbol_use.y,
             prec = config.precision as usize
-        ).unwrap();
+        )
+        .unwrap();
     }
 }
 
@@ -1079,15 +1078,27 @@ mod tests {
     fn test_symbol_reuse_optimization() {
         // Create dots that should benefit from symbol reuse
         let mut dots = Vec::new();
-        
+
         // Group 1: Red dots with radius 2.0 (20 dots - should create symbol)
         for i in 0..20 {
-            dots.push(Dot::new((i * 10) as f32, 10.0, 2.0, 1.0, "#ff0000".to_string()));
+            dots.push(Dot::new(
+                (i * 10) as f32,
+                10.0,
+                2.0,
+                1.0,
+                "#ff0000".to_string(),
+            ));
         }
-        
+
         // Group 2: Blue dots with radius 1.5 (3 dots - too few for symbol, individual)
         for i in 0..3 {
-            dots.push(Dot::new((i * 10) as f32, 20.0, 1.5, 0.8, "#0000ff".to_string()));
+            dots.push(Dot::new(
+                (i * 10) as f32,
+                20.0,
+                1.5,
+                0.8,
+                "#0000ff".to_string(),
+            ));
         }
 
         let config = SvgDotConfig {
@@ -1161,7 +1172,7 @@ mod tests {
     #[test]
     fn test_dot_properties_similarity() {
         let config = SvgDotConfig::default();
-        
+
         let props1 = DotProperties {
             radius: 2.0,
             color: "#ff0000".to_string(),
@@ -1175,7 +1186,7 @@ mod tests {
         };
 
         let props3 = DotProperties {
-            radius: 2.1,  // Different radius
+            radius: 2.1, // Different radius
             color: "#ff0000".to_string(),
             opacity: 1.0,
         };

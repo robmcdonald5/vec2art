@@ -17,7 +17,9 @@ pub mod kernels;
 pub mod processor;
 
 #[cfg(feature = "gpu-acceleration")]
-pub use algorithm_selector::{GpuAlgorithmSelector, GpuAlgorithm, ProcessingStrategy, ImageCharacteristics};
+pub use algorithm_selector::{
+    GpuAlgorithm, GpuAlgorithmSelector, ImageCharacteristics, ProcessingStrategy,
+};
 #[cfg(feature = "gpu-acceleration")]
 pub use device::{GpuDevice, GpuDeviceError};
 #[cfg(feature = "gpu-acceleration")]
@@ -90,7 +92,7 @@ pub fn get_gpu_backend_type() -> String {
         {
             // Use direct JavaScript evaluation to avoid wasm-bindgen binding issues
             use js_sys::eval;
-            
+
             match eval("typeof navigator !== 'undefined' && navigator.gpu") {
                 Ok(value) => {
                     if value.is_object() && !value.is_null() && !value.is_undefined() {

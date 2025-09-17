@@ -3,7 +3,7 @@
 //! This module provides comprehensive error handling for all edge cases
 //! that can occur during image vectorization, including:
 //! - Invalid image dimensions and data
-//! - Resource limits and memory constraints  
+//! - Resource limits and memory constraints
 //! - Algorithm-specific failures
 //! - Configuration validation errors
 
@@ -240,7 +240,7 @@ pub mod limits {
     /// Maximum number of colors for quantization
     pub const MAX_COLORS: u32 = 256;
 
-    /// Minimum number of colors for quantization  
+    /// Minimum number of colors for quantization
     pub const MIN_COLORS: u32 = 2;
 
     /// Maximum number of iterations for iterative algorithms

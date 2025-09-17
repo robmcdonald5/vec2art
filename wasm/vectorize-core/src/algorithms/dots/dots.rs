@@ -189,17 +189,17 @@ impl PoissonDiskSampler {
         // Critical safety validation to prevent WASM panics
         let width = width.max(1.0).min(10000.0);
         let height = height.max(1.0).min(10000.0);
-        
+
         // Clamp min_distance to safe ranges to prevent division/grid issues
         let min_distance = min_distance.clamp(0.1, width.min(height) * 0.5);
-        
+
         let grid_size = min_distance / (2.0_f32).sqrt();
-        
+
         // Cap grid dimensions to prevent memory exhaustion and array bounds issues
         let max_grid_dim = 2000; // Reasonable upper bound
         let grid_width = ((width / grid_size).ceil() as usize).clamp(1, max_grid_dim);
         let grid_height = ((height / grid_size).ceil() as usize).clamp(1, max_grid_dim);
-        
+
         // Validate total grid size to prevent massive allocations
         let total_grid_size = grid_width.saturating_mul(grid_height);
         let (final_grid_width, final_grid_height) = if total_grid_size > 4_000_000 {
@@ -207,7 +207,7 @@ impl PoissonDiskSampler {
             let scale = (4_000_000.0 / total_grid_size as f32).sqrt();
             (
                 ((grid_width as f32 * scale) as usize).max(1),
-                ((grid_height as f32 * scale) as usize).max(1)
+                ((grid_height as f32 * scale) as usize).max(1),
             )
         } else {
             (grid_width, grid_height)
@@ -311,24 +311,28 @@ impl PoissonDiskSampler {
                 let offset_y = (self.next_random() - 0.5) * self.min_distance;
                 let sample_x = (x + offset_x).clamp(0.0, self.width - 1.0);
                 let sample_y = (y + offset_y).clamp(0.0, self.height - 1.0);
-                
+
                 if self.is_valid_point(sample_x, sample_y) {
                     self.add_sample(sample_x, sample_y);
                 }
             }
         }
-        
+
         // If no seeds were added (shouldn't happen), add center as fallback
         if self.samples.is_empty() {
             self.add_sample(self.width * 0.5, self.height * 0.5);
         }
 
         const K: usize = 30; // Number of attempts per active sample
-        // Scale max iterations based on image size to ensure full coverage
+                             // Scale max iterations based on image size to ensure full coverage
         let pixels_to_cover = (self.width * self.height) as usize;
-        let expected_samples = (pixels_to_cover as f32 / (self.min_distance * self.min_distance)) as usize;
+        let expected_samples =
+            (pixels_to_cover as f32 / (self.min_distance * self.min_distance)) as usize;
         // Allow enough iterations for full coverage with safety margin
-        let max_iterations = expected_samples.saturating_mul(K).max(100_000).min(1_000_000);
+        let max_iterations = expected_samples
+            .saturating_mul(K)
+            .max(100_000)
+            .min(1_000_000);
         let mut iterations = 0;
 
         while !self.active_list.is_empty() && iterations < max_iterations {

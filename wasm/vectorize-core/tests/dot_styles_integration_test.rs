@@ -5,11 +5,9 @@
 
 use image::{Rgba, RgbaImage};
 use std::collections::HashSet;
-use vectorize_core::algorithms::dots::{
-    dot_styles::*, dots::*, svg_dots::*,
-};
 use vectorize_core::algorithms::dots::dot_styles::apply_artistic_effects;
 use vectorize_core::algorithms::dots::dot_styles::apply_style_preset;
+use vectorize_core::algorithms::dots::{dot_styles::*, dots::*, svg_dots::*};
 
 /// Create a test image with clear edges and gradients for dot processing
 fn create_comprehensive_test_image() -> RgbaImage {

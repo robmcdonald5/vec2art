@@ -5,7 +5,10 @@
 
 use std::sync::Arc;
 use thiserror::Error;
-use wgpu::{Device, Instance, Queue, RequestAdapterOptions, DeviceDescriptor, Features, Limits, InstanceDescriptor, Backends};
+use wgpu::{
+    Backends, Device, DeviceDescriptor, Features, Instance, InstanceDescriptor, Limits, Queue,
+    RequestAdapterOptions,
+};
 
 #[derive(Debug, Error)]
 pub enum GpuDeviceError {
@@ -61,11 +64,11 @@ impl GpuDevice {
         // Get adapter info
         let info = adapter.get_info();
         let adapter_limits = adapter.limits();
-        
+
         // Use WebGL2 downlevel limits to avoid deprecated maxInterStageShaderComponents
         // Chrome 135+ removed this limit - WebGL2 limits might not include it
         let device_limits = Limits::downlevel_webgl2_defaults();
-        
+
         let (device, queue) = adapter
             .request_device(&DeviceDescriptor {
                 label: Some("vec2art GPU Device"),
@@ -84,7 +87,8 @@ impl GpuDevice {
             max_texture_dimension_2d: adapter_limits.max_texture_dimension_2d,
             max_compute_workgroup_size_x: adapter_limits.max_compute_workgroup_size_x,
             max_compute_workgroup_size_y: adapter_limits.max_compute_workgroup_size_y,
-            max_compute_workgroups_per_dimension: adapter_limits.max_compute_workgroups_per_dimension,
+            max_compute_workgroups_per_dimension: adapter_limits
+                .max_compute_workgroups_per_dimension,
         };
 
         Ok(Self {
@@ -112,7 +116,7 @@ impl GpuDevice {
 
         let info = adapter.get_info();
         let adapter_limits = adapter.limits();
-        
+
         // Use WebGL2 downlevel limits to avoid deprecated maxInterStageShaderComponents
         // Chrome 135+ removed this limit - WebGL2 limits might not include it
         let device_limits = Limits::downlevel_webgl2_defaults();
@@ -135,7 +139,8 @@ impl GpuDevice {
             max_texture_dimension_2d: adapter_limits.max_texture_dimension_2d,
             max_compute_workgroup_size_x: adapter_limits.max_compute_workgroup_size_x,
             max_compute_workgroup_size_y: adapter_limits.max_compute_workgroup_size_y,
-            max_compute_workgroups_per_dimension: adapter_limits.max_compute_workgroups_per_dimension,
+            max_compute_workgroups_per_dimension: adapter_limits
+                .max_compute_workgroups_per_dimension,
         };
 
         Ok(Self {
@@ -148,12 +153,12 @@ impl GpuDevice {
     /// Check if the GPU supports required features for image processing
     pub fn supports_image_processing(&self) -> bool {
         let limits = self.device.limits();
-        
+
         // Check minimum requirements for image processing
-        limits.max_texture_dimension_2d >= 4096 &&
-        limits.max_compute_workgroup_size_x >= 64 &&
-        limits.max_compute_workgroup_size_y >= 64 &&
-        limits.max_compute_workgroups_per_dimension >= 65535
+        limits.max_texture_dimension_2d >= 4096
+            && limits.max_compute_workgroup_size_x >= 64
+            && limits.max_compute_workgroup_size_y >= 64
+            && limits.max_compute_workgroups_per_dimension >= 65535
     }
 
     /// Get optimal workgroup size for 2D image operations

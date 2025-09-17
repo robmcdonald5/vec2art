@@ -64,7 +64,7 @@ impl Default for AdaptiveConfig {
 pub struct Region {
     /// X coordinate of region's top-left corner
     pub x: u32,
-    /// Y coordinate of region's top-left corner  
+    /// Y coordinate of region's top-left corner
     pub y: u32,
     /// Width of the region in pixels
     pub width: u32,
@@ -236,9 +236,12 @@ pub fn analyze_image_regions(gradient: &GradientAnalysis, region_size: u32) -> V
     // Use execution abstraction for parallel processing with adaptive threading
     let region_data: Vec<_> = region_coords.into_iter().collect();
     let config = ThreadingConfig::safe_defaults();
-    execute_algorithm_parallel(AlgorithmType::Dots, region_data, |(x, y)| {
-        analyze_single_region(gradient, x, y, region_size, width, height)
-    }, &config)
+    execute_algorithm_parallel(
+        AlgorithmType::Dots,
+        region_data,
+        |(x, y)| analyze_single_region(gradient, x, y, region_size, width, height),
+        &config,
+    )
 }
 
 /// Analyze a single region for complexity (optimized helper function)
@@ -477,7 +480,7 @@ pub fn poisson_disk_sampling(dots: &mut Vec<Dot>, min_distance: f32) {
 /// # Arguments
 /// * `density_map` - Input density map
 /// * `width` - Image width
-/// * `height` - Image height  
+/// * `height` - Image height
 /// * `kernel_size` - Size of Gaussian kernel (should be odd)
 ///
 /// # Returns
@@ -488,7 +491,7 @@ pub fn smooth_density_transitions(
     height: usize,
     kernel_size: u32,
 ) -> Vec<f32> {
-    if kernel_size % 2 == 0 || kernel_size < 3 {
+    if kernel_size.is_multiple_of(2) || kernel_size < 3 {
         return density_map.to_vec();
     }
 
@@ -514,11 +517,16 @@ pub fn smooth_density_transitions(
     let mut temp = vec![0.0; width * height];
     let row_indices: Vec<usize> = (0..height).collect();
     let config = ThreadingConfig::safe_defaults();
-    let processed_rows = execute_algorithm_parallel(AlgorithmType::Superpixel, row_indices, |y| {
-        let mut row = vec![0.0; width];
-        apply_horizontal_blur(density_map, &mut row, y, width, &kernel_1d, radius);
-        (y, row)
-    }, &config);
+    let processed_rows = execute_algorithm_parallel(
+        AlgorithmType::Superpixel,
+        row_indices,
+        |y| {
+            let mut row = vec![0.0; width];
+            apply_horizontal_blur(density_map, &mut row, y, width, &kernel_1d, radius);
+            (y, row)
+        },
+        &config,
+    );
 
     // Copy results back to temp buffer
     for (y, row) in processed_rows {
@@ -529,11 +537,16 @@ pub fn smooth_density_transitions(
     // Second pass: vertical blur using execution abstraction with safe threading
     let mut smoothed = vec![0.0; width * height];
     let row_indices: Vec<usize> = (0..height).collect();
-    let processed_rows = execute_algorithm_parallel(AlgorithmType::Superpixel, row_indices, |y| {
-        let mut row = vec![0.0; width];
-        apply_vertical_blur(&temp, &mut row, y, width, height, &kernel_1d, radius);
-        (y, row)
-    }, &config);
+    let processed_rows = execute_algorithm_parallel(
+        AlgorithmType::Superpixel,
+        row_indices,
+        |y| {
+            let mut row = vec![0.0; width];
+            apply_vertical_blur(&temp, &mut row, y, width, height, &kernel_1d, radius);
+            (y, row)
+        },
+        &config,
+    );
 
     // Copy results back to smoothed buffer
     for (y, row) in processed_rows {

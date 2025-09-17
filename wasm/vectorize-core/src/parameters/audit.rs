@@ -1,15 +1,14 @@
+use super::{ParameterDefinition, ParameterSource, ParameterValue};
+use crate::algorithms::TraceBackend;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 /**
  * Parameter Auditing System
- * 
+ *
  * Tracks parameter changes, detects overrides, and maintains audit trails
  * for debugging parameter-related issues.
  */
-
 use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
-use crate::algorithms::TraceBackend;
-use super::{ParameterValue, ParameterSource, ParameterDefinition};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParameterChange {
@@ -160,38 +159,41 @@ impl ParameterAuditor {
 
     pub fn detect_conflicts(&mut self) -> Vec<ParameterConflict> {
         let mut conflicts = Vec::new();
-        
+
         if let Some(audit) = &self.current_audit {
             // Check for mutually exclusive parameters
             conflicts.extend(self.check_mutually_exclusive_parameters(&audit.final_parameters));
-            
+
             // Check for missing dependencies
-            conflicts.extend(self.check_missing_dependencies(&audit.final_parameters, audit.backend));
-            
+            conflicts
+                .extend(self.check_missing_dependencies(&audit.final_parameters, audit.backend));
+
             // Check for performance conflicts
             conflicts.extend(self.check_performance_conflicts(&audit.final_parameters));
-            
+
             // Check for logical inconsistencies
             conflicts.extend(self.check_logical_inconsistencies(&audit.final_parameters));
         }
-        
+
         // Record all detected conflicts
         for conflict in &conflicts {
             self.record_conflict(conflict.clone());
         }
-        
+
         conflicts
     }
 
     fn check_mutually_exclusive_parameters(
         &self,
-        parameters: &HashMap<String, ParameterValue>
+        parameters: &HashMap<String, ParameterValue>,
     ) -> Vec<ParameterConflict> {
         let mut conflicts = Vec::new();
-        
+
         // Example: Multi-pass and single-pass specific parameters
-        if let (Some(ParameterValue::Boolean(true)), Some(ParameterValue::Integer(count))) = 
-            (parameters.get("enable_multipass"), parameters.get("pass_count")) {
+        if let (Some(ParameterValue::Boolean(true)), Some(ParameterValue::Integer(count))) = (
+            parameters.get("enable_multipass"),
+            parameters.get("pass_count"),
+        ) {
             if *count <= 1 {
                 conflicts.push(ParameterConflict {
                     parameter_name: "enable_multipass".to_string(),
@@ -205,8 +207,10 @@ impl ParameterAuditor {
         }
 
         // Example: Noise filtering requirements
-        if let (Some(ParameterValue::Boolean(false)), Some(_)) = 
-            (parameters.get("noise_filtering"), parameters.get("noise_filter_spatial_sigma")) {
+        if let (Some(ParameterValue::Boolean(false)), Some(_)) = (
+            parameters.get("noise_filtering"),
+            parameters.get("noise_filter_spatial_sigma"),
+        ) {
             conflicts.push(ParameterConflict {
                 parameter_name: "noise_filter_spatial_sigma".to_string(),
                 conflicting_parameter: "noise_filtering".to_string(),
@@ -223,12 +227,12 @@ impl ParameterAuditor {
     fn check_missing_dependencies(
         &self,
         parameters: &HashMap<String, ParameterValue>,
-        _backend: TraceBackend
+        _backend: TraceBackend,
     ) -> Vec<ParameterConflict> {
         let mut conflicts = Vec::new();
-        
+
         // Check each parameter's dependencies
-        for (param_name, _param_value) in parameters {
+        for param_name in parameters.keys() {
             if let Some(param_def) = self.registry.get(param_name.as_str()) {
                 let dependencies = &param_def.constraints.requires;
                 if !dependencies.is_empty() {
@@ -238,7 +242,10 @@ impl ParameterAuditor {
                                 parameter_name: param_name.clone(),
                                 conflicting_parameter: dep.clone(),
                                 conflict_type: ConflictType::MissingDependency,
-                                description: format!("Parameter '{}' requires '{}' to be set", param_name, dep),
+                                description: format!(
+                                    "Parameter '{}' requires '{}' to be set",
+                                    param_name, dep
+                                ),
                                 resolution: ConflictResolution::RequiresUserInput,
                                 timestamp: Utc::now(),
                             });
@@ -247,25 +254,27 @@ impl ParameterAuditor {
                 }
             }
         }
-        
+
         conflicts
     }
 
     fn check_performance_conflicts(
         &self,
-        parameters: &HashMap<String, ParameterValue>
+        parameters: &HashMap<String, ParameterValue>,
     ) -> Vec<ParameterConflict> {
         let mut conflicts = Vec::new();
-        
+
         // Example: High detail + high pass count = performance impact
-        if let (Some(ParameterValue::Float(detail)), Some(ParameterValue::Integer(passes))) = 
-            (parameters.get("detail"), parameters.get("pass_count")) {
+        if let (Some(ParameterValue::Float(detail)), Some(ParameterValue::Integer(passes))) =
+            (parameters.get("detail"), parameters.get("pass_count"))
+        {
             if *detail > 0.8 && *passes > 3 {
                 conflicts.push(ParameterConflict {
                     parameter_name: "detail".to_string(),
                     conflicting_parameter: "pass_count".to_string(),
                     conflict_type: ConflictType::PerformanceImpact,
-                    description: "High detail with multiple passes may cause slow processing".to_string(),
+                    description: "High detail with multiple passes may cause slow processing"
+                        .to_string(),
                     resolution: ConflictResolution::WarningFlagged,
                     timestamp: Utc::now(),
                 });
@@ -285,31 +294,34 @@ impl ParameterAuditor {
                 });
             }
         }
-        
+
         conflicts
     }
 
     fn check_logical_inconsistencies(
         &self,
-        parameters: &HashMap<String, ParameterValue>
+        parameters: &HashMap<String, ParameterValue>,
     ) -> Vec<ParameterConflict> {
         let mut conflicts = Vec::new();
-        
+
         // Example: Dot radius constraints
-        if let (Some(ParameterValue::Float(min_radius)), Some(ParameterValue::Float(max_radius))) = 
-            (parameters.get("dot_min_radius"), parameters.get("dot_max_radius")) {
+        if let (Some(ParameterValue::Float(min_radius)), Some(ParameterValue::Float(max_radius))) = (
+            parameters.get("dot_min_radius"),
+            parameters.get("dot_max_radius"),
+        ) {
             if min_radius >= max_radius {
                 conflicts.push(ParameterConflict {
                     parameter_name: "dot_min_radius".to_string(),
                     conflicting_parameter: "dot_max_radius".to_string(),
                     conflict_type: ConflictType::LogicalInconsistency,
-                    description: "Minimum dot radius must be less than maximum dot radius".to_string(),
+                    description: "Minimum dot radius must be less than maximum dot radius"
+                        .to_string(),
                     resolution: ConflictResolution::RequiresUserInput,
                     timestamp: Utc::now(),
                 });
             }
         }
-        
+
         conflicts
     }
 
@@ -332,11 +344,14 @@ impl ParameterAuditor {
                                         parameter_name: param_name.clone(),
                                         current_value: param_value.clone(),
                                         suggested_value: ParameterValue::Float(0.7),
-                                        reason: "Reducing detail level improves processing speed".to_string(),
+                                        reason: "Reducing detail level improves processing speed"
+                                            .to_string(),
                                         impact: OptimizationImpact {
                                             performance_gain_percent: 25.0,
                                             quality_impact_percent: -10.0,
-                                            description: "25% faster processing, slightly less detail".to_string(),
+                                            description:
+                                                "25% faster processing, slightly less detail"
+                                                    .to_string(),
                                         },
                                     });
                                 }
@@ -398,7 +413,9 @@ impl ParameterAuditor {
         if let Some(audit) = &self.current_audit {
             let total_changes = audit.changes.len();
             let conflicts = audit.conflicts.len();
-            let user_changes = audit.changes.iter()
+            let user_changes = audit
+                .changes
+                .iter()
                 .filter(|c| matches!(c.source, ParameterSource::Frontend))
                 .count();
             let auto_changes = total_changes - user_changes;
@@ -433,7 +450,7 @@ mod tests {
     fn test_audit_session() {
         let mut auditor = ParameterAuditor::new(&PARAMETER_REGISTRY);
         auditor.start_audit("test-session".to_string(), TraceBackend::Edge);
-        
+
         assert!(auditor.current_audit.is_some());
         let audit = auditor.current_audit.as_ref().unwrap();
         assert_eq!(audit.session_id, "test-session");
@@ -444,7 +461,7 @@ mod tests {
     fn test_parameter_change_recording() {
         let mut auditor = ParameterAuditor::new(&PARAMETER_REGISTRY);
         auditor.start_audit("test-session".to_string(), TraceBackend::Edge);
-        
+
         auditor.record_change(
             "detail".to_string(),
             Some(ParameterValue::Float(0.5)),
@@ -455,14 +472,17 @@ mod tests {
 
         let audit = auditor.current_audit.as_ref().unwrap();
         assert_eq!(audit.changes.len(), 1);
-        assert_eq!(audit.final_parameters.get("detail"), Some(&ParameterValue::Float(0.8)));
+        assert_eq!(
+            audit.final_parameters.get("detail"),
+            Some(&ParameterValue::Float(0.8))
+        );
     }
 
     #[test]
     fn test_conflict_detection() {
         let mut auditor = ParameterAuditor::new(&PARAMETER_REGISTRY);
         auditor.start_audit("test-session".to_string(), TraceBackend::Edge);
-        
+
         // Set up conflicting parameters
         auditor.record_change(
             "enable_multipass".to_string(),
@@ -471,7 +491,7 @@ mod tests {
             ParameterSource::Frontend,
             None,
         );
-        
+
         auditor.record_change(
             "pass_count".to_string(),
             None,
@@ -482,9 +502,10 @@ mod tests {
 
         let conflicts = auditor.detect_conflicts();
         assert!(!conflicts.is_empty());
-        
+
         // Should detect the logical inconsistency
-        let logical_conflicts: Vec<_> = conflicts.iter()
+        let logical_conflicts: Vec<_> = conflicts
+            .iter()
             .filter(|c| matches!(c.conflict_type, ConflictType::LogicalInconsistency))
             .collect();
         assert!(!logical_conflicts.is_empty());
@@ -494,7 +515,7 @@ mod tests {
     fn test_performance_impact_calculation() {
         let mut auditor = ParameterAuditor::new(&PARAMETER_REGISTRY);
         auditor.start_audit("test-session".to_string(), TraceBackend::Edge);
-        
+
         // Set high-impact parameters
         auditor.record_change(
             "detail".to_string(),
@@ -503,7 +524,7 @@ mod tests {
             ParameterSource::Frontend,
             None,
         );
-        
+
         auditor.record_change(
             "pass_count".to_string(),
             None,
@@ -513,10 +534,10 @@ mod tests {
         );
 
         auditor.calculate_performance_impact();
-        
+
         let audit = auditor.current_audit.as_ref().unwrap();
         assert!(audit.performance_impact.is_some());
-        
+
         let impact = audit.performance_impact.as_ref().unwrap();
         assert!(impact.complexity_score > 0.5); // Should be high complexity
         assert!(!impact.bottleneck_parameters.is_empty());

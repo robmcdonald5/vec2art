@@ -27,17 +27,17 @@ pub use algorithms::{
 };
 pub use config::SvgConfig;
 pub use config_builder::{ConfigBuilder, ConfigBuilderError, ConfigBuilderResult};
-pub use config_immutable::{VectorizerConfig, ConfigError, ConfigResult};
+pub use config_immutable::{ConfigError, ConfigResult, VectorizerConfig};
 pub use error::*;
-pub use parameters::{
-    ParameterDefinition, ParameterValidator, ValidationResult, ValidationError, ValidationWarning,
-    ParameterType, ParameterValue, ParameterCategory, PARAMETER_REGISTRY,
-};
 pub use execution::{
     current_num_threads, execute_parallel, execute_parallel_chunks, execute_parallel_filter_map,
     join, join3, par_bridge, par_enumerate, par_extend, par_iter, par_iter_mut, par_sort,
     par_sort_by, par_windows, par_zip, process_chunks_mut, reduce, scope, should_use_parallel,
     with_thread_pool, ThreadPoolConfig,
+};
+pub use parameters::{
+    ParameterCategory, ParameterDefinition, ParameterType, ParameterValidator, ParameterValue,
+    ValidationError, ValidationResult, ValidationWarning, PARAMETER_REGISTRY,
 };
 pub use svg_gradients::{
     generate_optimized_svg_document_with_gradients, generate_svg_document_with_gradients,
@@ -73,8 +73,9 @@ pub fn vectorize_trace_low_rgba(
 ) -> Result<String, VectorizeError> {
     use input_validation::validate_image_input;
     use preprocessing::{
-        adjust_trace_low_config, analyze_resolution_requirements, apply_resolution_processing,
-        scale_svg_coordinates, ResolutionConfig, apply_background_removal, BackgroundRemovalConfig,
+        adjust_trace_low_config, analyze_resolution_requirements, apply_background_removal,
+        apply_resolution_processing, scale_svg_coordinates, BackgroundRemovalConfig,
+        ResolutionConfig,
     };
 
     log::info!("Starting trace-low vectorization with config: {config:?}");
@@ -117,10 +118,13 @@ pub fn vectorize_trace_low_rgba(
             threshold_override: config.background_removal_threshold,
         };
 
-        log::info!("Applying background removal with strength {:.2}", config.background_removal_strength);
-        
+        log::info!(
+            "Applying background removal with strength {:.2}",
+            config.background_removal_strength
+        );
+
         let bg_removal_result = apply_background_removal(&processing_image, &bg_removal_config)?;
-        
+
         log::info!(
             "Background removal completed using algorithm {:?}, threshold {}, took {}ms",
             bg_removal_result.algorithm_used,

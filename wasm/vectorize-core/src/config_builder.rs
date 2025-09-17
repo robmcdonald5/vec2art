@@ -365,7 +365,11 @@ impl ConfigBuilder {
     pub fn window_size(mut self, size: u32) -> ConfigBuilderResult<Self> {
         self.validate_window_size(size)?;
         // Ensure the window size is odd (required by adaptive threshold algorithm)
-        let odd_size = if size % 2 == 0 { size + 1 } else { size };
+        let odd_size = if size.is_multiple_of(2) {
+            size + 1
+        } else {
+            size
+        };
         if odd_size != size {
             // Auto-correct to nearest odd value
         }
@@ -1204,7 +1208,7 @@ impl ConfigBuilder {
         }
 
         // Validate adaptive threshold window size is odd (required by algorithm)
-        if self.config.adaptive_threshold_window_size % 2 == 0 {
+        if self.config.adaptive_threshold_window_size.is_multiple_of(2) {
             return Err(ConfigBuilderError::ValidationFailed(
                 "Adaptive threshold window size must be odd".to_string(),
             ));
@@ -1400,10 +1404,12 @@ impl ConfigBuilder {
             "otsu" => BackgroundRemovalAlgorithm::Otsu,
             "adaptive" => BackgroundRemovalAlgorithm::Adaptive,
             "auto" => BackgroundRemovalAlgorithm::Auto,
-            _ => return Err(ConfigBuilderError::InvalidParameter(format!(
+            _ => {
+                return Err(ConfigBuilderError::InvalidParameter(format!(
                 "Invalid background removal algorithm: '{}'. Valid options: otsu, adaptive, auto",
                 algorithm
-            ))),
+            )))
+            }
         };
         self.config.background_removal_algorithm = algo;
         Ok(self)

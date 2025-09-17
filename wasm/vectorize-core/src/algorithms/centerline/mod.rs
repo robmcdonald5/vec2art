@@ -66,7 +66,7 @@ pub trait ThresholdingStrategy {
     fn name(&self) -> &'static str;
 }
 
-/// Trait for thinning/skeletonization algorithms  
+/// Trait for thinning/skeletonization algorithms
 pub trait ThinningStrategy {
     fn thin(&self, binary: &GrayImage) -> Result<GrayImage, VectorizeError>;
     fn name(&self) -> &'static str;
@@ -125,8 +125,8 @@ impl CompositeCenterlineAlgorithm {
         Self {
             thresholding: Box::new(thresholding::SauvolaThresholding::default()),
             preprocessing: Box::new(preprocessing::MorphologicalPreprocessing::default()),
-            thinning: Box::new(thinning::GuoHallThinning::default()),
-            extraction: Box::new(extraction::JunctionAwareExtraction::default()),
+            thinning: Box::new(thinning::GuoHallThinning),
+            extraction: Box::new(extraction::JunctionAwareExtraction),
             simplification: Box::new(simplification::AdaptiveSimplification::default()),
             distance_transform: None,
             name: name.into(),
@@ -138,9 +138,7 @@ impl CompositeCenterlineAlgorithm {
         let mut algo = Self::new("HighPerformance");
         algo.thresholding = Box::new(thresholding::BradleyRothThresholding::default());
         algo.thinning = Box::new(thinning::DistanceTransformThinning::default());
-        algo.distance_transform = Some(Box::new(
-            distance_transform::FelzenszwalbHuttenlocher::default(),
-        ));
+        algo.distance_transform = Some(Box::new(distance_transform::FelzenszwalbHuttenlocher));
         algo
     }
 

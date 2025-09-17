@@ -10,8 +10,10 @@ use vectorize_core::algorithms::dots::{
     dots::{generate_dots_from_image, DotConfig},
     svg_dots::{dots_to_svg_with_config, SvgDotConfig},
 };
+use vectorize_core::{
+    algorithms::tracing::trace_low::vectorize_trace_low, vectorize_trace_low_rgba,
+};
 use vectorize_core::{TraceBackend, TraceLowConfig};
-use vectorize_core::{algorithms::tracing::trace_low::vectorize_trace_low, vectorize_trace_low_rgba};
 
 /// Test image generators for different scenarios
 mod image_generators {

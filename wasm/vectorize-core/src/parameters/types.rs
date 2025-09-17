@@ -16,20 +16,13 @@ pub enum ParameterType {
         precision: u8, // Number of decimal places for UI
     },
     /// Integer parameter with range constraints
-    Integer {
-        min: i32,
-        max: i32,
-    },
+    Integer { min: i32, max: i32 },
     /// Boolean parameter
     Boolean,
     /// Enumeration parameter with allowed values
-    Enum {
-        variants: Vec<String>,
-    },
+    Enum { variants: Vec<String> },
     /// String parameter with optional length constraint
-    String {
-        max_length: Option<usize>,
-    },
+    String { max_length: Option<usize> },
 }
 
 impl ParameterType {
@@ -40,12 +33,13 @@ impl ParameterType {
             ParameterType::Integer { .. } => "number".to_string(),
             ParameterType::Boolean => "boolean".to_string(),
             ParameterType::Enum { variants } => {
-                let variant_list = variants.iter()
+                let variant_list = variants
+                    .iter()
                     .map(|v| format!("'{}'", v))
                     .collect::<Vec<_>>()
                     .join(" | ");
                 variant_list
-            },
+            }
             ParameterType::String { .. } => "string".to_string(),
         }
     }
@@ -66,12 +60,18 @@ impl ParameterValue {
         match (self, param_type) {
             (ParameterValue::Float(val), ParameterType::Float { min, max, .. }) => {
                 if *val < *min || *val > *max {
-                    return Err(format!("Float value {} out of range [{}, {}]", val, min, max));
+                    return Err(format!(
+                        "Float value {} out of range [{}, {}]",
+                        val, min, max
+                    ));
                 }
             }
             (ParameterValue::Integer(val), ParameterType::Integer { min, max }) => {
                 if *val < *min || *val > *max {
-                    return Err(format!("Integer value {} out of range [{}, {}]", val, min, max));
+                    return Err(format!(
+                        "Integer value {} out of range [{}, {}]",
+                        val, min, max
+                    ));
                 }
             }
             (ParameterValue::Boolean(_), ParameterType::Boolean) => {
@@ -79,18 +79,28 @@ impl ParameterValue {
             }
             (ParameterValue::String(val), ParameterType::Enum { variants }) => {
                 if !variants.contains(val) {
-                    return Err(format!("String value '{}' not in allowed variants: {:?}", val, variants));
+                    return Err(format!(
+                        "String value '{}' not in allowed variants: {:?}",
+                        val, variants
+                    ));
                 }
             }
             (ParameterValue::String(val), ParameterType::String { max_length }) => {
                 if let Some(max_len) = max_length {
                     if val.len() > *max_len {
-                        return Err(format!("String length {} exceeds maximum {}", val.len(), max_len));
+                        return Err(format!(
+                            "String length {} exceeds maximum {}",
+                            val.len(),
+                            max_len
+                        ));
                     }
                 }
             }
             _ => {
-                return Err(format!("Parameter value type {:?} does not match expected type {:?}", self, param_type));
+                return Err(format!(
+                    "Parameter value type {:?} does not match expected type {:?}",
+                    self, param_type
+                ));
             }
         }
         Ok(())
@@ -179,37 +189,67 @@ mod tests {
 
     #[test]
     fn test_parameter_value_validation() {
-        let float_type = ParameterType::Float { min: 0.0, max: 1.0, precision: 2 };
-        
+        let float_type = ParameterType::Float {
+            min: 0.0,
+            max: 1.0,
+            precision: 2,
+        };
+
         // Valid values
-        assert!(ParameterValue::Float(0.5).validate_against_type(&float_type).is_ok());
-        assert!(ParameterValue::Float(0.0).validate_against_type(&float_type).is_ok());
-        assert!(ParameterValue::Float(1.0).validate_against_type(&float_type).is_ok());
-        
+        assert!(ParameterValue::Float(0.5)
+            .validate_against_type(&float_type)
+            .is_ok());
+        assert!(ParameterValue::Float(0.0)
+            .validate_against_type(&float_type)
+            .is_ok());
+        assert!(ParameterValue::Float(1.0)
+            .validate_against_type(&float_type)
+            .is_ok());
+
         // Invalid values
-        assert!(ParameterValue::Float(-0.1).validate_against_type(&float_type).is_err());
-        assert!(ParameterValue::Float(1.1).validate_against_type(&float_type).is_err());
-        assert!(ParameterValue::Integer(5).validate_against_type(&float_type).is_err());
+        assert!(ParameterValue::Float(-0.1)
+            .validate_against_type(&float_type)
+            .is_err());
+        assert!(ParameterValue::Float(1.1)
+            .validate_against_type(&float_type)
+            .is_err());
+        assert!(ParameterValue::Integer(5)
+            .validate_against_type(&float_type)
+            .is_err());
     }
 
     #[test]
     fn test_enum_validation() {
-        let enum_type = ParameterType::Enum { 
-            variants: vec!["square".to_string(), "hexagonal".to_string(), "poisson".to_string()]
+        let enum_type = ParameterType::Enum {
+            variants: vec![
+                "square".to_string(),
+                "hexagonal".to_string(),
+                "poisson".to_string(),
+            ],
         };
-        
-        assert!(ParameterValue::String("square".to_string()).validate_against_type(&enum_type).is_ok());
-        assert!(ParameterValue::String("invalid".to_string()).validate_against_type(&enum_type).is_err());
+
+        assert!(ParameterValue::String("square".to_string())
+            .validate_against_type(&enum_type)
+            .is_ok());
+        assert!(ParameterValue::String("invalid".to_string())
+            .validate_against_type(&enum_type)
+            .is_err());
     }
 
     #[test]
     fn test_typescript_type_generation() {
-        let float_type = ParameterType::Float { min: 0.0, max: 1.0, precision: 2 };
+        let float_type = ParameterType::Float {
+            min: 0.0,
+            max: 1.0,
+            precision: 2,
+        };
         assert_eq!(float_type.to_typescript(), "number");
-        
-        let enum_type = ParameterType::Enum { variants: vec!["a".to_string(), "b".to_string(), "c".to_string()] };
+
+        let enum_type = ParameterType::Enum {
+            variants: vec!["a".to_string(), "b".to_string(), "c".to_string()],
+        };
         assert_eq!(enum_type.to_typescript(), "'a' | 'b' | 'c'");
-        
+
         let bool_type = ParameterType::Boolean;
         assert_eq!(bool_type.to_typescript(), "boolean");
     }

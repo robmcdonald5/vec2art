@@ -166,12 +166,12 @@ pub mod validation {
     pub fn validate_fdog_sigma(sigma_s: f32, sigma_c: f32) -> Result<(), VectorizeError> {
         if sigma_s <= 0.0 || sigma_c <= 0.0 {
             return Err(VectorizeError::config_error(
-                "FDoG sigma values must be positive"
+                "FDoG sigma values must be positive",
             ));
         }
         if sigma_s > 10.0 || sigma_c > 10.0 {
             return Err(VectorizeError::config_error(
-                "FDoG sigma values too large (max 10.0)"
+                "FDoG sigma values too large (max 10.0)",
             ));
         }
         Ok(())
@@ -181,17 +181,17 @@ pub mod validation {
     pub fn validate_nms_thresholds(low: f32, high: f32) -> Result<(), VectorizeError> {
         if low >= high {
             return Err(VectorizeError::config_error(
-                "NMS low threshold must be less than high threshold"
+                "NMS low threshold must be less than high threshold",
             ));
         }
         if low <= 0.0 || high <= 0.0 {
             return Err(VectorizeError::config_error(
-                "NMS thresholds must be positive"
+                "NMS thresholds must be positive",
             ));
         }
         if low > 1.0 || high > 1.0 {
             return Err(VectorizeError::config_error(
-                "NMS thresholds must not exceed 1.0"
+                "NMS thresholds must not exceed 1.0",
             ));
         }
         Ok(())
@@ -200,41 +200,43 @@ pub mod validation {
     /// Validate dot size range relationship
     pub fn validate_dot_size_range(min_radius: f32, max_radius: f32) -> Result<(), VectorizeError> {
         if min_radius <= 0.0 || max_radius <= 0.0 {
-            return Err(VectorizeError::config_error(
-                "Dot radii must be positive"
-            ));
+            return Err(VectorizeError::config_error("Dot radii must be positive"));
         }
         if min_radius >= max_radius {
             return Err(VectorizeError::config_error(
-                "Minimum dot radius must be less than maximum dot radius"
+                "Minimum dot radius must be less than maximum dot radius",
             ));
         }
         if max_radius > 50.0 {
             return Err(VectorizeError::config_error(
-                "Maximum dot radius too large (max 50.0 pixels)"
+                "Maximum dot radius too large (max 50.0 pixels)",
             ));
         }
         Ok(())
     }
 
     /// Validate superpixel configuration
-    pub fn validate_superpixel_config(num_superpixels: u32, compactness: f32, iterations: u32) -> Result<(), VectorizeError> {
+    pub fn validate_superpixel_config(
+        num_superpixels: u32,
+        compactness: f32,
+        iterations: u32,
+    ) -> Result<(), VectorizeError> {
         if !(20..=2000).contains(&num_superpixels) {
             return Err(VectorizeError::config_error(format!(
-                "Number of superpixels must be 20-2000, got {}"
-                , num_superpixels
+                "Number of superpixels must be 20-2000, got {}",
+                num_superpixels
             )));
         }
         if !(1.0..=50.0).contains(&compactness) {
             return Err(VectorizeError::config_error(format!(
-                "Superpixel compactness must be 1.0-50.0, got {}"
-                , compactness
+                "Superpixel compactness must be 1.0-50.0, got {}",
+                compactness
             )));
         }
         if !(1..=50).contains(&iterations) {
             return Err(VectorizeError::config_error(format!(
-                "SLIC iterations must be 1-50, got {}"
-                , iterations
+                "SLIC iterations must be 1-50, got {}",
+                iterations
             )));
         }
         Ok(())

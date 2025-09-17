@@ -20,7 +20,7 @@ impl ExtractionStrategy for JunctionAwareExtraction {
     }
 }
 
-/// Direction-aware extraction with tangent preservation (research recommended)  
+/// Direction-aware extraction with tangent preservation (research recommended)
 #[derive(Debug, Default)]
 pub struct DirectionAwareExtraction {
     pub junction_priority_bias: f32,
@@ -221,10 +221,13 @@ fn count_skeleton_neighbors(skeleton: &GrayImage, x: u32, y: u32) -> usize {
             let nx = x as i32 + dx;
             let ny = y as i32 + dy;
 
-            if nx >= 0 && ny >= 0 && (nx as u32) < width && (ny as u32) < height {
-                if skeleton.get_pixel(nx as u32, ny as u32).0[0] > 0 {
-                    count += 1;
-                }
+            if nx >= 0
+                && ny >= 0
+                && (nx as u32) < width
+                && (ny as u32) < height
+                && skeleton.get_pixel(nx as u32, ny as u32).0[0] > 0
+            {
+                count += 1;
             }
         }
     }
@@ -462,12 +465,14 @@ fn trace_from_point(
                 let nx = x + dx;
                 let ny = y + dy;
 
-                if nx >= 0 && ny >= 0 && (nx as u32) < width && (ny as u32) < height {
-                    if skeleton.get_pixel(nx as u32, ny as u32).0[0] > 0
-                        && !visited[ny as usize][nx as usize]
-                    {
-                        queue.push_back((nx, ny));
-                    }
+                if nx >= 0
+                    && ny >= 0
+                    && (nx as u32) < width
+                    && (ny as u32) < height
+                    && skeleton.get_pixel(nx as u32, ny as u32).0[0] > 0
+                    && !visited[ny as usize][nx as usize]
+                {
+                    queue.push_back((nx, ny));
                 }
             }
         }
@@ -505,13 +510,15 @@ fn trace_simple_path(
                 let nx = x + dx;
                 let ny = y + dy;
 
-                if nx >= 0 && ny >= 0 && (nx as u32) < width && (ny as u32) < height {
-                    if skeleton.get_pixel(nx as u32, ny as u32).0[0] > 0
-                        && !visited[ny as usize][nx as usize]
-                    {
-                        next = Some((nx, ny));
-                        break;
-                    }
+                if nx >= 0
+                    && ny >= 0
+                    && (nx as u32) < width
+                    && (ny as u32) < height
+                    && skeleton.get_pixel(nx as u32, ny as u32).0[0] > 0
+                    && !visited[ny as usize][nx as usize]
+                {
+                    next = Some((nx, ny));
+                    break;
                 }
             }
             if next.is_some() {

@@ -43,7 +43,7 @@ impl Default for StipplingConfig {
             density: 0.3,
             adaptive: true,
             background_color: [255, 255, 255], // White background
-            dot_color: [0, 0, 0],               // Black dots
+            dot_color: [0, 0, 0],              // Black dots
         }
     }
 }
@@ -60,51 +60,56 @@ impl GpuStippling {
     /// Create a new GPU stippling processor
     pub fn new(device: Arc<GpuDevice>) -> Result<Self, GpuStipplingError> {
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("stippling_layout"),
-            entries: &[
-                // Uniform buffer for parameters
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // Input image (read-only)
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // Output dots buffer
-                BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                    label: Some("stippling_layout"),
+                    entries: &[
+                        // Uniform buffer for parameters
+                        BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: ShaderStages::COMPUTE,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Input image (read-only)
+                        BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: ShaderStages::COMPUTE,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Output dots buffer
+                        BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: ShaderStages::COMPUTE,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create pipeline layout
-        let pipeline_layout = device.device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("stippling_pipeline_layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout = device
+            .device
+            .create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("stippling_pipeline_layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         // Load shader
         let shader_module = device.device.create_shader_module(ShaderModuleDescriptor {
@@ -113,23 +118,28 @@ impl GpuStippling {
         });
 
         // Create compute pipelines
-        let stippling_pipeline = device.device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("stippling_pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: Some("stippling_generate"),
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let stippling_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&ComputePipelineDescriptor {
+                    label: Some("stippling_pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: Some("stippling_generate"),
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
 
-        let adaptive_pipeline = device.device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("adaptive_stippling_pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: Some("adaptive_stippling"),
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let adaptive_pipeline = device
+            .device
+            .create_compute_pipeline(&ComputePipelineDescriptor {
+                label: Some("adaptive_stippling_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: Some("adaptive_stippling"),
+                compilation_options: Default::default(),
+                cache: None,
+            });
 
         Ok(Self {
             device,
@@ -155,23 +165,31 @@ impl GpuStippling {
         let pixel_count = (width * height) as usize;
 
         // Convert input image to f32
-        let input_data: Vec<f32> = input_image
-            .pixels()
-            .map(|p| p[0] as f32 / 255.0)
-            .collect();
+        let input_data: Vec<f32> = input_image.pixels().map(|p| p[0] as f32 / 255.0).collect();
 
         // Create GPU buffers
-        let params_buffer = self.device.device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("stippling_params_buffer"),
-            contents: bytemuck::cast_slice(&[width, height, config.dot_size.to_bits(), config.density.to_bits()]),
-            usage: BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .device
+            .create_buffer_init(&util::BufferInitDescriptor {
+                label: Some("stippling_params_buffer"),
+                contents: bytemuck::cast_slice(&[
+                    width,
+                    height,
+                    config.dot_size.to_bits(),
+                    config.density.to_bits(),
+                ]),
+                usage: BufferUsages::UNIFORM,
+            });
 
-        let input_buffer = self.device.device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("stippling_input_buffer"),
-            contents: bytemuck::cast_slice(&input_data),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
-        });
+        let input_buffer = self
+            .device
+            .device
+            .create_buffer_init(&util::BufferInitDescriptor {
+                label: Some("stippling_input_buffer"),
+                contents: bytemuck::cast_slice(&input_data),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            });
 
         let output_buffer = self.device.device.create_buffer(&BufferDescriptor {
             label: Some("stippling_output_buffer"),
@@ -213,23 +231,26 @@ impl GpuStippling {
         let dispatch_y = (height + workgroup_size.1 - 1) / workgroup_size.1;
 
         // Execute compute shader
-        let mut encoder = self.device.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("stippling_encoder"),
-        });
+        let mut encoder = self
+            .device
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("stippling_encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("stippling_pass"),
                 timestamp_writes: None,
             });
-            
+
             // Choose pipeline based on adaptive setting
             let pipeline = if config.adaptive {
                 &self.adaptive_pipeline
             } else {
                 &self.stippling_pipeline
             };
-            
+
             compute_pass.set_pipeline(pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             compute_pass.dispatch_workgroups(dispatch_x, dispatch_y, 1);
@@ -261,7 +282,7 @@ impl GpuStippling {
         element_count: usize,
     ) -> Result<Vec<u32>, GpuStipplingError> {
         let buffer_slice = buffer.slice(..);
-        
+
         // Map the buffer for reading
         let (sender, receiver) = futures_channel::oneshot::channel();
         buffer_slice.map_async(MapMode::Read, move |result| {
@@ -269,19 +290,25 @@ impl GpuStippling {
         });
 
         // Poll the device until the buffer is mapped
-        self.device.device.poll(PollType::Wait)
-            .map_err(|e| GpuStipplingError::ExecutionFailed(format!("Failed to poll device: {:?}", e)))?;
+        self.device.device.poll(PollType::Wait).map_err(|e| {
+            GpuStipplingError::ExecutionFailed(format!("Failed to poll device: {:?}", e))
+        })?;
 
         // Wait for mapping to complete
-        receiver.await
-            .map_err(|_| GpuStipplingError::ExecutionFailed("Buffer mapping cancelled".to_string()))?
-            .map_err(|e| GpuStipplingError::ExecutionFailed(format!("Buffer mapping failed: {:?}", e)))?;
+        receiver
+            .await
+            .map_err(|_| {
+                GpuStipplingError::ExecutionFailed("Buffer mapping cancelled".to_string())
+            })?
+            .map_err(|e| {
+                GpuStipplingError::ExecutionFailed(format!("Buffer mapping failed: {:?}", e))
+            })?;
 
         // Read the data
         let data = buffer_slice.get_mapped_range();
-        let result: Vec<u32> = bytemuck::cast_slice(&data[..element_count * std::mem::size_of::<u32>()])
-            .to_vec();
-        
+        let result: Vec<u32> =
+            bytemuck::cast_slice(&data[..element_count * std::mem::size_of::<u32>()]).to_vec();
+
         drop(data);
         buffer.unmap();
 
@@ -327,15 +354,15 @@ impl GpuStippling {
             };
 
             let x = if config.adaptive {
-                (packed_dot & 0x3FFF) as u32  // 14 bits for x in adaptive mode
+                (packed_dot & 0x3FFF) as u32 // 14 bits for x in adaptive mode
             } else {
-                (packed_dot & 0xFFFF) as u32  // 16 bits for x in normal mode
+                (packed_dot & 0xFFFF) as u32 // 16 bits for x in normal mode
             };
 
             let y = if config.adaptive {
-                ((packed_dot >> 14) & 0x3FFF) as u32  // 14 bits for y in adaptive mode
+                ((packed_dot >> 14) & 0x3FFF) as u32 // 14 bits for y in adaptive mode
             } else {
-                (packed_dot >> 16) as u32  // 16 bits for y in normal mode
+                (packed_dot >> 16) as u32 // 16 bits for y in normal mode
             };
 
             // Draw dot with specified size

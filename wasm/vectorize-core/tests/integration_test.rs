@@ -1,5 +1,7 @@
 use image::{ImageBuffer, Rgba};
-use vectorize_core::algorithms::visual::hand_drawn::{apply_hand_drawn_aesthetics, HandDrawnPresets};
+use vectorize_core::algorithms::visual::hand_drawn::{
+    apply_hand_drawn_aesthetics, HandDrawnPresets,
+};
 use vectorize_core::{vectorize_trace_low_rgba, TraceBackend, TraceLowConfig};
 
 #[test]

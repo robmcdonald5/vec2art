@@ -25,8 +25,8 @@ pub struct WorkgroupSizes {
 impl Default for WorkgroupSizes {
     fn default() -> Self {
         Self {
-            image_2d: (16, 16, 1),  // 256 threads per workgroup
-            compute_1d: 64,          // 64 threads for 1D operations
+            image_2d: (16, 16, 1), // 256 threads per workgroup
+            compute_1d: 64,        // 64 threads for 1D operations
         }
     }
 }
@@ -43,10 +43,7 @@ pub fn calculate_dispatch_size_2d(
 }
 
 /// Calculate dispatch size for 1D workgroups
-pub fn calculate_dispatch_size_1d(
-    total_elements: u32,
-    workgroup_size: u32,
-) -> (u32, u32, u32) {
+pub fn calculate_dispatch_size_1d(total_elements: u32, workgroup_size: u32) -> (u32, u32, u32) {
     let x = (total_elements + workgroup_size - 1) / workgroup_size;
     (x, 1, 1)
 }

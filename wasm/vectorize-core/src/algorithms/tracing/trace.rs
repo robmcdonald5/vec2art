@@ -17,7 +17,7 @@ use image::GrayImage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-/// 2D point with f32 coordinates for tracing operations  
+/// 2D point with f32 coordinates for tracing operations
 pub type Point2F = crate::algorithms::Point;
 
 /// Polyline represented as a vector of 2D points

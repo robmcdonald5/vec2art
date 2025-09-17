@@ -141,7 +141,7 @@ fn box_sauvola_threshold(gray: &GrayImage, window_size: u32, k: f32) -> GrayImag
     let mut binary = GrayImage::new(width, height);
 
     // Ensure window size is odd and at least 3
-    let window_size = if window_size % 2 == 0 {
+    let window_size = if window_size.is_multiple_of(2) {
         window_size + 1
     } else {
         window_size

@@ -323,7 +323,6 @@ fn calculate_color_distance_perceptual(color1: &ColorSample, color2: &ColorSampl
     (dr * dr + dg * dg + db * db).sqrt()
 }
 
-
 /// Generate unique gradient ID for SVG
 pub fn generate_gradient_id(region_id: usize, gradient_type: &str) -> String {
     format!("gradient_{}__{}", gradient_type, region_id)

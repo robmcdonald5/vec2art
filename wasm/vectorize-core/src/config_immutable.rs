@@ -3,21 +3,33 @@
 //! This module provides an immutable, type-safe configuration system that eliminates
 //! the recursive aliasing issues present in the mutable ConfigBuilder pattern.
 
-use crate::algorithms::{HandDrawnConfig, HandDrawnPresets, TraceBackend, TraceLowConfig};
 use crate::algorithms::tracing::trace_low::{BackgroundRemovalAlgorithm, SuperpixelInitPattern};
+use crate::algorithms::{HandDrawnConfig, HandDrawnPresets, TraceBackend, TraceLowConfig};
 
 /// Error type for configuration operations
 #[derive(Debug, Clone)]
 pub enum ConfigError {
-    InvalidParameter { name: String, value: String, reason: String },
+    InvalidParameter {
+        name: String,
+        value: String,
+        reason: String,
+    },
     ValidationFailed(String),
 }
 
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConfigError::InvalidParameter { name, value, reason } => {
-                write!(f, "Invalid parameter '{}' with value '{}': {}", name, value, reason)
+            ConfigError::InvalidParameter {
+                name,
+                value,
+                reason,
+            } => {
+                write!(
+                    f,
+                    "Invalid parameter '{}' with value '{}': {}",
+                    name, value, reason
+                )
             }
             ConfigError::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
         }
@@ -333,12 +345,12 @@ impl VectorizerConfig {
         // Validate dependencies
         if bezier_fitting && !flow_tracing {
             return Err(ConfigError::ValidationFailed(
-                "Bezier fitting requires flow tracing to be enabled".to_string()
+                "Bezier fitting requires flow tracing to be enabled".to_string(),
             ));
         }
         if flow_tracing && !etf_fdog {
             return Err(ConfigError::ValidationFailed(
-                "Flow tracing requires ETF/FDoG to be enabled".to_string()
+                "Flow tracing requires ETF/FDoG to be enabled".to_string(),
             ));
         }
 
@@ -371,7 +383,11 @@ impl VectorizerConfig {
         }
 
         // Ensure window size is odd
-        let window_size = if window_size % 2 == 0 { window_size + 1 } else { window_size };
+        let window_size = if window_size.is_multiple_of(2) {
+            window_size + 1
+        } else {
+            window_size
+        };
 
         self.backend_settings.adaptive_threshold = ConfigValue::Set(adaptive_threshold);
         self.backend_settings.window_size = ConfigValue::Set(window_size);
@@ -497,7 +513,9 @@ impl VectorizerConfig {
         // Apply background removal settings
         config.enable_background_removal = self.background_removal.unwrap_or(false);
         config.background_removal_strength = self.background_removal_strength.unwrap_or(0.5);
-        config.background_removal_algorithm = self.background_removal_algorithm.unwrap_or(BackgroundRemovalAlgorithm::Auto);
+        config.background_removal_algorithm = self
+            .background_removal_algorithm
+            .unwrap_or(BackgroundRemovalAlgorithm::Auto);
         config.background_removal_threshold = self.background_removal_threshold;
 
         // Apply backend-specific settings based on the backend
@@ -505,20 +523,29 @@ impl VectorizerConfig {
             TraceBackend::Edge | TraceBackend::Centerline => {
                 config.enable_etf_fdog = self.backend_settings.etf_fdog.unwrap_or(false);
                 config.enable_flow_tracing = self.backend_settings.flow_tracing.unwrap_or(false);
-                config.enable_bezier_fitting = self.backend_settings.bezier_fitting.unwrap_or(false);
+                config.enable_bezier_fitting =
+                    self.backend_settings.bezier_fitting.unwrap_or(false);
 
                 if config.backend == TraceBackend::Centerline {
-                    config.enable_adaptive_threshold = self.backend_settings.adaptive_threshold.unwrap_or(true);
-                    config.adaptive_threshold_window_size = self.backend_settings.window_size.unwrap_or(25);
-                    config.adaptive_threshold_k = self.backend_settings.sensitivity_k.unwrap_or(0.3);
-                    config.enable_width_modulation = self.backend_settings.width_modulation.unwrap_or(true);
-                    config.min_branch_length = self.backend_settings.min_branch_length.unwrap_or(8.0);
-                    config.douglas_peucker_epsilon = self.backend_settings.douglas_peucker_epsilon.unwrap_or(1.0);
+                    config.enable_adaptive_threshold =
+                        self.backend_settings.adaptive_threshold.unwrap_or(true);
+                    config.adaptive_threshold_window_size =
+                        self.backend_settings.window_size.unwrap_or(25);
+                    config.adaptive_threshold_k =
+                        self.backend_settings.sensitivity_k.unwrap_or(0.3);
+                    config.enable_width_modulation =
+                        self.backend_settings.width_modulation.unwrap_or(true);
+                    config.min_branch_length =
+                        self.backend_settings.min_branch_length.unwrap_or(8.0);
+                    config.douglas_peucker_epsilon =
+                        self.backend_settings.douglas_peucker_epsilon.unwrap_or(1.0);
                 }
 
                 // Line color settings
-                config.line_preserve_colors = self.backend_settings.line_preserve_colors.unwrap_or(false);
-                config.line_color_accuracy = self.backend_settings.line_color_accuracy.unwrap_or(0.5);
+                config.line_preserve_colors =
+                    self.backend_settings.line_preserve_colors.unwrap_or(false);
+                config.line_color_accuracy =
+                    self.backend_settings.line_color_accuracy.unwrap_or(0.5);
                 config.max_colors_per_path = self.backend_settings.max_colors_per_path.unwrap_or(3);
                 config.color_tolerance = self.backend_settings.color_tolerance.unwrap_or(0.2);
             }
@@ -526,21 +553,36 @@ impl VectorizerConfig {
                 config.dot_density_threshold = self.backend_settings.dot_density.unwrap_or(0.2);
                 config.dot_min_radius = self.backend_settings.dot_min_radius.unwrap_or(0.5);
                 config.dot_max_radius = self.backend_settings.dot_max_radius.unwrap_or(3.0);
-                config.dot_adaptive_sizing = self.backend_settings.dot_adaptive_sizing.unwrap_or(true);
-                config.dot_preserve_colors = self.backend_settings.dot_preserve_colors.unwrap_or(false);
-                config.dot_poisson_disk_sampling = self.backend_settings.dot_poisson_disk.unwrap_or(false);
-                config.dot_gradient_based_sizing = self.backend_settings.dot_gradient_sizing.unwrap_or(false);
+                config.dot_adaptive_sizing =
+                    self.backend_settings.dot_adaptive_sizing.unwrap_or(true);
+                config.dot_preserve_colors =
+                    self.backend_settings.dot_preserve_colors.unwrap_or(false);
+                config.dot_poisson_disk_sampling =
+                    self.backend_settings.dot_poisson_disk.unwrap_or(false);
+                config.dot_gradient_based_sizing =
+                    self.backend_settings.dot_gradient_sizing.unwrap_or(false);
             }
             TraceBackend::Superpixel => {
                 config.num_superpixels = self.backend_settings.num_superpixels.unwrap_or(200);
                 config.superpixel_compactness = self.backend_settings.compactness.unwrap_or(10.0);
-                config.superpixel_slic_iterations = self.backend_settings.slic_iterations.unwrap_or(10);
-                config.superpixel_initialization_pattern = self.backend_settings.superpixel_pattern.unwrap_or(SuperpixelInitPattern::Poisson);
-                config.superpixel_fill_regions = self.backend_settings.fill_regions.unwrap_or(false);
-                config.superpixel_stroke_regions = self.backend_settings.stroke_regions.unwrap_or(true);
-                config.superpixel_simplify_boundaries = self.backend_settings.simplify_boundaries.unwrap_or(true);
-                config.superpixel_boundary_epsilon = self.backend_settings.boundary_epsilon.unwrap_or(1.5);
-                config.superpixel_preserve_colors = self.backend_settings.superpixel_preserve_colors.unwrap_or(false);
+                config.superpixel_slic_iterations =
+                    self.backend_settings.slic_iterations.unwrap_or(10);
+                config.superpixel_initialization_pattern = self
+                    .backend_settings
+                    .superpixel_pattern
+                    .unwrap_or(SuperpixelInitPattern::Poisson);
+                config.superpixel_fill_regions =
+                    self.backend_settings.fill_regions.unwrap_or(false);
+                config.superpixel_stroke_regions =
+                    self.backend_settings.stroke_regions.unwrap_or(true);
+                config.superpixel_simplify_boundaries =
+                    self.backend_settings.simplify_boundaries.unwrap_or(true);
+                config.superpixel_boundary_epsilon =
+                    self.backend_settings.boundary_epsilon.unwrap_or(1.5);
+                config.superpixel_preserve_colors = self
+                    .backend_settings
+                    .superpixel_preserve_colors
+                    .unwrap_or(false);
             }
         }
 
@@ -558,13 +600,13 @@ impl VectorizerConfig {
 
         if multipass && pass_count <= 1 {
             return Err(ConfigError::ValidationFailed(
-                "Multipass enabled but pass_count is 1".to_string()
+                "Multipass enabled but pass_count is 1".to_string(),
             ));
         }
 
         if pass_count > 1 && !multipass {
             return Err(ConfigError::ValidationFailed(
-                "Pass count > 1 but multipass disabled".to_string()
+                "Pass count > 1 but multipass disabled".to_string(),
             ));
         }
 
@@ -575,13 +617,13 @@ impl VectorizerConfig {
 
         if flow && !etf {
             return Err(ConfigError::ValidationFailed(
-                "Flow tracing requires ETF/FDoG to be enabled".to_string()
+                "Flow tracing requires ETF/FDoG to be enabled".to_string(),
             ));
         }
 
         if bezier && !flow {
             return Err(ConfigError::ValidationFailed(
-                "Bezier fitting requires flow tracing to be enabled".to_string()
+                "Bezier fitting requires flow tracing to be enabled".to_string(),
             ));
         }
 
@@ -589,12 +631,12 @@ impl VectorizerConfig {
         let has_custom = self.custom_tremor.is_some()
             || self.custom_variable_weights.is_some()
             || self.custom_tapering.is_some();
-        let has_preset = self.hand_drawn_preset.is_some()
-            && self.hand_drawn_preset.as_deref() != Some("none");
+        let has_preset =
+            self.hand_drawn_preset.is_some() && self.hand_drawn_preset.as_deref() != Some("none");
 
         if has_custom && !has_preset {
             return Err(ConfigError::ValidationFailed(
-                "Custom hand-drawn parameters require a preset to be specified".to_string()
+                "Custom hand-drawn parameters require a preset to be specified".to_string(),
             ));
         }
 
@@ -639,44 +681,59 @@ impl VectorizerConfig {
     pub fn preset_line_art() -> Self {
         Self::new()
             .with_backend(TraceBackend::Edge)
-            .with_detail(0.4).unwrap()
-            .with_stroke_width(1.2).unwrap()
-            .with_multipass(false, None).unwrap()
+            .with_detail(0.4)
+            .unwrap()
+            .with_stroke_width(1.2)
+            .unwrap()
+            .with_multipass(false, None)
+            .unwrap()
             .with_noise_filtering(false)
     }
 
     pub fn preset_sketch() -> Self {
         Self::new()
             .with_backend(TraceBackend::Edge)
-            .with_detail(0.35).unwrap()
-            .with_stroke_width(1.5).unwrap()
-            .with_multipass(true, Some(2)).unwrap()
+            .with_detail(0.35)
+            .unwrap()
+            .with_stroke_width(1.5)
+            .unwrap()
+            .with_multipass(true, Some(2))
+            .unwrap()
             .with_noise_filtering(true)
-            .with_hand_drawn_preset("medium").unwrap()
+            .with_hand_drawn_preset("medium")
+            .unwrap()
     }
 
     pub fn preset_technical() -> Self {
         Self::new()
             .with_backend(TraceBackend::Centerline)
-            .with_detail(0.6).unwrap()
-            .with_stroke_width(1.0).unwrap()
-            .with_multipass(true, Some(3)).unwrap()
+            .with_detail(0.6)
+            .unwrap()
+            .with_stroke_width(1.0)
+            .unwrap()
+            .with_multipass(true, Some(3))
+            .unwrap()
             .with_directional_passes(true, true)
-            .with_centerline_settings(true, 25, 0.3).unwrap()
+            .with_centerline_settings(true, 25, 0.3)
+            .unwrap()
     }
 
     pub fn preset_stippling() -> Self {
         Self::new()
             .with_backend(TraceBackend::Dots)
-            .with_detail(0.3).unwrap()
-            .with_dots_settings(0.05, 0.3, 1.0, true, false).unwrap()
+            .with_detail(0.3)
+            .unwrap()
+            .with_dots_settings(0.05, 0.3, 1.0, true, false)
+            .unwrap()
     }
 
     pub fn preset_pointillism() -> Self {
         Self::new()
             .with_backend(TraceBackend::Dots)
-            .with_detail(0.4).unwrap()
-            .with_dots_settings(0.15, 1.0, 4.0, true, true).unwrap()
+            .with_detail(0.4)
+            .unwrap()
+            .with_dots_settings(0.15, 1.0, 4.0, true, true)
+            .unwrap()
     }
 }
 
@@ -688,8 +745,10 @@ mod tests {
     fn test_immutable_config_basic() {
         let config = VectorizerConfig::new()
             .with_backend(TraceBackend::Edge)
-            .with_detail(0.5).unwrap()
-            .with_stroke_width(2.0).unwrap();
+            .with_detail(0.5)
+            .unwrap()
+            .with_stroke_width(2.0)
+            .unwrap();
 
         let (trace_config, _) = config.build().unwrap();
         assert_eq!(trace_config.backend, TraceBackend::Edge);
@@ -709,7 +768,8 @@ mod tests {
 
         // Invalid multipass configuration
         let config = VectorizerConfig::new()
-            .with_multipass(true, Some(1)).unwrap();
+            .with_multipass(true, Some(1))
+            .unwrap();
         let result = config.build();
         assert!(result.is_err());
     }
@@ -719,7 +779,8 @@ mod tests {
         // Edge backend with ETF/FDoG
         let config = VectorizerConfig::new()
             .with_backend(TraceBackend::Edge)
-            .with_edge_settings(true, true, false).unwrap();
+            .with_edge_settings(true, true, false)
+            .unwrap();
 
         let (trace_config, _) = config.build().unwrap();
         assert!(trace_config.enable_etf_fdog);
@@ -727,8 +788,7 @@ mod tests {
         assert!(!trace_config.enable_bezier_fitting);
 
         // Invalid dependency
-        let result = VectorizerConfig::new()
-            .with_edge_settings(false, true, false);
+        let result = VectorizerConfig::new().with_edge_settings(false, true, false);
         assert!(result.is_err());
     }
 

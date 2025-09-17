@@ -42,17 +42,9 @@ impl ThinningStrategy for ZhangSuenThinning {
 }
 
 /// Distance transform-based thinning (high performance alternative)
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct DistanceTransformThinning {
     extractor: DistanceFieldCenterlineExtractor,
-}
-
-impl Default for DistanceTransformThinning {
-    fn default() -> Self {
-        Self {
-            extractor: DistanceFieldCenterlineExtractor::new(),
-        }
-    }
 }
 
 impl ThinningStrategy for DistanceTransformThinning {
@@ -104,12 +96,10 @@ fn guo_hall_thinning(binary: &GrayImage) -> GrayImage {
     let fg = |img: &GrayImage, x: i32, y: i32, width: u32, height: u32| -> u8 {
         if x < 0 || y < 0 || x as u32 >= width || y as u32 >= height {
             0
+        } else if img.get_pixel(x as u32, y as u32).0[0] > 0 {
+            1
         } else {
-            if img.get_pixel(x as u32, y as u32).0[0] > 0 {
-                1
-            } else {
-                0
-            }
+            0
         }
     };
 
@@ -134,7 +124,7 @@ fn guo_hall_thinning(binary: &GrayImage) -> GrayImage {
                 let p9 = fg(&img, x as i32 - 1, y as i32 - 1, width, height);
 
                 let bp1 = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
-                if bp1 < 2 || bp1 > 6 {
+                if !(2..=6).contains(&bp1) {
                     continue;
                 }
 
@@ -183,7 +173,7 @@ fn guo_hall_thinning(binary: &GrayImage) -> GrayImage {
                 let p9 = fg(&img, x as i32 - 1, y as i32 - 1, width, height);
 
                 let bp1 = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
-                if bp1 < 2 || bp1 > 6 {
+                if !(2..=6).contains(&bp1) {
                     continue;
                 }
 
@@ -226,12 +216,10 @@ fn zhang_suen_thinning(binary: &GrayImage) -> GrayImage {
     let fg = |img: &GrayImage, x: i32, y: i32, width: u32, height: u32| -> u8 {
         if x < 0 || y < 0 || x as u32 >= width || y as u32 >= height {
             0
+        } else if img.get_pixel(x as u32, y as u32).0[0] > 0 {
+            1
         } else {
-            if img.get_pixel(x as u32, y as u32).0[0] > 0 {
-                1
-            } else {
-                0
-            }
+            0
         }
     };
 
@@ -256,7 +244,7 @@ fn zhang_suen_thinning(binary: &GrayImage) -> GrayImage {
                 let p9 = fg(&img, x as i32 - 1, y as i32 - 1, width, height);
 
                 let bp1 = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
-                if bp1 < 2 || bp1 > 6 {
+                if !(2..=6).contains(&bp1) {
                     continue;
                 }
 
@@ -305,7 +293,7 @@ fn zhang_suen_thinning(binary: &GrayImage) -> GrayImage {
                 let p9 = fg(&img, x as i32 - 1, y as i32 - 1, width, height);
 
                 let bp1 = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
-                if bp1 < 2 || bp1 > 6 {
+                if !(2..=6).contains(&bp1) {
                     continue;
                 }
 

@@ -37,9 +37,7 @@ pub enum ProcessingStrategy {
         expected_speedup: f32,
     },
     /// Use CPU for processing
-    CpuOnly {
-        reason: String,
-    },
+    CpuOnly { reason: String },
     /// Use GPU with CPU fallback
     GpuWithFallback {
         algorithm: GpuAlgorithm,
@@ -82,11 +80,7 @@ impl ImageCharacteristics {
                     image.get_pixel(x, y + 1)[0] as f32,
                 ];
 
-                let variance = neighbors
-                    .iter()
-                    .map(|&n| (n - center).powi(2))
-                    .sum::<f32>()
-                    / 4.0;
+                let variance = neighbors.iter().map(|&n| (n - center).powi(2)).sum::<f32>() / 4.0;
 
                 total_variance += variance;
 
@@ -117,15 +111,14 @@ impl ImageCharacteristics {
     /// Analyze RGB image characteristics
     pub fn analyze_color(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Self {
         // Convert to grayscale for analysis
-        let gray: ImageBuffer<Luma<u8>, Vec<u8>> = ImageBuffer::from_fn(
-            image.width(),
-            image.height(),
-            |x, y| {
+        let gray: ImageBuffer<Luma<u8>, Vec<u8>> =
+            ImageBuffer::from_fn(image.width(), image.height(), |x, y| {
                 let pixel = image.get_pixel(x, y);
-                let gray = (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
+                let gray = (0.299 * pixel[0] as f32
+                    + 0.587 * pixel[1] as f32
+                    + 0.114 * pixel[2] as f32) as u8;
                 Luma([gray])
-            },
-        );
+            });
         Self::analyze_grayscale(&gray)
     }
 }
@@ -201,23 +194,18 @@ impl GpuAlgorithmSelector {
 
         // Algorithm-specific recommendations
         match algorithm {
-            GpuAlgorithm::EdgeDetection => {
-                self.select_edge_detection_strategy(characteristics)
-            }
-            GpuAlgorithm::Stippling => {
-                self.select_stippling_strategy(characteristics)
-            }
-            GpuAlgorithm::GaussianBlur => {
-                self.select_gaussian_blur_strategy(characteristics)
-            }
-            GpuAlgorithm::Superpixels => {
-                self.select_superpixels_strategy(characteristics)
-            }
+            GpuAlgorithm::EdgeDetection => self.select_edge_detection_strategy(characteristics),
+            GpuAlgorithm::Stippling => self.select_stippling_strategy(characteristics),
+            GpuAlgorithm::GaussianBlur => self.select_gaussian_blur_strategy(characteristics),
+            GpuAlgorithm::Superpixels => self.select_superpixels_strategy(characteristics),
         }
     }
 
     /// Select strategy for edge detection
-    fn select_edge_detection_strategy(&self, characteristics: &ImageCharacteristics) -> ProcessingStrategy {
+    fn select_edge_detection_strategy(
+        &self,
+        characteristics: &ImageCharacteristics,
+    ) -> ProcessingStrategy {
         // Edge detection benefits greatly from GPU parallelization
         let expected_speedup = if characteristics.pixel_count > 4_000_000 {
             // Very large images: 5-15x speedup
@@ -244,7 +232,10 @@ impl GpuAlgorithmSelector {
     }
 
     /// Select strategy for stippling
-    fn select_stippling_strategy(&self, characteristics: &ImageCharacteristics) -> ProcessingStrategy {
+    fn select_stippling_strategy(
+        &self,
+        characteristics: &ImageCharacteristics,
+    ) -> ProcessingStrategy {
         // Stippling is highly parallelizable and benefits from GPU
         let expected_speedup = if characteristics.pixel_count > 2_000_000 {
             // Large images: 8-20x speedup due to independent pixel processing
@@ -264,7 +255,10 @@ impl GpuAlgorithmSelector {
     }
 
     /// Select strategy for Gaussian blur
-    fn select_gaussian_blur_strategy(&self, characteristics: &ImageCharacteristics) -> ProcessingStrategy {
+    fn select_gaussian_blur_strategy(
+        &self,
+        characteristics: &ImageCharacteristics,
+    ) -> ProcessingStrategy {
         // Gaussian blur is memory bandwidth bound, good GPU candidate
         let _expected_speedup = if characteristics.pixel_count > 1_000_000 {
             4.0
@@ -279,7 +273,10 @@ impl GpuAlgorithmSelector {
     }
 
     /// Select strategy for superpixels
-    fn select_superpixels_strategy(&self, characteristics: &ImageCharacteristics) -> ProcessingStrategy {
+    fn select_superpixels_strategy(
+        &self,
+        characteristics: &ImageCharacteristics,
+    ) -> ProcessingStrategy {
         // Superpixels (SLIC) can benefit from GPU but has sequential components
         if characteristics.pixel_count > 2_000_000 {
             ProcessingStrategy::GpuPreferred {
@@ -320,17 +317,12 @@ impl GpuAlgorithmSelector {
     }
 
     /// Get average speedup for given algorithm and image size range
-    pub fn get_historical_speedup(
-        &self,
-        algorithm: GpuAlgorithm,
-        pixel_count: u64,
-    ) -> Option<f32> {
+    pub fn get_historical_speedup(&self, algorithm: GpuAlgorithm, pixel_count: u64) -> Option<f32> {
         let relevant_records: Vec<&PerformanceRecord> = self
             .performance_history
             .iter()
             .filter(|record| {
-                record.algorithm == algorithm &&
-                {
+                record.algorithm == algorithm && {
                     let record_pixels = (record.image_size.0 * record.image_size.1) as u64;
                     // Within 2x size range
                     record_pixels >= pixel_count / 2 && record_pixels <= pixel_count * 2
@@ -372,9 +364,14 @@ impl GpuAlgorithmSelector {
                 .collect();
 
             if !records.is_empty() {
-                let avg_speedup = records.iter().map(|r| r.speedup).sum::<f32>() / records.len() as f32;
-                summary.push_str(&format!("  {:?}: {:.2}x speedup ({} samples)\n", 
-                    algorithm, avg_speedup, records.len()));
+                let avg_speedup =
+                    records.iter().map(|r| r.speedup).sum::<f32>() / records.len() as f32;
+                summary.push_str(&format!(
+                    "  {:?}: {:.2}x speedup ({} samples)\n",
+                    algorithm,
+                    avg_speedup,
+                    records.len()
+                ));
             }
         }
 

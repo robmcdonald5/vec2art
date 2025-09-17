@@ -2,24 +2,24 @@
 //!
 //! This module implements four different tracing backends:
 //! - Edge: Canny edge detection + contour following for sparse outlines
-//! - Centerline: Skeleton + centerline tracing for engraving/sketch effects  
+//! - Centerline: Skeleton + centerline tracing for engraving/sketch effects
 //! - Superpixel: Large regions with cell-shaded look using SLIC
 //! - Dots: Dot-based pixel mapping with gradient analysis for stippling/pointillism effects
 //!
 //! All algorithms are controlled by a single detail parameter (0..1) that maps
 //! to appropriate thresholds for each backend.
 
-use crate::algorithms::dots::background::{rgba_to_lab, BackgroundConfig, LabColor};
 use crate::algorithms::centerline::{CenterlineAlgorithm, DistanceTransformCenterlineAlgorithm};
+use crate::algorithms::dots::background::{rgba_to_lab, BackgroundConfig, LabColor};
 use crate::algorithms::dots::dots::{generate_dots_from_image, DotConfig};
+use crate::algorithms::dots::svg_dots::dots_to_svg_paths;
 use crate::algorithms::edges::edges::{
     apply_nms, compute_fdog, hysteresis_threshold, FdogConfig, NmsConfig,
 };
 use crate::algorithms::edges::etf::{compute_etf, EtfConfig};
-use crate::algorithms::tracing::fit::{fit_beziers, FitConfig};
 use crate::algorithms::edges::gradients::GradientConfig;
+use crate::algorithms::tracing::fit::{fit_beziers, FitConfig};
 use crate::algorithms::tracing::path_utils::calculate_douglas_peucker_epsilon;
-use crate::algorithms::dots::svg_dots::dots_to_svg_paths;
 use crate::algorithms::tracing::trace::{trace_polylines, TraceConfig};
 use crate::algorithms::{Point, SvgElementType, SvgPath};
 use crate::error::VectorizeError;
@@ -28,7 +28,6 @@ use crate::svg_gradients::{ColorStop, GradientDefinition};
 use crate::utils::Instant;
 use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba};
 use std::collections::{HashMap, VecDeque};
-use serde::{Deserialize, Serialize};
 #[cfg(feature = "generate-ts")]
 use ts_rs::TS;
 
@@ -127,7 +126,10 @@ struct CachedPathData {
 /// Available tracing backends for low-detail vectorization
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "generate-ts", derive(TS))]
-#[cfg_attr(feature = "generate-ts", ts(export, export_to = "../../../frontend/src/lib/types/generated/"))]
+#[cfg_attr(
+    feature = "generate-ts",
+    ts(export, export_to = "../../../frontend/src/lib/types/generated/")
+)]
 pub enum TraceBackend {
     /// Canny edge detection + contour following (sparse outlines)
     Edge,
@@ -155,7 +157,10 @@ pub enum ProcessingDirection {
 /// Available background removal algorithms for pre-processing
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "generate-ts", derive(TS))]
-#[cfg_attr(feature = "generate-ts", ts(export, export_to = "../../../frontend/src/lib/types/generated/"))]
+#[cfg_attr(
+    feature = "generate-ts",
+    ts(export, export_to = "../../../frontend/src/lib/types/generated/")
+)]
 pub enum BackgroundRemovalAlgorithm {
     /// OTSU automatic thresholding (fast, works well for simple backgrounds)
     Otsu,
@@ -168,7 +173,10 @@ pub enum BackgroundRemovalAlgorithm {
 /// Superpixel cluster initialization patterns for SLIC algorithm
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "generate-ts", derive(TS))]
-#[cfg_attr(feature = "generate-ts", ts(export, export_to = "../../../frontend/src/lib/types/generated/"))]
+#[cfg_attr(
+    feature = "generate-ts",
+    ts(export, export_to = "../../../frontend/src/lib/types/generated/")
+)]
 pub enum SuperpixelInitPattern {
     /// Traditional square grid - may create diagonal artifacts
     Square,
@@ -181,7 +189,10 @@ pub enum SuperpixelInitPattern {
 /// Configuration for trace-low algorithms
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "generate-ts", derive(TS))]
-#[cfg_attr(feature = "generate-ts", ts(export, export_to = "../../../frontend/src/lib/types/generated/"))]
+#[cfg_attr(
+    feature = "generate-ts",
+    ts(export, export_to = "../../../frontend/src/lib/types/generated/")
+)]
 pub struct TraceLowConfig {
     /// Selected tracing backend
     pub backend: TraceBackend,
@@ -216,7 +227,7 @@ pub struct TraceLowConfig {
     pub enable_etf_fdog: bool,
     /// ETF radius for coherency computation (default: 4)
     pub etf_radius: u32,
-    /// ETF iterations for coherency refinement (default: 4)  
+    /// ETF iterations for coherency refinement (default: 4)
     pub etf_iterations: u32,
     /// ETF coherency threshold tau (default: 0.2)
     pub etf_coherency_tau: f32,
@@ -453,12 +464,15 @@ impl ThresholdMapping {
         // Ensure image dimensions are valid
         let image_width = image_width.max(1);
         let image_height = image_height.max(1);
-        let diag = ((image_width.pow(2) + image_height.pow(2)) as f32).sqrt().max(1.0);
+        let diag = ((image_width.pow(2) + image_height.pow(2)) as f32)
+            .sqrt()
+            .max(1.0);
 
         // Global knob mapping as specified in trace-low-spec.md
         // FIXED: Invert post-processing parameters to match Canny threshold behavior
         // Higher detail should mean less simplification and shorter minimum lengths for more detailed output
-        let dp_epsilon_px = ((0.003 + 0.012 * (1.0 - detail)) * diag).clamp(0.003 * diag, 0.015 * diag);
+        let dp_epsilon_px =
+            ((0.003 + 0.012 * (1.0 - detail)) * diag).clamp(0.003 * diag, 0.015 * diag);
         let min_stroke_length_px = 10.0 + 40.0 * (1.0 - detail);
         // FIXED: Thresholds must match normalized gradient range [0, 1]
         // The canny_edge_detection function normalizes gradients to [0, 1]
@@ -632,17 +646,25 @@ pub fn vectorize_trace_low_multipass(
 
         let mut pass_config = config.clone();
         // Use base detail of 0.1 if config.detail is 0.0 to avoid multiplication by zero
-        let base_detail = if config.detail < 0.01 { 0.1 } else { config.detail };
+        let base_detail = if config.detail < 0.01 {
+            0.1
+        } else {
+            config.detail
+        };
         pass_config.detail = (base_detail * detail_multiplier).clamp(0.1, 1.0);
         pass_config.enable_multipass = false; // Prevent recursion
         pass_config.pass_count = 1; // Each individual pass is single-pass
-        // Disable directional passes for individual multipass iterations to avoid conflicts
+                                    // Disable directional passes for individual multipass iterations to avoid conflicts
         pass_config.enable_reverse_pass = false;
         pass_config.enable_diagonal_pass = false;
         // Disable background removal for individual passes since we pre-processed
         pass_config.enable_background_removal = false;
 
-        let pass_paths = match vectorize_trace_low_single_pass(&preprocessed_image, &pass_config, hand_drawn_config) {
+        let pass_paths = match vectorize_trace_low_single_pass(
+            &preprocessed_image,
+            &pass_config,
+            hand_drawn_config,
+        ) {
             Ok(paths) => paths,
             Err(e) => {
                 log::warn!(
@@ -666,7 +688,11 @@ pub fn vectorize_trace_low_multipass(
         // PERFORMANCE FIX: Use simple append instead of expensive O(N²) deduplication
         // The slight increase in duplicate paths is far better than multipass hanging
         // Modern SVG renderers handle duplicate paths efficiently
-        log::debug!("Appending {} paths from pass {} (deduplication disabled for WASM performance)", pass_paths.len(), pass_num + 1);
+        log::debug!(
+            "Appending {} paths from pass {} (deduplication disabled for WASM performance)",
+            pass_paths.len(),
+            pass_num + 1
+        );
         final_paths.extend(pass_paths);
     }
 
@@ -839,7 +865,7 @@ fn trace_edge(
     config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     log::info!("Running edge backend");
-    
+
     // Validate image dimensions
     if image.width() == 0 || image.height() == 0 {
         return Err(VectorizeError::InvalidDimensions {
@@ -863,20 +889,21 @@ fn trace_edge(
     let preprocessed_gray = if config.enable_background_removal {
         let phase_start = Instant::now();
         log::debug!("Applying background removal preprocessing");
-        
+
         // Apply background removal to the original image first
         let processed_image = apply_background_removal(image, config)?;
-        
+
         // Convert the processed image to grayscale
-        let (processed_gray, _) = rgba_to_gray_with_colors(&processed_image, config.line_preserve_colors);
-        
+        let (processed_gray, _) =
+            rgba_to_gray_with_colors(&processed_image, config.line_preserve_colors);
+
         let bg_removal_time = phase_start.elapsed();
         log::debug!(
             "Background removal: {:.3}ms (algorithm: {:?})",
             bg_removal_time.as_secs_f64() * 1000.0,
             config.background_removal_algorithm
         );
-        
+
         processed_gray
     } else {
         log::debug!("Background removal disabled - using original grayscale image");
@@ -1193,7 +1220,7 @@ fn apply_background_removal(
     config: &TraceLowConfig,
 ) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, VectorizeError> {
     use crate::algorithms::dots::background::{detect_background_advanced, BackgroundConfig};
-    
+
     // Create background detection config
     let bg_config = BackgroundConfig {
         tolerance: config.background_removal_strength * 0.3, // Convert 0.0-1.0 to tolerance range
@@ -1203,13 +1230,13 @@ fn apply_background_removal(
         num_clusters: 3,
         random_seed: 42,
     };
-    
+
     // Detect background mask
     let background_mask = detect_background_advanced(image, &bg_config);
-    
+
     // Apply background removal based on algorithm
     let mut result_image = image.clone();
-    
+
     match config.background_removal_algorithm {
         BackgroundRemovalAlgorithm::Otsu => {
             apply_otsu_background_removal(&mut result_image, &background_mask, config)?;
@@ -1227,7 +1254,7 @@ fn apply_background_removal(
             }
         }
     }
-    
+
     Ok(result_image)
 }
 
@@ -1244,11 +1271,12 @@ fn apply_otsu_background_removal(
         // Calculate OTSU threshold
         calculate_otsu_threshold(image)
     };
-    
+
     for (i, pixel) in image.pixels_mut().enumerate() {
         if i < background_mask.len() && background_mask[i] {
             // Apply background removal with strength
-            let gray_value = (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
+            let gray_value =
+                (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
             if gray_value < threshold {
                 let fade_factor = 1.0 - strength;
                 pixel[0] = (pixel[0] as f32 * fade_factor + 255.0 * strength) as u8;
@@ -1257,7 +1285,7 @@ fn apply_otsu_background_removal(
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -1270,54 +1298,55 @@ fn apply_adaptive_background_removal(
     // Calculate adaptive threshold for the image
     let adaptive_threshold = calculate_adaptive_threshold(image);
     let strength = config.background_removal_strength;
-    
+
     for (i, pixel) in image.pixels_mut().enumerate() {
         if i < background_mask.len() && background_mask[i] {
             // Apply adaptive background removal with strength-based removal
-            let gray_value = (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
-            
+            let gray_value =
+                (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
+
             if gray_value < adaptive_threshold {
                 // Background pixel detected - apply removal
                 let removal_strength = strength.min(1.0).max(0.0);
                 let fade_factor = 1.0 - (removal_strength * 0.8);
-                
+
                 pixel[0] = (pixel[0] as f32 * fade_factor + 255.0 * (1.0 - fade_factor)) as u8;
                 pixel[1] = (pixel[1] as f32 * fade_factor + 255.0 * (1.0 - fade_factor)) as u8;
                 pixel[2] = (pixel[2] as f32 * fade_factor + 255.0 * (1.0 - fade_factor)) as u8;
             }
         }
     }
-    
+
     Ok(())
 }
 
 /// Calculate adaptive threshold for image with single-pass efficiency
 fn calculate_adaptive_threshold(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> u8 {
     let total_pixels = (image.width() * image.height()) as f32;
-    
+
     if total_pixels == 0.0 {
         return 128; // Safe fallback
     }
-    
+
     // Single pass calculation to avoid memory issues with large images
     let mut sum_brightness = 0.0f64;
     let mut sum_squares = 0.0f64;
-    
+
     // Use double precision to avoid overflow issues with large images
     for pixel in image.pixels() {
         let gray = 0.299 * pixel[0] as f64 + 0.587 * pixel[1] as f64 + 0.114 * pixel[2] as f64;
         sum_brightness += gray;
         sum_squares += gray * gray;
     }
-    
+
     let mean = sum_brightness / total_pixels as f64;
     let variance = (sum_squares / total_pixels as f64) - (mean * mean);
     let std_dev = variance.max(0.0).sqrt();
-    
+
     // Adaptive threshold based on mean and standard deviation
     let adaptive_factor = 0.7; // Tunable parameter
     let threshold = mean - (std_dev * adaptive_factor);
-    
+
     // Clamp to valid u8 range
     (threshold.max(0.0).min(255.0)) as u8
 }
@@ -1325,26 +1354,28 @@ fn calculate_adaptive_threshold(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> u8 {
 /// Calculate OTSU threshold for image with overflow protection
 fn calculate_otsu_threshold(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> u8 {
     let total_pixels = (image.width() as u64) * (image.height() as u64);
-    
+
     if total_pixels == 0 {
         return 128; // Safe fallback
     }
-    
+
     // Use u64 for histogram to handle large images safely
     let mut histogram = [0u64; 256];
     for pixel in image.pixels() {
-        let gray = (0.299 * pixel[0] as f64 + 0.587 * pixel[1] as f64 + 0.114 * pixel[2] as f64).round() as usize;
+        let gray = (0.299 * pixel[0] as f64 + 0.587 * pixel[1] as f64 + 0.114 * pixel[2] as f64)
+            .round() as usize;
         if gray < 256 {
             histogram[gray] += 1;
         }
     }
-    
+
     let mut best_threshold = 128u8;
     let mut best_variance = 0.0f64;
-    
+
     for threshold in 1..255 {
-        let (w0, w1, mean0, mean1) = calculate_class_stats_safe(&histogram, threshold, total_pixels);
-        
+        let (w0, w1, mean0, mean1) =
+            calculate_class_stats_safe(&histogram, threshold, total_pixels);
+
         if w0 > 0.0 && w1 > 0.0 {
             let between_class_variance = w0 * w1 * (mean0 - mean1).powi(2);
             if between_class_variance > best_variance {
@@ -1353,17 +1384,21 @@ fn calculate_otsu_threshold(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> u8 {
             }
         }
     }
-    
+
     best_threshold
 }
 
 /// Calculate class statistics for OTSU with overflow protection
-fn calculate_class_stats_safe(histogram: &[u64; 256], threshold: usize, total: u64) -> (f64, f64, f64, f64) {
+fn calculate_class_stats_safe(
+    histogram: &[u64; 256],
+    threshold: usize,
+    total: u64,
+) -> (f64, f64, f64, f64) {
     let mut sum0 = 0u64;
     let mut sum1 = 0u64;
     let mut weight0 = 0u64;
     let mut weight1 = 0u64;
-    
+
     for (i, &count) in histogram.iter().enumerate() {
         if i <= threshold {
             weight0 += count;
@@ -1373,41 +1408,50 @@ fn calculate_class_stats_safe(histogram: &[u64; 256], threshold: usize, total: u
             sum1 += (i as u64) * count;
         }
     }
-    
+
     let w0 = weight0 as f64 / total as f64;
     let w1 = weight1 as f64 / total as f64;
-    let mean0 = if weight0 > 0 { sum0 as f64 / weight0 as f64 } else { 0.0 };
-    let mean1 = if weight1 > 0 { sum1 as f64 / weight1 as f64 } else { 0.0 };
-    
+    let mean0 = if weight0 > 0 {
+        sum0 as f64 / weight0 as f64
+    } else {
+        0.0
+    };
+    let mean1 = if weight1 > 0 {
+        sum1 as f64 / weight1 as f64
+    } else {
+        0.0
+    };
+
     (w0, w1, mean0, mean1)
 }
-
 
 /// Calculate image complexity for algorithm selection
 fn calculate_image_complexity(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> f32 {
     let mut complexity = 0.0;
     let width = image.width();
     let height = image.height();
-    
+
     // Sample edge variance to avoid expensive full calculation
     let sample_rate = 4;
-    for y in (1..(height-1)).step_by(sample_rate) {
-        for x in (1..(width-1)).step_by(sample_rate) {
+    for y in (1..(height - 1)).step_by(sample_rate) {
+        for x in (1..(width - 1)).step_by(sample_rate) {
             let center = image.get_pixel(x, y);
-            let right = image.get_pixel(x+1, y);
-            let bottom = image.get_pixel(x, y+1);
-            
-            let diff_h = ((center[0] as i16 - right[0] as i16).abs() + 
-                         (center[1] as i16 - right[1] as i16).abs() + 
-                         (center[2] as i16 - right[2] as i16).abs()) as f32 / 3.0;
-            let diff_v = ((center[0] as i16 - bottom[0] as i16).abs() + 
-                         (center[1] as i16 - bottom[1] as i16).abs() + 
-                         (center[2] as i16 - bottom[2] as i16).abs()) as f32 / 3.0;
-            
+            let right = image.get_pixel(x + 1, y);
+            let bottom = image.get_pixel(x, y + 1);
+
+            let diff_h = ((center[0] as i16 - right[0] as i16).abs()
+                + (center[1] as i16 - right[1] as i16).abs()
+                + (center[2] as i16 - right[2] as i16).abs()) as f32
+                / 3.0;
+            let diff_v = ((center[0] as i16 - bottom[0] as i16).abs()
+                + (center[1] as i16 - bottom[1] as i16).abs()
+                + (center[2] as i16 - bottom[2] as i16).abs()) as f32
+                / 3.0;
+
             complexity += (diff_h + diff_v) / 255.0;
         }
     }
-    
+
     let sample_count = ((width - 2) / sample_rate as u32) * ((height - 2) / sample_rate as u32);
     complexity / sample_count.max(1) as f32
 }
@@ -1511,29 +1555,29 @@ fn connect_nearby_endpoints_oriented(
         let mut merged = true;
         while merged {
             merged = false;
-            
+
             // CRITICAL FIX: Check if current line is empty before unwrap()
             // This prevents "unreachable executed" panics during multipass processing
             if cur.is_empty() {
                 break;
             }
-            
+
             let mut best: Option<(usize, bool, bool, f32)> = None; // (j, cur_tail?, other_head?, dist)
-            let cur_head = cur.first().unwrap().clone();
-            let cur_tail = cur.last().unwrap().clone();
+            let cur_head = *cur.first().unwrap();
+            let cur_tail = *cur.last().unwrap();
 
             for j in 0..lines.len() {
                 if used[j] || lines[j].is_empty() {
                     continue;
                 }
-                
+
                 // ADDITIONAL SAFETY: Double-check lines[j] is not empty
                 if lines[j].is_empty() {
                     continue;
                 }
-                
-                let other_head = lines[j].first().unwrap().clone();
-                let other_tail = lines[j].last().unwrap().clone();
+
+                let other_head = *lines[j].first().unwrap();
+                let other_tail = *lines[j].last().unwrap();
 
                 // tail->head connection
                 let d1 = (cur_tail.x - other_head.x).hypot(cur_tail.y - other_head.y);
@@ -1708,7 +1752,7 @@ fn calculate_polyline_statistics(polylines: &[Vec<Point>]) -> (usize, f32, f32) 
         .collect();
     // CRITICAL FIX: Handle NaN values that can occur in intensive multipass processing
     lengths.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let median_length = if lengths.len() % 2 == 0 {
+    let median_length = if lengths.len().is_multiple_of(2) {
         (lengths[lengths.len() / 2 - 1] + lengths[lengths.len() / 2]) / 2.0
     } else {
         lengths[lengths.len() / 2]
@@ -2032,7 +2076,7 @@ fn trace_superpixel(
         superpixel_count,
         superpixel_compactness,
         config.superpixel_slic_iterations as usize, // Use configured iterations
-        config.superpixel_initialization_pattern, // Pass the pattern
+        config.superpixel_initialization_pattern,   // Pass the pattern
     );
     log::debug!("SLIC segmentation: {:?}", phase_start.elapsed());
 
@@ -2099,7 +2143,7 @@ impl SlicCluster {
         // Standard SLIC distance calculation
         let color_dist = self.lab.distance_to(other_lab);
         let spatial_dist = ((self.x - other_x).powi(2) + (self.y - other_y).powi(2)).sqrt();
-        
+
         // Combined distance with compactness weighting
         color_dist + compactness * spatial_dist
     }
@@ -2138,36 +2182,36 @@ fn refine_cluster_centers(
     for cluster in clusters.iter_mut() {
         let center_x = cluster.x as usize;
         let center_y = cluster.y as usize;
-        
+
         // Search in 3x3 neighborhood for lowest gradient position
         let mut min_gradient = f32::INFINITY;
         let mut best_x = center_x;
         let mut best_y = center_y;
-        
+
         let search_radius = 1; // Search in 3x3 window
-        
-        for dy in -(search_radius as i32)..=(search_radius as i32) {
-            for dx in -(search_radius as i32)..=(search_radius as i32) {
+
+        for dy in -search_radius..=search_radius {
+            for dx in -search_radius..=search_radius {
                 let nx = (center_x as i32 + dx) as usize;
                 let ny = (center_y as i32 + dy) as usize;
-                
+
                 // Skip out-of-bounds positions
                 if nx == 0 || ny == 0 || nx >= width - 1 || ny >= height - 1 {
                     continue;
                 }
-                
+
                 // Compute gradient magnitude using LAB color differences
                 let _idx = ny * width + nx;
                 let idx_left = ny * width + (nx - 1);
                 let idx_right = ny * width + (nx + 1);
                 let idx_up = (ny - 1) * width + nx;
                 let idx_down = (ny + 1) * width + nx;
-                
+
                 if idx_right < lab_image.len() && idx_down < lab_image.len() {
                     let grad_x = lab_image[idx_right].distance_to(&lab_image[idx_left]);
                     let grad_y = lab_image[idx_down].distance_to(&lab_image[idx_up]);
                     let gradient = (grad_x * grad_x + grad_y * grad_y).sqrt();
-                    
+
                     if gradient < min_gradient {
                         min_gradient = gradient;
                         best_x = nx;
@@ -2176,7 +2220,7 @@ fn refine_cluster_centers(
                 }
             }
         }
-        
+
         // Update cluster center to lowest gradient position
         if best_x != center_x || best_y != center_y {
             cluster.x = best_x as f32;
@@ -2201,8 +2245,11 @@ fn initialize_cluster_centers(
     let mut clusters = Vec::new();
     let mut cluster_id = 0;
 
-    log::info!("🎯 Initializing cluster centers with pattern: {:?}", pattern);
-    
+    log::info!(
+        "🎯 Initializing cluster centers with pattern: {:?}",
+        pattern
+    );
+
     match pattern {
         SuperpixelInitPattern::Square => {
             log::info!("🎯 Executing SQUARE pattern initialization");
@@ -2217,8 +2264,10 @@ fn initialize_cluster_centers(
                     let jitter_x = ((x as f32 * 1.7 + y as f32 * 2.3) % 7.0) - 3.5;
                     let jitter_y = ((y as f32 * 2.1 + x as f32 * 1.9) % 7.0) - 3.5;
 
-                    let jittered_x = ((x as f32 + jitter_x).max(0.0).min((width - 1) as f32)) as usize;
-                    let jittered_y = ((y as f32 + jitter_y).max(0.0).min((height - 1) as f32)) as usize;
+                    let jittered_x =
+                        ((x as f32 + jitter_x).max(0.0).min((width - 1) as f32)) as usize;
+                    let jittered_y =
+                        ((y as f32 + jitter_y).max(0.0).min((height - 1) as f32)) as usize;
 
                     let idx = jittered_y * width + jittered_x;
                     if idx < lab_image.len() {
@@ -2234,16 +2283,16 @@ fn initialize_cluster_centers(
                     break;
                 }
             }
-        },
+        }
         SuperpixelInitPattern::Hexagonal => {
             log::info!("🎯 Executing HEXAGONAL pattern initialization");
             // Hexagonal packing to reduce diagonal artifacts
             let hex_height = (s as f32 * 0.866).round() as usize; // sqrt(3)/2 ≈ 0.866
             let mut row = 0;
-            
+
             for y in (hex_height / 2..height).step_by(hex_height) {
                 let x_offset = if row % 2 == 1 { s / 2 } else { 0 }; // Offset every other row
-                
+
                 for x in (s / 2 + x_offset..width).step_by(s) {
                     if cluster_id >= num_superpixels {
                         break;
@@ -2253,8 +2302,10 @@ fn initialize_cluster_centers(
                     let jitter_x = ((x as f32 * 1.7 + y as f32 * 2.3) % 7.0) - 3.5;
                     let jitter_y = ((y as f32 * 2.1 + x as f32 * 1.9) % 7.0) - 3.5;
 
-                    let jittered_x = ((x as f32 + jitter_x).max(0.0).min((width - 1) as f32)) as usize;
-                    let jittered_y = ((y as f32 + jitter_y).max(0.0).min((height - 1) as f32)) as usize;
+                    let jittered_x =
+                        ((x as f32 + jitter_x).max(0.0).min((width - 1) as f32)) as usize;
+                    let jittered_y =
+                        ((y as f32 + jitter_y).max(0.0).min((height - 1) as f32)) as usize;
 
                     let idx = jittered_y * width + jittered_x;
                     if idx < lab_image.len() {
@@ -2271,38 +2322,38 @@ fn initialize_cluster_centers(
                     break;
                 }
             }
-        },
+        }
         SuperpixelInitPattern::Poisson => {
             log::info!("🎯 Executing POISSON pattern initialization");
             // Poisson disk sampling for random but well-distributed points
             use std::collections::HashSet;
-            
+
             let min_distance = (s as f32 * 0.7) as usize; // Minimum distance between points
             let max_attempts = num_superpixels * 50; // Maximum attempts to find valid positions
             let mut placed_points: HashSet<(usize, usize)> = HashSet::new();
             let mut attempt = 0;
-            
+
             while cluster_id < num_superpixels && attempt < max_attempts {
                 // Generate random position using deterministic hash (for reproducibility)
-                let hash_x = ((attempt * 73 + 17) % width) as usize;
-                let hash_y = ((attempt * 97 + 23) % height) as usize;
-                
+                let hash_x = (attempt * 73 + 17) % width;
+                let hash_y = (attempt * 97 + 23) % height;
+
                 // Check if this position is far enough from existing points
                 let mut valid = true;
                 for &(px, py) in &placed_points {
                     let dx = (hash_x as isize - px as isize).abs() as f32;
                     let dy = (hash_y as isize - py as isize).abs() as f32;
                     let distance = (dx * dx + dy * dy).sqrt();
-                    
+
                     if distance < min_distance as f32 {
                         valid = false;
                         break;
                     }
                 }
-                
+
                 if valid {
                     placed_points.insert((hash_x, hash_y));
-                    
+
                     let idx = hash_y * width + hash_x;
                     if idx < lab_image.len() {
                         clusters.push(SlicCluster::new(
@@ -2313,42 +2364,38 @@ fn initialize_cluster_centers(
                         cluster_id += 1;
                     }
                 }
-                
+
                 attempt += 1;
             }
-            
+
             // If we couldn't place enough points with Poisson, fill remaining with regular grid
             while cluster_id < num_superpixels {
                 let grid_size = (width * height / (num_superpixels - cluster_id)).max(1);
                 let step = (grid_size as f32).sqrt() as usize;
-                
+
                 for y in (step / 2..height).step_by(step) {
                     for x in (step / 2..width).step_by(step) {
                         if cluster_id >= num_superpixels {
                             break;
                         }
-                        
+
                         // Check if this position conflicts with existing Poisson points
                         let mut conflict = false;
                         for &(px, py) in &placed_points {
                             let dx = (x as isize - px as isize).abs() as f32;
                             let dy = (y as isize - py as isize).abs() as f32;
                             let distance = (dx * dx + dy * dy).sqrt();
-                            
+
                             if distance < min_distance as f32 / 2.0 {
                                 conflict = true;
                                 break;
                             }
                         }
-                        
+
                         if !conflict {
                             let idx = y * width + x;
                             if idx < lab_image.len() {
-                                clusters.push(SlicCluster::new(
-                                    lab_image[idx],
-                                    x as f32,
-                                    y as f32,
-                                ));
+                                clusters.push(SlicCluster::new(lab_image[idx], x as f32, y as f32));
                                 cluster_id += 1;
                             }
                         }
@@ -2379,9 +2426,9 @@ fn slic_segmentation(
     initialization_pattern: SuperpixelInitPattern,
 ) -> Vec<usize> {
     // DEBUG: Log the initialization pattern being used
-    log::info!("🎯 SLIC Segmentation: Using initialization pattern: {:?} for {}x{} image with {} superpixels", 
+    log::info!("🎯 SLIC Segmentation: Using initialization pattern: {:?} for {}x{} image with {} superpixels",
                initialization_pattern, width, height, num_superpixels);
-    
+
     // Calculate initial grid spacing
     let total_pixels = width * height;
     let s = ((total_pixels as f32 / num_superpixels as f32).sqrt()) as usize;
@@ -2643,9 +2690,8 @@ fn extract_region_boundary(
     }
 
     // Trace the boundary contour using a proper path following algorithm
-    let traced_boundary = trace_boundary_contour(&boundary_points);
 
-    traced_boundary
+    trace_boundary_contour(&boundary_points)
 }
 
 /// Trace boundary contour using nearest-neighbor path following to prevent zigzag artifacts
@@ -2766,7 +2812,7 @@ fn generate_superpixel_svg_paths(
             }
         }
     };
-    log::debug!("Superpixel mode determination: fill_regions={}, stroke_regions={}, detail={:.6}, mode='{}'", 
+    log::debug!("Superpixel mode determination: fill_regions={}, stroke_regions={}, detail={:.6}, mode='{}'",
                 fill_regions, stroke_regions, detail, mode);
 
     log::debug!("Using superpixel artistic mode: {mode} (fill: {fill_regions}, stroke: {stroke_regions}, detail: {detail:.2})");
@@ -2860,7 +2906,7 @@ fn trace_dots(
     // Create DotConfig from TraceLowConfig - trust parameter validation
     let dot_config = DotConfig {
         min_radius: config.dot_min_radius,
-        max_radius: config.dot_max_radius, 
+        max_radius: config.dot_max_radius,
         density_threshold: config.dot_density_threshold,
         preserve_colors: config.dot_preserve_colors,
         adaptive_sizing: config.dot_adaptive_sizing,
@@ -2903,7 +2949,7 @@ fn trace_dots(
         // Convert to grayscale for noise filtering
         let gray = DynamicImage::ImageRgba8(image.clone()).to_luma8();
 
-        // Use configurable bilateral filter parameters  
+        // Use configurable bilateral filter parameters
         let spatial_sigma = config.noise_filter_spatial_sigma; // Respect user configuration
         let range_sigma = config.noise_filter_range_sigma;
 
@@ -3194,7 +3240,6 @@ fn calculate_image_bounds(cached_data: &[CachedPathData]) -> (f32, f32, f32, f32
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
 
 /// Convert RGB color to grayscale using ITU-R BT.709 luminance formula
 /// This provides perceptually accurate luminance conversion with gamma correction
@@ -3947,7 +3992,7 @@ fn simplify_adaptive(polyline: &[Point], base_epsilon: f32) -> Vec<Point> {
                 max_index,
                 result,
             );
-            result.push(points[max_index].clone());
+            result.push(points[max_index]);
             simplify_recursive(
                 points,
                 curvatures,
@@ -3977,7 +4022,7 @@ fn simplify_adaptive(polyline: &[Point], base_epsilon: f32) -> Vec<Point> {
         numerator / denominator
     }
 
-    let mut result = vec![polyline[0].clone()];
+    let mut result = vec![polyline[0]];
     simplify_recursive(
         polyline,
         &curvatures,
@@ -3987,7 +4032,7 @@ fn simplify_adaptive(polyline: &[Point], base_epsilon: f32) -> Vec<Point> {
         polyline.len() - 1,
         &mut result,
     );
-    result.push(polyline[polyline.len() - 1].clone());
+    result.push(polyline[polyline.len() - 1]);
 
     result
 }
@@ -4020,7 +4065,7 @@ fn douglas_peucker_simplify(polyline: &[Point], epsilon: f32) -> Vec<Point> {
         if points.len() < 2 {
             return;
         }
-        
+
         // Additional safety check to prevent corruption-induced panics
         if points.is_empty() {
             return;
@@ -4216,9 +4261,7 @@ fn enhance_paths_with_gradients(
                     segment_path_by_color_changes(&polyline, &color_map, width, height, config);
 
                 // Create a separate SVG path for each segment
-                for (_segment_id, (segment_polyline, segment_color)) in
-                    segments.into_iter().enumerate()
-                {
+                for (segment_polyline, segment_color) in segments.into_iter() {
                     if segment_polyline.len() >= 2 {
                         // Generate path data for this segment
                         let segment_path_data = create_path_data_from_points(&segment_polyline);
@@ -4531,7 +4574,6 @@ fn create_stroke_path(polyline: Vec<Point>, stroke_width: f32) -> SvgPath {
     create_stroke_path_with_color(polyline, stroke_width, None, 0, 0, &default_config)
 }
 
-
 /// Analyze edge density across the image for content-aware processing
 fn analyze_edge_density(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
@@ -4714,8 +4756,6 @@ fn is_path_in_texture_region(path: &SvgPath, analysis: &EdgeDensityAnalysis) -> 
     }
     false
 }
-
-
 
 /// Check if two coordinate sequences are similar within tolerance
 #[allow(dead_code)]
@@ -5212,7 +5252,7 @@ fn link_edges_to_polylines_directional(
             // Filter to prefer diagonal-oriented paths, but keep at least some paths
             let original_count = polylines.len();
             polylines.retain(|polyline| is_diagonal_oriented(polyline));
-            
+
             // Log for debugging
             log::debug!(
                 "Diagonal filtering for {:?}: {} -> {} polylines",
@@ -5232,7 +5272,7 @@ fn is_diagonal_oriented(polyline: &[Point]) -> bool {
     if polyline.is_empty() {
         return false;
     }
-    
+
     if polyline.len() < 2 {
         return false;
     }
@@ -5242,12 +5282,12 @@ fn is_diagonal_oriented(polyline: &[Point]) -> bool {
         Some(p) => p,
         None => return false,
     };
-    
+
     let end = match polyline.last() {
         Some(p) => p,
         None => return false,
     };
-    
+
     let dx = (end.x - start.x).abs();
     let dy = (end.y - start.y).abs();
 
@@ -5257,7 +5297,7 @@ fn is_diagonal_oriented(polyline: &[Point]) -> bool {
     if max_delta < 1.0 {
         return false; // Too small to determine orientation
     }
-    
+
     let min_delta = dx.min(dy);
     let diagonal_ratio = min_delta / max_delta;
     diagonal_ratio > 0.4 // At least 40% diagonal component
@@ -5345,9 +5385,8 @@ fn merge_directional_results(
 
     // Always apply artistic enhancements if hand-drawn effects are configured
     // The user specifically requested artistic effects, so we should apply them regardless of timing
-    let final_paths = apply_artistic_enhancements(final_paths, hand_drawn_config);
 
-    final_paths
+    apply_artistic_enhancements(final_paths, hand_drawn_config)
 }
 
 /// Apply artistic enhancements for hand-drawn aesthetic
@@ -5368,7 +5407,8 @@ fn apply_artistic_enhancements(
     let enhancement_start = crate::utils::Instant::now();
 
     // Use the proper configurable hand_drawn system instead of hard-coded effects
-    let enhanced_paths = crate::algorithms::visual::hand_drawn::apply_hand_drawn_aesthetics(paths, config);
+    let enhanced_paths =
+        crate::algorithms::visual::hand_drawn::apply_hand_drawn_aesthetics(paths, config);
 
     let enhancement_time = enhancement_start.elapsed();
     log::debug!(
@@ -5690,7 +5730,7 @@ fn should_delete_guo_hall_step1(image: &GrayImage, x: u32, y: u32) -> bool {
     let transitions = count_transitions(&[p2, p3, p4, p5, p6, p7, p8, p9]);
 
     // Guo-Hall conditions for step 1
-    if !(2 <= n && n <= 6) {
+    if !(2..=6).contains(&n) {
         return false;
     }
     if transitions != 1 {
@@ -5731,7 +5771,7 @@ fn should_delete_guo_hall_step2(image: &GrayImage, x: u32, y: u32) -> bool {
     let transitions = count_transitions(&[p2, p3, p4, p5, p6, p7, p8, p9]);
 
     // Guo-Hall conditions for step 2
-    if !(2 <= n && n <= 6) {
+    if !(2..=6).contains(&n) {
         return false;
     }
     if transitions != 1 {
@@ -6250,18 +6290,17 @@ fn trace_from_endpoint(
         let next = if let Some((pdx, pdy)) = prev_dir {
             // Prefer smallest turn (max dot with previous dir).
             // CRITICAL FIX: Add safety check to prevent panic in multipass processing
-            let result = cand.into_iter()
-                .max_by(|a, b| {
-                    let da = a.2 * pdx + a.3 * pdy;
-                    let db = b.2 * pdx + b.3 * pdy;
-                    da.cmp(&db)
-                        // tie-breaker: prefer leaving a junction *later* (stay on trunk)
-                        .then_with(|| {
-                            let ta = pixel_types[a.1 as usize][a.0 as usize] != PixelType::Junction;
-                            let tb = pixel_types[b.1 as usize][b.0 as usize] != PixelType::Junction;
-                            ta.cmp(&tb)
-                        })
-                });
+            let result = cand.into_iter().max_by(|a, b| {
+                let da = a.2 * pdx + a.3 * pdy;
+                let db = b.2 * pdx + b.3 * pdy;
+                da.cmp(&db)
+                    // tie-breaker: prefer leaving a junction *later* (stay on trunk)
+                    .then_with(|| {
+                        let ta = pixel_types[a.1 as usize][a.0 as usize] != PixelType::Junction;
+                        let tb = pixel_types[b.1 as usize][b.0 as usize] != PixelType::Junction;
+                        ta.cmp(&tb)
+                    })
+            });
             if let Some(next_point) = result {
                 next_point
             } else {
@@ -6270,10 +6309,9 @@ fn trace_from_endpoint(
         } else {
             // First step: prefer neighbor with the most skeleton neighbors (main trunk).
             // CRITICAL FIX: Add safety check to prevent panic in multipass processing
-            let result = cand.into_iter()
-                .max_by_key(|(nx, ny, _, _)| {
-                    count_skeleton_neighbors(skeleton, *nx as u32, *ny as u32)
-                });
+            let result = cand.into_iter().max_by_key(|(nx, ny, _, _)| {
+                count_skeleton_neighbors(skeleton, *nx as u32, *ny as u32)
+            });
             if let Some(next_point) = result {
                 next_point
             } else {
@@ -7108,7 +7146,7 @@ fn bilateral_filter(image: &GrayImage, spatial_sigma: f32, range_sigma: f32) -> 
                     // Combined spatial and range weight
                     let spatial_index = ((dy + kernel_radius) * (2 * kernel_radius + 1)
                         + (dx + kernel_radius)) as usize;
-                    
+
                     // CRITICAL FIX: Bounds check to prevent "unreachable executed" during intensive processing
                     let spatial_weight = if spatial_index < spatial_weights.len() {
                         spatial_weights[spatial_index]
@@ -7271,11 +7309,11 @@ fn bilateral_filter_fast(image: &GrayImage, spatial_sigma: f32, range_sigma: f32
                         let intensity_diff = neighbor_intensity - center_intensity;
 
                         // CRITICAL FIX: Bounds check for fast bilateral filter
-                    let spatial_weight = if weight_idx < spatial_weights.len() {
-                        spatial_weights[weight_idx]
-                    } else {
-                        0.0 // Safe fallback
-                    };
+                        let spatial_weight = if weight_idx < spatial_weights.len() {
+                            spatial_weights[weight_idx]
+                        } else {
+                            0.0 // Safe fallback
+                        };
                         let range_weight = (range_coeff * intensity_diff * intensity_diff).exp();
                         let combined_weight = spatial_weight * range_weight;
 
@@ -7298,15 +7336,3 @@ fn bilateral_filter_fast(image: &GrayImage, spatial_sigma: f32, range_sigma: f32
 
     filtered
 }
-
-
-
-
-
-
-
-
-
-
-
-

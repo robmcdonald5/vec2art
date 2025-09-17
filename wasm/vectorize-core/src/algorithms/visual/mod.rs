@@ -15,8 +15,7 @@ pub use color_processing::{
 };
 pub use gradient_detection::{
     analyze_path_for_gradients, analyze_paths_for_gradients, generate_gradient_id,
-    GradientAnalysis, GradientDetectionConfig, GradientPoint,
-    GradientStop, GradientType,
+    GradientAnalysis, GradientDetectionConfig, GradientPoint, GradientStop, GradientType,
 };
 
 // Re-export GradientAnalysis as GradientDetectionAnalysis for backward compatibility

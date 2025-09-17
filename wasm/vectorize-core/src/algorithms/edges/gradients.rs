@@ -33,7 +33,7 @@ impl Default for GradientConfig {
 pub struct GradientAnalysis {
     /// Gradient magnitude values for each pixel
     pub magnitude: Vec<f32>,
-    /// Local variance values for each pixel  
+    /// Local variance values for each pixel
     pub variance: Vec<f32>,
     /// Image width
     pub width: u32,
@@ -152,7 +152,7 @@ pub fn calculate_gradient_magnitude(gray: &GrayImage, x: u32, y: u32) -> f32 {
 /// # Arguments
 /// * `gray` - Input grayscale image
 /// * `x` - X coordinate of pixel
-/// * `y` - Y coordinate of pixel  
+/// * `y` - Y coordinate of pixel
 /// * `radius` - Radius of analysis window
 ///
 /// # Returns

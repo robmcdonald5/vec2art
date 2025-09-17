@@ -10,10 +10,10 @@ use vectorize_core::parameters::codegen;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
-    
+
     // Generate TypeScript interfaces
     let typescript_code = codegen::generate_typescript_file()?;
-    
+
     if args.len() > 1 {
         // Output to specified file
         let output_path = &args[1];
@@ -23,6 +23,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Output to stdout
         io::stdout().write_all(typescript_code.as_bytes())?;
     }
-    
+
     Ok(())
 }
