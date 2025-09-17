@@ -901,10 +901,10 @@ impl ConfigBuilder {
 
     fn validate_hand_drawn_preset(&self, preset: &str) -> ConfigBuilderResult<()> {
         match preset {
-            "none" | "subtle" | "medium" | "strong" | "sketchy" => Ok(()),
+            "none" | "subtle" | "medium" | "strong" | "sketchy" | "custom" => Ok(()),
             _ => Err(ConfigBuilderError::InvalidPreset(
                 format!(
-                    "Invalid hand-drawn preset: {preset}. Must be one of: none, subtle, medium, strong, sketchy"
+                    "Invalid hand-drawn preset: {preset}. Must be one of: none, subtle, medium, strong, sketchy, custom"
                 )
             ))
         }

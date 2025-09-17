@@ -91,33 +91,44 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 		enable_diagonal_pass:
 			config.algorithm === 'edge' ? ((config as EdgeConfig).enableDiagonalPass ?? false) : false,
 		directional_strength_threshold:
-			config.algorithm === 'edge' ? ((config as EdgeConfig).directionalStrengthThreshold ?? 0.3) : 0.3,
+			config.algorithm === 'edge'
+				? ((config as EdgeConfig).directionalStrengthThreshold ?? 0.3)
+				: 0.3,
 		max_processing_time_ms: 10000, // Now properly typed as number
 
 		// Advanced edge detection (ETF/FDoG)
-		enable_etf_fdog: config.algorithm === 'edge' ? ((config as EdgeConfig).enableEtfFdog ?? false) : false,
+		enable_etf_fdog:
+			config.algorithm === 'edge' ? ((config as EdgeConfig).enableEtfFdog ?? false) : false,
 		etf_radius: config.algorithm === 'edge' ? ((config as EdgeConfig).etfRadius ?? 4) : 4,
 		etf_iterations: config.algorithm === 'edge' ? ((config as EdgeConfig).etfIterations ?? 4) : 4,
-		etf_coherency_tau: config.algorithm === 'edge' ? ((config as EdgeConfig).etfCoherencyTau ?? 0.2) : 0.2,
+		etf_coherency_tau:
+			config.algorithm === 'edge' ? ((config as EdgeConfig).etfCoherencyTau ?? 0.2) : 0.2,
 		fdog_sigma_s: config.algorithm === 'edge' ? ((config as EdgeConfig).fdogSigmaS ?? 1.2) : 1.2,
 		fdog_sigma_c: config.algorithm === 'edge' ? ((config as EdgeConfig).fdogSigmaC ?? 2.0) : 2.0,
 		fdog_tau: config.algorithm === 'edge' ? ((config as EdgeConfig).fdogTau ?? 0.9) : 0.9,
 		// NMS thresholds are calculated automatically from detail level in core algorithm
-		nms_low: 0.08,  // Default value - will be overridden by detail-based calculation
+		nms_low: 0.08, // Default value - will be overridden by detail-based calculation
 		nms_high: 0.16, // Default value - will be overridden by detail-based calculation
 
 		// Flow tracing
-		enable_flow_tracing: config.algorithm === 'edge' ? ((config as EdgeConfig).enableFlowTracing ?? false) : false,
-		trace_min_grad: config.algorithm === 'edge' ? ((config as EdgeConfig).traceMinGrad ?? 0.08) : 0.08,
-		trace_min_coherency: config.algorithm === 'edge' ? ((config as EdgeConfig).traceMinCoherency ?? 0.15) : 0.15,
+		enable_flow_tracing:
+			config.algorithm === 'edge' ? ((config as EdgeConfig).enableFlowTracing ?? false) : false,
+		trace_min_grad:
+			config.algorithm === 'edge' ? ((config as EdgeConfig).traceMinGrad ?? 0.08) : 0.08,
+		trace_min_coherency:
+			config.algorithm === 'edge' ? ((config as EdgeConfig).traceMinCoherency ?? 0.15) : 0.15,
 		trace_max_gap: config.algorithm === 'edge' ? ((config as EdgeConfig).traceMaxGap ?? 4) : 4,
-		trace_max_len: config.algorithm === 'edge' ? ((config as EdgeConfig).traceMaxLen ?? 10000) : 10000,
+		trace_max_len:
+			config.algorithm === 'edge' ? ((config as EdgeConfig).traceMaxLen ?? 10000) : 10000,
 
 		// Bezier fitting
-		enable_bezier_fitting: config.algorithm === 'edge' ? ((config as EdgeConfig).enableBezierFitting ?? false) : false,
-		fit_lambda_curv: config.algorithm === 'edge' ? ((config as EdgeConfig).fitLambdaCurv ?? 0.02) : 0.02,
+		enable_bezier_fitting:
+			config.algorithm === 'edge' ? ((config as EdgeConfig).enableBezierFitting ?? false) : false,
+		fit_lambda_curv:
+			config.algorithm === 'edge' ? ((config as EdgeConfig).fitLambdaCurv ?? 0.02) : 0.02,
 		fit_max_err: config.algorithm === 'edge' ? ((config as EdgeConfig).fitMaxErr ?? 0.8) : 0.8,
-		fit_split_angle: config.algorithm === 'edge' ? ((config as EdgeConfig).fitSplitAngle ?? 32.0) : 32.0,
+		fit_split_angle:
+			config.algorithm === 'edge' ? ((config as EdgeConfig).fitSplitAngle ?? 32.0) : 32.0,
 
 		// Dots backend specific
 		dot_density_threshold: 0.1,
@@ -172,7 +183,7 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 				: (config.preserveColors ?? false),
 		line_color_sampling:
 			config.algorithm === 'edge' || config.algorithm === 'centerline'
-				? ((config as EdgeConfig).lineColorSampling ?? 'Adaptive' as ColorSamplingMethod)
+				? ((config as EdgeConfig).lineColorSampling ?? ('Adaptive' as ColorSamplingMethod))
 				: ('Adaptive' as ColorSamplingMethod),
 		line_color_accuracy:
 			config.algorithm === 'edge' || config.algorithm === 'centerline'
@@ -197,8 +208,26 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 
 		// Safety and optimization
 		max_image_size: 4096,
-		svg_precision: 2
-	};
+		svg_precision: 2,
+
+		// Hand-drawn parameters (not part of TraceLowConfig but included for unified config)
+		handDrawnPreset:
+			config.algorithm === 'edge' || config.algorithm === 'centerline'
+				? ((config as EdgeConfig | CenterlineConfig).handDrawnPreset ?? 'none')
+				: 'none',
+		handDrawnTremorStrength:
+			config.algorithm === 'edge' || config.algorithm === 'centerline'
+				? ((config as EdgeConfig | CenterlineConfig).handDrawnTremorStrength ?? 0.0)
+				: 0.0,
+		handDrawnVariableWeights:
+			config.algorithm === 'edge' || config.algorithm === 'centerline'
+				? ((config as EdgeConfig | CenterlineConfig).handDrawnVariableWeights ?? 0.0)
+				: 0.0,
+		handDrawnTapering:
+			config.algorithm === 'edge' || config.algorithm === 'centerline'
+				? ((config as EdgeConfig | CenterlineConfig).handDrawnTapering ?? 0.0)
+				: 0.0
+	} as any;
 
 	return wasmConfig;
 }

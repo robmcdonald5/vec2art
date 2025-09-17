@@ -235,6 +235,12 @@ class AlgorithmConfigStore {
 	 */
 	updateCurrentConfig(updates: Partial<AlgorithmConfig>) {
 		const algorithm = this.getActiveAlgorithm();
+
+		// Check for hand-drawn slider changes and auto-switch to custom if needed
+		for (const paramName in updates) {
+			this.switchToCustomIfNeeded(paramName);
+		}
+
 		this.updateConfig(algorithm, updates);
 	}
 
@@ -368,7 +374,7 @@ class AlgorithmConfigStore {
 			artistic: {
 				detail: 0.6,
 				strokeWidth: 1.5,
-				handDrawnPreset: 'moderate'
+				handDrawnPreset: 'medium'
 			},
 			stippling: {
 				detail: 0.5,
@@ -453,6 +459,84 @@ class AlgorithmConfigStore {
 			}
 		} catch (error) {
 			console.warn('Failed to load saved active algorithm:', error);
+		}
+	}
+
+	/**
+	 * Hand-drawn preset value mappings
+	 */
+	private handDrawnPresetValues = {
+		none: { handDrawnTremorStrength: 0.0, handDrawnVariableWeights: 0.0, handDrawnTapering: 0.0 },
+		subtle: { handDrawnTremorStrength: 0.1, handDrawnVariableWeights: 0.1, handDrawnTapering: 0.1 },
+		medium: { handDrawnTremorStrength: 0.3, handDrawnVariableWeights: 0.3, handDrawnTapering: 0.2 },
+		strong: {
+			handDrawnTremorStrength: 0.45,
+			handDrawnVariableWeights: 0.5,
+			handDrawnTapering: 0.4
+		},
+		sketchy: {
+			handDrawnTremorStrength: 0.5,
+			handDrawnVariableWeights: 0.7,
+			handDrawnTapering: 0.6
+		},
+		custom: { handDrawnTremorStrength: 0.0, handDrawnVariableWeights: 0.0, handDrawnTapering: 0.0 } // Custom preserves current values
+	};
+
+	/**
+	 * Apply hand-drawn preset values to sliders
+	 */
+	applyHandDrawnPreset(preset: string) {
+		if (preset in this.handDrawnPresetValues) {
+			const currentConfig = this.getCurrentConfig();
+
+			// Update the config with preset values for edge/centerline algorithms
+			if (currentConfig.algorithm === 'edge' || currentConfig.algorithm === 'centerline') {
+				if (preset === 'custom') {
+					// For custom preset, only update the preset itself, preserve current slider values
+					this.updateCurrentConfig({
+						handDrawnPreset: preset as any
+					});
+				} else {
+					// For named presets, apply the preset values to sliders
+					const values =
+						this.handDrawnPresetValues[preset as keyof typeof this.handDrawnPresetValues];
+					this.updateCurrentConfig({
+						handDrawnPreset: preset as any,
+						handDrawnTremorStrength: values.handDrawnTremorStrength,
+						handDrawnVariableWeights: values.handDrawnVariableWeights,
+						handDrawnTapering: values.handDrawnTapering
+					});
+				}
+			}
+		}
+	}
+
+	/**
+	 * Auto-switch to custom preset when sliders are manually adjusted
+	 */
+	private switchToCustomIfNeeded(parameterName: string) {
+		const handDrawnSliders = [
+			'handDrawnTremorStrength',
+			'handDrawnVariableWeights',
+			'handDrawnTapering'
+		];
+
+		if (handDrawnSliders.includes(parameterName)) {
+			const currentConfig = this.getCurrentConfig();
+
+			// Only auto-switch if current preset is not already 'custom' and not 'none'
+			if (currentConfig.algorithm === 'edge' || currentConfig.algorithm === 'centerline') {
+				const edgeConfig = currentConfig as any;
+				if (
+					edgeConfig.handDrawnPreset &&
+					edgeConfig.handDrawnPreset !== 'custom' &&
+					edgeConfig.handDrawnPreset !== 'none'
+				) {
+					this.updateCurrentConfig({
+						handDrawnPreset: 'custom' as any
+					});
+				}
+			}
 		}
 	}
 

@@ -31,7 +31,15 @@
 	// Handle parameter changes
 	function handleParameterChange(name: string, value: any) {
 		console.log('[EdgeParameterPanel] Updating parameter:', name, 'to value:', value);
-		algorithmConfigStore.updateConfig('edge', { [name]: value });
+
+		// Apply hand-drawn preset values when preset changes
+		if (name === 'handDrawnPreset') {
+			console.log('[EdgeParameterPanel] Applying hand-drawn preset:', value);
+			algorithmConfigStore.applyHandDrawnPreset(value);
+		} else {
+			// Use updateCurrentConfig to trigger auto-switching for hand-drawn sliders
+			algorithmConfigStore.updateCurrentConfig({ [name]: value });
+		}
 	}
 
 	// Group parameters by category - new organization
@@ -312,7 +320,6 @@
 			</div>
 		{/if}
 	</div>
-
 
 	<!-- Advanced Processing -->
 	<div

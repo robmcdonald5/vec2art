@@ -118,6 +118,65 @@ pub fn apply_config_json(
             .enable_bezier_fitting(config.enable_bezier_fitting);
     }
 
+    // Check for hand-drawn parameters in the original JSON (not part of TraceLowConfig)
+    // Hand-drawn is handled separately from the main config in the current architecture
+    let original_json: serde_json::Value = serde_json::from_str(config_json)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse JSON for hand-drawn params: {}", e)))?;
+
+    // Handle hand-drawn preset and custom parameters
+    let hand_drawn_preset = original_json.get("handDrawnPreset").and_then(|v| v.as_str()).unwrap_or("none");
+    let tremor = original_json.get("handDrawnTremorStrength").and_then(|v| v.as_f64()).map(|v| v as f32);
+    let weights = original_json.get("handDrawnVariableWeights").and_then(|v| v.as_f64()).map(|v| v as f32);
+    let tapering = original_json.get("handDrawnTapering").and_then(|v| v.as_f64()).map(|v| v as f32);
+
+    // Check if custom values are being used
+    let has_custom_values = (tremor.is_some() && tremor.unwrap() > 0.0) ||
+                           (weights.is_some() && weights.unwrap() > 0.0) ||
+                           (tapering.is_some() && tapering.unwrap() > 0.0);
+
+    // Determine effective preset: if custom values but preset is "none", use "subtle" as base
+    let effective_preset = if has_custom_values && hand_drawn_preset == "none" {
+        "subtle" // Use subtle as default base when custom values are provided
+    } else {
+        hand_drawn_preset
+    };
+
+    // Apply preset if not "none"
+    if effective_preset != "none" {
+        log::info!("   Applying hand-drawn preset: {}", effective_preset);
+        builder = builder
+            .hand_drawn_preset(effective_preset)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set hand-drawn preset: {}", e)))?;
+
+        // Apply custom parameters only if we have a valid preset
+        if let Some(tremor_val) = tremor {
+            if tremor_val > 0.0 {
+                log::info!("   Applying hand-drawn tremor: {}", tremor_val);
+                builder = builder
+                    .custom_tremor(tremor_val)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to set tremor: {}", e)))?;
+            }
+        }
+
+        if let Some(weights_val) = weights {
+            if weights_val > 0.0 {
+                log::info!("   Applying hand-drawn variable weights: {}", weights_val);
+                builder = builder
+                    .custom_variable_weights(weights_val)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to set variable weights: {}", e)))?;
+            }
+        }
+
+        if let Some(tapering_val) = tapering {
+            if tapering_val > 0.0 {
+                log::info!("   Applying hand-drawn tapering: {}", tapering_val);
+                builder = builder
+                    .custom_tapering(tapering_val)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to set tapering: {}", e)))?;
+            }
+        }
+    }
+
     // Apply algorithm-specific settings based on backend
     match config.backend {
         TraceBackend::Edge => {

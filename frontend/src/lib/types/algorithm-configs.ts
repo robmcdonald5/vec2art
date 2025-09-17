@@ -27,7 +27,7 @@ export type ColorSamplingMethod = 'average' | 'dominant' | 'gradient';
 export type PaletteMethod = 'kmeans' | 'median_cut' | 'octree';
 
 // Hand-drawn presets
-export type HandDrawnPreset = 'none' | 'subtle' | 'moderate' | 'strong' | 'extreme';
+export type HandDrawnPreset = 'none' | 'subtle' | 'medium' | 'strong' | 'sketchy' | 'custom';
 
 /**
  * Core configuration shared by all algorithms
@@ -94,7 +94,7 @@ export interface EdgeConfig extends CoreConfig {
 	// Hand-drawn effects
 	handDrawnPreset: HandDrawnPreset;
 	handDrawnVariableWeights: number; // 0.0-1.0
-	handDrawnTremorStrength: number; // 0.0-1.0
+	handDrawnTremorStrength: number; // 0.0-0.5
 	handDrawnTapering: number; // 0.0-1.0
 	handDrawnPressureVariation?: number; // 0.0-1.0
 	handDrawnRoughness?: number; // 0.0-1.0
@@ -140,7 +140,7 @@ export interface CenterlineConfig extends CoreConfig {
 	// Hand-drawn effects
 	handDrawnPreset: HandDrawnPreset;
 	handDrawnVariableWeights: number; // 0.0-1.0
-	handDrawnTremorStrength: number; // 0.0-1.0
+	handDrawnTremorStrength: number; // 0.0-0.5
 	handDrawnTapering: number; // 0.0-1.0
 }
 
@@ -355,7 +355,8 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 	directionalStrengthThreshold: {
 		name: 'directionalStrengthThreshold',
 		label: 'Directional Sensitivity',
-		description: 'Sensitivity threshold for reverse and diagonal pass detection. Lower values detect more edges.',
+		description:
+			'Sensitivity threshold for reverse and diagonal pass detection. Lower values detect more edges.',
 		type: 'range',
 		min: 0.0,
 		max: 1.0,
@@ -473,8 +474,10 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		options: [
 			{ value: 'none', label: 'None' },
 			{ value: 'subtle', label: 'Subtle' },
-			{ value: 'moderate', label: 'Moderate' },
-			{ value: 'strong', label: 'Strong' }
+			{ value: 'medium', label: 'Medium' },
+			{ value: 'strong', label: 'Strong' },
+			{ value: 'sketchy', label: 'Sketchy' },
+			{ value: 'custom', label: 'Custom' }
 		],
 		category: 'style',
 		algorithms: ['edge']
@@ -493,11 +496,12 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 	handDrawnTremorStrength: {
 		name: 'handDrawnTremorStrength',
 		label: 'Tremor Strength',
-		description: 'Hand tremor simulation strength.',
+		description:
+			'Hand tremor simulation strength. Controls organic line jitter. Values above 0.50 may destroy fine details.',
 		type: 'range',
 		min: 0.0,
-		max: 1.0,
-		step: 0.05,
+		max: 0.5,
+		step: 0.01,
 		category: 'style',
 		algorithms: ['edge']
 	},

@@ -3,4 +3,4 @@
 /**
  * Available tracing backends for low-detail vectorization
  */
-export type TraceBackend = "Edge" | "Centerline" | "Superpixel" | "Dots";
+export type TraceBackend = 'Edge' | 'Centerline' | 'Superpixel' | 'Dots';
