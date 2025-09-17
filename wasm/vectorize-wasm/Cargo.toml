@@ -91,6 +91,10 @@ webgl-backend = ["gpu-acceleration"]
 # TypeScript generation feature
 generate-ts = ["ts-rs", "vectorize-core/generate-ts"]
 
-# Enable optimizations for wasm builds
+# Disable wasm-opt optimizations to avoid dependency issues
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = ["-Oz", "--enable-simd"]
+wasm-opt = false
+
+# Also disable for test profile to fix type generation
+[package.metadata.wasm-pack.profile.dev]
+wasm-opt = false

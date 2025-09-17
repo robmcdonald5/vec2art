@@ -397,6 +397,30 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		algorithms: ['edge'],
 		dependsOn: 'enableEtfFdog'
 	},
+	etfCoherencyTau: {
+		name: 'etfCoherencyTau',
+		label: 'ETF Coherency Tau',
+		description: 'ETF coherency threshold for flow field refinement.',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.05,
+		category: 'advanced',
+		algorithms: ['edge'],
+		dependsOn: 'enableEtfFdog'
+	},
+	fdogSigmaC: {
+		name: 'fdogSigmaC',
+		label: 'FDoG Sigma C',
+		description: 'FDoG color difference threshold for edge coherence.',
+		type: 'range',
+		min: 0.5,
+		max: 10.0,
+		step: 0.1,
+		category: 'advanced',
+		algorithms: ['edge'],
+		dependsOn: 'enableEtfFdog'
+	},
 	fdogSigmaS: {
 		name: 'fdogSigmaS',
 		label: 'FDoG Sigma S',

@@ -3,4 +3,4 @@
 /**
  * Color sampling method determines how colors are extracted from paths
  */
-export type ColorSamplingMethod = 'DominantColor' | 'GradientMapping' | 'ContentAware' | 'Adaptive';
+export type ColorSamplingMethod = "DominantColor" | "GradientMapping" | "ContentAware" | "Adaptive";

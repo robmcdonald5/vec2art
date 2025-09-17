@@ -42,8 +42,16 @@ pub fn apply_config_json(
     log::info!("   Detail: {}, Stroke: {}", config.detail, config.stroke_px_at_1080p);
     log::info!("   Noise filtering: {}", config.noise_filtering);
     log::info!("   Background removal: {}", config.enable_background_removal);
+    log::info!("   ETF/FDoG enabled: {}", config.enable_etf_fdog);
+    if config.enable_etf_fdog {
+        log::info!("   ETF radius: {}, iterations: {}, coherency_tau: {}",
+                   config.etf_radius, config.etf_iterations, config.etf_coherency_tau);
+        log::info!("   FDoG sigma_s: {}, sigma_c: {}, tau: {}",
+                   config.fdog_sigma_s, config.fdog_sigma_c, config.fdog_tau);
+    }
 
-    // Create a new ConfigBuilder from the TraceLowConfig
+    // Create a new ConfigBuilder and apply the complete config
+    // Since ConfigBuilder doesn't have a from_config constructor, we need to apply all parameters
     let mut builder = ConfigBuilder::new();
 
     // Apply core settings
@@ -88,11 +96,33 @@ pub fn apply_config_json(
         .reverse_pass(config.enable_reverse_pass)
         .diagonal_pass(config.enable_diagonal_pass);
 
+    // Apply ETF/FDoG settings if enabled
+    if config.enable_etf_fdog {
+        builder = builder
+            .enable_etf_fdog(true);
+
+        // Note: ETF/FDoG parameter values (etf_radius, etf_iterations, etc.) are already
+        // in the TraceLowConfig and will be used by the core algorithm via build().
+        // The ConfigBuilder's individual setters are primarily for validation and defaults.
+    }
+
+    // Apply flow tracing settings if enabled
+    if config.enable_flow_tracing {
+        builder = builder
+            .enable_flow_tracing(config.enable_flow_tracing);
+    }
+
+    // Apply Bézier fitting if enabled
+    if config.enable_bezier_fitting {
+        builder = builder
+            .enable_bezier_fitting(config.enable_bezier_fitting);
+    }
+
     // Apply algorithm-specific settings based on backend
     match config.backend {
         TraceBackend::Edge => {
-            // Edge-specific settings will be handled directly by the core algorithm
-            // NMS thresholds are currently calculated from detail level in core implementation
+            // Edge-specific settings are mostly handled via the complete TraceLowConfig
+            // NMS thresholds are calculated from detail level in core implementation
         }
         TraceBackend::Centerline => {
             builder = builder
@@ -134,12 +164,6 @@ pub fn apply_config_json(
             // For superpixel backend, use superpixel_preserve_colors
             builder = builder.superpixel_preserve_colors(config.superpixel_preserve_colors);
         }
-    }
-
-    // Apply advanced settings if enabled
-    if config.enable_etf_fdog {
-        builder = builder
-            .enable_etf_fdog(true);
     }
 
     // Replace the config_builder

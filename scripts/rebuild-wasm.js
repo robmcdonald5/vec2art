@@ -172,7 +172,7 @@ async function cleanBuild() {
 async function buildWasm() {
   log.info('Building WASM module...');
 
-  const buildCmd = 'wasm-pack build --target web --out-dir pkg';
+  const buildCmd = 'wasm-pack build --no-opt --target web --out-dir pkg';
 
   try {
     const { stdout, stderr } = await execAsync(buildCmd, { cwd: config.wasmDir });

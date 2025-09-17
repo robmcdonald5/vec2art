@@ -61,7 +61,9 @@
 		'enableEtfFdog',
 		'etfRadius',
 		'etfIterations',
+		'etfCoherencyTau',
 		'fdogSigmaS',
+		'fdogSigmaC',
 		'fdogTau',
 		'enableFlowTracing',
 		'enableBezierFitting'
