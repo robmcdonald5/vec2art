@@ -148,9 +148,7 @@
 		class="card-ferrari-static to-ferrari-50/20 border-ferrari-200/50 overflow-hidden rounded-2xl border bg-gradient-to-br from-white shadow-lg"
 	>
 		<button
-			class="mobile-touch-target to-ferrari-50/30 hover:from-ferrari-50 hover:to-ferrari-100/50 flex w-full items-center justify-between bg-gradient-to-r from-transparent p-4 text-left transition-all duration-200 focus:outline-none active:scale-[0.98] {isQuickSettingsExpanded
-				? 'ring-ferrari-500 ring-2 ring-offset-2'
-				: ''}"
+			class="mobile-touch-target to-ferrari-50/30 hover:from-ferrari-50 hover:to-ferrari-100/50 flex w-full items-center justify-between bg-gradient-to-r from-transparent p-4 text-left transition-all duration-200 focus:outline-none active:scale-[0.98]"
 			style="z-index: 5; position: relative;"
 			onclick={toggleQuickSettings}
 			type="button"
@@ -355,9 +353,7 @@
 		class="card-ferrari-static to-ferrari-50/20 border-ferrari-200/50 overflow-hidden rounded-2xl border bg-gradient-to-br from-white shadow-lg"
 	>
 		<button
-			class="mobile-touch-target to-ferrari-50/30 hover:from-ferrari-50 hover:to-ferrari-100/50 flex w-full items-center justify-between bg-gradient-to-r from-transparent p-4 text-left transition-all duration-200 focus:outline-none active:scale-[0.98] {isAdvancedSettingsExpanded
-				? 'ring-ferrari-500 ring-2 ring-offset-2'
-				: ''}"
+			class="mobile-touch-target to-ferrari-50/30 hover:from-ferrari-50 hover:to-ferrari-100/50 flex w-full items-center justify-between bg-gradient-to-r from-transparent p-4 text-left transition-all duration-200 focus:outline-none active:scale-[0.98]"
 			style="z-index: 5; position: relative;"
 			onclick={toggleAdvancedSettings}
 			type="button"

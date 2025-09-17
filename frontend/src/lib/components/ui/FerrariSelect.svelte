@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { ChevronDown } from 'lucide-svelte';
 	import { onMount } from 'svelte';
-	import { portal } from 'svelte-portal';
 	import { computePosition, flip, shift, autoUpdate } from '@floating-ui/dom';
 
 	interface SelectOption {
@@ -168,7 +167,7 @@
 			bind:this={triggerElement}
 			type="button"
 			{id}
-			class="ferrari-select-trigger relative w-full cursor-pointer rounded-lg border border-ferrari-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm transition-colors duration-200 focus:border-ferrari-500 focus:outline-none focus:ring-1 focus:ring-ferrari-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-50 {isOpen ? 'border-ferrari-500 ring-1 ring-ferrari-500' : ''}"
+			class="ferrari-select-trigger relative w-full cursor-pointer border border-ferrari-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm transition-colors duration-200 focus:border-ferrari-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-50 {isOpen ? 'border-ferrari-500 rounded-t-lg rounded-b-none border-b-0' : 'rounded-lg'}"
 			{disabled}
 			aria-haspopup="listbox"
 			aria-expanded={isOpen}
@@ -189,7 +188,7 @@
 		{#if isOpen}
 			<div
 				bind:this={dropdownElement}
-				class="ferrari-select-dropdown absolute z-[9999] mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 shadow-lg ring-1 ring-ferrari-200 focus:outline-none"
+				class="ferrari-select-dropdown absolute z-[9999] mt-0 max-h-60 w-full overflow-auto rounded-t-none rounded-b-lg bg-white py-1 shadow-lg border border-t border-ferrari-500 focus:outline-none"
 			>
 				{#each options as option (option.value)}
 					<button
