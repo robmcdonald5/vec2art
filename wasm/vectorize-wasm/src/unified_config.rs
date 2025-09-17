@@ -119,9 +119,20 @@ pub fn apply_config_json(
         }
     }
 
-    // Apply color settings
-    if config.line_preserve_colors || config.dot_preserve_colors || config.superpixel_preserve_colors {
-        builder = builder.preserve_colors(true);
+    // Apply color settings based on backend
+    match config.backend {
+        TraceBackend::Edge | TraceBackend::Centerline => {
+            // For line-based backends, use line_preserve_colors
+            builder = builder.line_preserve_colors(config.line_preserve_colors);
+        }
+        TraceBackend::Dots => {
+            // For dots backend, use preserve_colors (which sets dot_preserve_colors)
+            builder = builder.preserve_colors(config.dot_preserve_colors);
+        }
+        TraceBackend::Superpixel => {
+            // For superpixel backend, use superpixel_preserve_colors
+            builder = builder.superpixel_preserve_colors(config.superpixel_preserve_colors);
+        }
     }
 
     // Apply advanced settings if enabled

@@ -121,8 +121,24 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 		const vectorizer = new wasmModule.WasmVectorizer();
 
 		// ===== NEW UNIFIED CONFIG SYSTEM =====
+		// Debug: Log the config received before transformation
+		console.log('[Worker] 🔍 Config received before transformation:', {
+			algorithm: config.algorithm,
+			linePreserveColors: (config as any).linePreserveColors,
+			preserveColors: config.preserveColors
+		});
+
 		// Transform frontend config to WASM format
 		const wasmConfig = toWasmConfig(config);
+
+		// Debug: Log the transformed WASM config
+		console.log('[Worker] 🔍 WASM config after transformation:', {
+			backend: wasmConfig.backend,
+			line_preserve_colors: wasmConfig.line_preserve_colors,
+			dot_preserve_colors: wasmConfig.dot_preserve_colors,
+			superpixel_preserve_colors: wasmConfig.superpixel_preserve_colors
+		});
+
 		const configJson = JSON.stringify(wasmConfig);
 
 		console.log('[Worker] 🔧 Applying unified config to WASM');

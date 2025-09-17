@@ -163,11 +163,27 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 		superpixel_preserve_colors: config.preserveColors ?? false,
 
 		// Line tracing color configuration
-		line_preserve_colors: config.preserveColors ?? false,
-		line_color_sampling: 'Adaptive' as ColorSamplingMethod,
-		line_color_accuracy: 0.7,
-		max_colors_per_path: 3,
-		color_tolerance: 0.15,
+		// For edge/centerline, use linePreserveColors if available, fallback to preserveColors
+		line_preserve_colors:
+			config.algorithm === 'edge' || config.algorithm === 'centerline'
+				? ((config as EdgeConfig).linePreserveColors ?? config.preserveColors ?? false)
+				: (config.preserveColors ?? false),
+		line_color_sampling:
+			config.algorithm === 'edge' || config.algorithm === 'centerline'
+				? ((config as EdgeConfig).lineColorSampling ?? 'Adaptive' as ColorSamplingMethod)
+				: ('Adaptive' as ColorSamplingMethod),
+		line_color_accuracy:
+			config.algorithm === 'edge' || config.algorithm === 'centerline'
+				? ((config as EdgeConfig).lineColorAccuracy ?? 0.7)
+				: 0.7,
+		max_colors_per_path:
+			config.algorithm === 'edge' || config.algorithm === 'centerline'
+				? ((config as EdgeConfig).maxColorsPerPath ?? 3)
+				: 3,
+		color_tolerance:
+			config.algorithm === 'edge' || config.algorithm === 'centerline'
+				? ((config as EdgeConfig).colorTolerance ?? 0.15)
+				: 0.15,
 		enable_palette_reduction: false,
 		palette_target_colors: 16,
 

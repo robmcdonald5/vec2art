@@ -407,6 +407,14 @@ export class WasmWorkerService {
 				fullConfig: plainConfig
 			});
 
+			// Debug: Log the config being sent to worker
+			console.log('[WasmWorkerService] 🔍 Config being sent to worker:', {
+				algorithm: plainConfig.algorithm,
+				linePreserveColors: (plainConfig as any).linePreserveColors,
+				preserveColors: plainConfig.preserveColors,
+				fullConfig: plainConfig
+			});
+
 			// Send processing request to worker
 			const result = await this.sendMessage('process', {
 				imageData: {

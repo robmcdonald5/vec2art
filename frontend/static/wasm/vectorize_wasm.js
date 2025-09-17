@@ -1,4 +1,4 @@
-import * as __wbg_star0 from './__wbindgen_placeholder__.js';
+import * as __wbg_star0 from '__wbindgen_placeholder__';
 
 let wasm;
 
