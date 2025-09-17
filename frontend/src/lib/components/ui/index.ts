@@ -10,3 +10,9 @@ export * from './before-after-slider';
 export * from './keyboard-shortcuts-modal';
 // export * from './performance-dashboard'; // Temporarily disabled - missing dependencies
 export * from './smart-performance-selector';
+
+// Ferrari-themed components
+export { default as FerrariSlider } from './FerrariSlider.svelte';
+export { default as FerrariCheckbox } from './FerrariCheckbox.svelte';
+export { default as FerrariSelect } from './FerrariSelect.svelte';
+export { default as FerrariParameterControl } from './FerrariParameterControl.svelte';

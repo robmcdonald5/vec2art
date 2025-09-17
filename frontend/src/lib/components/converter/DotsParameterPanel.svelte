@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ChevronDown } from 'lucide-svelte';
-	import AlgorithmParameterControl from './AlgorithmParameterControl.svelte';
+	import FerrariParameterControl from '$lib/components/ui/FerrariParameterControl.svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { DOTS_METADATA } from '$lib/types/algorithm-configs';
 
@@ -56,7 +56,7 @@
 				<div class="space-y-4">
 					{#each coreParams as param}
 						{#if DOTS_METADATA[param]}
-							<AlgorithmParameterControl
+							<FerrariParameterControl
 								name={param}
 								value={config[param]}
 								metadata={DOTS_METADATA[param]}
@@ -94,7 +94,7 @@
 				<div class="space-y-4">
 					{#each dotStyleParams as param}
 						{#if DOTS_METADATA[param]}
-							<AlgorithmParameterControl
+							<FerrariParameterControl
 								name={param}
 								value={config[param]}
 								metadata={DOTS_METADATA[param]}
@@ -132,7 +132,7 @@
 				<div class="space-y-4">
 					{#each colorParams as param}
 						{#if DOTS_METADATA[param]}
-							<AlgorithmParameterControl
+							<FerrariParameterControl
 								name={param}
 								value={config[param]}
 								metadata={DOTS_METADATA[param]}
@@ -170,7 +170,7 @@
 				<div class="space-y-4">
 					{#each advancedParams as param}
 						{#if DOTS_METADATA[param]}
-							<AlgorithmParameterControl
+							<FerrariParameterControl
 								name={param}
 								value={config[param]}
 								metadata={DOTS_METADATA[param]}

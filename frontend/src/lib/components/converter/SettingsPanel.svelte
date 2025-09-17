@@ -14,6 +14,7 @@
 	import BackendSelector from './BackendSelector.svelte';
 	import PortalTooltipFixed from '$lib/components/ui/tooltip/PortalTooltipFixed.svelte';
 	import FerrariSlider from '$lib/components/ui/FerrariSlider.svelte';
+	import FerrariCheckbox from '$lib/components/ui/FerrariCheckbox.svelte';
 
 	// Import algorithm-specific parameter panels
 	import EdgeParameterPanel from './EdgeParameterPanel.svelte';
@@ -325,41 +326,23 @@
 						</div>
 
 						<!-- Unified Color Toggle (All backends) -->
-						<div>
-							<div class="mb-2 flex items-center gap-2">
-								<label
-									for="preserve-colors-unified"
-									class="text-converter-primary block text-sm font-medium">Color Mode</label
-								>
-								<PortalTooltipFixed
-									content={currentAlgorithm === 'edge' || currentAlgorithm === 'centerline'
-										? 'Enable to preserve original image colors in line strokes. Disable for traditional black line art.'
-										: currentAlgorithm === 'superpixel'
-											? 'Enable to preserve original image colors in regions. Disable for monochrome grayscale output with enhanced contrast.'
-											: 'Enable to preserve original image colors in stippled dots. Disable for monochrome grayscale stippling with enhanced contrast.'}
-									position="top"
-									size="md"
-								/>
-							</div>
-							<div class="flex items-center space-x-3">
-								<input
-									type="checkbox"
-									id="preserve-colors-unified"
-									checked={config.preserveColors ?? false}
-									onchange={(event) => {
-										const target = event.target as HTMLInputElement;
-										updatePreserveColors(target.checked);
-									}}
-									{disabled}
-									class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded"
-								/>
-								<label
-									for="preserve-colors-unified"
-									class="text-converter-primary cursor-pointer text-sm font-medium"
-								>
-									Enable Color
-								</label>
-							</div>
+						<div class="flex items-center gap-2">
+							<FerrariCheckbox
+								id="preserve-colors-unified"
+								checked={config.preserveColors ?? false}
+								{disabled}
+								label="Enable Color"
+								onchange={(checked) => updatePreserveColors(checked)}
+							/>
+							<PortalTooltipFixed
+								content={currentAlgorithm === 'edge' || currentAlgorithm === 'centerline'
+									? 'Enable to preserve original image colors in line strokes. Disable for traditional black line art.'
+									: currentAlgorithm === 'superpixel'
+										? 'Enable to preserve original image colors in regions. Disable for monochrome grayscale output with enhanced contrast.'
+										: 'Enable to preserve original image colors in stippled dots. Disable for monochrome grayscale stippling with enhanced contrast.'}
+								position="top"
+								size="md"
+							/>
 						</div>
 					</div>
 				{/if}

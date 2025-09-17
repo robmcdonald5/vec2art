@@ -8,7 +8,7 @@
 		Sparkles, // For Advanced Processing
 		Brush // For Artistic Effects
 	} from 'lucide-svelte';
-	import AlgorithmParameterControl from './AlgorithmParameterControl.svelte';
+	import FerrariParameterControl from '$lib/components/ui/FerrariParameterControl.svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { EDGE_METADATA } from '$lib/types/algorithm-configs';
 
@@ -227,14 +227,14 @@
 
 						{#if config.noiseFiltering}
 							<div class="ml-6 space-y-3 border-l-2 border-blue-100 pl-2 dark:border-blue-900">
-								<AlgorithmParameterControl
+								<FerrariParameterControl
 									name="noiseFilterSpatialSigma"
 									value={config.noiseFilterSpatialSigma}
 									metadata={EDGE_METADATA.noiseFilterSpatialSigma}
 									onChange={(value) => handleParameterChange('noiseFilterSpatialSigma', value)}
 									{disabled}
 								/>
-								<AlgorithmParameterControl
+								<FerrariParameterControl
 									name="noiseFilterRangeSigma"
 									value={config.noiseFilterRangeSigma}
 									metadata={EDGE_METADATA.noiseFilterRangeSigma}
@@ -274,14 +274,14 @@
 
 						{#if config.enableBackgroundRemoval}
 							<div class="ml-6 space-y-3 border-l-2 border-blue-100 pl-2 dark:border-blue-900">
-								<AlgorithmParameterControl
+								<FerrariParameterControl
 									name="backgroundRemovalAlgorithm"
 									value={config.backgroundRemovalAlgorithm}
 									metadata={EDGE_METADATA.backgroundRemovalAlgorithm}
 									onChange={(value) => handleParameterChange('backgroundRemovalAlgorithm', value)}
 									{disabled}
 								/>
-								<AlgorithmParameterControl
+								<FerrariParameterControl
 									name="backgroundRemovalStrength"
 									value={config.backgroundRemovalStrength}
 									metadata={EDGE_METADATA.backgroundRemovalStrength}
@@ -329,7 +329,7 @@
 						{#if EDGE_METADATA[param]}
 							{#if param === 'enableReversePass' || param === 'enableDiagonalPass'}
 								{#if config.passCount > 1}
-									<AlgorithmParameterControl
+									<FerrariParameterControl
 										name={param}
 										value={config[param]}
 										metadata={EDGE_METADATA[param]}
@@ -339,7 +339,7 @@
 								{/if}
 							{:else if param === 'directionalStrengthThreshold'}
 								{#if config.passCount > 1 && (config.enableReversePass || config.enableDiagonalPass)}
-									<AlgorithmParameterControl
+									<FerrariParameterControl
 										name={param}
 										value={config[param]}
 										metadata={EDGE_METADATA[param]}
@@ -348,7 +348,7 @@
 									/>
 								{/if}
 							{:else if isParameterVisible(param)}
-								<AlgorithmParameterControl
+								<FerrariParameterControl
 									name={param}
 									value={config[param]}
 									metadata={EDGE_METADATA[param]}
@@ -394,52 +394,7 @@
 				<div class="space-y-4">
 					{#each colorControlParams as param (param)}
 						{#if EDGE_METADATA[param] && isParameterVisible(param)}
-							<AlgorithmParameterControl
-								name={param}
-								value={config[param]}
-								metadata={EDGE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Advanced Processing -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (advancedExpanded = !advancedExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
-		>
-			<div class="flex items-center gap-3">
-				<div
-					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20"
-				>
-					<Sparkles class="h-4 w-4 text-amber-600 dark:text-amber-400" />
-				</div>
-				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
-					Advanced Processing
-				</span>
-			</div>
-			<ChevronDown
-				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {advancedExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
-
-		{#if advancedExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each advancedParams as param (param)}
-						{#if EDGE_METADATA[param] && isParameterVisible(param)}
-							<AlgorithmParameterControl
+							<FerrariParameterControl
 								name={param}
 								value={config[param]}
 								metadata={EDGE_METADATA[param]}
@@ -485,7 +440,7 @@
 					{#each artisticParams as param (param)}
 						{#if param === 'handDrawnPreset'}
 							<!-- Always show the preset selector -->
-							<AlgorithmParameterControl
+							<FerrariParameterControl
 								name={param}
 								value={config[param]}
 								metadata={EDGE_METADATA[param]}
@@ -494,7 +449,52 @@
 							/>
 						{:else if config.handDrawnPreset !== 'none' && EDGE_METADATA[param] && isParameterVisible(param)}
 							<!-- Only show sliders when preset is not 'none' -->
-							<AlgorithmParameterControl
+							<FerrariParameterControl
+								name={param}
+								value={config[param]}
+								metadata={EDGE_METADATA[param]}
+								onChange={(value) => handleParameterChange(param, value)}
+								{disabled}
+							/>
+						{/if}
+					{/each}
+				</div>
+			</div>
+		{/if}
+	</div>
+
+	<!-- Advanced Processing -->
+	<div
+		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
+	>
+		<button
+			type="button"
+			onclick={() => (advancedExpanded = !advancedExpanded)}
+			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
+		>
+			<div class="flex items-center gap-3">
+				<div
+					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20"
+				>
+					<Sparkles class="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+				</div>
+				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
+					Advanced Processing
+				</span>
+			</div>
+			<ChevronDown
+				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {advancedExpanded
+					? 'rotate-180'
+					: ''}"
+			/>
+		</button>
+
+		{#if advancedExpanded}
+			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
+				<div class="space-y-4">
+					{#each advancedParams as param (param)}
+						{#if EDGE_METADATA[param] && isParameterVisible(param)}
+							<FerrariParameterControl
 								name={param}
 								value={config[param]}
 								metadata={EDGE_METADATA[param]}
