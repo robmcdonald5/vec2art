@@ -356,6 +356,17 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		algorithms: ['edge'],
 		dependsOn: 'enableMultipass'
 	},
+	directionalStrengthThreshold: {
+		name: 'directionalStrengthThreshold',
+		label: 'Directional Sensitivity',
+		description: 'Sensitivity threshold for reverse and diagonal pass detection. Lower values detect more edges.',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.05,
+		category: 'algorithm',
+		algorithms: ['edge']
+	},
 	nmsLow: {
 		name: 'nmsLow',
 		label: 'NMS Low Threshold',

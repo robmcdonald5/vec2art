@@ -45,7 +45,13 @@
 		'backgroundRemovalStrength',
 		'backgroundRemovalAlgorithm'
 	];
-	const layerProcessingParams: string[] = ['enableMultipass', 'passCount'];
+	const layerProcessingParams: string[] = [
+		'enableMultipass',
+		'passCount',
+		'enableReversePass',
+		'enableDiagonalPass',
+		'directionalStrengthThreshold'
+	];
 	const colorControlParams: string[] = [
 		'linePreserveColors',
 		'lineColorAccuracy',
@@ -54,8 +60,6 @@
 		'lineColorSampling'
 	];
 	const edgeDetectionParams: string[] = [
-		'enableReversePass',
-		'enableDiagonalPass',
 		'nmsLow',
 		'nmsHigh',
 		'nmsSmoothBeforeNms'
@@ -232,14 +236,36 @@
 			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
 					{#each layerProcessingParams as param}
-						{#if EDGE_METADATA[param] && (!EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn])}
-							<AlgorithmParameterControl
-								name={param}
-								value={config[param]}
-								metadata={EDGE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
+						{#if EDGE_METADATA[param]}
+							{#if param === 'enableReversePass' || param === 'enableDiagonalPass'}
+								{#if config.enableMultipass && config.passCount > 1}
+									<AlgorithmParameterControl
+										name={param}
+										value={config[param]}
+										metadata={EDGE_METADATA[param]}
+										onChange={(value) => handleParameterChange(param, value)}
+										{disabled}
+									/>
+								{/if}
+							{:else if param === 'directionalStrengthThreshold'}
+								{#if config.enableMultipass && config.passCount > 1 && (config.enableReversePass || config.enableDiagonalPass)}
+									<AlgorithmParameterControl
+										name={param}
+										value={config[param]}
+										metadata={EDGE_METADATA[param]}
+										onChange={(value) => handleParameterChange(param, value)}
+										{disabled}
+									/>
+								{/if}
+							{:else if !EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn]}
+								<AlgorithmParameterControl
+									name={param}
+									value={config[param]}
+									metadata={EDGE_METADATA[param]}
+									onChange={(value) => handleParameterChange(param, value)}
+									{disabled}
+								/>
+							{/if}
 						{/if}
 					{/each}
 				</div>
