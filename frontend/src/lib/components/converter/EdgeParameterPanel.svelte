@@ -5,7 +5,6 @@
 		Filter, // For Preprocessing
 		Layers, // For Layer Processing
 		Palette, // For Color Controls
-		ScanLine, // For Edge Detection
 		Sparkles, // For Advanced Processing
 		Brush // For Artistic Effects
 	} from 'lucide-svelte';
@@ -23,7 +22,6 @@
 	let preprocessingExpanded = $state(true);
 	let layerProcessingExpanded = $state(false);
 	let colorControlsExpanded = $state(false);
-	let edgeDetectionExpanded = $state(false);
 	let advancedExpanded = $state(false);
 	let artisticExpanded = $state(false);
 
@@ -58,11 +56,6 @@
 		'maxColorsPerPath',
 		'colorTolerance',
 		'lineColorSampling'
-	];
-	const edgeDetectionParams: string[] = [
-		'nmsLow',
-		'nmsHigh',
-		'nmsSmoothBeforeNms'
 	];
 	const advancedParams: string[] = [
 		'enableEtfFdog',
@@ -318,50 +311,6 @@
 		{/if}
 	</div>
 
-	<!-- Edge Detection -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (edgeDetectionExpanded = !edgeDetectionExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
-		>
-			<div class="flex items-center gap-3">
-				<div
-					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20"
-				>
-					<ScanLine class="h-4 w-4 text-green-600 dark:text-green-400" />
-				</div>
-				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
-					Edge Detection
-				</span>
-			</div>
-			<ChevronDown
-				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {edgeDetectionExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
-
-		{#if edgeDetectionExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each edgeDetectionParams as param}
-						{#if EDGE_METADATA[param] && (!EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn])}
-							<AlgorithmParameterControl
-								name={param}
-								value={config[param]}
-								metadata={EDGE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
 
 	<!-- Advanced Processing -->
 	<div

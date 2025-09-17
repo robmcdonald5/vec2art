@@ -68,11 +68,7 @@ export interface EdgeConfig extends CoreConfig {
 	fdogSigmaC: number; // 0.5-4.0
 	fdogTau: number; // 0.0-1.0
 
-	// Non-maximum suppression
-	nmsLow: number; // 0.01-0.2
-	nmsHigh: number; // 0.05-0.5
-	nmsSmoothBeforeNms?: boolean;
-	nmsSmoothSigma?: number; // 0.5-2.0
+	// Non-maximum suppression is handled automatically by detail level
 
 	// Flow-guided tracing
 	enableFlowTracing: boolean;
@@ -364,36 +360,6 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		min: 0.0,
 		max: 1.0,
 		step: 0.05,
-		category: 'algorithm',
-		algorithms: ['edge']
-	},
-	nmsLow: {
-		name: 'nmsLow',
-		label: 'NMS Low Threshold',
-		description: 'Low hysteresis threshold for edge linking.',
-		type: 'range',
-		min: 0.01,
-		max: 0.2,
-		step: 0.01,
-		category: 'algorithm',
-		algorithms: ['edge']
-	},
-	nmsHigh: {
-		name: 'nmsHigh',
-		label: 'NMS High Threshold',
-		description: 'High hysteresis threshold for strong edges.',
-		type: 'range',
-		min: 0.05,
-		max: 0.5,
-		step: 0.01,
-		category: 'algorithm',
-		algorithms: ['edge']
-	},
-	nmsSmoothBeforeNms: {
-		name: 'nmsSmoothBeforeNms',
-		label: 'Smooth Before NMS',
-		description: 'Apply Gaussian smoothing before non-maximum suppression.',
-		type: 'boolean',
 		category: 'algorithm',
 		algorithms: ['edge']
 	},

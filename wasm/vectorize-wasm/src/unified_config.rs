@@ -91,7 +91,8 @@ pub fn apply_config_json(
     // Apply algorithm-specific settings based on backend
     match config.backend {
         TraceBackend::Edge => {
-            // Edge-specific settings are mostly covered by core settings
+            // Edge-specific settings will be handled directly by the core algorithm
+            // NMS thresholds are currently calculated from detail level in core implementation
         }
         TraceBackend::Centerline => {
             builder = builder
