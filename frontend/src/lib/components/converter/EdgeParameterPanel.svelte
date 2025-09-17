@@ -9,6 +9,7 @@
 		Brush // For Artistic Effects
 	} from 'lucide-svelte';
 	import FerrariParameterControl from '$lib/components/ui/FerrariParameterControl.svelte';
+	import PortalTooltipFixed from '$lib/components/ui/tooltip/PortalTooltipFixed.svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { EDGE_METADATA } from '$lib/types/algorithm-configs';
 
@@ -213,9 +214,16 @@
 									{disabled}
 									class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
-								<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
-									Noise Filtering
-								</span>
+								<div class="flex items-center gap-2">
+									<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
+										Noise Filtering
+									</span>
+									<PortalTooltipFixed
+										content="Advanced bilateral filtering to reduce image noise while preserving edges. Helps create cleaner line art from noisy input images."
+										position="top"
+										size="md"
+									/>
+								</div>
 							</label>
 							{#if config.noiseFiltering}
 								<div class="flex items-center gap-1">
@@ -260,9 +268,16 @@
 									{disabled}
 									class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
-								<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
-									Background Removal
-								</span>
+								<div class="flex items-center gap-2">
+									<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
+										Background Removal
+									</span>
+									<PortalTooltipFixed
+										content="Automatically removes background from images using advanced segmentation algorithms. Useful for isolating foreground objects before line tracing."
+										position="top"
+										size="md"
+									/>
+								</div>
 							</label>
 							{#if config.enableBackgroundRemoval}
 								<div class="flex items-center gap-1">
