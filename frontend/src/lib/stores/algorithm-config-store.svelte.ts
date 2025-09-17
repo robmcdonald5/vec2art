@@ -241,7 +241,10 @@ class AlgorithmConfigStore {
 			this.switchToCustomIfNeeded(paramName);
 		}
 
-		this.updateConfig(algorithm, updates);
+		// Enforce minimum values for hand-drawn sliders when not on 'none' preset
+		const processedUpdates = this.enforceHandDrawnMinimums(updates);
+
+		this.updateConfig(algorithm, processedUpdates);
 	}
 
 	/**
@@ -479,7 +482,11 @@ class AlgorithmConfigStore {
 			handDrawnVariableWeights: 0.7,
 			handDrawnTapering: 0.6
 		},
-		custom: { handDrawnTremorStrength: 0.0, handDrawnVariableWeights: 0.0, handDrawnTapering: 0.0 } // Custom preserves current values
+		custom: {
+			handDrawnTremorStrength: 0.1,
+			handDrawnVariableWeights: 0.1,
+			handDrawnTapering: 0.1
+		} // Custom starts with minimum safe values
 	};
 
 	/**
@@ -492,10 +499,23 @@ class AlgorithmConfigStore {
 			// Update the config with preset values for edge/centerline algorithms
 			if (currentConfig.algorithm === 'edge' || currentConfig.algorithm === 'centerline') {
 				if (preset === 'custom') {
-					// For custom preset, only update the preset itself, preserve current slider values
-					this.updateCurrentConfig({
-						handDrawnPreset: preset as any
-					});
+					// For custom preset, enforce minimum values if switching from 'none'
+					const edgeConfig = currentConfig as any;
+					if (edgeConfig.handDrawnPreset === 'none') {
+						// Switching from none to custom, apply minimum safe values
+						const values = this.handDrawnPresetValues.custom;
+						this.updateCurrentConfig({
+							handDrawnPreset: preset as any,
+							handDrawnTremorStrength: values.handDrawnTremorStrength,
+							handDrawnVariableWeights: values.handDrawnVariableWeights,
+							handDrawnTapering: values.handDrawnTapering
+						});
+					} else {
+						// Already have non-zero values, just update preset
+						this.updateCurrentConfig({
+							handDrawnPreset: preset as any
+						});
+					}
 				} else {
 					// For named presets, apply the preset values to sliders
 					const values =
@@ -509,6 +529,41 @@ class AlgorithmConfigStore {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Enforce minimum values for hand-drawn sliders when not on 'none' preset
+	 */
+	private enforceHandDrawnMinimums(updates: Partial<AlgorithmConfig>): Partial<AlgorithmConfig> {
+		const currentConfig = this.getCurrentConfig();
+		const processedUpdates = { ...updates };
+
+		// Only enforce minimums for edge/centerline algorithms
+		if (currentConfig.algorithm === 'edge' || currentConfig.algorithm === 'centerline') {
+			const edgeConfig = currentConfig as any;
+			const currentPreset = processedUpdates.handDrawnPreset || edgeConfig.handDrawnPreset;
+
+			// Only enforce minimums when not on 'none' preset
+			if (currentPreset !== 'none') {
+				const handDrawnSliders = [
+					'handDrawnTremorStrength',
+					'handDrawnVariableWeights',
+					'handDrawnTapering'
+				];
+
+				for (const param of handDrawnSliders) {
+					if (param in processedUpdates) {
+						const value = processedUpdates[param as keyof AlgorithmConfig] as number;
+						if (value < 0.1) {
+							// Enforce minimum value to prevent crashes
+							(processedUpdates as any)[param] = 0.1;
+						}
+					}
+				}
+			}
+		}
+
+		return processedUpdates;
 	}
 
 	/**

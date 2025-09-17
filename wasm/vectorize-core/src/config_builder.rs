@@ -450,15 +450,21 @@ impl ConfigBuilder {
 
     /// Set superpixel initialization pattern: "square", "hexagonal", or "poisson"
     pub fn superpixel_initialization_pattern(mut self, pattern: &str) -> ConfigBuilderResult<Self> {
-        log::info!("🔧 ConfigBuilder: Setting superpixel_initialization_pattern to: {}", pattern);
+        log::info!(
+            "🔧 ConfigBuilder: Setting superpixel_initialization_pattern to: {}",
+            pattern
+        );
         self.validate_superpixel_initialization_pattern(pattern)?;
         self.superpixel_initialization_pattern = Some(pattern.to_string());
         log::info!("✅ ConfigBuilder: Superpixel initialization pattern set successfully");
         Ok(self)
     }
-    
+
     /// Deprecated: Use superpixel_initialization_pattern instead
-    #[deprecated(since = "0.1.0", note = "Use superpixel_initialization_pattern instead")]
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use superpixel_initialization_pattern instead"
+    )]
     pub fn initialization_pattern(self, pattern: &str) -> ConfigBuilderResult<Self> {
         self.superpixel_initialization_pattern(pattern)
     }
@@ -563,7 +569,7 @@ impl ConfigBuilder {
             .douglas_peucker_epsilon(1.0)
             .unwrap()
             .enable_width_modulation(false)
-            .max_processing_time_ms(120000)  // 2 minutes for technical drawings
+            .max_processing_time_ms(120000) // 2 minutes for technical drawings
             .unwrap()
     }
 
@@ -660,14 +666,23 @@ impl ConfigBuilder {
         if let Some(pattern) = &self.superpixel_initialization_pattern {
             let enum_pattern = match pattern.as_str() {
                 "square" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Square,
-                "hexagonal" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal,
+                "hexagonal" => {
+                    crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal
+                }
                 "poisson" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson,
                 _ => {
-                    log::warn!("🚨 ConfigBuilder: Unknown pattern '{}', defaulting to Poisson", pattern);
+                    log::warn!(
+                        "🚨 ConfigBuilder: Unknown pattern '{}', defaulting to Poisson",
+                        pattern
+                    );
                     crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson
                 }
             };
-            log::info!("🔧 ConfigBuilder: Converted pattern '{}' to enum: {:?}", pattern, enum_pattern);
+            log::info!(
+                "🔧 ConfigBuilder: Converted pattern '{}' to enum: {:?}",
+                pattern,
+                enum_pattern
+            );
             config.superpixel_initialization_pattern = enum_pattern;
         }
         if let Some(fill) = self.fill_regions {
@@ -713,14 +728,23 @@ impl ConfigBuilder {
         if let Some(pattern) = &self.superpixel_initialization_pattern {
             let enum_pattern = match pattern.as_str() {
                 "square" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Square,
-                "hexagonal" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal,
+                "hexagonal" => {
+                    crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal
+                }
                 "poisson" => crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson,
                 _ => {
-                    log::warn!("🚨 ConfigBuilder: Unknown pattern '{}', defaulting to Poisson", pattern);
+                    log::warn!(
+                        "🚨 ConfigBuilder: Unknown pattern '{}', defaulting to Poisson",
+                        pattern
+                    );
                     crate::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson
                 }
             };
-            log::info!("🔧 ConfigBuilder: Converted pattern '{}' to enum: {:?}", pattern, enum_pattern);
+            log::info!(
+                "🔧 ConfigBuilder: Converted pattern '{}' to enum: {:?}",
+                pattern,
+                enum_pattern
+            );
             config.superpixel_initialization_pattern = enum_pattern;
         }
         if let Some(fill) = self.fill_regions {
@@ -1018,7 +1042,8 @@ impl ConfigBuilder {
                 "Processing time must be greater than 0".to_string(),
             ));
         }
-        if time_ms > 3600000 {  // 1 hour maximum
+        if time_ms > 3600000 {
+            // 1 hour maximum
             return Err(ConfigBuilderError::InvalidParameter(format!(
                 "Processing time too large (max: 3600000ms = 1 hour), got: {time_ms}ms"
             )));
@@ -1029,19 +1054,19 @@ impl ConfigBuilder {
     fn validate_complete_config(&self) -> ConfigBuilderResult<()> {
         // 1. Validate hierarchical dependencies (critical)
         self.validate_etf_fdog_dependencies()?;
-        
+
         // 2. Validate backend-specific settings consistency
         self.validate_backend_specific_settings()?;
-        
+
         // 3. Validate value ranges and prevent division by zero
         self.validate_numeric_ranges()?;
-        
+
         // 4. Validate multipass logic consistency
         self.validate_multipass_logic()?;
-        
+
         // 5. Validate memory safety constraints
         self.validate_memory_safety()?;
-        
+
         // 6. Validate hand-drawn custom overrides
         self.validate_hand_drawn_overrides()?;
 
@@ -1067,7 +1092,8 @@ impl ConfigBuilder {
         // Transitive dependency check
         if self.config.enable_bezier_fitting && !self.config.enable_etf_fdog {
             return Err(ConfigBuilderError::ValidationFailed(
-                "Bézier fitting requires ETF/FDoG processing (enable_etf_fdog must be true)".to_string(),
+                "Bézier fitting requires ETF/FDoG processing (enable_etf_fdog must be true)"
+                    .to_string(),
             ));
         }
 
@@ -1080,26 +1106,34 @@ impl ConfigBuilder {
             TraceBackend::Edge | TraceBackend::Centerline => {
                 // ETF/FDoG settings only apply to Edge/Centerline backends
                 // Dot/Superpixel specific settings should be ignored (but warn if set inappropriately)
-                if self.config.dot_density_threshold != TraceLowConfig::default().dot_density_threshold
+                if self.config.dot_density_threshold
+                    != TraceLowConfig::default().dot_density_threshold
                     || self.config.dot_min_radius != TraceLowConfig::default().dot_min_radius
-                    || self.config.dot_max_radius != TraceLowConfig::default().dot_max_radius {
+                    || self.config.dot_max_radius != TraceLowConfig::default().dot_max_radius
+                {
                     // This is not an error, but settings will be ignored
                 }
             }
             TraceBackend::Dots => {
                 // ETF/FDoG settings don't apply to dots backend and may cause confusion
-                if self.config.enable_etf_fdog || self.config.enable_flow_tracing || self.config.enable_bezier_fitting {
+                if self.config.enable_etf_fdog
+                    || self.config.enable_flow_tracing
+                    || self.config.enable_bezier_fitting
+                {
                     return Err(ConfigBuilderError::ValidationFailed(
                         "ETF/FDoG, flow tracing, and Bézier fitting are not supported by the Dots backend".to_string(),
                     ));
                 }
-                
+
                 // Centerline settings don't apply
-                if self.config.enable_adaptive_threshold != TraceLowConfig::default().enable_adaptive_threshold
-                    || self.config.enable_width_modulation != TraceLowConfig::default().enable_width_modulation {
+                if self.config.enable_adaptive_threshold
+                    != TraceLowConfig::default().enable_adaptive_threshold
+                    || self.config.enable_width_modulation
+                        != TraceLowConfig::default().enable_width_modulation
+                {
                     // Settings will be ignored but not an error
                 }
-                
+
                 // Superpixel settings don't apply
                 if self.num_superpixels.is_some() || self.compactness.is_some() {
                     // Settings will be ignored but not an error
@@ -1107,14 +1141,19 @@ impl ConfigBuilder {
             }
             TraceBackend::Superpixel => {
                 // ETF/FDoG settings don't apply to superpixel backend
-                if self.config.enable_etf_fdog || self.config.enable_flow_tracing || self.config.enable_bezier_fitting {
+                if self.config.enable_etf_fdog
+                    || self.config.enable_flow_tracing
+                    || self.config.enable_bezier_fitting
+                {
                     return Err(ConfigBuilderError::ValidationFailed(
                         "ETF/FDoG, flow tracing, and Bézier fitting are not supported by the Superpixel backend".to_string(),
                     ));
                 }
-                
+
                 // Dot settings don't apply
-                if self.config.dot_density_threshold != TraceLowConfig::default().dot_density_threshold {
+                if self.config.dot_density_threshold
+                    != TraceLowConfig::default().dot_density_threshold
+                {
                     // Settings will be ignored but not an error
                 }
             }
@@ -1192,7 +1231,8 @@ impl ConfigBuilder {
 
         // Conservative/aggressive detail levels only make sense with multipass
         if (self.config.conservative_detail.is_some() || self.config.aggressive_detail.is_some())
-            && !self.config.enable_multipass {
+            && !self.config.enable_multipass
+        {
             return Err(ConfigBuilderError::ValidationFailed(
                 "Conservative/aggressive detail settings require multipass processing to be enabled".to_string(),
             ));
@@ -1213,7 +1253,10 @@ impl ConfigBuilder {
                         ));
                     }
                     // No additional constraints needed - deduplication algorithm is now optimized
-                    log::debug!("Directional passes enabled with {} passes", self.config.pass_count);
+                    log::debug!(
+                        "Directional passes enabled with {} passes",
+                        self.config.pass_count
+                    );
                 }
             }
         }
@@ -1245,9 +1288,11 @@ impl ConfigBuilder {
                     "Number of superpixels exceeds memory safety limit (2000)".to_string(),
                 ));
             }
-            
+
             // Check SLIC iterations don't cause timeout
-            let slic_iterations = self.slic_iterations.unwrap_or(self.config.superpixel_slic_iterations);
+            let slic_iterations = self
+                .slic_iterations
+                .unwrap_or(self.config.superpixel_slic_iterations);
             if slic_iterations > 50 {
                 return Err(ConfigBuilderError::ValidationFailed(
                     "SLIC iterations exceed reasonable limit (50)".to_string(),
@@ -1295,6 +1340,7 @@ impl ConfigBuilder {
             Some("medium") => HandDrawnPresets::medium(),
             Some("strong") => HandDrawnPresets::strong(),
             Some("sketchy") => HandDrawnPresets::sketchy(),
+            Some("custom") => HandDrawnPresets::subtle(), // Use subtle as base for custom
             Some(other) => {
                 return Err(ConfigBuilderError::InvalidPreset(format!(
                     "Invalid hand-drawn preset: {other}"
@@ -1336,20 +1382,27 @@ impl ConfigBuilder {
     }
 
     /// Set background removal algorithm
-    pub fn background_removal_algorithm(mut self, algorithm: crate::algorithms::tracing::trace_low::BackgroundRemovalAlgorithm) -> Self {
+    pub fn background_removal_algorithm(
+        mut self,
+        algorithm: crate::algorithms::tracing::trace_low::BackgroundRemovalAlgorithm,
+    ) -> Self {
         self.config.background_removal_algorithm = algorithm;
         self
     }
 
     /// Set background removal algorithm by string name (otsu, adaptive, auto)
-    pub fn background_removal_algorithm_by_name(mut self, algorithm: &str) -> ConfigBuilderResult<Self> {
+    pub fn background_removal_algorithm_by_name(
+        mut self,
+        algorithm: &str,
+    ) -> ConfigBuilderResult<Self> {
         use crate::algorithms::tracing::trace_low::BackgroundRemovalAlgorithm;
         let algo = match algorithm.to_lowercase().as_str() {
             "otsu" => BackgroundRemovalAlgorithm::Otsu,
             "adaptive" => BackgroundRemovalAlgorithm::Adaptive,
             "auto" => BackgroundRemovalAlgorithm::Auto,
             _ => return Err(ConfigBuilderError::InvalidParameter(format!(
-                "Invalid background removal algorithm: '{}'. Valid options: otsu, adaptive, auto", algorithm
+                "Invalid background removal algorithm: '{}'. Valid options: otsu, adaptive, auto",
+                algorithm
             ))),
         };
         self.config.background_removal_algorithm = algo;
@@ -1535,22 +1588,20 @@ mod tests {
             .build();
         assert!(result.is_err());
         if let Err(e) = result {
-            assert!(e.to_string().contains("Multipass enabled but pass_count is 1"));
+            assert!(e
+                .to_string()
+                .contains("Multipass enabled but pass_count is 1"));
         }
 
         // Test memory safety - parameter validation catches excessive values
-        let result = ConfigBuilder::new()
-            .max_image_size(20000);
+        let result = ConfigBuilder::new().max_image_size(20000);
         assert!(result.is_err());
         if let Err(e) = result {
             assert!(e.to_string().contains("Maximum image size"));
         }
 
         // Test memory safety validation works - should pass since 8000 is within parameter limits (512-8192) and memory limits (<16384)
-        let result = ConfigBuilder::new()
-            .max_image_size(8000)
-            .unwrap()
-            .build();
+        let result = ConfigBuilder::new().max_image_size(8000).unwrap().build();
         assert!(result.is_ok(), "Max image size 8000 should be valid");
 
         // Test numeric range validation (odd window size)

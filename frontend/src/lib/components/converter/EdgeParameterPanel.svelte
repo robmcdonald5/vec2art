@@ -396,7 +396,17 @@
 			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
 					{#each artisticParams as param}
-						{#if EDGE_METADATA[param] && (!EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn])}
+						{#if param === 'handDrawnPreset'}
+							<!-- Always show the preset selector -->
+							<AlgorithmParameterControl
+								name={param}
+								value={config[param]}
+								metadata={EDGE_METADATA[param]}
+								onChange={(value) => handleParameterChange(param, value)}
+								{disabled}
+							/>
+						{:else if config.handDrawnPreset !== 'none' && EDGE_METADATA[param] && (!EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn])}
+							<!-- Only show sliders when preset is not 'none' -->
 							<AlgorithmParameterControl
 								name={param}
 								value={config[param]}
