@@ -20,8 +20,9 @@ export type DotGridPattern = 'grid' | 'hexagonal' | 'random';
 // Dot shapes
 export type DotShape = 'circle' | 'square' | 'diamond';
 
-// Color sampling methods
-export type ColorSamplingMethod = 'average' | 'dominant' | 'gradient';
+// Color sampling methods (use generated types from WASM)
+import type { ColorSamplingMethod } from './generated/ColorSamplingMethod';
+export type { ColorSamplingMethod } from './generated/ColorSamplingMethod';
 
 // Palette reduction methods
 export type PaletteMethod = 'kmeans' | 'median_cut' | 'octree';
@@ -602,9 +603,10 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		description: 'How to sample colors from the source image.',
 		type: 'select',
 		options: [
-			{ value: 'average', label: 'Average' },
-			{ value: 'dominant', label: 'Dominant' },
-			{ value: 'gradient', label: 'Gradient' }
+			{ value: 'DominantColor', label: 'Dominant Color' },
+			{ value: 'GradientMapping', label: 'Gradient Mapping' },
+			{ value: 'ContentAware', label: 'Content Aware' },
+			{ value: 'Adaptive', label: 'Adaptive' }
 		],
 		category: 'color',
 		algorithms: ['edge', 'centerline'],

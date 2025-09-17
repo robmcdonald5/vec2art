@@ -248,6 +248,8 @@ fn extract_gradient_colors(
 }
 
 /// Content-aware color extraction with edge analysis
+/// This method analyzes the local image structure around the path to determine
+/// the most appropriate color sampling strategy for each segment
 fn extract_content_aware_colors(
     path: &[Point],
     color_map: &[Rgba<u8>],
@@ -256,19 +258,132 @@ fn extract_content_aware_colors(
     accuracy: f32,
     tolerance: f32,
 ) -> PathColorInfo {
-    // For now, use gradient method with enhanced sampling
-    // TODO: Implement actual content-aware analysis with edge detection
-    extract_gradient_colors(
-        path,
-        color_map,
-        image_width,
-        image_height,
-        accuracy,
-        tolerance,
-    )
+    if path.len() < 3 {
+        return extract_dominant_color(path, color_map, image_width, image_height, accuracy);
+    }
+
+    // Enhanced sampling based on path complexity and accuracy
+    let sample_count = ((path.len() as f32 * accuracy).round() as usize)
+        .max(5)
+        .min(20);
+
+    let mut sample_points = Vec::with_capacity(sample_count);
+    let mut edge_strengths = Vec::with_capacity(sample_count);
+
+    // Sample along path and analyze local edge structure
+    for i in 0..sample_count {
+        let t = i as f32 / (sample_count - 1) as f32;
+        let idx = (t * (path.len() - 1) as f32).round() as usize;
+        let point = &path[idx];
+
+        // Sample color at point
+        if let Some(color) = sample_color_at_point(point, color_map, image_width, image_height) {
+            // Analyze local edge strength around this point
+            let edge_strength = analyze_local_edges(
+                point,
+                color_map,
+                image_width,
+                image_height,
+                2, // radius for edge detection
+            );
+
+            // Weight samples by edge strength - prioritize colors at edges
+            let weight = 1.0 + edge_strength * 2.0; // Higher weight for edge colors
+
+            sample_points.push(ColorSample {
+                position: t,
+                color,
+                weight,
+            });
+            edge_strengths.push(edge_strength);
+        }
+    }
+
+    if sample_points.is_empty() {
+        return PathColorInfo {
+            primary_color: "#000000".to_string(),
+            secondary_color: None,
+            color_confidence: 0.0,
+            sample_points: Vec::new(),
+        };
+    }
+
+    // Identify high-edge regions (potential color boundaries)
+    let avg_edge_strength: f32 = edge_strengths.iter().sum::<f32>() / edge_strengths.len() as f32;
+    let high_edge_threshold = avg_edge_strength * 1.5;
+
+    // Segment the path based on edge discontinuities
+    let mut segments = Vec::new();
+    let mut current_segment = Vec::new();
+
+    for (i, (sample, edge_strength)) in sample_points.iter().zip(edge_strengths.iter()).enumerate() {
+        current_segment.push(sample.clone());
+
+        // Check if this is a color boundary
+        if *edge_strength > high_edge_threshold && i < sample_points.len() - 1 {
+            // Check color difference with next sample
+            if i + 1 < sample_points.len() {
+                let color_diff = calculate_color_distance(&sample.color, &sample_points[i + 1].color);
+                if color_diff > tolerance * 30.0 {
+                    // Significant color boundary detected
+                    if !current_segment.is_empty() {
+                        segments.push(current_segment.clone());
+                        current_segment.clear();
+                    }
+                }
+            }
+        }
+    }
+
+    // Add remaining segment
+    if !current_segment.is_empty() {
+        segments.push(current_segment);
+    }
+
+    // Determine primary and secondary colors based on segments
+    if segments.len() == 1 {
+        // Single segment - use weighted average
+        let weighted_colors: Vec<_> = segments[0].iter().map(|s| s.color).collect();
+        let weights: Vec<_> = segments[0].iter().map(|s| s.weight).collect();
+        let primary = calculate_weighted_average(&weighted_colors, &weights);
+
+        PathColorInfo {
+            primary_color: rgba_to_hex(&primary),
+            secondary_color: None,
+            color_confidence: 0.8 + accuracy * 0.2,
+            sample_points,
+        }
+    } else {
+        // Multiple segments - use most prominent colors
+        let mut segment_colors = Vec::new();
+        for segment in &segments {
+            let weighted_colors: Vec<_> = segment.iter().map(|s| s.color).collect();
+            let weights: Vec<_> = segment.iter().map(|s| s.weight).collect();
+            let avg_color = calculate_weighted_average(&weighted_colors, &weights);
+            segment_colors.push((avg_color, segment.len() as f32));
+        }
+
+        // Sort by segment size (prominence)
+        segment_colors.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+        let primary = segment_colors[0].0;
+        let secondary = if segment_colors.len() > 1
+            && segment_colors[1].1 > segment_colors[0].1 * 0.3 {
+            Some(rgba_to_hex(&segment_colors[1].0))
+        } else {
+            None
+        };
+
+        PathColorInfo {
+            primary_color: rgba_to_hex(&primary),
+            secondary_color: secondary,
+            color_confidence: 0.7 + accuracy * 0.3,
+            sample_points,
+        }
+    }
 }
 
-/// Adaptive color extraction - chooses best method based on content
+/// Adaptive color extraction - intelligently chooses best method based on content analysis
 fn extract_adaptive_colors(
     path: &[Point],
     color_map: &[Rgba<u8>],
@@ -282,17 +397,30 @@ fn extract_adaptive_colors(
         return extract_dominant_color(path, color_map, image_width, image_height, accuracy);
     }
 
-    // Quick analysis to determine best method
-    let quick_samples = 5;
+    // Comprehensive analysis to determine best method
+    let analysis_samples = (7.0 * accuracy).round() as usize;
     let mut colors = Vec::new();
+    let mut edge_strengths = Vec::new();
+    let mut positions = Vec::new();
 
-    for i in 0..quick_samples {
-        let t = i as f32 / (quick_samples - 1) as f32;
+    for i in 0..analysis_samples {
+        let t = i as f32 / (analysis_samples - 1) as f32;
         let idx = (t * (path.len() - 1) as f32).round() as usize;
         let point = &path[idx];
 
         if let Some(color) = sample_color_at_point(point, color_map, image_width, image_height) {
             colors.push(color);
+            positions.push(t);
+
+            // Analyze local edge strength for content awareness
+            let edge_strength = analyze_local_edges(
+                point,
+                color_map,
+                image_width,
+                image_height,
+                1, // smaller radius for quick analysis
+            );
+            edge_strengths.push(edge_strength);
         }
     }
 
@@ -300,11 +428,39 @@ fn extract_adaptive_colors(
         return extract_dominant_color(path, color_map, image_width, image_height, accuracy);
     }
 
-    // Analyze color variation
+    // Calculate metrics for decision making
     let color_variance = calculate_color_variance(&colors);
+    let avg_edge_strength: f32 = edge_strengths.iter().sum::<f32>() / edge_strengths.len() as f32;
 
-    if color_variance > tolerance * 50.0 {
-        // High variation - use gradient method
+    // Check for gradient pattern
+    let has_gradient = if colors.len() >= 3 {
+        let start_color = colors[0];
+        let mid_color = colors[colors.len() / 2];
+        let end_color = colors[colors.len() - 1];
+
+        let start_to_mid = calculate_color_distance(&start_color, &mid_color);
+        let mid_to_end = calculate_color_distance(&mid_color, &end_color);
+        let start_to_end = calculate_color_distance(&start_color, &end_color);
+
+        // Check if colors form a smooth progression
+        (start_to_mid + mid_to_end) < start_to_end * 1.3
+    } else {
+        false
+    };
+
+    // Decision tree based on multiple factors
+    if avg_edge_strength > 0.5 && color_variance > tolerance * 30.0 {
+        // High edge activity with color variation -> content-aware
+        extract_content_aware_colors(
+            path,
+            color_map,
+            image_width,
+            image_height,
+            accuracy,
+            tolerance,
+        )
+    } else if has_gradient && color_variance > tolerance * 20.0 {
+        // Smooth gradient detected -> gradient mapping
         extract_gradient_colors(
             path,
             color_map,
@@ -313,9 +469,19 @@ fn extract_adaptive_colors(
             accuracy,
             tolerance,
         )
-    } else {
-        // Low variation - use dominant color
+    } else if color_variance < tolerance * 10.0 {
+        // Very low variation -> dominant color
         extract_dominant_color(path, color_map, image_width, image_height, accuracy)
+    } else {
+        // Moderate variation without clear pattern -> enhanced gradient for subtle transitions
+        extract_gradient_colors(
+            path,
+            color_map,
+            image_width,
+            image_height,
+            accuracy.min(0.8), // Slightly reduce accuracy for smoother results
+            tolerance * 1.2,   // Increase tolerance for better color grouping
+        )
     }
 }
 
@@ -388,6 +554,69 @@ fn calculate_color_confidence(colors: &[Rgba<u8>]) -> f32 {
     // Convert deviation to confidence (0.0-1.0)
     // Lower deviation = higher confidence
     (1.0 - (avg_deviation / 100.0)).max(0.0).min(1.0)
+}
+
+/// Analyze local edge strength around a point using Sobel-like edge detection
+fn analyze_local_edges(
+    point: &Point,
+    color_map: &[Rgba<u8>],
+    image_width: u32,
+    image_height: u32,
+    radius: u32,
+) -> f32 {
+    let x = point.x.round() as i32;
+    let y = point.y.round() as i32;
+
+    let mut total_gradient = 0.0;
+    let mut sample_count = 0;
+
+    // Sample in a grid around the point
+    for dy in -(radius as i32)..=(radius as i32) {
+        for dx in -(radius as i32)..=(radius as i32) {
+            let px = x + dx;
+            let py = y + dy;
+
+            // Check bounds
+            if px > 0 && py > 0 && (px as u32) < image_width - 1 && (py as u32) < image_height - 1 {
+                let center_idx = (py as u32 * image_width + px as u32) as usize;
+
+                // Get neighboring pixels for gradient calculation
+                let left_idx = (py as u32 * image_width + (px - 1) as u32) as usize;
+                let right_idx = (py as u32 * image_width + (px + 1) as u32) as usize;
+                let top_idx = ((py - 1) as u32 * image_width + px as u32) as usize;
+                let bottom_idx = ((py + 1) as u32 * image_width + px as u32) as usize;
+
+                if center_idx < color_map.len()
+                    && left_idx < color_map.len()
+                    && right_idx < color_map.len()
+                    && top_idx < color_map.len()
+                    && bottom_idx < color_map.len() {
+
+                    let center = &color_map[center_idx];
+                    let left = &color_map[left_idx];
+                    let right = &color_map[right_idx];
+                    let top = &color_map[top_idx];
+                    let bottom = &color_map[bottom_idx];
+
+                    // Calculate horizontal and vertical gradients
+                    let gx = calculate_color_distance(left, right);
+                    let gy = calculate_color_distance(top, bottom);
+
+                    // Magnitude of gradient
+                    let gradient = (gx * gx + gy * gy).sqrt();
+                    total_gradient += gradient;
+                    sample_count += 1;
+                }
+            }
+        }
+    }
+
+    if sample_count > 0 {
+        // Normalize to 0-1 range (assuming max color distance is ~441.67 for RGB)
+        (total_gradient / sample_count as f32) / 441.67
+    } else {
+        0.0
+    }
 }
 
 /// Calculate perceptual color distance (simplified Delta E)
