@@ -4,6 +4,7 @@
 
 # Claude Code directory (research, settings, documentation)
 .claude/
+.mcp.json
 
 # Claude Code documentation files (project and local scope)
 **/CLAUDE.md
