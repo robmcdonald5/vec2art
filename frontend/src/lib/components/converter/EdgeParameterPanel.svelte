@@ -28,7 +28,7 @@
 	// Get reactive config from the store using $derived
 	const config = $derived(algorithmConfigStore.edge) as Record<string, any>;
 
-	// Handle parameter changes
+	// Handle parameter changes with dependency chain management
 	function handleParameterChange(name: string, value: any) {
 		console.log('[EdgeParameterPanel] Updating parameter:', name, 'to value:', value);
 
@@ -37,13 +37,80 @@
 			console.log('[EdgeParameterPanel] Applying hand-drawn preset:', value);
 			algorithmConfigStore.applyHandDrawnPreset(value);
 		} else {
+			// Handle dependency chain collapse when disabling settings
+			const updates: Record<string, any> = { [name]: value };
+
+			if (value === false) {
+				// If disabling a setting, cascade disable all dependent settings
+				if (name === 'enableEtfFdog') {
+					// ETF/FDoG disabled -> disable Flow Tracing and Bezier Fitting
+					updates.enableFlowTracing = false;
+					updates.enableBezierFitting = false;
+					console.log(
+						'[EdgeParameterPanel] ETF/FDoG disabled, cascading to disable Flow Tracing and Bezier Fitting'
+					);
+				} else if (name === 'enableFlowTracing') {
+					// Flow Tracing disabled -> disable Bezier Fitting
+					updates.enableBezierFitting = false;
+					console.log(
+						'[EdgeParameterPanel] Flow Tracing disabled, cascading to disable Bezier Fitting'
+					);
+				}
+			}
+
 			// Use updateCurrentConfig to trigger auto-switching for hand-drawn sliders
-			algorithmConfigStore.updateCurrentConfig({ [name]: value });
+			algorithmConfigStore.updateCurrentConfig(updates);
 		}
 	}
 
+	// Check if a parameter should be visible based on its full dependency chain
+	function isParameterVisible(param: string): boolean {
+		const metadata = EDGE_METADATA[param];
+		if (!metadata || !metadata.dependsOn) {
+			return true; // No dependencies, always visible
+		}
+
+		// Check immediate dependency
+		const immediateParent = metadata.dependsOn;
+		if (!config[immediateParent]) {
+			return false; // Immediate parent is disabled
+		}
+
+		// Recursively check parent dependencies to ensure the full chain is enabled
+		return isParameterVisible(immediateParent);
+	}
+
+	// Validate and enforce dependency constraints on config changes
+	function validateDependencyConstraints() {
+		const updates: Record<string, any> = {};
+		let hasUpdates = false;
+
+		// Ensure Flow Tracing is disabled if ETF/FDoG is disabled
+		if (!config.enableEtfFdog && config.enableFlowTracing) {
+			updates.enableFlowTracing = false;
+			hasUpdates = true;
+		}
+
+		// Ensure Bezier Fitting is disabled if Flow Tracing is disabled
+		if (!config.enableFlowTracing && config.enableBezierFitting) {
+			updates.enableBezierFitting = false;
+			hasUpdates = true;
+		}
+
+		// Apply constraint fixes if needed
+		if (hasUpdates) {
+			console.log('[EdgeParameterPanel] Applying dependency constraint fixes:', updates);
+			algorithmConfigStore.updateCurrentConfig(updates);
+		}
+	}
+
+	// Validate constraints whenever config changes
+	$effect(() => {
+		validateDependencyConstraints();
+	});
+
 	// Group parameters by category - new organization
-	const preprocessingParams: string[] = [
+	const _preprocessingParams: string[] = [
 		'noiseFiltering',
 		'noiseFilterSpatialSigma',
 		'noiseFilterRangeSigma',
@@ -238,7 +305,7 @@
 		{#if layerProcessingExpanded}
 			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
-					{#each layerProcessingParams as param}
+					{#each layerProcessingParams as param (param)}
 						{#if EDGE_METADATA[param]}
 							{#if param === 'enableReversePass' || param === 'enableDiagonalPass'}
 								{#if config.enableMultipass && config.passCount > 1}
@@ -260,7 +327,7 @@
 										{disabled}
 									/>
 								{/if}
-							{:else if !EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn]}
+							{:else if isParameterVisible(param)}
 								<AlgorithmParameterControl
 									name={param}
 									value={config[param]}
@@ -305,8 +372,8 @@
 		{#if colorControlsExpanded}
 			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
-					{#each colorControlParams as param}
-						{#if EDGE_METADATA[param] && (!EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn])}
+					{#each colorControlParams as param (param)}
+						{#if EDGE_METADATA[param] && isParameterVisible(param)}
 							<AlgorithmParameterControl
 								name={param}
 								value={config[param]}
@@ -350,8 +417,8 @@
 		{#if advancedExpanded}
 			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
-					{#each advancedParams as param}
-						{#if EDGE_METADATA[param] && (!EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn])}
+					{#each advancedParams as param (param)}
+						{#if EDGE_METADATA[param] && isParameterVisible(param)}
 							<AlgorithmParameterControl
 								name={param}
 								value={config[param]}
@@ -395,7 +462,7 @@
 		{#if artisticExpanded}
 			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 				<div class="space-y-4">
-					{#each artisticParams as param}
+					{#each artisticParams as param (param)}
 						{#if param === 'handDrawnPreset'}
 							<!-- Always show the preset selector -->
 							<AlgorithmParameterControl
@@ -405,7 +472,7 @@
 								onChange={(value) => handleParameterChange(param, value)}
 								{disabled}
 							/>
-						{:else if config.handDrawnPreset !== 'none' && EDGE_METADATA[param] && (!EDGE_METADATA[param].dependsOn || config[EDGE_METADATA[param].dependsOn])}
+						{:else if config.handDrawnPreset !== 'none' && EDGE_METADATA[param] && isParameterVisible(param)}
 							<!-- Only show sliders when preset is not 'none' -->
 							<AlgorithmParameterControl
 								name={param}
