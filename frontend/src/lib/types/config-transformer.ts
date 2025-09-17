@@ -73,10 +73,14 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 
 		// Multi-pass processing
 		enable_multipass:
-			config.algorithm === 'edge' && (config as EdgeConfig).passCount
-				? (config as EdgeConfig).passCount > 1
+			(config.algorithm === 'edge' || config.algorithm === 'centerline') &&
+			(config as EdgeConfig | CenterlineConfig).passCount
+				? (config as EdgeConfig | CenterlineConfig).passCount > 1
 				: false,
-		pass_count: config.algorithm === 'edge' ? ((config as EdgeConfig).passCount ?? 1) : 1,
+		pass_count:
+			config.algorithm === 'edge' || config.algorithm === 'centerline'
+				? ((config as EdgeConfig | CenterlineConfig).passCount ?? 1)
+				: 1,
 		conservative_detail: null,
 		aggressive_detail: null,
 

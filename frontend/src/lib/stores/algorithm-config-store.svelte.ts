@@ -28,7 +28,6 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		detail: 0.5,
 		strokeWidth: 1.2,
 		preserveColors: false,
-		enableMultipass: false,
 		passCount: 1,
 		enableReversePass: false,
 		enableDiagonalPass: false,
@@ -72,7 +71,6 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		algorithm: 'centerline',
 		detail: 0.5,
 		strokeWidth: 1.2,
-		enableMultipass: false,
 		passCount: 1,
 		enableAdaptiveThreshold: true,
 		adaptiveThresholdWindowSize: 31,
@@ -368,13 +366,12 @@ class AlgorithmConfigStore {
 			'line-art': {
 				detail: 0.7,
 				strokeWidth: 1.2,
-				enableMultipass: true,
 				passCount: 2
 			},
 			technical: {
 				detail: 0.8,
 				strokeWidth: 1.0,
-				enableMultipass: false
+				passCount: 1
 			},
 			artistic: {
 				detail: 0.6,

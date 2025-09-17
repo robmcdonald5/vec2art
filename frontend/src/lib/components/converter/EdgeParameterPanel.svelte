@@ -40,8 +40,8 @@
 			// Handle dependency chain collapse when disabling settings
 			const updates: Record<string, any> = { [name]: value };
 
+			// Handle dependency chain collapse when disabling settings
 			if (value === false) {
-				// If disabling a setting, cascade disable all dependent settings
 				if (name === 'enableEtfFdog') {
 					// ETF/FDoG disabled -> disable Flow Tracing and Bezier Fitting
 					updates.enableFlowTracing = false;
@@ -56,6 +56,15 @@
 						'[EdgeParameterPanel] Flow Tracing disabled, cascading to disable Bezier Fitting'
 					);
 				}
+			}
+
+			// Handle Pass Count changes - disable multipass features when count is 1
+			if (name === 'passCount' && value === 1) {
+				updates.enableReversePass = false;
+				updates.enableDiagonalPass = false;
+				console.log(
+					'[EdgeParameterPanel] Pass Count set to 1, disabling Reverse and Diagonal Pass'
+				);
 			}
 
 			// Use updateCurrentConfig to trigger auto-switching for hand-drawn sliders
@@ -97,6 +106,18 @@
 			hasUpdates = true;
 		}
 
+		// Ensure multipass features are disabled when Pass Count is 1
+		if (config.passCount === 1) {
+			if (config.enableReversePass) {
+				updates.enableReversePass = false;
+				hasUpdates = true;
+			}
+			if (config.enableDiagonalPass) {
+				updates.enableDiagonalPass = false;
+				hasUpdates = true;
+			}
+		}
+
 		// Apply constraint fixes if needed
 		if (hasUpdates) {
 			console.log('[EdgeParameterPanel] Applying dependency constraint fixes:', updates);
@@ -119,7 +140,6 @@
 		'backgroundRemovalAlgorithm'
 	];
 	const layerProcessingParams: string[] = [
-		'enableMultipass',
 		'passCount',
 		'enableReversePass',
 		'enableDiagonalPass',
@@ -308,7 +328,7 @@
 					{#each layerProcessingParams as param (param)}
 						{#if EDGE_METADATA[param]}
 							{#if param === 'enableReversePass' || param === 'enableDiagonalPass'}
-								{#if config.enableMultipass && config.passCount > 1}
+								{#if config.passCount > 1}
 									<AlgorithmParameterControl
 										name={param}
 										value={config[param]}
@@ -318,7 +338,7 @@
 									/>
 								{/if}
 							{:else if param === 'directionalStrengthThreshold'}
-								{#if config.enableMultipass && config.passCount > 1 && (config.enableReversePass || config.enableDiagonalPass)}
+								{#if config.passCount > 1 && (config.enableReversePass || config.enableDiagonalPass)}
 									<AlgorithmParameterControl
 										name={param}
 										value={config[param]}

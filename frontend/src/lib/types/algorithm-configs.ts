@@ -54,7 +54,6 @@ export interface EdgeConfig extends CoreConfig {
 	algorithm: 'edge';
 
 	// Multipass processing
-	enableMultipass: boolean;
 	passCount: number; // 1-10
 	enableReversePass: boolean;
 	enableDiagonalPass: boolean;
@@ -112,7 +111,6 @@ export interface CenterlineConfig extends CoreConfig {
 	algorithm: 'centerline';
 
 	// Multipass processing
-	enableMultipass: boolean;
 	passCount: number; // 1-10
 
 	// Adaptive thresholding
@@ -280,25 +278,16 @@ export interface ValidationResult {
  */
 export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 	// Core Settings Parameters
-	enableMultipass: {
-		name: 'enableMultipass',
-		label: 'Enable Multipass',
-		description: 'Enable multiple processing passes for better detail capture.',
-		type: 'boolean',
-		category: 'core',
-		algorithms: ['edge']
-	},
 	passCount: {
 		name: 'passCount',
 		label: 'Pass Count',
-		description: 'Number of processing passes. More passes capture more detail.',
+		description: 'Number of processing passes. 1 = single pass, >1 = multipass with additional options.',
 		type: 'range',
 		min: 1,
 		max: 10,
 		step: 1,
 		category: 'core',
-		algorithms: ['edge'],
-		dependsOn: 'enableMultipass'
+		algorithms: ['edge']
 	},
 	noiseFiltering: {
 		name: 'noiseFiltering',
@@ -338,20 +327,18 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 	enableReversePass: {
 		name: 'enableReversePass',
 		label: 'Reverse Pass',
-		description: 'Enable right-to-left, bottom-to-top processing pass.',
+		description: 'Enable right-to-left, bottom-to-top processing pass. Only available when Pass Count > 1.',
 		type: 'boolean',
 		category: 'algorithm',
-		algorithms: ['edge'],
-		dependsOn: 'enableMultipass'
+		algorithms: ['edge']
 	},
 	enableDiagonalPass: {
 		name: 'enableDiagonalPass',
 		label: 'Diagonal Pass',
-		description: 'Enable diagonal (NW→SE, NE→SW) processing passes.',
+		description: 'Enable diagonal (NW→SE, NE→SW) processing passes. Only available when Pass Count > 1.',
 		type: 'boolean',
 		category: 'algorithm',
-		algorithms: ['edge'],
-		dependsOn: 'enableMultipass'
+		algorithms: ['edge']
 	},
 	directionalStrengthThreshold: {
 		name: 'directionalStrengthThreshold',
