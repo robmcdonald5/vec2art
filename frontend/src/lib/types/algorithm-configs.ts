@@ -847,5 +847,59 @@ export const DOTS_METADATA: Record<string, ParameterMetadata> = {
 		],
 		category: 'style',
 		algorithms: ['dots']
+	},
+
+	// UI Aliases for compatibility with existing UI components
+	dotDensity: {
+		name: 'dotDensity',
+		label: 'Dot Density',
+		description: 'Controls the density of dots in the stippling output. Higher values create more dots.',
+		type: 'range',
+		min: 1,
+		max: 10,
+		step: 1,
+		category: 'core',
+		algorithms: ['dots']
+	},
+	minRadius: {
+		name: 'minRadius',
+		label: 'Min Radius',
+		description: 'Minimum dot radius in pixels.',
+		type: 'range',
+		min: 0.1,
+		max: 5.0,
+		step: 0.1,
+		category: 'core',
+		algorithms: ['dots']
+	},
+	maxRadius: {
+		name: 'maxRadius',
+		label: 'Max Radius',
+		description: 'Maximum dot radius in pixels.',
+		type: 'range',
+		min: 0.5,
+		max: 20.0,
+		step: 0.1,
+		category: 'core',
+		algorithms: ['dots']
+	},
+	adaptiveSizing: {
+		name: 'adaptiveSizing',
+		label: 'Adaptive Sizing',
+		description: 'Adjust dot size based on local image features.',
+		type: 'boolean',
+		category: 'algorithm',
+		algorithms: ['dots']
+	},
+	sizeVariation: {
+		name: 'sizeVariation',
+		label: 'Size Variation',
+		description: 'Amount of random variation in dot sizes.',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.1,
+		category: 'style',
+		algorithms: ['dots']
 	}
 };

@@ -139,6 +139,31 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 			superpixel_preserve_colors: wasmConfig.superpixel_preserve_colors
 		});
 
+		// Additional debug logging for dots parameters
+		if (config.algorithm === 'dots') {
+			console.log('[Worker] 🔵 Dots config values:', {
+				frontend: {
+					dotDensity: (config as any).dotDensity,
+					dotDensityThreshold: (config as any).dotDensityThreshold,
+					minRadius: (config as any).minRadius,
+					dotMinRadius: (config as any).dotMinRadius,
+					maxRadius: (config as any).maxRadius,
+					dotMaxRadius: (config as any).dotMaxRadius,
+					strokeWidth: config.strokeWidth,
+					adaptiveSizing: (config as any).adaptiveSizing,
+					dotAdaptiveSizing: (config as any).dotAdaptiveSizing
+				},
+				wasm: {
+					dot_density_threshold: wasmConfig.dot_density_threshold,
+					dot_min_radius: wasmConfig.dot_min_radius,
+					dot_max_radius: wasmConfig.dot_max_radius,
+					dot_adaptive_sizing: wasmConfig.dot_adaptive_sizing,
+					dot_poisson_disk_sampling: wasmConfig.dot_poisson_disk_sampling,
+					dot_gradient_based_sizing: wasmConfig.dot_gradient_based_sizing
+				}
+			});
+		}
+
 		const configJson = JSON.stringify(wasmConfig);
 
 		console.log('[Worker] 🔧 Applying unified config to WASM');
@@ -311,9 +336,54 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 
 				// Apply Dots backend specific settings
 				if (config.algorithm === 'dots') {
-					if (config.minRadius !== undefined || config.maxRadius !== undefined) {
-						const minRadius = config.minRadius ?? 0.5;
-						const maxRadius = config.maxRadius ?? 3.0;
+					// Dot density (most important parameter)
+					if (config.dotDensity !== undefined || config.dotDensityThreshold !== undefined) {
+						// Map UI dotDensity (1-10) to threshold (0.02-0.4)
+						// Higher UI value = lower threshold = more dots
+						let threshold;
+						if (config.dotDensityThreshold !== undefined) {
+							threshold = config.dotDensityThreshold;
+						} else if (config.dotDensity !== undefined) {
+							threshold = 0.4 - ((config.dotDensity - 1) / 9) * (0.4 - 0.02);
+						}
+						if (threshold !== undefined) {
+							console.log('[Worker] 🔵 Setting dot_density:', threshold);
+							try {
+								if (typeof vectorizer.set_dot_density === 'function') {
+									vectorizer.set_dot_density(threshold);
+								} else {
+									console.error('[Worker] ❌ set_dot_density method does not exist');
+								}
+							} catch (error) {
+								console.error('[Worker] ❌ Error calling set_dot_density:', error);
+							}
+						}
+					}
+
+					// Dot size range
+					if (
+						config.minRadius !== undefined ||
+						config.maxRadius !== undefined ||
+						config.dotMinRadius !== undefined ||
+						config.dotMaxRadius !== undefined ||
+						config.strokeWidth !== undefined
+					) {
+						// Priority: explicit radius values > strokeWidth-derived values
+						let minRadius = config.minRadius ?? config.dotMinRadius;
+						let maxRadius = config.maxRadius ?? config.dotMaxRadius;
+
+						// If not explicitly set, derive from strokeWidth (Dot Width slider)
+						if (minRadius === undefined && config.strokeWidth !== undefined) {
+							minRadius = Math.max(0.1, config.strokeWidth * 0.3);
+						}
+						if (maxRadius === undefined && config.strokeWidth !== undefined) {
+							maxRadius = Math.min(20.0, config.strokeWidth * 1.5);
+						}
+
+						// Apply defaults if still undefined
+						minRadius = minRadius ?? 0.5;
+						maxRadius = maxRadius ?? 3.0;
+
 						console.log('[Worker] 🔵 Setting dot_size_range:', minRadius, maxRadius);
 						try {
 							if (typeof vectorizer.set_dot_size_range === 'function') {
@@ -324,6 +394,76 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 						} catch (error) {
 							console.error('[Worker] ❌ Error calling set_dot_size_range:', error);
 						}
+					}
+
+					// Adaptive sizing
+					if (config.adaptiveSizing !== undefined || config.dotAdaptiveSizing !== undefined) {
+						const adaptiveSizing = config.adaptiveSizing ?? config.dotAdaptiveSizing ?? true;
+						console.log('[Worker] 🔵 Setting adaptive_sizing:', adaptiveSizing);
+						try {
+							if (typeof vectorizer.set_adaptive_sizing === 'function') {
+								vectorizer.set_adaptive_sizing(adaptiveSizing);
+							} else {
+								console.error('[Worker] ❌ set_adaptive_sizing method does not exist');
+							}
+						} catch (error) {
+							console.error('[Worker] ❌ Error calling set_adaptive_sizing:', error);
+						}
+					}
+
+					// Background tolerance
+					if (config.dotBackgroundTolerance !== undefined) {
+						console.log('[Worker] 🔵 Setting background_tolerance:', config.dotBackgroundTolerance);
+						try {
+							if (typeof vectorizer.set_background_tolerance === 'function') {
+								vectorizer.set_background_tolerance(config.dotBackgroundTolerance);
+							} else {
+								console.error('[Worker] ❌ set_background_tolerance method does not exist');
+							}
+						} catch (error) {
+							console.error('[Worker] ❌ Error calling set_background_tolerance:', error);
+						}
+					}
+
+					// Poisson disk sampling
+					if (config.dotPoissonDiskSampling !== undefined) {
+						console.log(
+							'[Worker] 🔵 Setting poisson_disk_sampling:',
+							config.dotPoissonDiskSampling
+						);
+						try {
+							if (typeof vectorizer.set_poisson_disk_sampling === 'function') {
+								vectorizer.set_poisson_disk_sampling(config.dotPoissonDiskSampling);
+							} else {
+								console.error('[Worker] ❌ set_poisson_disk_sampling method does not exist');
+							}
+						} catch (error) {
+							console.error('[Worker] ❌ Error calling set_poisson_disk_sampling:', error);
+						}
+					}
+
+					// Gradient-based sizing
+					if (config.dotGradientBasedSizing !== undefined) {
+						console.log(
+							'[Worker] 🔵 Setting gradient_based_sizing:',
+							config.dotGradientBasedSizing
+						);
+						try {
+							if (typeof vectorizer.set_gradient_based_sizing === 'function') {
+								vectorizer.set_gradient_based_sizing(config.dotGradientBasedSizing);
+							} else {
+								console.error('[Worker] ❌ set_gradient_based_sizing method does not exist');
+							}
+						} catch (error) {
+							console.error('[Worker] ❌ Error calling set_gradient_based_sizing:', error);
+						}
+					}
+
+					// Color preservation for dots
+					if (config.dotPreserveColors !== undefined || config.preserveColors !== undefined) {
+						const preserveColors = config.dotPreserveColors ?? config.preserveColors ?? false;
+						console.log('[Worker] 🔵 Setting dot_preserve_colors:', preserveColors);
+						// This might be handled by the unified config, but include it here for completeness
 					}
 				}
 			}

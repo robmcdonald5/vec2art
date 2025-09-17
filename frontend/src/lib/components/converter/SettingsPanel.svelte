@@ -63,7 +63,18 @@
 	}
 
 	function updateStrokeWidth(value: number) {
-		algorithmConfigStore.updateConfig(currentAlgorithm, { strokeWidth: value });
+		if (currentAlgorithm === 'dots') {
+			// For dots, also update min/max radius based on strokeWidth
+			algorithmConfigStore.updateConfig('dots', {
+				strokeWidth: value,
+				minRadius: Math.max(0.1, value * 0.3),
+				dotMinRadius: Math.max(0.1, value * 0.3),
+				maxRadius: Math.min(20.0, value * 1.5),
+				dotMaxRadius: Math.min(20.0, value * 1.5)
+			});
+		} else {
+			algorithmConfigStore.updateConfig(currentAlgorithm, { strokeWidth: value });
+		}
 	}
 
 	function updatePreserveColors(value: boolean) {
@@ -87,7 +98,8 @@
 		const detailValue = uiValue / 10;
 		algorithmConfigStore.updateConfig('dots', {
 			detail: detailValue,
-			dotDensity: uiValue
+			dotDensity: uiValue,
+			dotDensityThreshold: threshold
 		});
 	}
 

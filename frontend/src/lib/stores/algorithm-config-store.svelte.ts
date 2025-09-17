@@ -129,16 +129,22 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		algorithm: 'dots',
 		detail: 0.5,
 		strokeWidth: 1.0,
+		preserveColors: false, // Base color preservation property from CoreConfig
 		dotDensityThreshold: 0.1,
+		dotDensity: 5, // UI scale (1-10), corresponds to medium density
 		dotSpacing: 5.0,
 		dotPoissonDiskSampling: false,
 		dotGridPattern: 'random',
 		dotMinRadius: 0.5,
+		minRadius: 0.5, // Alias for dotMinRadius (UI compatibility)
 		dotMaxRadius: 3.0,
+		maxRadius: 3.0, // Alias for dotMaxRadius (UI compatibility)
 		dotAdaptiveSizing: true,
+		adaptiveSizing: true, // Alias for dotAdaptiveSizing (UI compatibility)
 		dotGradientBasedSizing: false,
 		dotSizeVariation: 0.3,
-		dotPreserveColors: true,
+		sizeVariation: 0.3, // Alias for dotSizeVariation (UI compatibility)
+		dotPreserveColors: false,
 		dotBackgroundTolerance: 0.1,
 		dotOpacity: 1.0,
 		dotShape: 'circle',

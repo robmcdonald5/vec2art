@@ -135,14 +135,49 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 			config.algorithm === 'edge' ? ((config as EdgeConfig).fitSplitAngle ?? 32.0) : 32.0,
 
 		// Dots backend specific
-		dot_density_threshold: 0.1,
-		dot_min_radius: config.algorithm === 'dots' ? ((config as DotsConfig).minRadius ?? 0.5) : 0.5,
-		dot_max_radius: config.algorithm === 'dots' ? ((config as DotsConfig).maxRadius ?? 3.0) : 3.0,
-		dot_preserve_colors: config.preserveColors ?? false,
-		dot_adaptive_sizing: true,
-		dot_background_tolerance: 0.1,
-		dot_poisson_disk_sampling: false,
-		dot_gradient_based_sizing: false,
+		dot_density_threshold:
+			config.algorithm === 'dots'
+				? ((config as DotsConfig).dotDensityThreshold ??
+					// Map UI dotDensity (1-10) to threshold (0.02-0.4) - higher UI value = lower threshold = more dots
+					0.4 - ((((config as DotsConfig).dotDensity ?? 5) - 1) / 9) * (0.4 - 0.02))
+				: 0.1,
+		dot_min_radius:
+			config.algorithm === 'dots'
+				? // Check both UI alias and base property names
+					((config as DotsConfig).minRadius ??
+					(config as DotsConfig).dotMinRadius ??
+					// If not explicitly set, derive from strokeWidth (Dot Width slider)
+					Math.max(0.1, (config.strokeWidth ?? 1.0) * 0.3))
+				: 0.5,
+		dot_max_radius:
+			config.algorithm === 'dots'
+				? // Check both UI alias and base property names
+					((config as DotsConfig).maxRadius ??
+					(config as DotsConfig).dotMaxRadius ??
+					// If not explicitly set, derive from strokeWidth (Dot Width slider)
+					Math.min(20.0, (config.strokeWidth ?? 1.0) * 1.5))
+				: 3.0,
+		dot_preserve_colors:
+			config.algorithm === 'dots'
+				? ((config as DotsConfig).dotPreserveColors ?? false)
+				: (config.preserveColors ?? false),
+		dot_adaptive_sizing:
+			config.algorithm === 'dots'
+				? // Check both UI alias and base property names
+					((config as DotsConfig).adaptiveSizing ??
+					(config as DotsConfig).dotAdaptiveSizing ??
+					true)
+				: true,
+		dot_background_tolerance:
+			config.algorithm === 'dots' ? ((config as DotsConfig).dotBackgroundTolerance ?? 0.1) : 0.1,
+		dot_poisson_disk_sampling:
+			config.algorithm === 'dots'
+				? ((config as DotsConfig).dotPoissonDiskSampling ?? false)
+				: false,
+		dot_gradient_based_sizing:
+			config.algorithm === 'dots'
+				? ((config as DotsConfig).dotGradientBasedSizing ?? false)
+				: false,
 
 		// Centerline backend specific
 		enable_adaptive_threshold:
@@ -208,8 +243,9 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 		enable_background_removal: config.enableBackgroundRemoval ?? false,
 		background_removal_strength: config.backgroundRemovalStrength ?? 0.5,
 		background_removal_algorithm: config.backgroundRemovalAlgorithm
-			? (config.backgroundRemovalAlgorithm.charAt(0).toUpperCase() + config.backgroundRemovalAlgorithm.slice(1)) as BackgroundRemovalAlgorithm
-			: 'Otsu' as BackgroundRemovalAlgorithm,
+			? ((config.backgroundRemovalAlgorithm.charAt(0).toUpperCase() +
+					config.backgroundRemovalAlgorithm.slice(1)) as BackgroundRemovalAlgorithm)
+			: ('Otsu' as BackgroundRemovalAlgorithm),
 		background_removal_threshold: null,
 
 		// Safety and optimization

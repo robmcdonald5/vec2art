@@ -19,16 +19,57 @@
 	// Get config from store
 	const config = $derived(algorithmConfigStore.dots) as any;
 
-	// Handle parameter changes
+	// Handle parameter changes with alias synchronization
 	function handleParameterChange(name: string, value: any) {
-		algorithmConfigStore.updateConfig('dots', { [name]: value });
+		const updates: any = { [name]: value };
+
+		// Synchronize aliases to keep both UI and base properties in sync
+		switch (name) {
+			case 'dotDensity':
+				// Map UI scale (1-10) to threshold (0.02-0.4)
+				// Higher UI value = lower threshold = more dots
+				updates.dotDensityThreshold = 0.4 - ((value - 1) / 9) * (0.4 - 0.02);
+				break;
+			case 'minRadius':
+				updates.dotMinRadius = value;
+				// Also update strokeWidth to reflect the change
+				updates.strokeWidth = value / 0.3; // Reverse of the derivation formula
+				break;
+			case 'maxRadius':
+				updates.dotMaxRadius = value;
+				// Also update strokeWidth to reflect the change
+				updates.strokeWidth = value / 1.5; // Reverse of the derivation formula
+				break;
+			case 'dotMinRadius':
+				updates.minRadius = value;
+				updates.strokeWidth = value / 0.3;
+				break;
+			case 'dotMaxRadius':
+				updates.maxRadius = value;
+				updates.strokeWidth = value / 1.5;
+				break;
+			case 'adaptiveSizing':
+				updates.dotAdaptiveSizing = value;
+				break;
+			case 'dotAdaptiveSizing':
+				updates.adaptiveSizing = value;
+				break;
+			case 'sizeVariation':
+				updates.dotSizeVariation = value;
+				break;
+			case 'dotSizeVariation':
+				updates.sizeVariation = value;
+				break;
+		}
+
+		algorithmConfigStore.updateConfig('dots', updates);
 	}
 
-	// Group parameters by category
-	const coreParams = ['dotDensity', 'minRadius', 'maxRadius'];
-	const dotStyleParams = ['dotShape', 'adaptiveSizing', 'sizeVariation'];
-	const colorParams = ['preserveColors', 'colorMode', 'backgroundTolerance'];
-	const advancedParams = ['gridType', 'jitterAmount', 'overlapHandling'];
+	// Group parameters by category - using actual DOTS_METADATA keys
+	const coreParams = ['dotDensity', 'minRadius', 'maxRadius', 'dotSpacing'];
+	const dotStyleParams = ['dotShape', 'adaptiveSizing', 'sizeVariation', 'dotAdaptiveSizing'];
+	const colorParams = ['dotPreserveColors', 'dotBackgroundTolerance', 'dotOpacity'];
+	const advancedParams = ['dotGridPattern', 'dotPoissonDiskSampling', 'dotGradientBasedSizing'];
 </script>
 
 <div class="space-y-4">
