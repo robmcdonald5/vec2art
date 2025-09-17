@@ -302,6 +302,7 @@ class VectorizerWorker {
 					'backgroundRemovalAlgorithm' in config &&
 					config.backgroundRemovalAlgorithm !== undefined
 				) {
+					console.log(`[VectorizerWorker] Setting background removal algorithm to: ${config.backgroundRemovalAlgorithm}`);
 					if (typeof this.vectorizer.set_background_removal_algorithm === 'function') {
 						this.vectorizer.set_background_removal_algorithm(config.backgroundRemovalAlgorithm);
 					}
@@ -402,6 +403,7 @@ class VectorizerWorker {
 			this.vectorizer.set_background_removal_strength(config.backgroundRemovalStrength);
 		}
 		if ('backgroundRemovalAlgorithm' in config && config.backgroundRemovalAlgorithm !== undefined) {
+			console.log(`[VectorizerWorker] Setting background removal algorithm (fallback) to: ${config.backgroundRemovalAlgorithm}`);
 			this.vectorizer.set_background_removal_algorithm(config.backgroundRemovalAlgorithm);
 		}
 

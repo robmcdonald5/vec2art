@@ -198,7 +198,7 @@ Shared color handling for all algorithms.
 |-----------|------|-------|---------|-------------|
 | `enableBackgroundRemoval` | bool | - | false | Enable background removal preprocessing |
 | `backgroundRemovalStrength` | f32 | 0.0-1.0 | 0.5 | Removal aggressiveness |
-| `backgroundRemovalAlgorithm` | enum | otsu/adaptive/manual/auto | auto | Background detection method |
+| `backgroundRemovalAlgorithm` | enum | otsu/adaptive | otsu | Background detection method |
 | `backgroundRemovalThreshold` | u8? | 0-255 | null | Manual threshold (if algorithm=manual) |
 | `backgroundRemovalInvert` | bool | - | false | Invert background detection |
 

@@ -207,7 +207,9 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 		// Background removal
 		enable_background_removal: config.enableBackgroundRemoval ?? false,
 		background_removal_strength: config.backgroundRemovalStrength ?? 0.5,
-		background_removal_algorithm: 'Auto' as BackgroundRemovalAlgorithm,
+		background_removal_algorithm: config.backgroundRemovalAlgorithm
+			? (config.backgroundRemovalAlgorithm.charAt(0).toUpperCase() + config.backgroundRemovalAlgorithm.slice(1)) as BackgroundRemovalAlgorithm
+			: 'Otsu' as BackgroundRemovalAlgorithm,
 		background_removal_threshold: null,
 
 		// Safety and optimization

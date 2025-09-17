@@ -9,7 +9,7 @@
 export type AlgorithmType = 'edge' | 'centerline' | 'superpixel' | 'dots';
 
 // Background removal algorithms
-export type BackgroundRemovalAlgorithm = 'otsu' | 'adaptive' | 'auto';
+export type BackgroundRemovalAlgorithm = 'otsu' | 'adaptive';
 
 // Superpixel initialization patterns
 export type SuperpixelInitPattern = 'square' | 'hexagonal' | 'poisson';
@@ -530,8 +530,7 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		type: 'select',
 		options: [
 			{ value: 'otsu', label: 'OTSU Thresholding' },
-			{ value: 'adaptive', label: 'Adaptive Filtering' },
-			{ value: 'auto', label: 'Auto Select' }
+			{ value: 'adaptive', label: 'Adaptive Filtering' }
 		],
 		category: 'color',
 		algorithms: ['edge'],

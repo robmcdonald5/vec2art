@@ -41,7 +41,7 @@ pub fn apply_config_json(
     log::info!("🔧 Applying unified config with backend: {:?}", config.backend);
     log::info!("   Detail: {}, Stroke: {}", config.detail, config.stroke_px_at_1080p);
     log::info!("   Noise filtering: {}", config.noise_filtering);
-    log::info!("   Background removal: {}", config.enable_background_removal);
+    log::info!("   Background removal: {}, algorithm: {:?}", config.enable_background_removal, config.background_removal_algorithm);
     log::info!("   ETF/FDoG enabled: {}", config.enable_etf_fdog);
     if config.enable_etf_fdog {
         log::info!("   ETF radius: {}, iterations: {}, coherency_tau: {}",
@@ -70,7 +70,8 @@ pub fn apply_config_json(
         builder = builder
             .background_removal(config.enable_background_removal)
             .background_removal_strength(config.background_removal_strength)
-            .map_err(|e| JsValue::from_str(&format!("Failed to set background removal: {}", e)))?;
+            .map_err(|e| JsValue::from_str(&format!("Failed to set background removal: {}", e)))?
+            .background_removal_algorithm(config.background_removal_algorithm.clone());
     }
 
     // Apply multi-pass settings

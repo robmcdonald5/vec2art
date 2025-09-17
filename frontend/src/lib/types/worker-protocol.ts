@@ -285,7 +285,7 @@ export interface VectorizerConfiguration {
 	// Background removal
 	backgroundRemoval?: boolean;
 	backgroundRemovalStrength?: number;
-	backgroundRemovalAlgorithm?: 'otsu' | 'adaptive' | 'auto';
+	backgroundRemovalAlgorithm?: 'otsu' | 'adaptive';
 
 	// Backend-specific settings
 	edgeSettings?: EdgeBackendSettings;

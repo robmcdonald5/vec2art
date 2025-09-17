@@ -55,7 +55,7 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		noiseFilterRangeSigma: 50.0,
 		enableBackgroundRemoval: false,
 		backgroundRemovalStrength: 0.5,
-		backgroundRemovalAlgorithm: 'auto',
+		backgroundRemovalAlgorithm: 'otsu',
 		linePreserveColors: false,
 		lineColorSampling: 'Adaptive',
 		lineColorAccuracy: 0.7,
@@ -87,7 +87,7 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		noiseFilterRangeSigma: 50.0,
 		enableBackgroundRemoval: false,
 		backgroundRemovalStrength: 0.5,
-		backgroundRemovalAlgorithm: 'auto',
+		backgroundRemovalAlgorithm: 'otsu',
 		linePreserveColors: false,
 		lineColorSampling: 'Adaptive',
 		lineColorAccuracy: 0.7,
@@ -122,7 +122,7 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		paletteDithering: false,
 		enableBackgroundRemoval: false,
 		backgroundRemovalStrength: 0.5,
-		backgroundRemovalAlgorithm: 'auto'
+		backgroundRemovalAlgorithm: 'otsu'
 	} as SuperpixelConfig,
 
 	dots: {
@@ -147,7 +147,7 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		dotTransitionSmoothness: 0.5,
 		enableBackgroundRemoval: false,
 		backgroundRemovalStrength: 0.5,
-		backgroundRemovalAlgorithm: 'auto'
+		backgroundRemovalAlgorithm: 'otsu'
 	} as DotsConfig
 };
 

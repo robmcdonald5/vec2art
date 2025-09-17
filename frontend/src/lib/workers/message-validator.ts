@@ -99,7 +99,7 @@ const VectorizerConfigurationSchema = z.object({
 	// Background removal
 	backgroundRemoval: z.boolean().optional(),
 	backgroundRemovalStrength: z.number().min(0).max(1).optional(),
-	backgroundRemovalAlgorithm: z.enum(['otsu', 'adaptive', 'auto']).optional(),
+	backgroundRemovalAlgorithm: z.enum(['otsu', 'adaptive']).optional(),
 
 	// Backend-specific settings
 	edgeSettings: EdgeBackendSettingsSchema.optional(),
