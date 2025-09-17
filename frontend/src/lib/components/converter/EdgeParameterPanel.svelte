@@ -1,6 +1,5 @@
 <script lang="ts">
 	import {
-		ChevronDown,
 		Check, // For checkmark indicators
 		Filter, // For Preprocessing
 		Layers, // For Layer Processing
@@ -9,6 +8,7 @@
 		Brush // For Artistic Effects
 	} from 'lucide-svelte';
 	import FerrariParameterControl from '$lib/components/ui/FerrariParameterControl.svelte';
+	import ParameterSectionAdvanced from '$lib/components/ui/ParameterSectionAdvanced.svelte';
 	import PortalTooltipFixed from '$lib/components/ui/tooltip/PortalTooltipFixed.svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { EDGE_METADATA } from '$lib/types/algorithm-configs';
@@ -107,7 +107,7 @@
 			hasUpdates = true;
 		}
 
-		// Ensure multipass features are disabled when Pass Count is 1
+		// Ensure multipass features are disabled when pass count is 1
 		if (config.passCount === 1) {
 			if (config.enableReversePass) {
 				updates.enableReversePass = false;
@@ -131,8 +131,8 @@
 		validateDependencyConstraints();
 	});
 
-	// Group parameters by category - new organization
-	const _preprocessingParams: string[] = [
+	// Group parameters by category
+	const preprocessingParams: string[] = [
 		'noiseFiltering',
 		'noiseFilterSpatialSigma',
 		'noiseFilterRangeSigma',
@@ -140,12 +140,14 @@
 		'backgroundRemovalStrength',
 		'backgroundRemovalAlgorithm'
 	];
+
 	const layerProcessingParams: string[] = [
 		'passCount',
 		'enableReversePass',
 		'enableDiagonalPass',
 		'directionalStrengthThreshold'
 	];
+
 	const colorControlParams: string[] = [
 		'linePreserveColors',
 		'lineColorAccuracy',
@@ -153,6 +155,7 @@
 		'colorTolerance',
 		'lineColorSampling'
 	];
+
 	const advancedParams: string[] = [
 		'enableEtfFdog',
 		'etfRadius',
@@ -164,362 +167,146 @@
 		'enableFlowTracing',
 		'enableBezierFitting'
 	];
+
 	const artisticParams: string[] = [
 		'handDrawnPreset',
 		'handDrawnVariableWeights',
 		'handDrawnTremorStrength',
 		'handDrawnTapering'
 	];
+
+	// Custom parameter rendering configurations
+	const preprocessingCustomRenderers = {
+		noiseFiltering: {
+			type: 'checkbox-with-sub-controls',
+			label: 'Noise Filtering',
+			tooltip:
+				'Apply bilateral filter to reduce image noise before processing. Helps create cleaner line art from noisy photos.',
+			subControls: ['noiseFilterSpatialSigma', 'noiseFilterRangeSigma']
+		},
+		enableBackgroundRemoval: {
+			type: 'checkbox-with-sub-controls',
+			label: 'Background Removal',
+			tooltip:
+				'Automatically removes background from images using advanced segmentation algorithms. Useful for isolating foreground objects before line tracing.',
+			subControls: ['backgroundRemovalAlgorithm', 'backgroundRemovalStrength']
+		}
+	};
+
+	const layerProcessingCustomRenderers = {
+		enableReversePass: {
+			type: 'conditional',
+			condition: (config: any) => config.passCount > 1
+		},
+		enableDiagonalPass: {
+			type: 'conditional',
+			condition: (config: any) => config.passCount > 1
+		}
+	};
 </script>
 
 <div class="space-y-4">
 	<!-- Preprocessing -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (preprocessingExpanded = !preprocessingExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
-		>
-			<div class="flex items-center gap-3">
-				<div
-					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
-				>
-					<Filter class="h-4 w-4 text-blue-600 dark:text-blue-400" />
-				</div>
-				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
-					Preprocessing
-				</span>
-			</div>
-			<ChevronDown
-				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {preprocessingExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
-
-		{#if preprocessingExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					<!-- Noise Filtering -->
-					<div class="space-y-3">
-						<div class="flex items-center justify-between">
-							<label class="flex cursor-pointer items-center gap-2">
-								<input
-									type="checkbox"
-									checked={config.noiseFiltering ?? false}
-									onchange={(e) =>
-										handleParameterChange('noiseFiltering', (e.target as HTMLInputElement).checked)}
-									{disabled}
-									class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-								<div class="flex items-center gap-2">
-									<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
-										Noise Filtering
-									</span>
-									<PortalTooltipFixed
-										content="Advanced bilateral filtering to reduce image noise while preserving edges. Helps create cleaner line art from noisy input images."
-										position="top"
-										size="md"
-									/>
-								</div>
-							</label>
-							{#if config.noiseFiltering}
-								<div class="flex items-center gap-1">
-									<Check class="h-4 w-4 text-green-500" />
-									<span class="text-xs font-medium text-green-600 dark:text-green-400">Active</span>
-								</div>
-							{/if}
-						</div>
-
-						{#if config.noiseFiltering}
-							<div class="ml-6 space-y-3 border-l-2 border-blue-100 pl-2 dark:border-blue-900">
-								<FerrariParameterControl
-									name="noiseFilterSpatialSigma"
-									value={config.noiseFilterSpatialSigma}
-									metadata={EDGE_METADATA.noiseFilterSpatialSigma}
-									onChange={(value) => handleParameterChange('noiseFilterSpatialSigma', value)}
-									{disabled}
-								/>
-								<FerrariParameterControl
-									name="noiseFilterRangeSigma"
-									value={config.noiseFilterRangeSigma}
-									metadata={EDGE_METADATA.noiseFilterRangeSigma}
-									onChange={(value) => handleParameterChange('noiseFilterRangeSigma', value)}
-									{disabled}
-								/>
-							</div>
-						{/if}
-					</div>
-
-					<!-- Background Removal -->
-					<div class="space-y-3">
-						<div class="flex items-center justify-between">
-							<label class="flex cursor-pointer items-center gap-2">
-								<input
-									type="checkbox"
-									checked={config.enableBackgroundRemoval ?? false}
-									onchange={(e) =>
-										handleParameterChange(
-											'enableBackgroundRemoval',
-											(e.target as HTMLInputElement).checked
-										)}
-									{disabled}
-									class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-								<div class="flex items-center gap-2">
-									<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
-										Background Removal
-									</span>
-									<PortalTooltipFixed
-										content="Automatically removes background from images using advanced segmentation algorithms. Useful for isolating foreground objects before line tracing."
-										position="top"
-										size="md"
-									/>
-								</div>
-							</label>
-							{#if config.enableBackgroundRemoval}
-								<div class="flex items-center gap-1">
-									<Check class="h-4 w-4 text-green-500" />
-									<span class="text-xs font-medium text-green-600 dark:text-green-400">Active</span>
-								</div>
-							{/if}
-						</div>
-
-						{#if config.enableBackgroundRemoval}
-							<div class="ml-6 space-y-3 border-l-2 border-blue-100 pl-2 dark:border-blue-900">
-								<FerrariParameterControl
-									name="backgroundRemovalAlgorithm"
-									value={config.backgroundRemovalAlgorithm}
-									metadata={EDGE_METADATA.backgroundRemovalAlgorithm}
-									onChange={(value) => handleParameterChange('backgroundRemovalAlgorithm', value)}
-									{disabled}
-								/>
-								<FerrariParameterControl
-									name="backgroundRemovalStrength"
-									value={config.backgroundRemovalStrength}
-									metadata={EDGE_METADATA.backgroundRemovalStrength}
-									onChange={(value) => handleParameterChange('backgroundRemovalStrength', value)}
-									{disabled}
-								/>
-							</div>
-						{/if}
-					</div>
-				</div>
-			</div>
-		{/if}
-	</div>
+	<ParameterSectionAdvanced
+		title="Preprocessing"
+		icon={Filter}
+		iconColorClass="text-blue-600 dark:text-blue-400"
+		backgroundGradient="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
+		expanded={preprocessingExpanded}
+		onToggle={() => (preprocessingExpanded = !preprocessingExpanded)}
+		parameters={preprocessingParams}
+		{config}
+		metadata={EDGE_METADATA}
+		onParameterChange={handleParameterChange}
+		{isParameterVisible}
+		{disabled}
+		customParameterRenderer={preprocessingCustomRenderers}
+	/>
 
 	<!-- Layer Processing -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (layerProcessingExpanded = !layerProcessingExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
-		>
-			<div class="flex items-center gap-3">
-				<div
-					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
-				>
-					<Layers class="h-4 w-4 text-purple-600 dark:text-purple-400" />
-				</div>
-				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
-					Layer Processing
-				</span>
-			</div>
-			<ChevronDown
-				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {layerProcessingExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
-
-		{#if layerProcessingExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each layerProcessingParams as param (param)}
-						{#if EDGE_METADATA[param]}
-							{#if param === 'enableReversePass' || param === 'enableDiagonalPass'}
-								{#if config.passCount > 1}
-									<FerrariParameterControl
-										name={param}
-										value={config[param]}
-										metadata={EDGE_METADATA[param]}
-										onChange={(value) => handleParameterChange(param, value)}
-										{disabled}
-									/>
-								{/if}
-							{:else if param === 'directionalStrengthThreshold'}
-								{#if config.passCount > 1 && (config.enableReversePass || config.enableDiagonalPass)}
-									<FerrariParameterControl
-										name={param}
-										value={config[param]}
-										metadata={EDGE_METADATA[param]}
-										onChange={(value) => handleParameterChange(param, value)}
-										{disabled}
-									/>
-								{/if}
-							{:else if isParameterVisible(param)}
-								<FerrariParameterControl
-									name={param}
-									value={config[param]}
-									metadata={EDGE_METADATA[param]}
-									onChange={(value) => handleParameterChange(param, value)}
-									{disabled}
-								/>
-							{/if}
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
+	<ParameterSectionAdvanced
+		title="Layer Processing"
+		icon={Layers}
+		iconColorClass="text-purple-600 dark:text-purple-400"
+		backgroundGradient="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
+		expanded={layerProcessingExpanded}
+		onToggle={() => (layerProcessingExpanded = !layerProcessingExpanded)}
+		parameters={layerProcessingParams}
+		{config}
+		metadata={EDGE_METADATA}
+		onParameterChange={handleParameterChange}
+		{isParameterVisible}
+		{disabled}
+		customParameterRenderer={layerProcessingCustomRenderers}
+	/>
 
 	<!-- Color Controls -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (colorControlsExpanded = !colorControlsExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
-		>
-			<div class="flex items-center gap-3">
-				<div
-					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20"
-				>
-					<Palette class="h-4 w-4 text-pink-600 dark:text-pink-400" />
-				</div>
-				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
-					Color Controls
-				</span>
-			</div>
-			<ChevronDown
-				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {colorControlsExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
-
-		{#if colorControlsExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each colorControlParams as param (param)}
-						{#if EDGE_METADATA[param] && isParameterVisible(param)}
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={EDGE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Artistic Effects -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (artisticExpanded = !artisticExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
-		>
-			<div class="flex items-center gap-3">
-				<div
-					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20"
-				>
-					<Brush class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-				</div>
-				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
-					Artistic Effects
-				</span>
-			</div>
-			<ChevronDown
-				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {artisticExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
-
-		{#if artisticExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each artisticParams as param (param)}
-						{#if param === 'handDrawnPreset'}
-							<!-- Always show the preset selector -->
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={EDGE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{:else if config.handDrawnPreset !== 'none' && EDGE_METADATA[param] && isParameterVisible(param)}
-							<!-- Only show sliders when preset is not 'none' -->
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={EDGE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
+	<ParameterSectionAdvanced
+		title="Color Controls"
+		icon={Palette}
+		iconColorClass="text-pink-600 dark:text-pink-400"
+		backgroundGradient="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20"
+		expanded={colorControlsExpanded}
+		onToggle={() => (colorControlsExpanded = !colorControlsExpanded)}
+		parameters={colorControlParams}
+		{config}
+		metadata={EDGE_METADATA}
+		onParameterChange={handleParameterChange}
+		{isParameterVisible}
+		{disabled}
+	/>
 
 	<!-- Advanced Processing -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 overflow-hidden rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (advancedExpanded = !advancedExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
-		>
-			<div class="flex items-center gap-3">
-				<div
-					class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20"
-				>
-					<Sparkles class="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-				</div>
-				<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
-					Advanced Processing
-				</span>
-			</div>
-			<ChevronDown
-				class="text-speed-gray-400 h-4 w-4 transition-transform duration-200 {advancedExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
+	<ParameterSectionAdvanced
+		title="Advanced Processing"
+		icon={Sparkles}
+		iconColorClass="text-emerald-600 dark:text-emerald-400"
+		backgroundGradient="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20"
+		expanded={advancedExpanded}
+		onToggle={() => (advancedExpanded = !advancedExpanded)}
+		parameters={advancedParams}
+		{config}
+		metadata={EDGE_METADATA}
+		onParameterChange={handleParameterChange}
+		{isParameterVisible}
+		{disabled}
+	/>
 
-		{#if advancedExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each advancedParams as param (param)}
-						{#if EDGE_METADATA[param] && isParameterVisible(param)}
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={EDGE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
+	<!-- Artistic Effects -->
+	<ParameterSectionAdvanced
+		title="Artistic Effects"
+		icon={Brush}
+		iconColorClass="text-indigo-600 dark:text-indigo-400"
+		backgroundGradient="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20"
+		expanded={artisticExpanded}
+		onToggle={() => (artisticExpanded = !artisticExpanded)}
+		parameters={artisticParams}
+		{config}
+		metadata={EDGE_METADATA}
+		onParameterChange={handleParameterChange}
+		{isParameterVisible}
+		{disabled}
+	>
+		<!-- Custom content for artistic effects (preset selector needs special handling) -->
+		{#each artisticParams as param (param)}
+			{#if param === 'handDrawnPreset'}
+				<!-- Always show the preset selector -->
+				<FerrariParameterControl
+					name={param}
+					value={config[param]}
+					metadata={EDGE_METADATA[param]}
+					onChange={(value) => handleParameterChange(param, value)}
+					{disabled}
+				/>
+			{:else if EDGE_METADATA[param] && isParameterVisible(param)}
+				<FerrariParameterControl
+					name={param}
+					value={config[param]}
+					metadata={EDGE_METADATA[param]}
+					onChange={(value) => handleParameterChange(param, value)}
+					{disabled}
+				/>
+			{/if}
+		{/each}
+	</ParameterSectionAdvanced>
 </div>

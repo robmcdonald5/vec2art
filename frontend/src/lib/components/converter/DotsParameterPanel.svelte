@@ -1,6 +1,11 @@
 <script lang="ts">
-	import { ChevronDown } from 'lucide-svelte';
-	import FerrariParameterControl from '$lib/components/ui/FerrariParameterControl.svelte';
+	import {
+		Layers, // For Core Settings
+		Brush, // For Dot Style
+		Palette, // For Color Options
+		Settings // For Advanced Settings
+	} from 'lucide-svelte';
+	import ParameterSectionAdvanced from '$lib/components/ui/ParameterSectionAdvanced.svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { DOTS_METADATA } from '$lib/types/algorithm-configs';
 
@@ -19,7 +24,7 @@
 	// Get config from store
 	const config = $derived(algorithmConfigStore.dots) as any;
 
-	// Handle parameter changes with alias synchronization
+	// Handle parameter changes with alias synchronization and cross-point clamping
 	function handleParameterChange(name: string, value: any) {
 		const updates: any = { [name]: value };
 
@@ -32,20 +37,40 @@
 				break;
 			case 'minRadius':
 				updates.dotMinRadius = value;
+				// Cross-point clamping: ensure min is always < max
+				if (value >= config.maxRadius) {
+					updates.maxRadius = value + 0.1; // At least 0.1 units above min
+					updates.dotMaxRadius = value + 0.1;
+				}
 				// Also update strokeWidth to reflect the change
 				updates.strokeWidth = value / 0.3; // Reverse of the derivation formula
 				break;
 			case 'maxRadius':
 				updates.dotMaxRadius = value;
+				// Cross-point clamping: ensure max is always > min
+				if (value <= config.minRadius) {
+					updates.minRadius = Math.max(0.1, value - 0.1); // At least 0.1 units below max, but not below 0.1
+					updates.dotMinRadius = Math.max(0.1, value - 0.1);
+				}
 				// Also update strokeWidth to reflect the change
 				updates.strokeWidth = value / 1.5; // Reverse of the derivation formula
 				break;
 			case 'dotMinRadius':
 				updates.minRadius = value;
+				// Cross-point clamping: ensure min is always < max
+				if (value >= config.dotMaxRadius) {
+					updates.maxRadius = value + 0.1;
+					updates.dotMaxRadius = value + 0.1;
+				}
 				updates.strokeWidth = value / 0.3;
 				break;
 			case 'dotMaxRadius':
 				updates.maxRadius = value;
+				// Cross-point clamping: ensure max is always > min
+				if (value <= config.dotMinRadius) {
+					updates.minRadius = Math.max(0.1, value - 0.1);
+					updates.dotMinRadius = Math.max(0.1, value - 0.1);
+				}
 				updates.strokeWidth = value / 1.5;
 				break;
 			case 'adaptiveSizing':
@@ -66,162 +91,70 @@
 	}
 
 	// Group parameters by category - using actual DOTS_METADATA keys
-	const coreParams = ['dotDensity', 'minRadius', 'maxRadius', 'dotSpacing'];
+	const coreParams = ['minRadius', 'maxRadius'];
 	const dotStyleParams = ['dotShape', 'adaptiveSizing', 'sizeVariation', 'dotAdaptiveSizing'];
 	const colorParams = ['dotPreserveColors', 'dotBackgroundTolerance', 'dotOpacity'];
 	const advancedParams = ['dotGridPattern', 'dotPoissonDiskSampling', 'dotGradientBasedSizing'];
 </script>
 
 <div class="space-y-4">
-	<!-- Core Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (coreExpanded = !coreExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Core Settings
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {coreExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
+	<!-- Core Settings -->
+	<ParameterSectionAdvanced
+		title="Core Settings"
+		icon={Layers}
+		iconColorClass="text-blue-600 dark:text-blue-400"
+		backgroundGradient="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
+		expanded={coreExpanded}
+		onToggle={() => (coreExpanded = !coreExpanded)}
+		parameters={coreParams}
+		{config}
+		metadata={DOTS_METADATA}
+		onParameterChange={handleParameterChange}
+		{disabled}
+	/>
 
-		{#if coreExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each coreParams as param}
-						{#if DOTS_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={DOTS_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
+	<!-- Dot Style -->
+	<ParameterSectionAdvanced
+		title="Dot Style"
+		icon={Brush}
+		iconColorClass="text-purple-600 dark:text-purple-400"
+		backgroundGradient="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
+		expanded={dotStyleExpanded}
+		onToggle={() => (dotStyleExpanded = !dotStyleExpanded)}
+		parameters={dotStyleParams}
+		{config}
+		metadata={DOTS_METADATA}
+		onParameterChange={handleParameterChange}
+		{disabled}
+	/>
 
-	<!-- Dot Style Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (dotStyleExpanded = !dotStyleExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Dot Style
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {dotStyleExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
+	<!-- Color Options -->
+	<ParameterSectionAdvanced
+		title="Color Options"
+		icon={Palette}
+		iconColorClass="text-pink-600 dark:text-pink-400"
+		backgroundGradient="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20"
+		expanded={colorExpanded}
+		onToggle={() => (colorExpanded = !colorExpanded)}
+		parameters={colorParams}
+		{config}
+		metadata={DOTS_METADATA}
+		onParameterChange={handleParameterChange}
+		{disabled}
+	/>
 
-		{#if dotStyleExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each dotStyleParams as param}
-						{#if DOTS_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={DOTS_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Color Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (colorExpanded = !colorExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Color Options
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {colorExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
-
-		{#if colorExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each colorParams as param}
-						{#if DOTS_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={DOTS_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Advanced Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (advancedExpanded = !advancedExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Advanced Settings
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {advancedExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
-
-		{#if advancedExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each advancedParams as param}
-						{#if DOTS_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={DOTS_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
+	<!-- Advanced Settings -->
+	<ParameterSectionAdvanced
+		title="Advanced Settings"
+		icon={Settings}
+		iconColorClass="text-emerald-600 dark:text-emerald-400"
+		backgroundGradient="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20"
+		expanded={advancedExpanded}
+		onToggle={() => (advancedExpanded = !advancedExpanded)}
+		parameters={advancedParams}
+		{config}
+		metadata={DOTS_METADATA}
+		onParameterChange={handleParameterChange}
+		{disabled}
+	/>
 </div>
