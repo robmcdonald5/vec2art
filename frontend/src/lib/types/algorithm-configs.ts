@@ -711,6 +711,106 @@ export const SUPERPIXEL_METADATA: Record<string, ParameterMetadata> = {
 		step: 1,
 		category: 'advanced',
 		algorithms: ['superpixel']
+	},
+	mergeThreshold: {
+		name: 'mergeThreshold',
+		label: 'Merge Threshold',
+		description: 'Threshold for merging similar regions.',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.05,
+		category: 'advanced',
+		algorithms: ['superpixel']
+	},
+	enhanceEdges: {
+		name: 'enhanceEdges',
+		label: 'Enhance Edges',
+		description: 'Apply edge enhancement to improve region boundaries.',
+		type: 'boolean',
+		category: 'advanced',
+		algorithms: ['superpixel']
+	},
+	preserveBoundaries: {
+		name: 'preserveBoundaries',
+		label: 'Preserve Boundaries',
+		description: 'Preserve important image boundaries during segmentation.',
+		type: 'boolean',
+		category: 'advanced',
+		algorithms: ['superpixel']
+	},
+	superpixelPreserveColors: {
+		name: 'superpixelPreserveColors',
+		label: 'Full Color Mode',
+		description: 'Preserve original image colors in regions.',
+		type: 'boolean',
+		category: 'color',
+		algorithms: ['superpixel']
+	},
+	noiseFiltering: {
+		name: 'noiseFiltering',
+		label: 'Noise Filtering',
+		description: 'Apply edge-preserving bilateral filtering to reduce noise.',
+		type: 'boolean',
+		category: 'core',
+		algorithms: ['superpixel']
+	},
+	noiseFilterSpatialSigma: {
+		name: 'noiseFilterSpatialSigma',
+		label: 'Spatial Sigma',
+		description: 'Spatial smoothing for noise filter.',
+		type: 'range',
+		min: 0.5,
+		max: 5.0,
+		step: 0.1,
+		category: 'core',
+		algorithms: ['superpixel'],
+		dependsOn: 'noiseFiltering'
+	},
+	noiseFilterRangeSigma: {
+		name: 'noiseFilterRangeSigma',
+		label: 'Range Sigma',
+		description: 'Controls how much difference in pixel values is allowed. Higher values preserve edges better.',
+		type: 'range',
+		min: 10.0,
+		max: 200.0,
+		step: 10.0,
+		category: 'core',
+		algorithms: ['superpixel'],
+		dependsOn: 'noiseFiltering'
+	},
+	enableBackgroundRemoval: {
+		name: 'enableBackgroundRemoval',
+		label: 'Background Removal',
+		description: 'Enable automatic background removal preprocessing.',
+		type: 'boolean',
+		category: 'color',
+		algorithms: ['superpixel']
+	},
+	backgroundRemovalStrength: {
+		name: 'backgroundRemovalStrength',
+		label: 'Removal Strength',
+		description: 'How aggressively to remove the background.',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.1,
+		category: 'color',
+		algorithms: ['superpixel'],
+		dependsOn: 'enableBackgroundRemoval'
+	},
+	backgroundRemovalAlgorithm: {
+		name: 'backgroundRemovalAlgorithm',
+		label: 'Removal Algorithm',
+		description: 'Algorithm to use for background removal.',
+		type: 'select',
+		options: [
+			{ value: 'otsu', label: 'OTSU Thresholding' },
+			{ value: 'adaptive', label: 'Adaptive Filtering' }
+		],
+		category: 'color',
+		algorithms: ['superpixel'],
+		dependsOn: 'enableBackgroundRemoval'
 	}
 };
 

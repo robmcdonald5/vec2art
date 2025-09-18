@@ -1,6 +1,12 @@
 <script lang="ts">
-	import { ChevronDown } from 'lucide-svelte';
-	import FerrariParameterControl from '$lib/components/ui/FerrariParameterControl.svelte';
+	import {
+		Grid3x3, // For Region Properties
+		Brush, // For Style Options
+		Palette, // For Color Options
+		Settings // For Advanced Settings
+	} from 'lucide-svelte';
+	import ParameterSectionAdvanced from '$lib/components/ui/ParameterSectionAdvanced.svelte';
+	import PreprocessingSection from './PreprocessingSection.svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { SUPERPIXEL_METADATA } from '$lib/types/algorithm-configs';
 
@@ -11,176 +17,125 @@
 	let { disabled = false }: Props = $props();
 
 	// Section expansion states
+	let preprocessingExpanded = $state(false);
 	let coreExpanded = $state(true);
-	let segmentationExpanded = $state(false);
-	let artisticExpanded = $state(false);
+	let styleExpanded = $state(false);
+	let colorExpanded = $state(false);
 	let advancedExpanded = $state(false);
 
 	// Get config from store
-	const config = $derived(algorithmConfigStore.getConfig('superpixel')) as any;
+	const config = $derived(algorithmConfigStore.superpixel) as any;
 
 	// Handle parameter changes
 	function handleParameterChange(name: string, value: any) {
-		algorithmConfigStore.updateConfig('superpixel', { [name]: value });
+		const updates: any = { [name]: value };
+
+		// Handle color preserve checkbox sync
+		if (name === 'superpixelPreserveColors') {
+			updates.preserveColors = value; // Sync with base property
+		}
+
+		algorithmConfigStore.updateConfig('superpixel', updates);
 	}
 
 	// Group parameters by category
-	const coreParams = ['regionCount', 'compactness', 'strokeWidth'];
-	const segmentationParams = ['iterations', 'colorImportance', 'spatialImportance'];
-	const artisticParams = ['polygonMode', 'simplifyTolerance', 'minRegionSize'];
-	const advancedParams = ['mergeThreshold', 'enhanceEdges', 'preserveBoundaries'];
+	const coreParams = ['regionCount', 'compactness'];
+	const styleParams = ['strokeWidth', 'polygonMode', 'simplifyTolerance'];
+	const colorParams = ['superpixelPreserveColors'];
+	const advancedParams = ['iterations', 'colorImportance', 'spatialImportance', 'minRegionSize', 'mergeThreshold', 'enhanceEdges', 'preserveBoundaries'];
+
+	// Parameter visibility logic - handles dependencies
+	function isParameterVisible(param: string): boolean {
+		const metadata = SUPERPIXEL_METADATA[param];
+
+		// Check dependency chain for parameters
+		if (metadata?.dependsOn) {
+			// Check immediate dependency
+			const immediateParent = metadata.dependsOn;
+			if (!config[immediateParent]) {
+				return false; // Immediate parent is disabled
+			}
+
+			// Recursively check parent dependencies to ensure the full chain is enabled
+			return isParameterVisible(immediateParent);
+		}
+
+		return true; // Parameters without dependencies are always visible
+	}
 </script>
 
 <div class="space-y-4">
-	<!-- Core Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (coreExpanded = !coreExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Core Settings
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {coreExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
+	<!-- Preprocessing -->
+	<PreprocessingSection
+		{config}
+		metadata={SUPERPIXEL_METADATA}
+		onParameterChange={handleParameterChange}
+		{disabled}
+		expanded={preprocessingExpanded}
+		onToggle={() => (preprocessingExpanded = !preprocessingExpanded)}
+	/>
 
-		{#if coreExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each coreParams as param}
-						{#if SUPERPIXEL_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={(config as any)[param]}
-								metadata={SUPERPIXEL_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
+	<!-- Region Properties -->
+	<ParameterSectionAdvanced
+		title="Region Properties"
+		icon={Grid3x3}
+		iconColorClass="text-purple-600 dark:text-purple-400"
+		backgroundGradient="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
+		expanded={coreExpanded}
+		onToggle={() => (coreExpanded = !coreExpanded)}
+		parameters={coreParams}
+		{config}
+		metadata={SUPERPIXEL_METADATA}
+		onParameterChange={handleParameterChange}
+		{isParameterVisible}
+		{disabled}
+	/>
 
-	<!-- Segmentation Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (segmentationExpanded = !segmentationExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Segmentation
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {segmentationExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
+	<!-- Style Options -->
+	<ParameterSectionAdvanced
+		title="Style Options"
+		icon={Brush}
+		iconColorClass="text-pink-600 dark:text-pink-400"
+		backgroundGradient="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20"
+		expanded={styleExpanded}
+		onToggle={() => (styleExpanded = !styleExpanded)}
+		parameters={styleParams}
+		{config}
+		metadata={SUPERPIXEL_METADATA}
+		onParameterChange={handleParameterChange}
+		{isParameterVisible}
+		{disabled}
+	/>
 
-		{#if segmentationExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each segmentationParams as param}
-						{#if SUPERPIXEL_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={(config as any)[param]}
-								metadata={SUPERPIXEL_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
+	<!-- Color Options -->
+	<ParameterSectionAdvanced
+		title="Color Options"
+		icon={Palette}
+		iconColorClass="text-orange-600 dark:text-orange-400"
+		backgroundGradient="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20"
+		expanded={colorExpanded}
+		onToggle={() => (colorExpanded = !colorExpanded)}
+		parameters={colorParams}
+		{config}
+		metadata={SUPERPIXEL_METADATA}
+		onParameterChange={handleParameterChange}
+		{isParameterVisible}
+		{disabled}
+	/>
 
-	<!-- Artistic Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (artisticExpanded = !artisticExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Style Options
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {artisticExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
-
-		{#if artisticExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each artisticParams as param}
-						{#if SUPERPIXEL_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={(config as any)[param]}
-								metadata={SUPERPIXEL_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Advanced Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
-	>
-		<button
-			type="button"
-			onclick={() => (advancedExpanded = !advancedExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Advanced Settings
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {advancedExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
-
-		{#if advancedExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each advancedParams as param}
-						{#if SUPERPIXEL_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={(config as any)[param]}
-								metadata={SUPERPIXEL_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
+	<!-- Advanced Settings -->
+	<ParameterSectionAdvanced
+		title="Advanced Settings"
+		icon={Settings}
+		iconColorClass="text-gray-600 dark:text-gray-400"
+		backgroundGradient="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20"
+		expanded={advancedExpanded}
+		onToggle={() => (advancedExpanded = !advancedExpanded)}
+		parameters={advancedParams}
+		{config}
+		metadata={SUPERPIXEL_METADATA}
+		onParameterChange={handleParameterChange}
+		{isParameterVisible}
+		{disabled}
+	/>
 </div>
