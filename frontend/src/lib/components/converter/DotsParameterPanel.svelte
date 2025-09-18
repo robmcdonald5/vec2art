@@ -30,6 +30,19 @@
 	function handleParameterChange(name: string, value: any) {
 		const updates: any = { [name]: value };
 
+		// Handle mutual exclusion between Adaptive Sizing and Size Variation
+		if (name === 'adaptiveSizing' && value === true) {
+			// When adaptive sizing is enabled, reset size variation to 0 (uniform)
+			updates.sizeVariation = 0;
+			updates.dotSizeVariation = 0;
+		} else if (name === 'sizeVariation' || name === 'dotSizeVariation') {
+			// When size variation is changed, disable adaptive sizing to avoid conflicts
+			if (value > 0) {
+				updates.adaptiveSizing = false;
+				updates.dotAdaptiveSizing = false;
+			}
+		}
+
 		// Synchronize aliases to keep both UI and base properties in sync
 		switch (name) {
 			case 'dotDensity':
@@ -93,10 +106,18 @@
 	}
 
 	// Group parameters by category - using actual DOTS_METADATA keys
-	const coreParams = ['minRadius', 'maxRadius', 'sizeVariation'];
-	const dotStyleParams = ['dotShape', 'adaptiveSizing', 'dotAdaptiveSizing'];
+	const coreParams = ['minRadius', 'maxRadius', 'adaptiveSizing', 'sizeVariation'];
+	const dotStyleParams = ['dotShape'];
 	const colorParams = ['dotPreserveColors', 'dotBackgroundTolerance', 'dotOpacity'];
 	const advancedParams = ['dotGridPattern', 'dotPoissonDiskSampling', 'dotGradientBasedSizing'];
+
+	// Parameter visibility logic - Size Variation only shows when Adaptive Sizing is disabled
+	function isParameterVisible(param: string): boolean {
+		if (param === 'sizeVariation') {
+			return !config.adaptiveSizing; // Hide size variation when adaptive sizing is enabled
+		}
+		return true; // All other parameters are always visible
+	}
 </script>
 
 <div class="space-y-4">
@@ -122,6 +143,7 @@
 		{config}
 		metadata={DOTS_METADATA}
 		onParameterChange={handleParameterChange}
+		{isParameterVisible}
 		{disabled}
 	/>
 

@@ -207,8 +207,14 @@ pub fn apply_config_json(
                 .map_err(|e| JsValue::from_str(&format!("Failed to set dot size: {}", e)))?
                 .dot_density(config.dot_density_threshold)
                 .map_err(|e| JsValue::from_str(&format!("Failed to set dot density: {}", e)))?
-                .dot_size_variation(config.dot_size_variation)
-                .map_err(|e| JsValue::from_str(&format!("Failed to set dot size variation: {}", e)))?;
+                .adaptive_sizing(config.dot_adaptive_sizing);
+
+            // Only apply size variation when adaptive sizing is disabled
+            if !config.dot_adaptive_sizing {
+                builder = builder
+                    .dot_size_variation(config.dot_size_variation)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to set dot size variation: {}", e)))?;
+            }
         }
     }
 
