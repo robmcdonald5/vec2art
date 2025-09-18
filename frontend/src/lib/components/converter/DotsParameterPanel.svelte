@@ -1,11 +1,12 @@
 <script lang="ts">
 	import {
-		Layers, // For Core Settings
+		Layers, // For Dot Geometry
 		Brush, // For Dot Style
 		Palette, // For Color Options
 		Settings // For Advanced Settings
 	} from 'lucide-svelte';
 	import ParameterSectionAdvanced from '$lib/components/ui/ParameterSectionAdvanced.svelte';
+	import PreprocessingSection from './PreprocessingSection.svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { DOTS_METADATA } from '$lib/types/algorithm-configs';
 
@@ -16,6 +17,7 @@
 	let { disabled = false }: Props = $props();
 
 	// Section expansion states
+	let preprocessingExpanded = $state(false);
 	let coreExpanded = $state(true);
 	let dotStyleExpanded = $state(false);
 	let colorExpanded = $state(false);
@@ -98,9 +100,19 @@
 </script>
 
 <div class="space-y-4">
-	<!-- Core Settings -->
+	<!-- Preprocessing -->
+	<PreprocessingSection
+		{config}
+		metadata={DOTS_METADATA}
+		onParameterChange={handleParameterChange}
+		{disabled}
+		expanded={preprocessingExpanded}
+		onToggle={() => (preprocessingExpanded = !preprocessingExpanded)}
+	/>
+
+	<!-- Dot Geometry -->
 	<ParameterSectionAdvanced
-		title="Core Settings"
+		title="Dot Geometry"
 		icon={Layers}
 		iconColorClass="text-blue-600 dark:text-blue-400"
 		backgroundGradient="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"

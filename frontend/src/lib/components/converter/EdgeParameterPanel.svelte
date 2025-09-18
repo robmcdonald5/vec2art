@@ -1,7 +1,6 @@
 <script lang="ts">
 	import {
 		Check, // For checkmark indicators
-		Filter, // For Preprocessing
 		Layers, // For Layer Processing
 		Palette, // For Color Controls
 		Sparkles, // For Advanced Processing
@@ -9,6 +8,7 @@
 	} from 'lucide-svelte';
 	import FerrariParameterControl from '$lib/components/ui/FerrariParameterControl.svelte';
 	import ParameterSectionAdvanced from '$lib/components/ui/ParameterSectionAdvanced.svelte';
+	import PreprocessingSection from './PreprocessingSection.svelte';
 	import PortalTooltipFixed from '$lib/components/ui/tooltip/PortalTooltipFixed.svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { EDGE_METADATA } from '$lib/types/algorithm-configs';
@@ -131,15 +131,7 @@
 		validateDependencyConstraints();
 	});
 
-	// Group parameters by category
-	const preprocessingParams: string[] = [
-		'noiseFiltering',
-		'noiseFilterSpatialSigma',
-		'noiseFilterRangeSigma',
-		'enableBackgroundRemoval',
-		'backgroundRemovalStrength',
-		'backgroundRemovalAlgorithm'
-	];
+	// Group parameters by category (removed preprocessingParams - now handled by shared component)
 
 	const layerProcessingParams: string[] = [
 		'passCount',
@@ -175,23 +167,7 @@
 		'handDrawnTapering'
 	];
 
-	// Custom parameter rendering configurations
-	const preprocessingCustomRenderers = {
-		noiseFiltering: {
-			type: 'checkbox-with-sub-controls',
-			label: 'Noise Filtering',
-			tooltip:
-				'Apply bilateral filter to reduce image noise before processing. Helps create cleaner line art from noisy photos.',
-			subControls: ['noiseFilterSpatialSigma', 'noiseFilterRangeSigma']
-		},
-		enableBackgroundRemoval: {
-			type: 'checkbox-with-sub-controls',
-			label: 'Background Removal',
-			tooltip:
-				'Automatically removes background from images using advanced segmentation algorithms. Useful for isolating foreground objects before line tracing.',
-			subControls: ['backgroundRemovalAlgorithm', 'backgroundRemovalStrength']
-		}
-	};
+	// Custom parameter rendering configurations (removed preprocessingCustomRenderers - now handled by shared component)
 
 	const layerProcessingCustomRenderers = {
 		enableReversePass: {
@@ -207,20 +183,13 @@
 
 <div class="space-y-4">
 	<!-- Preprocessing -->
-	<ParameterSectionAdvanced
-		title="Preprocessing"
-		icon={Filter}
-		iconColorClass="text-blue-600 dark:text-blue-400"
-		backgroundGradient="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
-		expanded={preprocessingExpanded}
-		onToggle={() => (preprocessingExpanded = !preprocessingExpanded)}
-		parameters={preprocessingParams}
+	<PreprocessingSection
 		{config}
 		metadata={EDGE_METADATA}
 		onParameterChange={handleParameterChange}
-		{isParameterVisible}
 		{disabled}
-		customParameterRenderer={preprocessingCustomRenderers}
+		expanded={preprocessingExpanded}
+		onToggle={() => (preprocessingExpanded = !preprocessingExpanded)}
 	/>
 
 	<!-- Layer Processing -->

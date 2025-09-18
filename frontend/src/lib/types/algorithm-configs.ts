@@ -295,7 +295,7 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		description: 'Apply edge-preserving bilateral filtering to reduce noise.',
 		type: 'boolean',
 		category: 'core',
-		algorithms: ['edge']
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots']
 	},
 	noiseFilterSpatialSigma: {
 		name: 'noiseFilterSpatialSigma',
@@ -306,7 +306,7 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		max: 5.0,
 		step: 0.1,
 		category: 'core',
-		algorithms: ['edge'],
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
 		dependsOn: 'noiseFiltering'
 	},
 	noiseFilterRangeSigma: {
@@ -319,7 +319,7 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		max: 200.0,
 		step: 10.0,
 		category: 'core',
-		algorithms: ['edge'],
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
 		dependsOn: 'noiseFiltering'
 	},
 
@@ -509,7 +509,7 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		description: 'Enable automatic background removal preprocessing.',
 		type: 'boolean',
 		category: 'color',
-		algorithms: ['edge']
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots']
 	},
 	backgroundRemovalStrength: {
 		name: 'backgroundRemovalStrength',
@@ -520,7 +520,7 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		max: 1.0,
 		step: 0.1,
 		category: 'color',
-		algorithms: ['edge'],
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
 		dependsOn: 'enableBackgroundRemoval'
 	},
 	backgroundRemovalAlgorithm: {
@@ -533,7 +533,7 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 			{ value: 'adaptive', label: 'Adaptive Filtering' }
 		],
 		category: 'color',
-		algorithms: ['edge'],
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
 		dependsOn: 'enableBackgroundRemoval'
 	},
 
@@ -901,5 +901,73 @@ export const DOTS_METADATA: Record<string, ParameterMetadata> = {
 		step: 0.1,
 		category: 'style',
 		algorithms: ['dots']
+	},
+
+	// Preprocessing parameters
+	noiseFiltering: {
+		name: 'noiseFiltering',
+		label: 'Noise Filtering',
+		description: 'Apply edge-preserving bilateral filtering to reduce noise.',
+		type: 'boolean',
+		category: 'core',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots']
+	},
+	noiseFilterSpatialSigma: {
+		name: 'noiseFilterSpatialSigma',
+		label: 'Spatial Sigma',
+		description: 'Spatial smoothing for noise filter.',
+		type: 'range',
+		min: 0.5,
+		max: 5.0,
+		step: 0.1,
+		category: 'core',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
+		dependsOn: 'noiseFiltering'
+	},
+	noiseFilterRangeSigma: {
+		name: 'noiseFilterRangeSigma',
+		label: 'Range Sigma',
+		description:
+			'Controls how much difference in pixel values is allowed. Higher values preserve edges better.',
+		type: 'range',
+		min: 10.0,
+		max: 200.0,
+		step: 10.0,
+		category: 'core',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
+		dependsOn: 'noiseFiltering'
+	},
+	enableBackgroundRemoval: {
+		name: 'enableBackgroundRemoval',
+		label: 'Background Removal',
+		description: 'Enable automatic background removal preprocessing.',
+		type: 'boolean',
+		category: 'color',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots']
+	},
+	backgroundRemovalStrength: {
+		name: 'backgroundRemovalStrength',
+		label: 'Removal Strength',
+		description: 'How aggressively to remove the background.',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.1,
+		category: 'color',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
+		dependsOn: 'enableBackgroundRemoval'
+	},
+	backgroundRemovalAlgorithm: {
+		name: 'backgroundRemovalAlgorithm',
+		label: 'Removal Algorithm',
+		description: 'Algorithm to use for background removal.',
+		type: 'select',
+		options: [
+			{ value: 'otsu', label: 'OTSU Thresholding' },
+			{ value: 'adaptive', label: 'Adaptive Filtering' }
+		],
+		category: 'color',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
+		dependsOn: 'enableBackgroundRemoval'
 	}
 };
