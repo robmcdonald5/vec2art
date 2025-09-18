@@ -139,6 +139,7 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		minRadius: 0.5, // Alias for dotMinRadius (UI compatibility)
 		dotMaxRadius: 3.0,
 		maxRadius: 3.0, // Alias for dotMaxRadius (UI compatibility)
+		dotSizingMode: 'adaptive', // Default to adaptive sizing
 		dotAdaptiveSizing: true,
 		adaptiveSizing: true, // Alias for dotAdaptiveSizing (UI compatibility)
 		dotGradientBasedSizing: false,

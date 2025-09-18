@@ -30,6 +30,9 @@ export type PaletteMethod = 'kmeans' | 'median_cut' | 'octree';
 // Hand-drawn presets
 export type HandDrawnPreset = 'none' | 'subtle' | 'medium' | 'strong' | 'sketchy' | 'custom';
 
+// Dot sizing modes
+export type DotSizingMode = 'adaptive' | 'gradient' | 'static';
+
 /**
  * Core configuration shared by all algorithms
  */
@@ -196,6 +199,7 @@ export interface DotsConfig extends CoreConfig {
 	minRadius: number; // Alias for dotMinRadius (UI compatibility)
 	dotMaxRadius: number; // 0.5-20.0
 	maxRadius: number; // Alias for dotMaxRadius (UI compatibility)
+	dotSizingMode: DotSizingMode; // Controls sizing algorithm (adaptive/gradient/static)
 	dotAdaptiveSizing: boolean;
 	adaptiveSizing: boolean; // Alias for dotAdaptiveSizing (UI compatibility)
 	dotGradientBasedSizing: boolean;
@@ -883,10 +887,31 @@ export const DOTS_METADATA: Record<string, ParameterMetadata> = {
 		category: 'core',
 		algorithms: ['dots']
 	},
+	dotSizingMode: {
+		name: 'dotSizingMode',
+		label: 'Dot Sizing',
+		description: 'Choose the dot sizing algorithm: Adaptive (balanced), Gradient-Based (enhanced detail), or Static (manual variation).',
+		type: 'select',
+		category: 'algorithm',
+		algorithms: ['dots'],
+		options: [
+			{ value: 'adaptive', label: 'Adaptive Sizing' },
+			{ value: 'gradient', label: 'Gradient-Based Sizing' },
+			{ value: 'static', label: 'Static Sizing' }
+		]
+	},
 	adaptiveSizing: {
 		name: 'adaptiveSizing',
 		label: 'Adaptive Sizing',
 		description: 'Adjust dot size based on local image features.',
+		type: 'boolean',
+		category: 'algorithm',
+		algorithms: ['dots']
+	},
+	dotGradientBasedSizing: {
+		name: 'dotGradientBasedSizing',
+		label: 'Gradient-Based Sizing',
+		description: 'Enhanced dot sizing with aggressive detail preservation for complex textures.',
 		type: 'boolean',
 		category: 'algorithm',
 		algorithms: ['dots']

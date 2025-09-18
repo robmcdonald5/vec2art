@@ -30,16 +30,34 @@
 	function handleParameterChange(name: string, value: any) {
 		const updates: any = { [name]: value };
 
-		// Handle mutual exclusion between Adaptive Sizing and Size Variation
-		if (name === 'adaptiveSizing' && value === true) {
-			// When adaptive sizing is enabled, reset size variation to 0 (uniform)
-			updates.sizeVariation = 0;
-			updates.dotSizeVariation = 0;
-		} else if (name === 'sizeVariation' || name === 'dotSizeVariation') {
-			// When size variation is changed, disable adaptive sizing to avoid conflicts
-			if (value > 0) {
-				updates.adaptiveSizing = false;
-				updates.dotAdaptiveSizing = false;
+		// Handle three-way mutual exclusion for dot sizing modes
+		if (name === 'dotSizingMode') {
+			// Set the appropriate flags based on the selected mode
+			switch (value) {
+				case 'adaptive':
+					updates.adaptiveSizing = true;
+					updates.dotAdaptiveSizing = true;
+					updates.dotGradientBasedSizing = false;
+					updates.sizeVariation = 0;
+					updates.dotSizeVariation = 0;
+					break;
+				case 'gradient':
+					updates.adaptiveSizing = false;
+					updates.dotAdaptiveSizing = false;
+					updates.dotGradientBasedSizing = true;
+					updates.sizeVariation = 0;
+					updates.dotSizeVariation = 0;
+					break;
+				case 'static':
+					updates.adaptiveSizing = false;
+					updates.dotAdaptiveSizing = false;
+					updates.dotGradientBasedSizing = false;
+					// Keep current size variation value or set to 0.3 if currently 0
+					if (config.sizeVariation === 0) {
+						updates.sizeVariation = 0.3;
+						updates.dotSizeVariation = 0.3;
+					}
+					break;
 			}
 		}
 
@@ -88,12 +106,6 @@
 				}
 				updates.strokeWidth = value / 1.5;
 				break;
-			case 'adaptiveSizing':
-				updates.dotAdaptiveSizing = value;
-				break;
-			case 'dotAdaptiveSizing':
-				updates.adaptiveSizing = value;
-				break;
 			case 'sizeVariation':
 				updates.dotSizeVariation = value;
 				break;
@@ -106,15 +118,15 @@
 	}
 
 	// Group parameters by category - using actual DOTS_METADATA keys
-	const coreParams = ['minRadius', 'maxRadius', 'adaptiveSizing', 'sizeVariation'];
+	const coreParams = ['minRadius', 'maxRadius', 'dotSizingMode', 'sizeVariation'];
 	const dotStyleParams = ['dotShape'];
 	const colorParams = ['dotPreserveColors', 'dotBackgroundTolerance', 'dotOpacity'];
-	const advancedParams = ['dotGridPattern', 'dotPoissonDiskSampling', 'dotGradientBasedSizing'];
+	const advancedParams = ['dotGridPattern', 'dotPoissonDiskSampling'];
 
-	// Parameter visibility logic - Size Variation only shows when Adaptive Sizing is disabled
+	// Parameter visibility logic - Size Variation only shows when Static Sizing is selected
 	function isParameterVisible(param: string): boolean {
 		if (param === 'sizeVariation') {
-			return !config.adaptiveSizing; // Hide size variation when adaptive sizing is enabled
+			return config.dotSizingMode === 'static'; // Only show size variation for static sizing
 		}
 		return true; // All other parameters are always visible
 	}
