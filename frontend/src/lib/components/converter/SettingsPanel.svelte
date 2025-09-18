@@ -105,7 +105,10 @@
 
 	// Handle superpixel region count
 	function updateRegionCount(value: number) {
-		algorithmConfigStore.updateConfig('superpixel', { regionCount: value });
+		algorithmConfigStore.updateConfig('superpixel', {
+			numSuperpixels: value,
+			regionCount: value // Keep alias for compatibility
+		});
 	}
 
 	// Reactive values for FerrariSlider components

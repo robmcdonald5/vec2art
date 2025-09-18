@@ -51,13 +51,6 @@
 
 	// Update visual fill when value changes externally
 	$effect(() => {
-		if (sliderRef) {
-			updateSliderFill(sliderRef);
-		}
-	});
-
-	// CRITICAL FIX: Update visual fill when value prop changes from external binding
-	$effect(() => {
 		if (sliderRef && typeof value === 'number') {
 			// Force update the slider's value attribute and visual fill
 			sliderRef.value = value.toString();

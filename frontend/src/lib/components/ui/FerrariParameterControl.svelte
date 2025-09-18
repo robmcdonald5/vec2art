@@ -111,7 +111,7 @@
 				max={metadata.max || 100}
 				step={metadata.step || 1}
 				{disabled}
-				oninput={handleChange}
+				oninput={(value) => handleChange(value)}
 				class="w-full"
 			/>
 			<div class="text-converter-secondary mt-1 flex justify-between text-xs">

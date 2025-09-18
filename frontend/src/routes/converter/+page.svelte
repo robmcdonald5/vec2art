@@ -280,6 +280,7 @@
 				});
 			}
 
+
 			// Process each file
 			const processedResults: ProcessingResult[] = [];
 			const newPreviewUrls: (string | null)[] = [];

@@ -638,6 +638,17 @@ export const SUPERPIXEL_METADATA: Record<string, ParameterMetadata> = {
 		category: 'core',
 		algorithms: ['superpixel']
 	},
+	superpixelCompactness: {
+		name: 'superpixelCompactness',
+		label: 'Region Complexity',
+		description: 'Controls the shape regularity of superpixel regions. Higher values create more circular regions.',
+		type: 'range',
+		min: 1.0,
+		max: 50.0,
+		step: 1.0,
+		category: 'core',
+		algorithms: ['superpixel']
+	},
 	strokeWidth: {
 		name: 'strokeWidth',
 		label: 'Stroke Width',

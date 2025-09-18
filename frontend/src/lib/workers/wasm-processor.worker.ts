@@ -588,6 +588,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 					strokeWidth: config?.strokeWidth
 				});
 
+
 				if (!imageData || !config) {
 					throw new Error('Missing image data or config');
 				}

@@ -250,7 +250,7 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 				? ((config as SuperpixelConfig).numSuperpixels ?? 200)
 				: 200,
 		superpixel_compactness:
-			config.algorithm === 'superpixel' ? ((config as SuperpixelConfig).compactness ?? 10.0) : 10.0,
+			config.algorithm === 'superpixel' ? ((config as SuperpixelConfig).superpixelCompactness ?? 10.0) : 10.0,
 		superpixel_slic_iterations:
 			config.algorithm === 'superpixel' ? ((config as SuperpixelConfig).iterations ?? 10) : 10,
 		superpixel_initialization_pattern: 'Hexagonal',

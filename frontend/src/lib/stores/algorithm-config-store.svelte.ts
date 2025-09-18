@@ -104,7 +104,7 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		detail: 0.5,
 		strokeWidth: 1.5,
 		numSuperpixels: 275,
-		superpixelCompactness: 10.0,
+		superpixelCompactness: 25.0,
 		superpixelSlicIterations: 10,
 		superpixelInitializationPattern: 'poisson',
 		superpixelFillRegions: true,

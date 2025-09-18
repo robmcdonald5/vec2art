@@ -1,9 +1,8 @@
 <script lang="ts">
 	import {
-		Grid3x3, // For Region Properties
-		Brush, // For Style Options
+		Square, // For Pixel Properties
 		Palette, // For Color Options
-		Settings // For Advanced Settings
+		Layers // For Layer Processing
 	} from 'lucide-svelte';
 	import ParameterSectionAdvanced from '$lib/components/ui/ParameterSectionAdvanced.svelte';
 	import PreprocessingSection from './PreprocessingSection.svelte';
@@ -18,7 +17,6 @@
 
 	// Section expansion states
 	let preprocessingExpanded = $state(false);
-	let coreExpanded = $state(true);
 	let styleExpanded = $state(false);
 	let colorExpanded = $state(false);
 	let advancedExpanded = $state(false);
@@ -39,29 +37,17 @@
 	}
 
 	// Group parameters by category
-	const coreParams = ['regionCount', 'compactness'];
-	const styleParams = ['strokeWidth', 'polygonMode', 'simplifyTolerance'];
+	const coreParams = []; // Empty - Region Count is in Quick Settings
+	const styleParams = ['polygonMode', 'simplifyTolerance'];
 	const colorParams = ['superpixelPreserveColors'];
 	const advancedParams = ['iterations', 'colorImportance', 'spatialImportance', 'minRegionSize', 'mergeThreshold', 'enhanceEdges', 'preserveBoundaries'];
 
 	// Parameter visibility logic - handles dependencies
 	function isParameterVisible(param: string): boolean {
 		const metadata = SUPERPIXEL_METADATA[param];
-
-		// Check dependency chain for parameters
-		if (metadata?.dependsOn) {
-			// Check immediate dependency
-			const immediateParent = metadata.dependsOn;
-			if (!config[immediateParent]) {
-				return false; // Immediate parent is disabled
-			}
-
-			// Recursively check parent dependencies to ensure the full chain is enabled
-			return isParameterVisible(immediateParent);
-		}
-
-		return true; // Parameters without dependencies are always visible
+		return metadata && (!metadata.dependsOn || (config[metadata.dependsOn] && (metadata.dependsOn ? isParameterVisible(metadata.dependsOn) : true)));
 	}
+
 </script>
 
 <div class="space-y-4">
@@ -75,26 +61,11 @@
 		onToggle={() => (preprocessingExpanded = !preprocessingExpanded)}
 	/>
 
-	<!-- Region Properties -->
-	<ParameterSectionAdvanced
-		title="Region Properties"
-		icon={Grid3x3}
-		iconColorClass="text-purple-600 dark:text-purple-400"
-		backgroundGradient="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
-		expanded={coreExpanded}
-		onToggle={() => (coreExpanded = !coreExpanded)}
-		parameters={coreParams}
-		{config}
-		metadata={SUPERPIXEL_METADATA}
-		onParameterChange={handleParameterChange}
-		{isParameterVisible}
-		{disabled}
-	/>
 
-	<!-- Style Options -->
+	<!-- Pixel Properties -->
 	<ParameterSectionAdvanced
-		title="Style Options"
-		icon={Brush}
+		title="Pixel Properties"
+		icon={Square}
 		iconColorClass="text-pink-600 dark:text-pink-400"
 		backgroundGradient="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20"
 		expanded={styleExpanded}
@@ -123,10 +94,10 @@
 		{disabled}
 	/>
 
-	<!-- Advanced Settings -->
+	<!-- Layer Processing -->
 	<ParameterSectionAdvanced
-		title="Advanced Settings"
-		icon={Settings}
+		title="Layer Processing"
+		icon={Layers}
 		iconColorClass="text-gray-600 dark:text-gray-400"
 		backgroundGradient="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20"
 		expanded={advancedExpanded}

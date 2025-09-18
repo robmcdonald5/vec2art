@@ -2037,23 +2037,7 @@ fn trace_superpixel(
         (50.0 + 150.0 * config.detail) as usize
     };
 
-    // Apply bounds checking to prevent memory allocation failure
-    let total_pixels = width * height;
-    let max_reasonable_superpixels = (total_pixels / 1000).max(20).min(500); // At least 1000 pixels per superpixel
-
-    let superpixel_count = if superpixel_count > max_reasonable_superpixels {
-        log::warn!(
-            "Superpixel count {} too high for {}×{} image ({}px), clamping to {}",
-            superpixel_count,
-            width,
-            height,
-            total_pixels,
-            max_reasonable_superpixels
-        );
-        max_reasonable_superpixels
-    } else {
-        superpixel_count
-    };
+    // Use the user-specified superpixel count directly (no clamping)
 
     // Use configured compactness with minimal adaptation
     let superpixel_compactness = config.superpixel_compactness;
