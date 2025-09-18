@@ -60,7 +60,7 @@
 		if (!triggerElement) return;
 
 		// Reset any previously modified elements
-		modifiedElements.forEach(el => {
+		modifiedElements.forEach((el) => {
 			(el as HTMLElement).style.overflow = '';
 		});
 		modifiedElements = [];
@@ -70,9 +70,11 @@
 			let current = triggerElement.parentElement;
 			while (current && current !== document.body) {
 				const computedStyle = window.getComputedStyle(current);
-				if (computedStyle.overflow === 'hidden' ||
+				if (
+					computedStyle.overflow === 'hidden' ||
 					computedStyle.overflowY === 'hidden' ||
-					computedStyle.overflowX === 'hidden') {
+					computedStyle.overflowX === 'hidden'
+				) {
 					modifiedElements.push(current);
 					(current as HTMLElement).style.overflow = 'visible';
 				}
@@ -134,8 +136,12 @@
 	function handleClickOutside(event: MouseEvent) {
 		const target = event.target as Node;
 		// Check if click is outside both trigger and dropdown
-		if (triggerElement && !triggerElement.contains(target) &&
-			dropdownElement && !dropdownElement.contains(target)) {
+		if (
+			triggerElement &&
+			!triggerElement.contains(target) &&
+			dropdownElement &&
+			!dropdownElement.contains(target)
+		) {
 			// Closing dropdown - restore overflow
 			manageParentOverflow(false);
 			isOpen = false;
@@ -157,7 +163,7 @@
 
 <div class="ferrari-select {className}">
 	{#if label}
-		<label for={id} class="text-converter-primary block text-sm font-medium mb-2">
+		<label for={id} class="text-converter-primary mb-2 block text-sm font-medium">
 			{label}
 		</label>
 	{/if}
@@ -167,19 +173,23 @@
 			bind:this={triggerElement}
 			type="button"
 			{id}
-			class="ferrari-select-trigger relative w-full cursor-pointer border border-ferrari-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm transition-colors duration-200 focus:border-ferrari-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-50 {isOpen ? 'border-ferrari-500 rounded-t-lg rounded-b-none border-b-0' : 'rounded-lg'}"
+			class="ferrari-select-trigger border-ferrari-300 focus:border-ferrari-500 relative w-full cursor-pointer border bg-white py-2 pr-10 pl-3 text-left shadow-sm transition-colors duration-200 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-50 {isOpen
+				? 'border-ferrari-500 rounded-t-lg rounded-b-none border-b-0'
+				: 'rounded-lg'}"
 			{disabled}
 			aria-haspopup="listbox"
 			aria-expanded={isOpen}
 			onclick={toggleDropdown}
 			onkeydown={handleKeydown}
 		>
-			<span class="block truncate text-converter-primary text-sm">
+			<span class="text-converter-primary block truncate text-sm">
 				{selectedOption?.label || placeholder}
 			</span>
 			<span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
 				<ChevronDown
-					class="h-4 w-4 text-converter-secondary transition-transform duration-200 {isOpen ? 'rotate-180' : ''}"
+					class="text-converter-secondary h-4 w-4 transition-transform duration-200 {isOpen
+						? 'rotate-180'
+						: ''}"
 				/>
 			</span>
 		</button>
@@ -188,20 +198,28 @@
 		{#if isOpen}
 			<div
 				bind:this={dropdownElement}
-				class="ferrari-select-dropdown absolute z-[9999] mt-0 max-h-60 w-full overflow-auto rounded-t-none rounded-b-lg bg-white py-1 shadow-lg border border-t border-ferrari-500 focus:outline-none"
+				class="ferrari-select-dropdown border-ferrari-500 absolute z-[9999] mt-0 max-h-60 w-full overflow-auto rounded-t-none rounded-b-lg border border-t bg-white py-1 shadow-lg focus:outline-none"
 			>
 				{#each options as option (option.value)}
 					<button
 						type="button"
-						class="ferrari-select-option relative w-full cursor-pointer select-none py-2 pl-3 pr-9 text-left text-sm transition-colors duration-150 hover:bg-ferrari-50 focus:bg-ferrari-50 focus:outline-none {option.disabled ? 'cursor-not-allowed opacity-50' : ''} {option.value === value ? 'bg-ferrari-100 text-ferrari-700 font-medium' : 'text-converter-primary'}"
+						class="ferrari-select-option hover:bg-ferrari-50 focus:bg-ferrari-50 relative w-full cursor-pointer py-2 pr-9 pl-3 text-left text-sm transition-colors duration-150 select-none focus:outline-none {option.disabled
+							? 'cursor-not-allowed opacity-50'
+							: ''} {option.value === value
+							? 'bg-ferrari-100 text-ferrari-700 font-medium'
+							: 'text-converter-primary'}"
 						disabled={option.disabled}
 						onclick={() => selectOption(option)}
 					>
 						<span class="block truncate">{option.label}</span>
 						{#if option.value === value}
-							<span class="absolute inset-y-0 right-0 flex items-center pr-3 text-ferrari-600">
+							<span class="text-ferrari-600 absolute inset-y-0 right-0 flex items-center pr-3">
 								<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+									<path
+										fill-rule="evenodd"
+										d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+										clip-rule="evenodd"
+									/>
 								</svg>
 							</span>
 						{/if}
@@ -212,7 +230,7 @@
 	</div>
 
 	{#if description}
-		<p class="text-converter-secondary text-xs mt-1">
+		<p class="text-converter-secondary mt-1 text-xs">
 			{description}
 		</p>
 	{/if}
@@ -228,6 +246,8 @@
 	}
 
 	.ferrari-select-dropdown {
-		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+		box-shadow:
+			0 10px 15px -3px rgba(0, 0, 0, 0.1),
+			0 4px 6px -2px rgba(0, 0, 0, 0.05);
 	}
 </style>

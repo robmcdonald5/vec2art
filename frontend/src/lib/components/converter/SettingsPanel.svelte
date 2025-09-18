@@ -339,7 +339,13 @@
 						<div class="flex items-center gap-2">
 							<FerrariCheckbox
 								id="preserve-colors-unified"
-								checked={config.preserveColors ?? false}
+								checked={(currentAlgorithm === 'edge' || currentAlgorithm === 'centerline'
+									? config.linePreserveColors
+									: currentAlgorithm === 'superpixel'
+										? config.superpixelPreserveColors
+										: currentAlgorithm === 'dots'
+											? config.dotPreserveColors
+											: config.preserveColors) ?? false}
 								{disabled}
 								label="Enable Color"
 								onchange={(checked) => updatePreserveColors(checked)}

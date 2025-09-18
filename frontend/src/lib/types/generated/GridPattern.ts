@@ -3,4 +3,4 @@
 /**
  * Grid pattern for dot placement
  */
-export type GridPattern = "Grid" | "Hexagonal" | "Random";
+export type GridPattern = 'Grid' | 'Hexagonal' | 'Random' | 'Poisson';

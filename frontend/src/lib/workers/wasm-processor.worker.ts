@@ -169,7 +169,6 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 					dot_min_radius: wasmConfig.dot_min_radius,
 					dot_max_radius: wasmConfig.dot_max_radius,
 					dot_adaptive_sizing: wasmConfig.dot_adaptive_sizing,
-					dot_poisson_disk_sampling: wasmConfig.dot_poisson_disk_sampling,
 					dot_gradient_based_sizing: wasmConfig.dot_gradient_based_sizing,
 					dot_size_variation: wasmConfig.dot_size_variation,
 					dot_shape: wasmConfig.dot_shape
@@ -478,23 +477,6 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 							}
 						} catch (error) {
 							console.error('[Worker] ❌ Error calling set_background_tolerance:', error);
-						}
-					}
-
-					// Poisson disk sampling
-					if (config.dotPoissonDiskSampling !== undefined) {
-						console.log(
-							'[Worker] 🔵 Setting poisson_disk_sampling:',
-							config.dotPoissonDiskSampling
-						);
-						try {
-							if (typeof vectorizer.set_poisson_disk_sampling === 'function') {
-								vectorizer.set_poisson_disk_sampling(config.dotPoissonDiskSampling);
-							} else {
-								console.error('[Worker] ❌ set_poisson_disk_sampling method does not exist');
-							}
-						} catch (error) {
-							console.error('[Worker] ❌ Error calling set_poisson_disk_sampling:', error);
 						}
 					}
 

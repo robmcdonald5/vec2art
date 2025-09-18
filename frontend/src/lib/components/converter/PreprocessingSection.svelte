@@ -23,10 +23,7 @@
 
 	// Preprocessing parameters (universal for all algorithms)
 	// Only include main controls - sub-controls are handled by custom renderers
-	const preprocessingParams = [
-		'noiseFiltering',
-		'enableBackgroundRemoval'
-	];
+	const preprocessingParams = ['noiseFiltering', 'enableBackgroundRemoval'];
 
 	// Custom parameter rendering configurations for preprocessing
 	const preprocessingCustomRenderers = {

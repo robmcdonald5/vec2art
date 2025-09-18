@@ -34,35 +34,37 @@
 			{checked}
 			{disabled}
 			onchange={handleChange}
-			class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded transition-colors duration-200 focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed"
+			class="text-ferrari-600 border-ferrari-300 focus:ring-ferrari-500 h-4 w-4 rounded transition-colors duration-200 focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
 		/>
 		{#if label}
 			<label
 				for={id}
-				class="text-converter-primary cursor-pointer text-sm font-medium select-none {disabled ? 'opacity-50 cursor-not-allowed' : ''}"
+				class="text-converter-primary cursor-pointer text-sm font-medium select-none {disabled
+					? 'cursor-not-allowed opacity-50'
+					: ''}"
 			>
 				{label}
 			</label>
 		{/if}
 	</div>
 	{#if description}
-		<p class="text-converter-secondary text-xs mt-1 ml-7">
+		<p class="text-converter-secondary mt-1 ml-7 text-xs">
 			{description}
 		</p>
 	{/if}
 </div>
 
 <style>
-	.ferrari-checkbox input[type="checkbox"]:checked {
+	.ferrari-checkbox input[type='checkbox']:checked {
 		background-color: #dc143c;
 		border-color: #dc143c;
 	}
 
-	.ferrari-checkbox input[type="checkbox"]:hover:not(:disabled) {
+	.ferrari-checkbox input[type='checkbox']:hover:not(:disabled) {
 		border-color: #b91c2e;
 	}
 
-	.ferrari-checkbox input[type="checkbox"]:focus {
+	.ferrari-checkbox input[type='checkbox']:focus {
 		box-shadow: 0 0 0 2px rgba(220, 20, 60, 0.2);
 	}
 </style>

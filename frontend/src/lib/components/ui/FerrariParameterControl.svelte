@@ -69,15 +69,11 @@
 				onchange={handleChange}
 			/>
 			{#if showTooltip && metadata.description}
-				<PortalTooltipFixed
-					content={metadata.description}
-					position="right"
-					size="md"
-				/>
+				<PortalTooltipFixed content={metadata.description} position="right" size="md" />
 			{/if}
 		</div>
 
-	<!-- Select Controls -->
+		<!-- Select Controls -->
 	{:else if metadata.type === 'select'}
 		<div class="flex items-start gap-2">
 			<div class="flex-1">
@@ -92,31 +88,20 @@
 			</div>
 			{#if showTooltip && metadata.description}
 				<div class="mt-6">
-					<PortalTooltipFixed
-						content={metadata.description}
-						position="right"
-						size="md"
-					/>
+					<PortalTooltipFixed content={metadata.description} position="right" size="md" />
 				</div>
 			{/if}
 		</div>
 
-	<!-- Range/Number Controls -->
+		<!-- Range/Number Controls -->
 	{:else if metadata.type === 'range'}
 		<div>
 			<div class="mb-2 flex items-center gap-2">
-				<label
-					for={`param-${name}`}
-					class="text-converter-primary block text-sm font-medium"
-				>
+				<label for={`param-${name}`} class="text-converter-primary block text-sm font-medium">
 					{metadata.label}
 				</label>
 				{#if showTooltip && metadata.description}
-					<PortalTooltipFixed
-						content={metadata.description}
-						position="top"
-						size="md"
-					/>
+					<PortalTooltipFixed content={metadata.description} position="top" size="md" />
 				{/if}
 			</div>
 			<FerrariSlider
@@ -136,14 +121,11 @@
 			</div>
 		</div>
 
-	<!-- Number Input Controls -->
+		<!-- Number Input Controls -->
 	{:else if metadata.type === 'number'}
 		<div class="flex items-start gap-2">
 			<div class="flex-1">
-				<label
-					for={`param-${name}`}
-					class="text-converter-primary block text-sm font-medium mb-2"
-				>
+				<label for={`param-${name}`} class="text-converter-primary mb-2 block text-sm font-medium">
 					{metadata.label}
 				</label>
 				<input
@@ -155,16 +137,12 @@
 					{value}
 					{disabled}
 					onchange={(e) => handleChange(e.currentTarget.value)}
-					class="border-ferrari-300 bg-white text-converter-primary focus:border-ferrari-500 focus:ring-ferrari-500 w-full rounded-lg border px-3 py-2 text-sm transition-colors duration-200 focus:ring-1 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+					class="border-ferrari-300 text-converter-primary focus:border-ferrari-500 focus:ring-ferrari-500 w-full rounded-lg border bg-white px-3 py-2 text-sm transition-colors duration-200 focus:ring-1 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 				/>
 			</div>
 			{#if showTooltip && metadata.description}
 				<div class="mt-6">
-					<PortalTooltipFixed
-						content={metadata.description}
-						position="right"
-						size="md"
-					/>
+					<PortalTooltipFixed content={metadata.description} position="right" size="md" />
 				</div>
 			{/if}
 		</div>
@@ -172,11 +150,11 @@
 </div>
 
 <style>
-	.ferrari-parameter-control input[type="number"]:hover:not(:disabled) {
+	.ferrari-parameter-control input[type='number']:hover:not(:disabled) {
 		border-color: #b91c2e;
 	}
 
-	.ferrari-parameter-control input[type="number"]:focus {
+	.ferrari-parameter-control input[type='number']:focus {
 		box-shadow: 0 0 0 1px rgba(220, 20, 60, 0.5);
 	}
 </style>

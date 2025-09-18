@@ -146,8 +146,11 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		dotSizeVariation: 0,
 		sizeVariation: 0, // Alias for dotSizeVariation (UI compatibility)
 		dotPreserveColors: false,
+		dotColorSampling: 'Adaptive',
+		dotColorAccuracy: 0.7,
+		dotMaxColorsPerDot: 5,
+		dotColorTolerance: 0.3,
 		dotBackgroundTolerance: 0.1,
-		dotOpacity: 1.0,
 		dotShape: 'circle',
 		dotHighDetailDensity: 0.8,
 		dotLowDetailDensity: 0.2,
@@ -388,7 +391,7 @@ class AlgorithmConfigStore {
 			stippling: {
 				detail: 0.5,
 				dotDensityThreshold: 0.15,
-				dotPoissonDiskSampling: true
+				dotGridPattern: 'poisson'
 			}
 		};
 

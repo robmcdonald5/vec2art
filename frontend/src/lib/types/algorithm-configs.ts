@@ -205,10 +205,15 @@ export interface DotsConfig extends CoreConfig {
 	dotSizeVariation: number; // 0.0-1.0
 	sizeVariation: number; // Alias for dotSizeVariation (UI compatibility)
 
-	// Visual options
+	// Color processing
 	dotPreserveColors: boolean;
+	dotColorSampling?: ColorSamplingMethod;
+	dotColorAccuracy: number; // 0.0-1.0
+	dotMaxColorsPerDot: number; // 1-10
+	dotColorTolerance: number; // 0.0-1.0
+
+	// Visual options
 	dotBackgroundTolerance: number; // 0.0-1.0
-	dotOpacity: number; // 0.1-1.0
 	dotShape: DotShape;
 
 	// Advanced distribution
@@ -284,7 +289,8 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 	passCount: {
 		name: 'passCount',
 		label: 'Pass Count',
-		description: 'Number of processing passes. 1 = single pass, >1 = multipass with additional options.',
+		description:
+			'Number of processing passes. 1 = single pass, >1 = multipass with additional options.',
 		type: 'range',
 		min: 1,
 		max: 10,
@@ -330,7 +336,8 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 	enableReversePass: {
 		name: 'enableReversePass',
 		label: 'Reverse Pass',
-		description: 'Enable right-to-left, bottom-to-top processing pass. Only available when Pass Count > 1.',
+		description:
+			'Enable right-to-left, bottom-to-top processing pass. Only available when Pass Count > 1.',
 		type: 'boolean',
 		category: 'algorithm',
 		algorithms: ['edge']
@@ -338,7 +345,8 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 	enableDiagonalPass: {
 		name: 'enableDiagonalPass',
 		label: 'Diagonal Pass',
-		description: 'Enable diagonal (NW→SE, NE→SW) processing passes. Only available when Pass Count > 1.',
+		description:
+			'Enable diagonal (NW→SE, NE→SW) processing passes. Only available when Pass Count > 1.',
 		type: 'boolean',
 		category: 'algorithm',
 		algorithms: ['edge']
@@ -825,19 +833,6 @@ export const DOTS_METADATA: Record<string, ParameterMetadata> = {
 		category: 'algorithm',
 		algorithms: ['dots']
 	},
-	dotGridPattern: {
-		name: 'dotGridPattern',
-		label: 'Grid Pattern',
-		description: 'Pattern for dot placement.',
-		type: 'select',
-		options: [
-			{ value: 'grid', label: 'Grid' },
-			{ value: 'hexagonal', label: 'Hexagonal' },
-			{ value: 'random', label: 'Random' }
-		],
-		category: 'algorithm',
-		algorithms: ['dots']
-	},
 	dotShape: {
 		name: 'dotShape',
 		label: 'Dot Shape',
@@ -853,11 +848,86 @@ export const DOTS_METADATA: Record<string, ParameterMetadata> = {
 		algorithms: ['dots']
 	},
 
+	// Color Control Parameters
+	dotPreserveColors: {
+		name: 'dotPreserveColors',
+		label: 'Full Color Mode',
+		description:
+			'Preserves the original image colors in the output. When disabled, produces monochromatic dots.',
+		type: 'boolean',
+		category: 'color',
+		algorithms: ['dots']
+	},
+	dotColorAccuracy: {
+		name: 'dotColorAccuracy',
+		label: 'Color Accuracy',
+		description: 'How accurately to match original colors (0 = loose, 1 = exact).',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.05,
+		category: 'color',
+		algorithms: ['dots'],
+		dependsOn: 'dotPreserveColors'
+	},
+	dotMaxColorsPerDot: {
+		name: 'dotMaxColorsPerDot',
+		label: 'Colors Per Region',
+		description: 'Maximum number of colors to use per dot region.',
+		type: 'range',
+		min: 1,
+		max: 10,
+		step: 1,
+		category: 'color',
+		algorithms: ['dots'],
+		dependsOn: 'dotPreserveColors'
+	},
+	dotColorTolerance: {
+		name: 'dotColorTolerance',
+		label: 'Color Tolerance',
+		description: 'Tolerance for color matching (higher = more colors merged).',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.05,
+		category: 'color',
+		algorithms: ['dots'],
+		dependsOn: 'dotPreserveColors'
+	},
+	dotColorSampling: {
+		name: 'dotColorSampling',
+		label: 'Color Sampling Method',
+		description: 'How to sample colors from the source image.',
+		type: 'select',
+		options: [
+			{ value: 'DominantColor', label: 'Dominant Color' },
+			{ value: 'GradientMapping', label: 'Gradient Mapping' },
+			{ value: 'ContentAware', label: 'Content Aware' },
+			{ value: 'Adaptive', label: 'Adaptive' }
+		],
+		category: 'color',
+		algorithms: ['dots'],
+		dependsOn: 'dotPreserveColors'
+	},
+	dotBackgroundTolerance: {
+		name: 'dotBackgroundTolerance',
+		label: 'Background Tolerance',
+		description: 'Tolerance for background color detection.',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.05,
+		category: 'color',
+		algorithms: ['dots'],
+		dependsOn: 'dotPreserveColors'
+	},
+
 	// UI Aliases for compatibility with existing UI components
 	dotDensity: {
 		name: 'dotDensity',
 		label: 'Dot Density',
-		description: 'Controls the density of dots in the stippling output. Higher values create more dots.',
+		description:
+			'Controls the density of dots in the stippling output. Higher values create more dots.',
 		type: 'range',
 		min: 1,
 		max: 10,
@@ -890,7 +960,8 @@ export const DOTS_METADATA: Record<string, ParameterMetadata> = {
 	dotSizingMode: {
 		name: 'dotSizingMode',
 		label: 'Dot Sizing',
-		description: 'Choose the dot sizing algorithm: Adaptive (balanced), Gradient-Based (enhanced detail), or Static (manual variation).',
+		description:
+			'Choose the dot sizing algorithm: Adaptive (balanced), Gradient-Based (enhanced detail), or Static (manual variation).',
 		type: 'select',
 		category: 'algorithm',
 		algorithms: ['dots'],

@@ -61,6 +61,11 @@
 			}
 		}
 
+		// Handle color preserve checkbox sync
+		if (name === 'dotPreserveColors') {
+			updates.preserveColors = value; // Sync with base property
+		}
+
 		// Synchronize aliases to keep both UI and base properties in sync
 		switch (name) {
 			case 'dotDensity':
@@ -120,14 +125,37 @@
 	// Group parameters by category - using actual DOTS_METADATA keys
 	const coreParams = ['minRadius', 'maxRadius', 'dotSizingMode', 'sizeVariation'];
 	const dotStyleParams = ['dotShape', 'dotGridPattern'];
-	const colorParams = ['dotPreserveColors', 'dotBackgroundTolerance', 'dotOpacity'];
+	const colorParams = [
+		'dotPreserveColors',
+		'dotColorAccuracy',
+		'dotMaxColorsPerDot',
+		'dotColorTolerance',
+		'dotBackgroundTolerance',
+		'dotColorSampling'
+	];
 
-	// Parameter visibility logic - Size Variation only shows when Static Sizing is selected
+	// Parameter visibility logic - handles dependencies
 	function isParameterVisible(param: string): boolean {
+		const metadata = DOTS_METADATA[param];
+
+		// Size Variation only shows when Static Sizing is selected
 		if (param === 'sizeVariation') {
-			return config.dotSizingMode === 'static'; // Only show size variation for static sizing
+			return config.dotSizingMode === 'static';
 		}
-		return true; // All other parameters are always visible
+
+		// Check dependency chain for color parameters
+		if (metadata?.dependsOn) {
+			// Check immediate dependency
+			const immediateParent = metadata.dependsOn;
+			if (!config[immediateParent]) {
+				return false; // Immediate parent is disabled
+			}
+
+			// Recursively check parent dependencies to ensure the full chain is enabled
+			return isParameterVisible(immediateParent);
+		}
+
+		return true; // Parameters without dependencies are always visible
 	}
 </script>
 
@@ -146,11 +174,27 @@
 	<ParameterSectionAdvanced
 		title="Dot Geometry"
 		icon={Layers}
-		iconColorClass="text-blue-600 dark:text-blue-400"
-		backgroundGradient="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
+		iconColorClass="text-purple-600 dark:text-purple-400"
+		backgroundGradient="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
 		expanded={coreExpanded}
 		onToggle={() => (coreExpanded = !coreExpanded)}
 		parameters={coreParams}
+		{config}
+		metadata={DOTS_METADATA}
+		onParameterChange={handleParameterChange}
+		{isParameterVisible}
+		{disabled}
+	/>
+
+	<!-- Color Options -->
+	<ParameterSectionAdvanced
+		title="Color Options"
+		icon={Palette}
+		iconColorClass="text-orange-600 dark:text-orange-400"
+		backgroundGradient="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20"
+		expanded={colorExpanded}
+		onToggle={() => (colorExpanded = !colorExpanded)}
+		parameters={colorParams}
 		{config}
 		metadata={DOTS_METADATA}
 		onParameterChange={handleParameterChange}
@@ -162,26 +206,11 @@
 	<ParameterSectionAdvanced
 		title="Dot Style"
 		icon={Brush}
-		iconColorClass="text-purple-600 dark:text-purple-400"
-		backgroundGradient="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
+		iconColorClass="text-pink-600 dark:text-pink-400"
+		backgroundGradient="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20"
 		expanded={dotStyleExpanded}
 		onToggle={() => (dotStyleExpanded = !dotStyleExpanded)}
 		parameters={dotStyleParams}
-		{config}
-		metadata={DOTS_METADATA}
-		onParameterChange={handleParameterChange}
-		{disabled}
-	/>
-
-	<!-- Color Options -->
-	<ParameterSectionAdvanced
-		title="Color Options"
-		icon={Palette}
-		iconColorClass="text-pink-600 dark:text-pink-400"
-		backgroundGradient="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20"
-		expanded={colorExpanded}
-		onToggle={() => (colorExpanded = !colorExpanded)}
-		parameters={colorParams}
 		{config}
 		metadata={DOTS_METADATA}
 		onParameterChange={handleParameterChange}
