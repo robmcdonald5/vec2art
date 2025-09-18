@@ -291,6 +291,12 @@ impl ConfigBuilder {
         self
     }
 
+    /// Set the shape for dots (Circle, Square, Diamond, Triangle)
+    pub fn dot_shape(mut self, shape: crate::algorithms::dots::dots::DotShape) -> Self {
+        self.config.dot_shape = shape;
+        self
+    }
+
     /// Enable or disable Poisson disk sampling for natural dot distribution
     pub fn set_poisson_disk_sampling(mut self, enabled: bool) -> Self {
         self.config.dot_poisson_disk_sampling = enabled;

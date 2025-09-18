@@ -473,6 +473,21 @@ impl WasmVectorizer {
         Ok(())
     }
 
+    /// Set dot shape (0=Circle, 1=Square, 2=Diamond, 3=Triangle)
+    #[wasm_bindgen]
+    pub fn set_dot_shape(&mut self, shape: u32) -> Result<(), JsValue> {
+        use vectorize_core::algorithms::dots::dots::DotShape;
+        let dot_shape = match shape {
+            0 => DotShape::Circle,
+            1 => DotShape::Square,
+            2 => DotShape::Diamond,
+            3 => DotShape::Triangle,
+            _ => return Err(JsValue::from_str(&format!("Invalid dot shape: {}. Use 0=Circle, 1=Square, 2=Diamond, 3=Triangle", shape))),
+        };
+        self.config_builder = self.config_builder.clone().dot_shape(dot_shape);
+        Ok(())
+    }
+
     // === SUPERPIXEL BACKEND METHODS ===
 
     /// Set number of superpixels

@@ -272,6 +272,14 @@
 				`[Converter] Converting ${files.length} files using ${currentAlgorithm} algorithm`
 			);
 
+			// Debug: Log the full config to see if dotShape is included
+			if (currentAlgorithm === 'dots') {
+				console.log('[Converter] Dots config being sent:', {
+					dotShape: (config as any).dotShape,
+					fullConfig: config
+				});
+			}
+
 			// Process each file
 			const processedResults: ProcessingResult[] = [];
 			const newPreviewUrls: (string | null)[] = [];

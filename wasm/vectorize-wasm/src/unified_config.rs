@@ -208,7 +208,8 @@ pub fn apply_config_json(
                 .dot_density(config.dot_density_threshold)
                 .map_err(|e| JsValue::from_str(&format!("Failed to set dot density: {}", e)))?
                 .adaptive_sizing(config.dot_adaptive_sizing)
-                .set_gradient_based_sizing(config.dot_gradient_based_sizing);
+                .set_gradient_based_sizing(config.dot_gradient_based_sizing)
+                .dot_shape(config.dot_shape);
 
             // Only apply size variation when neither adaptive nor gradient-based sizing is enabled
             if !config.dot_adaptive_sizing && !config.dot_gradient_based_sizing {

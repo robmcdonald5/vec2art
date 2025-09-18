@@ -9,6 +9,27 @@ use crate::algorithms::dots::background::{detect_background_advanced, Background
 use crate::algorithms::edges::gradients::{GradientAnalysis, GradientConfig};
 use crate::execution::execute_parallel_filter_map;
 use image::{Rgba, RgbaImage};
+use serde::{Deserialize, Serialize};
+
+/// Supported dot shapes for rendering
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "generate-ts", derive(ts_rs::TS))]
+pub enum DotShape {
+    /// Circle shape (default)
+    Circle,
+    /// Square shape
+    Square,
+    /// Diamond shape (45-degree rotated square)
+    Diamond,
+    /// Triangle shape (pointing upward)
+    Triangle,
+}
+
+impl Default for DotShape {
+    fn default() -> Self {
+        DotShape::Circle
+    }
+}
 
 /// Represents a single dot in the output
 #[derive(Debug, Clone, PartialEq)]
@@ -23,6 +44,8 @@ pub struct Dot {
     pub opacity: f32,
     /// Color as hex string (e.g., "#FF0000")
     pub color: String,
+    /// Shape of the dot
+    pub shape: DotShape,
 }
 
 impl Dot {
@@ -34,6 +57,19 @@ impl Dot {
             radius,
             opacity,
             color,
+            shape: DotShape::default(),
+        }
+    }
+
+    /// Create a new dot with specified parameters including shape
+    pub fn new_with_shape(x: f32, y: f32, radius: f32, opacity: f32, color: String, shape: DotShape) -> Self {
+        Self {
+            x,
+            y,
+            radius,
+            opacity,
+            color,
+            shape,
         }
     }
 
@@ -74,6 +110,8 @@ pub struct DotConfig {
     pub parallel_threshold: usize,
     /// Random seed for consistent spatial distribution
     pub random_seed: u64,
+    /// Shape to use for dots
+    pub shape: DotShape,
     /// Enable Poisson disk sampling for natural dot distribution (default: false)
     pub poisson_disk_sampling: bool,
     /// Enable gradient-based sizing for dot scaling based on local image gradients (default: false)
@@ -95,6 +133,7 @@ impl Default for DotConfig {
             use_parallel: true,
             parallel_threshold: 10000,
             random_seed: 42,
+            shape: DotShape::default(),
             poisson_disk_sampling: false,
             gradient_based_sizing: false,
             size_variation: 0.0,
@@ -619,7 +658,7 @@ pub fn generate_dots(
                 config.default_color.clone()
             };
 
-            let dot = Dot::new(fx, fy, radius, opacity, color);
+            let dot = Dot::new_with_shape(fx, fy, radius, opacity, color, config.shape);
             dots.push(dot);
         }
     } else {
@@ -638,7 +677,7 @@ pub fn generate_dots(
 
             // Check spatial distribution
             if spatial_grid.is_position_valid(fx, fy, radius, &dots, config.spacing_factor) {
-                let dot = Dot::new(fx, fy, radius, opacity, color);
+                let dot = Dot::new_with_shape(fx, fy, radius, opacity, color, config.shape);
                 spatial_grid.add_dot(dots.len(), fx, fy);
                 dots.push(dot);
             }

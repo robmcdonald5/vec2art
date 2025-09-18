@@ -4,7 +4,7 @@
 //! generating SVG circle elements, grouping similar colors for optimization, and producing
 //! compact SVG output with proper coordinate scaling.
 
-use crate::algorithms::dots::Dot;
+use crate::algorithms::dots::{Dot, dots::DotShape};
 use crate::algorithms::{SvgElementType, SvgPath};
 use std::fmt::Write;
 
@@ -82,14 +82,52 @@ pub struct SvgSymbolUse {
 }
 
 impl SvgElement {
-    /// Create a new SVG circle element from a dot
+    /// Create a new SVG element from a dot based on its shape
     pub fn from_dot(dot: &Dot) -> Self {
-        Self {
-            element_type: SvgElementType::Circle {
+        let element_type = match dot.shape {
+            DotShape::Circle => SvgElementType::Circle {
                 cx: dot.x,
                 cy: dot.y,
                 r: dot.radius,
             },
+            DotShape::Square => {
+                let size = dot.radius * 2.0;
+                SvgElementType::Rect {
+                    x: dot.x - dot.radius,
+                    y: dot.y - dot.radius,
+                    width: size,
+                    height: size,
+                }
+            },
+            DotShape::Diamond => {
+                let points = format!(
+                    "{},{} {},{} {},{} {},{}",
+                    dot.x, dot.y - dot.radius, // Top
+                    dot.x + dot.radius, dot.y, // Right
+                    dot.x, dot.y + dot.radius, // Bottom
+                    dot.x - dot.radius, dot.y  // Left
+                );
+                SvgElementType::Polygon {
+                    points,
+                }
+            },
+            DotShape::Triangle => {
+                let height = dot.radius * 1.732; // sqrt(3) approximation
+                let half_base = dot.radius;
+                let points = format!(
+                    "{},{} {},{} {},{}",
+                    dot.x, dot.y - height * 0.577, // Top vertex
+                    dot.x - half_base, dot.y + height * 0.289, // Bottom left
+                    dot.x + half_base, dot.y + height * 0.289  // Bottom right
+                );
+                SvgElementType::Polygon {
+                    points,
+                }
+            },
+        };
+
+        Self {
+            element_type,
             fill: dot.color.clone(),
             opacity: dot.opacity,
         }
@@ -611,16 +649,54 @@ pub fn dots_to_svg_paths(dots: &[Dot]) -> Vec<SvgPath> {
     dots.iter()
         .filter(|dot| dot.opacity > 0.0 && dot.radius > 0.0)
         .map(|dot| {
-            SvgPath {
-                data: String::new(), // Not used for circles
-                fill: dot.color.clone(),
-                stroke: "none".to_string(),
-                stroke_width: 0.0,
-                element_type: SvgElementType::Circle {
+            let element_type = match dot.shape {
+                DotShape::Circle => SvgElementType::Circle {
                     cx: dot.x,
                     cy: dot.y,
                     r: dot.radius,
                 },
+                DotShape::Square => {
+                    let size = dot.radius * 2.0;
+                    SvgElementType::Rect {
+                        x: dot.x - dot.radius,
+                        y: dot.y - dot.radius,
+                        width: size,
+                        height: size,
+                    }
+                },
+                DotShape::Diamond => {
+                    let points = format!(
+                        "{},{} {},{} {},{} {},{}",
+                        dot.x, dot.y - dot.radius, // Top
+                        dot.x + dot.radius, dot.y, // Right
+                        dot.x, dot.y + dot.radius, // Bottom
+                        dot.x - dot.radius, dot.y  // Left
+                    );
+                    SvgElementType::Polygon {
+                        points,
+                    }
+                },
+                DotShape::Triangle => {
+                    let height = dot.radius * 1.732; // sqrt(3) approximation
+                    let half_base = dot.radius;
+                    let points = format!(
+                        "{},{} {},{} {},{}",
+                        dot.x, dot.y - height * 0.577, // Top vertex
+                        dot.x - half_base, dot.y + height * 0.289, // Bottom left
+                        dot.x + half_base, dot.y + height * 0.289  // Bottom right
+                    );
+                    SvgElementType::Polygon {
+                        points,
+                    }
+                },
+            };
+
+            SvgPath {
+                data: String::new(), // Not used for these shapes
+                fill: dot.color.clone(),
+                stroke: "none".to_string(),
+                stroke_width: 0.0,
+                element_type,
             }
         })
         .collect()

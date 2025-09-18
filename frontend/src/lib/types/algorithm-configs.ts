@@ -18,7 +18,7 @@ export type SuperpixelInitPattern = 'square' | 'hexagonal' | 'poisson';
 export type DotGridPattern = 'grid' | 'hexagonal' | 'random';
 
 // Dot shapes
-export type DotShape = 'circle' | 'square' | 'diamond';
+export type DotShape = 'circle' | 'square' | 'diamond' | 'triangle';
 
 // Color sampling methods (use generated types from WASM)
 import type { ColorSamplingMethod } from './generated/ColorSamplingMethod';
@@ -847,7 +847,8 @@ export const DOTS_METADATA: Record<string, ParameterMetadata> = {
 		options: [
 			{ value: 'circle', label: 'Circle' },
 			{ value: 'square', label: 'Square' },
-			{ value: 'diamond', label: 'Diamond' }
+			{ value: 'diamond', label: 'Diamond' },
+			{ value: 'triangle', label: 'Triangle' }
 		],
 		category: 'style',
 		algorithms: ['dots']

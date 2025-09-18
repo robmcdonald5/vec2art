@@ -397,8 +397,13 @@ export class WasmWorkerService {
 			}
 
 			// DEBUG: Log the config being sent to worker
-
-
+			if (plainConfig.algorithm === 'dots') {
+				console.log('[WasmWorkerService] 🔵 Dots config being sent to worker:', {
+					dotShape: plainConfig.dotShape,
+					allKeys: Object.keys(plainConfig),
+					fullConfig: plainConfig
+				});
+			}
 
 			// Send processing request to worker
 			const result = await this.sendMessage('process', {

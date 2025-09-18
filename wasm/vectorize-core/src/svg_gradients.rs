@@ -241,6 +241,23 @@ fn format_svg_path(path: &SvgPath, config: &SvgConfig) -> String {
             ));
             el
         }
+        SvgElementType::Rect { x, y, width, height } => {
+            let mut el = String::from("<rect");
+            el.push_str(&format!(
+                r#" x="{:.prec$}" y="{:.prec$}" width="{:.prec$}" height="{:.prec$}""#,
+                x,
+                y,
+                width,
+                height,
+                prec = config.precision as usize
+            ));
+            el
+        }
+        SvgElementType::Polygon { points } => {
+            let mut el = String::from("<polygon");
+            el.push_str(&format!(r#" points="{}""#, points));
+            el
+        }
     };
 
     // Add fill attribute

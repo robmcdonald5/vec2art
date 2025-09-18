@@ -92,6 +92,10 @@ pub enum SvgElementType {
     Ellipse { cx: f32, cy: f32, rx: f32, ry: f32 },
     /// Line element
     Line { x1: f32, y1: f32, x2: f32, y2: f32 },
+    /// Rectangle element
+    Rect { x: f32, y: f32, width: f32, height: f32 },
+    /// Polygon element
+    Polygon { points: String },
 }
 
 /// SVG path representation

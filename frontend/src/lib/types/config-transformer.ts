@@ -10,6 +10,7 @@ import type { TraceLowConfig } from './generated/TraceLowConfig';
 import type { TraceBackend } from './generated/TraceBackend';
 import type { BackgroundRemovalAlgorithm } from './generated/BackgroundRemovalAlgorithm';
 import type { ColorSamplingMethod } from './generated/ColorSamplingMethod';
+import type { DotShape } from './generated/DotShape';
 import type {
 	AlgorithmConfig,
 	EdgeConfig,
@@ -51,6 +52,24 @@ function mapBackendToAlgorithm(backend: TraceBackend): AlgorithmConfig['algorith
 			return 'dots';
 		default:
 			return 'edge';
+	}
+}
+
+/**
+ * Map frontend dot shape names to WASM DotShape enum values
+ */
+function mapDotShapeToWasm(shape: DotsConfig['dotShape']): DotShape {
+	switch (shape) {
+		case 'circle':
+			return 'Circle';
+		case 'square':
+			return 'Square';
+		case 'diamond':
+			return 'Diamond';
+		case 'triangle':
+			return 'Triangle';
+		default:
+			return 'Circle';
 	}
 }
 
@@ -182,6 +201,10 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 			config.algorithm === 'dots'
 				? ((config as DotsConfig).sizeVariation ?? (config as DotsConfig).dotSizeVariation ?? 0.3)
 				: 0.3,
+		dot_shape:
+			config.algorithm === 'dots'
+				? mapDotShapeToWasm((config as DotsConfig).dotShape ?? 'circle')
+				: 'Circle',
 
 		// Centerline backend specific
 		enable_adaptive_threshold:

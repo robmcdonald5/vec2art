@@ -137,12 +137,18 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 			line_preserve_colors: wasmConfig.line_preserve_colors,
 			dot_preserve_colors: wasmConfig.dot_preserve_colors,
 			superpixel_preserve_colors: wasmConfig.superpixel_preserve_colors,
-			dot_size_variation: wasmConfig.dot_size_variation  // ADD THIS TO SEE THE VALUE
+			dot_size_variation: wasmConfig.dot_size_variation // ADD THIS TO SEE THE VALUE
 		});
-
 
 		// Additional debug logging for dots parameters
 		if (config.algorithm === 'dots') {
+			// First, check if dotShape exists anywhere in the config
+			console.log('[Worker] 🔍 Searching for dotShape in config:', {
+				directDotShape: (config as any).dotShape,
+				configKeys: Object.keys(config),
+				configValues: config
+			});
+
 			console.log('[Worker] 🔵 Dots config values:', {
 				frontend: {
 					dotDensity: (config as any).dotDensity,
@@ -155,7 +161,8 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 					adaptiveSizing: (config as any).adaptiveSizing,
 					dotAdaptiveSizing: (config as any).dotAdaptiveSizing,
 					sizeVariation: (config as any).sizeVariation,
-					dotSizeVariation: (config as any).dotSizeVariation
+					dotSizeVariation: (config as any).dotSizeVariation,
+					dotShape: (config as any).dotShape
 				},
 				wasm: {
 					dot_density_threshold: wasmConfig.dot_density_threshold,
@@ -164,7 +171,8 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 					dot_adaptive_sizing: wasmConfig.dot_adaptive_sizing,
 					dot_poisson_disk_sampling: wasmConfig.dot_poisson_disk_sampling,
 					dot_gradient_based_sizing: wasmConfig.dot_gradient_based_sizing,
-					dot_size_variation: wasmConfig.dot_size_variation
+					dot_size_variation: wasmConfig.dot_size_variation,
+					dot_shape: wasmConfig.dot_shape
 				}
 			});
 		}
@@ -178,9 +186,8 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 			stroke_width: wasmConfig.stroke_px_at_1080p,
 			noise_filtering: wasmConfig.noise_filtering,
 			background_removal: wasmConfig.enable_background_removal,
-			dot_size_variation: wasmConfig.dot_size_variation  // Add this to verify
+			dot_size_variation: wasmConfig.dot_size_variation // Add this to verify
 		});
-
 
 		// Apply entire configuration with single call
 		try {
@@ -425,16 +432,31 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 						'fullConfig?.sizeVariation': (config as any).fullConfig?.sizeVariation,
 						'fullConfig?.dotSizeVariation': (config as any).fullConfig?.dotSizeVariation,
 						configKeys: Object.keys(config || {}),
-						fullConfigKeys: (config as any).fullConfig ? Object.keys((config as any).fullConfig) : null
+						fullConfigKeys: (config as any).fullConfig
+							? Object.keys((config as any).fullConfig)
+							: null
 					});
-					if (config.sizeVariation !== undefined || (config as any).dotSizeVariation !== undefined || (config as any).fullConfig?.sizeVariation !== undefined || (config as any).fullConfig?.dotSizeVariation !== undefined) {
-						const sizeVariation = config.sizeVariation ?? (config as any).dotSizeVariation ?? (config as any).fullConfig?.sizeVariation ?? (config as any).fullConfig?.dotSizeVariation ?? 0.3;
+					if (
+						config.sizeVariation !== undefined ||
+						(config as any).dotSizeVariation !== undefined ||
+						(config as any).fullConfig?.sizeVariation !== undefined ||
+						(config as any).fullConfig?.dotSizeVariation !== undefined
+					) {
+						const sizeVariation =
+							config.sizeVariation ??
+							(config as any).dotSizeVariation ??
+							(config as any).fullConfig?.sizeVariation ??
+							(config as any).fullConfig?.dotSizeVariation ??
+							0.3;
 						console.log('[Worker] 🔵 Setting dot_size_variation:', sizeVariation);
 						console.log('[Worker] 🔍 Method check:', typeof vectorizer.set_dot_size_variation);
 						try {
 							if (typeof vectorizer.set_dot_size_variation === 'function') {
 								vectorizer.set_dot_size_variation(sizeVariation);
-								console.log('[Worker] ✅ Successfully called set_dot_size_variation with:', sizeVariation);
+								console.log(
+									'[Worker] ✅ Successfully called set_dot_size_variation with:',
+									sizeVariation
+								);
 							} else {
 								console.error('[Worker] ❌ set_dot_size_variation method does not exist');
 							}
