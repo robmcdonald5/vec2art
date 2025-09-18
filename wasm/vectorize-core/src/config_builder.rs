@@ -303,6 +303,13 @@ impl ConfigBuilder {
         self
     }
 
+    /// Set dot size variation factor (0.0-1.0)
+    pub fn dot_size_variation(mut self, variation: f32) -> ConfigBuilderResult<Self> {
+        self.validate_unit_range(variation, "dot_size_variation")?;
+        self.config.dot_size_variation = variation;
+        Ok(self)
+    }
+
     // Hand-drawn aesthetic parameters
 
     /// Set hand-drawn preset by name

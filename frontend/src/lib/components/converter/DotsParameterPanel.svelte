@@ -91,8 +91,8 @@
 	}
 
 	// Group parameters by category - using actual DOTS_METADATA keys
-	const coreParams = ['minRadius', 'maxRadius'];
-	const dotStyleParams = ['dotShape', 'adaptiveSizing', 'sizeVariation', 'dotAdaptiveSizing'];
+	const coreParams = ['minRadius', 'maxRadius', 'sizeVariation'];
+	const dotStyleParams = ['dotShape', 'adaptiveSizing', 'dotAdaptiveSizing'];
 	const colorParams = ['dotPreserveColors', 'dotBackgroundTolerance', 'dotOpacity'];
 	const advancedParams = ['dotGridPattern', 'dotPoissonDiskSampling', 'dotGradientBasedSizing'];
 </script>

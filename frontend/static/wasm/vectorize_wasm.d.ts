@@ -495,6 +495,10 @@ export class WasmVectorizer {
    */
   set_gradient_based_sizing(enabled: boolean): void;
   /**
+   * Set dot size variation factor
+   */
+  set_dot_size_variation(variation: number): void;
+  /**
    * Set number of superpixels
    */
   set_num_superpixels(count: number): void;
@@ -947,10 +951,10 @@ export interface InitOutput {
   readonly _ZN3ryu6pretty8format3217he566f4d871da3489E: (a: number, b: number) => number;
   readonly _ZN9hashbrown3raw11Fallibility17capacity_overflow17ha3dc53e5c84cffb7E: (a: number, b: number) => void;
   readonly _ZN9hashbrown3raw11Fallibility9alloc_err17h74fb1a7fb61ccb58E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder5build17h46b96a6191928507E: (a: number, b: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder5build17h59ffb0bbff8b8d4cE: (a: number, b: number) => void;
   readonly _ZN14vectorize_core3gpu6device9GpuDevice25supports_image_processing17h6724d3787a24bb59E: (a: number) => number;
   readonly _ZN14vectorize_core3gpu7kernels14edge_detection20GpuCannyEdgeDetector3new17hed50c742fdc76c21E: (a: number, b: number) => void;
-  readonly _ZN14vectorize_core24vectorize_trace_low_rgba17h9362c483f111819dE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core24vectorize_trace_low_rgba17h1dc9187565edaf64E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core3gpu7kernels9stippling12GpuStippling3new17h63c8487c6e569bb8E: (a: number, b: number) => void;
   readonly _ZN4wgpu3api6device6Device17create_bind_group17hdb2ee45598e1533cE: (a: number, b: number, c: number) => void;
   readonly _ZN101_$LT$wgpu..backend..webgpu..WebComputePassEncoder$u20$as$u20$wgpu..dispatch..ComputePassInterface$GT$14set_bind_group17h426ca2b382ebacfcE: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -979,6 +983,7 @@ export interface InitOutput {
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder15slic_iterations17hf8c6972371087621E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder14dot_size_range17h3c93c9b0b4c5920cE: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder11dot_density17he2ed8abd434960caE: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder18dot_size_variation17h67c93cc367c7604fE: (a: number, b: number, c: number) => void;
   readonly __wbg_wasmcapabilityreport_free: (a: number, b: number) => void;
   readonly wasmcapabilityreport_threading_supported: (a: number) => number;
   readonly wasmcapabilityreport_shared_array_buffer: (a: number) => number;
@@ -1086,7 +1091,7 @@ export interface InitOutput {
   readonly _ZN14vectorize_core16config_immutable16VectorizerConfig15preset_line_art17h591f9207b88fcca8E: (a: number) => void;
   readonly wasmconfigmanager_load_preset: (a: number, b: number, c: number) => [number, number];
   readonly wasmconfigmanager_build: (a: number) => [number, number, number, number];
-  readonly _ZN14vectorize_core16config_immutable16VectorizerConfig5build17hc1d90cedd94233b5E: (a: number, b: number) => void;
+  readonly _ZN14vectorize_core16config_immutable16VectorizerConfig5build17h810b11edbbe7f10aE: (a: number, b: number) => void;
   readonly wasmconfigmanager_get_backend: (a: number) => [number, number];
   readonly wasmconfigmanager_reset: (a: number) => void;
   readonly wasmconfigmanager_validate: (a: number) => [number, number, number, number];
@@ -1172,6 +1177,7 @@ export interface InitOutput {
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder20background_tolerance17hc713a4baeca92f15E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_poisson_disk_sampling: (a: number, b: number) => void;
   readonly wasmvectorizer_set_gradient_based_sizing: (a: number, b: number) => void;
+  readonly wasmvectorizer_set_dot_size_variation: (a: number, b: number) => [number, number];
   readonly wasmvectorizer_set_num_superpixels: (a: number, b: number) => [number, number];
   readonly wasmvectorizer_set_compactness: (a: number, b: number) => [number, number];
   readonly wasmvectorizer_set_slic_iterations: (a: number, b: number) => [number, number];
@@ -1203,7 +1209,7 @@ export interface InitOutput {
   readonly wasmvectorizer_set_multi_pass_intensity: (a: number, b: number) => [number, number];
   readonly wasmvectorizer_set_image_resolution: (a: number, b: number, c: number) => [number, number];
   readonly wasmvectorizer_set_adaptive_scaling: (a: number, b: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder21build_with_hand_drawn17h219960176968877cE: (a: number, b: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder21build_with_hand_drawn17h2bb84160c8eae6abE: (a: number, b: number) => void;
   readonly wasmvectorizer_vectorize_with_progress: (a: number, b: any, c: number) => [number, number, number, number];
   readonly _ZN7web_sys8features13gen_ImageData1_110_$LT$impl$u20$wasm_bindgen..describe..WasmDescribe$u20$for$u20$web_sys..features..gen_ImageData..ImageData$GT$8describe17h5af85446a303e2abE: () => void;
   readonly _ZN6js_sys1_83_$LT$impl$u20$wasm_bindgen..describe..WasmDescribe$u20$for$u20$js_sys..Function$GT$8describe17hd309b1cc69ca29fbE: () => void;
@@ -1426,32 +1432,32 @@ export interface InitOutput {
   readonly _ZN14vectorize_core10algorithms10centerline29distance_transform_centerline36DistanceTransformCenterlineAlgorithm3new17hc5932cd5abb64f8aE: (a: number) => void;
   readonly _ZN14vectorize_core10algorithms10centerline29distance_transform_centerline36DistanceTransformCenterlineAlgorithm30with_high_performance_settings17h68430dc115c8b1c3E: (a: number) => void;
   readonly _ZN150_$LT$vectorize_core..algorithms..centerline..distance_transform_centerline..DistanceTransformCenterlineAlgorithm$u20$as$u20$core..default..Default$GT$7default17hf54c55fa1d093c99E: (a: number) => void;
-  readonly _ZN187_$LT$vectorize_core..algorithms..centerline..distance_transform_centerline..DistanceTransformCenterlineAlgorithm$u20$as$u20$vectorize_core..algorithms..centerline..CenterlineAlgorithm$GT$19extract_centerlines17hd6090df3c940285aE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN187_$LT$vectorize_core..algorithms..centerline..distance_transform_centerline..DistanceTransformCenterlineAlgorithm$u20$as$u20$vectorize_core..algorithms..centerline..CenterlineAlgorithm$GT$19extract_centerlines17ha367534c2a8e4404E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core5utils9wasm_time7Instant3now17hfcf02fd77def5dcdE: () => number;
   readonly _ZN14vectorize_core5utils9wasm_time7Instant7elapsed17h97a81293140e4f36E: (a: number, b: number) => void;
-  readonly _ZN158_$LT$vectorize_core..algorithms..centerline..thresholding..BradleyRothThresholding$u20$as$u20$vectorize_core..algorithms..centerline..ThresholdingStrategy$GT$9threshold17h347d1e55118a1a31E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN158_$LT$vectorize_core..algorithms..centerline..thresholding..BradleyRothThresholding$u20$as$u20$vectorize_core..algorithms..centerline..ThresholdingStrategy$GT$9threshold17h47552f1103fc8123E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN154_$LT$vectorize_core..algorithms..centerline..extraction..JunctionAwareExtraction$u20$as$u20$vectorize_core..algorithms..centerline..ExtractionStrategy$GT$17extract_polylines17h9f7b3ee5de4c4a28E: (a: number, b: number, c: number) => void;
   readonly _ZN155_$LT$vectorize_core..algorithms..centerline..extraction..DirectionAwareExtraction$u20$as$u20$vectorize_core..algorithms..centerline..ExtractionStrategy$GT$17extract_polylines17h36c93def7460843eE: (a: number, b: number, c: number) => void;
   readonly _ZN147_$LT$vectorize_core..algorithms..centerline..extraction..SimpleExtraction$u20$as$u20$vectorize_core..algorithms..centerline..ExtractionStrategy$GT$17extract_polylines17hb7e9951a94a7b593E: (a: number, b: number, c: number) => void;
   readonly _ZN149_$LT$vectorize_core..algorithms..centerline..extraction..ParallelExtraction$u20$as$u20$vectorize_core..algorithms..centerline..ExtractionStrategy$GT$17extract_polylines17h97ed2c8152ebe959E: (a: number, b: number, c: number) => void;
-  readonly _ZN163_$LT$vectorize_core..algorithms..centerline..preprocessing..MorphologicalPreprocessing$u20$as$u20$vectorize_core..algorithms..centerline..PreprocessingStrategy$GT$10preprocess17hdb584f375c7899c4E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN158_$LT$vectorize_core..algorithms..centerline..preprocessing..AdvancedPreprocessing$u20$as$u20$vectorize_core..algorithms..centerline..PreprocessingStrategy$GT$10preprocess17hb31922ebb745afc4E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN164_$LT$vectorize_core..algorithms..centerline..preprocessing..EdgePreservingPreprocessing$u20$as$u20$vectorize_core..algorithms..centerline..PreprocessingStrategy$GT$10preprocess17hba5a062453994b5eE: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN157_$LT$vectorize_core..algorithms..centerline..preprocessing..MinimalPreprocessing$u20$as$u20$vectorize_core..algorithms..centerline..PreprocessingStrategy$GT$10preprocess17h12d9e8b864b9c813E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN167_$LT$vectorize_core..algorithms..centerline..simplification..CurvatureAwareSimplification$u20$as$u20$vectorize_core..algorithms..centerline..SimplificationStrategy$GT$14simplify_paths17h90a69b892e095cd2E: (a: number, b: number, c: number, d: number, e: number) => void;
-  readonly _ZN161_$LT$vectorize_core..algorithms..centerline..simplification..AdaptiveSimplification$u20$as$u20$vectorize_core..algorithms..centerline..SimplificationStrategy$GT$14simplify_paths17ha2fb513269eefd7eE: (a: number, b: number, c: number, d: number, e: number) => void;
-  readonly _ZN160_$LT$vectorize_core..algorithms..centerline..simplification..MinimalSimplification$u20$as$u20$vectorize_core..algorithms..centerline..SimplificationStrategy$GT$14simplify_paths17h8b423476ccbbb6a5E: (a: number, b: number, c: number, d: number, e: number) => void;
-  readonly _ZN163_$LT$vectorize_core..algorithms..centerline..simplification..AggressiveSimplification$u20$as$u20$vectorize_core..algorithms..centerline..SimplificationStrategy$GT$14simplify_paths17h026566edf393c006E: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly _ZN163_$LT$vectorize_core..algorithms..centerline..preprocessing..MorphologicalPreprocessing$u20$as$u20$vectorize_core..algorithms..centerline..PreprocessingStrategy$GT$10preprocess17h62c2676857b76787E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN158_$LT$vectorize_core..algorithms..centerline..preprocessing..AdvancedPreprocessing$u20$as$u20$vectorize_core..algorithms..centerline..PreprocessingStrategy$GT$10preprocess17h5e0b254918404024E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN164_$LT$vectorize_core..algorithms..centerline..preprocessing..EdgePreservingPreprocessing$u20$as$u20$vectorize_core..algorithms..centerline..PreprocessingStrategy$GT$10preprocess17h5c9c2f7c86a7551aE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN157_$LT$vectorize_core..algorithms..centerline..preprocessing..MinimalPreprocessing$u20$as$u20$vectorize_core..algorithms..centerline..PreprocessingStrategy$GT$10preprocess17hb87abd8842a93548E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN167_$LT$vectorize_core..algorithms..centerline..simplification..CurvatureAwareSimplification$u20$as$u20$vectorize_core..algorithms..centerline..SimplificationStrategy$GT$14simplify_paths17h10b5250806a3b456E: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly _ZN161_$LT$vectorize_core..algorithms..centerline..simplification..AdaptiveSimplification$u20$as$u20$vectorize_core..algorithms..centerline..SimplificationStrategy$GT$14simplify_paths17hba9df549607c6a71E: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly _ZN160_$LT$vectorize_core..algorithms..centerline..simplification..MinimalSimplification$u20$as$u20$vectorize_core..algorithms..centerline..SimplificationStrategy$GT$14simplify_paths17h69cb03cc3c226768E: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly _ZN163_$LT$vectorize_core..algorithms..centerline..simplification..AggressiveSimplification$u20$as$u20$vectorize_core..algorithms..centerline..SimplificationStrategy$GT$14simplify_paths17h6fbded4715ab8b46E: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN142_$LT$vectorize_core..algorithms..centerline..thinning..GuoHallThinning$u20$as$u20$vectorize_core..algorithms..centerline..ThinningStrategy$GT$4thin17haaa564907610ecddE: (a: number, b: number, c: number) => void;
   readonly _ZN144_$LT$vectorize_core..algorithms..centerline..thinning..ZhangSuenThinning$u20$as$u20$vectorize_core..algorithms..centerline..ThinningStrategy$GT$4thin17h7ea332b5b7ecf22dE: (a: number, b: number, c: number) => void;
   readonly _ZN152_$LT$vectorize_core..algorithms..centerline..thinning..DistanceTransformThinning$u20$as$u20$vectorize_core..algorithms..centerline..ThinningStrategy$GT$4thin17h273d6e7143416027E: (a: number, b: number, c: number) => void;
   readonly _ZN139_$LT$vectorize_core..algorithms..centerline..thinning..SimdThinning$u20$as$u20$vectorize_core..algorithms..centerline..ThinningStrategy$GT$4thin17h6fdd686721e65a42E: (a: number, b: number, c: number) => void;
-  readonly _ZN154_$LT$vectorize_core..algorithms..centerline..thresholding..SauvolaThresholding$u20$as$u20$vectorize_core..algorithms..centerline..ThresholdingStrategy$GT$9threshold17h22684007fcf8698bE: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN151_$LT$vectorize_core..algorithms..centerline..thresholding..OtsuThresholding$u20$as$u20$vectorize_core..algorithms..centerline..ThresholdingStrategy$GT$9threshold17h51ffeb95eb1aef4bE: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN154_$LT$vectorize_core..algorithms..centerline..thresholding..NiblackThresholding$u20$as$u20$vectorize_core..algorithms..centerline..ThresholdingStrategy$GT$9threshold17h434203c75f74f39aE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN154_$LT$vectorize_core..algorithms..centerline..thresholding..SauvolaThresholding$u20$as$u20$vectorize_core..algorithms..centerline..ThresholdingStrategy$GT$9threshold17hb0f94430cdcff3d1E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN151_$LT$vectorize_core..algorithms..centerline..thresholding..OtsuThresholding$u20$as$u20$vectorize_core..algorithms..centerline..ThresholdingStrategy$GT$9threshold17h8856ffcd4b83f15cE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN154_$LT$vectorize_core..algorithms..centerline..thresholding..NiblackThresholding$u20$as$u20$vectorize_core..algorithms..centerline..ThresholdingStrategy$GT$9threshold17h845df0a132c0e84dE: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core10algorithms10centerline28CompositeCenterlineAlgorithm16high_performance17hac2696d88f59c7efE: (a: number) => void;
   readonly _ZN14vectorize_core10algorithms10centerline28CompositeCenterlineAlgorithm12high_quality17hb77658801e814b8bE: (a: number) => void;
-  readonly _ZN148_$LT$vectorize_core..algorithms..centerline..CompositeCenterlineAlgorithm$u20$as$u20$vectorize_core..algorithms..centerline..CenterlineAlgorithm$GT$19extract_centerlines17hb4740a9ce5e02b19E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN148_$LT$vectorize_core..algorithms..centerline..CompositeCenterlineAlgorithm$u20$as$u20$vectorize_core..algorithms..centerline..CenterlineAlgorithm$GT$19extract_centerlines17h997487ce33cb91dcE: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots13adaptive_dots21analyze_image_regions17h34ca14ff7ebc9bc0E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots13adaptive_dots26calculate_adaptive_density17hfefb6dddb8f9a8ffE: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots13adaptive_dots22apply_adaptive_density17hc19100a6d6406b6eE: (a: number, b: number, c: number, d: number) => void;
@@ -1459,9 +1465,9 @@ export interface InitOutput {
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h2985d6595c9f0907E: (a: number, b: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots13adaptive_dots26smooth_density_transitions17h3abc1b0ae3fcb3a6E: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly _ZN4core5slice29_$LT$impl$u20$$u5b$T$u5d$$GT$15copy_from_slice17len_mismatch_fail17hb3a9767c0036476aE: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core10algorithms4dots13adaptive_dots22generate_adaptive_dots17hefa29c5c080f233eE: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly _ZN14vectorize_core10algorithms4dots13adaptive_dots22generate_adaptive_dots17h8c0a306ba65990d2E: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots10background26detect_background_advanced17h1a58a6102f830b46E: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core10algorithms4dots4dots13generate_dots17heec5ac30e8c40a4bE: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+  readonly _ZN14vectorize_core10algorithms4dots4dots13generate_dots17ha45961118bd5b592E: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots10background8LabColor11distance_to17h87965abe243fa122E: (a: number, b: number) => number;
   readonly _ZN14vectorize_core10algorithms4dots10background11rgba_to_lab17ha64c0cd18bbecb08E: (a: number, b: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots10background26calculate_color_similarity17h574c4dca71e67ebeE: (a: number, b: number) => number;
@@ -1481,10 +1487,10 @@ export interface InitOutput {
   readonly _ZN14vectorize_core10algorithms4dots10dot_styles20apply_grid_alignment17h7febc248f001aacaE: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots4dots3Dot11distance_to17hbc0dc59057eac259E: (a: number, b: number, c: number) => number;
   readonly _ZN14vectorize_core10algorithms4dots4dots3Dot13overlaps_with17h128f8faa27551f5eE: (a: number, b: number) => number;
-  readonly _ZN92_$LT$vectorize_core..algorithms..dots..dots..DotConfig$u20$as$u20$core..default..Default$GT$7default17hce15efc08dc26470E: (a: number) => void;
-  readonly _ZN14vectorize_core10algorithms4dots4dots29generate_dots_auto_background17hf68ceeb805474b6cE: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core10algorithms4dots4dots34generate_dots_with_smart_filtering17h096232eb034ce232E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
-  readonly _ZN14vectorize_core10algorithms4dots4dots24generate_dots_from_image17h955f250420e8b137E: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly _ZN92_$LT$vectorize_core..algorithms..dots..dots..DotConfig$u20$as$u20$core..default..Default$GT$7default17hb29da7b8ff4da74dE: (a: number) => void;
+  readonly _ZN14vectorize_core10algorithms4dots4dots29generate_dots_auto_background17h6a661a2dbb9d8261E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms4dots4dots34generate_dots_with_smart_filtering17h0f785504aa593281E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+  readonly _ZN14vectorize_core10algorithms4dots4dots24generate_dots_from_image17hc39a55cec6f04f6cE: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN14vectorize_core10algorithms5edges9gradients35analyze_image_gradients_with_config17h43557e45658614d8E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core10algorithms4dots14dots_optimized21OptimizedDotGenerator3new17h054e3b445d5d99d0E: (a: number, b: number) => void;
   readonly _ZN14vectorize_core11performance11memory_pool7DotPool3new17ha06a928e56c6feb2E: (a: number, b: number, c: number) => void;
@@ -1545,14 +1551,14 @@ export interface InitOutput {
   readonly _ZN14vectorize_core10algorithms7tracing10path_utils27fitting_results_to_svg_path17h98fe6e69f534e53dE: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing5trace15trace_polylines17haf2bf5560492c411E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing9trace_low16ThresholdMapping3new17h445f175733852284E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core10algorithms7tracing9trace_low34vectorize_trace_low_with_gradients17h97712e63cebdcfe9E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core10algorithms7tracing9trace_low19vectorize_trace_low17hfa0a6a64bedced5eE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing9trace_low34vectorize_trace_low_with_gradients17hf47b5f68a5bacb00E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing9trace_low19vectorize_trace_low17h020b0868537b9467E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN4core3num7dec2flt60_$LT$impl$u20$core..str..traits..FromStr$u20$for$u20$f32$GT$8from_str17h7a48c59568e75144E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core10algorithms6visual16color_processing19extract_path_colors17h8b6278af771faed3E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => void;
   readonly _ZN14vectorize_core10algorithms6visual18gradient_detection26analyze_path_for_gradients17hf56d81e8952e3e25E: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
-  readonly _ZN14vectorize_core10algorithms7tracing9trace_low31vectorize_trace_low_single_pass17h088cf6e2eafa87b3E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core10algorithms7tracing9trace_low29vectorize_trace_low_multipass17h6eb64a68b4f2ee18E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core10algorithms7tracing9trace_low31vectorize_trace_low_directional17h99a0da95b4567463E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing9trace_low31vectorize_trace_low_single_pass17hbe2cbfb99c34d51eE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing9trace_low29vectorize_trace_low_multipass17h560627f327eca21bE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing9trace_low31vectorize_trace_low_directional17h98aaeba1bacf1c80E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN5image8dynimage12DynamicImage8to_luma817h5d8f4a26c922657cE: (a: number, b: number) => void;
   readonly _ZN57_$LT$core..time..Duration$u20$as$u20$core..fmt..Debug$GT$3fmt17hcd79a1695152afc4E: (a: number, b: number) => number;
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17hd487c1843567f154E: (a: number, b: number) => void;
@@ -1741,7 +1747,7 @@ export interface InitOutput {
   readonly _ZN14vectorize_core13preprocessing23test_background_removal22run_comprehensive_test17h4ecb6bd8fe5d37c0E: (a: number) => void;
   readonly _ZN14vectorize_core13preprocessing31analyze_resolution_requirements17h1ccd13d0ac55bcfcE: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core13preprocessing27apply_resolution_processing17hf450b00fb5225f95E: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core13preprocessing23adjust_trace_low_config17hcab9007f6f0bf2c1E: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core13preprocessing23adjust_trace_low_config17he9f37cbd45b5a80bE: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core13preprocessing21scale_svg_coordinates17h290c1eb82893425bE: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core3svg13optimize_data17h2c915655d7cce287E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN4core3num7dec2flt60_$LT$impl$u20$core..str..traits..FromStr$u20$for$u20$f64$GT$8from_str17h95ebed277d7dacc2E: (a: number, b: number, c: number) => void;

@@ -465,6 +465,14 @@ impl WasmVectorizer {
         self.config_builder = self.config_builder.clone().set_gradient_based_sizing(enabled);
     }
 
+    /// Set dot size variation factor
+    #[wasm_bindgen]
+    pub fn set_dot_size_variation(&mut self, variation: f32) -> Result<(), JsValue> {
+        self.config_builder = self.config_builder.clone().dot_size_variation(variation)
+            .map_err(|e| JsValue::from_str(&format!("Failed to set dot size variation: {}", e)))?;
+        Ok(())
+    }
+
     // === SUPERPIXEL BACKEND METHODS ===
 
     /// Set number of superpixels

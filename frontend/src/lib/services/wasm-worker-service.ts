@@ -397,23 +397,8 @@ export class WasmWorkerService {
 			}
 
 			// DEBUG: Log the config being sent to worker
-			console.log('[WasmWorkerService] 🔍 [SETTINGS DEBUG] Sending config to worker:', {
-				algorithm: plainConfig.algorithm,
-				detail: plainConfig.detail,
-				strokeWidth: plainConfig.strokeWidth,
-				// Edge-specific properties (only exist on EdgeConfig)
-				passCount: (plainConfig as any).passCount,
-				handDrawnPreset: (plainConfig as any).handDrawnPreset,
-				fullConfig: plainConfig
-			});
 
-			// Debug: Log the config being sent to worker
-			console.log('[WasmWorkerService] 🔍 Config being sent to worker:', {
-				algorithm: plainConfig.algorithm,
-				linePreserveColors: (plainConfig as any).linePreserveColors,
-				preserveColors: plainConfig.preserveColors,
-				fullConfig: plainConfig
-			});
+
 
 			// Send processing request to worker
 			const result = await this.sendMessage('process', {

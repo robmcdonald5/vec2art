@@ -3,4 +3,4 @@
 /**
  * Available background removal algorithms for pre-processing
  */
-export type BackgroundRemovalAlgorithm = 'Otsu' | 'Adaptive';
+export type BackgroundRemovalAlgorithm = "Otsu" | "Adaptive" | "Auto";

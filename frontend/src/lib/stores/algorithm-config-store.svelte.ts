@@ -142,8 +142,8 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		dotAdaptiveSizing: true,
 		adaptiveSizing: true, // Alias for dotAdaptiveSizing (UI compatibility)
 		dotGradientBasedSizing: false,
-		dotSizeVariation: 0.3,
-		sizeVariation: 0.3, // Alias for dotSizeVariation (UI compatibility)
+		dotSizeVariation: 0,
+		sizeVariation: 0, // Alias for dotSizeVariation (UI compatibility)
 		dotPreserveColors: false,
 		dotBackgroundTolerance: 0.1,
 		dotOpacity: 1.0,

@@ -206,7 +206,9 @@ pub fn apply_config_json(
                 .dot_size_range(config.dot_min_radius, config.dot_max_radius)
                 .map_err(|e| JsValue::from_str(&format!("Failed to set dot size: {}", e)))?
                 .dot_density(config.dot_density_threshold)
-                .map_err(|e| JsValue::from_str(&format!("Failed to set dot density: {}", e)))?;
+                .map_err(|e| JsValue::from_str(&format!("Failed to set dot density: {}", e)))?
+                .dot_size_variation(config.dot_size_variation)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set dot size variation: {}", e)))?;
         }
     }
 

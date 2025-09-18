@@ -78,6 +78,8 @@ pub struct DotConfig {
     pub poisson_disk_sampling: bool,
     /// Enable gradient-based sizing for dot scaling based on local image gradients (default: false)
     pub gradient_based_sizing: bool,
+    /// Amount of random variation in dot sizes (0.0 = no variation, 1.0 = maximum variation)
+    pub size_variation: f32,
 }
 
 impl Default for DotConfig {
@@ -95,6 +97,7 @@ impl Default for DotConfig {
             random_seed: 42,
             poisson_disk_sampling: false,
             gradient_based_sizing: false,
+            size_variation: 0.0,
         }
     }
 }

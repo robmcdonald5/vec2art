@@ -136,8 +136,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 			backend: wasmConfig.backend,
 			line_preserve_colors: wasmConfig.line_preserve_colors,
 			dot_preserve_colors: wasmConfig.dot_preserve_colors,
-			superpixel_preserve_colors: wasmConfig.superpixel_preserve_colors
+			superpixel_preserve_colors: wasmConfig.superpixel_preserve_colors,
+			dot_size_variation: wasmConfig.dot_size_variation  // ADD THIS TO SEE THE VALUE
 		});
+
 
 		// Additional debug logging for dots parameters
 		if (config.algorithm === 'dots') {
@@ -151,7 +153,9 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 					dotMaxRadius: (config as any).dotMaxRadius,
 					strokeWidth: config.strokeWidth,
 					adaptiveSizing: (config as any).adaptiveSizing,
-					dotAdaptiveSizing: (config as any).dotAdaptiveSizing
+					dotAdaptiveSizing: (config as any).dotAdaptiveSizing,
+					sizeVariation: (config as any).sizeVariation,
+					dotSizeVariation: (config as any).dotSizeVariation
 				},
 				wasm: {
 					dot_density_threshold: wasmConfig.dot_density_threshold,
@@ -159,7 +163,8 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 					dot_max_radius: wasmConfig.dot_max_radius,
 					dot_adaptive_sizing: wasmConfig.dot_adaptive_sizing,
 					dot_poisson_disk_sampling: wasmConfig.dot_poisson_disk_sampling,
-					dot_gradient_based_sizing: wasmConfig.dot_gradient_based_sizing
+					dot_gradient_based_sizing: wasmConfig.dot_gradient_based_sizing,
+					dot_size_variation: wasmConfig.dot_size_variation
 				}
 			});
 		}
@@ -172,8 +177,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 			detail: wasmConfig.detail,
 			stroke_width: wasmConfig.stroke_px_at_1080p,
 			noise_filtering: wasmConfig.noise_filtering,
-			background_removal: wasmConfig.enable_background_removal
+			background_removal: wasmConfig.enable_background_removal,
+			dot_size_variation: wasmConfig.dot_size_variation  // Add this to verify
 		});
+
 
 		// Apply entire configuration with single call
 		try {
@@ -409,6 +416,33 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 						} catch (error) {
 							console.error('[Worker] ❌ Error calling set_adaptive_sizing:', error);
 						}
+					}
+
+					// Size Variation
+					console.log('[Worker] 🔍 DEBUG Size Variation check:', {
+						'config.sizeVariation': config.sizeVariation,
+						'config.dotSizeVariation': (config as any).dotSizeVariation,
+						'fullConfig?.sizeVariation': (config as any).fullConfig?.sizeVariation,
+						'fullConfig?.dotSizeVariation': (config as any).fullConfig?.dotSizeVariation,
+						configKeys: Object.keys(config || {}),
+						fullConfigKeys: (config as any).fullConfig ? Object.keys((config as any).fullConfig) : null
+					});
+					if (config.sizeVariation !== undefined || (config as any).dotSizeVariation !== undefined || (config as any).fullConfig?.sizeVariation !== undefined || (config as any).fullConfig?.dotSizeVariation !== undefined) {
+						const sizeVariation = config.sizeVariation ?? (config as any).dotSizeVariation ?? (config as any).fullConfig?.sizeVariation ?? (config as any).fullConfig?.dotSizeVariation ?? 0.3;
+						console.log('[Worker] 🔵 Setting dot_size_variation:', sizeVariation);
+						console.log('[Worker] 🔍 Method check:', typeof vectorizer.set_dot_size_variation);
+						try {
+							if (typeof vectorizer.set_dot_size_variation === 'function') {
+								vectorizer.set_dot_size_variation(sizeVariation);
+								console.log('[Worker] ✅ Successfully called set_dot_size_variation with:', sizeVariation);
+							} else {
+								console.error('[Worker] ❌ set_dot_size_variation method does not exist');
+							}
+						} catch (error) {
+							console.error('[Worker] ❌ Error calling set_dot_size_variation:', error);
+						}
+					} else {
+						console.log('[Worker] ⚠️ No size variation parameter found in config');
 					}
 
 					// Background tolerance

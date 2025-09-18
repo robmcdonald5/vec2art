@@ -276,6 +276,8 @@ pub struct TraceLowConfig {
     pub dot_poisson_disk_sampling: bool,
     /// Enable gradient-based sizing for dot scaling based on local image gradients (default: false)
     pub dot_gradient_based_sizing: bool,
+    /// Amount of random variation in dot sizes (0.0 = no variation, 1.0 = maximum variation, default: 0.3)
+    pub dot_size_variation: f32,
     /// Enable adaptive thresholding for centerline backend (default: true)
     pub enable_adaptive_threshold: bool,
     /// Window size for adaptive thresholding (default: computed from detail level, 25-35 pixels)
@@ -389,6 +391,7 @@ impl Default for TraceLowConfig {
             dot_background_tolerance: 0.1,
             dot_poisson_disk_sampling: false,
             dot_gradient_based_sizing: false,
+            dot_size_variation: 0.0, // Default to no size variation (uniform dots)
             // Adaptive thresholding defaults
             enable_adaptive_threshold: true,
             adaptive_threshold_window_size: 31, // Will be adjusted based on detail level
@@ -2917,6 +2920,7 @@ fn trace_dots(
         random_seed: 42,
         poisson_disk_sampling: config.dot_poisson_disk_sampling,
         gradient_based_sizing: config.dot_gradient_based_sizing,
+        size_variation: config.dot_size_variation,
     };
 
     // Create GradientConfig - can use defaults for now
@@ -3002,9 +3006,33 @@ fn trace_dots(
         dots.len()
     );
 
+    // Apply size variation processing
+    let mut processed_dots = dots;
+    if config.dot_size_variation >= 0.0 {
+        let variation_start = Instant::now();
+
+        use crate::algorithms::dots::dot_styles::{SizeVariationConfig, add_size_variation_with_config};
+
+        let size_variation_config = SizeVariationConfig {
+            variation_factor: config.dot_size_variation,
+            seed: 42,
+            min_factor: 0.7,
+            max_factor: 1.5,
+        };
+
+        add_size_variation_with_config(&mut processed_dots, &size_variation_config);
+
+        let variation_time = variation_start.elapsed();
+        log::debug!(
+            "Size variation applied: {:.3}ms (factor={:.2})",
+            variation_time.as_secs_f64() * 1000.0,
+            config.dot_size_variation
+        );
+    }
+
     // Convert dots to SVG paths
     let phase_start = Instant::now();
-    let svg_paths = dots_to_svg_paths(&dots);
+    let svg_paths = dots_to_svg_paths(&processed_dots);
     let svg_conversion_time = phase_start.elapsed();
 
     log::debug!(

@@ -354,8 +354,15 @@ pub fn add_size_variation(dots: &mut [Dot], variation_factor: f32) {
 
 /// Add size variation with detailed configuration
 pub fn add_size_variation_with_config(dots: &mut [Dot], config: &SizeVariationConfig) {
-    if config.variation_factor <= 0.0 || dots.is_empty() {
+    if config.variation_factor < 0.0 || dots.is_empty() {
         return;
+    }
+
+    // If variation_factor is 0.0, apply uniform sizing (no random variation)
+    if config.variation_factor == 0.0 {
+        // When variation is 0, all dots should have uniform size
+        // This ensures the function is called but produces uniform results
+        return; // No variation applied = uniform sizing
     }
 
     let mut rng = ChaCha8Rng::seed_from_u64(config.seed);

@@ -178,6 +178,10 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 			config.algorithm === 'dots'
 				? ((config as DotsConfig).dotGradientBasedSizing ?? false)
 				: false,
+		dot_size_variation:
+			config.algorithm === 'dots'
+				? ((config as DotsConfig).sizeVariation ?? (config as DotsConfig).dotSizeVariation ?? 0.3)
+				: 0.3,
 
 		// Centerline backend specific
 		enable_adaptive_threshold:
