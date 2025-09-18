@@ -582,6 +582,7 @@ mod performance_tests {
 
 /// Run all tests
 #[cfg(test)]
+#[allow(dead_code)] // Utility function for manual testing
 pub fn run_all_tests() {
     // These tests are run automatically by cargo test
     // This function is for manual testing if needed

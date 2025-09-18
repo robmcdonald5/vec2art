@@ -592,7 +592,7 @@ fn analyze_local_edges(
                     && top_idx < color_map.len()
                     && bottom_idx < color_map.len() {
 
-                    let center = &color_map[center_idx];
+                    let _center = &color_map[center_idx];
                     let left = &color_map[left_idx];
                     let right = &color_map[right_idx];
                     let top = &color_map[top_idx];

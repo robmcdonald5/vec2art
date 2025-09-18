@@ -101,7 +101,7 @@ pub fn confirm_threading_success() {
 }
 
 /// Single-threaded execution - no parallel imports needed
-
+///
 /// Execute with thread safety and automatic fallback
 pub fn with_thread_safe_execution<F, R>(f: F) -> Result<R, ThreadingError>
 where

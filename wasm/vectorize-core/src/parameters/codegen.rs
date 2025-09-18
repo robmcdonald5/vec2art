@@ -67,7 +67,7 @@ fn generate_main_config_interface(output: &mut String) {
             };
 
             // Add JSDoc comment with parameter details
-            output.push_str(&"  /**\n".to_string());
+            output.push_str("  /**\n");
             output.push_str(&format!("   * {}\n", param.description));
             if param.constraints.backend_specific {
                 output.push_str(&format!(
@@ -88,7 +88,7 @@ fn generate_main_config_interface(output: &mut String) {
                 ));
             }
             output.push_str(&format!("   * Default: {}\n", param.default_value));
-            output.push_str(&"   */\n".to_string());
+            output.push_str("   */\n");
 
             output.push_str(&format!("  {}{}: {};\n\n", param.name, optional, ts_type));
         }
@@ -162,25 +162,25 @@ fn generate_parameter_metadata(output: &mut String) {
                 max,
                 precision,
             } => {
-                output.push_str(&"    type: 'float',\n".to_string());
+                output.push_str("    type: 'float',\n");
                 output.push_str(&format!("    min: {},\n", min));
                 output.push_str(&format!("    max: {},\n", max));
                 output.push_str(&format!("    precision: {},\n", precision));
             }
             super::types::ParameterType::Integer { min, max } => {
-                output.push_str(&"    type: 'integer',\n".to_string());
+                output.push_str("    type: 'integer',\n");
                 output.push_str(&format!("    min: {},\n", min));
                 output.push_str(&format!("    max: {},\n", max));
             }
             super::types::ParameterType::Boolean => {
-                output.push_str(&"    type: 'boolean',\n".to_string());
+                output.push_str("    type: 'boolean',\n");
             }
             super::types::ParameterType::Enum { variants } => {
-                output.push_str(&"    type: 'enum',\n".to_string());
+                output.push_str("    type: 'enum',\n");
                 output.push_str(&format!("    variants: {:?},\n", variants));
             }
             super::types::ParameterType::String { max_length } => {
-                output.push_str(&"    type: 'string',\n".to_string());
+                output.push_str("    type: 'string',\n");
                 if let Some(max_len) = max_length {
                     output.push_str(&format!("    maxLength: {},\n", max_len));
                 }

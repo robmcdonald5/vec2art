@@ -45,6 +45,7 @@ pub type ConfigResult<T> = Result<T, ConfigError>;
 #[derive(Debug, Clone)]
 enum ConfigValue<T: Clone> {
     Set(T),
+    #[allow(dead_code)] // Used in pattern matching, but never constructed
     Inherit,
 }
 
@@ -115,7 +116,6 @@ struct BackendSettings {
     dot_max_radius: ConfigValue<f32>,
     dot_adaptive_sizing: ConfigValue<bool>,
     dot_preserve_colors: ConfigValue<bool>,
-    dot_poisson_disk: ConfigValue<bool>,
     dot_gradient_sizing: ConfigValue<bool>,
 
     // Superpixel-specific
@@ -185,7 +185,6 @@ impl Default for BackendSettings {
             dot_max_radius: ConfigValue::Set(3.0),
             dot_adaptive_sizing: ConfigValue::Set(true),
             dot_preserve_colors: ConfigValue::Set(false),
-            dot_poisson_disk: ConfigValue::Set(false),
             dot_gradient_sizing: ConfigValue::Set(false),
 
             // Superpixel defaults

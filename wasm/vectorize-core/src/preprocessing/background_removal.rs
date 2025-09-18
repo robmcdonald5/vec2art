@@ -90,7 +90,7 @@ fn determine_best_algorithm(image: &RgbaImage) -> VectorizeResult<BackgroundRemo
     let total_pixels = (width * height) as usize;
 
     // Sample image to determine complexity
-    let sample_size = (total_pixels / 100).min(1000).max(100); // 1% sample, 100-1000 pixels
+    let sample_size = (total_pixels / 100).clamp(100, 1000); // 1% sample, 100-1000 pixels
     let step = (total_pixels / sample_size).max(1);
 
     let mut brightness_values = Vec::with_capacity(sample_size);
@@ -289,7 +289,7 @@ fn calculate_otsu_threshold(grayscale: &[u8], strength: f32) -> VectorizeResult<
 /// Calculate adaptive window size based on image dimensions and strength
 fn calculate_adaptive_window_size(width: u32, height: u32, strength: f32) -> u32 {
     let min_dimension = width.min(height);
-    let base_size = (min_dimension / 20).max(15).min(51); // 5% of min dimension, 15-51 range
+    let base_size = (min_dimension / 20).clamp(15, 51); // 5% of min dimension, 15-51 range
 
     // Adjust based on strength: higher strength = smaller windows (more sensitive)
     let strength_factor = 1.0 + (1.0 - strength) * 0.5; // 1.0 to 1.5

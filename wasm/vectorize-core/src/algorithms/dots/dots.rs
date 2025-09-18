@@ -783,7 +783,7 @@ fn generate_poisson_dots(
     _gradient_analysis: &GradientAnalysis,
     _background_mask: &[bool],
     config: &DotConfig,
-    candidates: &[(u32, u32, f32, f32, String)],
+    _candidates: &[(u32, u32, f32, f32, String)],
 ) -> Vec<Dot> {
     // Use Poisson disk sampling for blue-noise distribution with same density logic as other patterns
     // Use a smaller base spacing for generating candidate positions, then apply per-dot spacing validation
@@ -963,49 +963,6 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
 }
 
-/// Distribute error for hexagonal grid using 6-neighbor pattern
-fn distribute_hexagonal_error(
-    error_buffer: &mut Vec<Vec<f32>>,
-    row: u32,
-    col: u32,
-    cols: u32,
-    rows: u32,
-    error: f32,
-) {
-    let row_idx = row as usize + 1;
-    let col_idx = col as usize + 1;
-
-    // Hexagonal error diffusion pattern (distribute to 6 neighbors)
-    let weight = error / 6.0; // Equal distribution to 6 neighbors
-
-    // Right neighbor
-    if col + 1 < cols {
-        error_buffer[row_idx][col_idx + 1] += weight;
-    }
-
-    // Next row neighbors (pattern depends on row parity)
-    if row + 1 < rows {
-        if row % 2 == 0 {
-            // Even row: distribute to lower-left, lower-center, lower-right
-            if col > 0 {
-                error_buffer[row_idx + 1][col_idx - 1] += weight;
-            }
-            error_buffer[row_idx + 1][col_idx] += weight;
-            if col + 1 < cols {
-                error_buffer[row_idx + 1][col_idx + 1] += weight;
-            }
-        } else {
-            // Odd row: different pattern for hexagonal geometry
-            error_buffer[row_idx + 1][col_idx] += weight;
-            if col + 1 < cols {
-                error_buffer[row_idx + 1][col_idx + 1] += weight;
-            }
-            if col + 2 < cols {
-                error_buffer[row_idx + 1][col_idx + 2] += weight;
-            }
-        }
-    }
-}
 
 /// Generate dots from image analysis
 ///
@@ -1745,7 +1702,6 @@ mod tests {
         assert!(config.use_parallel);
         assert_eq!(config.parallel_threshold, 10000);
         assert_eq!(config.random_seed, 42);
-        assert!(!config.poisson_disk_sampling);
         assert!(!config.gradient_based_sizing);
     }
 
@@ -1813,14 +1769,14 @@ mod tests {
         let background_mask = create_simple_background_mask(50, 50);
 
         let config_poisson = DotConfig {
-            poisson_disk_sampling: true,
+            grid_pattern: GridPattern::Poisson,
             gradient_based_sizing: true,
             density_threshold: 0.05, // Lower threshold to ensure dots
             ..Default::default()
         };
 
         let config_grid = DotConfig {
-            poisson_disk_sampling: false,
+            grid_pattern: GridPattern::Grid,
             gradient_based_sizing: false,
             density_threshold: 0.05,
             ..Default::default()
