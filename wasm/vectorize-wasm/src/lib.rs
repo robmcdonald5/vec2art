@@ -453,11 +453,6 @@ impl WasmVectorizer {
         Ok(())
     }
 
-    /// Enable or disable Poisson disk sampling
-    #[wasm_bindgen]
-    pub fn set_poisson_disk_sampling(&mut self, enabled: bool) {
-        self.config_builder = self.config_builder.clone().set_poisson_disk_sampling(enabled);
-    }
 
     /// Enable or disable gradient-based sizing
     #[wasm_bindgen]

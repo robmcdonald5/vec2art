@@ -480,21 +480,6 @@ pub static PARAMETER_REGISTRY: Lazy<HashMap<&'static str, ParameterDefinition>> 
             },
         ),
         (
-            "dot_poisson_disk_sampling",
-            ParameterDefinition {
-                name: "dot_poisson_disk_sampling",
-                description: "Enable Poisson disk sampling for natural dot distribution",
-                parameter_type: ParameterType::Boolean,
-                applicable_backends: vec![TraceBackend::Dots],
-                constraints: ParameterConstraints {
-                    backend_specific: true,
-                    ..Default::default()
-                },
-                default_value: ParameterValue::Boolean(false),
-                category: ParameterCategory::Algorithm,
-            },
-        ),
-        (
             "dot_gradient_based_sizing",
             ParameterDefinition {
                 name: "dot_gradient_based_sizing",

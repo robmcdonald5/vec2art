@@ -85,6 +85,8 @@ function mapGridPatternToWasm(pattern: DotsConfig['dotGridPattern']): GridPatter
 			return 'Hexagonal';
 		case 'random':
 			return 'Random';
+		case 'poisson':
+			return 'Poisson';
 		default:
 			return 'Random';
 	}
@@ -206,10 +208,6 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 				: true,
 		dot_background_tolerance:
 			config.algorithm === 'dots' ? ((config as DotsConfig).dotBackgroundTolerance ?? 0.1) : 0.1,
-		dot_poisson_disk_sampling:
-			config.algorithm === 'dots'
-				? ((config as DotsConfig).dotPoissonDiskSampling ?? false)
-				: false,
 		dot_gradient_based_sizing:
 			config.algorithm === 'dots'
 				? ((config as DotsConfig).dotGradientBasedSizing ?? false)

@@ -272,8 +272,6 @@ pub struct TraceLowConfig {
     pub dot_adaptive_sizing: bool,
     /// Background color tolerance for background detection (0.0 to 1.0)
     pub dot_background_tolerance: f32,
-    /// Enable Poisson disk sampling for natural dot distribution (default: false)
-    pub dot_poisson_disk_sampling: bool,
     /// Enable gradient-based sizing for dot scaling based on local image gradients (default: false)
     pub dot_gradient_based_sizing: bool,
     /// Amount of random variation in dot sizes (0.0 = no variation, 1.0 = maximum variation, default: 0.3)
@@ -393,7 +391,6 @@ impl Default for TraceLowConfig {
             dot_preserve_colors: true,
             dot_adaptive_sizing: true,
             dot_background_tolerance: 0.1,
-            dot_poisson_disk_sampling: false,
             dot_gradient_based_sizing: false,
             dot_size_variation: 0.0, // Default to no size variation (uniform dots)
             dot_shape: crate::algorithms::dots::dots::DotShape::default(),
@@ -2924,7 +2921,6 @@ fn trace_dots(
         use_parallel: true,
         parallel_threshold: 10000,
         random_seed: 42,
-        poisson_disk_sampling: config.dot_poisson_disk_sampling,
         gradient_based_sizing: config.dot_gradient_based_sizing,
         size_variation: config.dot_size_variation,
         shape: config.dot_shape,

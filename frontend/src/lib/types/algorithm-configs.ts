@@ -15,7 +15,7 @@ export type BackgroundRemovalAlgorithm = 'otsu' | 'adaptive';
 export type SuperpixelInitPattern = 'square' | 'hexagonal' | 'poisson';
 
 // Dot grid patterns
-export type DotGridPattern = 'grid' | 'hexagonal' | 'random';
+export type DotGridPattern = 'grid' | 'hexagonal' | 'random' | 'poisson';
 
 // Dot shapes
 export type DotShape = 'circle' | 'square' | 'diamond' | 'triangle';
@@ -191,7 +191,6 @@ export interface DotsConfig extends CoreConfig {
 	dotDensityThreshold: number; // 0.0-1.0
 	dotDensity: number; // 1-10 UI scale (alias for UI compatibility)
 	dotSpacing: number; // 2.0-20.0
-	dotPoissonDiskSampling: boolean;
 	dotGridPattern: DotGridPattern;
 
 	// Dot sizing
@@ -925,6 +924,20 @@ export const DOTS_METADATA: Record<string, ParameterMetadata> = {
 		min: 0.0,
 		max: 1.0,
 		step: 0.1,
+		category: 'style',
+		algorithms: ['dots']
+	},
+	dotGridPattern: {
+		name: 'dotGridPattern',
+		label: 'Grid Pattern',
+		description: 'Choose the grid pattern for dot placement.',
+		type: 'select',
+		options: [
+			{ value: 'random', label: 'Random (Organic)' },
+			{ value: 'poisson', label: 'Poisson (Blue-noise)' },
+			{ value: 'grid', label: 'Square Grid' },
+			{ value: 'hexagonal', label: 'Hexagonal Grid' }
+		],
 		category: 'style',
 		algorithms: ['dots']
 	},

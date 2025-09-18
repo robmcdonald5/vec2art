@@ -557,8 +557,6 @@ impl VectorizerConfig {
                     self.backend_settings.dot_adaptive_sizing.unwrap_or(true);
                 config.dot_preserve_colors =
                     self.backend_settings.dot_preserve_colors.unwrap_or(false);
-                config.dot_poisson_disk_sampling =
-                    self.backend_settings.dot_poisson_disk.unwrap_or(false);
                 config.dot_gradient_based_sizing =
                     self.backend_settings.dot_gradient_sizing.unwrap_or(false);
             }

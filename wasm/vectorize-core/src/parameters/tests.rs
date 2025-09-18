@@ -481,10 +481,6 @@ mod integration_tests {
             ParameterValue::Float(0.1),
         );
         config.insert(
-            "dot_poisson_disk_sampling".to_string(),
-            ParameterValue::Boolean(false),
-        );
-        config.insert(
             "dot_gradient_based_sizing".to_string(),
             ParameterValue::Boolean(true),
         );

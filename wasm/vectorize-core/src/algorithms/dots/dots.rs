@@ -35,6 +35,8 @@ pub enum GridPattern {
     Hexagonal,
     /// Random placement (gradient-based)
     Random,
+    /// Poisson disk sampling (blue-noise distribution)
+    Poisson,
 }
 
 impl Default for DotShape {
@@ -132,8 +134,6 @@ pub struct DotConfig {
     pub shape: DotShape,
     /// Grid pattern for dot placement
     pub grid_pattern: GridPattern,
-    /// Enable Poisson disk sampling for natural dot distribution (default: false)
-    pub poisson_disk_sampling: bool,
     /// Enable gradient-based sizing for dot scaling based on local image gradients (default: false)
     pub gradient_based_sizing: bool,
     /// Amount of random variation in dot sizes (0.0 = no variation, 1.0 = maximum variation)
@@ -155,7 +155,6 @@ impl Default for DotConfig {
             random_seed: 42,
             shape: DotShape::default(),
             grid_pattern: GridPattern::default(),
-            poisson_disk_sampling: false,
             gradient_based_sizing: false,
             size_variation: 0.0,
         }
@@ -778,6 +777,70 @@ fn generate_hexagonal_dots(
     dots
 }
 
+/// Generate dots using Poisson disk sampling with content-adaptive density
+fn generate_poisson_dots(
+    _rgba: &RgbaImage,
+    _gradient_analysis: &GradientAnalysis,
+    _background_mask: &[bool],
+    config: &DotConfig,
+    candidates: &[(u32, u32, f32, f32, String)],
+) -> Vec<Dot> {
+    // Use Poisson disk sampling for blue-noise distribution with same density logic as other patterns
+    // Use a smaller base spacing for generating candidate positions, then apply per-dot spacing validation
+    let base_spacing = config.min_radius * 1.2; // Conservative base spacing for candidate generation
+    let mut sampler = PoissonDiskSampler::new(
+        _rgba.width() as f32,
+        _rgba.height() as f32,
+        base_spacing,
+        42, // Fixed seed for reproducible results
+    );
+
+    // Generate Poisson-distributed sample points
+    let sample_points = sampler.generate();
+
+    // Use the same spatial grid approach as Random pattern for consistent density
+    let mut spatial_grid =
+        SpatialGrid::new(_rgba.width(), _rgba.height(), config.max_radius, config.spacing_factor);
+
+    let mut dots: Vec<Dot> = Vec::new();
+
+    for (x, y) in sample_points {
+        let px = x as u32;
+        let py = y as u32;
+
+        // Check bounds and background mask
+        if px < _rgba.width() && py < _rgba.height() {
+            let idx = (py * _rgba.width() + px) as usize;
+            if idx < _background_mask.len() && _background_mask[idx] {
+                continue; // Skip background pixels
+            }
+
+            // Calculate gradient-based radius and opacity
+            let gradient_strength = calculate_gradient_strength(_gradient_analysis, px, py,
+                config.adaptive_sizing, config.gradient_based_sizing);
+
+            let radius = strength_to_radius(gradient_strength, config.min_radius, config.max_radius);
+            let opacity = strength_to_opacity(gradient_strength);
+
+            // Use same spatial validation as Random pattern for consistent density
+            if spatial_grid.is_position_valid(x, y, radius, &dots, config.spacing_factor) {
+                // Get color
+                let color = if config.preserve_colors {
+                    sample_color_subpixel(_rgba, x, y)
+                } else {
+                    config.default_color.clone()
+                };
+
+                let dot = Dot::new_with_shape(x, y, radius, opacity, color, config.shape);
+                spatial_grid.add_dot(dots.len(), x, y);
+                dots.push(dot);
+            }
+        }
+    }
+
+    dots
+}
+
 /// Analyze the complexity of a grid cell based on gradient information
 fn analyze_cell_complexity(
     gradient_analysis: &GradientAnalysis,
@@ -1073,87 +1136,30 @@ pub fn generate_dots(
             // Hexagonal grid placement
             dots = generate_hexagonal_dots(rgba, gradient_analysis, background_mask, config, &candidates);
         }
+        GridPattern::Poisson => {
+            // Poisson disk sampling placement
+            dots = generate_poisson_dots(rgba, gradient_analysis, background_mask, config, &candidates);
+        }
         GridPattern::Random => {
-            // Use existing Poisson or gradient-based placement
-            if config.poisson_disk_sampling {
-        // Use Poisson disk sampling for natural distribution
-        let min_distance = config.max_radius * config.spacing_factor;
-        let mut poisson_sampler = PoissonDiskSampler::new(
-            width as f32,
-            height as f32,
-            min_distance,
-            config.random_seed,
-        );
+            // Random gradient-based placement
+            // Sort candidates by gradient strength (strongest first) for better spatial distribution
+            let mut sorted_candidates = candidates;
+            sorted_candidates
+                .sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
 
-        let sample_points = poisson_sampler.generate();
+            let mut spatial_grid =
+                SpatialGrid::new(width, height, config.max_radius, config.spacing_factor);
 
-        // For each Poisson sample point, find the best candidate dot properties
-        for (fx, fy) in sample_points {
-            let x = fx.floor() as u32;
-            let y = fy.floor() as u32;
+            for (x, y, radius, opacity, color) in sorted_candidates {
+                let fx = x as f32 + 0.5; // Center of pixel
+                let fy = y as f32 + 0.5;
 
-            // Skip if outside image bounds
-            if x >= width || y >= height {
-                continue;
-            }
-
-            let index = (y * width + x) as usize;
-
-            // Skip background pixels
-            if background_mask[index] {
-                continue;
-            }
-
-            // Calculate gradient strength for this position
-            let strength = calculate_gradient_strength(
-                gradient_analysis,
-                x,
-                y,
-                config.adaptive_sizing,
-                config.gradient_based_sizing,
-            );
-
-            // Skip pixels below density threshold
-            if strength < config.density_threshold {
-                continue;
-            }
-
-            // Calculate dot properties
-            let radius = strength_to_radius(strength, config.min_radius, config.max_radius);
-            let opacity = strength_to_opacity(strength);
-
-            // Get color
-            let color = if config.preserve_colors {
-                let pixel = rgba.get_pixel(x, y);
-                rgba_to_hex(pixel)
-            } else {
-                config.default_color.clone()
-            };
-
-            let dot = Dot::new_with_shape(fx, fy, radius, opacity, color, config.shape);
-            dots.push(dot);
-        }
-    } else {
-        // Use traditional grid-based spatial distribution
-        // Sort candidates by gradient strength (strongest first) for better spatial distribution
-        let mut sorted_candidates = candidates;
-        sorted_candidates
-            .sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
-
-        let mut spatial_grid =
-            SpatialGrid::new(width, height, config.max_radius, config.spacing_factor);
-
-        for (x, y, radius, opacity, color) in sorted_candidates {
-            let fx = x as f32 + 0.5; // Center of pixel
-            let fy = y as f32 + 0.5;
-
-            // Check spatial distribution
-            if spatial_grid.is_position_valid(fx, fy, radius, &dots, config.spacing_factor) {
-                let dot = Dot::new_with_shape(fx, fy, radius, opacity, color, config.shape);
-                spatial_grid.add_dot(dots.len(), fx, fy);
-                dots.push(dot);
-            }
-        }
+                // Check spatial distribution
+                if spatial_grid.is_position_valid(fx, fy, radius, &dots, config.spacing_factor) {
+                    let dot = Dot::new_with_shape(fx, fy, radius, opacity, color, config.shape);
+                    spatial_grid.add_dot(dots.len(), fx, fy);
+                    dots.push(dot);
+                }
             }
         }
     }

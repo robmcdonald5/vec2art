@@ -119,7 +119,7 @@
 
 	// Group parameters by category - using actual DOTS_METADATA keys
 	const coreParams = ['minRadius', 'maxRadius', 'dotSizingMode', 'sizeVariation'];
-	const dotStyleParams = ['dotShape', 'dotGridPattern', 'dotPoissonDiskSampling'];
+	const dotStyleParams = ['dotShape', 'dotGridPattern'];
 	const colorParams = ['dotPreserveColors', 'dotBackgroundTolerance', 'dotOpacity'];
 
 	// Parameter visibility logic - Size Variation only shows when Static Sizing is selected

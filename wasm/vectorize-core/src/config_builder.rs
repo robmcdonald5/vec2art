@@ -303,11 +303,6 @@ impl ConfigBuilder {
         self
     }
 
-    /// Enable or disable Poisson disk sampling for natural dot distribution
-    pub fn set_poisson_disk_sampling(mut self, enabled: bool) -> Self {
-        self.config.dot_poisson_disk_sampling = enabled;
-        self
-    }
 
     /// Enable or disable gradient-based sizing for dot scaling based on local image gradients
     pub fn set_gradient_based_sizing(mut self, enabled: bool) -> Self {
@@ -622,7 +617,7 @@ impl ConfigBuilder {
             .unwrap()
             .adaptive_sizing(true)
             .preserve_colors(true)
-            .set_poisson_disk_sampling(true)
+            .dot_grid_pattern(crate::algorithms::dots::dots::GridPattern::Poisson)
             .set_gradient_based_sizing(true)
     }
 
@@ -652,7 +647,7 @@ impl ConfigBuilder {
             .unwrap()
             .adaptive_sizing(true)
             .preserve_colors(false)
-            .set_poisson_disk_sampling(true)
+            .dot_grid_pattern(crate::algorithms::dots::dots::GridPattern::Poisson)
             .set_gradient_based_sizing(true)
     }
 
