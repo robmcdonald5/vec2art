@@ -488,6 +488,20 @@ impl WasmVectorizer {
         Ok(())
     }
 
+    /// Set dot grid pattern (0=Grid, 1=Hexagonal, 2=Random)
+    #[wasm_bindgen]
+    pub fn set_dot_grid_pattern(&mut self, pattern: u32) -> Result<(), JsValue> {
+        use vectorize_core::algorithms::dots::dots::GridPattern;
+        let grid_pattern = match pattern {
+            0 => GridPattern::Grid,
+            1 => GridPattern::Hexagonal,
+            2 => GridPattern::Random,
+            _ => return Err(JsValue::from_str(&format!("Invalid grid pattern: {}. Use 0=Grid, 1=Hexagonal, 2=Random", pattern))),
+        };
+        self.config_builder = self.config_builder.clone().dot_grid_pattern(grid_pattern);
+        Ok(())
+    }
+
     // === SUPERPIXEL BACKEND METHODS ===
 
     /// Set number of superpixels

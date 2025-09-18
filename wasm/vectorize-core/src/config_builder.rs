@@ -297,6 +297,12 @@ impl ConfigBuilder {
         self
     }
 
+    /// Set the grid pattern for dot placement (Grid, Hexagonal, Random)
+    pub fn dot_grid_pattern(mut self, pattern: crate::algorithms::dots::dots::GridPattern) -> Self {
+        self.config.dot_grid_pattern = pattern;
+        self
+    }
+
     /// Enable or disable Poisson disk sampling for natural dot distribution
     pub fn set_poisson_disk_sampling(mut self, enabled: bool) -> Self {
         self.config.dot_poisson_disk_sampling = enabled;

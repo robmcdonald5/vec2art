@@ -25,9 +25,27 @@ pub enum DotShape {
     Triangle,
 }
 
+/// Grid pattern for dot placement
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "generate-ts", derive(ts_rs::TS))]
+pub enum GridPattern {
+    /// Regular rectangular grid
+    Grid,
+    /// Hexagonal/honeycomb pattern
+    Hexagonal,
+    /// Random placement (gradient-based)
+    Random,
+}
+
 impl Default for DotShape {
     fn default() -> Self {
         DotShape::Circle
+    }
+}
+
+impl Default for GridPattern {
+    fn default() -> Self {
+        GridPattern::Random
     }
 }
 
@@ -112,6 +130,8 @@ pub struct DotConfig {
     pub random_seed: u64,
     /// Shape to use for dots
     pub shape: DotShape,
+    /// Grid pattern for dot placement
+    pub grid_pattern: GridPattern,
     /// Enable Poisson disk sampling for natural dot distribution (default: false)
     pub poisson_disk_sampling: bool,
     /// Enable gradient-based sizing for dot scaling based on local image gradients (default: false)
@@ -134,6 +154,7 @@ impl Default for DotConfig {
             parallel_threshold: 10000,
             random_seed: 42,
             shape: DotShape::default(),
+            grid_pattern: GridPattern::default(),
             poisson_disk_sampling: false,
             gradient_based_sizing: false,
             size_variation: 0.0,
@@ -484,6 +505,445 @@ impl SpatialGrid {
     }
 }
 
+/// Generate dots in a regular grid pattern with content-adaptive subdivision
+fn generate_grid_dots(
+    rgba: &RgbaImage,
+    gradient_analysis: &GradientAnalysis,
+    background_mask: &[bool],
+    config: &DotConfig,
+    _candidates: &[(u32, u32, f32, f32, String)],
+) -> Vec<Dot> {
+    let mut dots: Vec<Dot> = Vec::new();
+    let width = rgba.width();
+    let height = rgba.height();
+
+    // Base grid spacing - much tighter to eliminate gaps
+    // Use average radius rather than max to prevent huge gaps
+    let avg_radius = (config.min_radius + config.max_radius) * 0.5;
+    let base_spacing = avg_radius * 1.8; // Tight base spacing
+    let adaptive_factor = 1.0 / (1.0 + config.density_threshold * 1.5);
+    let spacing = base_spacing * adaptive_factor;
+
+    let cols = (width as f32 / spacing).ceil() as u32;
+    let rows = (height as f32 / spacing).ceil() as u32;
+
+    // Blue noise jitter strength
+    let jitter_strength = spacing * 0.1; // Subtle jitter to maintain grid structure
+
+    // Process each grid cell
+    for row in 0..rows {
+        for col in 0..cols {
+            let cell_x = col as f32 * spacing;
+            let cell_y = row as f32 * spacing;
+
+            // Analyze cell complexity
+            let cell_complexity = analyze_cell_complexity(
+                gradient_analysis,
+                cell_x,
+                cell_y,
+                spacing,
+                width,
+                height,
+            );
+
+            // More aggressive subdivision thresholds
+            let subdivision_level = if cell_complexity > 0.5 {
+                3 // 3x3 subdivision for high detail (9 dots max)
+            } else if cell_complexity > 0.2 {
+                2 // 2x2 subdivision for medium detail (4 dots max)
+            } else {
+                1 // No subdivision for very low detail areas only
+            };
+
+            // Generate dots for this cell with appropriate subdivision
+            for sub_row in 0..subdivision_level {
+                for sub_col in 0..subdivision_level {
+                    // Calculate position within subdivision
+                    let sub_spacing = spacing / subdivision_level as f32;
+                    let sub_x = cell_x + (sub_col as f32 + 0.5) * sub_spacing;
+                    let sub_y = cell_y + (sub_row as f32 + 0.5) * sub_spacing;
+
+                    // Apply reduced jitter for subdivided cells
+                    let jitter_factor = 1.0 / subdivision_level as f32;
+                    let jitter_x = (simple_hash(row * 10 + sub_row, col * 10 + sub_col, 1) - 0.5)
+                        * jitter_strength * jitter_factor;
+                    let jitter_y = (simple_hash(row * 10 + sub_row, col * 10 + sub_col, 2) - 0.5)
+                        * jitter_strength * jitter_factor;
+
+                    let x = sub_x + jitter_x;
+                    let y = sub_y + jitter_y;
+
+                    // Skip if outside image bounds
+                    if x <= 0.0 || y <= 0.0 || x >= width as f32 || y >= height as f32 {
+                        continue;
+                    }
+
+                    let px = x.floor() as u32;
+                    let py = y.floor() as u32;
+                    let index = (py * width + px) as usize;
+
+                    // Skip background pixels
+                    if background_mask[index] {
+                        continue;
+                    }
+
+                    // Calculate gradient strength
+                    let strength = calculate_gradient_strength(
+                        gradient_analysis,
+                        px,
+                        py,
+                        config.adaptive_sizing,
+                        config.gradient_based_sizing,
+                    );
+
+                    // Adaptive threshold based on subdivision level
+                    let threshold_multiplier = 1.0 - (0.2 * (subdivision_level - 1) as f32 / 2.0);
+                    let adaptive_threshold = config.density_threshold * threshold_multiplier;
+
+                    // Place dot if strength meets threshold
+                    if strength >= adaptive_threshold {
+                        // Calculate dot properties - respect min/max radius exactly
+                        let radius = strength_to_radius(strength, config.min_radius, config.max_radius);
+                        let opacity = strength_to_opacity(strength);
+
+                        // Get color
+                        let color = if config.preserve_colors {
+                            sample_color_subpixel(rgba, x, y)
+                        } else {
+                            config.default_color.clone()
+                        };
+
+                        // Check spatial constraints to prevent overlapping
+                        let mut can_place = true;
+                        let min_distance = radius * config.spacing_factor * 0.8; // Slightly tighter for subdivisions
+
+                        for existing_dot in &dots {
+                            if existing_dot.distance_to(x, y) < min_distance {
+                                can_place = false;
+                                break;
+                            }
+                        }
+
+                        if can_place {
+                            let dot = Dot::new_with_shape(x, y, radius, opacity, color, config.shape);
+                            dots.push(dot);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    dots
+}
+
+/// Generate dots in a hexagonal grid pattern with content-adaptive subdivision
+fn generate_hexagonal_dots(
+    rgba: &RgbaImage,
+    gradient_analysis: &GradientAnalysis,
+    background_mask: &[bool],
+    config: &DotConfig,
+    _candidates: &[(u32, u32, f32, f32, String)],
+) -> Vec<Dot> {
+    let mut dots: Vec<Dot> = Vec::new();
+    let width = rgba.width();
+    let height = rgba.height();
+
+    // Base hexagonal spacing - tighter to match Random density
+    let avg_radius = (config.min_radius + config.max_radius) * 0.5;
+    let base_spacing = avg_radius * 1.6; // Even tighter for hexagonal efficiency
+    let adaptive_factor = 1.0 / (1.0 + config.density_threshold * 1.5);
+    let spacing = base_spacing * adaptive_factor;
+
+    // True hexagonal geometry
+    let hex_width = spacing;
+    let hex_height = spacing * 0.866025; // sqrt(3)/2 for proper hexagonal spacing
+    let row_offset = hex_width * 0.5; // Offset for alternating rows
+
+    let cols = (width as f32 / hex_width).ceil() as u32 + 1;
+    let rows = (height as f32 / hex_height).ceil() as u32 + 1;
+
+    // Blue noise jitter strength
+    let jitter_strength = spacing * 0.08; // Subtle jitter to maintain hex structure
+
+    // Process each hexagonal cell
+    for row in 0..rows {
+        for col in 0..cols {
+            // Calculate base hexagonal position
+            let base_x = col as f32 * hex_width;
+            let base_y = row as f32 * hex_height;
+
+            // Apply hexagonal offset for alternating rows
+            let offset_x = if row % 2 == 1 { row_offset } else { 0.0 };
+            let cell_x = base_x + offset_x;
+            let cell_y = base_y;
+
+            // Analyze hexagonal cell complexity
+            let cell_complexity = analyze_cell_complexity(
+                gradient_analysis,
+                cell_x,
+                cell_y,
+                spacing,
+                width,
+                height,
+            );
+
+            // More aggressive subdivision for hexagonal
+            let subdivision_level = if cell_complexity > 0.5 {
+                3 // Dense 7-point subdivision for high detail
+            } else if cell_complexity > 0.2 {
+                2 // 4-point subdivision for medium detail
+            } else {
+                1 // Single dot only for very low detail
+            };
+
+            // Generate subdivision pattern for hexagonal cell
+            let subdivisions = generate_hexagonal_subdivisions(subdivision_level);
+
+            for (sub_offset_x, sub_offset_y, _size_scale) in subdivisions {
+                // Calculate subdivision position
+                let sub_x = cell_x + sub_offset_x * spacing;
+                let sub_y = cell_y + sub_offset_y * spacing;
+
+                // Apply reduced jitter for subdivided cells
+                let jitter_factor = 1.0 / subdivision_level as f32;
+                let jitter_x = (simple_hash(row * 20 + col,
+                    (sub_offset_x * 100.0) as u32, 5) - 0.5) * jitter_strength * jitter_factor;
+                let jitter_y = (simple_hash(row * 20 + col,
+                    (sub_offset_y * 100.0) as u32, 6) - 0.5) * jitter_strength * jitter_factor;
+
+                let x = sub_x + jitter_x;
+                let y = sub_y + jitter_y;
+
+                // Skip if outside image bounds
+                if x <= 0.0 || y <= 0.0 || x >= width as f32 || y >= height as f32 {
+                    continue;
+                }
+
+                let px = x.floor() as u32;
+                let py = y.floor() as u32;
+                let index = (py * width + px) as usize;
+
+                // Skip background pixels
+                if background_mask[index] {
+                    continue;
+                }
+
+                // Calculate gradient strength
+                let strength = calculate_gradient_strength(
+                    gradient_analysis,
+                    px,
+                    py,
+                    config.adaptive_sizing,
+                    config.gradient_based_sizing,
+                );
+
+                // Adaptive threshold based on subdivision level
+                let threshold_multiplier = 1.0 - (0.25 * (subdivision_level - 1) as f32 / 2.0);
+                let adaptive_threshold = config.density_threshold * threshold_multiplier;
+
+                // Place dot if strength meets threshold
+                if strength >= adaptive_threshold {
+                    // Calculate dot properties - respect min/max radius exactly
+                    let radius = strength_to_radius(strength, config.min_radius, config.max_radius);
+                    let opacity = strength_to_opacity(strength);
+
+                    // Get color
+                    let color = if config.preserve_colors {
+                        sample_color_subpixel(rgba, x, y)
+                    } else {
+                        config.default_color.clone()
+                    };
+
+                    // Check spatial constraints to prevent overlapping
+                    let mut can_place = true;
+                    let min_distance = radius * config.spacing_factor * 0.7; // Tighter for hex packing
+
+                    for existing_dot in &dots {
+                        if existing_dot.distance_to(x, y) < min_distance {
+                            can_place = false;
+                            break;
+                        }
+                    }
+
+                    if can_place {
+                        let dot = Dot::new_with_shape(x, y, radius, opacity, color, config.shape);
+                        dots.push(dot);
+                    }
+                }
+            }
+        }
+    }
+
+    dots
+}
+
+/// Analyze the complexity of a grid cell based on gradient information
+fn analyze_cell_complexity(
+    gradient_analysis: &GradientAnalysis,
+    cell_x: f32,
+    cell_y: f32,
+    cell_size: f32,
+    width: u32,
+    height: u32,
+) -> f32 {
+    // Sample multiple points within the cell to determine complexity
+    let samples_per_axis = 3;
+    let mut total_gradient = 0.0;
+    let mut sample_count = 0;
+
+    for i in 0..samples_per_axis {
+        for j in 0..samples_per_axis {
+            let sample_x = cell_x + (i as f32 / (samples_per_axis - 1) as f32) * cell_size;
+            let sample_y = cell_y + (j as f32 / (samples_per_axis - 1) as f32) * cell_size;
+
+            // Skip samples outside image bounds
+            if sample_x < 0.0 || sample_y < 0.0 || sample_x >= width as f32 || sample_y >= height as f32 {
+                continue;
+            }
+
+            let px = sample_x.floor() as u32;
+            let py = sample_y.floor() as u32;
+
+            // Get gradient magnitude at this point
+            if px < width && py < height {
+                let idx = (py * width + px) as usize;
+                if idx < gradient_analysis.magnitude.len() {
+                    let magnitude = gradient_analysis.magnitude[idx];
+                    total_gradient += magnitude;
+                    sample_count += 1;
+                }
+            }
+        }
+    }
+
+    if sample_count == 0 {
+        return 0.0;
+    }
+
+    // Normalize complexity to 0-1 range
+    let avg_gradient = total_gradient / sample_count as f32;
+    (avg_gradient / 255.0).min(1.0) // Normalize assuming gradient values are 0-255
+}
+
+/// Generate subdivision positions for hexagonal cells
+fn generate_hexagonal_subdivisions(level: u32) -> Vec<(f32, f32, f32)> {
+    match level {
+        1 => {
+            // Single center point
+            vec![(0.0, 0.0, 1.0)]
+        }
+        2 => {
+            // 4-point hexagonal subdivision
+            vec![
+                (0.0, 0.0, 0.85),           // Center
+                (-0.25, -0.144, 0.85),      // Upper left
+                (0.25, -0.144, 0.85),       // Upper right
+                (0.0, 0.288, 0.85),         // Bottom
+            ]
+        }
+        3 => {
+            // 7-point dense hexagonal subdivision (honeycomb pattern)
+            vec![
+                (0.0, 0.0, 0.7),            // Center
+                (-0.33, -0.19, 0.7),        // Upper left
+                (0.33, -0.19, 0.7),         // Upper right
+                (-0.33, 0.19, 0.7),         // Lower left
+                (0.33, 0.19, 0.7),          // Lower right
+                (0.0, -0.38, 0.7),          // Top
+                (0.0, 0.38, 0.7),           // Bottom
+            ]
+        }
+        _ => vec![(0.0, 0.0, 1.0)]
+    }
+}
+
+/// Simple hash function for deterministic blue noise generation
+fn simple_hash(row: u32, col: u32, seed: u32) -> f32 {
+    let mut hash = row.wrapping_mul(73856093) ^ col.wrapping_mul(19349663) ^ seed.wrapping_mul(83492791);
+    hash = hash ^ (hash >> 16);
+    hash = hash ^ (hash >> 8);
+    hash = hash ^ (hash >> 4);
+    (hash as f32 / u32::MAX as f32).fract()
+}
+
+/// Enhanced color sampling with subpixel accuracy
+fn sample_color_subpixel(rgba: &RgbaImage, x: f32, y: f32) -> String {
+    let width = rgba.width();
+    let height = rgba.height();
+
+    // Bilinear interpolation for subpixel sampling
+    let x0 = x.floor() as u32;
+    let y0 = y.floor() as u32;
+    let x1 = (x0 + 1).min(width - 1);
+    let y1 = (y0 + 1).min(height - 1);
+
+    let fx = x.fract();
+    let fy = y.fract();
+
+    // Sample 4 neighboring pixels
+    let p00 = rgba.get_pixel(x0, y0);
+    let p10 = rgba.get_pixel(x1, y0);
+    let p01 = rgba.get_pixel(x0, y1);
+    let p11 = rgba.get_pixel(x1, y1);
+
+    // Bilinear interpolation
+    let r = lerp(lerp(p00[0] as f32, p10[0] as f32, fx), lerp(p01[0] as f32, p11[0] as f32, fx), fy) as u8;
+    let g = lerp(lerp(p00[1] as f32, p10[1] as f32, fx), lerp(p01[1] as f32, p11[1] as f32, fx), fy) as u8;
+    let b = lerp(lerp(p00[2] as f32, p10[2] as f32, fx), lerp(p01[2] as f32, p11[2] as f32, fx), fy) as u8;
+
+    format!("#{:02x}{:02x}{:02x}", r, g, b)
+}
+
+/// Linear interpolation helper
+fn lerp(a: f32, b: f32, t: f32) -> f32 {
+    a + (b - a) * t
+}
+
+/// Distribute error for hexagonal grid using 6-neighbor pattern
+fn distribute_hexagonal_error(
+    error_buffer: &mut Vec<Vec<f32>>,
+    row: u32,
+    col: u32,
+    cols: u32,
+    rows: u32,
+    error: f32,
+) {
+    let row_idx = row as usize + 1;
+    let col_idx = col as usize + 1;
+
+    // Hexagonal error diffusion pattern (distribute to 6 neighbors)
+    let weight = error / 6.0; // Equal distribution to 6 neighbors
+
+    // Right neighbor
+    if col + 1 < cols {
+        error_buffer[row_idx][col_idx + 1] += weight;
+    }
+
+    // Next row neighbors (pattern depends on row parity)
+    if row + 1 < rows {
+        if row % 2 == 0 {
+            // Even row: distribute to lower-left, lower-center, lower-right
+            if col > 0 {
+                error_buffer[row_idx + 1][col_idx - 1] += weight;
+            }
+            error_buffer[row_idx + 1][col_idx] += weight;
+            if col + 1 < cols {
+                error_buffer[row_idx + 1][col_idx + 1] += weight;
+            }
+        } else {
+            // Odd row: different pattern for hexagonal geometry
+            error_buffer[row_idx + 1][col_idx] += weight;
+            if col + 1 < cols {
+                error_buffer[row_idx + 1][col_idx + 1] += weight;
+            }
+            if col + 2 < cols {
+                error_buffer[row_idx + 1][col_idx + 2] += weight;
+            }
+        }
+    }
+}
+
 /// Generate dots from image analysis
 ///
 /// This is the core dot placement algorithm that combines gradient analysis and background
@@ -601,9 +1061,21 @@ pub fn generate_dots(
         };
 
     // Generate dots with chosen spatial distribution method
-    let mut dots = Vec::new();
+    let mut dots: Vec<Dot> = Vec::new();
 
-    if config.poisson_disk_sampling {
+    // Choose placement method based on grid pattern
+    match config.grid_pattern {
+        GridPattern::Grid => {
+            // Regular grid placement
+            dots = generate_grid_dots(rgba, gradient_analysis, background_mask, config, &candidates);
+        }
+        GridPattern::Hexagonal => {
+            // Hexagonal grid placement
+            dots = generate_hexagonal_dots(rgba, gradient_analysis, background_mask, config, &candidates);
+        }
+        GridPattern::Random => {
+            // Use existing Poisson or gradient-based placement
+            if config.poisson_disk_sampling {
         // Use Poisson disk sampling for natural distribution
         let min_distance = config.max_radius * config.spacing_factor;
         let mut poisson_sampler = PoissonDiskSampler::new(
@@ -680,6 +1152,8 @@ pub fn generate_dots(
                 let dot = Dot::new_with_shape(fx, fy, radius, opacity, color, config.shape);
                 spatial_grid.add_dot(dots.len(), fx, fy);
                 dots.push(dot);
+            }
+        }
             }
         }
     }
@@ -1015,7 +1489,7 @@ mod tests {
         let spacing_factor = 2.0;
 
         let mut grid = SpatialGrid::new(width, height, max_radius, spacing_factor);
-        let mut dots = Vec::new();
+        let mut dots: Vec<Dot> = Vec::new();
 
         // Add first dot
         let dot1 = Dot::new(25.0, 25.0, 2.0, 1.0, "#000000".to_string());

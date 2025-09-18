@@ -11,6 +11,7 @@ import type { TraceBackend } from './generated/TraceBackend';
 import type { BackgroundRemovalAlgorithm } from './generated/BackgroundRemovalAlgorithm';
 import type { ColorSamplingMethod } from './generated/ColorSamplingMethod';
 import type { DotShape } from './generated/DotShape';
+import type { GridPattern } from './generated/GridPattern';
 import type {
 	AlgorithmConfig,
 	EdgeConfig,
@@ -70,6 +71,22 @@ function mapDotShapeToWasm(shape: DotsConfig['dotShape']): DotShape {
 			return 'Triangle';
 		default:
 			return 'Circle';
+	}
+}
+
+/**
+ * Map frontend grid pattern names to WASM GridPattern enum values
+ */
+function mapGridPatternToWasm(pattern: DotsConfig['dotGridPattern']): GridPattern {
+	switch (pattern) {
+		case 'grid':
+			return 'Grid';
+		case 'hexagonal':
+			return 'Hexagonal';
+		case 'random':
+			return 'Random';
+		default:
+			return 'Random';
 	}
 }
 
@@ -205,6 +222,10 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 			config.algorithm === 'dots'
 				? mapDotShapeToWasm((config as DotsConfig).dotShape ?? 'circle')
 				: 'Circle',
+		dot_grid_pattern:
+			config.algorithm === 'dots'
+				? mapGridPatternToWasm((config as DotsConfig).dotGridPattern ?? 'random')
+				: 'Random',
 
 		// Centerline backend specific
 		enable_adaptive_threshold:

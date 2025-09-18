@@ -119,9 +119,8 @@
 
 	// Group parameters by category - using actual DOTS_METADATA keys
 	const coreParams = ['minRadius', 'maxRadius', 'dotSizingMode', 'sizeVariation'];
-	const dotStyleParams = ['dotShape'];
+	const dotStyleParams = ['dotShape', 'dotGridPattern', 'dotPoissonDiskSampling'];
 	const colorParams = ['dotPreserveColors', 'dotBackgroundTolerance', 'dotOpacity'];
-	const advancedParams = ['dotGridPattern', 'dotPoissonDiskSampling'];
 
 	// Parameter visibility logic - Size Variation only shows when Static Sizing is selected
 	function isParameterVisible(param: string): boolean {
@@ -183,21 +182,6 @@
 		expanded={colorExpanded}
 		onToggle={() => (colorExpanded = !colorExpanded)}
 		parameters={colorParams}
-		{config}
-		metadata={DOTS_METADATA}
-		onParameterChange={handleParameterChange}
-		{disabled}
-	/>
-
-	<!-- Advanced Settings -->
-	<ParameterSectionAdvanced
-		title="Advanced Settings"
-		icon={Settings}
-		iconColorClass="text-emerald-600 dark:text-emerald-400"
-		backgroundGradient="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20"
-		expanded={advancedExpanded}
-		onToggle={() => (advancedExpanded = !advancedExpanded)}
-		parameters={advancedParams}
 		{config}
 		metadata={DOTS_METADATA}
 		onParameterChange={handleParameterChange}

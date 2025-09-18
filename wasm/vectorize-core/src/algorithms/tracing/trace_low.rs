@@ -280,6 +280,8 @@ pub struct TraceLowConfig {
     pub dot_size_variation: f32,
     /// Shape to use for dots (Circle, Square, Diamond, Triangle)
     pub dot_shape: crate::algorithms::dots::dots::DotShape,
+    /// Grid pattern for dot placement (Grid, Hexagonal, Random)
+    pub dot_grid_pattern: crate::algorithms::dots::dots::GridPattern,
     /// Enable adaptive thresholding for centerline backend (default: true)
     pub enable_adaptive_threshold: bool,
     /// Window size for adaptive thresholding (default: computed from detail level, 25-35 pixels)
@@ -395,6 +397,7 @@ impl Default for TraceLowConfig {
             dot_gradient_based_sizing: false,
             dot_size_variation: 0.0, // Default to no size variation (uniform dots)
             dot_shape: crate::algorithms::dots::dots::DotShape::default(),
+            dot_grid_pattern: crate::algorithms::dots::dots::GridPattern::default(),
             // Adaptive thresholding defaults
             enable_adaptive_threshold: true,
             adaptive_threshold_window_size: 31, // Will be adjusted based on detail level
@@ -2925,6 +2928,7 @@ fn trace_dots(
         gradient_based_sizing: config.dot_gradient_based_sizing,
         size_variation: config.dot_size_variation,
         shape: config.dot_shape,
+        grid_pattern: config.dot_grid_pattern,
     };
 
     // Create GradientConfig - can use defaults for now
