@@ -475,6 +475,10 @@ export class WasmVectorizer {
    */
   set_douglas_peucker_epsilon(epsilon: number): void;
   /**
+   * Set width multiplier for line thickness
+   */
+  set_width_multiplier(multiplier: number): void;
+  /**
    * Set dot density threshold
    */
   set_dot_density(threshold: number): void;
@@ -845,10 +849,10 @@ export interface InitOutput {
     readonly _ZN3ryu6pretty8format3217he566f4d871da3489E: (a: number, b: number) => number;
   readonly _ZN9hashbrown3raw11Fallibility17capacity_overflow17ha3dc53e5c84cffb7E: (a: number, b: number) => void;
   readonly _ZN9hashbrown3raw11Fallibility9alloc_err17h74fb1a7fb61ccb58E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder5build17h00c03ff50c93a89bE: (a: number, b: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder5build17h85d6337cc6979f5bE: (a: number, b: number) => void;
   readonly _ZN14vectorize_core3gpu6device9GpuDevice25supports_image_processing17h6724d3787a24bb59E: (a: number) => number;
   readonly _ZN14vectorize_core3gpu7kernels14edge_detection20GpuCannyEdgeDetector3new17hed50c742fdc76c21E: (a: number, b: number) => void;
-  readonly _ZN14vectorize_core24vectorize_trace_low_rgba17h8dc5c748972bf4c9E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core24vectorize_trace_low_rgba17h28ae7df357e4743aE: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core3gpu7kernels9stippling12GpuStippling3new17h63c8487c6e569bb8E: (a: number, b: number) => void;
   readonly _ZN4wgpu3api6device6Device17create_bind_group17hdb2ee45598e1533cE: (a: number, b: number, c: number) => void;
       readonly _ZN14vectorize_core3gpu7kernels9stippling12GpuStippling21render_stippled_image17hae534ee46faf881eE: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
@@ -974,7 +978,7 @@ export interface InitOutput {
   readonly _ZN14vectorize_core16config_immutable16VectorizerConfig15preset_line_art17h591f9207b88fcca8E: (a: number) => void;
   readonly wasmconfigmanager_load_preset: (a: number, b: number, c: number) => [number, number];
   readonly wasmconfigmanager_build: (a: number) => [number, number, number, number];
-  readonly _ZN14vectorize_core16config_immutable16VectorizerConfig5build17h0b127cd81abcb35aE: (a: number, b: number) => void;
+  readonly _ZN14vectorize_core16config_immutable16VectorizerConfig5build17h80f63213b0f0d3b2E: (a: number, b: number) => void;
   readonly wasmconfigmanager_get_backend: (a: number) => [number, number];
   readonly wasmconfigmanager_reset: (a: number) => void;
   readonly wasmconfigmanager_validate: (a: number) => [number, number, number, number];
@@ -1050,6 +1054,7 @@ export interface InitOutput {
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder17min_branch_length17h4cae2bdb8c6aec42E: (a: number, b: number, c: number) => void;
   readonly wasmvectorizer_set_douglas_peucker_epsilon: (a: number, b: number) => [number, number];
   readonly _ZN14vectorize_core14config_builder13ConfigBuilder23douglas_peucker_epsilon17h34c49b2d988fb656E: (a: number, b: number, c: number) => void;
+  readonly wasmvectorizer_set_width_multiplier: (a: number, b: number) => [number, number];
   readonly wasmvectorizer_set_dot_density: (a: number, b: number) => [number, number];
   readonly wasmvectorizer_set_adaptive_sizing: (a: number, b: number) => void;
   readonly wasmvectorizer_set_background_tolerance: (a: number, b: number) => [number, number];
@@ -1084,7 +1089,7 @@ export interface InitOutput {
   readonly wasmvectorizer_set_multi_pass_intensity: (a: number, b: number) => [number, number];
   readonly wasmvectorizer_set_image_resolution: (a: number, b: number, c: number) => [number, number];
   readonly wasmvectorizer_set_adaptive_scaling: (a: number, b: number) => void;
-  readonly _ZN14vectorize_core14config_builder13ConfigBuilder21build_with_hand_drawn17hdec9123fe48723e7E: (a: number, b: number) => void;
+  readonly _ZN14vectorize_core14config_builder13ConfigBuilder21build_with_hand_drawn17hcecec90da02f5f46E: (a: number, b: number) => void;
   readonly wasmvectorizer_vectorize_with_progress: (a: number, b: any, c: number) => [number, number, number, number];
       readonly wasmvectorizer_vectorize: (a: number, b: any) => [number, number, number, number];
   readonly wasmvectorizer_vectorize_with_gpu: (a: number, b: any, c: number) => any;
@@ -1295,18 +1300,18 @@ export interface InitOutput {
   readonly _ZN14vectorize_core10algorithms7tracing10path_utils11CubicBezier14to_svg_command17ha30207a155b46c18E: (a: number, b: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing10path_utils26schneider_fit_cubic_bezier17ha6e064c2f7c693d5E: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing10path_utils27fitting_results_to_svg_path17h98fe6e69f534e53dE: (a: number, b: number, c: number, d: number, e: number) => void;
-  readonly _ZN14vectorize_core10algorithms7tracing13preprocessing19apply_preprocessing17h05bb20c075b7ba3eE: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing13preprocessing19apply_preprocessing17h198ccd8bf1cf96a6E: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN5image8dynimage12DynamicImage8to_luma817h5d8f4a26c922657cE: (a: number, b: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing13preprocessing17grayscale_to_rgba17h6f38195c47a0b1d4E: (a: number, b: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing5trace15trace_polylines17haf2bf5560492c411E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing9trace_low16ThresholdMapping3new17h445f175733852284E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core10algorithms7tracing9trace_low34vectorize_trace_low_with_gradients17hd2c982abf782470cE: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core10algorithms7tracing9trace_low19vectorize_trace_low17h0de351173937c633E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing9trace_low34vectorize_trace_low_with_gradients17h458e72f925b14d37E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing9trace_low19vectorize_trace_low17hd230259f19ace855E: (a: number, b: number, c: number, d: number) => void;
     readonly _ZN14vectorize_core10algorithms6visual16color_processing19extract_path_colors17h8b6278af771faed3E: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => void;
   readonly _ZN14vectorize_core10algorithms6visual18gradient_detection26analyze_path_for_gradients17hf56d81e8952e3e25E: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
-  readonly _ZN14vectorize_core10algorithms7tracing9trace_low31vectorize_trace_low_single_pass17h4c18a34f73184cf2E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core10algorithms7tracing9trace_low29vectorize_trace_low_multipass17hb49eff9f56537270E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN14vectorize_core10algorithms7tracing9trace_low31vectorize_trace_low_directional17h53caae99a3c21536E: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing9trace_low31vectorize_trace_low_single_pass17hb9303d958a2d5f6eE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing9trace_low29vectorize_trace_low_multipass17h5c7f74e3f905553dE: (a: number, b: number, c: number, d: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing9trace_low31vectorize_trace_low_directional17h2c2e5bb829e2fcedE: (a: number, b: number, c: number, d: number) => void;
       readonly _ZN14vectorize_core10algorithms6visual16color_processing32reduce_color_palette_with_method17hc5a1d688b369bb67E: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly _ZN4core9panicking11panic_const24panic_const_div_overflow17hf9a642922c7f86c1E: (a: number) => void;
   readonly _ZN14vectorize_core10algorithms6visual10hand_drawn27apply_hand_drawn_aesthetics17h5b736e5721a9c1c9E: (a: number, b: number, c: number) => void;
@@ -1477,7 +1482,7 @@ export interface InitOutput {
   readonly _ZN14vectorize_core13preprocessing23test_background_removal22run_comprehensive_test17h4ecb6bd8fe5d37c0E: (a: number) => void;
   readonly _ZN14vectorize_core13preprocessing31analyze_resolution_requirements17h1ccd13d0ac55bcfcE: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core13preprocessing27apply_resolution_processing17hf450b00fb5225f95E: (a: number, b: number, c: number) => void;
-  readonly _ZN14vectorize_core13preprocessing23adjust_trace_low_config17ha5d55902c51b7d9dE: (a: number, b: number, c: number) => void;
+  readonly _ZN14vectorize_core13preprocessing23adjust_trace_low_config17ha2087a457d6d3941E: (a: number, b: number, c: number) => void;
   readonly _ZN14vectorize_core13preprocessing21scale_svg_coordinates17h290c1eb82893425bE: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core3svg13optimize_data17h2c915655d7cce287E: (a: number, b: number, c: number, d: number) => void;
     readonly _ZN14vectorize_core3svg10minify_svg17h2665f2d0107c2f26E: (a: number, b: number, c: number) => void;

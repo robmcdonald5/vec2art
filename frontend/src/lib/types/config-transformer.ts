@@ -107,10 +107,12 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 	const wasmConfig: TraceLowConfig = {
 		// Core fields
 		backend: mapAlgorithmToBackend(config.algorithm),
-		// Convert detail from frontend scale (1-10) to WASM scale (0.1-1.0)
-		// Frontend: 1=low detail, 10=high detail
-		// WASM: 0.1=low detail, 1.0=high detail
-		detail: ((config.detail ?? 5.0) - 1) * 0.1 + 0.1, // Maps 1→0.1, 10→1.0
+		// Convert detail based on algorithm requirements
+		// Centerline expects 0.1-1.0 scale, other algorithms expect 1.0-10.0 scale
+		detail:
+			config.algorithm === 'centerline'
+				? ((config.detail ?? 5.0) - 1) * 0.1 + 0.1 // Maps 1→0.1, 10→1.0 for centerline
+				: config.detail ?? 5.0, // Direct mapping for edge and other algorithms
 		stroke_px_at_1080p: config.strokeWidth ?? 1.5,
 
 		// Multi-pass processing
@@ -243,7 +245,14 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 				? ((config as CenterlineConfig).adaptiveThresholdK ?? 0.4)
 				: 0.4,
 		adaptive_threshold_use_optimized: true,
-		enable_width_modulation: false,
+		enable_width_modulation:
+			config.algorithm === 'centerline'
+				? ((config as CenterlineConfig).enableWidthModulation ?? false)
+				: false,
+		width_multiplier:
+			config.algorithm === 'centerline'
+				? ((config as CenterlineConfig).widthMultiplier ?? 1.0)
+				: 1.0,
 		min_branch_length:
 			config.algorithm === 'centerline'
 				? ((config as CenterlineConfig).minBranchLength ?? 8.0)
@@ -409,8 +418,12 @@ export function fromWasmConfig(config: TraceLowConfig): Partial<AlgorithmConfig>
 	return {
 		// Core fields
 		algorithm: mapBackendToAlgorithm(config.backend),
-		// Convert detail from WASM scale (0.1-1.0) to frontend scale (1-10)
-		detail: Math.round((config.detail - 0.1) / 0.1 + 1), // Maps 0.1→1, 1.0→10
+		// Convert detail based on algorithm requirements
+		// Centerline uses 0.1-1.0 scale, other algorithms use 1.0-10.0 scale directly
+		detail:
+			mapBackendToAlgorithm(config.backend) === 'centerline'
+				? Math.round((config.detail - 0.1) / 0.1 + 1) // Maps 0.1→1, 1.0→10 for centerline
+				: config.detail, // Direct mapping for edge and other algorithms
 		strokeWidth: config.stroke_px_at_1080p,
 
 		// Processing options
@@ -435,6 +448,8 @@ export function fromWasmConfig(config: TraceLowConfig): Partial<AlgorithmConfig>
 		enableAdaptiveThreshold: config.enable_adaptive_threshold,
 		adaptiveThresholdWindowSize: config.adaptive_threshold_window_size,
 		adaptiveThresholdK: config.adaptive_threshold_k,
+		enableWidthModulation: config.enable_width_modulation,
+		widthMultiplier: config.width_multiplier,
 
 		// Superpixel
 		numSuperpixels: config.num_superpixels,

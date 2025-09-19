@@ -184,11 +184,11 @@ dot_grid_pattern: GridPattern,
  */
 enable_adaptive_threshold: boolean, 
 /**
- * Window size for adaptive thresholding (default: computed from detail level, 25-35 pixels)
+ * Window size for adaptive thresholding (default: 31, auto-computed from detail level: 35px at detail=0.1 to 25px at detail=1.0)
  */
 adaptive_threshold_window_size: number, 
 /**
- * Sensitivity parameter k for Sauvola thresholding (default: computed from detail level, 0.3-0.5)
+ * Sensitivity parameter k for Sauvola thresholding (default: 0.4, auto-computed from detail level: 0.47 at detail=0.1 to 0.2 at detail=1.0)
  */
 adaptive_threshold_k: number, 
 /**
@@ -199,6 +199,10 @@ adaptive_threshold_use_optimized: boolean,
  * Enable EDT-based width modulation for centerline SVG strokes (default: false)
  */
 enable_width_modulation: boolean, 
+/**
+ * Global multiplier for line width (0.5-3.0, default: 1.0)
+ */
+width_multiplier: number, 
 /**
  * Minimum branch length for centerline tracing in pixels (4-24, default: computed from detail level)
  */

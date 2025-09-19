@@ -505,6 +505,14 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 			if (config.adaptiveThresholdK !== undefined) {
 				vectorizer.set_sensitivity_k(config.adaptiveThresholdK);
 			}
+
+			// Width modulation settings
+			if (config.enableWidthModulation !== undefined) {
+				vectorizer.set_enable_width_modulation(config.enableWidthModulation);
+			}
+			if (config.widthMultiplier !== undefined) {
+				vectorizer.set_width_multiplier(config.widthMultiplier);
+			}
 		}
 
 		console.log('[Worker] ✅ Config applied to vectorizer, starting processing...');

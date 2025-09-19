@@ -292,6 +292,8 @@ pub struct TraceLowConfig {
     pub adaptive_threshold_use_optimized: bool,
     /// Enable EDT-based width modulation for centerline SVG strokes (default: false)
     pub enable_width_modulation: bool,
+    /// Global multiplier for line width (0.5-3.0, default: 1.0)
+    pub width_multiplier: f32,
     /// Minimum branch length for centerline tracing in pixels (4-24, default: computed from detail level)
     pub min_branch_length: f32,
     /// Douglas-Peucker epsilon for path simplification (0.5-3.0, default: computed from detail level)
@@ -417,6 +419,7 @@ impl Default for TraceLowConfig {
             adaptive_threshold_k: 0.4,          // Default value, auto-calculated from detail level if not explicitly set
             adaptive_threshold_use_optimized: true,
             enable_width_modulation: false,
+            width_multiplier: 1.0, // Default: no scaling
             // Centerline processing defaults
             min_branch_length: 12.0, // Will be adjusted based on detail level
             douglas_peucker_epsilon: 1.5, // Will be adjusted based on detail level
@@ -5048,20 +5051,24 @@ fn calculate_stroke_width(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, stroke_px_at_1
     stroke_px_at_1080p * scale_factor
 }
 
-/// Clamp stroke width to prevent excessive thickness during refinement
+/// Apply width multiplier and clamp stroke width to prevent excessive thickness during refinement
 ///
 /// As specified in Next-Steps.md:
+/// - Apply width multiplier first
 /// - Clamp stroke widths to [w_min, w_max] range
 /// - Optionally modulate by tone (small range)
 /// - NEVER increase width during refinement
 /// - Prefer density over thickness for darker regions
-fn clamp_stroke_width(width: f32, _config: &TraceLowConfig) -> f32 {
+fn clamp_stroke_width(width: f32, config: &TraceLowConfig) -> f32 {
+    // Apply width multiplier first
+    let scaled_width = width * config.width_multiplier;
+
     // Define reasonable bounds for stroke widths
-    let w_min = 0.5; // Minimum readable stroke width
-    let w_max = 10.0; // Match UI maximum - allow user's full range
+    let w_min = 0.1; // Minimum readable stroke width (lowered to allow thin lines with low multiplier)
+    let w_max = 15.0; // Allow higher maximum to accommodate multiplier (3.0x of previous 5.0 base)
 
     // Clamp to reasonable range
-    width.max(w_min).min(w_max)
+    scaled_width.max(w_min).min(w_max)
 }
 
 /// Create SVG stroke path from polyline

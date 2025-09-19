@@ -1,7 +1,6 @@
 <script lang="ts">
 	import {
 		Settings2, // For Core Settings
-		Cpu, // For Processing
 		Brush, // For Artistic Effects
 		Sparkles // For Advanced Settings
 	} from 'lucide-svelte';
@@ -21,7 +20,6 @@
 	let preprocessingExpanded = $state(true);
 	let layerProcessingExpanded = $state(false);
 	let colorOptionsExpanded = $state(false);
-	let processingExpanded = $state(false);
 	let advancedExpanded = $state(false);
 
 	// Get config from store
@@ -50,9 +48,8 @@
 	}
 
 	// Group parameters by category (excluding preprocessing which is handled by shared component)
-	const layerProcessingParams = ['passCount', 'minBranchLength', 'enableAdaptiveThreshold'];
+	const layerProcessingParams = ['passCount', 'minBranchLength', 'enableAdaptiveThreshold', 'enableWidthModulation', 'widthMultiplier'];
 	const colorOptionsParams = ['linePreserveColors', 'lineColorAccuracy', 'maxColorsPerPath', 'colorTolerance'];
-	const processingParams = ['enableWidthModulation', 'widthMultiplier'];
 	const advancedParams = ['handDrawnPreset', 'handDrawnVariableWeights', 'handDrawnTremorStrength', 'handDrawnTapering'];
 </script>
 
@@ -92,22 +89,6 @@
 		expanded={colorOptionsExpanded}
 		onToggle={() => (colorOptionsExpanded = !colorOptionsExpanded)}
 		parameters={colorOptionsParams}
-		{config}
-		metadata={CENTERLINE_METADATA}
-		onParameterChange={handleParameterChange}
-		{isParameterVisible}
-		{disabled}
-	/>
-
-	<!-- Processing -->
-	<ParameterSectionAdvanced
-		title="Processing"
-		icon={Cpu}
-		iconColorClass="text-green-600 dark:text-green-400"
-		backgroundGradient="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20"
-		expanded={processingExpanded}
-		onToggle={() => (processingExpanded = !processingExpanded)}
-		parameters={processingParams}
 		{config}
 		metadata={CENTERLINE_METADATA}
 		onParameterChange={handleParameterChange}

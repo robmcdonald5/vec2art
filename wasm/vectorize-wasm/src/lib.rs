@@ -429,6 +429,19 @@ impl WasmVectorizer {
         Ok(())
     }
 
+    /// Set width multiplier for line thickness
+    #[wasm_bindgen]
+    pub fn set_width_multiplier(&mut self, multiplier: f32) -> Result<(), JsValue> {
+        if multiplier < 0.1 || multiplier > 5.0 {
+            return Err(JsValue::from_str(&format!(
+                "Width multiplier must be between 0.1 and 5.0, got {}",
+                multiplier
+            )));
+        }
+        self.config_builder = self.config_builder.clone().width_multiplier(multiplier);
+        Ok(())
+    }
+
     // === DOTS BACKEND METHODS ===
 
     /// Set dot density threshold

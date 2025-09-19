@@ -450,6 +450,12 @@ impl ConfigBuilder {
         Ok(self)
     }
 
+    /// Set width multiplier for line thickness (0.1-5.0)
+    pub fn width_multiplier(mut self, multiplier: f32) -> Self {
+        self.config.width_multiplier = multiplier.clamp(0.1, 5.0);
+        self
+    }
+
     // Noise filtering parameters
 
     /// Set spatial sigma for bilateral noise filtering (0.5-5.0)

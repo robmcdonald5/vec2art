@@ -1146,7 +1146,7 @@ export const CENTERLINE_METADATA: Record<string, ParameterMetadata> = {
 		label: 'Width Modulation',
 		description: 'Vary line width based on image features.',
 		type: 'boolean',
-		category: 'style',
+		category: 'algorithm',
 		algorithms: ['centerline']
 	},
 	widthMultiplier: {
@@ -1157,7 +1157,7 @@ export const CENTERLINE_METADATA: Record<string, ParameterMetadata> = {
 		min: 0.5,
 		max: 3.0,
 		step: 0.1,
-		category: 'style',
+		category: 'algorithm',
 		algorithms: ['centerline']
 	},
 
