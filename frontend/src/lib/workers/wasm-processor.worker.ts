@@ -196,8 +196,7 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 			detail: wasmConfig.detail,
 			stroke_width: wasmConfig.stroke_px_at_1080p,
 			noise_filtering: wasmConfig.noise_filtering,
-			background_removal: wasmConfig.enable_background_removal,
-			dot_size_variation: wasmConfig.dot_size_variation // Add this to verify
+			background_removal: wasmConfig.enable_background_removal
 		});
 
 		// Apply entire configuration with single call

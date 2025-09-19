@@ -64,7 +64,9 @@ pub fn apply_config_json(
 
     // Apply preprocessing settings
     builder = builder
-        .noise_filtering(config.noise_filtering);
+        .noise_filtering(config.noise_filtering)
+        .noise_filter_spatial_sigma(config.noise_filter_spatial_sigma)
+        .noise_filter_range_sigma(config.noise_filter_range_sigma);
 
     if config.enable_background_removal {
         builder = builder

@@ -75,7 +75,6 @@ function mapDotShapeToWasm(shape: DotsConfig['dotShape']): DotShape {
 	}
 }
 
-
 /**
  * Map frontend grid pattern names to WASM GridPattern enum values
  */
@@ -126,7 +125,7 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 
 		// Noise filtering
 		noise_filtering: config.noiseFiltering ?? false,
-		noise_filter_spatial_sigma: config.noiseFilterSpatialSigma ?? 2.0,
+		noise_filter_spatial_sigma: config.noiseFilterSpatialSigma ?? 1.2,
 		noise_filter_range_sigma: config.noiseFilterRangeSigma ?? 50.0,
 
 		// Directional processing
@@ -257,7 +256,9 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 				: 10.0,
 		superpixel_slic_iterations:
 			config.algorithm === 'superpixel'
-				? ((config as SuperpixelConfig).iterations ?? (config as SuperpixelConfig).superpixelSlicIterations ?? 10)
+				? ((config as SuperpixelConfig).iterations ??
+					(config as SuperpixelConfig).superpixelSlicIterations ??
+					10)
 				: 10,
 		superpixel_initialization_pattern:
 			config.algorithm === 'superpixel'

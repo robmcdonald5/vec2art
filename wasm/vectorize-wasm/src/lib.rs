@@ -897,14 +897,6 @@ impl WasmVectorizer {
             config.backend, config.detail, config.enable_multipass,
             if hand_drawn_config.is_some() { "ENABLED" } else { "disabled" });
 
-        // DEBUG: Log preprocessing parameters
-        log::info!("🔍 WASM DEBUG: Preprocessing parameters:");
-        log::info!("  - noise_filtering: {}", config.noise_filtering);
-        log::info!("  - noise_filter_spatial_sigma: {}", config.noise_filter_spatial_sigma);
-        log::info!("  - noise_filter_range_sigma: {}", config.noise_filter_range_sigma);
-        log::info!("  - enable_background_removal: {}", config.enable_background_removal);
-        log::info!("  - background_removal_strength: {}", config.background_removal_strength);
-        log::info!("  - background_removal_algorithm: {:?}", config.background_removal_algorithm);
             
         // Log hand-drawn configuration details if present
         if let Some(ref hd_config) = hand_drawn_config {
