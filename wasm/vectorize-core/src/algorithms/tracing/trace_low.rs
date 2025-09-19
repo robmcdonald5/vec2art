@@ -22,12 +22,13 @@ use crate::algorithms::edges::gradients::GradientConfig;
 use crate::algorithms::tracing::fit::{fit_beziers, FitConfig};
 use crate::algorithms::tracing::path_utils::calculate_douglas_peucker_epsilon;
 use crate::algorithms::tracing::trace::{trace_polylines, TraceConfig};
+use crate::algorithms::tracing::preprocessing::apply_preprocessing;
 use crate::algorithms::{Point, SvgElementType, SvgPath};
 use crate::error::VectorizeError;
 use crate::execution::{execute_parallel, execute_parallel_filter_map};
 use crate::svg_gradients::{ColorStop, GradientDefinition};
 use crate::utils::Instant;
-use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba};
+use image::{GrayImage, ImageBuffer, Luma, Rgba};
 use std::collections::{HashMap, VecDeque};
 #[cfg(feature = "generate-ts")]
 use ts_rs::TS;
@@ -1805,13 +1806,16 @@ fn trace_centerline(
     _thresholds: &ThresholdMapping,
     config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
+    // Apply unified preprocessing first
+    let processed_image = apply_preprocessing(image, config, "centerline")?;
+    
     // Check if distance transform algorithm is enabled
     if config.enable_distance_transform_centerline {
-        return trace_centerline_distance_transform(image, config);
+        return trace_centerline_distance_transform(&processed_image, config);
     }
 
     // Fall back to traditional skeleton-based approach
-    trace_centerline_skeleton_based(image, config)
+    trace_centerline_skeleton_based(&processed_image, config)
 }
 
 /// High-performance Distance Transform-based centerline tracing
@@ -2346,27 +2350,6 @@ fn extract_region_colors_advanced(
     colors
 }
 
-/// Extract pixel colors from a region
-fn extract_region_pixel_colors(
-    region: &SuperpixelRegion,
-    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
-) -> Vec<Rgba<u8>> {
-    // For simplicity, sample colors along the boundary
-    region
-        .boundary_points
-        .iter()
-        .take(100) // Limit to reasonable number for performance
-        .filter_map(|point| {
-            let x = point.x as u32;
-            let y = point.y as u32;
-            if x < image.width() && y < image.height() {
-                Some(*image.get_pixel(x, y))
-            } else {
-                None
-            }
-        })
-        .collect()
-}
 
 /// Find the best matching color in a palette
 fn find_best_palette_color(target: &Rgba<u8>, palette: &[Rgba<u8>]) -> Rgba<u8> {
@@ -2400,6 +2383,8 @@ fn trace_superpixel(
     config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
     let start_time = Instant::now();
+    // Apply unified preprocessing (noise filtering and background removal)
+    let processed_image = apply_preprocessing(image, config, "superpixel")?;
     let (width, height) = (image.width() as usize, image.height() as usize);
 
     // Use configured superpixel parameters (with fallback based on detail level)
@@ -2426,7 +2411,7 @@ fn trace_superpixel(
 
     // 1. Convert image to LAB color space
     let phase_start = Instant::now();
-    let lab_image: Vec<LabColor> = image.pixels().map(rgba_to_lab).collect();
+    let lab_image: Vec<LabColor> = processed_image.pixels().map(rgba_to_lab).collect();
     log::debug!("LAB conversion: {:?}", phase_start.elapsed());
 
     // 2. Initialize SLIC superpixel segmentation
@@ -3334,50 +3319,10 @@ fn trace_dots(
         dot_config.adaptive_sizing,
         background_config.tolerance
     );
+    // Apply unified preprocessing (background removal + noise filtering)
+    let processed_image = apply_preprocessing(image, config, "dots")?;
 
-    // Apply noise filtering if enabled (optional preprocessing for dots)
-    let processed_image = if config.noise_filtering {
-        let filter_start = Instant::now();
-
-        // Convert to grayscale for noise filtering
-        let gray = DynamicImage::ImageRgba8(image.clone()).to_luma8();
-
-        // Use configurable bilateral filter parameters
-        let spatial_sigma = config.noise_filter_spatial_sigma; // Respect user configuration
-        let range_sigma = config.noise_filter_range_sigma;
-
-        let filtered_gray = bilateral_filter(&gray, spatial_sigma, range_sigma);
-        let filter_time = filter_start.elapsed();
-
-        log::debug!(
-            "Dots bilateral noise filtering: {:.3}ms (spatial_σ={:.1}, range_σ={:.1})",
-            filter_time.as_secs_f64() * 1000.0,
-            spatial_sigma,
-            range_sigma
-        );
-
-        // Convert filtered grayscale back to RGBA (preserving original colors where applicable)
-        let mut filtered_rgba = image.clone();
-        for (x, y, rgba_pixel) in filtered_rgba.enumerate_pixels_mut() {
-            let filtered_luma = filtered_gray.get_pixel(x, y).0[0];
-            let original_luma = (0.299 * rgba_pixel.0[0] as f32
-                + 0.587 * rgba_pixel.0[1] as f32
-                + 0.114 * rgba_pixel.0[2] as f32) as u8;
-
-            if original_luma > 0 {
-                // Preserve color ratios while applying luminance filtering
-                let scale = filtered_luma as f32 / original_luma as f32;
-                rgba_pixel.0[0] = (rgba_pixel.0[0] as f32 * scale).min(255.0) as u8;
-                rgba_pixel.0[1] = (rgba_pixel.0[1] as f32 * scale).min(255.0) as u8;
-                rgba_pixel.0[2] = (rgba_pixel.0[2] as f32 * scale).min(255.0) as u8;
-            }
-        }
-
-        filtered_rgba
-    } else {
-        log::debug!("Noise filtering disabled for dots - using original image");
-        image.clone()
-    };
+    // Apply unified preprocessing (background removal + noise filtering)    let processed_image = apply_preprocessing(image, config, "dots")?;
 
     // Generate dots using the complete pipeline
     let phase_start = Instant::now();

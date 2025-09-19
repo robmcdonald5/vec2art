@@ -814,7 +814,7 @@ mod tests {
         );
         // Missing required parameter: superpixel_simplify_boundaries
 
-        let result = validate_configuration(&config, TraceBackend::Superpixel);
+        let _result = validate_configuration(&config, TraceBackend::Superpixel);
         // This test may pass if dependencies aren't strictly enforced in current registry
         // The test validates the dependency checking mechanism
     }
