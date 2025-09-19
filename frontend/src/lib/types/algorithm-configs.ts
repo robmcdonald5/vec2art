@@ -488,7 +488,7 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 			{ value: 'custom', label: 'Custom' }
 		],
 		category: 'style',
-		algorithms: ['edge']
+		algorithms: ['edge', 'centerline']
 	},
 	handDrawnVariableWeights: {
 		name: 'handDrawnVariableWeights',
@@ -499,7 +499,7 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		max: 1.0,
 		step: 0.01,
 		category: 'style',
-		algorithms: ['edge']
+		algorithms: ['edge', 'centerline']
 	},
 	handDrawnTremorStrength: {
 		name: 'handDrawnTremorStrength',
@@ -510,7 +510,7 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		max: 0.5,
 		step: 0.01,
 		category: 'style',
-		algorithms: ['edge']
+		algorithms: ['edge', 'centerline']
 	},
 	handDrawnTapering: {
 		name: 'handDrawnTapering',
@@ -521,7 +521,7 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		max: 1.0,
 		step: 0.01,
 		category: 'style',
-		algorithms: ['edge']
+		algorithms: ['edge', 'centerline']
 	},
 	enableBackgroundRemoval: {
 		name: 'enableBackgroundRemoval',
@@ -1034,6 +1034,75 @@ export const SUPERPIXEL_METADATA: Record<string, ParameterMetadata> = {
  * Parameter metadata for Centerline algorithm UI generation
  */
 export const CENTERLINE_METADATA: Record<string, ParameterMetadata> = {
+	// Preprocessing Parameters
+	noiseFiltering: {
+		name: 'noiseFiltering',
+		label: 'Noise Filtering',
+		description: 'Apply edge-preserving bilateral filtering to reduce noise.',
+		type: 'boolean',
+		category: 'core',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots']
+	},
+	noiseFilterSpatialSigma: {
+		name: 'noiseFilterSpatialSigma',
+		label: 'Spatial Sigma',
+		description: 'Spatial smoothing for noise filter.',
+		type: 'range',
+		min: 0.5,
+		max: 5.0,
+		step: 0.1,
+		category: 'core',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
+		dependsOn: 'noiseFiltering'
+	},
+	noiseFilterRangeSigma: {
+		name: 'noiseFilterRangeSigma',
+		label: 'Range Sigma',
+		description:
+			'Controls how much difference in pixel values is allowed. Higher values preserve edges better.',
+		type: 'range',
+		min: 10.0,
+		max: 200.0,
+		step: 10.0,
+		category: 'core',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
+		dependsOn: 'noiseFiltering'
+	},
+	enableBackgroundRemoval: {
+		name: 'enableBackgroundRemoval',
+		label: 'Background Removal',
+		description: 'Enable automatic background removal preprocessing.',
+		type: 'boolean',
+		category: 'color',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots']
+	},
+	backgroundRemovalStrength: {
+		name: 'backgroundRemovalStrength',
+		label: 'Removal Strength',
+		description: 'How aggressively to remove the background.',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.1,
+		category: 'color',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
+		dependsOn: 'enableBackgroundRemoval'
+	},
+	backgroundRemovalAlgorithm: {
+		name: 'backgroundRemovalAlgorithm',
+		label: 'Removal Algorithm',
+		description: 'Algorithm to use for background removal.',
+		type: 'select',
+		options: [
+			{ value: 'otsu', label: 'OTSU Thresholding' },
+			{ value: 'adaptive', label: 'Adaptive Filtering' }
+		],
+		category: 'color',
+		algorithms: ['edge', 'centerline', 'superpixel', 'dots'],
+		dependsOn: 'enableBackgroundRemoval'
+	},
+
+	// Core Algorithm Parameters
 	enableMultipass: {
 		name: 'enableMultipass',
 		label: 'Enable Multipass',
@@ -1090,6 +1159,104 @@ export const CENTERLINE_METADATA: Record<string, ParameterMetadata> = {
 		step: 0.1,
 		category: 'style',
 		algorithms: ['centerline']
+	},
+
+	// Color Control Parameters (shared with Edge)
+	linePreserveColors: {
+		name: 'linePreserveColors',
+		label: 'Full Color Mode',
+		description:
+			'Enable full color mode to preserve original image colors. When disabled, outputs monochrome.',
+		type: 'boolean',
+		category: 'color',
+		algorithms: ['edge', 'centerline']
+	},
+	lineColorAccuracy: {
+		name: 'lineColorAccuracy',
+		label: 'Color Accuracy',
+		description: 'How accurately to match original colors (0 = loose, 1 = exact).',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.1,
+		category: 'color',
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'linePreserveColors'
+	},
+	maxColorsPerPath: {
+		name: 'maxColorsPerPath',
+		label: 'Colors Per Path',
+		description: 'Maximum number of colors to use per path.',
+		type: 'range',
+		min: 1,
+		max: 10,
+		step: 1,
+		category: 'color',
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'linePreserveColors'
+	},
+	colorTolerance: {
+		name: 'colorTolerance',
+		label: 'Color Tolerance',
+		description: 'Tolerance for color matching (higher = more colors merged).',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.05,
+		category: 'color',
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'linePreserveColors'
+	},
+
+	// Hand-Drawn Style Parameters
+	handDrawnPreset: {
+		name: 'handDrawnPreset',
+		label: 'Hand-Drawn Style',
+		description: 'Preset effect strength for hand-drawn appearance.',
+		type: 'select',
+		options: [
+			{ value: 'none', label: 'None' },
+			{ value: 'subtle', label: 'Subtle' },
+			{ value: 'medium', label: 'Medium' },
+			{ value: 'strong', label: 'Strong' },
+			{ value: 'sketchy', label: 'Sketchy' },
+			{ value: 'custom', label: 'Custom' }
+		],
+		category: 'style',
+		algorithms: ['edge', 'centerline']
+	},
+	handDrawnVariableWeights: {
+		name: 'handDrawnVariableWeights',
+		label: 'Variable Weights',
+		description: 'Stroke weight variation for hand-drawn effect.',
+		type: 'range',
+		min: 0.1,
+		max: 1.0,
+		step: 0.01,
+		category: 'style',
+		algorithms: ['edge', 'centerline']
+	},
+	handDrawnTremorStrength: {
+		name: 'handDrawnTremorStrength',
+		label: 'Tremor Strength',
+		description: 'Hand tremor simulation strength. Controls organic line jitter.',
+		type: 'range',
+		min: 0.1,
+		max: 0.5,
+		step: 0.01,
+		category: 'style',
+		algorithms: ['edge', 'centerline']
+	},
+	handDrawnTapering: {
+		name: 'handDrawnTapering',
+		label: 'Line Tapering',
+		description: 'Line end tapering amount.',
+		type: 'range',
+		min: 0.1,
+		max: 1.0,
+		step: 0.01,
+		category: 'style',
+		algorithms: ['edge', 'centerline']
 	}
 };
 

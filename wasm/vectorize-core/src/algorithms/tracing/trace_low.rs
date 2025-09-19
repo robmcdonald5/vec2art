@@ -577,7 +577,7 @@ pub fn vectorize_trace_low(
         );
         // Use directional processing for enhanced directional quality
         vectorize_trace_low_directional(image, config, hand_drawn_config)
-    } else if config.enable_multipass && config.backend == TraceBackend::Edge {
+    } else if config.enable_multipass && (config.backend == TraceBackend::Edge || config.backend == TraceBackend::Centerline) {
         log::info!("🔄 Using standard multipass processing");
         // Use standard multipass processing for enhanced quality
         vectorize_trace_low_multipass(image, config, hand_drawn_config)
@@ -689,8 +689,54 @@ pub fn vectorize_trace_low_multipass(
         // Disable background removal for individual passes since we pre-processed
         pass_config.enable_background_removal = false;
 
+        // Create progressively different input images for centerline multipass
+        let pass_image = if config.backend == TraceBackend::Centerline && pass_count > 1 {
+            log::info!("🎯 CENTERLINE MULTIPASS: Creating variant input for pass {}", pass_num + 1);
+
+            match pass_num {
+                0 => {
+                    // Pass 1: Original image for baseline
+                    log::info!("🎯 Pass 1: Baseline - original image");
+                    preprocessed_image.clone()
+                },
+                1 => {
+                    // Pass 2: Light blur for main structure
+                    let blur_sigma = 1.0;
+                    log::info!("🎯 Pass 2: Light blur (sigma={})", blur_sigma);
+                    blur_image(&preprocessed_image, blur_sigma)
+                },
+                2 => {
+                    // Pass 3: Medium blur for broader structure
+                    let blur_sigma = 2.0;
+                    log::info!("🎯 Pass 3: Medium blur (sigma={})", blur_sigma);
+                    blur_image(&preprocessed_image, blur_sigma)
+                },
+                3 => {
+                    // Pass 4: Light sharpening for fine details
+                    let sharpen_strength = 0.5;
+                    log::info!("🎯 Pass 4: Light sharpen (strength={})", sharpen_strength);
+                    sharpen_image(&preprocessed_image, sharpen_strength)
+                },
+                4 => {
+                    // Pass 5: Medium sharpening for finer details
+                    let sharpen_strength = 1.0;
+                    log::info!("🎯 Pass 5: Medium sharpen (strength={})", sharpen_strength);
+                    sharpen_image(&preprocessed_image, sharpen_strength)
+                },
+                _ => {
+                    // Pass 6+: Progressive contrast enhancement
+                    let contrast_factor = 1.0 + (pass_num - 4) as f32 * 0.3;
+                    log::info!("🎯 Pass {}: Contrast enhancement (factor={})", pass_num + 1, contrast_factor);
+                    enhance_contrast(&preprocessed_image, contrast_factor)
+                }
+            }
+        } else {
+            log::info!("📏 Using standard image for Edge/single-pass processing");
+            preprocessed_image.clone()
+        };
+
         let pass_paths = match vectorize_trace_low_single_pass(
-            &preprocessed_image,
+            &pass_image,
             &pass_config,
             hand_drawn_config,
         ) {
@@ -8192,4 +8238,64 @@ fn bilateral_filter_fast(image: &GrayImage, spatial_sigma: f32, range_sigma: f32
     }
 
     filtered
+}
+
+/// Apply Gaussian blur to image for centerline multipass variance
+fn blur_image(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, sigma: f32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+    use imageproc::filter::gaussian_blur_f32;
+
+    // Convert to RGB for processing, then back to RGBA
+    let rgb_image = image::DynamicImage::ImageRgba8(image.clone()).to_rgb8();
+    let blurred_rgb = gaussian_blur_f32(&rgb_image, sigma);
+
+    // Convert back to RGBA
+    let mut result: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(image.width(), image.height());
+    for (x, y, pixel) in result.enumerate_pixels_mut() {
+        let rgb_pixel = blurred_rgb.get_pixel(x, y);
+        let original_alpha = image.get_pixel(x, y)[3];
+        *pixel = Rgba([rgb_pixel[0], rgb_pixel[1], rgb_pixel[2], original_alpha]);
+    }
+
+    result
+}
+
+/// Apply sharpening filter to image for centerline multipass variance
+fn sharpen_image(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, strength: f32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+    let mut result = image.clone();
+
+    // Simple unsharp mask: original + strength * (original - blurred)
+    let blurred = blur_image(image, 1.0);
+
+    for (x, y, pixel) in result.enumerate_pixels_mut() {
+        let orig = image.get_pixel(x, y);
+        let blur = blurred.get_pixel(x, y);
+
+        for i in 0..3 { // Only sharpen RGB channels, preserve alpha
+            let diff = orig[i] as f32 - blur[i] as f32;
+            let sharpened = orig[i] as f32 + strength * diff;
+            pixel[i] = sharpened.clamp(0.0, 255.0) as u8;
+        }
+        pixel[3] = orig[3]; // Preserve alpha
+    }
+
+    result
+}
+
+/// Apply contrast enhancement to image for centerline multipass variance
+fn enhance_contrast(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, factor: f32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+    let mut result: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(image.width(), image.height());
+
+    for (x, y, pixel) in result.enumerate_pixels_mut() {
+        let orig = image.get_pixel(x, y);
+
+        for i in 0..3 { // Only enhance RGB channels, preserve alpha
+            // Apply contrast: new_value = ((old_value - 128) * factor) + 128
+            let centered = orig[i] as f32 - 128.0;
+            let enhanced = (centered * factor) + 128.0;
+            pixel[i] = enhanced.clamp(0.0, 255.0) as u8;
+        }
+        pixel[3] = orig[3]; // Preserve alpha
+    }
+
+    result
 }

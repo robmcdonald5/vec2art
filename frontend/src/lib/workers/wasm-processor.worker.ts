@@ -325,6 +325,18 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 
 				// Apply Centerline backend specific settings
 				if (config.algorithm === 'centerline') {
+					// Centerline-specific multipass settings
+					if (config.passCount !== undefined) {
+						vectorizer.set_multipass(config.passCount > 1);
+					}
+					if (config.passCount !== undefined && config.passCount > 0) {
+						vectorizer.set_pass_count(config.passCount);
+					}
+					if (config.minBranchLength !== undefined) {
+						console.log('[Worker] 📐 Setting min_branch_length:', config.minBranchLength);
+						vectorizer.set_min_branch_length(config.minBranchLength);
+					}
+
 					if (config.enableAdaptiveThreshold !== undefined) {
 						console.log(
 							'[Worker] 📐 Setting enable_adaptive_threshold:',
