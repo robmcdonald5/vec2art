@@ -282,31 +282,19 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 			config.algorithm === 'edge' || config.algorithm === 'centerline'
 				? ((config as EdgeConfig).lineColorAccuracy ?? 0.7)
 				: config.algorithm === 'superpixel'
-					? (() => {
-						const value = (config as SuperpixelConfig).superpixelColorAccuracy ?? 0.7;
-						console.log('[Config Transform] superpixelColorAccuracy:', (config as SuperpixelConfig).superpixelColorAccuracy, '→', value);
-						return value;
-					})()
+					? ((config as SuperpixelConfig).superpixelColorAccuracy ?? 0.7)
 					: 0.7,
 		max_colors_per_path:
 			config.algorithm === 'edge' || config.algorithm === 'centerline'
 				? ((config as EdgeConfig).maxColorsPerPath ?? 3)
 				: config.algorithm === 'superpixel'
-					? (() => {
-						const value = (config as SuperpixelConfig).superpixelMaxColorsPerRegion ?? 3;
-						console.log('[Config Transform] superpixelMaxColorsPerRegion:', (config as SuperpixelConfig).superpixelMaxColorsPerRegion, '→', value);
-						return value;
-					})()
+					? ((config as SuperpixelConfig).superpixelMaxColorsPerRegion ?? 3)
 					: 3,
 		color_tolerance:
 			config.algorithm === 'edge' || config.algorithm === 'centerline'
 				? ((config as EdgeConfig).colorTolerance ?? 0.15)
 				: config.algorithm === 'superpixel'
-					? (() => {
-						const value = (config as SuperpixelConfig).superpixelColorTolerance ?? 0.15;
-						console.log('[Config Transform] superpixelColorTolerance:', (config as SuperpixelConfig).superpixelColorTolerance, '→', value);
-						return value;
-					})()
+					? ((config as SuperpixelConfig).superpixelColorTolerance ?? 0.15)
 					: 0.15,
 		enable_palette_reduction:
 			config.algorithm === 'superpixel'

@@ -26,14 +26,12 @@
 
 	// Handle parameter changes
 	function handleParameterChange(name: string, value: any) {
-		console.log('[SuperpixelPanel] Parameter change:', name, '=', value);
 		const updates: any = { [name]: value };
 
 		// No need to sync preserveColors - each algorithm has its own color preserve setting
 		// The config transformer handles the mapping appropriately
 
 		algorithmConfigStore.updateCurrentConfig(updates);
-		console.log('[SuperpixelPanel] Config after update:', algorithmConfigStore.superpixel);
 	}
 
 	// Group parameters by category

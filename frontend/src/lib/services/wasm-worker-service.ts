@@ -375,16 +375,6 @@ export class WasmWorkerService {
 			// Set progress callback
 			this.progressCallback = onProgress || null;
 
-			console.log('[WasmWorkerService] Processing image:', {
-				width: imageData.width,
-				height: imageData.height,
-				config
-			});
-
-			// Processing configuration
-			console.log('[WasmWorkerService] Processing configuration:', {
-				backend: config.algorithm
-			});
 
 			// Serialize config to plain object (removes Proxy wrapper from Svelte stores)
 			const plainConfig = JSON.parse(JSON.stringify(config));
@@ -393,27 +383,8 @@ export class WasmWorkerService {
 			// Note: passCount only exists on EdgeConfig, not on all AlgorithmConfig types
 			if (plainConfig.algorithm === 'edge' && plainConfig.passCount === undefined) {
 				plainConfig.passCount = 1;
-				console.log('[WasmWorkerService] 🔧 Adding missing passCount default=1 to Edge config');
 			}
 
-			// DEBUG: Log the config being sent to worker
-			if (plainConfig.algorithm === 'dots') {
-				console.log('[WasmWorkerService] 🔵 Dots config being sent to worker:', {
-					dotShape: plainConfig.dotShape,
-					allKeys: Object.keys(plainConfig),
-					fullConfig: plainConfig
-				});
-			}
-
-			// DEBUG: Log superpixel config being sent to worker
-			if (plainConfig.algorithm === 'superpixel') {
-				console.log('[WasmWorkerService] 🟣 Superpixel config being sent to worker:', {
-					superpixelColorSampling: plainConfig.superpixelColorSampling,
-					superpixelPreserveColors: plainConfig.superpixelPreserveColors,
-					allKeys: Object.keys(plainConfig),
-					fullConfig: plainConfig
-				});
-			}
 
 			// Send processing request to worker
 			const result = await this.sendMessage('process', {
@@ -508,11 +479,6 @@ export class WasmWorkerService {
 				};
 
 				try {
-					console.log('[WasmWorkerService] 🎯 Retrying with fallback config:', {
-						detail: fallbackConfig.detail,
-						threads: fallbackConfig.threadCount,
-						timeout: fallbackConfig.maxProcessingTimeMs / 1000 + 's'
-					});
 
 					// Force worker restart for clean state
 					await this.handleCriticalError(error);

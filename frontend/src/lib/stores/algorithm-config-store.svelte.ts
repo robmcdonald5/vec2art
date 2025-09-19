@@ -184,15 +184,8 @@ class AlgorithmConfigStore {
 	public dots = $derived(this.configs.dots as DotsConfig);
 
 	constructor() {
-		console.log(
-			'[AlgorithmConfigStore] Constructor - browser:',
-			browser,
-			'localStorage available:',
-			typeof localStorage !== 'undefined'
-		);
 		// Load saved configurations from localStorage only in browser
 		if (browser) {
-			console.log('[AlgorithmConfigStore] Loading saved configs...');
 			this.loadSavedConfigs();
 			this.loadSavedActiveAlgorithm();
 		}
@@ -420,18 +413,10 @@ class AlgorithmConfigStore {
 	 * Load configurations from localStorage
 	 */
 	private loadSavedConfigs() {
-		console.log(
-			'[AlgorithmConfigStore] loadSavedConfigs - browser:',
-			browser,
-			'localStorage:',
-			typeof localStorage
-		);
 		if (!browser || typeof localStorage === 'undefined') {
-			console.log('[AlgorithmConfigStore] Skipping localStorage load - SSR mode');
 			return;
 		}
 		try {
-			console.log('[AlgorithmConfigStore] Attempting to load from localStorage...');
 			const saved = localStorage.getItem('vec2art-algorithm-configs');
 			if (saved) {
 				const configs = JSON.parse(saved);
@@ -444,7 +429,6 @@ class AlgorithmConfigStore {
 					} as AlgorithmConfig;
 				}
 				this.configs = mergedConfigs;
-				console.log('[AlgorithmConfigStore] Successfully loaded saved configs');
 			}
 		} catch (error) {
 			console.warn('[AlgorithmConfigStore] Failed to load saved configurations:', error);
