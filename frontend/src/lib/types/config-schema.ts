@@ -34,6 +34,8 @@ export const AlgorithmConfigSchema = z.object({
 
 	// Preprocessing
 	noiseFiltering: z.boolean().default(false).optional(),
+	noiseFilterSpatialSigma: z.number().min(0.5).max(5.0).default(1.2).optional(),
+	noiseFilterRangeSigma: z.number().min(10.0).max(200.0).default(50.0).optional(),
 	enableBackgroundRemoval: z.boolean().default(false).optional(),
 	backgroundRemovalStrength: z.number().min(0).max(1).default(0.5).optional(),
 

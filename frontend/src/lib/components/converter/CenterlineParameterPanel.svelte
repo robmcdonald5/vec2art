@@ -1,6 +1,13 @@
 <script lang="ts">
-	import { ChevronDown } from 'lucide-svelte';
+	import {
+		Settings2, // For Core Settings
+		Cpu, // For Processing
+		Brush, // For Artistic Effects
+		Sparkles // For Advanced Settings
+	} from 'lucide-svelte';
 	import FerrariParameterControl from '$lib/components/ui/FerrariParameterControl.svelte';
+	import ParameterSectionAdvanced from '$lib/components/ui/ParameterSectionAdvanced.svelte';
+	import PreprocessingSection from './PreprocessingSection.svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { CENTERLINE_METADATA } from '$lib/types/algorithm-configs';
 
@@ -11,7 +18,8 @@
 	let { disabled = false }: Props = $props();
 
 	// Section expansion states
-	let coreExpanded = $state(true);
+	let preprocessingExpanded = $state(true);
+	let coreExpanded = $state(false);
 	let processingExpanded = $state(false);
 	let artisticExpanded = $state(false);
 	let advancedExpanded = $state(false);
@@ -24,7 +32,7 @@
 		algorithmConfigStore.updateConfig('centerline', { [name]: value });
 	}
 
-	// Group parameters by category
+	// Group parameters by category (excluding preprocessing which is handled by shared component)
 	const coreParams = ['strokeWidth', 'minPathLength', 'maxIterations'];
 	const processingParams = ['morphRadius', 'pruneThreshold', 'smoothingFactor'];
 	const artisticParams = ['simplifyTolerance', 'cornerThreshold'];
@@ -32,155 +40,109 @@
 </script>
 
 <div class="space-y-4">
-	<!-- Core Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+	<!-- Preprocessing (shared component) -->
+	<PreprocessingSection
+		{config}
+		metadata={CENTERLINE_METADATA}
+		onParameterChange={handleParameterChange}
+		{disabled}
+		expanded={preprocessingExpanded}
+		onToggle={() => (preprocessingExpanded = !preprocessingExpanded)}
+	/>
+
+	<!-- Core Settings -->
+	<ParameterSectionAdvanced
+		title="Core Settings"
+		icon={Settings2}
+		iconColorClass="text-blue-600 dark:text-blue-400"
+		expanded={coreExpanded}
+		onToggle={() => (coreExpanded = !coreExpanded)}
+		{disabled}
 	>
-		<button
-			type="button"
-			onclick={() => (coreExpanded = !coreExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Core Settings
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {coreExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
+		<div class="space-y-4">
+			{#each coreParams as param}
+				{#if CENTERLINE_METADATA[param]}
+					<FerrariParameterControl
+						name={param}
+						value={config[param]}
+						metadata={CENTERLINE_METADATA[param]}
+						onChange={(value) => handleParameterChange(param, value)}
+						{disabled}
+					/>
+				{/if}
+			{/each}
+		</div>
+	</ParameterSectionAdvanced>
 
-		{#if coreExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each coreParams as param}
-						{#if CENTERLINE_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={CENTERLINE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Processing Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+	<!-- Processing -->
+	<ParameterSectionAdvanced
+		title="Processing"
+		icon={Cpu}
+		iconColorClass="text-green-600 dark:text-green-400"
+		expanded={processingExpanded}
+		onToggle={() => (processingExpanded = !processingExpanded)}
+		{disabled}
 	>
-		<button
-			type="button"
-			onclick={() => (processingExpanded = !processingExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Processing
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {processingExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
+		<div class="space-y-4">
+			{#each processingParams as param}
+				{#if CENTERLINE_METADATA[param]}
+					<FerrariParameterControl
+						name={param}
+						value={config[param]}
+						metadata={CENTERLINE_METADATA[param]}
+						onChange={(value) => handleParameterChange(param, value)}
+						{disabled}
+					/>
+				{/if}
+			{/each}
+		</div>
+	</ParameterSectionAdvanced>
 
-		{#if processingExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each processingParams as param}
-						{#if CENTERLINE_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={CENTERLINE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Artistic Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+	<!-- Artistic Effects -->
+	<ParameterSectionAdvanced
+		title="Artistic Effects"
+		icon={Brush}
+		iconColorClass="text-orange-600 dark:text-orange-400"
+		expanded={artisticExpanded}
+		onToggle={() => (artisticExpanded = !artisticExpanded)}
+		{disabled}
 	>
-		<button
-			type="button"
-			onclick={() => (artisticExpanded = !artisticExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Artistic Effects
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {artisticExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
+		<div class="space-y-4">
+			{#each artisticParams as param}
+				{#if CENTERLINE_METADATA[param]}
+					<FerrariParameterControl
+						name={param}
+						value={config[param]}
+						metadata={CENTERLINE_METADATA[param]}
+						onChange={(value) => handleParameterChange(param, value)}
+						{disabled}
+					/>
+				{/if}
+			{/each}
+		</div>
+	</ParameterSectionAdvanced>
 
-		{#if artisticExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each artisticParams as param}
-						{#if CENTERLINE_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={CENTERLINE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Advanced Parameters -->
-	<div
-		class="border-speed-gray-200 bg-speed-white dark:border-speed-gray-700 dark:bg-speed-gray-800 rounded-lg border"
+	<!-- Advanced Settings -->
+	<ParameterSectionAdvanced
+		title="Advanced Settings"
+		icon={Sparkles}
+		iconColorClass="text-purple-600 dark:text-purple-400"
+		expanded={advancedExpanded}
+		onToggle={() => (advancedExpanded = !advancedExpanded)}
+		{disabled}
 	>
-		<button
-			type="button"
-			onclick={() => (advancedExpanded = !advancedExpanded)}
-			class="hover:bg-speed-gray-50 dark:hover:bg-speed-gray-700 flex w-full items-center justify-between px-4 py-3 text-left"
-		>
-			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-semibold">
-				Advanced Settings
-			</span>
-			<ChevronDown
-				class="text-speed-gray-500 dark:text-speed-gray-400 h-4 w-4 transition-transform {advancedExpanded
-					? 'rotate-180'
-					: ''}"
-			/>
-		</button>
-
-		{#if advancedExpanded}
-			<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
-				<div class="space-y-4">
-					{#each advancedParams as param}
-						{#if CENTERLINE_METADATA[param]}
-							<FerrariParameterControl
-								name={param}
-								value={config[param]}
-								metadata={CENTERLINE_METADATA[param]}
-								onChange={(value) => handleParameterChange(param, value)}
-								{disabled}
-							/>
-						{/if}
-					{/each}
-				</div>
-			</div>
-		{/if}
-	</div>
+		<div class="space-y-4">
+			{#each advancedParams as param}
+				{#if CENTERLINE_METADATA[param]}
+					<FerrariParameterControl
+						name={param}
+						value={config[param]}
+						metadata={CENTERLINE_METADATA[param]}
+						onChange={(value) => handleParameterChange(param, value)}
+						{disabled}
+					/>
+				{/if}
+			{/each}
+		</div>
+	</ParameterSectionAdvanced>
 </div>

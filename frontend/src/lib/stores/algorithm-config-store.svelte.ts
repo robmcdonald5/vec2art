@@ -128,6 +128,9 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		paletteTargetColors: 16,
 		paletteMethod: 'Kmeans',
 		paletteDithering: false,
+		noiseFiltering: false,
+		noiseFilterSpatialSigma: 1.2,
+		noiseFilterRangeSigma: 50.0,
 		enableBackgroundRemoval: false,
 		backgroundRemovalStrength: 0.5,
 		backgroundRemovalAlgorithm: 'otsu'
@@ -163,6 +166,9 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		dotHighDetailDensity: 0.8,
 		dotLowDetailDensity: 0.2,
 		dotTransitionSmoothness: 0.5,
+		noiseFiltering: false,
+		noiseFilterSpatialSigma: 1.2,
+		noiseFilterRangeSigma: 50.0,
 		enableBackgroundRemoval: false,
 		backgroundRemovalStrength: 0.5,
 		backgroundRemovalAlgorithm: 'otsu'
