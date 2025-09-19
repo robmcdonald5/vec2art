@@ -1575,6 +1575,9 @@ export interface InitOutput {
   readonly _ZN14vectorize_core10algorithms7tracing10path_utils11CubicBezier14to_svg_command17ha30207a155b46c18E: (a: number, b: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing10path_utils26schneider_fit_cubic_bezier17ha6e064c2f7c693d5E: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing10path_utils27fitting_results_to_svg_path17h98fe6e69f534e53dE: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing13preprocessing19apply_preprocessing17h05bb20c075b7ba3eE: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly _ZN5image8dynimage12DynamicImage8to_luma817h5d8f4a26c922657cE: (a: number, b: number) => void;
+  readonly _ZN14vectorize_core10algorithms7tracing13preprocessing17grayscale_to_rgba17h6f38195c47a0b1d4E: (a: number, b: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing5trace15trace_polylines17haf2bf5560492c411E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing9trace_low16ThresholdMapping3new17h445f175733852284E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing9trace_low34vectorize_trace_low_with_gradients17hd2c982abf782470cE: (a: number, b: number, c: number, d: number) => void;
@@ -1585,7 +1588,6 @@ export interface InitOutput {
   readonly _ZN14vectorize_core10algorithms7tracing9trace_low31vectorize_trace_low_single_pass17h4c18a34f73184cf2E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing9trace_low29vectorize_trace_low_multipass17hb49eff9f56537270E: (a: number, b: number, c: number, d: number) => void;
   readonly _ZN14vectorize_core10algorithms7tracing9trace_low31vectorize_trace_low_directional17h53caae99a3c21536E: (a: number, b: number, c: number, d: number) => void;
-  readonly _ZN5image8dynimage12DynamicImage8to_luma817h5d8f4a26c922657cE: (a: number, b: number) => void;
   readonly _ZN57_$LT$core..time..Duration$u20$as$u20$core..fmt..Debug$GT$3fmt17hcd79a1695152afc4E: (a: number, b: number) => number;
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17hd487c1843567f154E: (a: number, b: number) => void;
   readonly _ZN14vectorize_core10algorithms6visual16color_processing32reduce_color_palette_with_method17hc5a1d688b369bb67E: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -1868,6 +1870,7 @@ export interface InitOutput {
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h1e422b0bdc38ffddE: (a: number, b: number) => void;
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h43ab23cf4f884928E: (a: number, b: number) => void;
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h4de8f7c9dc3f101fE: (a: number, b: number) => void;
+  readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h66e9e5536a60bbb9E: (a: number, b: number) => void;
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h68f8d1f870aa424bE: (a: number, b: number) => void;
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h7ca0b978a28e6d69E: (a: number, b: number) => void;
   readonly _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$8grow_one17h7ec218d3ef6d4c2dE: (a: number, b: number) => void;
