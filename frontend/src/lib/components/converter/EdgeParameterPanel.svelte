@@ -82,8 +82,17 @@
 
 		// Check immediate dependency
 		const immediateParent = metadata.dependsOn;
-		if (!config[immediateParent]) {
-			return false; // Immediate parent is disabled
+
+		// Special case for handDrawnPreset - should be visible when not 'none'
+		if (immediateParent === 'handDrawnPreset') {
+			if (config[immediateParent] === 'none') {
+				return false; // Hidden when preset is 'none'
+			}
+		} else {
+			// Normal boolean dependency check
+			if (!config[immediateParent]) {
+				return false; // Immediate parent is disabled
+			}
 		}
 
 		// Recursively check parent dependencies to ensure the full chain is enabled

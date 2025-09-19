@@ -499,7 +499,8 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		max: 1.0,
 		step: 0.01,
 		category: 'style',
-		algorithms: ['edge', 'centerline']
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'handDrawnPreset'
 	},
 	handDrawnTremorStrength: {
 		name: 'handDrawnTremorStrength',
@@ -510,7 +511,8 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		max: 0.5,
 		step: 0.01,
 		category: 'style',
-		algorithms: ['edge', 'centerline']
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'handDrawnPreset'
 	},
 	handDrawnTapering: {
 		name: 'handDrawnTapering',
@@ -521,7 +523,8 @@ export const EDGE_METADATA: Record<string, ParameterMetadata> = {
 		max: 1.0,
 		step: 0.01,
 		category: 'style',
-		algorithms: ['edge', 'centerline']
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'handDrawnPreset'
 	},
 	enableBackgroundRemoval: {
 		name: 'enableBackgroundRemoval',
@@ -1234,7 +1237,8 @@ export const CENTERLINE_METADATA: Record<string, ParameterMetadata> = {
 		max: 1.0,
 		step: 0.01,
 		category: 'style',
-		algorithms: ['edge', 'centerline']
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'handDrawnPreset'
 	},
 	handDrawnTremorStrength: {
 		name: 'handDrawnTremorStrength',
@@ -1245,7 +1249,8 @@ export const CENTERLINE_METADATA: Record<string, ParameterMetadata> = {
 		max: 0.5,
 		step: 0.01,
 		category: 'style',
-		algorithms: ['edge', 'centerline']
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'handDrawnPreset'
 	},
 	handDrawnTapering: {
 		name: 'handDrawnTapering',
@@ -1256,7 +1261,8 @@ export const CENTERLINE_METADATA: Record<string, ParameterMetadata> = {
 		max: 1.0,
 		step: 0.01,
 		category: 'style',
-		algorithms: ['edge', 'centerline']
+		algorithms: ['edge', 'centerline'],
+		dependsOn: 'handDrawnPreset'
 	}
 };
 

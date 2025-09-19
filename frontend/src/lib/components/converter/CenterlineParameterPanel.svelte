@@ -1,8 +1,7 @@
 <script lang="ts">
 	import {
 		Settings2, // For Core Settings
-		Brush, // For Artistic Effects
-		Sparkles // For Advanced Settings
+		Brush // For Artistic Effects
 	} from 'lucide-svelte';
 	import FerrariParameterControl from '$lib/components/ui/FerrariParameterControl.svelte';
 	import ParameterSectionAdvanced from '$lib/components/ui/ParameterSectionAdvanced.svelte';
@@ -20,14 +19,22 @@
 	let preprocessingExpanded = $state(true);
 	let layerProcessingExpanded = $state(false);
 	let colorOptionsExpanded = $state(false);
-	let advancedExpanded = $state(false);
+	let artisticExpanded = $state(false);
 
 	// Get config from store
 	const config = $derived(algorithmConfigStore.centerline) as any;
 
 	// Handle parameter changes
 	function handleParameterChange(name: string, value: any) {
-		algorithmConfigStore.updateConfig('centerline', { [name]: value });
+		console.log('[CenterlineParameterPanel] Updating parameter:', name, 'to value:', value);
+
+		// Apply hand-drawn preset values when preset changes
+		if (name === 'handDrawnPreset') {
+			console.log('[CenterlineParameterPanel] Applying hand-drawn preset:', value);
+			algorithmConfigStore.applyHandDrawnPreset(value);
+		} else {
+			algorithmConfigStore.updateConfig('centerline', { [name]: value });
+		}
 	}
 
 	// Check if a parameter should be visible based on its full dependency chain
@@ -39,8 +46,17 @@
 
 		// Check immediate dependency
 		const immediateParent = metadata.dependsOn;
-		if (!config[immediateParent]) {
-			return false; // Immediate parent is disabled
+
+		// Special case for handDrawnPreset - should be visible when not 'none'
+		if (immediateParent === 'handDrawnPreset') {
+			if (config[immediateParent] === 'none') {
+				return false; // Hidden when preset is 'none'
+			}
+		} else {
+			// Normal boolean dependency check
+			if (!config[immediateParent]) {
+				return false; // Immediate parent is disabled
+			}
 		}
 
 		// Recursively check parent dependencies to ensure the full chain is enabled
@@ -50,7 +66,7 @@
 	// Group parameters by category (excluding preprocessing which is handled by shared component)
 	const layerProcessingParams = ['passCount', 'minBranchLength', 'enableAdaptiveThreshold', 'enableWidthModulation', 'widthMultiplier'];
 	const colorOptionsParams = ['linePreserveColors', 'lineColorAccuracy', 'maxColorsPerPath', 'colorTolerance'];
-	const advancedParams = ['handDrawnPreset', 'handDrawnVariableWeights', 'handDrawnTremorStrength', 'handDrawnTapering'];
+	const artisticParams = ['handDrawnPreset', 'handDrawnVariableWeights', 'handDrawnTremorStrength', 'handDrawnTapering'];
 </script>
 
 <div class="space-y-4">
@@ -96,19 +112,41 @@
 		{disabled}
 	/>
 
-	<!-- Advanced Settings -->
+	<!-- Artistic Effects -->
 	<ParameterSectionAdvanced
-		title="Advanced Settings"
-		icon={Sparkles}
-		iconColorClass="text-purple-600 dark:text-purple-400"
-		backgroundGradient="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
-		expanded={advancedExpanded}
-		onToggle={() => (advancedExpanded = !advancedExpanded)}
-		parameters={advancedParams}
+		title="Artistic Effects"
+		icon={Brush}
+		iconColorClass="text-indigo-600 dark:text-indigo-400"
+		backgroundGradient="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20"
+		expanded={artisticExpanded}
+		onToggle={() => (artisticExpanded = !artisticExpanded)}
+		parameters={artisticParams}
 		{config}
 		metadata={CENTERLINE_METADATA}
 		onParameterChange={handleParameterChange}
 		{isParameterVisible}
 		{disabled}
-	/>
+	>
+		<!-- Custom content for artistic effects (preset selector needs special handling) -->
+		{#each artisticParams as param (param)}
+			{#if param === 'handDrawnPreset'}
+				<!-- Always show the preset selector -->
+				<FerrariParameterControl
+					name={param}
+					value={config[param]}
+					metadata={CENTERLINE_METADATA[param]}
+					onChange={(value) => handleParameterChange(param, value)}
+					{disabled}
+				/>
+			{:else if CENTERLINE_METADATA[param] && isParameterVisible(param)}
+				<FerrariParameterControl
+					name={param}
+					value={config[param]}
+					metadata={CENTERLINE_METADATA[param]}
+					onChange={(value) => handleParameterChange(param, value)}
+					{disabled}
+				/>
+			{/if}
+		{/each}
+	</ParameterSectionAdvanced>
 </div>
