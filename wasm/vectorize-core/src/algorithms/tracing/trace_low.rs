@@ -284,9 +284,9 @@ pub struct TraceLowConfig {
     pub dot_grid_pattern: crate::algorithms::dots::dots::GridPattern,
     /// Enable adaptive thresholding for centerline backend (default: true)
     pub enable_adaptive_threshold: bool,
-    /// Window size for adaptive thresholding (default: computed from detail level, 25-35 pixels)
+    /// Window size for adaptive thresholding (default: 31, auto-computed from detail level: 35px at detail=0.1 to 25px at detail=1.0)
     pub adaptive_threshold_window_size: u32,
-    /// Sensitivity parameter k for Sauvola thresholding (default: computed from detail level, 0.3-0.5)
+    /// Sensitivity parameter k for Sauvola thresholding (default: 0.4, auto-computed from detail level: 0.47 at detail=0.1 to 0.2 at detail=1.0)
     pub adaptive_threshold_k: f32,
     /// Use optimized integral image implementation for adaptive thresholding (default: true)
     pub adaptive_threshold_use_optimized: bool,
@@ -413,8 +413,8 @@ impl Default for TraceLowConfig {
             dot_grid_pattern: crate::algorithms::dots::dots::GridPattern::default(),
             // Adaptive thresholding defaults
             enable_adaptive_threshold: true,
-            adaptive_threshold_window_size: 31, // Will be adjusted based on detail level
-            adaptive_threshold_k: 0.4,          // Will be adjusted based on detail level
+            adaptive_threshold_window_size: 31, // Default value, auto-calculated from detail level if not explicitly set
+            adaptive_threshold_k: 0.4,          // Default value, auto-calculated from detail level if not explicitly set
             adaptive_threshold_use_optimized: true,
             enable_width_modulation: false,
             // Centerline processing defaults
@@ -1902,12 +1902,30 @@ fn trace_centerline_skeleton_based(
     // Phase 3: Binary thresholding - adaptive or Otsu based on configuration
     let phase_start = Instant::now();
     let binary = if config.enable_adaptive_threshold {
-        // Use configuration parameters directly
-        let window_size = config.adaptive_threshold_window_size;
-        let k = config.adaptive_threshold_k;
+        // Calculate adaptive threshold parameters based on detail level for consistency
+        // Note: In Sauvola thresholding, LOWER k = MORE details (lower threshold), HIGHER k = LESS details (higher threshold)
+        // Higher detail (1.0) → Smaller window (25px) + Lower k (0.2) → More fine details detected
+        // Lower detail (0.1) → Larger window (35px) + Higher k (0.5) → Fewer details detected
+        let detail_window_size = (25.0 + 10.0 * (1.0 - config.detail)) as u32; // Range: 35px (detail=0.1) to 25px (detail=1.0)
+        let detail_k = 0.5 - 0.3 * config.detail; // Range: 0.47 (detail=0.1) to 0.2 (detail=1.0)
+
+        // Use detail-based parameters, but allow config override if explicitly set to non-default values
+        let window_size = if config.adaptive_threshold_window_size != 31 {
+            config.adaptive_threshold_window_size // User explicitly set this
+        } else {
+            detail_window_size // Use detail-based calculation
+        };
+        let k = if (config.adaptive_threshold_k - 0.4).abs() > 0.001 {
+            config.adaptive_threshold_k // User explicitly set this
+        } else {
+            detail_k // Use detail-based calculation
+        };
 
         log::debug!(
-            "Using adaptive thresholding: window_size={}, k={:.3}",
+            "Using adaptive thresholding: detail={:.3}, calculated_window={}, calculated_k={:.3}, final_window={}, final_k={:.3}",
+            config.detail,
+            detail_window_size,
+            detail_k,
             window_size,
             k
         );

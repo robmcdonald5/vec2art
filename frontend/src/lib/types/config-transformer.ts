@@ -107,7 +107,10 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 	const wasmConfig: TraceLowConfig = {
 		// Core fields
 		backend: mapAlgorithmToBackend(config.algorithm),
-		detail: config.detail ?? 5.0,
+		// Convert detail from frontend scale (1-10) to WASM scale (0.1-1.0)
+		// Frontend: 1=low detail, 10=high detail
+		// WASM: 0.1=low detail, 1.0=high detail
+		detail: ((config.detail ?? 5.0) - 1) * 0.1 + 0.1, // Maps 1→0.1, 10→1.0
 		stroke_px_at_1080p: config.strokeWidth ?? 1.5,
 
 		// Multi-pass processing
@@ -406,7 +409,8 @@ export function fromWasmConfig(config: TraceLowConfig): Partial<AlgorithmConfig>
 	return {
 		// Core fields
 		algorithm: mapBackendToAlgorithm(config.backend),
-		detail: config.detail,
+		// Convert detail from WASM scale (0.1-1.0) to frontend scale (1-10)
+		detail: Math.round((config.detail - 0.1) / 0.1 + 1), // Maps 0.1→1, 1.0→10
 		strokeWidth: config.stroke_px_at_1080p,
 
 		// Processing options
