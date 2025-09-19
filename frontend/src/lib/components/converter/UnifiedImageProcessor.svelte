@@ -230,7 +230,7 @@
 			console.log('🚀 Calling onConvert callback');
 			onConvert();
 		} else {
-			console.error('❌ UnifiedImageProcessor: onConvert callback not provided');
+			console.error(' UnifiedImageProcessor: onConvert callback not provided');
 		}
 	}
 

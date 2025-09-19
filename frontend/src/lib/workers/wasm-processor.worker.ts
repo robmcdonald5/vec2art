@@ -18,12 +18,12 @@ import type { AlgorithmConfig } from '../types/algorithm-configs';
 import { toWasmConfig } from '../types/config-transformer';
 
 // Early logging to confirm worker execution
-console.log('[Worker] 🚀 WASM Worker starting up with STATIC imports...');
-console.log('[Worker] ✅ All imports loaded successfully');
+console.log('[Worker] WASM Worker starting up with STATIC imports...');
+console.log('[Worker] All imports loaded successfully');
 
 // Global error handler for worker
 self.addEventListener('error', (error) => {
-	console.error('[Worker] ❌ Global error caught:', error);
+	console.error('[Worker] Global error caught:', error);
 	self.postMessage({
 		type: 'error',
 		id: 'worker_error',
@@ -33,7 +33,7 @@ self.addEventListener('error', (error) => {
 
 // Global unhandled rejection handler
 self.addEventListener('unhandledrejection', (event) => {
-	console.error('[Worker] ❌ Unhandled promise rejection:', event.reason);
+	console.error('[Worker]  Unhandled promise rejection:', event.reason);
 	self.postMessage({
 		type: 'error',
 		id: 'worker_rejection',
@@ -82,7 +82,7 @@ let _wasmInstance: any = null;
  */
 async function initializeWasm(): Promise<void> {
 	if (wasmInitialized) {
-		console.log('[Worker] ⚡ WASM already initialized');
+		console.log('[Worker]  WASM already initialized');
 		return;
 	}
 
@@ -92,12 +92,12 @@ async function initializeWasm(): Promise<void> {
 		// Initialize WASM
 		_wasmInstance = await init();
 
-		console.log('[Worker] ✅ WASM module initialized successfully');
+		console.log('[Worker]  WASM module initialized successfully');
 		console.log('[Worker] 📋 Available WASM exports:', Object.keys(wasmModule));
 
 		wasmInitialized = true;
 	} catch (error) {
-		console.error('[Worker] ❌ WASM initialization failed:', error);
+		console.error('[Worker]  WASM initialization failed:', error);
 		throw new Error(`WASM initialization failed: ${error}`);
 	}
 }
@@ -177,11 +177,11 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 		try {
 			if (typeof vectorizer.apply_config_json === 'function') {
 				vectorizer.apply_config_json(configJson);
-				console.log('[Worker] ✅ Unified config applied successfully');
+				console.log('[Worker]  Unified config applied successfully');
 			} else {
 				// Fallback to old method if new method doesn't exist yet
 				console.log(
-					'[Worker] ⚠️ Falling back to individual setters (apply_config_json not available)'
+					'[Worker]  Falling back to individual setters (apply_config_json not available)'
 				);
 
 				// Apply backend using vectorizer config
@@ -196,10 +196,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 					if (typeof vectorizer.set_preserve_colors === 'function') {
 						vectorizer.set_preserve_colors(config.preserveColors || false);
 					} else {
-						console.error('[Worker] ❌ set_preserve_colors method does not exist on vectorizer');
+						console.error('[Worker]  set_preserve_colors method does not exist on vectorizer');
 					}
 				} catch (error) {
-					console.error('[Worker] ❌ Error calling set_preserve_colors:', error);
+					console.error('[Worker]  Error calling set_preserve_colors:', error);
 				}
 
 				// Apply backend-specific settings based on backend type
@@ -230,22 +230,22 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 									config.handDrawnTremorStrength > 0) ||
 								(config.handDrawnTapering !== undefined && config.handDrawnTapering > 0)
 							) {
-								console.log('[Worker] ✏️ Setting hand_drawn_preset: custom (with custom values)');
+								console.log('[Worker]  Setting hand_drawn_preset: custom (with custom values)');
 								if (typeof vectorizer.set_hand_drawn_preset === 'function') {
 									vectorizer.set_hand_drawn_preset('custom');
 								} else {
-									console.error('[Worker] ❌ set_hand_drawn_preset method does not exist');
+									console.error('[Worker]  set_hand_drawn_preset method does not exist');
 								}
 							} else {
-								console.log('[Worker] ✏️ Setting hand_drawn_preset:', config.handDrawnPreset);
+								console.log('[Worker]  Setting hand_drawn_preset:', config.handDrawnPreset);
 								if (typeof vectorizer.set_hand_drawn_preset === 'function') {
 									vectorizer.set_hand_drawn_preset(config.handDrawnPreset);
 								} else {
-									console.error('[Worker] ❌ set_hand_drawn_preset method does not exist');
+									console.error('[Worker]  set_hand_drawn_preset method does not exist');
 								}
 							}
 						} catch (error) {
-							console.error('[Worker] ❌ Error setting hand_drawn_preset:', error);
+							console.error('[Worker]  Error setting hand_drawn_preset:', error);
 						}
 					}
 
@@ -256,10 +256,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 							if (typeof vectorizer.set_noise_filtering === 'function') {
 								vectorizer.set_noise_filtering(config.noiseFiltering);
 							} else {
-								console.error('[Worker] ❌ set_noise_filtering method does not exist');
+								console.error('[Worker]  set_noise_filtering method does not exist');
 							}
 						} catch (error) {
-							console.error('[Worker] ❌ Error calling set_noise_filtering:', error);
+							console.error('[Worker]  Error calling set_noise_filtering:', error);
 						}
 					}
 
@@ -272,10 +272,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 							if (typeof vectorizer.enable_background_removal === 'function') {
 								vectorizer.enable_background_removal(config.enableBackgroundRemoval);
 							} else {
-								console.error('[Worker] ❌ enable_background_removal method does not exist');
+								console.error('[Worker]  enable_background_removal method does not exist');
 							}
 						} catch (error) {
-							console.error('[Worker] ❌ Error calling enable_background_removal:', error);
+							console.error('[Worker]  Error calling enable_background_removal:', error);
 						}
 					}
 
@@ -289,10 +289,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 							if (typeof vectorizer.set_background_removal_strength === 'function') {
 								vectorizer.set_background_removal_strength(config.backgroundRemovalStrength);
 							} else {
-								console.error('[Worker] ❌ set_background_removal_strength method does not exist');
+								console.error('[Worker]  set_background_removal_strength method does not exist');
 							}
 						} catch (error) {
-							console.error('[Worker] ❌ Error calling set_background_removal_strength:', error);
+							console.error('[Worker]  Error calling set_background_removal_strength:', error);
 						}
 					}
 				}
@@ -332,10 +332,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 								if (typeof vectorizer.set_dot_density === 'function') {
 									vectorizer.set_dot_density(threshold);
 								} else {
-									console.error('[Worker] ❌ set_dot_density method does not exist');
+									console.error('[Worker]  set_dot_density method does not exist');
 								}
 							} catch (error) {
-								console.error('[Worker] ❌ Error calling set_dot_density:', error);
+								console.error('[Worker]  Error calling set_dot_density:', error);
 							}
 						}
 					}
@@ -369,10 +369,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 							if (typeof vectorizer.set_dot_size_range === 'function') {
 								vectorizer.set_dot_size_range(minRadius, maxRadius);
 							} else {
-								console.error('[Worker] ❌ set_dot_size_range method does not exist');
+								console.error('[Worker]  set_dot_size_range method does not exist');
 							}
 						} catch (error) {
-							console.error('[Worker] ❌ Error calling set_dot_size_range:', error);
+							console.error('[Worker]  Error calling set_dot_size_range:', error);
 						}
 					}
 
@@ -384,10 +384,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 							if (typeof vectorizer.set_adaptive_sizing === 'function') {
 								vectorizer.set_adaptive_sizing(adaptiveSizing);
 							} else {
-								console.error('[Worker] ❌ set_adaptive_sizing method does not exist');
+								console.error('[Worker]  set_adaptive_sizing method does not exist');
 							}
 						} catch (error) {
-							console.error('[Worker] ❌ Error calling set_adaptive_sizing:', error);
+							console.error('[Worker]  Error calling set_adaptive_sizing:', error);
 						}
 					}
 
@@ -420,17 +420,17 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 							if (typeof vectorizer.set_dot_size_variation === 'function') {
 								vectorizer.set_dot_size_variation(sizeVariation);
 								console.log(
-									'[Worker] ✅ Successfully called set_dot_size_variation with:',
+									'[Worker]  Successfully called set_dot_size_variation with:',
 									sizeVariation
 								);
 							} else {
-								console.error('[Worker] ❌ set_dot_size_variation method does not exist');
+								console.error('[Worker]  set_dot_size_variation method does not exist');
 							}
 						} catch (error) {
-							console.error('[Worker] ❌ Error calling set_dot_size_variation:', error);
+							console.error('[Worker]  Error calling set_dot_size_variation:', error);
 						}
 					} else {
-						console.log('[Worker] ⚠️ No size variation parameter found in config');
+						console.log('[Worker]  No size variation parameter found in config');
 					}
 
 					// Background tolerance
@@ -440,10 +440,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 							if (typeof vectorizer.set_background_tolerance === 'function') {
 								vectorizer.set_background_tolerance(config.dotBackgroundTolerance);
 							} else {
-								console.error('[Worker] ❌ set_background_tolerance method does not exist');
+								console.error('[Worker]  set_background_tolerance method does not exist');
 							}
 						} catch (error) {
-							console.error('[Worker] ❌ Error calling set_background_tolerance:', error);
+							console.error('[Worker]  Error calling set_background_tolerance:', error);
 						}
 					}
 
@@ -457,10 +457,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 							if (typeof vectorizer.set_gradient_based_sizing === 'function') {
 								vectorizer.set_gradient_based_sizing(config.dotGradientBasedSizing);
 							} else {
-								console.error('[Worker] ❌ set_gradient_based_sizing method does not exist');
+								console.error('[Worker]  set_gradient_based_sizing method does not exist');
 							}
 						} catch (error) {
-							console.error('[Worker] ❌ Error calling set_gradient_based_sizing:', error);
+							console.error('[Worker]  Error calling set_gradient_based_sizing:', error);
 						}
 					}
 
@@ -473,7 +473,7 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 				}
 			}
 		} catch (error) {
-			console.error('[Worker] ❌ Error applying config:', error);
+			console.error('[Worker]  Error applying config:', error);
 			// Continue with processing even if unified config fails
 		}
 
@@ -515,7 +515,7 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 			}
 		}
 
-		console.log('[Worker] ✅ Config applied to vectorizer, starting processing...');
+		console.log('[Worker]  Config applied to vectorizer, starting processing...');
 
 		// Process the image
 		const svg = vectorizer.vectorize(imageData);
@@ -529,7 +529,7 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 			processing_time: 0 // TODO: Add timing
 		};
 
-		console.log('[Worker] ✅ Image processing completed');
+		console.log('[Worker]  Image processing completed');
 
 		return {
 			svg: result.svg,
@@ -537,7 +537,7 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 			processing_time: result.processing_time
 		};
 	} catch (error) {
-		console.error('[Worker] ❌ Image processing failed:', error);
+		console.error('[Worker]  Image processing failed:', error);
 		throw error;
 	}
 }
@@ -657,7 +657,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 				throw new Error(`Unknown message type: ${type}`);
 		}
 	} catch (error) {
-		console.error(`[Worker] ❌ Error handling ${type}:`, error);
+		console.error(`[Worker]  Error handling ${type}:`, error);
 		self.postMessage({
 			id,
 			type: 'error',

@@ -33,10 +33,10 @@ export { converterState as vectorizerStore } from './converter-state.svelte';
  * - converter.svelte.ts: Unified backwards-compatible interface
  *
  * Benefits:
- * ✅ Easier to test each concern independently
- * ✅ Clear boundaries and responsibilities
- * ✅ Reduced complexity in each store
- * ✅ All functionality preserved
- * ✅ Backwards compatibility maintained
- * ✅ Better maintainability and debugging
+ *  Easier to test each concern independently
+ *  Clear boundaries and responsibilities
+ *  Reduced complexity in each store
+ *  All functionality preserved
+ *  Backwards compatibility maintained
+ *  Better maintainability and debugging
  */

@@ -216,7 +216,7 @@ export class VectorizerService {
 				// Reset failure count on successful recovery
 				this.failureCount = 0;
 			} catch (recoveryError) {
-				console.error('[VectorizerService] ❌ Automatic recovery failed:', recoveryError);
+				console.error('[VectorizerService]  Automatic recovery failed:', recoveryError);
 				// Don't throw here, let the original error be handled normally
 			}
 		}

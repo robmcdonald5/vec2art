@@ -87,11 +87,11 @@
 			case 'memory':
 				return '💾';
 			case 'worker':
-				return '⚙️';
+				return '';
 			case 'network':
 				return '🌐';
 			default:
-				return '❌';
+				return '';
 		}
 	}
 </script>

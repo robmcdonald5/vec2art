@@ -180,12 +180,12 @@ export class WasmWorkerService {
 				// Success response from worker
 				pending.resolve({ success: true, ...data });
 			} else if (type === 'error') {
-				console.log(`[WasmWorkerService] ❌ Error response for ${id}:`, error);
+				console.log(`[WasmWorkerService]  Error response for ${id}:`, error);
 				pending.reject(new Error(error || 'Unknown worker error'));
 			}
 		} else {
 			console.warn(
-				`[WasmWorkerService] ⚠️ No pending request found for message ${id} (type: ${type})`
+				`[WasmWorkerService]  No pending request found for message ${id} (type: ${type})`
 			);
 		}
 	}
@@ -337,14 +337,14 @@ export class WasmWorkerService {
 					config.detail > 0.4
 				) {
 					console.log(
-						`[WasmWorkerService] ⚡ Very large image: reducing detail from ${config.detail} to 0.4 for stability`
+						`[WasmWorkerService]  Very large image: reducing detail from ${config.detail} to 0.4 for stability`
 					);
 					config = { ...config, detail: 0.4 };
 				}
 
 				// Set processing timeout for large images (separate from config)
 				processingTimeoutMs = 300000; // 5 minutes
-				console.log('[WasmWorkerService] ⏱️ Extended processing timeout for large image');
+				console.log('[WasmWorkerService]  Extended processing timeout for large image');
 			}
 
 			// Use isolated worker for high-intensity operations (7+ passes) OR very large images
@@ -410,7 +410,7 @@ export class WasmWorkerService {
 				(result.payload && result.payload.stats && result.payload.stats.pathCount);
 
 			if (!svgData) {
-				console.error('[WasmWorkerService] ❌ No SVG data found in result:', result);
+				console.error('[WasmWorkerService]  No SVG data found in result:', result);
 				throw new Error('No SVG data returned from worker');
 			}
 
@@ -648,7 +648,7 @@ export class WasmWorkerService {
 				preferGpu: preferGpu
 			});
 
-			console.log('[WasmWorkerService] ✅ Isolated worker processing complete');
+			console.log('[WasmWorkerService]  Isolated worker processing complete');
 			return result;
 		} catch (error) {
 			console.error('[WasmWorkerService] Isolated worker processing failed:', error);
@@ -814,7 +814,7 @@ export class WasmWorkerService {
 			this.workerState = WorkerState.IDLE;
 
 			console.log(
-				`[WasmWorkerService] ✅ Force reset complete - cancelled ${pendingCount} operations`
+				`[WasmWorkerService]  Force reset complete - cancelled ${pendingCount} operations`
 			);
 		} catch (error) {
 			console.error('[WasmWorkerService] Error during force reset:', error);

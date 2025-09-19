@@ -449,14 +449,14 @@
 
 	// Error boundary handlers
 	function handleConverterError(error: Error, errorInfo: any) {
-		console.error('❌ [ErrorBoundary] Converter component error:', error, errorInfo);
+		console.error(' [ErrorBoundary] Converter component error:', error, errorInfo);
 		toastStore.add(`Converter error: ${error.message}. The system will attempt to recover.`, {
 			type: 'error'
 		});
 	}
 
 	function handleSettingsError(error: Error, errorInfo: any) {
-		console.error('❌ [ErrorBoundary] Settings panel error:', error, errorInfo);
+		console.error(' [ErrorBoundary] Settings panel error:', error, errorInfo);
 		toastStore.add(`Settings error: ${error.message}. Settings have been reset to defaults.`, {
 			type: 'error'
 		});

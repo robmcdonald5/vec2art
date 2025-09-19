@@ -394,7 +394,7 @@ export class ConverterStateStore {
 			}
 
 			console.log(
-				`[ConverterStateStore] ✅ Processing completed in ${result.processing_time_ms}ms`
+				`[ConverterStateStore]  Processing completed in ${result.processing_time_ms}ms`
 			);
 			return result;
 		} catch (error) {
@@ -545,7 +545,7 @@ export class ConverterStateStore {
 			}
 
 			console.log(
-				`[ConverterStateStore] ✅ Batch processing completed: ${results.length}/${images.length} images`
+				`[ConverterStateStore]  Batch processing completed: ${results.length}/${images.length} images`
 			);
 			return results;
 		} catch (error) {
@@ -750,7 +750,7 @@ export class ConverterStateStore {
 			const { wasmWorkerService } = await import('$lib/services/wasm-worker-service');
 			await wasmWorkerService.forceReset();
 
-			console.log('[ConverterStateStore] ✅ Force reset complete - all operations cancelled');
+			console.log('[ConverterStateStore]  Force reset complete - all operations cancelled');
 		} catch (error) {
 			console.error('[ConverterStateStore] Error during force reset:', error);
 			// Still reset store state even if worker reset fails

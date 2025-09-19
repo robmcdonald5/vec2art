@@ -4,20 +4,20 @@ import { dev } from '$app/environment';
 
 // CRITICAL DEBUG: Function invocation verification
 const debugLogging: Handle = async ({ event, resolve }) => {
-	console.log(`🚨 [CRITICAL DEBUG] ${new Date().toISOString()}`);
-	console.log(`🚨 Request: ${event.request.method} ${event.url.pathname}`);
-	console.log(`🚨 User-Agent: ${event.request.headers.get('user-agent')}`);
-	console.log(`🚨 Host: ${event.request.headers.get('host')}`);
-	console.log(`🚨 X-Forwarded-For: ${event.request.headers.get('x-forwarded-for')}`);
+	console.log(`[CRITICAL DEBUG] ${new Date().toISOString()}`);
+	console.log(`Request: ${event.request.method} ${event.url.pathname}`);
+	console.log(`User-Agent: ${event.request.headers.get('user-agent')}`);
+	console.log(`Host: ${event.request.headers.get('host')}`);
+	console.log(`X-Forwarded-For: ${event.request.headers.get('x-forwarded-for')}`);
 
 	const response = await resolve(event);
 
-	console.log(`🚨 Response Status: ${response.status}`);
+	console.log(`Response Status: ${response.status}`);
 	const headersObj: Record<string, string> = {};
 	response.headers.forEach((value, key) => {
 		headersObj[key] = value;
 	});
-	console.log(`🚨 Response Headers:`, headersObj);
+	console.log(`Response Headers:`, headersObj);
 
 	return response;
 };
