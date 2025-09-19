@@ -103,13 +103,15 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		algorithm: 'superpixel',
 		detail: 0.5,
 		strokeWidth: 1.5,
+		regionCount: 275, // UI display value for numSuperpixels
 		numSuperpixels: 275,
+		compactness: 25.0, // UI display value for superpixelCompactness
 		superpixelCompactness: 25.0,
-		superpixelSlicIterations: 10,
-		superpixelInitializationPattern: 'poisson',
+		iterations: 5, // UI display value for superpixelSlicIterations - good quality/performance balance
+		superpixelSlicIterations: 5,
+		superpixelInitializationPattern: 'Poisson',
 		superpixelFillRegions: true,
 		superpixelStrokeRegions: true,
-		superpixelStrokeWidth: 1.5,
 		superpixelSimplifyBoundaries: true,
 		superpixelBoundaryEpsilon: 1.0,
 		superpixelPreserveColors: true,
@@ -120,6 +122,8 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		superpixelMinRegionSize: 10,
 		superpixelMergeThreshold: 0.1,
 		superpixelEnforceConnectivity: true,
+		superpixelEnhanceEdges: false, // Tier 2 feature - off by default
+		enableAdvancedMerging: false, // Master toggle for advanced merging - off by default
 		enablePaletteReduction: false,
 		paletteTargetColors: 16,
 		paletteMethod: 'Kmeans',
@@ -538,7 +542,7 @@ class AlgorithmConfigStore {
 		// Only enforce minimums for edge/centerline algorithms
 		if (currentConfig.algorithm === 'edge' || currentConfig.algorithm === 'centerline') {
 			const edgeConfig = currentConfig as any;
-			const currentPreset = processedUpdates.handDrawnPreset || edgeConfig.handDrawnPreset;
+			const currentPreset = (processedUpdates as any).handDrawnPreset || edgeConfig.handDrawnPreset;
 
 			// Only enforce minimums when not on 'none' preset
 			if (currentPreset !== 'none') {

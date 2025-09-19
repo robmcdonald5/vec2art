@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { ChevronDown, type LucideIcon } from 'lucide-svelte';
+	import { ChevronDown, type Icon } from 'lucide-svelte';
+	import type { ComponentType } from 'svelte';
 
 	interface Props {
 		title: string;
-		icon: LucideIcon;
+		icon: ComponentType<Icon>;
 		iconColorClass: string;
 		backgroundGradient: string;
 		expanded: boolean;
@@ -13,7 +14,7 @@
 
 	let {
 		title,
-		icon: Icon,
+		icon: IconComponent,
 		iconColorClass,
 		backgroundGradient,
 		expanded = false,
@@ -33,7 +34,7 @@
 	>
 		<div class="flex items-center gap-3">
 			<div class="flex h-8 w-8 items-center justify-center rounded-lg {backgroundGradient}">
-				<Icon class="h-4 w-4 {iconColorClass}" />
+				<IconComponent class="h-4 w-4 {iconColorClass}" />
 			</div>
 			<span class="text-speed-gray-900 dark:text-speed-gray-100 text-sm font-medium">
 				{title}

@@ -11,8 +11,9 @@ export type AlgorithmType = 'edge' | 'centerline' | 'superpixel' | 'dots';
 // Background removal algorithms
 export type BackgroundRemovalAlgorithm = 'otsu' | 'adaptive';
 
-// Superpixel initialization patterns
-export type SuperpixelInitPattern = 'square' | 'hexagonal' | 'poisson';
+// Import generated type to ensure consistency with backend
+import type { SuperpixelInitPattern } from './generated/SuperpixelInitPattern';
+export type { SuperpixelInitPattern } from './generated/SuperpixelInitPattern';
 
 // Dot grid patterns
 export type DotGridPattern = 'grid' | 'hexagonal' | 'random' | 'poisson';
@@ -165,7 +166,6 @@ export interface SuperpixelConfig extends CoreConfig {
 	// Rendering options
 	superpixelFillRegions: boolean;
 	superpixelStrokeRegions: boolean;
-	superpixelStrokeWidth: number; // 0.5-5.0
 	superpixelSimplifyBoundaries: boolean;
 	superpixelBoundaryEpsilon: number; // 0.5-3.0
 	superpixelPreserveColors: boolean;
@@ -176,10 +176,12 @@ export interface SuperpixelConfig extends CoreConfig {
 	superpixelColorTolerance?: number; // 0.0-1.0
 	superpixelColorSampling?: ColorSamplingMethod;
 
-	// Region processing
+	// Region processing and merge budget system
 	superpixelMinRegionSize: number; // 1-100
-	superpixelMergeThreshold: number; // 0.0-1.0
 	superpixelEnforceConnectivity: boolean;
+	superpixelEnhanceEdges: boolean;
+	superpixelMergeThreshold: number; // 0.05-0.3
+	enableAdvancedMerging: boolean;
 
 	// Palette reduction
 	enablePaletteReduction: boolean;
@@ -671,10 +673,10 @@ export const SUPERPIXEL_METADATA: Record<string, ParameterMetadata> = {
 	iterations: {
 		name: 'iterations',
 		label: 'Iterations',
-		description: 'Number of SLIC algorithm iterations. More iterations improve boundary accuracy.',
+		description: 'Number of SLIC algorithm iterations. More iterations improve boundary accuracy (1=fast, 5=default, 10=high quality).',
 		type: 'range',
 		min: 1,
-		max: 20,
+		max: 15,
 		step: 1,
 		category: 'algorithm',
 		algorithms: ['superpixel']
@@ -926,6 +928,105 @@ export const SUPERPIXEL_METADATA: Record<string, ParameterMetadata> = {
 		category: 'color',
 		algorithms: ['superpixel'],
 		dependsOn: 'superpixelPreserveColors'
+	},
+	superpixelFillRegions: {
+		name: 'superpixelFillRegions',
+		label: 'Fill Regions',
+		description: 'Fill superpixel regions with solid color (your old Fill Regions setting).',
+		type: 'boolean',
+		category: 'style',
+		algorithms: ['superpixel']
+	},
+	superpixelSimplifyBoundaries: {
+		name: 'superpixelSimplifyBoundaries',
+		label: 'Simplify Boundaries',
+		description: 'Simplify region boundaries for smoother appearance (your old Simplify Boundaries setting).',
+		type: 'boolean',
+		category: 'style',
+		algorithms: ['superpixel']
+	},
+	superpixelBoundaryEpsilon: {
+		name: 'superpixelBoundaryEpsilon',
+		label: 'Simplify Tolerance',
+		description: 'How much to simplify boundaries. Higher values create smoother boundaries.',
+		type: 'range',
+		min: 0.5,
+		max: 3.0,
+		step: 0.1,
+		category: 'style',
+		algorithms: ['superpixel'],
+		dependsOn: 'superpixelSimplifyBoundaries'
+	},
+	superpixelInitializationPattern: {
+		name: 'superpixelInitializationPattern',
+		label: 'Initialization Pattern',
+		description: 'Cluster initialization pattern for superpixel algorithm.',
+		type: 'select',
+		options: [
+			{ value: 'Square', label: 'Square' },
+			{ value: 'Hexagonal', label: 'Hexagonal' },
+			{ value: 'Poisson', label: 'Poisson' }
+		],
+		category: 'advanced',
+		algorithms: ['superpixel']
+	},
+	superpixelStrokeRegions: {
+		name: 'superpixelStrokeRegions',
+		label: 'Show Boundaries',
+		description: 'Show region boundary lines.',
+		type: 'boolean',
+		category: 'advanced',
+		algorithms: ['superpixel']
+	},
+	superpixelMinRegionSize: {
+		name: 'superpixelMinRegionSize',
+		label: 'Min Region Size',
+		description: 'Minimum size for regions in pixels. Smaller regions are merged for cleaner output.',
+		type: 'range',
+		min: 1,
+		max: 500,
+		step: 1,
+		category: 'advanced',
+		algorithms: ['superpixel'],
+		dependsOn: 'enableAdvancedMerging'
+	},
+	superpixelEnforceConnectivity: {
+		name: 'superpixelEnforceConnectivity',
+		label: 'Enforce Connectivity',
+		description: 'Ensure each region consists of connected pixels (no isolated islands).',
+		type: 'boolean',
+		category: 'advanced',
+		algorithms: ['superpixel'],
+		dependsOn: 'enableAdvancedMerging'
+	},
+	superpixelEnhanceEdges: {
+		name: 'superpixelEnhanceEdges',
+		label: 'Enhance Edges',
+		description: 'Improve region boundaries to better follow image edges.',
+		type: 'boolean',
+		category: 'advanced',
+		algorithms: ['superpixel'],
+		dependsOn: 'enableAdvancedMerging'
+	},
+	superpixelMergeThreshold: {
+		name: 'superpixelMergeThreshold',
+		label: 'Color Merge Threshold',
+		description: 'Merge similar colored regions. Higher values merge more aggressively.',
+		type: 'range',
+		min: 0.01,
+		max: 1.0,
+		step: 0.01,
+		category: 'advanced',
+		algorithms: ['superpixel'],
+		dependsOn: 'enableAdvancedMerging'
+	},
+	enableAdvancedMerging: {
+		name: 'enableAdvancedMerging',
+		label: 'Advanced Merging',
+		description: 'Enable advanced region merging algorithms for improved quality.',
+		type: 'boolean',
+		category: 'advanced',
+		algorithms: ['superpixel']
 	}
 };
 

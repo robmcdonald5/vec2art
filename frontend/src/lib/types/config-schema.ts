@@ -54,7 +54,14 @@ export const AlgorithmConfigSchema = z.object({
 	// Superpixel-specific options
 	numSuperpixels: z.number().int().min(20).max(1000).default(200).optional(),
 	compactness: z.number().min(1).max(50).default(10).optional(),
-	iterations: z.number().int().min(1).max(20).default(10).optional(),
+	iterations: z.number().int().min(1).max(15).default(5).optional(),
+
+	// Advanced superpixel merging options
+	enableAdvancedMerging: z.boolean().default(false).optional(),
+	superpixelMinRegionSize: z.number().int().min(1).max(500).default(5).optional(),
+	superpixelEnforceConnectivity: z.boolean().default(true).optional(),
+	superpixelEnhanceEdges: z.boolean().default(false).optional(),
+	superpixelMergeThreshold: z.number().min(0.01).max(1.0).default(0.15).optional(),
 
 	// Dots-specific options
 	minRadius: z.number().min(0.1).max(10).default(0.5).optional(),

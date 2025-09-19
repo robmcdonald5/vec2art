@@ -36,7 +36,12 @@
 
 	// Group parameters by category
 	const _coreParams = []; // Empty - Region Count is in Quick Settings
-	const styleParams = ['polygonMode', 'simplifyTolerance'];
+	const styleParams = [
+		'superpixelCompactness', // Shape Regularity (your old setting #1)
+		'superpixelFillRegions', // Fill Regions (your old setting #3)
+		'superpixelSimplifyBoundaries', // Simplify Boundaries (your old setting #2)
+		'superpixelBoundaryEpsilon' // How much to simplify (was simplifyTolerance)
+	];
 	const colorParams = [
 		'superpixelPreserveColors',
 		'superpixelColorAccuracy',
@@ -49,13 +54,14 @@
 		'paletteDithering'
 	];
 	const advancedParams = [
-		'iterations',
-		'colorImportance',
-		'spatialImportance',
-		'minRegionSize',
-		'mergeThreshold',
-		'enhanceEdges',
-		'preserveBoundaries'
+		'iterations', // SLIC iterations
+		'superpixelInitializationPattern', // Cluster pattern
+		'superpixelStrokeRegions', // Show region boundaries
+		'enableAdvancedMerging', // Master toggle for advanced features
+		'superpixelMinRegionSize', // Min region size (Tier 1)
+		'superpixelMergeThreshold', // Color merge threshold (Tier 2)
+		'superpixelEnforceConnectivity', // Connectivity enforcement (Tier 1)
+		'superpixelEnhanceEdges' // Edge enhancement (Tier 2)
 	];
 
 	// Parameter visibility logic - handles dependencies
@@ -113,9 +119,9 @@
 		{disabled}
 	/>
 
-	<!-- Layer Processing -->
+	<!-- Region Properties -->
 	<ParameterSectionAdvanced
-		title="Layer Processing"
+		title="Region Properties"
 		icon={Layers}
 		iconColorClass="text-gray-600 dark:text-gray-400"
 		backgroundGradient="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20"

@@ -12,6 +12,7 @@ import type { BackgroundRemovalAlgorithm } from './generated/BackgroundRemovalAl
 import type { ColorSamplingMethod } from './generated/ColorSamplingMethod';
 import type { DotShape } from './generated/DotShape';
 import type { GridPattern } from './generated/GridPattern';
+import type { SuperpixelInitPattern } from './generated/SuperpixelInitPattern';
 import type {
 	AlgorithmConfig,
 	EdgeConfig,
@@ -73,6 +74,7 @@ function mapDotShapeToWasm(shape: DotsConfig['dotShape']): DotShape {
 			return 'Circle';
 	}
 }
+
 
 /**
  * Map frontend grid pattern names to WASM GridPattern enum values
@@ -254,15 +256,52 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 				? ((config as SuperpixelConfig).superpixelCompactness ?? 10.0)
 				: 10.0,
 		superpixel_slic_iterations:
-			config.algorithm === 'superpixel' ? ((config as SuperpixelConfig).iterations ?? 10) : 10,
-		superpixel_initialization_pattern: 'Hexagonal',
-		superpixel_fill_regions: true,
-		superpixel_stroke_regions: true,
-		superpixel_simplify_boundaries: true,
-		superpixel_boundary_epsilon: 1.0,
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).iterations ?? (config as SuperpixelConfig).superpixelSlicIterations ?? 10)
+				: 10,
+		superpixel_initialization_pattern:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).superpixelInitializationPattern ?? 'Hexagonal')
+				: 'Hexagonal',
+		superpixel_fill_regions:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).superpixelFillRegions ?? true)
+				: true,
+		superpixel_stroke_regions:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).superpixelStrokeRegions ?? true)
+				: true,
+		superpixel_simplify_boundaries:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).superpixelSimplifyBoundaries ?? true)
+				: true,
+		superpixel_boundary_epsilon:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).superpixelBoundaryEpsilon ?? 1.0)
+				: 1.0,
 		superpixel_preserve_colors:
 			config.algorithm === 'superpixel'
 				? ((config as SuperpixelConfig).superpixelPreserveColors ?? false)
+				: false,
+		superpixel_min_region_size:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).superpixelMinRegionSize ?? 5)
+				: 5,
+		superpixel_enforce_connectivity:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).superpixelEnforceConnectivity ?? true)
+				: true,
+		superpixel_enhance_edges:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).superpixelEnhanceEdges ?? false)
+				: false,
+		superpixel_merge_threshold:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).superpixelMergeThreshold ?? 0.15)
+				: 0.15,
+		enable_advanced_merging:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).enableAdvancedMerging ?? false)
 				: false,
 
 		// Line tracing color configuration

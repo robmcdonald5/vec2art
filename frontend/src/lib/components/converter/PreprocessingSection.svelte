@@ -18,7 +18,7 @@
 		onParameterChange,
 		disabled = false,
 		expanded = false,
-		onToggle
+		onToggle = () => {}
 	}: Props = $props();
 
 	// Preprocessing parameters (universal for all algorithms)

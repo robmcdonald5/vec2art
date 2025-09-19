@@ -199,7 +199,25 @@ pub fn apply_config_json(
                 .compactness(config.superpixel_compactness)
                 .map_err(|e| JsValue::from_str(&format!("Failed to set compactness: {}", e)))?
                 .slic_iterations(config.superpixel_slic_iterations)
-                .map_err(|e| JsValue::from_str(&format!("Failed to set iterations: {}", e)))?;
+                .map_err(|e| JsValue::from_str(&format!("Failed to set iterations: {}", e)))?
+                .superpixel_initialization_pattern(&match config.superpixel_initialization_pattern {
+                    vectorize_core::algorithms::tracing::trace_low::SuperpixelInitPattern::Square => "square",
+                    vectorize_core::algorithms::tracing::trace_low::SuperpixelInitPattern::Hexagonal => "hexagonal",
+                    vectorize_core::algorithms::tracing::trace_low::SuperpixelInitPattern::Poisson => "poisson",
+                })
+                .map_err(|e| JsValue::from_str(&format!("Failed to set initialization pattern: {}", e)))?
+                .fill_regions(config.superpixel_fill_regions)
+                .stroke_regions(config.superpixel_stroke_regions)
+                .simplify_boundaries(config.superpixel_simplify_boundaries)
+                .boundary_epsilon(config.superpixel_boundary_epsilon)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set boundary epsilon: {}", e)))?
+                .superpixel_min_region_size(config.superpixel_min_region_size)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set min region size: {}", e)))?
+                .superpixel_enforce_connectivity(config.superpixel_enforce_connectivity)
+                .superpixel_enhance_edges(config.superpixel_enhance_edges)
+                .superpixel_merge_threshold(config.superpixel_merge_threshold)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set merge threshold: {}", e)))?
+                .enable_advanced_merging(config.enable_advanced_merging);
         }
         TraceBackend::Dots => {
             builder = builder

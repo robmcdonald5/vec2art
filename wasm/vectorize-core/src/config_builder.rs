@@ -55,6 +55,12 @@ pub struct ConfigBuilder {
     simplify_boundaries: Option<bool>,
     boundary_epsilon: Option<f32>,
     superpixel_preserve_colors: Option<bool>,
+    // New superpixel parameters
+    superpixel_min_region_size: Option<u32>,
+    superpixel_enforce_connectivity: Option<bool>,
+    superpixel_enhance_edges: Option<bool>,
+    superpixel_merge_threshold: Option<f32>,
+    enable_advanced_merging: Option<bool>,
 }
 
 impl Default for ConfigBuilder {
@@ -82,6 +88,12 @@ impl ConfigBuilder {
             simplify_boundaries: None,
             boundary_epsilon: None,
             superpixel_preserve_colors: None,
+            // Initialize new superpixel fields
+            superpixel_min_region_size: None,
+            superpixel_enforce_connectivity: None,
+            superpixel_enhance_edges: None,
+            superpixel_merge_threshold: None,
+            enable_advanced_merging: None,
         }
     }
 
@@ -530,6 +542,38 @@ impl ConfigBuilder {
         Ok(self)
     }
 
+    /// Set minimum region size for superpixel merging (1-100)
+    pub fn superpixel_min_region_size(mut self, size: u32) -> ConfigBuilderResult<Self> {
+        self.validate_superpixel_min_region_size(size)?;
+        self.superpixel_min_region_size = Some(size);
+        Ok(self)
+    }
+
+    /// Enable or disable connectivity enforcement in superpixel generation
+    pub fn superpixel_enforce_connectivity(mut self, enabled: bool) -> Self {
+        self.superpixel_enforce_connectivity = Some(enabled);
+        self
+    }
+
+    /// Enable or disable edge enhancement in superpixel preprocessing
+    pub fn superpixel_enhance_edges(mut self, enabled: bool) -> Self {
+        self.superpixel_enhance_edges = Some(enabled);
+        self
+    }
+
+    /// Set merge threshold for region consolidation (0.05-0.3)
+    pub fn superpixel_merge_threshold(mut self, threshold: f32) -> ConfigBuilderResult<Self> {
+        self.validate_superpixel_merge_threshold(threshold)?;
+        self.superpixel_merge_threshold = Some(threshold);
+        Ok(self)
+    }
+
+    /// Enable or disable advanced merging algorithms
+    pub fn enable_advanced_merging(mut self, enabled: bool) -> Self {
+        self.enable_advanced_merging = Some(enabled);
+        self
+    }
+
     // Safety and optimization parameters
 
     /// Set maximum image size before automatic resizing (512-8192 pixels)
@@ -730,6 +774,22 @@ impl ConfigBuilder {
         if let Some(preserve_colors) = self.superpixel_preserve_colors {
             config.superpixel_preserve_colors = preserve_colors;
         }
+        // Add new superpixel field mappings
+        if let Some(min_region_size) = self.superpixel_min_region_size {
+            config.superpixel_min_region_size = min_region_size;
+        }
+        if let Some(enforce_connectivity) = self.superpixel_enforce_connectivity {
+            config.superpixel_enforce_connectivity = enforce_connectivity;
+        }
+        if let Some(enhance_edges) = self.superpixel_enhance_edges {
+            config.superpixel_enhance_edges = enhance_edges;
+        }
+        if let Some(merge_threshold) = self.superpixel_merge_threshold {
+            config.superpixel_merge_threshold = merge_threshold;
+        }
+        if let Some(advanced_merging) = self.enable_advanced_merging {
+            config.enable_advanced_merging = advanced_merging;
+        }
 
         Ok(config)
     }
@@ -791,6 +851,22 @@ impl ConfigBuilder {
         }
         if let Some(preserve_colors) = self.superpixel_preserve_colors {
             config.superpixel_preserve_colors = preserve_colors;
+        }
+        // Add new superpixel field mappings
+        if let Some(min_region_size) = self.superpixel_min_region_size {
+            config.superpixel_min_region_size = min_region_size;
+        }
+        if let Some(enforce_connectivity) = self.superpixel_enforce_connectivity {
+            config.superpixel_enforce_connectivity = enforce_connectivity;
+        }
+        if let Some(enhance_edges) = self.superpixel_enhance_edges {
+            config.superpixel_enhance_edges = enhance_edges;
+        }
+        if let Some(merge_threshold) = self.superpixel_merge_threshold {
+            config.superpixel_merge_threshold = merge_threshold;
+        }
+        if let Some(advanced_merging) = self.enable_advanced_merging {
+            config.enable_advanced_merging = advanced_merging;
         }
 
         Ok((config, hand_drawn_config))
@@ -1022,9 +1098,9 @@ impl ConfigBuilder {
     }
 
     fn validate_slic_iterations(&self, iterations: u32) -> ConfigBuilderResult<()> {
-        if !(5..=15).contains(&iterations) {
+        if !(1..=15).contains(&iterations) {
             return Err(ConfigBuilderError::InvalidParameter(format!(
-                "SLIC iterations must be between 5 and 15, got: {iterations}"
+                "SLIC iterations must be between 1 and 15, got: {iterations}"
             )));
         }
         Ok(())
@@ -1046,6 +1122,25 @@ impl ConfigBuilder {
                 "Invalid initialization pattern: {pattern}. Must be one of: square, hexagonal, poisson"
             ))),
         }
+    }
+
+    // New superpixel validation methods
+    fn validate_superpixel_min_region_size(&self, size: u32) -> ConfigBuilderResult<()> {
+        if !(1..=500).contains(&size) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Superpixel minimum region size must be between 1 and 500, got: {size}"
+            )));
+        }
+        Ok(())
+    }
+
+    fn validate_superpixel_merge_threshold(&self, threshold: f32) -> ConfigBuilderResult<()> {
+        if !(0.01..=1.0).contains(&threshold) {
+            return Err(ConfigBuilderError::InvalidParameter(format!(
+                "Superpixel merge threshold must be between 0.01 and 1.0, got: {threshold}"
+            )));
+        }
+        Ok(())
     }
 
     fn validate_max_image_size(&self, size: u32) -> ConfigBuilderResult<()> {
@@ -1826,5 +1921,39 @@ mod tests {
         assert!(recommendations.contains_key("compactness"));
         assert!(recommendations.contains_key("fill_regions"));
         assert!(recommendations.contains_key("stroke_regions"));
+    }
+
+    #[test]
+    fn test_new_superpixel_parameters() {
+        // Test valid new superpixel parameters
+        let config = ConfigBuilder::new()
+            .backend(TraceBackend::Superpixel)
+            .superpixel_min_region_size(25)
+            .unwrap()
+            .superpixel_enforce_connectivity(true)
+            .superpixel_enhance_edges(false)
+            .superpixel_merge_threshold(0.15)
+            .unwrap()
+            .enable_advanced_merging(true)
+            .build()
+            .unwrap();
+
+        assert_eq!(config.backend, TraceBackend::Superpixel);
+        assert_eq!(config.superpixel_min_region_size, 25);
+        assert!(config.superpixel_enforce_connectivity);
+        assert!(!config.superpixel_enhance_edges);
+        assert_eq!(config.superpixel_merge_threshold, 0.15);
+        assert!(config.enable_advanced_merging);
+    }
+
+    #[test]
+    fn test_new_superpixel_validation_errors() {
+        // Test invalid superpixel_min_region_size
+        assert!(ConfigBuilder::new().superpixel_min_region_size(0).is_err()); // Too low
+        assert!(ConfigBuilder::new().superpixel_min_region_size(501).is_err()); // Too high
+
+        // Test invalid superpixel_merge_threshold
+        assert!(ConfigBuilder::new().superpixel_merge_threshold(0.005).is_err()); // Too low
+        assert!(ConfigBuilder::new().superpixel_merge_threshold(1.1).is_err()); // Too high
     }
 }

@@ -350,11 +350,11 @@
 							<FerrariCheckbox
 								id="preserve-colors-unified"
 								checked={(currentAlgorithm === 'edge' || currentAlgorithm === 'centerline'
-									? config.linePreserveColors
+									? (config as any).linePreserveColors
 									: currentAlgorithm === 'superpixel'
-										? config.superpixelPreserveColors
+										? (config as any).superpixelPreserveColors
 										: currentAlgorithm === 'dots'
-											? config.dotPreserveColors
+											? (config as any).dotPreserveColors
 											: config.preserveColors) ?? false}
 								{disabled}
 								label="Enable Color"
