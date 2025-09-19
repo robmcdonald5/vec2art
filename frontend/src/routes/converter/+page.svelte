@@ -267,15 +267,18 @@
 
 			// Get current algorithm configuration
 			const currentAlgorithm = algorithmConfigStore.currentAlgorithm;
-			const config = algorithmConfigStore.getConfig(currentAlgorithm);
+			const config = algorithmConfigStore.getCurrentConfig();
 			console.log(
 				`[Converter] Converting ${files.length} files using ${currentAlgorithm} algorithm`
 			);
 
-			// Debug: Log the full config to see if dotShape is included
+			// Debug: Log the full config to see if parameters are included
 			if (currentAlgorithm === 'dots') {
 				console.log('[Converter] Dots config being sent:', {
 					dotShape: (config as any).dotShape,
+					noiseFiltering: (config as any).noiseFiltering,
+					noiseFilterSpatialSigma: (config as any).noiseFilterSpatialSigma,
+					noiseFilterRangeSigma: (config as any).noiseFilterRangeSigma,
 					fullConfig: config
 				});
 			}

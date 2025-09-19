@@ -5,6 +5,7 @@
 
 pub mod fit;
 pub mod path_utils;
+pub mod preprocessing;
 pub mod trace;
 pub mod trace_low;
 
