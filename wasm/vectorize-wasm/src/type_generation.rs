@@ -11,6 +11,7 @@ mod tests {
         BackgroundRemovalAlgorithm, SuperpixelInitPattern, TraceBackend, TraceLowConfig,
     };
     use vectorize_core::algorithms::visual::color_processing::ColorSamplingMethod;
+    use vectorize_core::algorithms::dots::dots::{DotShape, GridPattern};
 
     #[test]
     #[cfg(feature = "generate-ts")]
@@ -21,6 +22,8 @@ mod tests {
         BackgroundRemovalAlgorithm::export().expect("Failed to export BackgroundRemovalAlgorithm");
         SuperpixelInitPattern::export().expect("Failed to export SuperpixelInitPattern");
         ColorSamplingMethod::export().expect("Failed to export ColorSamplingMethod");
+        DotShape::export().expect("Failed to export DotShape");
+        GridPattern::export().expect("Failed to export GridPattern");
 
         println!("TypeScript generation completed successfully");
     }

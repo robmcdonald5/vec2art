@@ -14,6 +14,10 @@ use serde::{Deserialize, Serialize};
 /// Supported dot shapes for rendering
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "generate-ts", derive(ts_rs::TS))]
+#[cfg_attr(
+    feature = "generate-ts",
+    ts(export, export_to = "../../../../frontend/src/lib/types/generated/")
+)]
 pub enum DotShape {
     /// Circle shape (default)
     Circle,
@@ -28,6 +32,10 @@ pub enum DotShape {
 /// Grid pattern for dot placement
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "generate-ts", derive(ts_rs::TS))]
+#[cfg_attr(
+    feature = "generate-ts",
+    ts(export, export_to = "../../../../frontend/src/lib/types/generated/")
+)]
 pub enum GridPattern {
     /// Regular rectangular grid
     Grid,

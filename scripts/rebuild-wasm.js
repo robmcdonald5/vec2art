@@ -242,6 +242,30 @@ async function fixImports() {
     // Snippets directory might not exist
   }
 
+  // Fix TypeScript import paths in generated types
+  try {
+    const typesDir = path.join('frontend', 'src', 'lib', 'types', 'generated');
+    const typesFiles = await fs.readdir(typesDir);
+
+    for (const file of typesFiles.filter(f => f.endsWith('.ts'))) {
+      const filePath = path.join(typesDir, file);
+      let content = await fs.readFile(filePath, 'utf8');
+
+      // Fix any incorrect relative paths that go up directories
+      // This catches both types of incorrect paths in one comprehensive regex:
+      // - "..\\..\\..\\..\\..\\wasm\\vectorize-wasm\\bindings\\FileName"
+      // - "..\\..\\..\\..\\..\\..\\frontend\\src\\lib\\types\\generated\\FileName"
+      // All should become: "./FileName"
+      content = content.replace(/"\.\.[\\\/]+.*[\\\/]([^\\\/\\"]+)"/g, '"./$1"');
+
+      await fs.writeFile(filePath, content);
+    }
+
+    log.success('TypeScript imports fixed');
+  } catch (error) {
+    log.warning('Could not fix TypeScript imports: ' + error.message);
+  }
+
   // Clean TypeScript definitions
   const dtsFile = path.join(config.frontendWasmDir, 'vectorize_wasm.d.ts');
 
