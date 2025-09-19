@@ -110,13 +110,63 @@
 	/* Touch Device Target Compliance - Better than width-based */
 	@media (pointer: coarse) {
 		.mobile-touch-target {
-			min-height: 44px !important;
-			min-width: 44px !important;
+			min-height: 44px;
+			min-width: 44px;
 		}
 
 		/* Icon buttons need proper padding */
 		.mobile-touch-icon {
 			padding: 10px; /* Centers smaller icons in 44px container */
+		}
+	}
+
+	/* Disable hover animations on touch devices for better performance */
+	@media (hover: none) and (pointer: coarse) {
+		/* Disable scale transforms on hover for touch devices */
+		.hover\:scale-105:hover,
+		.hover\:scale-110:hover,
+		.hover\:scale-\[1\.01\]:hover,
+		.hover\:scale-\[1\.02\]:hover,
+		.hover\:scale-\[1\.03\]:hover {
+			transform: none;
+		}
+
+		/* Disable hover translation effects */
+		.hover\:-translate-y-0\.5:hover,
+		.hover\:-translate-y-1:hover,
+		.hover\:translate-y-0:hover {
+			transform: none;
+		}
+
+		/* Use active states for touch feedback instead */
+		.active\:scale-95:active {
+			transform: scale(0.95);
+		}
+
+		.active\:scale-\[0\.98\]:active {
+			transform: scale(0.98);
+		}
+
+		/* Reduce transition durations for snappier feel on mobile */
+		.transition-all {
+			transition-duration: 100ms;
+		}
+
+		/* Disable backdrop blur on mobile for performance */
+		.backdrop-blur-sm,
+		.backdrop-blur {
+			backdrop-filter: none;
+		}
+
+		/* Disable box shadows during scroll for better performance */
+		body.is-scrolling * {
+			transition: none !important;
+			animation: none !important;
+		}
+
+		/* Use will-change sparingly for critical interactive elements only */
+		.mobile-touch-target {
+			will-change: transform;
 		}
 	}
 

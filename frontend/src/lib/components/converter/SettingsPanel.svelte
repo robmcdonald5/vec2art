@@ -43,14 +43,39 @@
 	// Settings mode for mobile - defaults to 'standard' to show all controls
 	let settingsMode = $state('standard');
 
-	// Update mobile detection
-	if (typeof window !== 'undefined') {
+	// Debounced mobile detection with proper cleanup
+	let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+
+	// Effect for mobile detection with proper cleanup
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+
 		const checkMobile = () => {
 			isMobile = window.innerWidth <= 768;
 		};
+
+		// Debounced resize handler to prevent excessive updates
+		const handleResize = () => {
+			if (resizeTimer) {
+				clearTimeout(resizeTimer);
+			}
+			resizeTimer = setTimeout(checkMobile, 150);
+		};
+
+		// Initial check
 		checkMobile();
-		window.addEventListener('resize', checkMobile);
-	}
+
+		// Add listener
+		window.addEventListener('resize', handleResize);
+
+		// Cleanup function
+		return () => {
+			if (resizeTimer) {
+				clearTimeout(resizeTimer);
+			}
+			window.removeEventListener('resize', handleResize);
+		};
+	});
 
 	// Handle algorithm change
 	function handleBackendChange(backend: string) {

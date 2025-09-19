@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { browser, dev } from '$app/environment';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { afterNavigate } from '$app/navigation';
 	import MobileMenu from '$lib/components/navigation/MobileMenu.svelte';
@@ -16,13 +16,14 @@
 	let { children } = $props();
 	let mobileMenuOpen = $state(false);
 
+	// Store cleanup function for mobile performance optimizations
+	let cleanupMobilePerf: (() => void) | undefined;
+
 	// No scroll lock tracking needed
 
 	// Toggle mobile menu
 	function toggleMobileMenu() {
-		console.log('Toggle called, current state:', mobileMenuOpen);
 		mobileMenuOpen = !mobileMenuOpen;
-		console.log('New state:', mobileMenuOpen);
 	}
 
 	// Mobile menu scroll is handled by CSS (fixed positioning)
@@ -33,7 +34,6 @@
 		const currentPathname = $page.url.pathname;
 		// Only close menu if pathname actually changed (not initial load)
 		if (previousPathname !== currentPathname && mobileMenuOpen) {
-			console.log('Pathname changed, closing menu:', previousPathname, '->', currentPathname);
 			mobileMenuOpen = false;
 		}
 		previousPathname = currentPathname;
@@ -68,6 +68,10 @@
 				}
 			}
 
+			// Initialize mobile performance optimizations
+			const { initMobilePerformance } = await import('$lib/utils/mobile-performance');
+			cleanupMobilePerf = initMobilePerformance();
+
 			// Force light mode for now since mobile components don't have dark mode styles
 			// TODO: Implement proper dark mode support for mobile components
 			const savedTheme = localStorage.getItem('theme');
@@ -82,6 +86,13 @@
 			// } else {
 			// 	document.documentElement.classList.remove('dark');
 			// }
+		}
+	});
+
+	// Cleanup mobile performance optimizations on unmount
+	onDestroy(() => {
+		if (cleanupMobilePerf) {
+			cleanupMobilePerf();
 		}
 	});
 </script>

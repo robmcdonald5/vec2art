@@ -234,44 +234,22 @@
 	}
 
 	// Load gallery data on mount
-	onMount(() => {
+	onMount(async () => {
 		isLoading = true;
 
-		// Load data asynchronously
-		loadGalleryData()
-			.then((manifest) => {
-				allItems = manifest.items;
-				categories = getCategories(allItems);
-				_algorithmStats = getAlgorithmStats(allItems);
-				applyFilters();
-			})
-			.catch((error) => {
-				console.error('Failed to load gallery:', error);
-				isLoading = false;
-			});
-
-		// Also add scroll listener as fallback
-		if (browser) {
-			const handleScroll = () => {
-				const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-				const windowHeight = window.innerHeight;
-				const documentHeight = document.documentElement.scrollHeight;
-
-				// Load more when user is 200px from bottom
-				if (scrollTop + windowHeight >= documentHeight - 200) {
-					if (hasMore && !isLoadingMore) {
-						triggerLoadMore();
-					}
-				}
-			};
-
-			window.addEventListener('scroll', handleScroll);
-
-			// Cleanup
-			return () => {
-				window.removeEventListener('scroll', handleScroll);
-			};
+		try {
+			// Load data asynchronously
+			const manifest = await loadGalleryData();
+			allItems = manifest.items;
+			categories = getCategories(allItems);
+			_algorithmStats = getAlgorithmStats(allItems);
+			applyFilters();
+		} catch (error) {
+			console.error('Failed to load gallery:', error);
+			isLoading = false;
 		}
+
+		// No scroll listener needed - Intersection Observer handles all infinite scroll
 	});
 
 	// Set up intersection observer effect

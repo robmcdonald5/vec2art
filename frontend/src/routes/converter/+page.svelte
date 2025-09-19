@@ -509,9 +509,7 @@
 								</span>
 							</h1>
 							<p class="text-speed-gray-600 dark:text-speed-gray-400 mx-auto max-w-2xl text-lg">
-								Convert raster images to scalable SVG graphics using advanced line tracing
-								algorithms. Perfect for logos, illustrations, and artwork that needs to scale
-								beautifully.
+								Transform any raster image into expressive line art SVGs using advanced algorithms
 							</p>
 						</div>
 
