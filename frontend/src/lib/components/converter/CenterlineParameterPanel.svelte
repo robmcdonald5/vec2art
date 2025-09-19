@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		Settings2, // For Core Settings
+		Palette, // For Color Options
 		Brush // For Artistic Effects
 	} from 'lucide-svelte';
 	import FerrariParameterControl from '$lib/components/ui/FerrariParameterControl.svelte';
@@ -84,8 +85,8 @@
 	<ParameterSectionAdvanced
 		title="Layer Processing"
 		icon={Settings2}
-		iconColorClass="text-blue-600 dark:text-blue-400"
-		backgroundGradient="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
+		iconColorClass="text-purple-600 dark:text-purple-400"
+		backgroundGradient="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
 		expanded={layerProcessingExpanded}
 		onToggle={() => (layerProcessingExpanded = !layerProcessingExpanded)}
 		parameters={layerProcessingParams}
@@ -99,7 +100,7 @@
 	<!-- Color Options -->
 	<ParameterSectionAdvanced
 		title="Color Options"
-		icon={Brush}
+		icon={Palette}
 		iconColorClass="text-orange-600 dark:text-orange-400"
 		backgroundGradient="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20"
 		expanded={colorOptionsExpanded}
