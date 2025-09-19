@@ -653,7 +653,7 @@
 			</div>
 
 			<!-- Button Section -->
-			<div class="flex justify-center gap-4">
+			<div class="flex justify-center">
 				<button
 					onclick={async () => selectedItem && (await downloadSVG(selectedItem))}
 					class="btn-ferrari-primary flex items-center gap-2 px-6 py-3 text-lg"
@@ -661,7 +661,6 @@
 					<Download class="h-5 w-5" />
 					Download SVG
 				</button>
-				<button class="btn-ferrari-secondary px-6 py-3 text-lg">View Details</button>
 			</div>
 		</div>
 	{/if}

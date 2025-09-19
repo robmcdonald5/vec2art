@@ -104,9 +104,7 @@
 	}
 
 	function handleBackdropClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) {
-			onClose();
-		}
+		onClose();
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -122,7 +120,6 @@
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center p-4"
 		transition:fade={{ duration: 200 }}
-		onclick={handleBackdropClick}
 		onkeydown={handleKeydown}
 		role="dialog"
 		aria-modal="true"
@@ -132,12 +129,13 @@
 		tabindex="-1"
 	>
 		<!-- Backdrop -->
-		<div class="absolute inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true"></div>
+		<div class="absolute inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true" onclick={handleBackdropClick}></div>
 
 		<!-- Modal Content -->
 		<div
 			class="relative max-h-[90vh] w-full max-w-6xl overflow-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-900 {className}"
 			transition:scale={{ duration: 200, start: 0.95 }}
+			onclick={(e) => e.stopPropagation()}
 		>
 			<!-- Header with title if provided -->
 			{#if title}
