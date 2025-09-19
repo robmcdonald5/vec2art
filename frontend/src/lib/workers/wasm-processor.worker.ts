@@ -125,7 +125,13 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 		console.log('[Worker] 🔍 Config received before transformation:', {
 			algorithm: config.algorithm,
 			linePreserveColors: (config as any).linePreserveColors,
-			preserveColors: config.preserveColors
+			preserveColors: config.preserveColors,
+			superpixelColorSampling: (config as any).superpixelColorSampling,
+			superpixelColorAccuracy: (config as any).superpixelColorAccuracy,
+			superpixelMaxColorsPerRegion: (config as any).superpixelMaxColorsPerRegion,
+			superpixelColorTolerance: (config as any).superpixelColorTolerance,
+			allKeys: Object.keys(config),
+			fullConfig: config
 		});
 
 		// Transform frontend config to WASM format
@@ -135,9 +141,15 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 		console.log('[Worker] 🔍 WASM config after transformation:', {
 			backend: wasmConfig.backend,
 			line_preserve_colors: wasmConfig.line_preserve_colors,
+			line_color_sampling: wasmConfig.line_color_sampling,
+			line_color_accuracy: wasmConfig.line_color_accuracy,
+			max_colors_per_path: wasmConfig.max_colors_per_path,
+			color_tolerance: wasmConfig.color_tolerance,
 			dot_preserve_colors: wasmConfig.dot_preserve_colors,
 			superpixel_preserve_colors: wasmConfig.superpixel_preserve_colors,
-			dot_size_variation: wasmConfig.dot_size_variation // ADD THIS TO SEE THE VALUE
+			dot_size_variation: wasmConfig.dot_size_variation,
+			enable_palette_reduction: wasmConfig.enable_palette_reduction,
+			palette_target_colors: wasmConfig.palette_target_colors
 		});
 
 		// Additional debug logging for dots parameters
@@ -587,7 +599,6 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 					detail: config?.detail,
 					strokeWidth: config?.strokeWidth
 				});
-
 
 				if (!imageData || !config) {
 					throw new Error('Missing image data or config');

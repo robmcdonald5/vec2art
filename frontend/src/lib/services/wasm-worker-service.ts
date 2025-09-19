@@ -405,6 +405,16 @@ export class WasmWorkerService {
 				});
 			}
 
+			// DEBUG: Log superpixel config being sent to worker
+			if (plainConfig.algorithm === 'superpixel') {
+				console.log('[WasmWorkerService] 🟣 Superpixel config being sent to worker:', {
+					superpixelColorSampling: plainConfig.superpixelColorSampling,
+					superpixelPreserveColors: plainConfig.superpixelPreserveColors,
+					allKeys: Object.keys(plainConfig),
+					fullConfig: plainConfig
+				});
+			}
+
 			// Send processing request to worker
 			const result = await this.sendMessage('process', {
 				imageData: {

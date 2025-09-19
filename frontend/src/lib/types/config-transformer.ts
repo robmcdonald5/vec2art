@@ -250,7 +250,9 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 				? ((config as SuperpixelConfig).numSuperpixels ?? 200)
 				: 200,
 		superpixel_compactness:
-			config.algorithm === 'superpixel' ? ((config as SuperpixelConfig).superpixelCompactness ?? 10.0) : 10.0,
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).superpixelCompactness ?? 10.0)
+				: 10.0,
 		superpixel_slic_iterations:
 			config.algorithm === 'superpixel' ? ((config as SuperpixelConfig).iterations ?? 10) : 10,
 		superpixel_initialization_pattern: 'Hexagonal',
@@ -258,7 +260,10 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 		superpixel_stroke_regions: true,
 		superpixel_simplify_boundaries: true,
 		superpixel_boundary_epsilon: 1.0,
-		superpixel_preserve_colors: config.preserveColors ?? false,
+		superpixel_preserve_colors:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).superpixelPreserveColors ?? false)
+				: false,
 
 		// Line tracing color configuration
 		// For edge/centerline, use linePreserveColors if available, fallback to preserveColors
@@ -269,21 +274,56 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 		line_color_sampling:
 			config.algorithm === 'edge' || config.algorithm === 'centerline'
 				? ((config as EdgeConfig).lineColorSampling ?? ('Adaptive' as ColorSamplingMethod))
-				: ('Adaptive' as ColorSamplingMethod),
+				: config.algorithm === 'superpixel'
+					? ((config as SuperpixelConfig).superpixelColorSampling ??
+						('Adaptive' as ColorSamplingMethod))
+					: ('Adaptive' as ColorSamplingMethod),
 		line_color_accuracy:
 			config.algorithm === 'edge' || config.algorithm === 'centerline'
 				? ((config as EdgeConfig).lineColorAccuracy ?? 0.7)
-				: 0.7,
+				: config.algorithm === 'superpixel'
+					? (() => {
+						const value = (config as SuperpixelConfig).superpixelColorAccuracy ?? 0.7;
+						console.log('[Config Transform] superpixelColorAccuracy:', (config as SuperpixelConfig).superpixelColorAccuracy, '→', value);
+						return value;
+					})()
+					: 0.7,
 		max_colors_per_path:
 			config.algorithm === 'edge' || config.algorithm === 'centerline'
 				? ((config as EdgeConfig).maxColorsPerPath ?? 3)
-				: 3,
+				: config.algorithm === 'superpixel'
+					? (() => {
+						const value = (config as SuperpixelConfig).superpixelMaxColorsPerRegion ?? 3;
+						console.log('[Config Transform] superpixelMaxColorsPerRegion:', (config as SuperpixelConfig).superpixelMaxColorsPerRegion, '→', value);
+						return value;
+					})()
+					: 3,
 		color_tolerance:
 			config.algorithm === 'edge' || config.algorithm === 'centerline'
 				? ((config as EdgeConfig).colorTolerance ?? 0.15)
-				: 0.15,
-		enable_palette_reduction: false,
-		palette_target_colors: 16,
+				: config.algorithm === 'superpixel'
+					? (() => {
+						const value = (config as SuperpixelConfig).superpixelColorTolerance ?? 0.15;
+						console.log('[Config Transform] superpixelColorTolerance:', (config as SuperpixelConfig).superpixelColorTolerance, '→', value);
+						return value;
+					})()
+					: 0.15,
+		enable_palette_reduction:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).enablePaletteReduction ?? false)
+				: false,
+		palette_target_colors:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).paletteTargetColors ?? 16)
+				: 16,
+		palette_method:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).paletteMethod ?? 'Kmeans')
+				: 'Kmeans',
+		palette_dithering:
+			config.algorithm === 'superpixel'
+				? ((config as SuperpixelConfig).paletteDithering ?? false)
+				: false,
 
 		// Background removal
 		enable_background_removal: config.enableBackgroundRemoval ?? false,

@@ -13,6 +13,7 @@ use crate::algorithms::centerline::{CenterlineAlgorithm, DistanceTransformCenter
 use crate::algorithms::dots::background::{rgba_to_lab, BackgroundConfig, LabColor};
 use crate::algorithms::dots::dots::{generate_dots_from_image, DotConfig};
 use crate::algorithms::dots::svg_dots::dots_to_svg_paths;
+use crate::algorithms::visual::color_processing::PaletteMethod;
 use crate::algorithms::edges::edges::{
     apply_nms, compute_fdog, hysteresis_threshold, FdogConfig, NmsConfig,
 };
@@ -330,6 +331,10 @@ pub struct TraceLowConfig {
     pub enable_palette_reduction: bool,
     /// Target number of colors for palette reduction (2-50, default: 16)
     pub palette_target_colors: u32,
+    /// Palette reduction algorithm method (default: Kmeans)
+    pub palette_method: crate::algorithms::visual::color_processing::PaletteMethod,
+    /// Enable dithering to improve color transitions (default: false)
+    pub palette_dithering: bool,
     // Background removal parameters
     /// Enable background removal pre-processing (default: false)
     pub enable_background_removal: bool,
@@ -423,6 +428,8 @@ impl Default for TraceLowConfig {
             color_tolerance: 0.15,    // Moderate color similarity threshold
             enable_palette_reduction: false, // Default disabled for backward compatibility
             palette_target_colors: 16, // Balanced color count for palette reduction
+            palette_method: PaletteMethod::Kmeans, // Default to K-means clustering
+            palette_dithering: false, // Default disabled for clean output
             // Background removal defaults
             enable_background_removal: false, // Default disabled for backward compatibility
             background_removal_strength: 0.5, // Moderate strength
@@ -2021,6 +2028,356 @@ fn trace_centerline_skeleton_based(
     Ok(svg_paths)
 }
 
+/// Apply advanced color processing to superpixel regions
+fn apply_superpixel_color_processing(
+    regions: &mut [SuperpixelRegion],
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    config: &TraceLowConfig,
+) {
+    log::info!(
+        "🎨 Applying superpixel color processing with method: {:?}, {} regions, palette_reduction: {}",
+        config.line_color_sampling,
+        regions.len(),
+        config.enable_palette_reduction
+    );
+
+    // Step 1: Extract colors from all regions using the configured color sampling method
+    let mut all_colors = Vec::new();
+
+    for (i, region) in regions.iter().enumerate() {
+        // Use advanced color sampling instead of simple averaging
+        let region_colors = extract_region_colors_advanced(region, image, config);
+        all_colors.extend(&region_colors);
+
+        if i < 3 {
+            log::debug!(
+                "Region {}: extracted {} colors using {:?}",
+                i,
+                region_colors.len(),
+                config.line_color_sampling
+            );
+        }
+    }
+
+    // Step 2: Apply palette reduction if enabled
+    if config.enable_palette_reduction && !all_colors.is_empty() {
+        log::debug!(
+            "Applying palette reduction: {} colors → {} colors using {:?}",
+            all_colors.len(),
+            config.palette_target_colors,
+            config.palette_method
+        );
+
+        let reduced_palette = crate::algorithms::visual::color_processing::reduce_color_palette_with_method(
+            &all_colors,
+            config.palette_target_colors as usize,
+            config.color_tolerance,
+            config.palette_method.clone(),
+        );
+
+        // Step 3: Apply dithering if enabled
+        if config.palette_dithering && reduced_palette.len() > 1 {
+            log::info!("🎲 Applying dithering to {} regions with {} palette colors", regions.len(), reduced_palette.len());
+
+            // NOTE: Dithering with superpixels is limited because each region can only have one fill color
+            // True dithering would require splitting regions or using patterns, which isn't currently supported
+            // For now, we'll use a simulated dithering by selecting colors based on region position
+
+            for (i, region) in regions.iter_mut().enumerate() {
+                let current_rgba = hex_to_rgba(&region.avg_rgb_hex);
+
+                // Simulate dithering by alternating palette colors based on region position
+                // This creates a checkerboard-like pattern across regions
+                let region_center_x = region.boundary_points.iter().map(|p| p.x).sum::<f32>() / region.boundary_points.len() as f32;
+                let region_center_y = region.boundary_points.iter().map(|p| p.y).sum::<f32>() / region.boundary_points.len() as f32;
+
+                // Use position-based dithering pattern
+                let dither_offset = ((region_center_x as i32 / 10) + (region_center_y as i32 / 10)) as usize;
+
+                // Find the two closest colors in the palette
+                let mut palette_distances: Vec<(usize, f32)> = reduced_palette.iter()
+                    .enumerate()
+                    .map(|(idx, &color)| {
+                        let dist = color_distance_simple(&current_rgba, &color);
+                        (idx, dist)
+                    })
+                    .collect();
+                palette_distances.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+                // Apply dithering pattern - alternate between closest colors
+                let selected_idx = if palette_distances.len() > 1 && (dither_offset % 2 == 0) {
+                    palette_distances[1].0 // Use second-closest color for dithering effect
+                } else {
+                    palette_distances[0].0 // Use closest color
+                };
+
+                let selected_color = reduced_palette[selected_idx];
+                region.avg_rgb_hex = rgba_to_hex(&selected_color);
+
+                if i < 3 {
+                    log::info!("🎲 Dithering region {}: {} -> {} (pattern offset: {})",
+                        i, rgba_to_hex(&current_rgba), region.avg_rgb_hex, dither_offset);
+                }
+            }
+        } else {
+            // No dithering - just map each region to closest palette color
+            for region in regions.iter_mut() {
+                let current_rgba = hex_to_rgba(&region.avg_rgb_hex);
+                let best_color = find_best_palette_color(&current_rgba, &reduced_palette);
+                region.avg_rgb_hex = rgba_to_hex(&best_color);
+            }
+        }
+    } else {
+        // No palette reduction enabled - still apply the sampled colors directly to regions
+        log::info!("🎨 No palette reduction - applying sampled colors directly to {} regions", regions.len());
+
+        for (i, region) in regions.iter_mut().enumerate() {
+            // Re-extract colors for this specific region using the sampling method
+            let region_colors = extract_region_colors_advanced(region, image, config);
+
+            if !region_colors.is_empty() {
+                // Apply color processing based on the configured method and parameters
+                let old_color = region.avg_rgb_hex.clone();
+
+                // Use the color sampling method to determine the best color
+                let selected_color = match config.line_color_sampling {
+                    crate::algorithms::ColorSamplingMethod::DominantColor => {
+                        // Find the most frequent color among extracted samples
+                        find_dominant_color(&region_colors)
+                    }
+                    crate::algorithms::ColorSamplingMethod::Adaptive => {
+                        // Adaptive: blend colors based on accuracy
+                        blend_colors_weighted(&region_colors, config.line_color_accuracy)
+                    }
+                    crate::algorithms::ColorSamplingMethod::GradientMapping => {
+                        // Use median color for gradient mapping
+                        find_median_color(&region_colors)
+                    }
+                    crate::algorithms::ColorSamplingMethod::ContentAware => {
+                        // Content aware: pick color based on region characteristics
+                        if region_colors.len() > 1 && config.max_colors_per_path > 1 {
+                            // If multiple colors allowed, blend them
+                            blend_colors_weighted(&region_colors, config.line_color_accuracy)
+                        } else {
+                            region_colors[0]
+                        }
+                    }
+                };
+
+                region.avg_rgb_hex = rgba_to_hex(&selected_color);
+
+                if i < 5 {
+                    log::info!(
+                        "🎨 Region {}: {} → {} | Method: {:?} | Extracted {} colors | Accuracy: {} | Tolerance: {} | Max: {} | Used: {:?}",
+                        i,
+                        old_color,
+                        region.avg_rgb_hex,
+                        config.line_color_sampling,
+                        region_colors.len(),
+                        config.line_color_accuracy,
+                        config.color_tolerance,
+                        config.max_colors_per_path,
+                        selected_color
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Find the dominant color from a set of colors
+fn find_dominant_color(colors: &[Rgba<u8>]) -> Rgba<u8> {
+    if colors.is_empty() {
+        return Rgba([0, 0, 0, 255]);
+    }
+    if colors.len() == 1 {
+        return colors[0];
+    }
+
+    // Count occurrences of each color
+    let mut color_counts = std::collections::HashMap::new();
+    for color in colors {
+        *color_counts.entry(*color).or_insert(0) += 1;
+    }
+
+    // Find the most frequent color
+    color_counts
+        .into_iter()
+        .max_by_key(|(_, count)| *count)
+        .map(|(color, _)| color)
+        .unwrap_or(colors[0])
+}
+
+/// Blend colors with weighting based on accuracy
+fn blend_colors_weighted(colors: &[Rgba<u8>], accuracy: f32) -> Rgba<u8> {
+    if colors.is_empty() {
+        return Rgba([0, 0, 0, 255]);
+    }
+    if colors.len() == 1 {
+        return colors[0];
+    }
+
+    // Higher accuracy means we weight earlier colors more heavily
+    let weight_falloff = 1.0 - accuracy.clamp(0.0, 1.0) * 0.5;
+
+    let mut total_r = 0.0;
+    let mut total_g = 0.0;
+    let mut total_b = 0.0;
+    let mut total_weight = 0.0;
+
+    for (i, color) in colors.iter().enumerate() {
+        let weight = weight_falloff.powi(i as i32);
+        total_r += color[0] as f32 * weight;
+        total_g += color[1] as f32 * weight;
+        total_b += color[2] as f32 * weight;
+        total_weight += weight;
+    }
+
+    if total_weight > 0.0 {
+        Rgba([
+            (total_r / total_weight).round() as u8,
+            (total_g / total_weight).round() as u8,
+            (total_b / total_weight).round() as u8,
+            255,
+        ])
+    } else {
+        colors[0]
+    }
+}
+
+/// Find the median color from a set of colors
+fn find_median_color(colors: &[Rgba<u8>]) -> Rgba<u8> {
+    if colors.is_empty() {
+        return Rgba([0, 0, 0, 255]);
+    }
+    if colors.len() == 1 {
+        return colors[0];
+    }
+
+    // Calculate the median of each channel
+    let mut reds: Vec<u8> = colors.iter().map(|c| c[0]).collect();
+    let mut greens: Vec<u8> = colors.iter().map(|c| c[1]).collect();
+    let mut blues: Vec<u8> = colors.iter().map(|c| c[2]).collect();
+
+    reds.sort_unstable();
+    greens.sort_unstable();
+    blues.sort_unstable();
+
+    let mid = colors.len() / 2;
+    Rgba([
+        reds[mid],
+        greens[mid],
+        blues[mid],
+        255,
+    ])
+}
+
+/// Extract colors from a region using advanced color sampling methods
+fn extract_region_colors_advanced(
+    region: &SuperpixelRegion,
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+    config: &TraceLowConfig,
+) -> Vec<Rgba<u8>> {
+    // Convert boundary points to path format for color extraction
+    let path: Vec<Point> = region
+        .boundary_points
+        .iter()
+        .map(|point| Point { x: point.x as f32, y: point.y as f32 })
+        .collect();
+
+    if path.is_empty() {
+        // Parse the hex color from avg_rgb_hex field
+        let rgba = hex_to_rgba(&region.avg_rgb_hex);
+        return vec![rgba];
+    }
+
+    // Create color map from image
+    let color_map: Vec<Rgba<u8>> = image.pixels().cloned().collect();
+
+    // Use the configured color sampling method
+    log::debug!(
+        "Extracting colors with method: {:?}, accuracy: {}, tolerance: {}",
+        config.line_color_sampling,
+        config.line_color_accuracy,
+        config.color_tolerance
+    );
+    let color_info = crate::algorithms::visual::color_processing::extract_path_colors(
+        &path,
+        &color_map,
+        image.width(),
+        image.height(),
+        config.line_color_sampling.clone(),
+        config.line_color_accuracy,
+        config.color_tolerance,
+    );
+
+    // Extract colors from the sampling result
+    let mut colors = color_info.sample_points
+        .into_iter()
+        .map(|sample| sample.color)
+        .collect::<Vec<_>>();
+
+    // Ensure we have at least one color
+    if colors.is_empty() {
+        let rgba = hex_to_rgba(&region.avg_rgb_hex);
+        colors.push(rgba);
+    }
+
+    // Limit number of colors per region
+    if colors.len() > config.max_colors_per_path as usize {
+        colors.truncate(config.max_colors_per_path as usize);
+    }
+
+    colors
+}
+
+/// Extract pixel colors from a region
+fn extract_region_pixel_colors(
+    region: &SuperpixelRegion,
+    image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+) -> Vec<Rgba<u8>> {
+    // For simplicity, sample colors along the boundary
+    region
+        .boundary_points
+        .iter()
+        .take(100) // Limit to reasonable number for performance
+        .filter_map(|point| {
+            let x = point.x as u32;
+            let y = point.y as u32;
+            if x < image.width() && y < image.height() {
+                Some(*image.get_pixel(x, y))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Find the best matching color in a palette
+fn find_best_palette_color(target: &Rgba<u8>, palette: &[Rgba<u8>]) -> Rgba<u8> {
+    if palette.is_empty() {
+        return *target;
+    }
+
+    palette
+        .iter()
+        .min_by(|a, b| {
+            let dist_a = color_distance_simple(target, a);
+            let dist_b = color_distance_simple(target, b);
+            dist_a.partial_cmp(&dist_b).unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .copied()
+        .unwrap_or(*target)
+}
+
+/// Simple color distance calculation
+fn color_distance_simple(c1: &Rgba<u8>, c2: &Rgba<u8>) -> f32 {
+    let dr = c1.0[0] as f32 - c2.0[0] as f32;
+    let dg = c1.0[1] as f32 - c2.0[1] as f32;
+    let db = c1.0[2] as f32 - c2.0[2] as f32;
+    (dr * dr + dg * dg + db * db).sqrt()
+}
+
 /// Superpixel backend: Large regions with cell-shaded look
 fn trace_superpixel(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
@@ -2072,8 +2429,29 @@ fn trace_superpixel(
 
     // 3. Extract superpixel regions and calculate average colors
     let phase_start = Instant::now();
-    let regions = extract_superpixel_regions(&superpixel_labels, &lab_image, image, width, height);
+    let mut regions = extract_superpixel_regions(&superpixel_labels, &lab_image, image, width, height);
     log::debug!("Region extraction: {:?}", phase_start.elapsed());
+
+    // 3.5. Apply advanced color processing if enabled
+    if config.superpixel_preserve_colors {
+        let phase_start = Instant::now();
+        log::info!("🎨 Starting superpixel color processing:");
+        log::info!("   - Preserve colors: {}", config.superpixel_preserve_colors);
+        log::info!("   - Color sampling method: {:?}", config.line_color_sampling);
+        log::info!("   - Color accuracy: {}", config.line_color_accuracy);
+        log::info!("   - Max colors per region: {}", config.max_colors_per_path);
+        log::info!("   - Color tolerance: {}", config.color_tolerance);
+        log::info!("   - Palette reduction: {}", config.enable_palette_reduction);
+        if config.enable_palette_reduction {
+            log::info!("   - Target colors: {}", config.palette_target_colors);
+            log::info!("   - Palette method: {:?}", config.palette_method);
+            log::info!("   - Dithering: {}", config.palette_dithering);
+        }
+        apply_superpixel_color_processing(&mut regions, image, config);
+        log::info!("🎨 Color processing completed in: {:?}", phase_start.elapsed());
+    } else {
+        log::info!("🎨 Color processing SKIPPED - superpixel_preserve_colors is false");
+    }
 
     // 4. Generate SVG paths based on artistic mode
     let phase_start = Instant::now();
@@ -4537,6 +4915,10 @@ fn hex_to_rgba(hex: &str) -> Rgba<u8> {
     } else {
         Rgba([0, 0, 0, 255])
     }
+}
+
+fn rgba_to_hex(rgba: &Rgba<u8>) -> String {
+    format!("#{:02x}{:02x}{:02x}", rgba.0[0], rgba.0[1], rgba.0[2])
 }
 
 /// Calculate RGB distance between two colors

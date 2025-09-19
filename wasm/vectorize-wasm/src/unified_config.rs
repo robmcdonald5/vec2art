@@ -224,16 +224,61 @@ pub fn apply_config_json(
     // Apply color settings based on backend
     match config.backend {
         TraceBackend::Edge | TraceBackend::Centerline => {
-            // For line-based backends, use line_preserve_colors
+            // For line-based backends, use line_preserve_colors and color sampling
             builder = builder.line_preserve_colors(config.line_preserve_colors);
+            builder = builder.line_color_sampling(config.line_color_sampling.clone());
+            log::info!("   Line color sampling method: {:?}", config.line_color_sampling);
+            log::info!("   Line preserve colors: {}", config.line_preserve_colors);
+            log::info!("   Color accuracy: {}", config.line_color_accuracy);
+            log::info!("   Max colors per path: {}", config.max_colors_per_path);
+            log::info!("   Color tolerance: {}", config.color_tolerance);
+
+            // Apply additional color parameters
+            builder = builder
+                .line_color_accuracy(config.line_color_accuracy)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set color accuracy: {}", e)))?
+                .max_colors_per_path(config.max_colors_per_path)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set max colors: {}", e)))?
+                .color_tolerance(config.color_tolerance)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set color tolerance: {}", e)))?;
         }
         TraceBackend::Dots => {
             // For dots backend, use preserve_colors (which sets dot_preserve_colors)
             builder = builder.preserve_colors(config.dot_preserve_colors);
+            // Dots backend doesn't use color sampling method
         }
         TraceBackend::Superpixel => {
-            // For superpixel backend, use superpixel_preserve_colors
+            // For superpixel backend, use superpixel_preserve_colors and color sampling
             builder = builder.superpixel_preserve_colors(config.superpixel_preserve_colors);
+            // Superpixel also uses line_color_sampling for its color processing
+            builder = builder.line_color_sampling(config.line_color_sampling.clone());
+            log::info!("   Superpixel color sampling method: {:?}", config.line_color_sampling);
+            log::info!("   Superpixel preserve colors: {}", config.superpixel_preserve_colors);
+            log::info!("   Color accuracy: {}", config.line_color_accuracy);
+            log::info!("   Max colors per region: {}", config.max_colors_per_path);
+            log::info!("   Color tolerance: {}", config.color_tolerance);
+
+            // Apply additional color parameters that Superpixel uses
+            builder = builder
+                .line_color_accuracy(config.line_color_accuracy)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set color accuracy: {}", e)))?
+                .max_colors_per_path(config.max_colors_per_path)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set max colors: {}", e)))?
+                .color_tolerance(config.color_tolerance)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set color tolerance: {}", e)))?;
+
+            // Apply palette reduction settings for Superpixel
+            builder = builder
+                .enable_palette_reduction(config.enable_palette_reduction)
+                .palette_target_colors(config.palette_target_colors)
+                .map_err(|e| JsValue::from_str(&format!("Failed to set palette target colors: {}", e)))?
+                .palette_method(config.palette_method.clone())
+                .palette_dithering(config.palette_dithering);
+
+            log::info!("   - Palette reduction enabled: {}", config.enable_palette_reduction);
+            log::info!("   - Palette target colors: {}", config.palette_target_colors);
+            log::info!("   - Palette method: {:?}", config.palette_method);
+            log::info!("   - Palette dithering: {}", config.palette_dithering);
         }
     }
 

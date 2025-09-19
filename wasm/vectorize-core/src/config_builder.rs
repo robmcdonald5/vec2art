@@ -285,6 +285,18 @@ impl ConfigBuilder {
         Ok(self)
     }
 
+    /// Set the palette reduction method (Kmeans, Median, Octree)
+    pub fn palette_method(mut self, method: crate::algorithms::visual::color_processing::PaletteMethod) -> Self {
+        self.config.palette_method = method;
+        self
+    }
+
+    /// Enable or disable palette dithering
+    pub fn palette_dithering(mut self, enabled: bool) -> Self {
+        self.config.palette_dithering = enabled;
+        self
+    }
+
     /// Enable or disable adaptive dot sizing
     pub fn adaptive_sizing(mut self, enabled: bool) -> Self {
         self.config.dot_adaptive_sizing = enabled;

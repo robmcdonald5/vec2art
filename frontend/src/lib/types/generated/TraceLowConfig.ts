@@ -3,6 +3,7 @@ import type { BackgroundRemovalAlgorithm } from "./BackgroundRemovalAlgorithm";
 import type { ColorSamplingMethod } from "./ColorSamplingMethod";
 import type { DotShape } from "..\\..\\..\\..\\..\\wasm\\vectorize-wasm\\bindings\\DotShape";
 import type { GridPattern } from "..\\..\\..\\..\\..\\wasm\\vectorize-wasm\\bindings\\GridPattern";
+import type { PaletteMethod } from "./PaletteMethod";
 import type { SuperpixelInitPattern } from "./SuperpixelInitPattern";
 import type { TraceBackend } from "./TraceBackend";
 
@@ -274,6 +275,14 @@ enable_palette_reduction: boolean,
  * Target number of colors for palette reduction (2-50, default: 16)
  */
 palette_target_colors: number, 
+/**
+ * Palette reduction algorithm method (default: Kmeans)
+ */
+palette_method: PaletteMethod, 
+/**
+ * Enable dithering to improve color transitions (default: false)
+ */
+palette_dithering: boolean, 
 /**
  * Enable background removal pre-processing (default: false)
  */

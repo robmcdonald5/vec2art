@@ -24,8 +24,9 @@ export type DotShape = 'circle' | 'square' | 'diamond' | 'triangle';
 import type { ColorSamplingMethod } from './generated/ColorSamplingMethod';
 export type { ColorSamplingMethod } from './generated/ColorSamplingMethod';
 
-// Palette reduction methods
-export type PaletteMethod = 'kmeans' | 'median_cut' | 'octree';
+// Palette reduction methods (use generated types from WASM)
+import type { PaletteMethod } from './generated/PaletteMethod';
+export type { PaletteMethod } from './generated/PaletteMethod';
 
 // Hand-drawn presets
 export type HandDrawnPreset = 'none' | 'subtle' | 'medium' | 'strong' | 'sketchy' | 'custom';
@@ -168,6 +169,12 @@ export interface SuperpixelConfig extends CoreConfig {
 	superpixelSimplifyBoundaries: boolean;
 	superpixelBoundaryEpsilon: number; // 0.5-3.0
 	superpixelPreserveColors: boolean;
+
+	// Color processing (generic color settings for superpixel)
+	superpixelColorAccuracy?: number; // 0.0-1.0
+	superpixelMaxColorsPerRegion?: number; // 1-10
+	superpixelColorTolerance?: number; // 0.0-1.0
+	superpixelColorSampling?: ColorSamplingMethod;
 
 	// Region processing
 	superpixelMinRegionSize: number; // 1-100
@@ -641,7 +648,8 @@ export const SUPERPIXEL_METADATA: Record<string, ParameterMetadata> = {
 	superpixelCompactness: {
 		name: 'superpixelCompactness',
 		label: 'Region Complexity',
-		description: 'Controls the shape regularity of superpixel regions. Higher values create more circular regions.',
+		description:
+			'Controls the shape regularity of superpixel regions. Higher values create more circular regions.',
 		type: 'range',
 		min: 1.0,
 		max: 50.0,
@@ -781,7 +789,8 @@ export const SUPERPIXEL_METADATA: Record<string, ParameterMetadata> = {
 	noiseFilterRangeSigma: {
 		name: 'noiseFilterRangeSigma',
 		label: 'Range Sigma',
-		description: 'Controls how much difference in pixel values is allowed. Higher values preserve edges better.',
+		description:
+			'Controls how much difference in pixel values is allowed. Higher values preserve edges better.',
 		type: 'range',
 		min: 10.0,
 		max: 200.0,
@@ -822,6 +831,101 @@ export const SUPERPIXEL_METADATA: Record<string, ParameterMetadata> = {
 		category: 'color',
 		algorithms: ['superpixel'],
 		dependsOn: 'enableBackgroundRemoval'
+	},
+	enablePaletteReduction: {
+		name: 'enablePaletteReduction',
+		label: 'Palette Reduction',
+		description: 'Reduce the number of colors in the output to create a more stylized look.',
+		type: 'boolean',
+		category: 'color',
+		algorithms: ['superpixel'],
+		dependsOn: 'superpixelPreserveColors'
+	},
+	paletteTargetColors: {
+		name: 'paletteTargetColors',
+		label: 'Target Colors',
+		description: 'Maximum number of colors to keep in the palette.',
+		type: 'range',
+		min: 2,
+		max: 50,
+		step: 1,
+		category: 'color',
+		algorithms: ['superpixel'],
+		dependsOn: 'enablePaletteReduction'
+	},
+	paletteMethod: {
+		name: 'paletteMethod',
+		label: 'Reduction Method',
+		description: 'Algorithm used to reduce the color palette.',
+		type: 'select',
+		options: [
+			{ value: 'Kmeans', label: 'K-Means Clustering' },
+			{ value: 'MedianCut', label: 'Median Cut' },
+			{ value: 'Octree', label: 'Octree Quantization' }
+		],
+		category: 'color',
+		algorithms: ['superpixel'],
+		dependsOn: 'enablePaletteReduction'
+	},
+	paletteDithering: {
+		name: 'paletteDithering',
+		label: 'Enable Dithering',
+		description: 'Apply dithering to improve color transitions when using a reduced palette.',
+		type: 'boolean',
+		category: 'color',
+		algorithms: ['superpixel'],
+		dependsOn: 'enablePaletteReduction'
+	},
+	superpixelColorAccuracy: {
+		name: 'superpixelColorAccuracy',
+		label: 'Color Accuracy',
+		description: 'How accurately to match original colors in regions (0 = loose, 1 = exact).',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.05,
+		category: 'color',
+		algorithms: ['superpixel'],
+		dependsOn: 'superpixelPreserveColors'
+	},
+	superpixelMaxColorsPerRegion: {
+		name: 'superpixelMaxColorsPerRegion',
+		label: 'Colors Per Region',
+		description: 'Maximum number of colors allowed per superpixel region.',
+		type: 'range',
+		min: 1,
+		max: 10,
+		step: 1,
+		category: 'color',
+		algorithms: ['superpixel'],
+		dependsOn: 'superpixelPreserveColors'
+	},
+	superpixelColorTolerance: {
+		name: 'superpixelColorTolerance',
+		label: 'Color Tolerance',
+		description: 'Tolerance for color matching. Higher values group more similar colors together.',
+		type: 'range',
+		min: 0.0,
+		max: 1.0,
+		step: 0.05,
+		category: 'color',
+		algorithms: ['superpixel'],
+		dependsOn: 'superpixelPreserveColors'
+	},
+	superpixelColorSampling: {
+		name: 'superpixelColorSampling',
+		label: 'Color Sampling',
+		description: 'Method used to sample colors from the original image.',
+		type: 'select',
+		options: [
+			{ value: 'Adaptive', label: 'Adaptive' },
+			{ value: 'DominantColor', label: 'Dominant Color' },
+			{ value: 'GradientMapping', label: 'Gradient Mapping' },
+			{ value: 'ContentAware', label: 'Content Aware' }
+		],
+		category: 'color',
+		algorithms: ['superpixel'],
+		dependsOn: 'superpixelPreserveColors'
 	}
 };
 

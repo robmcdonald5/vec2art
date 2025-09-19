@@ -26,28 +26,50 @@
 
 	// Handle parameter changes
 	function handleParameterChange(name: string, value: any) {
+		console.log('[SuperpixelPanel] Parameter change:', name, '=', value);
 		const updates: any = { [name]: value };
 
-		// Handle color preserve checkbox sync
-		if (name === 'superpixelPreserveColors') {
-			updates.preserveColors = value; // Sync with base property
-		}
+		// No need to sync preserveColors - each algorithm has its own color preserve setting
+		// The config transformer handles the mapping appropriately
 
-		algorithmConfigStore.updateConfig('superpixel', updates);
+		algorithmConfigStore.updateCurrentConfig(updates);
+		console.log('[SuperpixelPanel] Config after update:', algorithmConfigStore.superpixel);
 	}
 
 	// Group parameters by category
-	const coreParams = []; // Empty - Region Count is in Quick Settings
+	const _coreParams = []; // Empty - Region Count is in Quick Settings
 	const styleParams = ['polygonMode', 'simplifyTolerance'];
-	const colorParams = ['superpixelPreserveColors'];
-	const advancedParams = ['iterations', 'colorImportance', 'spatialImportance', 'minRegionSize', 'mergeThreshold', 'enhanceEdges', 'preserveBoundaries'];
+	const colorParams = [
+		'superpixelPreserveColors',
+		'superpixelColorAccuracy',
+		'superpixelMaxColorsPerRegion',
+		'superpixelColorTolerance',
+		'superpixelColorSampling',
+		'enablePaletteReduction',
+		'paletteTargetColors',
+		'paletteMethod',
+		'paletteDithering'
+	];
+	const advancedParams = [
+		'iterations',
+		'colorImportance',
+		'spatialImportance',
+		'minRegionSize',
+		'mergeThreshold',
+		'enhanceEdges',
+		'preserveBoundaries'
+	];
 
 	// Parameter visibility logic - handles dependencies
 	function isParameterVisible(param: string): boolean {
 		const metadata = SUPERPIXEL_METADATA[param];
-		return metadata && (!metadata.dependsOn || (config[metadata.dependsOn] && (metadata.dependsOn ? isParameterVisible(metadata.dependsOn) : true)));
+		return (
+			metadata &&
+			(!metadata.dependsOn ||
+				(config[metadata.dependsOn] &&
+					(metadata.dependsOn ? isParameterVisible(metadata.dependsOn) : true)))
+		);
 	}
-
 </script>
 
 <div class="space-y-4">
@@ -60,7 +82,6 @@
 		expanded={preprocessingExpanded}
 		onToggle={() => (preprocessingExpanded = !preprocessingExpanded)}
 	/>
-
 
 	<!-- Pixel Properties -->
 	<ParameterSectionAdvanced

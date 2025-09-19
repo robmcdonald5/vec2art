@@ -30,6 +30,22 @@ pub enum ColorSamplingMethod {
     Adaptive,
 }
 
+/// Palette reduction method determines algorithm used for color clustering
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "generate-ts", derive(TS))]
+#[cfg_attr(
+    feature = "generate-ts",
+    ts(export, export_to = "../../../frontend/src/lib/types/generated/")
+)]
+pub enum PaletteMethod {
+    /// K-means clustering algorithm (balanced quality/speed)
+    Kmeans,
+    /// Median cut algorithm (fast, good for photographic images)
+    MedianCut,
+    /// Octree quantization (excellent quality, slower)
+    Octree,
+}
+
 /// Detailed color information for a path segment
 #[derive(Debug, Clone)]
 pub struct PathColorInfo {
@@ -651,8 +667,31 @@ pub fn rgba_to_hex(rgba: &Rgba<u8>) -> String {
     format!("#{:02X}{:02X}{:02X}", rgba.0[0], rgba.0[1], rgba.0[2])
 }
 
-/// Advanced K-means clustering for color palette reduction
+/// Advanced color palette reduction with multiple algorithm support
+pub fn reduce_color_palette_with_method(
+    colors: &[Rgba<u8>],
+    target_colors: usize,
+    tolerance: f32,
+    method: PaletteMethod,
+) -> Vec<Rgba<u8>> {
+    match method {
+        PaletteMethod::Kmeans => reduce_color_palette_kmeans(colors, target_colors, tolerance),
+        PaletteMethod::MedianCut => reduce_color_palette_median_cut(colors, target_colors, tolerance),
+        PaletteMethod::Octree => reduce_color_palette_octree(colors, target_colors, tolerance),
+    }
+}
+
+/// Advanced K-means clustering for color palette reduction (backward compatibility)
 pub fn reduce_color_palette(
+    colors: &[Rgba<u8>],
+    target_colors: usize,
+    tolerance: f32,
+) -> Vec<Rgba<u8>> {
+    reduce_color_palette_kmeans(colors, target_colors, tolerance)
+}
+
+/// K-means clustering algorithm for color palette reduction
+fn reduce_color_palette_kmeans(
     colors: &[Rgba<u8>],
     target_colors: usize,
     tolerance: f32,
@@ -768,6 +807,302 @@ fn remove_similar_colors(colors: &[Rgba<u8>], tolerance: f32) -> Vec<Rgba<u8>> {
     }
 
     unique_colors
+}
+
+/// Median cut algorithm for color palette reduction
+fn reduce_color_palette_median_cut(
+    colors: &[Rgba<u8>],
+    target_colors: usize,
+    _tolerance: f32,
+) -> Vec<Rgba<u8>> {
+    if colors.len() <= target_colors {
+        return colors.to_vec();
+    }
+
+    // Convert to RGB for easier processing
+    let mut rgb_colors: Vec<[u8; 3]> = colors.iter()
+        .map(|rgba| [rgba.0[0], rgba.0[1], rgba.0[2]])
+        .collect();
+
+    // Recursive median cut implementation
+    let result = median_cut_recursive(&mut rgb_colors, target_colors);
+
+    // Convert back to Rgba
+    result.into_iter()
+        .map(|rgb| Rgba([rgb[0], rgb[1], rgb[2], 255]))
+        .collect()
+}
+
+/// Recursive median cut implementation
+fn median_cut_recursive(colors: &mut [[u8; 3]], target_colors: usize) -> Vec<[u8; 3]> {
+    if target_colors <= 1 || colors.len() <= 1 {
+        if colors.is_empty() {
+            return vec![[0, 0, 0]];
+        }
+        // Return average color
+        let avg = calculate_average_rgb(colors);
+        return vec![avg];
+    }
+
+    // Find the channel with the largest range
+    let mut ranges = [0u8; 3];
+    for channel in 0..3 {
+        let min_val = colors.iter().map(|c| c[channel]).min().unwrap_or(0);
+        let max_val = colors.iter().map(|c| c[channel]).max().unwrap_or(0);
+        ranges[channel] = max_val.saturating_sub(min_val);
+    }
+
+    let split_channel = ranges.iter()
+        .enumerate()
+        .max_by_key(|(_, &range)| range)
+        .map(|(i, _)| i)
+        .unwrap_or(0);
+
+    // Sort by the channel with largest range
+    colors.sort_by_key(|color| color[split_channel]);
+
+    // Split at median
+    let mid = colors.len() / 2;
+    let (left, right) = colors.split_at_mut(mid);
+
+    // Recursively process both halves
+    let left_target = target_colors / 2;
+    let right_target = target_colors - left_target;
+
+    let mut result = median_cut_recursive(left, left_target);
+    result.extend(median_cut_recursive(right, right_target));
+    result
+}
+
+/// Calculate average RGB color
+fn calculate_average_rgb(colors: &[[u8; 3]]) -> [u8; 3] {
+    if colors.is_empty() {
+        return [0, 0, 0];
+    }
+
+    let mut sums = [0u32; 3];
+    for color in colors {
+        for i in 0..3 {
+            sums[i] += color[i] as u32;
+        }
+    }
+
+    let len = colors.len() as u32;
+    [
+        (sums[0] / len) as u8,
+        (sums[1] / len) as u8,
+        (sums[2] / len) as u8,
+    ]
+}
+
+/// Octree quantization algorithm for color palette reduction
+fn reduce_color_palette_octree(
+    colors: &[Rgba<u8>],
+    target_colors: usize,
+    _tolerance: f32,
+) -> Vec<Rgba<u8>> {
+    if colors.len() <= target_colors {
+        return colors.to_vec();
+    }
+
+    let mut octree = ColorOctree::new();
+
+    // Insert all colors into octree
+    for color in colors {
+        octree.insert([color.0[0], color.0[1], color.0[2]]);
+    }
+
+    // Reduce to target number of colors
+    let reduced_colors = octree.reduce_to(target_colors);
+
+    // Convert to Rgba
+    reduced_colors.into_iter()
+        .map(|rgb| Rgba([rgb[0], rgb[1], rgb[2], 255]))
+        .collect()
+}
+
+/// Simple octree node for color quantization
+#[derive(Debug)]
+struct OctreeNode {
+    /// Color sum for averaging
+    color_sum: [u32; 3],
+    /// Number of colors in this node
+    pixel_count: u32,
+    /// Child nodes (8 possible)
+    children: Vec<Option<Box<OctreeNode>>>,
+    /// Whether this is a leaf node
+    is_leaf: bool,
+    /// Depth level in tree
+    level: u8,
+}
+
+impl OctreeNode {
+    fn new(level: u8) -> Self {
+        Self {
+            color_sum: [0, 0, 0],
+            pixel_count: 0,
+            children: (0..8).map(|_| None).collect(),
+            is_leaf: level >= 7, // Leaf at depth 7
+            level,
+        }
+    }
+
+    fn insert(&mut self, color: [u8; 3]) {
+        if self.is_leaf {
+            self.color_sum[0] += color[0] as u32;
+            self.color_sum[1] += color[1] as u32;
+            self.color_sum[2] += color[2] as u32;
+            self.pixel_count += 1;
+        } else {
+            let index = self.get_octree_index(color);
+            if self.children[index].is_none() {
+                self.children[index] = Some(Box::new(OctreeNode::new(self.level + 1)));
+            }
+            if let Some(ref mut child) = self.children[index] {
+                child.insert(color);
+            }
+        }
+    }
+
+    fn get_octree_index(&self, color: [u8; 3]) -> usize {
+        let shift = 7 - self.level;
+        ((((color[0] >> shift) & 1) << 2) |
+         (((color[1] >> shift) & 1) << 1) |
+         ((color[2] >> shift) & 1)) as usize
+    }
+
+    fn get_average_color(&self) -> [u8; 3] {
+        if self.pixel_count == 0 {
+            [0, 0, 0]
+        } else {
+            [
+                (self.color_sum[0] / self.pixel_count) as u8,
+                (self.color_sum[1] / self.pixel_count) as u8,
+                (self.color_sum[2] / self.pixel_count) as u8,
+            ]
+        }
+    }
+
+    fn collect_colors(&self, colors: &mut Vec<[u8; 3]>) {
+        if self.is_leaf && self.pixel_count > 0 {
+            colors.push(self.get_average_color());
+        } else {
+            for child in &self.children {
+                if let Some(ref child_node) = child {
+                    child_node.collect_colors(colors);
+                }
+            }
+        }
+    }
+}
+
+/// Color octree for quantization
+#[derive(Debug)]
+struct ColorOctree {
+    root: OctreeNode,
+}
+
+impl ColorOctree {
+    fn new() -> Self {
+        Self {
+            root: OctreeNode::new(0),
+        }
+    }
+
+    fn insert(&mut self, color: [u8; 3]) {
+        self.root.insert(color);
+    }
+
+    fn reduce_to(&self, target_colors: usize) -> Vec<[u8; 3]> {
+        let mut colors = Vec::new();
+        self.root.collect_colors(&mut colors);
+
+        // If we have too many colors, use simple clustering to reduce further
+        if colors.len() > target_colors {
+            // Fallback to k-means for final reduction
+            let rgba_colors: Vec<Rgba<u8>> = colors.iter()
+                .map(|rgb| Rgba([rgb[0], rgb[1], rgb[2], 255]))
+                .collect();
+            let reduced = reduce_color_palette_kmeans(&rgba_colors, target_colors, 0.1);
+            reduced.iter()
+                .map(|rgba| [rgba.0[0], rgba.0[1], rgba.0[2]])
+                .collect()
+        } else {
+            colors
+        }
+    }
+}
+
+/// Apply dithering to color palette
+pub fn apply_dithering(
+    colors: &[Rgba<u8>],
+    palette: &[Rgba<u8>],
+    image_width: u32,
+    image_height: u32,
+) -> Vec<Rgba<u8>> {
+    let mut result = colors.to_vec();
+
+    // Floyd-Steinberg dithering
+    for y in 0..image_height {
+        for x in 0..image_width {
+            let idx = (y * image_width + x) as usize;
+            if idx >= result.len() {
+                continue;
+            }
+
+            let old_color = result[idx];
+            let new_color = find_closest_color(&old_color, palette);
+            result[idx] = new_color;
+
+            // Calculate error
+            let error = [
+                old_color.0[0] as i16 - new_color.0[0] as i16,
+                old_color.0[1] as i16 - new_color.0[1] as i16,
+                old_color.0[2] as i16 - new_color.0[2] as i16,
+            ];
+
+            // Distribute error to neighboring pixels
+            let neighbors = [
+                (x + 1, y, 7),     // Right
+                (x - 1, y + 1, 3), // Bottom-left
+                (x, y + 1, 5),     // Bottom
+                (x + 1, y + 1, 1), // Bottom-right
+            ];
+
+            for (nx, ny, weight) in neighbors {
+                if nx < image_width && ny < image_height {
+                    let neighbor_idx = (ny * image_width + nx) as usize;
+                    if neighbor_idx < result.len() {
+                        let factor = weight as f32 / 16.0;
+                        result[neighbor_idx] = Rgba([
+                            ((result[neighbor_idx].0[0] as i16 + (error[0] as f32 * factor) as i16).max(0).min(255)) as u8,
+                            ((result[neighbor_idx].0[1] as i16 + (error[1] as f32 * factor) as i16).max(0).min(255)) as u8,
+                            ((result[neighbor_idx].0[2] as i16 + (error[2] as f32 * factor) as i16).max(0).min(255)) as u8,
+                            result[neighbor_idx].0[3],
+                        ]);
+                    }
+                }
+            }
+        }
+    }
+
+    result
+}
+
+/// Find the closest color in a palette
+fn find_closest_color(color: &Rgba<u8>, palette: &[Rgba<u8>]) -> Rgba<u8> {
+    if palette.is_empty() {
+        return *color;
+    }
+
+    palette.iter()
+        .min_by(|a, b| {
+            let dist_a = calculate_color_distance(color, a);
+            let dist_b = calculate_color_distance(color, b);
+            dist_a.partial_cmp(&dist_b).unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .copied()
+        .unwrap_or(*color)
 }
 
 #[cfg(test)]

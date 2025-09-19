@@ -88,7 +88,14 @@
 						? 'dotPreserveColors'
 						: 'preserveColors';
 
-		algorithmConfigStore.updateConfig(currentAlgorithm, { [colorProperty]: value });
+		const updates: Record<string, any> = { [colorProperty]: value };
+
+		// Also sync to base preserveColors property for backend compatibility
+		if (colorProperty !== 'preserveColors') {
+			updates.preserveColors = value;
+		}
+
+		algorithmConfigStore.updateConfig(currentAlgorithm, updates);
 	}
 
 	// Special handler for dots backend detail/density mapping
