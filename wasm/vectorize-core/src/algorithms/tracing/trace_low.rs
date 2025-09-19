@@ -1885,7 +1885,7 @@ fn trace_centerline_skeleton_based(
     image: &ImageBuffer<Rgba<u8>, Vec<u8>>,
     config: &TraceLowConfig,
 ) -> Result<Vec<SvgPath>, VectorizeError> {
-    log::info!("Starting centerline tracing with Zhang-Suen thinning");
+    log::info!("Starting centerline tracing with Zhang-Suen thinning (skeleton-based approach)");
     let start_time = Instant::now();
 
     // Phase 1: Convert to grayscale

@@ -121,36 +121,10 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 		const vectorizer = new wasmModule.WasmVectorizer();
 
 		// ===== NEW UNIFIED CONFIG SYSTEM =====
-		// Debug: Log the config received before transformation
-		console.log('[Worker] 🔍 Config received before transformation:', {
-			algorithm: config.algorithm,
-			linePreserveColors: (config as any).linePreserveColors,
-			preserveColors: config.preserveColors,
-			superpixelColorSampling: (config as any).superpixelColorSampling,
-			superpixelColorAccuracy: (config as any).superpixelColorAccuracy,
-			superpixelMaxColorsPerRegion: (config as any).superpixelMaxColorsPerRegion,
-			superpixelColorTolerance: (config as any).superpixelColorTolerance,
-			allKeys: Object.keys(config),
-			fullConfig: config
-		});
 
 		// Transform frontend config to WASM format
 		const wasmConfig = toWasmConfig(config);
 
-		// Debug: Log the transformed WASM config
-		console.log('[Worker] 🔍 WASM config after transformation:', {
-			backend: wasmConfig.backend,
-			line_preserve_colors: wasmConfig.line_preserve_colors,
-			line_color_sampling: wasmConfig.line_color_sampling,
-			line_color_accuracy: wasmConfig.line_color_accuracy,
-			max_colors_per_path: wasmConfig.max_colors_per_path,
-			color_tolerance: wasmConfig.color_tolerance,
-			dot_preserve_colors: wasmConfig.dot_preserve_colors,
-			superpixel_preserve_colors: wasmConfig.superpixel_preserve_colors,
-			dot_size_variation: wasmConfig.dot_size_variation,
-			enable_palette_reduction: wasmConfig.enable_palette_reduction,
-			palette_target_colors: wasmConfig.palette_target_colors
-		});
 
 		// Additional debug logging for dots parameters
 		if (config.algorithm === 'dots') {
@@ -323,36 +297,6 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 					}
 				}
 
-				// Apply Centerline backend specific settings
-				if (config.algorithm === 'centerline') {
-					// Centerline-specific multipass settings
-					if (config.passCount !== undefined) {
-						vectorizer.set_multipass(config.passCount > 1);
-					}
-					if (config.passCount !== undefined && config.passCount > 0) {
-						vectorizer.set_pass_count(config.passCount);
-					}
-					if (config.minBranchLength !== undefined) {
-						console.log('[Worker] 📐 Setting min_branch_length:', config.minBranchLength);
-						vectorizer.set_min_branch_length(config.minBranchLength);
-					}
-
-					if (config.enableAdaptiveThreshold !== undefined) {
-						console.log(
-							'[Worker] 📐 Setting enable_adaptive_threshold:',
-							config.enableAdaptiveThreshold
-						);
-						vectorizer.set_enable_adaptive_threshold(config.enableAdaptiveThreshold);
-					}
-					if (config.adaptiveThresholdWindowSize !== undefined) {
-						console.log('[Worker] 📐 Setting window_size:', config.adaptiveThresholdWindowSize);
-						vectorizer.set_window_size(config.adaptiveThresholdWindowSize);
-					}
-					if (config.adaptiveThresholdK !== undefined) {
-						console.log('[Worker] 📐 Setting sensitivity_k:', config.adaptiveThresholdK);
-						vectorizer.set_sensitivity_k(config.adaptiveThresholdK);
-					}
-				}
 
 				// Apply Superpixel backend specific settings
 				if (config.algorithm === 'superpixel') {
@@ -531,6 +475,36 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 		} catch (error) {
 			console.error('[Worker] ❌ Error applying config:', error);
 			// Continue with processing even if unified config fails
+		}
+
+		// Apply Centerline backend specific settings (outside unified config)
+		if (config.algorithm === 'centerline') {
+			// Centerline-specific multipass settings
+			if (config.passCount !== undefined) {
+				vectorizer.set_multipass(config.passCount > 1);
+			}
+			if (config.passCount !== undefined && config.passCount > 0) {
+				vectorizer.set_pass_count(config.passCount);
+			}
+
+			// Main centerline parameters
+			if (wasmConfig.min_branch_length !== undefined) {
+				vectorizer.set_min_branch_length(wasmConfig.min_branch_length);
+			}
+			if (wasmConfig.douglas_peucker_epsilon !== undefined) {
+				vectorizer.set_douglas_peucker_epsilon(wasmConfig.douglas_peucker_epsilon);
+			}
+
+			// Adaptive threshold settings
+			if (config.enableAdaptiveThreshold !== undefined) {
+				vectorizer.set_enable_adaptive_threshold(config.enableAdaptiveThreshold);
+			}
+			if (config.adaptiveThresholdWindowSize !== undefined) {
+				vectorizer.set_window_size(config.adaptiveThresholdWindowSize);
+			}
+			if (config.adaptiveThresholdK !== undefined) {
+				vectorizer.set_sensitivity_k(config.adaptiveThresholdK);
+			}
 		}
 
 		console.log('[Worker] ✅ Config applied to vectorizer, starting processing...');

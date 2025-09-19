@@ -241,8 +241,14 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 				: 0.4,
 		adaptive_threshold_use_optimized: true,
 		enable_width_modulation: false,
-		min_branch_length: 8.0,
-		douglas_peucker_epsilon: 1.5,
+		min_branch_length:
+			config.algorithm === 'centerline'
+				? ((config as CenterlineConfig).minBranchLength ?? 8.0)
+				: 8.0,
+		douglas_peucker_epsilon:
+			config.algorithm === 'centerline'
+				? ((config as CenterlineConfig).douglasPeuckerEpsilon ?? 1.5)
+				: 1.5,
 		enable_distance_transform_centerline: false,
 
 		// Superpixel backend specific
