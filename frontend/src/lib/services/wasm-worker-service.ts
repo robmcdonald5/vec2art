@@ -295,7 +295,7 @@ export class WasmWorkerService {
 			const megapixels = pixelCount / 1_000_000;
 			const isLargeImage = megapixels > 10; // 10MP+ is considered large
 			const isVeryLargeImage = megapixels > 20; // 20MP+ is very large
-			let processingTimeoutMs = 60000; // Default 60 seconds
+			let _processingTimeoutMs = 60000; // Default 60 seconds
 
 			// Processing image
 
@@ -343,7 +343,7 @@ export class WasmWorkerService {
 				}
 
 				// Set processing timeout for large images (separate from config)
-				processingTimeoutMs = 300000; // 5 minutes
+				const _processingTimeoutMs = 300000; // 5 minutes
 				console.log('[WasmWorkerService]  Extended processing timeout for large image');
 			}
 
@@ -375,7 +375,6 @@ export class WasmWorkerService {
 			// Set progress callback
 			this.progressCallback = onProgress || null;
 
-
 			// Serialize config to plain object (removes Proxy wrapper from Svelte stores)
 			const plainConfig = JSON.parse(JSON.stringify(config));
 
@@ -384,7 +383,6 @@ export class WasmWorkerService {
 			if (plainConfig.algorithm === 'edge' && plainConfig.passCount === undefined) {
 				plainConfig.passCount = 1;
 			}
-
 
 			// Send processing request to worker
 			const result = await this.sendMessage('process', {
@@ -479,7 +477,6 @@ export class WasmWorkerService {
 				};
 
 				try {
-
 					// Force worker restart for clean state
 					await this.handleCriticalError(error);
 

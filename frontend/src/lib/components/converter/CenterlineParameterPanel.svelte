@@ -65,9 +65,25 @@
 	}
 
 	// Group parameters by category (excluding preprocessing which is handled by shared component)
-	const layerProcessingParams = ['passCount', 'minBranchLength', 'enableAdaptiveThreshold', 'enableWidthModulation', 'widthMultiplier'];
-	const colorOptionsParams = ['linePreserveColors', 'lineColorAccuracy', 'maxColorsPerPath', 'colorTolerance'];
-	const artisticParams = ['handDrawnPreset', 'handDrawnVariableWeights', 'handDrawnTremorStrength', 'handDrawnTapering'];
+	const layerProcessingParams = [
+		'passCount',
+		'minBranchLength',
+		'enableAdaptiveThreshold',
+		'enableWidthModulation',
+		'widthMultiplier'
+	];
+	const colorOptionsParams = [
+		'linePreserveColors',
+		'lineColorAccuracy',
+		'maxColorsPerPath',
+		'colorTolerance'
+	];
+	const artisticParams = [
+		'handDrawnPreset',
+		'handDrawnVariableWeights',
+		'handDrawnTremorStrength',
+		'handDrawnTapering'
+	];
 </script>
 
 <div class="space-y-4">

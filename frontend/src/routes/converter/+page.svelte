@@ -25,7 +25,7 @@
 	import { converterState } from '$lib/stores/converter-state.svelte';
 	import { wasmWorkerService } from '$lib/services/wasm-worker-service';
 	import type { ProcessingProgress, ProcessingResult } from '$lib/workers/vectorizer.worker';
-	import type { AlgorithmConfig } from '$lib/types/algorithm-configs';
+	// import type { AlgorithmConfig } from '$lib/types/algorithm-configs';
 
 	// UI State Management - Using Svelte 5 runes (adapted from original sophisticated structure)
 	let files = $state<File[]>([]);
@@ -407,7 +407,7 @@
 		pendingDownloadData = null;
 	}
 
-	function handleDownloadWebP(filename: string, svgContent: string) {
+	function handleDownloadWebP(_filename: string, _svgContent: string) {
 		// TODO: Implement WebP conversion
 		toastStore.add('WebP conversion not yet implemented', { type: 'info' });
 		showDownloadSelector = false;

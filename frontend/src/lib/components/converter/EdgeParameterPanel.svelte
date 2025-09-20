@@ -1,6 +1,6 @@
 <script lang="ts">
 	import {
-		Check, // For checkmark indicators
+		// Check, // For checkmark indicators (unused)
 		Layers, // For Layer Processing
 		Palette, // For Color Controls
 		Sparkles, // For Advanced Processing
@@ -9,7 +9,7 @@
 	import FerrariParameterControl from '$lib/components/ui/FerrariParameterControl.svelte';
 	import ParameterSectionAdvanced from '$lib/components/ui/ParameterSectionAdvanced.svelte';
 	import PreprocessingSection from './PreprocessingSection.svelte';
-	import PortalTooltipFixed from '$lib/components/ui/tooltip/PortalTooltipFixed.svelte';
+	// import PortalTooltipFixed from '$lib/components/ui/tooltip/PortalTooltipFixed.svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 	import { EDGE_METADATA } from '$lib/types/algorithm-configs';
 

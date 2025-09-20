@@ -2,8 +2,8 @@
 	import {
 		Layers, // For Dot Geometry
 		Brush, // For Dot Style
-		Palette, // For Color Options
-		Settings // For Advanced Settings
+		Palette // For Color Options
+		// Settings // For Advanced Settings (unused for now)
 	} from 'lucide-svelte';
 	import ParameterSectionAdvanced from '$lib/components/ui/ParameterSectionAdvanced.svelte';
 	import PreprocessingSection from './PreprocessingSection.svelte';
@@ -21,7 +21,7 @@
 	let coreExpanded = $state(true);
 	let dotStyleExpanded = $state(false);
 	let colorExpanded = $state(false);
-	let advancedExpanded = $state(false);
+	let _advancedExpanded = $state(false);
 
 	// Get config from store
 	const config = $derived(algorithmConfigStore.dots) as any;

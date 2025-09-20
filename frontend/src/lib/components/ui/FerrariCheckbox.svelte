@@ -5,7 +5,7 @@
 		id?: string;
 		label?: string;
 		description?: string;
-		onchange?: (checked: boolean) => void;
+		onchange?: (_checked: boolean) => void;
 		class?: string;
 	}
 

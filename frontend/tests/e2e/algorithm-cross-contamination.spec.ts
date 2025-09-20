@@ -4,11 +4,11 @@ import path from 'path';
 
 test.describe('Algorithm Cross-Contamination Prevention', () => {
 	let converterPage: ConverterPage;
-	let consoleErrors: string[];
+	let _consoleErrors: string[];
 
 	test.beforeEach(async ({ page }) => {
 		converterPage = new ConverterPage(page);
-		consoleErrors = setupConsoleErrorTracking(page);
+		_consoleErrors = setupConsoleErrorTracking(page);
 
 		// Navigate to the converter page
 		await page.goto('http://localhost:5175/converter');
@@ -212,7 +212,7 @@ test.describe('Algorithm Cross-Contamination Prevention', () => {
 			await page.waitForTimeout(1000);
 
 			// Verify algorithm-specific controls are visible
-			const algorithmSpecificControls = page.locator(`[data-testid*="${algorithm.name}"]`);
+			const _algorithmSpecificControls = page.locator(`[data-testid*="${algorithm.name}"]`);
 
 			// Run conversion to ensure no cross-contamination
 			await page.click('[data-testid="convert-button"]');

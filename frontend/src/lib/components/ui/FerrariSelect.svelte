@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ChevronDown } from 'lucide-svelte';
 	import { onMount } from 'svelte';
-	import { computePosition, flip, shift, autoUpdate } from '@floating-ui/dom';
+	import { computePosition, flip, shift } from '@floating-ui/dom';
 
 	interface SelectOption {
 		value: string;
@@ -17,7 +17,7 @@
 		id?: string;
 		label?: string;
 		description?: string;
-		onchange?: (value: string) => void;
+		onchange?: (_value: string) => void;
 		class?: string;
 	}
 
@@ -35,14 +35,13 @@
 
 	let isOpen = $state(false);
 	let selectedOption = $derived(options.find((opt) => opt.value === value));
-	let dropdownElement: HTMLDivElement;
-	let triggerElement: HTMLButtonElement;
-	let cleanupAutoUpdate: (() => void) | null = null;
+	let dropdownElement = $state<HTMLDivElement>();
+	let triggerElement = $state<HTMLButtonElement>();
 
 	// Keep track of elements we've modified overflow on
 	let modifiedElements: Element[] = [];
 
-	async function updatePosition() {
+	async function _updatePosition() {
 		if (!triggerElement || !dropdownElement) return;
 
 		const { x, y } = await computePosition(triggerElement, dropdownElement, {
@@ -152,11 +151,8 @@
 		document.addEventListener('click', handleClickOutside);
 		return () => {
 			document.removeEventListener('click', handleClickOutside);
-			// Cleanup overflow modifications and auto-update when component unmounts
+			// Cleanup overflow modifications when component unmounts
 			manageParentOverflow(false);
-			if (cleanupAutoUpdate) {
-				cleanupAutoUpdate();
-			}
 		};
 	});
 </script>

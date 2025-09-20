@@ -204,6 +204,11 @@ export function validateForAlgorithm(config: AlgorithmConfig): string[] {
 export function stripUIFields(
 	config: AlgorithmConfig
 ): Omit<AlgorithmConfig, 'autoProcess' | 'previewQuality' | 'settingsExpanded'> {
-	const { autoProcess, previewQuality, settingsExpanded, ...wasmConfig } = config;
+	const {
+		autoProcess: _autoProcess,
+		previewQuality: _previewQuality,
+		settingsExpanded: _settingsExpanded,
+		...wasmConfig
+	} = config;
 	return wasmConfig;
 }

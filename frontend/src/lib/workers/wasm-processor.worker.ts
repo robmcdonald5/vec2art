@@ -125,7 +125,6 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 		// Transform frontend config to WASM format
 		const wasmConfig = toWasmConfig(config);
 
-
 		// Additional debug logging for dots parameters
 		if (config.algorithm === 'dots') {
 			// First, check if dotShape exists anywhere in the config
@@ -296,7 +295,6 @@ async function processImage(imageData: ImageData, config: AlgorithmConfig): Prom
 						}
 					}
 				}
-
 
 				// Apply Superpixel backend specific settings
 				if (config.algorithm === 'superpixel') {

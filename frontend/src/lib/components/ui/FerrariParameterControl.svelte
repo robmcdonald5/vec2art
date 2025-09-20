@@ -9,7 +9,7 @@
 		name: string;
 		value: any;
 		metadata: ParameterMetadata;
-		onChange: (newValue: any) => void;
+		onChange: (_newValue: any) => void;
 		disabled?: boolean;
 		showTooltip?: boolean;
 		class?: string;

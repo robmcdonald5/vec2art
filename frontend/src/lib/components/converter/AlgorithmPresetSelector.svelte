@@ -115,7 +115,7 @@
 	</div>
 
 	<div class="grid grid-cols-3 gap-2">
-		{#each presets as preset}
+		{#each presets as preset (preset.id)}
 			<button
 				type="button"
 				onclick={() => applyPreset(preset.id)}

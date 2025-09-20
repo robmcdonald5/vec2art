@@ -36,7 +36,7 @@ export function throttle<T extends (...args: any[]) => any>(
 ): (...args: Parameters<T>) => void {
 	let inThrottle = false;
 
-	return function executedFunction(...args: Parameters<T>) {
+	return function executedFunction(this: any, ...args: Parameters<T>) {
 		if (!inThrottle) {
 			func.apply(this, args);
 			inThrottle = true;
@@ -107,8 +107,9 @@ export function isMobileDevice(): boolean {
  * Check if device is touch-capable
  */
 export function isTouchDevice(): boolean {
-	return typeof window !== 'undefined' &&
-		('ontouchstart' in window || navigator.maxTouchPoints > 0);
+	return (
+		typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+	);
 }
 
 /**
@@ -117,20 +118,23 @@ export function isTouchDevice(): boolean {
 export function requestIdleCallback(
 	callback: () => void,
 	options?: { timeout?: number }
-): number {
-	if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-		return (window as any).requestIdleCallback(callback, options);
+): ReturnType<typeof setTimeout> {
+	if (typeof window !== 'undefined') {
+		if ('requestIdleCallback' in window) {
+			return (window as any).requestIdleCallback(callback, options);
+		}
+		// Fallback for Safari and older browsers
+		const timeout = options?.timeout || 1;
+		return setTimeout(callback, timeout);
 	}
-
-	// Fallback for Safari and older browsers
-	const timeout = options?.timeout || 1;
-	return window.setTimeout(callback, timeout);
+	// Server-side fallback
+	return 0 as unknown as ReturnType<typeof setTimeout>;
 }
 
 /**
  * Cancel idle callback with fallback
  */
-export function cancelIdleCallback(id: number): void {
+export function cancelIdleCallback(id: ReturnType<typeof setTimeout>): void {
 	if (typeof window !== 'undefined' && 'cancelIdleCallback' in window) {
 		(window as any).cancelIdleCallback(id);
 	} else {

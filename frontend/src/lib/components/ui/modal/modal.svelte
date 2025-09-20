@@ -103,7 +103,7 @@
 		};
 	}
 
-	function handleBackdropClick(e: MouseEvent) {
+	function handleBackdropClick(_e: MouseEvent) {
 		onClose();
 	}
 
@@ -129,13 +129,17 @@
 		tabindex="-1"
 	>
 		<!-- Backdrop -->
-		<div class="absolute inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true" onclick={handleBackdropClick}></div>
+		<div
+			class="absolute inset-0 bg-black/80 backdrop-blur-sm"
+			aria-hidden="true"
+			onclick={handleBackdropClick}
+		></div>
 
 		<!-- Modal Content -->
 		<div
 			class="relative max-h-[90vh] w-full max-w-6xl overflow-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-900 {className}"
 			transition:scale={{ duration: 200, start: 0.95 }}
-			onclick={(e) => e.stopPropagation()}
+			onclick={(_e) => _e.stopPropagation()}
 		>
 			<!-- Header with title if provided -->
 			{#if title}

@@ -12,7 +12,7 @@ import type { BackgroundRemovalAlgorithm } from './generated/BackgroundRemovalAl
 import type { ColorSamplingMethod } from './generated/ColorSamplingMethod';
 import type { DotShape } from './generated/DotShape';
 import type { GridPattern } from './generated/GridPattern';
-import type { SuperpixelInitPattern } from './generated/SuperpixelInitPattern';
+// import type { SuperpixelInitPattern } from './generated/SuperpixelInitPattern';
 import type {
 	AlgorithmConfig,
 	EdgeConfig,
@@ -112,7 +112,7 @@ export function toWasmConfig(config: AlgorithmConfig): TraceLowConfig {
 		detail:
 			config.algorithm === 'centerline'
 				? ((config.detail ?? 5.0) - 1) * 0.1 + 0.1 // Maps 1→0.1, 10→1.0 for centerline
-				: config.detail ?? 5.0, // Direct mapping for edge and other algorithms
+				: (config.detail ?? 5.0), // Direct mapping for edge and other algorithms
 		stroke_px_at_1080p: config.strokeWidth ?? 1.5,
 
 		// Multi-pass processing

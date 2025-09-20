@@ -14,8 +14,8 @@
 		parameters: string[];
 		config: Record<string, any>;
 		metadata: Record<string, any>;
-		onParameterChange: (name: string, value: any) => void;
-		isParameterVisible?: (param: string) => boolean;
+		onParameterChange: (_name: string, _value: any) => void;
+		isParameterVisible?: (_param: string) => boolean;
 		disabled?: boolean;
 		customParameterRenderer?: Record<string, any>; // For special parameter rendering
 	}
@@ -125,7 +125,7 @@
 											<div
 												class="ml-6 space-y-3 border-l-2 border-blue-100 pl-2 dark:border-blue-900"
 											>
-												{#each renderer.subControls as subParam}
+												{#each renderer.subControls as subParam (subParam)}
 													{#if metadata[subParam]}
 														<FerrariParameterControl
 															name={subParam}

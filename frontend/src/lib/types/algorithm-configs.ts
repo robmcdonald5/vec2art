@@ -676,7 +676,8 @@ export const SUPERPIXEL_METADATA: Record<string, ParameterMetadata> = {
 	iterations: {
 		name: 'iterations',
 		label: 'Iterations',
-		description: 'Number of SLIC algorithm iterations. More iterations improve boundary accuracy (1=fast, 5=default, 10=high quality).',
+		description:
+			'Number of SLIC algorithm iterations. More iterations improve boundary accuracy (1=fast, 5=default, 10=high quality).',
 		type: 'range',
 		min: 1,
 		max: 15,
@@ -943,7 +944,8 @@ export const SUPERPIXEL_METADATA: Record<string, ParameterMetadata> = {
 	superpixelSimplifyBoundaries: {
 		name: 'superpixelSimplifyBoundaries',
 		label: 'Simplify Boundaries',
-		description: 'Simplify region boundaries for smoother appearance (your old Simplify Boundaries setting).',
+		description:
+			'Simplify region boundaries for smoother appearance (your old Simplify Boundaries setting).',
 		type: 'boolean',
 		category: 'style',
 		algorithms: ['superpixel']
@@ -984,7 +986,8 @@ export const SUPERPIXEL_METADATA: Record<string, ParameterMetadata> = {
 	superpixelMinRegionSize: {
 		name: 'superpixelMinRegionSize',
 		label: 'Min Region Size',
-		description: 'Minimum size for regions in pixels. Smaller regions are merged for cleaner output.',
+		description:
+			'Minimum size for regions in pixels. Smaller regions are merged for cleaner output.',
 		type: 'range',
 		min: 1,
 		max: 500,

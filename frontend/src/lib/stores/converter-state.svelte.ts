@@ -393,9 +393,7 @@ export class ConverterStateStore {
 				);
 			}
 
-			console.log(
-				`[ConverterStateStore]  Processing completed in ${result.processing_time_ms}ms`
-			);
+			console.log(`[ConverterStateStore]  Processing completed in ${result.processing_time_ms}ms`);
 			return result;
 		} catch (error) {
 			const processingError = error as VectorizerError;

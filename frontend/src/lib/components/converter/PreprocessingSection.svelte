@@ -6,7 +6,7 @@
 	interface Props {
 		config: any;
 		metadata: Record<string, ParameterMetadata>;
-		onParameterChange: (name: string, value: any) => void;
+		onParameterChange: (_name: string, _value: any) => void;
 		disabled?: boolean;
 		expanded?: boolean;
 		onToggle?: () => void;

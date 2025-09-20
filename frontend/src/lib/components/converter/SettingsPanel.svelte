@@ -3,11 +3,11 @@
 		Settings,
 		Sliders,
 		ChevronDown,
-		ChevronUp,
-		Eye,
-		PenTool,
-		Puzzle,
-		Droplets
+		ChevronUp
+		// Eye,
+		// PenTool,
+		// Puzzle,
+		// Droplets
 	} from 'lucide-svelte';
 	import { algorithmConfigStore } from '$lib/stores/algorithm-config-store.svelte';
 
