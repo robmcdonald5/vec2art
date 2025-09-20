@@ -443,8 +443,11 @@
 		currentImageIndex = 0;
 		currentProgress = undefined;
 
-		toastStore.add('All files cleared', { type: 'info' });
-		announceToScreenReader('All files cleared');
+		// Reset algorithm configurations to defaults
+		algorithmConfigStore.resetAllConfigs();
+
+		toastStore.add('All files and settings cleared', { type: 'info' });
+		announceToScreenReader('All files and settings cleared');
 	}
 
 	// Error boundary handlers

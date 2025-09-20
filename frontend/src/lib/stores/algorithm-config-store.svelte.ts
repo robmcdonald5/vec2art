@@ -25,7 +25,7 @@ import type {
 const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 	edge: {
 		algorithm: 'edge',
-		detail: 0.5,
+		detail: 0.8,
 		strokeWidth: 1.2,
 		preserveColors: false,
 		passCount: 1,
@@ -140,23 +140,23 @@ const DEFAULT_CONFIGS: Record<AlgorithmType, AlgorithmConfig> = {
 		algorithm: 'dots',
 		detail: 0.5,
 		strokeWidth: 1.0,
-		preserveColors: false, // Base color preservation property from CoreConfig
+		preserveColors: true, // Base color preservation property from CoreConfig
 		dotDensityThreshold: 0.1,
-		dotDensity: 5, // UI scale (1-10), corresponds to medium density
+		dotDensity: 8, // UI scale (1-10), corresponds to high density
 		dotSpacing: 5.0,
 		dotPoissonDiskSampling: false,
 		dotGridPattern: 'random',
-		dotMinRadius: 0.5,
-		minRadius: 0.5, // Alias for dotMinRadius (UI compatibility)
-		dotMaxRadius: 3.0,
-		maxRadius: 3.0, // Alias for dotMaxRadius (UI compatibility)
-		dotSizingMode: 'adaptive', // Default to adaptive sizing
-		dotAdaptiveSizing: true,
-		adaptiveSizing: true, // Alias for dotAdaptiveSizing (UI compatibility)
-		dotGradientBasedSizing: false,
+		dotMinRadius: 0.3,
+		minRadius: 0.3, // Alias for dotMinRadius (UI compatibility)
+		dotMaxRadius: 1.5,
+		maxRadius: 1.5, // Alias for dotMaxRadius (UI compatibility)
+		dotSizingMode: 'gradient', // Default to gradient-based sizing
+		dotAdaptiveSizing: false,
+		adaptiveSizing: false, // Alias for dotAdaptiveSizing (UI compatibility)
+		dotGradientBasedSizing: true,
 		dotSizeVariation: 0,
 		sizeVariation: 0, // Alias for dotSizeVariation (UI compatibility)
-		dotPreserveColors: false,
+		dotPreserveColors: true,
 		dotColorSampling: 'Adaptive',
 		dotColorAccuracy: 0.7,
 		dotMaxColorsPerDot: 5,
