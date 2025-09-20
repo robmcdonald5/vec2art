@@ -56,15 +56,15 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 			'Content-Security-Policy',
 			[
 				"default-src 'self'",
-				"script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data:", // Allow WASM and workers
+				"script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://challenges.cloudflare.com", // Allow WASM, workers, and Turnstile
 				"worker-src 'self' blob: data:", // Required for Web Workers
 				"object-src 'none'",
 				"style-src 'self' 'unsafe-inline'", // Allow inline styles
 				"img-src 'self' data: blob: https:", // Allow images
 				"font-src 'self' data:",
-				"connect-src 'self' https: wss: ws:", // Allow API connections
+				"connect-src 'self' https: wss: ws: https://challenges.cloudflare.com", // Allow API connections and Turnstile
 				"media-src 'self' blob: data:",
-				"frame-src 'none'",
+				"frame-src 'self' https://challenges.cloudflare.com", // Allow Turnstile iframe
 				"base-uri 'self'"
 			].join('; ')
 		);
