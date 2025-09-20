@@ -141,7 +141,33 @@ export class WasmWorkerService {
 			});
 
 			if (!result.success) {
-				throw new Error(result.error || 'WASM initialization failed');
+				// Enhanced error messaging for mobile memory issues
+				const errorMsg = result.error || 'WASM initialization failed';
+
+				if (errorMsg.includes('memory') || errorMsg.includes('Out of memory')) {
+					const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+					const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+						navigator.userAgent.toLowerCase()
+					);
+
+					if (isIOS) {
+						throw new Error(
+							'Memory limit reached on iOS Safari. Please try: ' +
+								'1) Close other browser tabs, ' +
+								'2) Clear Safari cache (Settings > Safari > Clear History), or ' +
+								'3) Use a desktop browser for better performance.'
+						);
+					} else if (isMobile) {
+						throw new Error(
+							'Memory limit reached on mobile browser. Please try: ' +
+								'1) Close other apps and browser tabs, ' +
+								'2) Restart your browser, or ' +
+								'3) Use a desktop browser for larger images.'
+						);
+					}
+				}
+
+				throw new Error(errorMsg);
 			}
 
 			this.isInitialized = true;

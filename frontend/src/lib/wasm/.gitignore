@@ -1,1 +1,13 @@
-*
+# Ignore generated WASM files
+*.wasm
+*.wasm.d.ts
+vectorize_wasm.js
+vectorize_wasm.d.ts
+vectorize_wasm_bg.wasm
+vectorize_wasm_bg.wasm.d.ts
+__wbindgen_placeholder__.js
+snippets/
+
+# Allow TypeScript source files
+!*.ts
+!package.json

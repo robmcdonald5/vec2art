@@ -12,6 +12,7 @@
 // Dynamic imports cause workers to load 404 HTML pages in Vercel production builds
 // This addresses GPT's analysis of "dev OK, Vercel broken" worker pattern
 import init, * as wasmModule from '../wasm/vectorize_wasm.js';
+import { createAdaptiveMemory, isMobileDevice, getMemoryStats } from '../wasm/wasm-memory-init';
 
 // Import vectorizer configuration types
 import type { AlgorithmConfig } from '../types/algorithm-configs';
@@ -89,8 +90,19 @@ async function initializeWasm(): Promise<void> {
 	try {
 		console.log('[Worker] 🔧 Initializing WASM module...');
 
-		// Initialize WASM
-		_wasmInstance = await init();
+		// Detect device type for adaptive memory
+		const isMobile = isMobileDevice();
+		console.log(`[Worker] 📱 Device type: ${isMobile ? 'Mobile' : 'Desktop'}`);
+
+		// Create adaptive memory configuration
+		const memory = createAdaptiveMemory();
+
+		// Log memory configuration
+		const stats = getMemoryStats(memory);
+		console.log(`[Worker] 💾 Memory allocated: ${stats.totalMB.toFixed(0)}MB max`);
+
+		// Initialize WASM with adaptive memory
+		_wasmInstance = await init({ memory });
 
 		console.log('[Worker]  WASM module initialized successfully');
 		console.log('[Worker] 📋 Available WASM exports:', Object.keys(wasmModule));
@@ -98,6 +110,15 @@ async function initializeWasm(): Promise<void> {
 		wasmInitialized = true;
 	} catch (error) {
 		console.error('[Worker]  WASM initialization failed:', error);
+
+		// Provide helpful error message for mobile users
+		if (isMobileDevice() && error instanceof Error && error.message.includes('memory')) {
+			throw new Error(
+				'Memory allocation failed on mobile device. ' +
+					'Please try closing other browser tabs or using a desktop browser for larger images.'
+			);
+		}
+
 		throw new Error(`WASM initialization failed: ${error}`);
 	}
 }
