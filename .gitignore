@@ -26,10 +26,12 @@
 # Rust backup files
 **/*.rs.bk
 
-# WASM generated files  
-**/pkg/
-**/*.wasm
-**/*.wasm.d.ts
+# WASM generated files
+# NOTE: pkg directory needs to be committed for Vercel deployment
+# Uncomment these lines if you want to exclude WASM build artifacts from git
+# **/pkg/
+# **/*.wasm
+# **/*.wasm.d.ts
 
 # ===========================
 # TEST & OUTPUT FILES
