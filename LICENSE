@@ -1,0 +1,150 @@
+CUSTOM NON-COMMERCIAL LICENSE
+Version 1.0, January 2025
+
+Copyright (c) 2025 Joshua McDonald
+All Rights Reserved.
+
+DEFINITIONS
+
+"Software" means the vec2art application, including all source code, object code,
+documentation, and associated materials in this repository.
+
+"Commercial Use" means any use of the Software that directly or indirectly results
+in financial gain, including but not limited to: selling the Software, using the
+Software to provide paid services, incorporating the Software into commercial
+products, or using the Software in a business context.
+
+"Personal Use" means use of the Software by an individual for personal purposes,
+learning, evaluation, or educational activities in a non-commercial context.
+
+"You" means the individual or legal entity exercising permissions granted by this
+License.
+
+GRANT OF RIGHTS
+
+Subject to the terms and conditions of this License, the copyright holder hereby
+grants You the following limited rights:
+
+1. VIEW AND STUDY RIGHTS
+   You may view, read, and study the source code of the Software for learning
+   purposes, technical evaluation, and security auditing.
+
+2. PERSONAL USE RIGHTS
+   You may download, compile, and run the Software on your personal devices for:
+   - Personal, non-commercial projects
+   - Educational purposes in academic settings
+   - Technical evaluation and testing
+   - Portfolio demonstration (with attribution)
+
+3. MODIFICATION RIGHTS (LIMITED)
+   You may modify the Software for personal use only. Modified versions:
+   - Must not be distributed or published
+   - Must not be used commercially
+   - Must retain all copyright notices and this License
+
+RESTRICTIONS
+
+You are expressly prohibited from:
+
+1. COMMERCIAL USE
+   Using the Software or any part thereof for any commercial purpose without
+   explicit written permission from the copyright holder.
+
+2. REDISTRIBUTION
+   Distributing, publishing, or sharing the Software or modified versions
+   through any means, including but not limited to: package managers, code
+   repositories, file sharing services, or embedding in other software.
+
+3. DERIVATIVE WORKS
+   Creating derivative works based on the Software for distribution or
+   commercial use. This includes but is not limited to: forks intended for
+   redistribution, competing products, or commercial services.
+
+4. SUBLICENSING
+   Granting or purporting to grant any rights in the Software to third parties.
+
+5. TRADEMARK USE
+   Using the name "vec2art", associated logos, or other trademarks without
+   explicit permission.
+
+6. REMOVING ATTRIBUTION
+   Removing or altering copyright notices, license information, or attribution
+   from the Software.
+
+ATTRIBUTION REQUIREMENTS
+
+If You reference, discuss, or demonstrate the Software publicly (including in
+portfolios, presentations, or academic work), You must:
+
+1. Clearly attribute the Software to the original copyright holder
+2. Include a link to the original repository
+3. State that the Software is under a custom non-commercial license
+4. Not imply endorsement by the copyright holder
+
+DISCLAIMER OF WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. THE SOFTWARE MAY CONTAIN BUGS,
+ERRORS, OR OTHER DEFECTS. YOU ASSUME ALL RISK AND RESPONSIBILITY FOR USE OF
+THE SOFTWARE.
+
+LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,
+OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+This includes but is not limited to:
+- Direct, indirect, incidental, or consequential damages
+- Loss of profits, data, or business opportunities
+- Cost of substitute software or services
+
+TERMINATION
+
+This License and the rights granted hereunder will terminate automatically upon
+any breach by You of the terms of this License. Upon termination:
+
+1. All rights granted to You under this License shall cease
+2. You must immediately stop all use of the Software
+3. You must delete all copies of the Software in your possession
+
+The copyright holder reserves the right to pursue legal remedies for any
+violations of this License.
+
+GOVERNING LAW
+
+This License shall be governed by and construed in accordance with the laws of
+the State of Texas, United States, without regard to conflict of law principles.
+Any legal action related to this License shall be brought exclusively in the
+courts of the State of Texas.
+
+COMMERCIAL LICENSING
+
+For commercial use permissions, custom licensing, or any questions about this
+License, please contact:
+
+Website: vec2art.com
+
+ACCEPTANCE
+
+By downloading, viewing, or using the Software, You acknowledge that You have
+read, understood, and agree to be bound by the terms and conditions of this
+License. If You do not agree to these terms, You are not authorized to use
+the Software.
+
+ENTIRE AGREEMENT
+
+This License constitutes the entire agreement between You and the copyright
+holder regarding the Software and supersedes all prior agreements and
+understandings, whether written or oral.
+
+---
+
+END OF LICENSE
+
+Note: This is a custom license designed to protect the intellectual property
+while allowing for educational and personal use. It is not an Open Source
+Initiative (OSI) approved license and the Software under this License should
+not be considered "open source" in the traditional sense.
