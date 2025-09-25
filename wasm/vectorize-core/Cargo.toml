@@ -1,7 +1,7 @@
 [package]
 name = "vectorize-core"
 version = "0.1.0"
-edition = "2025"
+edition = "2021"
 description = "Core trace-low vectorization algorithms for vec2art"
 license = "SEE LICENSE IN ../../LICENSE"
 repository = "https://github.com/robmcdonald5/vec2art"
