@@ -1,0 +1,173 @@
+THIRD-PARTY SOFTWARE NOTICES AND ATTRIBUTIONS
+
+vec2art incorporates components from the following open source projects.
+These components remain under their original licenses as specified below.
+
+================================================================================
+RUST DEPENDENCIES
+================================================================================
+
+image-rs (https://github.com/image-rs/image)
+Copyright (c) 2014 PistonDevelopers
+License: MIT OR Apache-2.0
+Used for: Core image processing and format handling
+
+imageproc (https://github.com/image-rs/imageproc)
+Copyright (c) 2015 The imageproc developers
+License: MIT
+Used for: Image processing algorithms including Canny edge detection
+
+nalgebra (https://nalgebra.org/)
+Copyright (c) 2013 Sébastien Crozet
+License: BSD-3-Clause
+Used for: Linear algebra operations and color space conversions
+
+wasm-bindgen (https://github.com/rustwasm/wasm-bindgen)
+Copyright (c) 2018 The wasm-bindgen developers
+License: MIT OR Apache-2.0
+Used for: WebAssembly JavaScript bindings
+
+rayon (https://github.com/rayon-rs/rayon)
+Copyright (c) 2015 The Rayon developers
+License: MIT OR Apache-2.0
+Used for: Data parallelism (native builds only)
+
+serde (https://serde.rs/)
+Copyright (c) 2014 Erick Tryzelaar and David Tolnay
+License: MIT OR Apache-2.0
+Used for: Serialization and deserialization
+
+thiserror (https://github.com/dtolnay/thiserror)
+Copyright (c) David Tolnay
+License: MIT OR Apache-2.0
+Used for: Error handling
+
+================================================================================
+JAVASCRIPT/TYPESCRIPT DEPENDENCIES
+================================================================================
+
+SvelteKit (https://kit.svelte.dev/)
+Copyright (c) 2020 Svelte contributors
+License: MIT
+Used for: Web application framework
+
+Svelte (https://svelte.dev/)
+Copyright (c) 2016 Rich Harris
+License: MIT
+Used for: Component framework
+
+Tailwind CSS (https://tailwindcss.com/)
+Copyright (c) Tailwind Labs, Inc.
+License: MIT
+Used for: CSS styling framework
+
+Vite (https://vitejs.dev/)
+Copyright (c) 2019-present, Yuxi (Evan) You
+License: MIT
+Used for: Build tooling and development server
+
+TypeScript (https://www.typescriptlang.org/)
+Copyright (c) Microsoft Corporation
+License: Apache-2.0
+Used for: Type-safe JavaScript
+
+Dexie.js (https://dexie.org/)
+Copyright (c) 2014 David Fahlander
+License: Apache-2.0
+Used for: IndexedDB wrapper for client-side storage
+
+Zod (https://zod.dev/)
+Copyright (c) 2020 Colin McDonnell
+License: MIT
+Used for: TypeScript-first schema validation
+
+lucide-svelte (https://lucide.dev/)
+Copyright (c) 2020 Lucide Contributors
+License: ISC
+Used for: Icon components
+
+bits-ui (https://bits-ui.com/)
+Copyright (c) 2023 Huntabyte
+License: MIT
+Used for: Headless UI components
+
+class-variance-authority (https://cva.style/)
+Copyright (c) Joe Bell
+License: MIT
+Used for: CSS class composition
+
+clsx (https://github.com/lukeed/clsx)
+Copyright (c) Luke Edwards
+License: MIT
+Used for: Class name construction
+
+tailwind-merge (https://github.com/dcastil/tailwind-merge)
+Copyright (c) Dany Castillo
+License: MIT
+Used for: Tailwind class merging
+
+================================================================================
+ALGORITHM INSPIRATIONS AND REFERENCES
+================================================================================
+
+Canny Edge Detection Algorithm
+John F. Canny (1986)
+"A Computational Approach to Edge Detection"
+IEEE Transactions on Pattern Analysis and Machine Intelligence
+
+Zhang-Suen Thinning Algorithm
+T.Y. Zhang and C.Y. Suen (1984)
+"A Fast Parallel Algorithm for Thinning Digital Patterns"
+Communications of the ACM
+
+SLIC Superpixels
+Radhakrishna Achanta, Appu Shaji, Kevin Smith, Aurelien Lucchi,
+Pascal Fua, and Sabine Süsstrunk (2012)
+"SLIC Superpixels Compared to State-of-the-art Superpixel Methods"
+IEEE Transactions on Pattern Analysis and Machine Intelligence
+
+================================================================================
+BUILD TOOLS AND DEVELOPMENT DEPENDENCIES
+================================================================================
+
+wasm-pack (https://github.com/rustwasm/wasm-pack)
+Copyright (c) 2018 The wasm-pack developers
+License: MIT OR Apache-2.0
+
+esbuild (https://esbuild.github.io/)
+Copyright (c) 2020 Evan Wallace
+License: MIT
+
+Prettier (https://prettier.io/)
+Copyright (c) James Long and contributors
+License: MIT
+
+ESLint (https://eslint.org/)
+Copyright (c) OpenJS Foundation and contributors
+License: MIT
+
+Vitest (https://vitest.dev/)
+Copyright (c) 2021-present Anthony Fu
+License: MIT
+
+Playwright (https://playwright.dev/)
+Copyright (c) Microsoft Corporation
+License: Apache-2.0
+
+================================================================================
+FONTS AND ASSETS
+================================================================================
+
+System fonts are used by default. No custom fonts are bundled.
+Icons are provided by lucide-svelte under ISC license.
+
+================================================================================
+
+This software would not be possible without the excellent work of the
+open source community. We are grateful for all contributions.
+
+For the complete list of dependencies and their licenses, refer to:
+- frontend/package.json for JavaScript dependencies
+- wasm/Cargo.toml for Rust dependencies
+
+All trademarks and registered trademarks are the property of their respective owners.
