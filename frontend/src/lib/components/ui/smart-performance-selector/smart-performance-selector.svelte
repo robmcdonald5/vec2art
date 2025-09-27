@@ -136,7 +136,6 @@
 			selectedMode = defaultRecommendation.mode;
 			customThreadCount = capabilities.recommendedThreads;
 
-
 			announceToScreenReader(
 				`System analysis complete. Recommended mode: ${defaultRecommendation.mode} with ${defaultRecommendation.threadCount} threads`
 			);
