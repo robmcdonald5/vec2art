@@ -68,7 +68,7 @@ export default defineConfig({
 				// Improve code splitting
 				manualChunks: {
 					svelte: ['svelte'],
-					ui: ['lucide-svelte', 'class-variance-authority', 'tailwind-merge'],
+					ui: ['lucide-svelte', 'tailwind-merge'],
 					embla: ['embla-carousel', 'embla-carousel-svelte', 'embla-carousel-autoplay']
 				}
 			}
