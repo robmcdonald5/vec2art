@@ -69,8 +69,8 @@ export default defineConfig({
 				manualChunks: undefined
 			}
 		},
-		// Minify for production
-		minify: 'terser'
+		// Use default minification (esbuild)
+		minify: true
 	},
 	// Ensure build process exits properly
 	esbuild: {
