@@ -244,7 +244,17 @@ jobs:
       - name: Link Vercel project
         run: |
           echo "🔗 Linking Vercel project..."
-          vercel link --yes --scope=${{ secrets.VERCEL_ORG_ID }} --project=${{ secrets.VERCEL_PROJECT_ID }} --token=${{ secrets.VERCEL_TOKEN }}
+
+          # Create .vercel directory and project.json
+          mkdir -p .vercel
+          cat > .vercel/project.json << EOF
+          {
+            "orgId": "${{ secrets.VERCEL_ORG_ID }}",
+            "projectId": "${{ secrets.VERCEL_PROJECT_ID }}"
+          }
+          EOF
+
+          echo "✅ Vercel project linked successfully"
 
       - name: Pull Vercel Environment
         run: |
