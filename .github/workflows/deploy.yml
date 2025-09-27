@@ -248,14 +248,22 @@ jobs:
         run: |
           echo "🚀 Deploying to ${{ needs.validate.outputs.deploy-env }}..."
 
-          # Verify build artifacts exist
-          if [ ! -d ".svelte-kit/output" ]; then
+          # Verify build artifacts exist (artifacts include frontend/ prefix)
+          if [ ! -d "frontend/.svelte-kit/output" ]; then
             echo "❌ Build artifacts not found"
+            ls -la ./
+            ls -la frontend/ || echo "No frontend directory"
             exit 1
           fi
 
           echo "✅ Build artifacts verified"
-          echo "📊 Artifact size: $(du -sh .svelte-kit/output/ | cut -f1)"
+          echo "📊 Artifact size: $(du -sh frontend/.svelte-kit/output/ | cut -f1)"
+
+          # Move artifacts to working directory for deployment
+          cp -r frontend/.svelte-kit ./
+          if [ -d "frontend/.vercel" ]; then
+            cp -r frontend/.vercel ./
+          fi
 
           # Deploy prebuilt artifacts (project linked automatically)
           if [[ "${{ needs.validate.outputs.deploy-env }}" == "production" ]]; then
