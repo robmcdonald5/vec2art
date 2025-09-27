@@ -343,6 +343,8 @@
 											<AutoAnimatedBeforeAfterSlider
 												beforeImage={showcaseItems[showcaseIndex].beforeImage}
 												afterImage={showcaseItems[showcaseIndex].afterImage}
+												beforeAlt={`Original ${showcaseItems[showcaseIndex].title} image`}
+												afterAlt={`${showcaseItems[showcaseIndex].title} converted with ${showcaseItems[showcaseIndex].algorithm}`}
 												class="h-full w-full"
 												animationDuration={6000}
 												resetTrigger={currentPanel === 1 ? showcaseIndex : -1}

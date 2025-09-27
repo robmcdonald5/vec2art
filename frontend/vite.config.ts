@@ -54,6 +54,8 @@ export default defineConfig({
 	},
 	build: {
 		target: 'esnext',
+		// Optimize chunk size
+		chunkSizeWarningLimit: 1000,
 		rollupOptions: {
 			output: {
 				// Ensure WASM files are handled correctly
@@ -62,9 +64,17 @@ export default defineConfig({
 						return 'wasm/[name]-[hash][extname]';
 					}
 					return 'assets/[name]-[hash][extname]';
+				},
+				// Improve code splitting
+				manualChunks: {
+					svelte: ['svelte', '@sveltejs/kit'],
+					ui: ['lucide-svelte', 'class-variance-authority', 'tailwind-merge'],
+					embla: ['embla-carousel', 'embla-carousel-svelte', 'embla-carousel-autoplay']
 				}
 			}
-		}
+		},
+		// Minify for production
+		minify: 'terser'
 	},
 	// Ensure build process exits properly
 	esbuild: {
