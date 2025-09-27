@@ -109,7 +109,12 @@ jobs:
       - name: Clean build cache
         run: |
           echo "🧹 Cleaning build cache to prevent symlink issues..."
-          rm -rf .svelte-kit .vercel
+          rm -rf .svelte-kit
+
+          # Clean Vercel output but preserve project config
+          if [ -d ".vercel/output" ]; then
+            rm -rf .vercel/output
+          fi
 
           # Enable git symlinks for consistency
           git config core.symlinks true
@@ -231,13 +236,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-output
-          path: frontend/
+          path: ./
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
+      - name: Link Vercel project
+        run: |
+          echo "🔗 Linking Vercel project..."
+          vercel link --yes --scope=${{ secrets.VERCEL_ORG_ID }} --project=${{ secrets.VERCEL_PROJECT_ID }} --token=${{ secrets.VERCEL_TOKEN }}
+
       - name: Pull Vercel Environment
         run: |
+          echo "📥 Pulling Vercel environment: ${{ needs.validate.outputs.deploy-env }}"
           vercel pull --yes --environment=${{ needs.validate.outputs.deploy-env }} --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy to Vercel
@@ -252,7 +263,7 @@ jobs:
             vercel build --token=${{ secrets.VERCEL_TOKEN }}
             DEPLOYMENT_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
           fi
-          
+
           echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
           echo "✅ Deployment successful: $DEPLOYMENT_URL"
 
