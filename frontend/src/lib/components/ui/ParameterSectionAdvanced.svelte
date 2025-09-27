@@ -18,6 +18,7 @@
 		isParameterVisible?: (_param: string) => boolean;
 		disabled?: boolean;
 		customParameterRenderer?: Record<string, any>; // For special parameter rendering
+		children?: any;
 	}
 
 	let {
@@ -33,7 +34,8 @@
 		onParameterChange,
 		isParameterVisible = () => true,
 		disabled = false,
-		customParameterRenderer = {}
+		customParameterRenderer = {},
+		children
 	}: Props = $props();
 
 	// Check if a parameter has custom rendering logic
@@ -74,9 +76,9 @@
 	{#if expanded}
 		<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 			<div class="space-y-4">
-				{#if $$slots.default}
-					<!-- Custom content slot -->
-					<slot />
+				{#if children}
+					<!-- Custom content -->
+					{@render children()}
 				{:else}
 					<!-- Auto-generated parameter controls -->
 					{#each parameters as param (param)}

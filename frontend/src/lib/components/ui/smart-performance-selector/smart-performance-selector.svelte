@@ -129,17 +129,12 @@
 	onMount(async () => {
 		try {
 			announceToScreenReader('Analyzing system capabilities');
-			console.log('Detecting CPU capabilities...');
 			capabilities = await detectCPUCapabilities();
-			console.log('CPU capabilities detected:', capabilities);
 
 			recommendations = generatePerformanceRecommendations(capabilities);
 			defaultRecommendation = getDefaultRecommendation(capabilities);
 			selectedMode = defaultRecommendation.mode;
 			customThreadCount = capabilities.recommendedThreads;
-
-			console.log('Performance recommendations:', recommendations);
-			console.log('Default recommendation:', defaultRecommendation);
 
 			announceToScreenReader(
 				`System analysis complete. Recommended mode: ${defaultRecommendation.mode} with ${defaultRecommendation.threadCount} threads`
@@ -187,7 +182,6 @@
 		selectedMode = mode;
 		const recommendation = recommendations.find((r) => r.mode === mode);
 		if (recommendation) {
-			console.log(`Selected ${mode} mode with ${recommendation.threadCount} threads`);
 			announceToScreenReader(
 				`Selected ${mode} mode with ${recommendation.threadCount} threads, estimated processing time ${recommendation.estimatedProcessingTime}`
 			);

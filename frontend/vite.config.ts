@@ -54,6 +54,8 @@ export default defineConfig({
 	},
 	build: {
 		target: 'esnext',
+		// Optimize chunk size
+		chunkSizeWarningLimit: 1000,
 		rollupOptions: {
 			output: {
 				// Ensure WASM files are handled correctly
@@ -62,9 +64,13 @@ export default defineConfig({
 						return 'wasm/[name]-[hash][extname]';
 					}
 					return 'assets/[name]-[hash][extname]';
-				}
+				},
+				// Let Vite handle automatic code splitting
+				manualChunks: undefined
 			}
-		}
+		},
+		// Use default minification (esbuild)
+		minify: true
 	},
 	// Ensure build process exits properly
 	esbuild: {

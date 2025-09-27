@@ -27,9 +27,8 @@
 		<!-- Preload critical resources -->
 		<link rel="preload" href="%sveltekit.assets%/favicon.svg" as="image" type="image/svg+xml" />
 
-		<!-- Prefetch WASM module for converter page -->
-		<link rel="prefetch" href="/wasm/vectorize_wasm_bg.wasm" as="fetch" crossorigin />
-		<link rel="modulepreload" href="/wasm/vectorize_wasm.js" />
+		<!-- Lazy load WASM module only when needed -->
+		<!-- Removed prefetch to reduce initial page load size -->
 
 		%sveltekit.head%
 	</head>

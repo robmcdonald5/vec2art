@@ -607,7 +607,8 @@ export const interactionTestUtils = {
 	async changeFileInput(input: HTMLInputElement, files: MockFileList): Promise<void> {
 		Object.defineProperty(input, 'files', {
 			value: files,
-			writable: false
+			writable: false,
+			configurable: true
 		});
 
 		const changeEvent = new Event('change', { bubbles: true });

@@ -39,8 +39,8 @@ describe('FileDropzone Component', () => {
 			expect(
 				screen.getByText('Drag and drop your image here, or click to browse')
 			).toBeInTheDocument();
-			expect(screen.getByText('Supports PNG, JPG, WebP up to 10MB')).toBeInTheDocument();
-			expect(screen.getByRole('button', { name: /upload image file/i })).toBeInTheDocument();
+			expect(screen.getByText('Supports PNG, JPG, WebP, TIFF, BMP, GIF, AVIF up to 1GB')).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: /choose file/i })).toBeInTheDocument();
 		});
 
 		it('should render file selected state when currentFile is provided', () => {

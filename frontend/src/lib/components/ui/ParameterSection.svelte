@@ -10,6 +10,7 @@
 		expanded: boolean;
 		onToggle: () => void;
 		disabled?: boolean;
+		children?: any;
 	}
 
 	let {
@@ -19,7 +20,8 @@
 		backgroundGradient,
 		expanded = false,
 		onToggle,
-		disabled = false
+		disabled = false,
+		children
 	}: Props = $props();
 </script>
 
@@ -50,7 +52,7 @@
 	{#if expanded}
 		<div class="border-speed-gray-200 dark:border-speed-gray-700 border-t px-4 py-4">
 			<div class="space-y-4">
-				<slot />
+				{@render children?.()}
 			</div>
 		</div>
 	{/if}

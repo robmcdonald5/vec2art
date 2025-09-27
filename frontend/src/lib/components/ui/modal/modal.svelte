@@ -139,7 +139,6 @@
 		<div
 			class="relative max-h-[90vh] w-full max-w-6xl overflow-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-900 {className}"
 			transition:scale={{ duration: 200, start: 0.95 }}
-			onclick={(_e) => _e.stopPropagation()}
 		>
 			<!-- Header with title if provided -->
 			{#if title}

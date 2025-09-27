@@ -37,14 +37,15 @@
 </script>
 
 <SEOHead
-	title="vec2art - Transform Images into SVG Art | Free Online Converter"
-	description="Convert images to artistic SVG graphics instantly with vec2art's free online tool. High-performance WebAssembly-powered vectorization with hand-drawn aesthetics, multiple algorithms, and instant downloads."
+	title="vec2art - Transform Images into SVG Art"
+	description="Convert images to artistic SVG graphics instantly. Free WebAssembly-powered tool with hand-drawn aesthetics and multiple algorithms."
 	keywords="SVG converter, image to SVG, vector art generator, line art converter, free SVG tool, WebAssembly image processing, raster to vector, artistic SVG, hand-drawn effect, image vectorization online"
 />
 
 <StructuredData type="Organization" />
 <StructuredData type="WebApplication" />
 <StructuredData type="BreadcrumbList" />
+<StructuredData type="FAQ" />
 
 <div>
 	<!-- Hero Slider Container -->
@@ -196,6 +197,392 @@
 					<div
 						class="from-ferrari-25/0 to-ferrari-50/0 group-hover:from-ferrari-25/30 group-hover:to-ferrari-50/10 absolute inset-0 rounded-3xl bg-gradient-to-br transition-all duration-500"
 					></div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- How It Works Section -->
+	<section class="animate-on-scroll relative bg-gray-50 py-24 sm:py-32">
+		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
+			<div class="mb-16 text-center">
+				<h2 class="heading-section">
+					How <span class="text-gradient-modern">It Works</span>
+				</h2>
+				<p class="text-premium mx-auto mt-6 max-w-3xl">
+					Simple three-step process to transform your images into stunning SVG artwork
+				</p>
+			</div>
+
+			<div class="grid gap-12 md:grid-cols-3">
+				<div class="text-center">
+					<div
+						class="bg-ferrari-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold text-white"
+					>
+						1
+					</div>
+					<h3 class="text-speed-gray-900 mb-4 text-xl font-bold">Upload Your Image</h3>
+					<p class="text-speed-gray-600">
+						Drag and drop or select any image file. We support PNG, JPEG, WebP, and more. Your
+						images are processed locally in your browser for maximum privacy and speed.
+					</p>
+				</div>
+
+				<div class="text-center">
+					<div
+						class="bg-ferrari-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold text-white"
+					>
+						2
+					</div>
+					<h3 class="text-speed-gray-900 mb-4 text-xl font-bold">Choose Your Style</h3>
+					<p class="text-speed-gray-600">
+						Select from multiple artistic algorithms including hatching, stippling, contour drawing,
+						and portrait sketching. Fine-tune parameters for perfect results.
+					</p>
+				</div>
+
+				<div class="text-center">
+					<div
+						class="bg-ferrari-500 mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold text-white"
+					>
+						3
+					</div>
+					<h3 class="text-speed-gray-900 mb-4 text-xl font-bold">Download Your SVG</h3>
+					<p class="text-speed-gray-600">
+						Instantly download your converted SVG artwork. Files are optimized for web use while
+						maintaining artistic quality. Perfect for logos, illustrations, and creative projects.
+					</p>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Use Cases Section -->
+	<section class="animate-on-scroll relative bg-white py-24 sm:py-32">
+		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
+			<div class="mb-16 text-center">
+				<h2 class="heading-section">
+					Perfect For Every <span class="text-gradient-modern">Creative Need</span>
+				</h2>
+				<p class="text-premium mx-auto mt-6 max-w-3xl">
+					From professional designers to hobbyists, vec2art adapts to your workflow
+				</p>
+			</div>
+
+			<div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+				<div
+					class="hover:border-ferrari-300 rounded-2xl border border-gray-200 p-6 transition-all hover:shadow-lg"
+				>
+					<h3 class="text-speed-gray-900 mb-3 text-lg font-bold">Logo Design</h3>
+					<p class="text-speed-gray-600 text-sm">
+						Convert raster logos to scalable vector graphics that look perfect at any size, from
+						business cards to billboards.
+					</p>
+				</div>
+
+				<div
+					class="hover:border-ferrari-300 rounded-2xl border border-gray-200 p-6 transition-all hover:shadow-lg"
+				>
+					<h3 class="text-speed-gray-900 mb-3 text-lg font-bold">Web Graphics</h3>
+					<p class="text-speed-gray-600 text-sm">
+						Create lightweight, responsive SVG graphics that scale perfectly on all devices while
+						keeping file sizes minimal.
+					</p>
+				</div>
+
+				<div
+					class="hover:border-ferrari-300 rounded-2xl border border-gray-200 p-6 transition-all hover:shadow-lg"
+				>
+					<h3 class="text-speed-gray-900 mb-3 text-lg font-bold">Print Media</h3>
+					<p class="text-speed-gray-600 text-sm">
+						Generate high-quality vector artwork for posters, t-shirts, and merchandise with
+						artistic hand-drawn effects.
+					</p>
+				</div>
+
+				<div
+					class="hover:border-ferrari-300 rounded-2xl border border-gray-200 p-6 transition-all hover:shadow-lg"
+				>
+					<h3 class="text-speed-gray-900 mb-3 text-lg font-bold">Digital Art</h3>
+					<p class="text-speed-gray-600 text-sm">
+						Transform photographs into unique artistic interpretations with various stylistic
+						algorithms and customizable parameters.
+					</p>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Technology Section -->
+	<section class="animate-on-scroll relative bg-gray-50 py-24 sm:py-32">
+		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
+			<div class="grid gap-12 lg:grid-cols-2 lg:items-center">
+				<div>
+					<h2 class="heading-section mb-6 text-left">
+						Powered by <span class="text-gradient-modern">Cutting-Edge Technology</span>
+					</h2>
+					<p class="text-speed-gray-600 mb-8 text-lg">
+						vec2art leverages the power of WebAssembly and Rust to deliver desktop-class performance
+						directly in your browser. No uploads, no waiting, no compromises.
+					</p>
+					<ul class="space-y-4">
+						<li class="flex items-start">
+							<svg
+								class="text-ferrari-500 mt-1 mr-3 h-5 w-5 flex-shrink-0"
+								fill="currentColor"
+								viewBox="0 0 20 20"
+							>
+								<path
+									fill-rule="evenodd"
+									d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+							<div>
+								<h4 class="text-speed-gray-900 mb-1 font-semibold">WebAssembly Performance</h4>
+								<p class="text-speed-gray-600">
+									Near-native speed for complex image processing algorithms, running entirely in
+									your browser.
+								</p>
+							</div>
+						</li>
+						<li class="flex items-start">
+							<svg
+								class="text-ferrari-500 mt-1 mr-3 h-5 w-5 flex-shrink-0"
+								fill="currentColor"
+								viewBox="0 0 20 20"
+							>
+								<path
+									fill-rule="evenodd"
+									d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+							<div>
+								<h4 class="text-speed-gray-900 mb-1 font-semibold">Privacy-First Design</h4>
+								<p class="text-speed-gray-600">
+									Your images never leave your device. All processing happens locally for complete
+									privacy.
+								</p>
+							</div>
+						</li>
+						<li class="flex items-start">
+							<svg
+								class="text-ferrari-500 mt-1 mr-3 h-5 w-5 flex-shrink-0"
+								fill="currentColor"
+								viewBox="0 0 20 20"
+							>
+								<path
+									fill-rule="evenodd"
+									d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+							<div>
+								<h4 class="text-speed-gray-900 mb-1 font-semibold">Advanced Algorithms</h4>
+								<p class="text-speed-gray-600">
+									Sophisticated vectorization techniques with artistic enhancements for stunning
+									results.
+								</p>
+							</div>
+						</li>
+					</ul>
+				</div>
+				<div class="rounded-3xl bg-gradient-to-br from-gray-100 to-gray-200 p-8 shadow-inner">
+					<div class="space-y-6">
+						<div class="group rounded-xl bg-white p-6 shadow-sm transition-all hover:shadow-md">
+							<div class="mb-2 flex items-center justify-between">
+								<span class="text-speed-gray-700 font-medium">Processing Speed</span>
+								<span class="text-ferrari-600 font-bold">10x Faster</span>
+							</div>
+							<div class="h-2 w-full rounded-full bg-gray-200">
+								<div
+									class="bg-ferrari-600 h-2 w-4/5 rounded-full transition-all duration-1000 group-hover:w-full"
+								></div>
+							</div>
+						</div>
+						<div class="group rounded-xl bg-white p-6 shadow-sm transition-all hover:shadow-md">
+							<div class="mb-2 flex items-center justify-between">
+								<span class="text-speed-gray-700 font-medium">Image Quality</span>
+								<span class="text-ferrari-600 font-bold">Premium</span>
+							</div>
+							<div class="h-2 w-full rounded-full bg-gray-200">
+								<div
+									class="bg-ferrari-600 h-2 w-[85%] rounded-full transition-all duration-1000 group-hover:w-full"
+								></div>
+							</div>
+						</div>
+						<div class="group rounded-xl bg-white p-6 shadow-sm transition-all hover:shadow-md">
+							<div class="mb-2 flex items-center justify-between">
+								<span class="text-speed-gray-700 font-medium">Browser Support</span>
+								<span class="text-ferrari-600 font-bold">Universal</span>
+							</div>
+							<div class="h-2 w-full rounded-full bg-gray-200">
+								<div
+									class="bg-ferrari-600 h-2 w-[90%] rounded-full transition-all duration-1000 group-hover:w-full"
+								></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- FAQ Section -->
+	<section class="animate-on-scroll relative bg-white py-24 sm:py-32">
+		<div class="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
+			<div class="mb-16 text-center">
+				<h2 class="heading-section">
+					Frequently Asked <span class="text-gradient-modern">Questions</span>
+				</h2>
+				<p class="text-premium mx-auto mt-6 max-w-3xl">
+					Everything you need to know about converting images to SVG with vec2art
+				</p>
+			</div>
+
+			<div class="mx-auto max-w-3xl">
+				<div class="space-y-6">
+					<details
+						class="group hover:border-ferrari-300 cursor-pointer rounded-xl border border-gray-200 transition-all"
+					>
+						<summary
+							class="text-speed-gray-900 flex list-none items-center justify-between p-6 font-semibold select-none"
+						>
+							What image formats does vec2art support?
+							<svg
+								class="text-ferrari-500 h-5 w-5 transition-transform group-open:rotate-180"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M19 9l-7 7-7-7"
+								/>
+							</svg>
+						</summary>
+						<p class="text-speed-gray-600 px-6 pb-6 leading-relaxed">
+							vec2art supports PNG, JPG/JPEG, and WebP image formats. These cover most common web
+							and digital image formats. All processing happens instantly in your browser without
+							any file uploads.
+						</p>
+					</details>
+
+					<details
+						class="group hover:border-ferrari-300 cursor-pointer rounded-xl border border-gray-200 transition-all"
+					>
+						<summary
+							class="text-speed-gray-900 flex list-none items-center justify-between p-6 font-semibold select-none"
+						>
+							Is vec2art really free to use?
+							<svg
+								class="text-ferrari-500 h-5 w-5 transition-transform group-open:rotate-180"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M19 9l-7 7-7-7"
+								/>
+							</svg>
+						</summary>
+						<p class="text-speed-gray-600 px-6 pb-6 leading-relaxed">
+							Yes! vec2art is completely free to use with no hidden fees, watermarks, or
+							limitations. You can convert unlimited images and download them instantly. We believe
+							in providing powerful creative tools accessible to everyone.
+						</p>
+					</details>
+
+					<details
+						class="group hover:border-ferrari-300 cursor-pointer rounded-xl border border-gray-200 transition-all"
+					>
+						<summary
+							class="text-speed-gray-900 flex list-none items-center justify-between p-6 font-semibold select-none"
+						>
+							How does vec2art ensure my privacy?
+							<svg
+								class="text-ferrari-500 h-5 w-5 transition-transform group-open:rotate-180"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M19 9l-7 7-7-7"
+								/>
+							</svg>
+						</summary>
+						<p class="text-speed-gray-600 px-6 pb-6 leading-relaxed">
+							All image processing happens entirely in your browser using WebAssembly technology.
+							Your images never leave your device and are never uploaded to any server. This ensures
+							complete privacy and security for your creative work.
+						</p>
+					</details>
+
+					<details
+						class="group hover:border-ferrari-300 cursor-pointer rounded-xl border border-gray-200 transition-all"
+					>
+						<summary
+							class="text-speed-gray-900 flex list-none items-center justify-between p-6 font-semibold select-none"
+						>
+							What makes vec2art different from other vectorization tools?
+							<svg
+								class="text-ferrari-500 h-5 w-5 transition-transform group-open:rotate-180"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M19 9l-7 7-7-7"
+								/>
+							</svg>
+						</summary>
+						<p class="text-speed-gray-600 px-6 pb-6 leading-relaxed">
+							vec2art uses advanced WebAssembly-powered algorithms for ultra-fast processing. We
+							offer multiple artistic styles including edge detection, centerline tracing,
+							superpixel segmentation, and stippling effects. Our focus on hand-drawn aesthetics
+							creates unique, artistic results rather than simple traces.
+						</p>
+					</details>
+
+					<details
+						class="group hover:border-ferrari-300 cursor-pointer rounded-xl border border-gray-200 transition-all"
+					>
+						<summary
+							class="text-speed-gray-900 flex list-none items-center justify-between p-6 font-semibold select-none"
+						>
+							What's the maximum image size I can convert?
+							<svg
+								class="text-ferrari-500 h-5 w-5 transition-transform group-open:rotate-180"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M19 9l-7 7-7-7"
+								/>
+							</svg>
+						</summary>
+						<p class="text-speed-gray-600 px-6 pb-6 leading-relaxed">
+							vec2art can handle images up to 4096x4096 pixels efficiently. Larger images will be
+							automatically resized to maintain optimal performance. The output SVG files are
+							resolution-independent and can be scaled to any size without quality loss.
+						</p>
+					</details>
 				</div>
 			</div>
 		</div>

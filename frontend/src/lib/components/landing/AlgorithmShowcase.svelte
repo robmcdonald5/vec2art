@@ -289,6 +289,8 @@
 					<BeforeAfterSlider
 						beforeImage={selectedAlgorithm.beforeImage}
 						afterImage={selectedAlgorithm.afterImage}
+						beforeAlt={`Original ${selectedAlgorithm.bestFor} image before conversion`}
+						afterAlt={`${selectedAlgorithm.name} SVG conversion using ${selectedAlgorithm.technicalName} algorithm`}
 						loading={getImageLoadingStrategy(selectedAlgorithm)}
 						class="h-full w-full"
 					/>
