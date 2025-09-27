@@ -8,8 +8,6 @@ on:
   workflow_dispatch:
 
 env:
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   NODE_OPTIONS: "--max-old-space-size=4096"
 
 jobs:
@@ -246,13 +244,13 @@ jobs:
         run: |
           echo "🚀 Deploying to ${{ needs.validate.outputs.deploy-env }}..."
 
-          # Deploy directly with minimal configuration
+          # Deploy with minimal configuration - let Vercel CLI auto-detect
           if [[ "${{ needs.validate.outputs.deploy-env }}" == "production" ]]; then
             echo "📦 Deploying production build..."
-            DEPLOYMENT_URL=$(vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }})
+            DEPLOYMENT_URL=$(vercel --prod --token=${{ secrets.VERCEL_TOKEN }} --yes)
           else
             echo "📦 Deploying development build..."
-            DEPLOYMENT_URL=$(vercel deploy --token=${{ secrets.VERCEL_TOKEN }})
+            DEPLOYMENT_URL=$(vercel --token=${{ secrets.VERCEL_TOKEN }} --yes)
           fi
 
           echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
