@@ -248,13 +248,22 @@ jobs:
         run: |
           echo "🚀 Deploying to ${{ needs.validate.outputs.deploy-env }}..."
 
-          # Let Vercel build from source (more reliable than --prebuilt)
+          # Verify build artifacts exist
+          if [ ! -d ".svelte-kit/output" ]; then
+            echo "❌ Build artifacts not found"
+            exit 1
+          fi
+
+          echo "✅ Build artifacts verified"
+          echo "📊 Artifact size: $(du -sh .svelte-kit/output/ | cut -f1)"
+
+          # Deploy prebuilt artifacts with project name
           if [[ "${{ needs.validate.outputs.deploy-env }}" == "production" ]]; then
             echo "📦 Deploying production build..."
-            DEPLOYMENT_URL=$(vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes)
+            DEPLOYMENT_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} --yes --name=vec2art)
           else
             echo "📦 Deploying development build..."
-            DEPLOYMENT_URL=$(vercel deploy --token=${{ secrets.VERCEL_TOKEN }} --yes)
+            DEPLOYMENT_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} --yes --name=vec2art)
           fi
 
           echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
