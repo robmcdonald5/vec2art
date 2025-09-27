@@ -238,7 +238,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-output
-          path: .
+          path: ../
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
@@ -248,21 +248,25 @@ jobs:
         run: |
           echo "🚀 Deploying to ${{ needs.validate.outputs.deploy-env }}..."
 
-          # Verify build artifacts exist (artifacts include frontend/ prefix)
-          if [ ! -d "frontend/.svelte-kit/output" ]; then
+          # Verify build artifacts exist (downloaded to parent, we're in frontend/)
+          if [ ! -d "../frontend/.svelte-kit/output" ]; then
             echo "❌ Build artifacts not found"
+            echo "Current directory contents:"
             ls -la ./
-            ls -la frontend/ || echo "No frontend directory"
+            echo "Parent directory contents:"
+            ls -la ../
+            echo "Checking for frontend directory:"
+            ls -la ../frontend/ || echo "No frontend directory found"
             exit 1
           fi
 
           echo "✅ Build artifacts verified"
-          echo "📊 Artifact size: $(du -sh frontend/.svelte-kit/output/ | cut -f1)"
+          echo "📊 Artifact size: $(du -sh ../frontend/.svelte-kit/output/ | cut -f1)"
 
-          # Move artifacts to working directory for deployment
-          cp -r frontend/.svelte-kit ./
-          if [ -d "frontend/.vercel" ]; then
-            cp -r frontend/.vercel ./
+          # Move artifacts to current working directory for deployment
+          cp -r ../frontend/.svelte-kit ./
+          if [ -d "../frontend/.vercel" ]; then
+            cp -r ../frontend/.vercel ./
           fi
 
           # Deploy prebuilt artifacts (project linked automatically)
