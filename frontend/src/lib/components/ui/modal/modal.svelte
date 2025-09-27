@@ -141,11 +141,6 @@
 			transition:scale={{ duration: 200, start: 0.95 }}
 			onclick={(_e) => _e.stopPropagation()}
 			onkeydown={(_e) => _e.stopPropagation()}
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby={title ? 'modal-title' : undefined}
-			aria-describedby={description ? 'modal-description' : undefined}
-			tabindex="-1"
 		>
 			<!-- Header with title if provided -->
 			{#if title}
