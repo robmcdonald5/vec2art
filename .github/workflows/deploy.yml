@@ -246,16 +246,7 @@ jobs:
         run: |
           echo "🚀 Deploying to ${{ needs.validate.outputs.deploy-env }}..."
 
-          # Create .vercel directory and project.json for deployment
-          mkdir -p .vercel
-          cat > .vercel/project.json << EOF
-          {
-            "orgId": "${{ secrets.VERCEL_ORG_ID }}",
-            "projectId": "${{ secrets.VERCEL_PROJECT_ID }}"
-          }
-          EOF
-
-          # Deploy directly without separate build step
+          # Deploy directly with minimal configuration
           if [[ "${{ needs.validate.outputs.deploy-env }}" == "production" ]]; then
             echo "📦 Deploying production build..."
             DEPLOYMENT_URL=$(vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }})
