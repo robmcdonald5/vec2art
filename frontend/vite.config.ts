@@ -65,12 +65,8 @@ export default defineConfig({
 					}
 					return 'assets/[name]-[hash][extname]';
 				},
-				// Improve code splitting
-				manualChunks: {
-					svelte: ['svelte'],
-					ui: ['lucide-svelte', 'tailwind-merge'],
-					embla: ['embla-carousel', 'embla-carousel-svelte', 'embla-carousel-autoplay']
-				}
+				// Let Vite handle automatic code splitting
+				manualChunks: undefined
 			}
 		},
 		// Minify for production
