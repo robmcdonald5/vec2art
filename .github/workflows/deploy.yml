@@ -192,6 +192,14 @@ jobs:
             echo "⚠️  No WASM files found in build output"
           fi
 
+      - name: Debug before upload
+        run: |
+          echo "🔍 Checking what we're about to upload..."
+          ls -la .svelte-kit/ || echo "No .svelte-kit directory"
+          ls -la .svelte-kit/output/ || echo "No .svelte-kit/output directory"
+          ls -la .vercel/ || echo "No .vercel directory"
+          ls -la .vercel/output/ || echo "No .vercel/output directory"
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -201,6 +209,7 @@ jobs:
             .vercel/output/
             !**/*.map
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Determine deployment
         id: check-deploy
