@@ -145,6 +145,7 @@
 			aria-modal="true"
 			aria-labelledby={title ? 'modal-title' : undefined}
 			aria-describedby={description ? 'modal-description' : undefined}
+			tabindex="-1"
 		>
 			<!-- Header with title if provided -->
 			{#if title}
