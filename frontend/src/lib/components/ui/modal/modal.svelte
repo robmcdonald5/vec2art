@@ -140,6 +140,11 @@
 			class="relative max-h-[90vh] w-full max-w-6xl overflow-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-900 {className}"
 			transition:scale={{ duration: 200, start: 0.95 }}
 			onclick={(_e) => _e.stopPropagation()}
+			onkeydown={(_e) => _e.stopPropagation()}
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby={title ? 'modal-title' : undefined}
+			aria-describedby={description ? 'modal-description' : undefined}
 		>
 			<!-- Header with title if provided -->
 			{#if title}
