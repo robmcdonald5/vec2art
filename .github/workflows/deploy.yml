@@ -90,21 +90,29 @@ jobs:
       - name: Code quality checks
         run: |
           echo "🔍 Running code quality checks..."
-          
+
           # Auto-format code if needed
           if ! npx prettier --check . --ignore-unknown; then
             echo "Auto-formatting code..."
             npx prettier --write . --ignore-unknown
           fi
-          
+
           # SvelteKit sync
           npx svelte-kit sync
-          
+
           # Type checking
           npx svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
-          
+
           # Linting
           npx eslint . --max-warnings=0
+
+      - name: Clean build cache
+        run: |
+          echo "🧹 Cleaning build cache to prevent symlink issues..."
+          rm -rf .svelte-kit .vercel
+
+          # Enable git symlinks for consistency
+          git config core.symlinks true
 
       - name: Run tests
         run: |
@@ -125,29 +133,60 @@ jobs:
       - name: Verify build output
         run: |
           echo "🔍 Verifying build output..."
-          if [ -d "build" ]; then
-            echo "✅ Build directory created successfully"
-            echo "📊 Build size: $(du -sh build/ | cut -f1)"
-            
-            # Check for critical files
-            if [ -f "build/index.html" ]; then
-              echo "✅ index.html found"
+
+          # Check for SvelteKit output directories
+          if [ -d ".svelte-kit/output" ]; then
+            echo "✅ SvelteKit output directory created successfully"
+            echo "📊 SvelteKit output size: $(du -sh .svelte-kit/output/ | cut -f1)"
+
+            # Check for client output
+            if [ -d ".svelte-kit/output/client" ]; then
+              echo "✅ Client output found"
+              client_files=$(find .svelte-kit/output/client -name "*.js" | wc -l)
+              echo "📦 Client JS files: $client_files"
             else
-              echo "❌ index.html missing"
+              echo "❌ Client output missing"
               exit 1
             fi
-            
-            # Check for WASM files
-            wasm_files=$(find build -name "*.wasm" | wc -l)
-            echo "🦀 WASM files: $wasm_files"
-            
-            if [ $wasm_files -eq 0 ]; then
-              echo "⚠️  No WASM files found in build"
+
+            # Check for server output
+            if [ -d ".svelte-kit/output/server" ]; then
+              echo "✅ Server output found"
+            else
+              echo "❌ Server output missing"
+              exit 1
             fi
-            
+
           else
-            echo "❌ Build directory not found"
+            echo "❌ SvelteKit output directory not found"
             exit 1
+          fi
+
+          # Check for Vercel output directories
+          if [ -d ".vercel/output" ]; then
+            echo "✅ Vercel output directory created successfully"
+            echo "📊 Vercel output size: $(du -sh .vercel/output/ | cut -f1)"
+
+            # Check for Vercel static files
+            if [ -d ".vercel/output/static" ]; then
+              echo "✅ Vercel static output found"
+            fi
+
+            # Check for Vercel functions
+            if [ -d ".vercel/output/functions" ]; then
+              echo "✅ Vercel functions output found"
+            fi
+
+          else
+            echo "⚠️  Vercel output directory not found (may be normal for some adapters)"
+          fi
+
+          # Check for WASM files in any output directory
+          wasm_files=$(find .svelte-kit .vercel -name "*.wasm" 2>/dev/null | wc -l)
+          echo "🦀 WASM files in output: $wasm_files"
+
+          if [ $wasm_files -eq 0 ]; then
+            echo "⚠️  No WASM files found in build output"
           fi
 
       - name: Upload build artifacts
@@ -155,8 +194,9 @@ jobs:
         with:
           name: build-output
           path: |
-            frontend/build/
-            !frontend/build/**/*.map
+            frontend/.svelte-kit/output/
+            frontend/.vercel/output/
+            !frontend/**/*.map
           retention-days: 7
 
       - name: Determine deployment
