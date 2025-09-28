@@ -65,18 +65,31 @@ async function checkPrerequisites() {
   if (!await commandExists('rustc')) {
     log.warning('Rust not found. Installing...');
     try {
-      // Install Rust
-      await execAsync('curl --proto \'=https\' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y');
+      const isWindows = process.platform === 'win32';
 
-      // Source cargo environment
-      const cargoPath = `${process.env.HOME}/.cargo/bin`;
-      process.env.PATH = `${cargoPath}:${process.env.PATH}`;
+      if (isWindows) {
+        // Windows: Download and run rustup-init.exe
+        log.info('Downloading Rust installer for Windows...');
+        await execAsync('powershell -Command "Invoke-WebRequest -Uri https://win.rustup.rs/x86_64 -OutFile rustup-init.exe; .\\rustup-init.exe -y; Remove-Item rustup-init.exe"');
+
+        // Windows cargo path
+        const cargoPath = `${process.env.USERPROFILE}\\.cargo\\bin`;
+        process.env.PATH = `${cargoPath};${process.env.PATH}`;
+      } else {
+        // Unix: Use shell script
+        await execAsync('curl --proto \'=https\' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y');
+
+        // Unix cargo path
+        const cargoPath = `${process.env.HOME}/.cargo/bin`;
+        process.env.PATH = `${cargoPath}:${process.env.PATH}`;
+      }
 
       // Add wasm32 target
       await execAsync('rustup target add wasm32-unknown-unknown');
       log.success('Rust installed');
     } catch (error) {
       log.error('Failed to install Rust: ' + error.message);
+      log.info('Please install Rust manually from https://rustup.rs/');
       process.exit(1);
     }
   }
@@ -85,24 +98,42 @@ async function checkPrerequisites() {
   if (!await commandExists('wasm-pack')) {
     log.warning('wasm-pack not found. Installing...');
     try {
-      await execAsync('curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh');
+      const isWindows = process.platform === 'win32';
+
+      if (isWindows) {
+        // Windows: Use cargo install (more reliable than curl on Windows)
+        log.info('Installing wasm-pack via cargo...');
+        await execAsync('cargo install wasm-pack');
+      } else {
+        // Unix: Use installer script
+        await execAsync('curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh');
+      }
+
       log.success('wasm-pack installed');
     } catch (error) {
-      // Fallback to cargo install
+      // Fallback to cargo install for all platforms
       try {
+        log.info('Fallback: Installing wasm-pack via cargo...');
         await execAsync('cargo install wasm-pack');
         log.success('wasm-pack installed via cargo');
       } catch (fallbackError) {
         log.error('Failed to install wasm-pack');
+        log.info('Please install wasm-pack manually: cargo install wasm-pack');
         process.exit(1);
       }
     }
   }
 
   // Ensure tools are in PATH
-  const cargoPath = `${process.env.HOME}/.cargo/bin`;
+  const isWindows = process.platform === 'win32';
+  const cargoPath = isWindows
+    ? `${process.env.USERPROFILE}\\.cargo\\bin`
+    : `${process.env.HOME}/.cargo/bin`;
+
+  const pathSeparator = isWindows ? ';' : ':';
+
   if (!process.env.PATH.includes(cargoPath)) {
-    process.env.PATH = `${cargoPath}:${process.env.PATH}`;
+    process.env.PATH = `${cargoPath}${pathSeparator}${process.env.PATH}`;
   }
 
   // Verify tools are available
