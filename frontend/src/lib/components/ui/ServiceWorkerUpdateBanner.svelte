@@ -46,10 +46,22 @@
 
 		window.addEventListener('sw-update-available', handleUpdateEvent);
 
+		// Cleanup function
 		return () => {
 			window.removeEventListener('sw-update-available', handleUpdateEvent);
+			// Remove body class on unmount
+			document.body.classList.remove('has-sw-update-banner');
 		};
 	});
+
+	// Manage body class for Safari compatibility (instead of :has() selector)
+	$: if (typeof document !== 'undefined') {
+		if (showBanner && $swUpdateState.updateAvailable) {
+			document.body.classList.add('has-sw-update-banner');
+		} else {
+			document.body.classList.remove('has-sw-update-banner');
+		}
+	}
 </script>
 
 {#if showBanner && $swUpdateState.updateAvailable}
@@ -143,7 +155,8 @@
 
 <style>
 	/* Ensure banner doesn't interfere with page content */
-	:global(body:has(.sw-update-banner)) {
+	/* Safari-compatible: Using class on body instead of :has() selector */
+	:global(body.has-sw-update-banner) {
 		padding-top: 60px;
 	}
 </style>

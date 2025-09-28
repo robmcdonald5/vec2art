@@ -108,7 +108,7 @@
 <!-- ServiceWorker Update Banner - Shows when updates are available -->
 <ServiceWorkerUpdateBanner />
 
-<div class="flex min-h-dvh flex-col">
+<div class="flex min-h-screen flex-col">
 	<header
 		class="border-speed-gray-200/50 bg-nav-clean sticky top-0 z-50 border-b shadow-sm backdrop-blur-xl transition-all duration-200 supports-[backdrop-filter]:bg-white/95"
 	>
