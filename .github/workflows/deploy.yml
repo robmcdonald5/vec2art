@@ -285,20 +285,20 @@ jobs:
           echo "Repository root contents:"
           ls -la ../
 
-          echo "🔍 Searching for ALL .svelte-kit directories:"
-          find / -name ".svelte-kit" -type d 2>/dev/null | head -10 || echo "No .svelte-kit directories found anywhere"
+          echo "🔍 Searching for .svelte-kit in workspace:"
+          find /home/runner/work -name ".svelte-kit" -type d 2>/dev/null || echo "No .svelte-kit directories found in workspace"
 
-          echo "🔍 Searching for ANY output directories:"
-          find / -name "output" -type d 2>/dev/null | head -10 || echo "No output directories found anywhere"
+          echo "🔍 Searching for output directories in workspace:"
+          find /home/runner/work -name "output" -type d 2>/dev/null || echo "No output directories found in workspace"
 
-          echo "🔍 Searching for recent large files (artifacts):"
-          find / -type f -size +50M -newermt '10 minutes ago' 2>/dev/null | head -10 || echo "No large recent files found"
+          echo "🔍 Checking artifact download location tree:"
+          find /home/runner/work/vec2art -type f -name "*.js" -o -name "*.wasm" -o -name "*.html" 2>/dev/null | head -20 || echo "No build files found"
 
-          echo "🔍 Checking artifact download location specifically:"
-          ls -la /home/runner/work/vec2art/ || echo "Artifact download location not accessible"
+          echo "🔍 Full workspace directory structure:"
+          find /home/runner/work/vec2art -type d | head -20 || echo "Cannot list workspace structure"
 
-          echo "🔍 Looking for frontend directory specifically:"
-          find / -name "frontend" -type d 2>/dev/null | head -5 || echo "No frontend directories found"
+          echo "🔍 Looking for any recent zip or extracted files:"
+          find /home/runner/work -name "*.zip" -o -name "*.tar*" 2>/dev/null | head -10 || echo "No archive files found"
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
@@ -308,23 +308,21 @@ jobs:
         run: |
           echo "🚀 Deploying to ${{ needs.validate.outputs.deploy-env }}..."
 
-          # Verify build artifacts exist (downloaded to repo root)
-          if [ ! -d "../frontend/.svelte-kit/output" ]; then
+          # Verify build artifacts exist (downloaded to workspace root)
+          if [ ! -d "/home/runner/work/vec2art/.svelte-kit/output" ]; then
             echo "❌ Build artifacts not found"
             echo "Current working directory: $(pwd)"
-            echo "Repository root contents:"
-            ls -la ../
-            echo "Expected ../frontend/.svelte-kit/output directory not found"
+            echo "Expected /home/runner/work/vec2art/.svelte-kit/output directory not found"
             exit 1
           fi
 
           echo "✅ Build artifacts verified"
-          echo "📊 Artifact size: $(du -sh ../frontend/.svelte-kit/output/ | cut -f1)"
+          echo "📊 Artifact size: $(du -sh /home/runner/work/vec2art/.svelte-kit/output/ | cut -f1)"
 
           # Copy artifacts to working directory for Vercel deployment
-          cp -r ../frontend/.svelte-kit ./
-          if [ -d "../frontend/.vercel" ]; then
-            cp -r ../frontend/.vercel ./
+          cp -r /home/runner/work/vec2art/.svelte-kit ./
+          if [ -d "/home/runner/work/vec2art/.vercel" ]; then
+            cp -r /home/runner/work/vec2art/.vercel ./
           fi
 
           # Deploy prebuilt artifacts (project linked automatically)
