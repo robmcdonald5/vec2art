@@ -151,13 +151,62 @@ sw.addEventListener('fetch', (event) => {
 	// Everything else: Let browser handle naturally (no SW interference)
 });
 
-// Handle WASM files - cache first strategy
+// Handle WASM files - Safari-optimized strategy
 async function handleWASM(/** @type {Request} */ request) {
+	// Detect Safari from User-Agent
+	const userAgent = request.headers.get('user-agent') || '';
+	const isSafari = /Safari/.test(userAgent) && !/Chrome|Chromium/.test(userAgent);
+
+	// For Safari, always fetch fresh to avoid stale WASM issues
+	if (isSafari) {
+		try {
+			console.log('[SW] Safari detected - fetching fresh WASM file');
+			const response = await fetch(request, {
+				cache: 'no-cache' // Force fresh fetch for Safari
+			});
+
+			if (response.ok) {
+				// Clone response and add Safari-specific headers
+				const clonedResponse = response.clone();
+				const headers = new Headers(clonedResponse.headers);
+				headers.set('Content-Type', 'application/wasm');
+				headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+				return new Response(clonedResponse.body, {
+					status: clonedResponse.status,
+					statusText: clonedResponse.statusText,
+					headers
+				});
+			}
+			return response;
+		} catch (error) {
+			console.error('[SW] Safari WASM fetch failed:', error);
+			// Try cache as last resort
+			const cache = await caches.open(WASM_CACHE);
+			const cached = await cache.match(request);
+			if (cached) return cached;
+			return new Response('WASM file not available', { status: 503 });
+		}
+	}
+
+	// Non-Safari browsers: use cache-first strategy
 	const cache = await caches.open(WASM_CACHE);
 	const cached = await cache.match(request);
 
 	if (cached) {
-		return cached;
+		// Validate cached response is not too old (1 hour max for WASM)
+		const cacheDate = cached.headers.get('date');
+		if (cacheDate) {
+			const age = Date.now() - new Date(cacheDate).getTime();
+			if (age > 3600000) {
+				// Over 1 hour old, fetch fresh
+				console.log('[SW] WASM cache expired, fetching fresh');
+			} else {
+				return cached;
+			}
+		} else {
+			return cached;
+		}
 	}
 
 	try {
@@ -167,7 +216,7 @@ async function handleWASM(/** @type {Request} */ request) {
 		}
 		return response;
 	} catch (error) {
-		console.error('Failed to fetch WASM file:', error);
+		console.error('[SW] Failed to fetch WASM file:', error);
 		return new Response('WASM file not available', { status: 503 });
 	}
 }

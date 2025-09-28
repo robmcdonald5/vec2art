@@ -11,6 +11,41 @@
  */
 
 /**
+ * Detects if the current browser is Safari (desktop or mobile)
+ */
+export function isSafari(): boolean {
+	if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+		return false;
+	}
+
+	const userAgent = navigator.userAgent || '';
+	// Safari detection: has Safari in UA but not Chrome/Chromium
+	const isSafariBrowser = /Safari/.test(userAgent) && !/Chrome|Chromium/.test(userAgent);
+
+	// Additional check for Safari on iOS
+	const isIOSSafari = /iPad|iPhone|iPod/.test(userAgent) && !/CriOS|FxiOS|OPiOS/.test(userAgent);
+
+	return isSafariBrowser || isIOSSafari;
+}
+
+/**
+ * Detects if SharedArrayBuffer is available and functional
+ */
+export function hasSharedArrayBufferSupport(): boolean {
+	if (typeof SharedArrayBuffer === 'undefined') {
+		return false;
+	}
+
+	// Try to create a small SharedArrayBuffer to test actual support
+	try {
+		const sab = new SharedArrayBuffer(1);
+		return sab.byteLength === 1;
+	} catch {
+		return false;
+	}
+}
+
+/**
  * Detects if the current browser is running on a mobile device
  */
 export function isMobileDevice(): boolean {
@@ -45,21 +80,35 @@ export function isMobileDevice(): boolean {
  */
 export function getMemoryConfig() {
 	const isMobile = isMobileDevice();
+	const safari = isSafari();
+	const hasSharedMemory = hasSharedArrayBufferSupport();
 
 	// Memory page size in WebAssembly (64KB per page)
 	const PAGE_SIZE = 65536;
 
-	// Configuration based on device type
+	// Safari-specific memory limits
+	let maximum: number;
+	if (safari && isMobile) {
+		maximum = 4096; // 256MB - iOS Safari strict limit
+	} else if (safari) {
+		maximum = 16384; // 1GB - Desktop Safari conservative limit
+	} else if (isMobile) {
+		maximum = 4096; // 256MB - Mobile browsers safe limit
+	} else {
+		maximum = 32768; // 2GB - Desktop browsers (reduced from 4GB for stability)
+	}
+
+	// Configuration based on device and browser type
 	const config = {
 		initial: 40, // 40 pages = ~2.5MB initial (same for all devices)
-		maximum: isMobile
-			? 4096 // 4096 pages = 256MB for mobile (iOS Safari safe limit)
-			: 65536, // 65536 pages = 4GB for desktop
-		shared: true // Required for threading support
+		maximum,
+		// Only use shared memory if supported and not on Safari (better compatibility)
+		shared: hasSharedMemory && !safari
 	};
 
 	// Log the configuration being used
-	console.log(`[WASM Memory] Device type: ${isMobile ? 'Mobile' : 'Desktop'}`);
+	console.log(`[WASM Memory] Browser: ${safari ? 'Safari' : 'Other'}, Mobile: ${isMobile}`);
+	console.log(`[WASM Memory] SharedArrayBuffer: ${config.shared ? 'Enabled' : 'Disabled'}`);
 	console.log(
 		`[WASM Memory] Max memory: ${((config.maximum * PAGE_SIZE) / (1024 * 1024)).toFixed(0)}MB`
 	);
@@ -79,28 +128,27 @@ export function createAdaptiveMemory(): WebAssembly.Memory {
 	} catch (error) {
 		console.warn('[WASM Memory] Failed to allocate memory with config:', config, error);
 
-		// Fallback: Try with minimal mobile configuration
+		// Fallback 1: Try without shared memory (Safari compatibility)
 		const fallbackConfig = {
 			initial: 40,
 			maximum: 4096, // 256MB - safe for all devices
-			shared: true
+			shared: false // Disable shared memory for Safari
 		};
 
-		console.log('[WASM Memory] Falling back to minimal configuration: 256MB max');
+		console.log('[WASM Memory] Falling back to non-shared memory: 256MB max');
 
 		try {
 			return new WebAssembly.Memory(fallbackConfig);
 		} catch (fallbackError) {
-			console.error('[WASM Memory] Failed to allocate even minimal memory:', fallbackError);
+			console.error('[WASM Memory] Failed to allocate fallback memory:', fallbackError);
 
-			// Last resort: Non-shared memory with small size
+			// Last resort: Minimal non-shared memory
 			const lastResortConfig = {
-				initial: 40,
-				maximum: 2048, // 128MB
-				shared: false // Disable threading
+				initial: 16, // 1MB initial
+				maximum: 2048 // 128MB maximum
 			};
 
-			console.log('[WASM Memory] Last resort: 128MB non-shared memory');
+			console.log('[WASM Memory] Last resort: 128MB non-shared memory (minimal)');
 			return new WebAssembly.Memory(lastResortConfig);
 		}
 	}
