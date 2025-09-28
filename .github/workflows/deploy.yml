@@ -192,24 +192,53 @@ jobs:
             echo "⚠️  No WASM files found in build output"
           fi
 
-      - name: Debug before upload
+      - name: Enhanced build verification
         run: |
-          echo "🔍 Checking what we're about to upload..."
-          ls -la .svelte-kit/ || echo "No .svelte-kit directory"
-          ls -la .svelte-kit/output/ || echo "No .svelte-kit/output directory"
-          ls -la .vercel/ || echo "No .vercel directory"
-          ls -la .vercel/output/ || echo "No .vercel/output directory"
+          echo "🔍 Comprehensive build output verification..."
+          echo "Current working directory: $(pwd)"
+          echo "Repository root contents:"
+          ls -la ../
+
+          # Check exact paths that will be uploaded (from repo root)
+          echo "Checking frontend/.svelte-kit/output/ path:"
+          if [ -d "../frontend/.svelte-kit/output/" ]; then
+            echo "✅ frontend/.svelte-kit/output/ exists"
+            find ../frontend/.svelte-kit/output/ -type f | head -10
+            echo "Total files: $(find ../frontend/.svelte-kit/output/ -type f | wc -l)"
+          else
+            echo "❌ frontend/.svelte-kit/output/ NOT FOUND"
+          fi
+
+          echo "Checking frontend/.vercel/output/ path:"
+          if [ -d "../frontend/.vercel/output/" ]; then
+            echo "✅ frontend/.vercel/output/ exists"
+            find ../frontend/.vercel/output/ -type f | head -10
+            echo "Total files: $(find ../frontend/.vercel/output/ -type f | wc -l)"
+          else
+            echo "❌ frontend/.vercel/output/ NOT FOUND"
+          fi
+
+          # Test the exact upload paths
+          upload_files=$(find ../frontend/.svelte-kit/output/ ../frontend/.vercel/output/ -type f 2>/dev/null | grep -v "\.map$" | wc -l)
+          echo "Files matching upload pattern: $upload_files"
+
+          if [ $upload_files -eq 0 ]; then
+            echo "❌ NO FILES FOUND MATCHING UPLOAD PATTERNS"
+            echo "This will cause upload-artifact to fail"
+            exit 1
+          fi
 
       - name: Upload build artifacts
+        id: upload-step
         uses: actions/upload-artifact@v4
         with:
           name: build-output
           path: |
-            .svelte-kit/output/
-            .vercel/output/
-            !**/*.map
+            frontend/.svelte-kit/output/
+            frontend/.vercel/output/
+            !frontend/**/*.map
           retention-days: 7
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Determine deployment
         id: check-deploy
