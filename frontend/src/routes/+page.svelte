@@ -319,7 +319,7 @@
 			<div class="grid gap-12 lg:grid-cols-2 lg:items-center">
 				<div>
 					<h2 class="heading-section mb-6 text-left">
-						Powered by <span class="text-gradient-modern">Cutting-Edge Technology</span>
+						Powered by <span class="text-gradient-modern">WASM & Rust</span>
 					</h2>
 					<p class="text-speed-gray-600 mb-8 text-lg">
 						vec2art leverages the power of WebAssembly and Rust to deliver desktop-class performance
