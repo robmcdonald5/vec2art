@@ -3,4 +3,4 @@
 /**
  * Superpixel cluster initialization patterns for SLIC algorithm
  */
-export type SuperpixelInitPattern = "Square" | "Hexagonal" | "Poisson";
+export type SuperpixelInitPattern = 'Square' | 'Hexagonal' | 'Poisson';

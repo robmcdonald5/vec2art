@@ -100,7 +100,7 @@ export function getMemoryConfig(forceShared = false) {
 
 	// IMPORTANT: If WASM was built with shared memory, we MUST provide shared memory
 	// The forceShared flag will be true when we detect the WASM requires it
-	const useShared = forceShared ? hasSharedMemory : (hasSharedMemory && !safari);
+	const useShared = forceShared ? hasSharedMemory : hasSharedMemory && !safari;
 
 	// Configuration based on device and browser type
 	const config = {
