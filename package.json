@@ -2,7 +2,7 @@
   "name": "vec2art",
   "private": true,
   "scripts": {
-    "build": "cd frontend && npm ci && npm run build:vercel",
+    "build": "echo 'Root build: using committed WASM artifacts' && cd frontend && npx vite build",
     "dev": "cd frontend && npm run dev",
     "install:frontend": "cd frontend && npm ci"
   },

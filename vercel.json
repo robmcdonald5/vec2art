@@ -3,6 +3,8 @@
   "git": {
     "deploymentEnabled": true
   },
+  "framework": null,
+  "buildCommand": "npm run build",
   "outputDirectory": "frontend/.svelte-kit/output",
   "headers": [
     {
