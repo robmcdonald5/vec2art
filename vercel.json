@@ -1,8 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd .. && node scripts/rebuild-wasm.js && cd frontend && npm run build:frontend-only",
+  "git": {
+    "deploymentEnabled": true
+  },
+  "buildCommand": "npm run build:frontend-only",
   "installCommand": "npm ci",
-  "outputDirectory": ".vercel/output",
+  "outputDirectory": ".svelte-kit/output",
   "headers": [
     {
       "source": "/(.*)",
