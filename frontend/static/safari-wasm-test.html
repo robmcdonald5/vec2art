@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safari WASM Compatibility Test - vec2art</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #DC143C;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .test-item:last-child {
+            border-bottom: none;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .pass { background: #4caf50; color: white; }
+        .fail { background: #f44336; color: white; }
+        .warning { background: #ff9800; color: white; }
+        .pending { background: #2196f3; color: white; }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #2196f3;
+        }
+        .error {
+            background: #ffebee;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #f44336;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        button {
+            background: #DC143C;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #b91c2e;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #log {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Safari WASM Compatibility Test</h1>
+
+    <div class="info">
+        <strong>Browser Info:</strong>
+        <div id="browserInfo"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>1. Browser Detection</h2>
+        <div class="test-item">
+            <span>Safari Detection:</span> <span id="safariDetect" class="status pending">Testing...</span>
+        </div>
+        <div class="test-item">
+            <span>iOS Detection:</span> <span id="iosDetect" class="status pending">Testing...</span>
+        </div>
+        <div class="test-item">
+            <span>Mobile Detection:</span> <span id="mobileDetect" class="status pending">Testing...</span>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. WebAssembly Support</h2>
+        <div class="test-item">
+            <span>WebAssembly API:</span> <span id="wasmApi" class="status pending">Testing...</span>
+        </div>
+        <div class="test-item">
+            <span>instantiateStreaming:</span> <span id="wasmStreaming" class="status pending">Testing...</span>
+        </div>
+        <div class="test-item">
+            <span>SharedArrayBuffer:</span> <span id="sharedBuffer" class="status pending">Testing...</span>
+        </div>
+        <div class="test-item">
+            <span>Memory Allocation:</span> <span id="memoryAlloc" class="status pending">Testing...</span>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. WASM Loading Test</h2>
+        <button id="loadWasmBtn" onclick="testWasmLoading()">Test WASM Loading</button>
+        <div class="test-item">
+            <span>WASM Module Load:</span> <span id="wasmLoad" class="status pending">Not tested</span>
+        </div>
+        <div class="test-item">
+            <span>WASM Initialization:</span> <span id="wasmInit" class="status pending">Not tested</span>
+        </div>
+        <div class="test-item">
+            <span>Vectorizer Creation:</span> <span id="vectorizerCreate" class="status pending">Not tested</span>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Headers & Security</h2>
+        <div class="test-item">
+            <span>MIME Type Check:</span> <span id="mimeType" class="status pending">Testing...</span>
+        </div>
+        <div class="test-item">
+            <span>CSP Headers:</span> <span id="cspHeaders" class="status pending">Testing...</span>
+        </div>
+        <div class="test-item">
+            <span>CORS Headers:</span> <span id="corsHeaders" class="status pending">Testing...</span>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Log</h2>
+        <div id="log"></div>
+    </div>
+
+    <script type="module">
+        // Logging helper
+        function log(message, isError = false) {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = `[${timestamp}] ${message}\n`;
+            logEl.textContent += entry;
+            logEl.scrollTop = logEl.scrollHeight;
+
+            if (isError) {
+                console.error(message);
+            } else {
+                console.log(message);
+            }
+        }
+
+        // Update test status
+        function setStatus(id, status, text) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.className = 'status ' + status;
+                el.textContent = text || status.toUpperCase();
+            }
+        }
+
+        // Browser detection functions (matching the ones in wasm-memory-init.ts)
+        function isSafari() {
+            const userAgent = navigator.userAgent || '';
+            const isSafariBrowser = /Safari/.test(userAgent) && !/Chrome|Chromium/.test(userAgent);
+            const isIOSSafari = /iPad|iPhone|iPod/.test(userAgent) && !/CriOS|FxiOS|OPiOS/.test(userAgent);
+            return isSafariBrowser || isIOSSafari;
+        }
+
+        function isIOS() {
+            const userAgent = navigator.userAgent || '';
+            return /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+        }
+
+        function isMobile() {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
+            const hasTouchSupport = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            const isSmallScreen = window.innerWidth <= 768 || window.innerHeight <= 768;
+            return isIOS() || mobileRegex.test(userAgent.toLowerCase()) || (hasTouchSupport && isSmallScreen);
+        }
+
+        // Run browser detection tests
+        function runBrowserTests() {
+            // Display browser info
+            document.getElementById('browserInfo').innerHTML = `
+                User Agent: ${navigator.userAgent}<br>
+                Platform: ${navigator.platform}<br>
+                Screen: ${window.innerWidth}x${window.innerHeight}<br>
+                Touch Points: ${navigator.maxTouchPoints || 0}
+            `;
+
+            // Safari detection
+            const safari = isSafari();
+            setStatus('safariDetect', safari ? 'warning' : 'pass', safari ? 'Safari Detected' : 'Not Safari');
+            log(`Safari detection: ${safari}`);
+
+            // iOS detection
+            const ios = isIOS();
+            setStatus('iosDetect', ios ? 'warning' : 'pass', ios ? 'iOS Detected' : 'Not iOS');
+            log(`iOS detection: ${ios}`);
+
+            // Mobile detection
+            const mobile = isMobile();
+            setStatus('mobileDetect', mobile ? 'warning' : 'pass', mobile ? 'Mobile Device' : 'Desktop');
+            log(`Mobile detection: ${mobile}`);
+        }
+
+        // Test WebAssembly support
+        function testWasmSupport() {
+            // Basic WASM API
+            if (typeof WebAssembly !== 'undefined') {
+                setStatus('wasmApi', 'pass', 'Supported');
+                log('WebAssembly API is available');
+            } else {
+                setStatus('wasmApi', 'fail', 'Not Supported');
+                log('WebAssembly API is NOT available', true);
+            }
+
+            // instantiateStreaming support
+            if (typeof WebAssembly.instantiateStreaming === 'function') {
+                setStatus('wasmStreaming', 'pass', 'Supported');
+                log('WebAssembly.instantiateStreaming is available');
+            } else {
+                setStatus('wasmStreaming', 'warning', 'Not Supported (fallback needed)');
+                log('WebAssembly.instantiateStreaming is NOT available - fallback needed');
+            }
+
+            // SharedArrayBuffer support
+            if (typeof SharedArrayBuffer !== 'undefined') {
+                try {
+                    const sab = new SharedArrayBuffer(1);
+                    setStatus('sharedBuffer', 'pass', 'Supported');
+                    log('SharedArrayBuffer is available and functional');
+                } catch (e) {
+                    setStatus('sharedBuffer', 'warning', 'Not Functional');
+                    log('SharedArrayBuffer exists but not functional: ' + e.message);
+                }
+            } else {
+                setStatus('sharedBuffer', 'warning', 'Not Supported');
+                log('SharedArrayBuffer is NOT available');
+            }
+
+            // Memory allocation test
+            testMemoryAllocation();
+        }
+
+        // Test memory allocation
+        function testMemoryAllocation() {
+            const safari = isSafari();
+            const mobile = isMobile();
+
+            // Determine memory limit based on browser
+            let maxPages = 32768; // 2GB default
+            if (safari && mobile) {
+                maxPages = 4096; // 256MB for iOS Safari
+            } else if (safari) {
+                maxPages = 16384; // 1GB for desktop Safari
+            } else if (mobile) {
+                maxPages = 4096; // 256MB for mobile
+            }
+
+            try {
+                const memory = new WebAssembly.Memory({
+                    initial: 40,
+                    maximum: maxPages,
+                    shared: false // Don't use shared for Safari
+                });
+                const maxMB = (maxPages * 65536) / (1024 * 1024);
+                setStatus('memoryAlloc', 'pass', `${maxMB}MB allocated`);
+                log(`Memory allocation successful: ${maxMB}MB max`);
+            } catch (e) {
+                setStatus('memoryAlloc', 'fail', 'Failed');
+                log('Memory allocation failed: ' + e.message, true);
+            }
+        }
+
+        // Test WASM loading
+        window.testWasmLoading = async function() {
+            const btn = document.getElementById('loadWasmBtn');
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+
+            try {
+                log('Starting WASM loading test...');
+                setStatus('wasmLoad', 'pending', 'Loading...');
+
+                // Try to load the WASM module
+                const wasmUrl = '/wasm/vectorize_wasm_bg.wasm';
+                log(`Fetching WASM from: ${wasmUrl}`);
+
+                const response = await fetch(wasmUrl);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch WASM: ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                log(`WASM Content-Type: ${contentType}`);
+
+                const wasmBytes = await response.arrayBuffer();
+                log(`WASM loaded: ${wasmBytes.byteLength} bytes`);
+                setStatus('wasmLoad', 'pass', 'Loaded');
+
+                // Try to instantiate
+                setStatus('wasmInit', 'pending', 'Initializing...');
+
+                // Simple WASM module test
+                const wasmModule = await WebAssembly.compile(wasmBytes);
+                const wasmInstance = await WebAssembly.instantiate(wasmModule, {});
+
+                log('WASM module instantiated successfully');
+                setStatus('wasmInit', 'pass', 'Initialized');
+
+                // Try to import and use the vectorizer
+                setStatus('vectorizerCreate', 'pending', 'Creating...');
+
+                // Import the JS wrapper
+                const vectorizeModule = await import('/wasm/vectorize_wasm.js');
+                await vectorizeModule.default();
+
+                // Try to create a vectorizer instance
+                if (vectorizeModule.WasmVectorizer) {
+                    const vectorizer = new vectorizeModule.WasmVectorizer();
+                    log('Vectorizer created successfully!');
+                    setStatus('vectorizerCreate', 'pass', 'Success');
+                } else {
+                    throw new Error('WasmVectorizer not found in module');
+                }
+
+            } catch (error) {
+                log(`WASM test failed: ${error.message}`, true);
+
+                // Update status based on where it failed
+                if (document.getElementById('wasmLoad').textContent === 'Loading...') {
+                    setStatus('wasmLoad', 'fail', 'Failed');
+                }
+                if (document.getElementById('wasmInit').textContent === 'Initializing...') {
+                    setStatus('wasmInit', 'fail', 'Failed');
+                }
+                if (document.getElementById('vectorizerCreate').textContent === 'Creating...') {
+                    setStatus('vectorizerCreate', 'fail', 'Failed');
+                }
+
+                // Display error
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = error.stack || error.message;
+                btn.parentElement.appendChild(errorDiv);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test WASM Loading';
+            }
+        };
+
+        // Test headers
+        async function testHeaders() {
+            try {
+                // Test WASM MIME type
+                const wasmResponse = await fetch('/wasm/vectorize_wasm_bg.wasm', { method: 'HEAD' });
+                const contentType = wasmResponse.headers.get('content-type');
+
+                if (contentType === 'application/wasm') {
+                    setStatus('mimeType', 'pass', 'application/wasm');
+                    log('Correct WASM MIME type');
+                } else {
+                    setStatus('mimeType', 'fail', contentType || 'Missing');
+                    log(`Incorrect WASM MIME type: ${contentType}`, true);
+                }
+
+                // Check CSP headers
+                const pageResponse = await fetch(window.location.href, { method: 'HEAD' });
+                const csp = pageResponse.headers.get('content-security-policy');
+
+                if (csp) {
+                    const hasWasmEval = csp.includes('wasm-unsafe-eval') || csp.includes('unsafe-eval');
+                    if (hasWasmEval) {
+                        setStatus('cspHeaders', 'pass', 'WASM allowed');
+                        log('CSP allows WASM execution');
+                    } else {
+                        setStatus('cspHeaders', 'fail', 'WASM blocked');
+                        log('CSP may block WASM execution', true);
+                    }
+                } else {
+                    setStatus('cspHeaders', 'warning', 'No CSP');
+                    log('No CSP headers found');
+                }
+
+                // Check CORS headers
+                const coep = pageResponse.headers.get('cross-origin-embedder-policy');
+                const coop = pageResponse.headers.get('cross-origin-opener-policy');
+
+                if (coep || coop) {
+                    setStatus('corsHeaders', 'warning', 'Cross-origin isolation');
+                    log(`COEP: ${coep}, COOP: ${coop}`);
+                } else {
+                    setStatus('corsHeaders', 'pass', 'No isolation');
+                    log('No cross-origin isolation (good for Safari)');
+                }
+
+            } catch (error) {
+                log(`Header test error: ${error.message}`, true);
+                setStatus('mimeType', 'fail', 'Error');
+                setStatus('cspHeaders', 'fail', 'Error');
+                setStatus('corsHeaders', 'fail', 'Error');
+            }
+        }
+
+        // Run all tests on page load
+        window.addEventListener('load', () => {
+            log('Starting Safari WASM compatibility tests...');
+            runBrowserTests();
+            testWasmSupport();
+            testHeaders();
+            log('Initial tests complete. Click "Test WASM Loading" to test actual module loading.');
+        });
+    </script>
+</body>
+</html>

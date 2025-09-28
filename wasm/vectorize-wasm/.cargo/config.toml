@@ -1,10 +1,10 @@
 [build]
 target = "wasm32-unknown-unknown"
 
-[unstable]
-build-std = ["std", "panic_abort"]
-
 [target.wasm32-unknown-unknown]
 rustflags = [
-  "-C", "target-feature=+atomics,+bulk-memory,+mutable-globals"
+  # Single-threaded WASM configuration (no atomics or shared memory)
+  "-C", "target-feature=+simd128,+bulk-memory",
+  "-C", "opt-level=3",
+  "-C", "codegen-units=1"
 ]

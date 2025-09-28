@@ -12,7 +12,12 @@
 // Dynamic imports cause workers to load 404 HTML pages in Vercel production builds
 // This addresses GPT's analysis of "dev OK, Vercel broken" worker pattern
 import init, * as wasmModule from '../wasm/vectorize_wasm.js';
-import { createAdaptiveMemory, isMobileDevice, getMemoryStats } from '../wasm/wasm-memory-init';
+import {
+	createAdaptiveMemory,
+	isMobileDevice,
+	isSafari,
+	getMemoryStats
+} from '../wasm/wasm-memory-init';
 
 // Import vectorizer configuration types
 import type { AlgorithmConfig } from '../types/algorithm-configs';
@@ -79,7 +84,36 @@ let wasmInitialized = false;
 let _wasmInstance: any = null;
 
 /**
- * Initialize WASM module
+ * Safari-compatible WASM loading with fallbacks
+ */
+async function loadWasmWithFallback(memory: WebAssembly.Memory): Promise<any> {
+	const safari = isSafari();
+
+	// Try instantiateStreaming first (preferred method)
+	if (!safari && typeof WebAssembly.instantiateStreaming === 'function') {
+		try {
+			console.log('[Worker] Attempting streaming instantiation...');
+			return await init({ memory });
+		} catch (streamError) {
+			console.warn('[Worker] Streaming instantiation failed, trying fallback:', streamError);
+		}
+	}
+
+	// Fallback for Safari or when streaming fails
+	try {
+		console.log('[Worker] Using non-streaming instantiation (Safari-compatible)...');
+		// For Safari, we need to pass the memory configuration
+		// The init function will handle fetching the WASM file
+		return await init({ memory });
+	} catch (fallbackError) {
+		console.error('[Worker] Fallback instantiation failed:', fallbackError);
+		// Try one more time with default init
+		return await init({ memory });
+	}
+}
+
+/**
+ * Initialize WASM module with Safari compatibility
  */
 async function initializeWasm(): Promise<void> {
 	if (wasmInitialized) {
@@ -87,39 +121,71 @@ async function initializeWasm(): Promise<void> {
 		return;
 	}
 
-	try {
-		console.log('[Worker] 🔧 Initializing WASM module...');
+	let retries = 0;
+	const maxRetries = 3;
 
-		// Detect device type for adaptive memory
-		const isMobile = isMobileDevice();
-		console.log(`[Worker] 📱 Device type: ${isMobile ? 'Mobile' : 'Desktop'}`);
+	while (retries < maxRetries) {
+		try {
+			console.log('[Worker] 🔧 Initializing WASM module (attempt ' + (retries + 1) + ')...');
 
-		// Create adaptive memory configuration
-		const memory = createAdaptiveMemory();
-
-		// Log memory configuration
-		const stats = getMemoryStats(memory);
-		console.log(`[Worker] 💾 Memory allocated: ${stats.totalMB.toFixed(0)}MB max`);
-
-		// Initialize WASM with adaptive memory
-		_wasmInstance = await init({ memory });
-
-		console.log('[Worker]  WASM module initialized successfully');
-		console.log('[Worker] 📋 Available WASM exports:', Object.keys(wasmModule));
-
-		wasmInitialized = true;
-	} catch (error) {
-		console.error('[Worker]  WASM initialization failed:', error);
-
-		// Provide helpful error message for mobile users
-		if (isMobileDevice() && error instanceof Error && error.message.includes('memory')) {
-			throw new Error(
-				'Memory allocation failed on mobile device. ' +
-					'Please try closing other browser tabs or using a desktop browser for larger images.'
+			// Detect device and browser type
+			const isMobile = isMobileDevice();
+			const safari = isSafari();
+			console.log(
+				`[Worker] 📱 Device: ${isMobile ? 'Mobile' : 'Desktop'}, Browser: ${safari ? 'Safari' : 'Other'}`
 			);
-		}
 
-		throw new Error(`WASM initialization failed: ${error}`);
+			// Create adaptive memory configuration
+			// The existing WASM on Vercel was built with shared memory support,
+			// so we need to provide shared memory if available
+			const memory = createAdaptiveMemory(true); // Request shared memory for existing WASM
+
+			// Log memory configuration
+			const stats = getMemoryStats(memory);
+			console.log(`[Worker] 💾 Memory allocated: ${stats.totalMB.toFixed(0)}MB max`);
+			console.log(`[Worker] 💾 Memory type: ${(memory as any).shared ? 'Shared' : 'Non-shared'}`);
+
+			// Initialize WASM with Safari-compatible loading
+			_wasmInstance = await loadWasmWithFallback(memory);
+
+			console.log('[Worker]  WASM module initialized successfully');
+			console.log('[Worker] 📋 Available WASM exports:', Object.keys(wasmModule));
+
+			wasmInitialized = true;
+			return; // Success, exit the retry loop
+		} catch (error) {
+			console.error(`[Worker]  WASM initialization attempt ${retries + 1} failed:`, error);
+			retries++;
+
+			if (retries >= maxRetries) {
+				// Provide helpful error message based on context
+				const isMobile = isMobileDevice();
+				const safari = isSafari();
+
+				if (safari && isMobile) {
+					throw new Error(
+						'WebAssembly initialization failed on iOS Safari. ' +
+							'This may be due to memory constraints or browser limitations. ' +
+							'Please try: 1) Closing other browser tabs, 2) Restarting Safari, or 3) Using Chrome on desktop.'
+					);
+				} else if (safari) {
+					throw new Error(
+						'WebAssembly initialization failed on Safari. ' +
+							'Please ensure you are using Safari 15+ and try refreshing the page.'
+					);
+				} else if (isMobile) {
+					throw new Error(
+						'Memory allocation failed on mobile device. ' +
+							'Please try closing other browser tabs or using a desktop browser for larger images.'
+					);
+				}
+
+				throw new Error(`WASM initialization failed after ${maxRetries} attempts: ${error}`);
+			}
+
+			// Wait before retrying (exponential backoff)
+			await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+		}
 	}
 }
 

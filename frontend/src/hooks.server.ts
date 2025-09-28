@@ -51,12 +51,17 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 		response.headers.set('X-Download-Options', 'noopen');
 		response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
 
-		// Content Security Policy optimized for iPhone Safari WASM compatibility
+		// Content Security Policy optimized for Safari WASM compatibility
+		// Safari requires 'wasm-unsafe-eval' for WebAssembly
+		const userAgent = event.request.headers.get('user-agent') || '';
+		const isSafari = /Safari/.test(userAgent) && !/Chrome|Chromium/.test(userAgent);
+
 		response.headers.set(
 			'Content-Security-Policy',
 			[
 				"default-src 'self'",
-				"script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://challenges.cloudflare.com", // Allow WASM, workers, and Turnstile
+				// Safari needs 'wasm-unsafe-eval', others use 'unsafe-eval' as fallback
+				`script-src 'self' 'unsafe-inline' ${isSafari ? "'wasm-unsafe-eval'" : "'unsafe-eval' 'wasm-unsafe-eval'"} blob: data: https://challenges.cloudflare.com`,
 				"worker-src 'self' blob: data:", // Required for Web Workers
 				"object-src 'none'",
 				"style-src 'self' 'unsafe-inline'", // Allow inline styles
@@ -79,13 +84,18 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 	// Cache control for different resource types
 	const url = event.url.pathname;
 
-	// BALANCED: Reasonable caching for WASM files with proper invalidation
+	// Safari-optimized WASM file handling
 	if (url.startsWith('/wasm/') || url.endsWith('.wasm')) {
-		// 24-hour cache with revalidation - allows performance while enabling updates
-		response.headers.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=3600');
+		// Safari needs specific MIME type and headers
 		response.headers.set('Content-Type', 'application/wasm');
+		// Safari-friendly cache control
+		response.headers.set('Cache-Control', 'public, max-age=3600, must-revalidate');
+		// Allow cross-origin for Safari
 		response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
-		// Add proper ETag based on file content (not timestamp)
+		response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
+		// Vary on Accept-Encoding for Safari compression issues
+		response.headers.set('Vary', 'Accept-Encoding');
+		// Add proper ETag based on file content
 		response.headers.set('ETag', `"wasm-v${process.env.npm_package_version || '1.0.0'}"`);
 	} else if (url.match(/\.(jpg|jpeg|png|gif|webp|avif|svg|ico)$/i)) {
 		response.headers.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');

@@ -15,7 +15,7 @@ const adapter = isVercel
 			maxDuration: 30
 		})
 	: isCI
-		? adapterAuto()  // Use auto adapter for CI builds
+		? adapterAuto() // Use auto adapter for CI builds
 		: adapterVercel(); // Default Vercel adapter for local dev
 
 /** @type {import('@sveltejs/kit').Config} */
