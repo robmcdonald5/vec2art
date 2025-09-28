@@ -12,7 +12,8 @@
 	},
 	"scripts": {
 		"dev": "vite dev",
-		"build": "npm run build:frontend-only",
+		"build": "npm run build:vercel",
+		"build:vercel": "echo 'Vercel build: using committed WASM artifacts' && npm run build:frontend-only",
 		"build:clean": "npm run build:wasm && vite build && echo Build completed successfully",
 		"build:frontend-only": "vite build",
 		"build:ci": "vite build && echo 'Build completed successfully'",

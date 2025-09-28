@@ -3,7 +3,9 @@
   "git": {
     "deploymentEnabled": true
   },
-  "buildCommand": "cd frontend && npm ci && npm run build:frontend-only",
+  "buildCommand": "cd frontend && npm run build:vercel",
+  "outputDirectory": "frontend/.svelte-kit/output",
+  "installCommand": "cd frontend && npm ci",
   "headers": [
     {
       "source": "/(.*)",
