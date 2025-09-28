@@ -100,9 +100,11 @@
 	/* Hardware-accelerated pan animation */
 	@keyframes reveal-pan {
 		0% {
+			-webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
 			clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
 		}
 		100% {
+			-webkit-clip-path: polygon(0 0, 0% 0, 0% 100%, 0 100%);
 			clip-path: polygon(0 0, 0% 0, 0% 100%, 0 100%);
 		}
 	}
@@ -111,6 +113,7 @@
 		animation: reveal-pan var(--animation-duration, 6000ms) ease-in-out forwards;
 		animation-delay: 1s; /* Wait 1 second before starting pan */
 		/* Start with fully visible before image, animate to hidden */
+		-webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
 		clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
 	}
 
@@ -118,6 +121,7 @@
 	@media (prefers-reduced-motion: reduce) {
 		.animate-reveal {
 			animation: none;
+			-webkit-clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%);
 			clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%);
 		}
 	}

@@ -33,7 +33,9 @@
 		const history = parameterHistory.getHistory();
 		if (history.length > 0) {
 			const initialConfig = history[0].config;
-			onConfigChange(structuredClone(initialConfig));
+			// Use JSON parse/stringify for Safari compatibility (structuredClone not supported in Safari < 15.4)
+			const clonedConfig = JSON.parse(JSON.stringify(initialConfig));
+			onConfigChange(clonedConfig);
 			// Push reset action to history
 			parameterHistory.push(initialConfig, 'Reset to initial');
 		}

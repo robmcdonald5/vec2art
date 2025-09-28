@@ -101,7 +101,7 @@
 	<!-- Before Image (Top Layer with Clip) -->
 	<div
 		class="absolute inset-0"
-		style="clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%)"
+		style="-webkit-clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%); clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%)"
 	>
 		{#if beforePlaceholder}
 			<img
@@ -127,7 +127,7 @@
 	<!-- Before Label (Left Side) - Clipped with before image area -->
 	<div
 		class="pointer-events-none absolute inset-0 z-10"
-		style="clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%)"
+		style="-webkit-clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%); clip-path: polygon(0 0, {sliderPosition}% 0, {sliderPosition}% 100%, 0 100%)"
 	>
 		<div class="absolute top-1/2 left-4 -translate-y-1/2">
 			<div
@@ -141,7 +141,7 @@
 	<!-- After Label (Right Side) - Clipped with after image area -->
 	<div
 		class="pointer-events-none absolute inset-0 z-10"
-		style="clip-path: polygon({sliderPosition}% 0, 100% 0, 100% 100%, {sliderPosition}% 100%)"
+		style="-webkit-clip-path: polygon({sliderPosition}% 0, 100% 0, 100% 100%, {sliderPosition}% 100%); clip-path: polygon({sliderPosition}% 0, 100% 0, 100% 100%, {sliderPosition}% 100%)"
 	>
 		<div class="absolute top-1/2 right-4 -translate-y-1/2">
 			<div
