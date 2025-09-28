@@ -4,29 +4,22 @@ rustflags = [
     "-C", "target-cpu=native",  # Optimize for the current CPU when building natively
 ]
 
-# Required for wasm-bindgen-rayon threading support
-[unstable]
-build-std = ["panic_abort", "std"]
-
-# Multi-threaded WASM configuration with atomics support
+# Multi-threaded WASM configuration
 [target.wasm32-unknown-unknown]
 rustflags = [
     "-C", "opt-level=3",
     "-C", "codegen-units=1",   # Single codegen unit for better optimization
     "--cfg", "web_sys_unstable_apis",  # Enable unstable web APIs
-    "-C", "target-feature=+atomics,+bulk-memory,+mutable-globals,+simd128",  # Full multi-threading support
-    "-C", "link-arg=--max-memory=4294967296",
-    "-C", "link-arg=--import-memory",
-    "-C", "link-arg=--export-memory", 
-    "-C", "link-arg=--shared-memory",
+    "-C", "target-feature=+simd128,+bulk-memory",  # Base features for single-threaded
 ]
 
 # Use wasm-opt for further optimization
-runner = "wasm-opt -Os --enable-simd --enable-bulk-memory --enable-threads"
+runner = "wasm-opt -Os --enable-simd --enable-bulk-memory"
 
 [env]
-# Multi-threaded builds need atomics
-RUSTFLAGS_wasm32_unknown_unknown = "-C target-feature=+atomics,+bulk-memory,+mutable-globals,+simd128"
+# Set SIMD and bulk memory features for wasm builds (single-threaded)
+RUSTFLAGS_wasm32_unknown_unknown = "-C target-feature=+simd128,+bulk-memory"
+# Multi-threaded builds need atomics - override above when building with parallel features
 
 [alias]
 # Convenient aliases for development
