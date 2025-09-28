@@ -3,9 +3,9 @@
   "git": {
     "deploymentEnabled": true
   },
-  "buildCommand": "ls -la && pwd && test -d frontend && cd frontend && npm run build:frontend-only",
-  "installCommand": "ls -la && pwd && test -d frontend && cd frontend && npm ci",
-  "outputDirectory": "frontend/.svelte-kit/output",
+  "buildCommand": "npm run build:frontend-only",
+  "installCommand": "npm ci",
+  "outputDirectory": ".svelte-kit/output",
   "headers": [
     {
       "source": "/(.*)",
