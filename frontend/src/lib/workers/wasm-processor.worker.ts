@@ -102,19 +102,9 @@ async function loadWasmWithFallback(memory: WebAssembly.Memory): Promise<any> {
 	// Fallback for Safari or when streaming fails
 	try {
 		console.log('[Worker] Using non-streaming instantiation (Safari-compatible)...');
-		// For Safari, we need to fetch and instantiate manually
-		const wasmUrl = new URL('../wasm/vectorize_wasm_bg.wasm', import.meta.url);
-		const response = await fetch(wasmUrl);
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch WASM: ${response.status} ${response.statusText}`);
-		}
-
-		const wasmBytes = await response.arrayBuffer();
-		console.log('[Worker] WASM bytes loaded:', wasmBytes.byteLength, 'bytes');
-
-		// Initialize with the bytes directly
-		return await init({ memory }, wasmBytes);
+		// For Safari, we need to pass the memory configuration
+		// The init function will handle fetching the WASM file
+		return await init({ memory });
 	} catch (fallbackError) {
 		console.error('[Worker] Fallback instantiation failed:', fallbackError);
 		// Try one more time with default init
