@@ -8,8 +8,13 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		// Vercel adapter with default configuration
-		adapter: adapter(),
+		// Vercel adapter with explicit configuration for WASM + SvelteKit
+		adapter: adapter({
+			runtime: 'nodejs20.x',
+			regions: ['iad1'], // US East for optimal performance
+			memory: 1024, // Increased memory for WASM processing
+			maxDuration: 30 // Max function duration for WASM operations
+		}),
 
 		// Prerender specific routes
 		prerender: {

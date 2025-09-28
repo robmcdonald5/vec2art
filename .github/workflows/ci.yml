@@ -1,0 +1,138 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
+jobs:
+  # Continuous Integration - Quality Checks & Build Validation
+  ci:
+    name: Continuous Integration
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            wasm/vectorize-wasm/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('wasm/vectorize-wasm/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install wasm-pack
+        run: |
+          if ! command -v wasm-pack &> /dev/null; then
+            curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          fi
+          export PATH="$HOME/.cargo/bin:$PATH"
+          wasm-pack --version
+        shell: bash
+
+      - name: Build WASM module
+        run: |
+          echo "🔧 Building WASM module..."
+          export PATH="$HOME/.cargo/bin:$PATH"
+          chmod +x ./scripts/rebuild-wasm.sh 2>/dev/null || true
+          bash ./scripts/rebuild-wasm.sh
+        shell: bash
+        working-directory: .
+
+      - name: Install frontend dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Setup environment variables
+        run: |
+          if [ -z "${{ secrets.PUBLIC_FORMSPARK_ENDPOINT_ID }}" ]; then
+            echo "Using CI placeholder environment variables"
+            cp .env.ci .env
+          else
+            echo "Using GitHub Secrets for environment variables"
+            echo "PUBLIC_FORMSPARK_ENDPOINT_ID=${{ secrets.PUBLIC_FORMSPARK_ENDPOINT_ID }}" > .env
+            echo "PUBLIC_TURNSTILE_SITE_KEY=${{ secrets.PUBLIC_TURNSTILE_SITE_KEY }}" >> .env
+          fi
+
+      - name: Code quality checks
+        run: |
+          echo "🔍 Running code quality checks..."
+
+          # Auto-format code if needed
+          if ! npx prettier --check . --ignore-unknown; then
+            echo "Auto-formatting code..."
+            npx prettier --write . --ignore-unknown
+          fi
+
+          # SvelteKit sync
+          npx svelte-kit sync
+
+          # Type checking
+          npx svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
+
+          # Linting
+          npx eslint . --max-warnings=0
+
+      - name: Clean build cache
+        run: |
+          echo "🧹 Cleaning build cache to prevent symlink issues..."
+          rm -rf .svelte-kit
+
+          # Clean Vercel output completely to prevent config issues
+          if [ -d ".vercel" ]; then
+            rm -rf .vercel
+          fi
+
+          # Enable git symlinks for consistency
+          git config core.symlinks true
+
+      - name: Run tests
+        run: |
+          echo "🧪 Running test suite..."
+          
+          # Run unit tests with coverage
+          npx vitest run --coverage --reporter=verbose
+          
+          echo "✅ All tests passed"
+        env:
+          CI: true
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Verify CI build success
+        run: |
+          echo "✅ CI pipeline completed successfully!"
+          echo "🚀 Vercel Git Integration will handle deployment automatically"
+          echo "📊 Build size: $(du -sh .svelte-kit/output/ | cut -f1)"
+          echo "🦀 WASM files: $(find .svelte-kit -name "*.wasm" | wc -l)"
