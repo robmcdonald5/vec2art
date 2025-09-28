@@ -146,11 +146,14 @@ async function initializeWasm(): Promise<void> {
 			);
 
 			// Create adaptive memory configuration
-			const memory = createAdaptiveMemory();
+			// The existing WASM on Vercel was built with shared memory support,
+			// so we need to provide shared memory if available
+			const memory = createAdaptiveMemory(true); // Request shared memory for existing WASM
 
 			// Log memory configuration
 			const stats = getMemoryStats(memory);
 			console.log(`[Worker] 💾 Memory allocated: ${stats.totalMB.toFixed(0)}MB max`);
+			console.log(`[Worker] 💾 Memory type: ${(memory as any).shared ? 'Shared' : 'Non-shared'}`);
 
 			// Initialize WASM with Safari-compatible loading
 			_wasmInstance = await loadWasmWithFallback(memory);

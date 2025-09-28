@@ -78,7 +78,7 @@ export function isMobileDevice(): boolean {
 /**
  * Gets the appropriate memory configuration based on device type
  */
-export function getMemoryConfig() {
+export function getMemoryConfig(forceShared = false) {
 	const isMobile = isMobileDevice();
 	const safari = isSafari();
 	const hasSharedMemory = hasSharedArrayBufferSupport();
@@ -98,12 +98,15 @@ export function getMemoryConfig() {
 		maximum = 32768; // 2GB - Desktop browsers (reduced from 4GB for stability)
 	}
 
+	// IMPORTANT: If WASM was built with shared memory, we MUST provide shared memory
+	// The forceShared flag will be true when we detect the WASM requires it
+	const useShared = forceShared ? hasSharedMemory : (hasSharedMemory && !safari);
+
 	// Configuration based on device and browser type
 	const config = {
 		initial: 40, // 40 pages = ~2.5MB initial (same for all devices)
 		maximum,
-		// Only use shared memory if supported and not on Safari (better compatibility)
-		shared: hasSharedMemory && !safari
+		shared: useShared
 	};
 
 	// Log the configuration being used
@@ -119,36 +122,67 @@ export function getMemoryConfig() {
 /**
  * Creates a WebAssembly.Memory instance with adaptive sizing
  */
-export function createAdaptiveMemory(): WebAssembly.Memory {
-	const config = getMemoryConfig();
+export function createAdaptiveMemory(preferShared = false): WebAssembly.Memory {
+	const safari = isSafari();
+	const hasShared = hasSharedArrayBufferSupport();
+
+	// Log the environment
+	console.log(`[WASM Memory] Environment: Safari=${safari}, SharedArrayBuffer=${hasShared}`);
+
+	// Strategy: Try shared memory first if available (for existing WASM compatibility)
+	// Fall back to non-shared for Safari or when SharedArrayBuffer isn't available
+	if (preferShared && hasShared && !safari) {
+		const sharedConfig = getMemoryConfig(true);
+		try {
+			console.log('[WASM Memory] Creating shared memory for existing WASM...');
+			const memory = new WebAssembly.Memory(sharedConfig);
+			console.log('[WASM Memory] ✅ Shared memory created successfully');
+			return memory;
+		} catch (error) {
+			console.warn('[WASM Memory] Shared memory allocation failed:', error);
+			// Continue to non-shared fallback
+		}
+	}
+
+	// Non-shared memory fallback (Safari or no SharedArrayBuffer)
+	const config = getMemoryConfig(false);
+
+	// For Safari, ensure we're not requesting shared memory
+	if (safari || !hasShared) {
+		config.shared = false;
+		console.log('[WASM Memory] Using non-shared memory (Safari compatibility mode)');
+	}
 
 	try {
-		// Try to create memory with detected configuration
-		return new WebAssembly.Memory(config);
+		console.log('[WASM Memory] Creating non-shared memory...');
+		const memory = new WebAssembly.Memory(config);
+		console.log('[WASM Memory] ✅ Non-shared memory created successfully');
+		return memory;
 	} catch (error) {
-		console.warn('[WASM Memory] Failed to allocate memory with config:', config, error);
+		console.warn('[WASM Memory] Failed to allocate memory:', error);
 
-		// Fallback 1: Try without shared memory (Safari compatibility)
+		// Fallback: Minimal non-shared memory
 		const fallbackConfig = {
 			initial: 40,
 			maximum: 4096, // 256MB - safe for all devices
-			shared: false // Disable shared memory for Safari
+			shared: false
 		};
 
-		console.log('[WASM Memory] Falling back to non-shared memory: 256MB max');
+		console.log('[WASM Memory] Trying minimal fallback: 256MB max');
 
 		try {
 			return new WebAssembly.Memory(fallbackConfig);
 		} catch (fallbackError) {
-			console.error('[WASM Memory] Failed to allocate fallback memory:', fallbackError);
+			console.error('[WASM Memory] All memory allocation attempts failed:', fallbackError);
 
-			// Last resort: Minimal non-shared memory
+			// Last resort: Very minimal non-shared memory
 			const lastResortConfig = {
 				initial: 16, // 1MB initial
-				maximum: 2048 // 128MB maximum
+				maximum: 2048, // 128MB maximum
+				shared: false
 			};
 
-			console.log('[WASM Memory] Last resort: 128MB non-shared memory (minimal)');
+			console.log('[WASM Memory] Last resort: 128MB non-shared memory');
 			return new WebAssembly.Memory(lastResortConfig);
 		}
 	}
