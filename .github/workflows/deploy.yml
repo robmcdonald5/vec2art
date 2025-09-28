@@ -280,14 +280,25 @@ jobs:
 
       - name: Debug artifacts
         run: |
-          echo "🔍 Debugging artifact download..."
+          echo "🔍 Comprehensive artifact debugging..."
           echo "Current working directory: $(pwd)"
           echo "Repository root contents:"
           ls -la ../
-          echo "Searching for .svelte-kit directories in repo root:"
-          find .. -name ".svelte-kit" -type d 2>/dev/null || echo "No .svelte-kit directories found"
-          echo "Checking if frontend/.svelte-kit/output exists in repo root:"
-          ls -la ../frontend/.svelte-kit/output/ || echo "No frontend/.svelte-kit/output directory found"
+
+          echo "🔍 Searching for ALL .svelte-kit directories:"
+          find / -name ".svelte-kit" -type d 2>/dev/null | head -10 || echo "No .svelte-kit directories found anywhere"
+
+          echo "🔍 Searching for ANY output directories:"
+          find / -name "output" -type d 2>/dev/null | head -10 || echo "No output directories found anywhere"
+
+          echo "🔍 Searching for recent large files (artifacts):"
+          find / -type f -size +50M -newermt '10 minutes ago' 2>/dev/null | head -10 || echo "No large recent files found"
+
+          echo "🔍 Checking artifact download location specifically:"
+          ls -la /home/runner/work/vec2art/ || echo "Artifact download location not accessible"
+
+          echo "🔍 Looking for frontend directory specifically:"
+          find / -name "frontend" -type d 2>/dev/null | head -5 || echo "No frontend directories found"
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
