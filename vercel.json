@@ -3,6 +3,7 @@
   "git": {
     "deploymentEnabled": true
   },
+  "buildCommand": "cd frontend && npm ci && npm run build:frontend-only",
   "headers": [
     {
       "source": "/(.*)",
