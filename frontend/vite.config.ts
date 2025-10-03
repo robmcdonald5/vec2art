@@ -10,16 +10,9 @@ export default defineConfig({
 		wasm(),
 		topLevelAwait(),
 		tailwindcss(),
-		{
-			name: 'configure-response-headers',
-			configureServer: (server) => {
-				server.middlewares.use((_req, res, next) => {
-					res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-					res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-					next();
-				});
-			}
-		},
+		// Note: Cross-Origin Isolation headers removed to match production configuration
+		// The WASM module uses single-threaded architecture and doesn't require SharedArrayBuffer
+		// These headers were causing conflicts with Safari and third-party resources
 		sveltekit()
 	],
 	resolve: {
