@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -10,11 +11,18 @@ export default defineConfig({
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
 	workers: process.env.CI ? 1 : undefined,
-	reporter: [
-		['html', { outputFolder: 'playwright-report', open: 'never' }],
-		['json', { outputFile: 'test-results/results.json' }],
-		...(process.env.CI ? [['github'], ['dot']] : [['list']])
-	],
+	reporter: process.env.CI
+		? [
+				['html', { outputFolder: 'playwright-report', open: 'never' }],
+				['json', { outputFile: 'test-results/results.json' }],
+				['github'],
+				['dot']
+			]
+		: [
+				['html', { outputFolder: 'playwright-report', open: 'never' }],
+				['json', { outputFile: 'test-results/results.json' }],
+				['list']
+			],
 
 	// Global test timeout for WASM operations
 	timeout: 90000, // 90 seconds for complex WASM processing
@@ -29,12 +37,9 @@ export default defineConfig({
 		video: process.env.CI ? 'retain-on-failure' : 'off',
 		// Extended timeout for slow WASM operations
 		actionTimeout: 30000,
-		navigationTimeout: 30000,
-		// Enable cross-origin isolation for SharedArrayBuffer
-		extraHTTPHeaders: {
-			'Cross-Origin-Opener-Policy': 'same-origin',
-			'Cross-Origin-Embedder-Policy': 'require-corp'
-		}
+		navigationTimeout: 30000
+		// Note: Cross-origin isolation headers removed to match production configuration
+		// WASM uses single-threaded architecture without SharedArrayBuffer
 	},
 
 	projects: [
@@ -43,12 +48,11 @@ export default defineConfig({
 			name: 'chromium',
 			use: {
 				...devices['Desktop Chrome'],
-				// Enable modern browser features for WASM multithreading
+				// Enable WebAssembly support (single-threaded architecture)
 				launchOptions: {
 					args: [
-						'--enable-features=SharedArrayBuffer',
-						'--enable-unsafe-webassembly',
-						'--js-flags=--experimental-wasm-threads'
+						'--enable-unsafe-webassembly'
+						// Threading flags removed: using single-threaded WASM + Web Workers
 					]
 				}
 			}
@@ -56,13 +60,8 @@ export default defineConfig({
 		{
 			name: 'firefox',
 			use: {
-				...devices['Desktop Firefox'],
-				launchOptions: {
-					firefoxUserPrefs: {
-						'javascript.options.shared_memory': true,
-						'dom.postMessage.sharedArrayBuffer.withCOOP_COEP': true
-					}
-				}
+				...devices['Desktop Firefox']
+				// Threading preferences removed: using single-threaded WASM + Web Workers
 			}
 		},
 		{
