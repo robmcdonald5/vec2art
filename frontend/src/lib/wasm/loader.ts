@@ -252,14 +252,24 @@ export async function loadVectorizer(options?: {
 			const wasmJs = await import('./vectorize_wasm.js');
 			console.log('[WASM Loader] JS module imported');
 
-			// Call default export to initialize wasm-bindgen glue with robust fallback loading
-			// This loads the .wasm file and sets up the proper bindings
+			// Import adaptive memory initialization
+			const { createAdaptiveMemory } = await import('./wasm-memory-init');
+
+			// Create memory with iOS-aware configuration (non-shared for main thread)
+			const memory = createAdaptiveMemory(false);
+			console.log('[WASM Loader] Created adaptive memory:', {
+				initial: memory.buffer.byteLength / (64 * 1024) + ' pages',
+				isIOS: compatibilityInfo.isIOSSafari
+			});
+
 			// Use new object parameter format to avoid deprecated parameters warning
-			let wasmConfig = {
-				module_or_path: new URL('./vectorize_wasm_bg.wasm', import.meta.url)
+			// Pass memory object for consistent initialization across contexts
+			let wasmConfig: any = {
+				module_or_path: new URL('./vectorize_wasm_bg.wasm', import.meta.url),
+				memory: memory
 			};
 
-			// Apply iOS workarounds if needed
+			// Apply iOS workarounds if needed (additional iOS-specific settings)
 			if (compatibilityInfo.isIOSSafari) {
 				console.log('[WASM Loader] 🔧 Applying iOS-specific WASM configuration...');
 				wasmConfig = applyIOSWorkarounds(wasmConfig);
