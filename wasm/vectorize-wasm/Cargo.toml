@@ -7,7 +7,9 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/your-org/vec2art"
 
 [package.metadata.wasm-pack]
-wasm-opt = false
+# Enable wasm-opt for production builds to reduce file size
+# Disabled previously to avoid dependency issues, but re-enabled for iOS Safari compatibility
+wasm-opt = ["-O4", "--enable-simd"]
 
 [lib]
 crate-type = ["cdylib"]
@@ -91,10 +93,18 @@ webgl-backend = ["gpu-acceleration"]
 # TypeScript generation feature
 generate-ts = ["ts-rs", "vectorize-core/generate-ts"]
 
-# Disable wasm-opt optimizations to avoid dependency issues
+# Production profile: Enable aggressive optimization for iOS Safari
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = false
+wasm-opt = ["-O4", "--enable-simd"]
 
-# Also disable for test profile to fix type generation
+# Dev profile: Disable optimization for faster builds during development
 [package.metadata.wasm-pack.profile.dev]
 wasm-opt = false
+
+# Rust compiler optimizations for release builds
+[profile.release]
+opt-level = 3           # Maximum optimization
+lto = "fat"             # Full link-time optimization
+codegen-units = 1       # Better optimization, slower compile
+strip = "symbols"       # Remove debug symbols for smaller file size
+panic = "abort"         # Smaller panic handler

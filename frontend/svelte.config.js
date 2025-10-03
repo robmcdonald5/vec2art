@@ -40,15 +40,11 @@ const config = {
 		},
 
 		// Simplified CSP for WASM compatibility
+		// Note: script-src is handled by hooks.server.ts with Safari-specific 'wasm-unsafe-eval'
+		// Removing it here prevents conflicts and ensures Safari compatibility
 		csp: {
 			mode: 'hash',
 			directives: {
-				'script-src': [
-					'self',
-					'unsafe-eval',
-					'https://va.vercel-scripts.com',
-					'https://challenges.cloudflare.com'
-				],
 				'style-src': ['self', 'unsafe-inline'],
 				'connect-src': ['self', 'https://challenges.cloudflare.com', 'https://submit-form.com'],
 				'img-src': ['self', 'data:', 'https:', 'blob:'],

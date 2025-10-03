@@ -62,7 +62,8 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 				"default-src 'self'",
 				// Safari needs 'wasm-unsafe-eval', others use 'unsafe-eval' as fallback
 				`script-src 'self' 'unsafe-inline' ${isSafari ? "'wasm-unsafe-eval'" : "'unsafe-eval' 'wasm-unsafe-eval'"} blob: data: https://challenges.cloudflare.com`,
-				"worker-src 'self' blob: data:", // Required for Web Workers
+				// Workers also need wasm-unsafe-eval for Safari to load WASM in worker context
+				`worker-src 'self' blob: data: ${isSafari ? "'wasm-unsafe-eval'" : ''}`,
 				"object-src 'none'",
 				"style-src 'self' 'unsafe-inline'", // Allow inline styles
 				"img-src 'self' data: blob: https:", // Allow images

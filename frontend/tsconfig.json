@@ -25,7 +25,6 @@
 		"./src/**/*.test.ts",
 		"./src/**/*.test.js",
 		"./tests/**/*",
-		"./playwright.config.ts",
 		"./src/stories/**/*",
 		"./.storybook/**/*"
 	]

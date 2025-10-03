@@ -284,15 +284,24 @@ class IOSCompatibilityService {
 		// Apply workarounds
 		const modifiedConfig = { ...wasmConfig };
 
+		// Note: Threading settings don't apply to wasm-bindgen __wbg_init()
+		// but kept for backwards compatibility and future use
 		if (info.recommendedConfig.disableThreading) {
 			modifiedConfig.threadCount = 1;
 			modifiedConfig.initializeThreads = false;
 			modifiedConfig.threading = false;
 		}
 
+		// Memory configuration: If memory object already exists (from createAdaptiveMemory),
+		// these settings won't override it - memory is already iOS-optimized
 		if (info.recommendedConfig.useSmallMemory) {
-			modifiedConfig.memoryPages = info.recommendedConfig.memoryPagesLimit;
-			modifiedConfig.maximumMemory = info.recommendedConfig.memoryPagesLimit * 65536; // Convert to bytes
+			// Only set if memory object not already provided
+			if (!modifiedConfig.memory) {
+				modifiedConfig.memoryPages = info.recommendedConfig.memoryPagesLimit;
+				modifiedConfig.maximumMemory = info.recommendedConfig.memoryPagesLimit * 65536; // Convert to bytes
+			} else {
+				console.log('[iOS Compatibility] Memory already configured via createAdaptiveMemory');
+			}
 		}
 
 		if (info.recommendedConfig.disableMemoryGrowth) {
