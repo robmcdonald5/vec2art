@@ -10,6 +10,8 @@ src/lib/wasm/vectorize_wasm.d.ts
 src/lib/wasm/vectorize_wasm_bg.wasm.d.ts
 src/lib/wasm/__wbindgen_placeholder__.js
 src/lib/wasm/snippets/**/*.js
+src/lib/wasm/pkg/**
+src/lib/wasm/pkg-simd/**
 static/wasm/**/*.js
 static/wasm/**/*.d.ts
 
