@@ -7,9 +7,10 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/your-org/vec2art"
 
 [package.metadata.wasm-pack]
-# Enable wasm-opt for production builds to reduce file size
-# Disabled previously to avoid dependency issues, but re-enabled for iOS Safari compatibility
-wasm-opt = ["-O4", "--enable-simd"]
+# Disable bundled wasm-opt to use external wasm-opt with precise control
+# This avoids Safari validation bugs and allows dual-build strategy (SIMD + non-SIMD)
+# External wasm-opt provides better control over optimization levels
+wasm-opt = false
 
 [lib]
 crate-type = ["cdylib"]
@@ -93,9 +94,9 @@ webgl-backend = ["gpu-acceleration"]
 # TypeScript generation feature
 generate-ts = ["ts-rs", "vectorize-core/generate-ts"]
 
-# Production profile: Enable aggressive optimization for iOS Safari
+# Production profile: Disable bundled optimization (use external wasm-opt for dual builds)
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = ["-O4", "--enable-simd"]
+wasm-opt = false
 
 # Dev profile: Disable optimization for faster builds during development
 [package.metadata.wasm-pack.profile.dev]
