@@ -103,17 +103,23 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 const rateLimiting: Handle = async ({ event, resolve }) => {
 	// Only apply to API routes
 	if (event.url.pathname.startsWith('/api/')) {
-		// Get client identifier (IP in production, would need proper implementation)
-		const _clientId = event.getClientAddress();
+		try {
+			// Get client identifier (IP in production, would need proper implementation)
+			// Note: getClientAddress() may throw in some contexts
+			const _clientId = event.getClientAddress?.() || 'unknown';
 
-		// TODO: Implement actual rate limiting with Redis/Upstash
-		// For now, just add rate limit headers
-		const response = await resolve(event);
-		response.headers.set('X-RateLimit-Limit', '100');
-		response.headers.set('X-RateLimit-Remaining', '99');
-		response.headers.set('X-RateLimit-Reset', new Date(Date.now() + 60000).toISOString());
+			// TODO: Implement actual rate limiting with Redis/Upstash
+			// For now, just add rate limit headers
+			const response = await resolve(event);
+			response.headers.set('X-RateLimit-Limit', '100');
+			response.headers.set('X-RateLimit-Remaining', '99');
+			response.headers.set('X-RateLimit-Reset', new Date(Date.now() + 60000).toISOString());
 
-		return response;
+			return response;
+		} catch (error) {
+			console.error('[Rate Limiting] Error:', error);
+			return resolve(event);
+		}
 	}
 
 	return resolve(event);
@@ -143,11 +149,25 @@ const performanceMonitoring: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
-// Combine all middleware - DEBUG FIRST to verify function invocation
-export const handle = sequence(
+// Combine all middleware with error handling wrapper
+const combinedHandlers = sequence(
 	debugLogging,
 	securityHeaders,
 	rateLimiting,
 	requestSanitization,
 	performanceMonitoring
 );
+
+// Global error handler to prevent function crashes
+export const handle: Handle = async ({ event, resolve }) => {
+	try {
+		return await combinedHandlers({ event, resolve });
+	} catch (error) {
+		console.error('[hooks.server.ts] Unhandled error:', error);
+		// Return a basic response instead of crashing
+		return new Response('Internal Server Error', {
+			status: 500,
+			headers: { 'Content-Type': 'text/plain' }
+		});
+	}
+};
