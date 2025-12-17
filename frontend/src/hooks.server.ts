@@ -2,24 +2,13 @@ import type { Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
 
-// CRITICAL DEBUG: Function invocation verification
+// Debug logging - only enabled in development
 const debugLogging: Handle = async ({ event, resolve }) => {
-	console.log(`[CRITICAL DEBUG] ${new Date().toISOString()}`);
-	console.log(`Request: ${event.request.method} ${event.url.pathname}`);
-	console.log(`User-Agent: ${event.request.headers.get('user-agent')}`);
-	console.log(`Host: ${event.request.headers.get('host')}`);
-	console.log(`X-Forwarded-For: ${event.request.headers.get('x-forwarded-for')}`);
-
-	const response = await resolve(event);
-
-	console.log(`Response Status: ${response.status}`);
-	const headersObj: Record<string, string> = {};
-	response.headers.forEach((value, key) => {
-		headersObj[key] = value;
-	});
-	console.log(`Response Headers:`, headersObj);
-
-	return response;
+	// Skip verbose logging in production to avoid performance overhead
+	if (dev) {
+		console.log(`[DEBUG] ${event.request.method} ${event.url.pathname}`);
+	}
+	return resolve(event);
 };
 
 // Security headers middleware

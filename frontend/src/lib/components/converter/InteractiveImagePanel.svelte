@@ -45,8 +45,8 @@
 	// let initialFitScale = $state(1);
 	// let hasCalculatedInitialFit = $state(false);
 
-	// Track previous sync state to detect changes
-	let prevEnableSync = enableSync;
+	// Track previous sync state to detect changes - initialized to undefined
+	let prevEnableSync = $state<boolean | undefined>();
 
 	// Combined pan/zoom synchronization effect with change detection to prevent infinite loops
 	let previousExternalState = $state<{ scale: number; x: number; y: number } | null>(null);
@@ -109,8 +109,8 @@
 			previousLocalState = { ...currentLocalState };
 		}
 
-		// Track sync state changes
-		if (prevEnableSync && !enableSync) {
+		// Track sync state changes - skip first run when prevEnableSync is undefined
+		if (prevEnableSync !== undefined && prevEnableSync && !enableSync) {
 			// Sync was just disabled - preserve current state
 			console.log('[InteractiveImagePanel] Sync disabled, preserving state:', currentLocalState);
 		}

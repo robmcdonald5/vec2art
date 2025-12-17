@@ -74,9 +74,9 @@
 		return originalSrc.replace(/\.(jpg|jpeg|png)$/i, '.webp');
 	}
 
-	// Check if WebP version exists
-	const webpSrc = getWebPSrc(src);
-	const shouldUseWebP = !src.endsWith('.svg') && !src.endsWith('.gif');
+	// Check if WebP version exists - reactive to src changes
+	const webpSrc = $derived(getWebPSrc(src));
+	const shouldUseWebP = $derived(!src.endsWith('.svg') && !src.endsWith('.gif'));
 </script>
 
 <picture class={className}>

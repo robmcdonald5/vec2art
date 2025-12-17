@@ -23,8 +23,8 @@
 		formats = []
 	}: Props = $props();
 
-	// Derive format variations from the source path
-	function getFormatSource(format: string): string {
+	// Derive format variations from the source path - using $derived for reactivity
+	const getFormatSource = $derived((format: string): string => {
 		const lastDot = src.lastIndexOf('.');
 		if (lastDot === -1) return src;
 
@@ -42,20 +42,21 @@
 
 		// Otherwise, assume format variations exist with same base name
 		return `${basePath}.${format}`;
-	}
+	});
 
-	// Get the original format from the source
-	const originalFormat = src.split('.').pop()?.toLowerCase() || 'jpg';
+	// Get the original format from the source - reactive to src changes
+	const originalFormat = $derived(src.split('.').pop()?.toLowerCase() || 'jpg');
 
-	// Determine which formats to use
-	const useFormats =
+	// Determine which formats to use - reactive to formats and src changes
+	const useFormats = $derived(
 		formats.length > 0
 			? formats
 			: originalFormat === 'avif'
-				? ['avif', 'webp', 'jpg']
+				? (['avif', 'webp', 'jpg'] as const)
 				: originalFormat === 'webp'
-					? ['webp', 'jpg']
-					: ['avif', 'webp', originalFormat as any];
+					? (['webp', 'jpg'] as const)
+					: (['avif', 'webp', originalFormat] as Array<'avif' | 'webp' | 'jpg' | 'png'>)
+	);
 </script>
 
 {#if placeholder}

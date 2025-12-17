@@ -45,7 +45,7 @@
 		}
 	};
 
-	const styles = variantStyles[variant];
+	const styles = $derived(variantStyles[variant]);
 </script>
 
 {#if error}

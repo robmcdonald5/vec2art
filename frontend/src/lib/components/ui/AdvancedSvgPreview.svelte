@@ -62,7 +62,8 @@ Implements performance-optimized SVG preview with automatic rendering strategy s
 	let renderError = $state<string | null>(null);
 	let _performanceStats = $state<any>(null);
 	let showGpuTroubleshooting = $state(false);
-	let _useImageMode = $state(forceImageMode);
+	// Track forceImageMode prop reactively
+	let _useImageMode = $derived(forceImageMode);
 
 	// Pan/zoom state for ImageViewer
 	let targetScale = $state(1);
