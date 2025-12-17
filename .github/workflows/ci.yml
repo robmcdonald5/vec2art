@@ -71,6 +71,11 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --prefer-offline --no-audit
 
+      - name: Copy WASM files to required locations
+        run: |
+          echo "📁 Copying WASM files for type checking..."
+          node scripts/copy-wasm.js
+
       - name: Setup environment variables
         run: |
           if [ -z "${{ secrets.PUBLIC_FORMSPARK_ENDPOINT_ID }}" ]; then
