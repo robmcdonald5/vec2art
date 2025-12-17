@@ -20,12 +20,7 @@ export default defineConfig(({ mode }) => ({
 		setupFiles: ['./tests/setup.ts'],
 		testTimeout: 15000, // 15 second timeout to prevent hanging tests
 		hookTimeout: 15000, // 15 second timeout for setup/teardown hooks
-		// Force browser mode for Svelte 5 components
-		browser: {
-			enabled: false, // We use happy-dom instead of real browser
-			provider: 'playwright',
-			name: 'chromium'
-		},
+		// Browser testing disabled - we use happy-dom instead
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'json', 'html', 'lcov'],

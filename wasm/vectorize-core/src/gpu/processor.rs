@@ -9,7 +9,7 @@ use crate::gpu::kernels::stippling::{GpuStippling, GpuStipplingError, StipplingC
 use image::{ImageBuffer, Luma, Rgba};
 use std::sync::Arc;
 use thiserror::Error;
-use wgpu::{util::DeviceExt, PollType};
+use wgpu::util::DeviceExt;
 
 #[derive(Debug, Error)]
 pub enum GpuProcessorError {
@@ -247,7 +247,7 @@ pub async fn read_gpu_image_buffer(
             // Handle result
         });
         device
-            .poll(PollType::Wait)
+            .poll(wgpu::PollType::wait_indefinitely())
             .map_err(|_| GpuProcessorError::ExecutionFailed("GPU polling failed".to_string()))?;
         Ok(()) as Result<(), GpuProcessorError>
     })?;

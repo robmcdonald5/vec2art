@@ -337,7 +337,7 @@ impl GpuCannyEdgeDetector {
             tx.send(result).ok();
         });
 
-        self.device.device.poll(PollType::Wait).map_err(|e| {
+        self.device.device.poll(wgpu::PollType::wait_indefinitely()).map_err(|e| {
             GpuEdgeDetectionError::ExecutionFailed(format!("GPU polling failed: {:?}", e))
         })?;
 

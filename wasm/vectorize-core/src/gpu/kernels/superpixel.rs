@@ -498,7 +498,7 @@ impl GpuSlicSegmentation {
 
         self.device
             .device
-            .poll(PollType::Wait)
+            .poll(wgpu::PollType::wait_indefinitely())
             .map_err(|e| GpuSlicError::ExecutionFailed(format!("GPU polling failed: {:?}", e)))?;
 
         rx.await

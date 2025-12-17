@@ -76,6 +76,7 @@ impl GpuDevice {
                 required_limits: device_limits,
                 memory_hints: Default::default(),
                 trace: wgpu::Trace::Off,
+                experimental_features: Default::default(),
             })
             .await
             .map_err(|e| GpuDeviceError::DeviceCreation(e.to_string()))?;
@@ -128,6 +129,7 @@ impl GpuDevice {
                 required_limits: device_limits,
                 memory_hints: Default::default(),
                 trace: wgpu::Trace::Off,
+                experimental_features: Default::default(),
             })
             .await
             .map_err(|e| GpuDeviceError::DeviceCreation(e.to_string()))?;

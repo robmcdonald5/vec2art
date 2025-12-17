@@ -10,7 +10,6 @@
 		targetOffsetY?: number;
 		minScale?: number;
 		maxScale?: number;
-		scaleSmoothing?: number;
 	}
 
 	let {
@@ -20,8 +19,7 @@
 		targetOffsetX = $bindable(0),
 		targetOffsetY = $bindable(0),
 		minScale = 0.1,
-		maxScale = 5.0,
-		scaleSmoothing = 800
+		maxScale = 5.0
 	}: Props = $props();
 
 	let containerEl: HTMLDivElement;
@@ -66,6 +64,5 @@
 		bind:targetOffsetY
 		{minScale}
 		{maxScale}
-		{scaleSmoothing}
 	/>
 </div>
