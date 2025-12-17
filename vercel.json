@@ -3,7 +3,7 @@
   "git": {
     "deploymentEnabled": true
   },
-  "buildCommand": "npm run build:frontend-only",
+  "buildCommand": "node scripts/copy-wasm.js && npm run build:frontend-only",
   "installCommand": "npm ci",
   "outputDirectory": ".svelte-kit/output",
   "headers": [

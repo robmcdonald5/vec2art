@@ -1,0 +1,35 @@
+# Git attributes for vec2art project
+
+# WASM binaries - treat as binary, suppress diff output
+*.wasm binary diff=false
+
+# Generated JavaScript from wasm-bindgen - mark as generated
+frontend/src/lib/wasm/vectorize_wasm.js linguist-generated=true
+frontend/src/lib/wasm/vectorize_wasm.d.ts linguist-generated=true
+frontend/src/lib/wasm/vectorize_wasm_bg.wasm.d.ts linguist-generated=true
+frontend/static/wasm/vectorize_wasm.js linguist-generated=true
+frontend/static/wasm/vectorize_wasm.d.ts linguist-generated=true
+frontend/static/wasm/vectorize_wasm_bg.wasm.d.ts linguist-generated=true
+
+# Generated TypeScript types from Rust
+frontend/src/lib/types/generated/*.ts linguist-generated=true
+
+# Lock files - use union merge strategy
+package-lock.json merge=npm-merge-driver
+Cargo.lock merge=binary
+
+# Ensure consistent line endings
+*.js text eol=lf
+*.ts text eol=lf
+*.svelte text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.rs text eol=lf
+*.toml text eol=lf
+*.html text eol=lf
+*.sh text eol=lf
+
+# Windows batch files
+*.bat text eol=crlf
+*.ps1 text eol=crlf
