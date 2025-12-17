@@ -1,6 +1,0 @@
-# Essential WASM files are tracked for deployment
-# (Using committed artifacts instead of rebuilding)
-
-# Allow TypeScript source files
-!*.ts
-!package.json
