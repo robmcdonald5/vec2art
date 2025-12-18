@@ -27,14 +27,9 @@
 
 	let container: HTMLDivElement;
 	let isDragging = $state(false);
-	// Initialize with startPosition prop - tracks prop changes via effect
-	let sliderPosition = $state(50);
+	// Initialize slider position from prop - user can drag to change it
+	let sliderPosition = $state(startPosition);
 	let containerRect: DOMRect | null = null;
-
-	// Sync slider position when startPosition prop changes
-	$effect(() => {
-		sliderPosition = startPosition;
-	});
 
 	function handleStart(e: MouseEvent | TouchEvent) {
 		isDragging = true;
