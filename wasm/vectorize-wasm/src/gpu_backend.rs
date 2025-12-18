@@ -269,6 +269,7 @@ async fn try_initialize_webgpu() -> Result<GpuContext, Box<dyn std::error::Error
                 required_limits: Limits::downlevel_webgl2_defaults(),
                 memory_hints: wgpu::MemoryHints::default(),
                 trace: wgpu::Trace::Off,
+                experimental_features: Default::default(),
             },
         )
         .await

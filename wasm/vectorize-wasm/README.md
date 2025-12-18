@@ -640,8 +640,9 @@ MIT License - see LICENSE file for details.
 5. Run the test suite: `./scripts/test-wasm.sh`
 6. Submit a pull request
 
-## Support
+## Documentation
 
-- 📖 [Full Documentation](https://github.com/vec2art/vec2art)
-- 🐛 [Issue Tracker](https://github.com/vec2art/vec2art/issues)
-- 💬 [Discussions](https://github.com/vec2art/vec2art/discussions)
+- [Full Documentation](../../docs/README.md)
+- [Algorithm Reference](../../docs/algorithms/overview.md)
+- [WASM Build Guide](../../docs/development/wasm-build.md)
+- [API Reference](../../docs/reference/api.md)

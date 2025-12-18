@@ -6,12 +6,7 @@
 use crate::wasm_config::WasmConfigManager;
 use image::ImageBuffer;
 use js_sys::Function;
-use std::sync::Mutex;
-use vectorize_core::{
-    algorithms::TraceBackend,
-    config_immutable::VectorizerConfig,
-    vectorize_trace_low_rgba,
-};
+use vectorize_core::vectorize_trace_low_rgba;
 use wasm_bindgen::prelude::*;
 use web_sys::ImageData;
 

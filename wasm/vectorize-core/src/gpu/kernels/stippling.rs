@@ -290,7 +290,7 @@ impl GpuStippling {
         });
 
         // Poll the device until the buffer is mapped
-        self.device.device.poll(PollType::Wait).map_err(|e| {
+        self.device.device.poll(wgpu::PollType::wait_indefinitely()).map_err(|e| {
             GpuStipplingError::ExecutionFailed(format!("Failed to poll device: {:?}", e))
         })?;
 

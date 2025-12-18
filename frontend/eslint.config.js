@@ -160,7 +160,9 @@ export default [
 					caughtErrorsIgnorePattern: '^_',
 					ignoreRestSiblings: true
 				}
-			]
+			],
+			// Disable new rule requiring resolve() for navigation - not needed for simple internal links
+			'svelte/no-navigation-without-resolve': 'off'
 		}
 	},
 	{

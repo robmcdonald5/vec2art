@@ -37,6 +37,62 @@ enum WorkerState {
 	RESTARTING = 'restarting'
 }
 
+/**
+ * Wait for ServiceWorker to be ready before initializing WASM
+ * This prevents race conditions when SW is installing/activating during first visit
+ */
+async function waitForServiceWorkerReady(timeoutMs: number = 10000): Promise<void> {
+	if (!browser || !('serviceWorker' in navigator)) {
+		return; // No SW support, proceed immediately
+	}
+
+	const registration = await navigator.serviceWorker.getRegistration();
+	if (!registration) {
+		return; // No SW registered yet, proceed immediately
+	}
+
+	// Check if there's a ServiceWorker installing or waiting
+	const installingWorker = registration.installing || registration.waiting;
+	if (!installingWorker) {
+		// SW is already active and stable
+		return;
+	}
+
+	console.log('[WasmWorkerService] ServiceWorker is updating, waiting for activation...');
+
+	return new Promise<void>((resolve) => {
+		const timeout = setTimeout(() => {
+			console.log('[WasmWorkerService] ServiceWorker wait timeout, proceeding anyway');
+			resolve();
+		}, timeoutMs);
+
+		const checkState = () => {
+			if (installingWorker.state === 'activated' || installingWorker.state === 'redundant') {
+				clearTimeout(timeout);
+				console.log('[WasmWorkerService] ServiceWorker ready, proceeding with WASM init');
+				resolve();
+			}
+		};
+
+		// Check immediately in case state already changed
+		checkState();
+
+		// Listen for state changes
+		installingWorker.addEventListener('statechange', checkState);
+
+		// Also listen for the controller change event as a backup
+		navigator.serviceWorker.addEventListener(
+			'controllerchange',
+			() => {
+				clearTimeout(timeout);
+				console.log('[WasmWorkerService] ServiceWorker controller changed, proceeding');
+				resolve();
+			},
+			{ once: true }
+		);
+	});
+}
+
 export class WasmWorkerService {
 	private static instance: WasmWorkerService | null = null;
 	private worker: Worker | null = null;
@@ -119,7 +175,9 @@ export class WasmWorkerService {
 
 	private async _doInitialize(options?: { threadCount?: number; backend?: string }): Promise<void> {
 		try {
-			// Initializing Web Worker
+			// Wait for ServiceWorker to be ready before creating WASM worker
+			// This prevents race conditions on first visit when SW is installing
+			await waitForServiceWorkerReady();
 
 			// Create Web Worker
 			this.worker = new Worker(new URL('../workers/wasm-processor.worker', import.meta.url), {

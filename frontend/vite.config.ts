@@ -2,13 +2,14 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import wasm from 'vite-plugin-wasm';
-import topLevelAwait from 'vite-plugin-top-level-await';
 import { resolve } from 'path';
 
 export default defineConfig({
 	plugins: [
 		wasm(),
-		topLevelAwait(),
+		// Note: vite-plugin-top-level-await REMOVED - it transforms TLA in a way that breaks
+		// Svelte 5's initialization order on serverless (see GitHub issue #13015)
+		// Modern Node.js and browsers support native TLA with esnext target
 		tailwindcss(),
 		// Note: Cross-Origin Isolation headers removed to match production configuration
 		// The WASM module uses single-threaded architecture and doesn't require SharedArrayBuffer

@@ -6,6 +6,12 @@
 .netlify
 .wrangler
 
+# WASM duplicate directories (generated at build time by scripts/copy-wasm.js)
+# Only src/lib/wasm/ main files are committed - these are regenerated for builds
+src/lib/wasm/pkg/
+src/lib/wasm/pkg-simd/
+static/wasm/
+
 # Environment files (frontend-specific)
 .env
 .env.*

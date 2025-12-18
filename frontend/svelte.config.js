@@ -1,22 +1,5 @@
-import adapterVercel from '@sveltejs/adapter-vercel';
-import adapterAuto from '@sveltejs/adapter-auto';
+import adapter from '@sveltejs/adapter-auto';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
-
-// Use different adapters for CI vs production
-const isCI = process.env.CI === 'true' || process.env.NODE_ENV === 'production';
-const isVercel = process.env.VERCEL === '1';
-
-// Adapter selection logic
-const adapter = isVercel
-	? adapterVercel({
-			runtime: 'nodejs20.x',
-			regions: ['iad1'],
-			memory: 1024,
-			maxDuration: 30
-		})
-	: isCI
-		? adapterAuto() // Use auto adapter for CI builds
-		: adapterVercel(); // Default Vercel adapter for local dev
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -25,8 +8,8 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		// Adapter selection based on environment
-		adapter,
+		// Use adapter-auto for automatic platform detection (Vercel, Netlify, etc.)
+		adapter: adapter(),
 
 		// Prerender specific routes
 		prerender: {

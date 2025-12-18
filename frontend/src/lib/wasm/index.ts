@@ -101,10 +101,10 @@ export async function checkCapabilities() {
 }
 
 /**
- * Re-export threading functions needed by workers
- * These are required by wasm-bindgen-rayon worker helpers
+ * Note: initSync is NOT re-exported here to prevent SSR crashes.
+ * Workers that need initSync should import it directly from vectorize_wasm.js
+ * (which is resolved via package.json "main" field in this directory).
  */
-export { initSync } from './vectorize_wasm.js';
 
 /**
  * Export the main initialization function as default

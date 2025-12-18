@@ -10,8 +10,8 @@ resolver = "2"
 # Core image processing
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "tiff", "bmp", "gif", "avif"] }
 imageproc = "0.25"  # Suzuki-Abe contour tracing algorithm
-rayon = "1.8"
-nalgebra = { version = "0.33", default-features = false }
+rayon = "1.11"
+nalgebra = { version = "0.34", default-features = false }
 
 # Error handling
 thiserror = "2.0"
@@ -22,22 +22,25 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Utilities
-clap = { version = "4.4", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"] }
 log = "0.4"
 env_logger = "0.11"
-regex = "1.10"
+regex = "1.11"
 once_cell = "1.19"
 rand = { version = "0.8", features = ["small_rng"] }
 rand_chacha = "0.3"
 
 # Phase B refinement dependencies
-resvg = "0.43"              # SVG rasterization
+resvg = "0.45"              # SVG rasterization
 tiny-skia = "0.11"          # Rendering backend
 palette = "0.7"             # Lab colorspace and ΔE calculations
 dssim = "3.3"              # SSIM computation
 
 # WebAssembly support
-wasm-bindgen = "=0.2.100"
+# IMPORTANT: wasm-bindgen version must match wasm-bindgen-cli version exactly
+# Run `wasm-bindgen --version` to verify CLI version matches
+# If updating, also run: cargo install wasm-bindgen-cli --version <new_version> --force
+wasm-bindgen = "=0.2.106"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-sys = "0.3"

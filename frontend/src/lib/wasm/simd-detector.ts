@@ -127,8 +127,8 @@ export function logSimdInfo(info: {
 	console.log('[WASM SIMD] Detection results:', {
 		supported: info.supported,
 		browser: `${info.browser} ${info.version}`,
-		module: info.recommendation === 'simd' ? 'pkg-simd/' : 'pkg/',
-		performance: info.supported ? '6x faster (SIMD)' : '4x faster (standard)'
+		module: info.recommendation === 'simd' ? 'pkg-simd/' : 'standard',
+		performance: info.supported ? 'SIMD optimized' : 'standard'
 	});
 
 	// Warn about Safari < 16.4

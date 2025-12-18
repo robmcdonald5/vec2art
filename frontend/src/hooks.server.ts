@@ -2,24 +2,13 @@ import type { Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
 
-// CRITICAL DEBUG: Function invocation verification
+// Debug logging - only enabled in development
 const debugLogging: Handle = async ({ event, resolve }) => {
-	console.log(`[CRITICAL DEBUG] ${new Date().toISOString()}`);
-	console.log(`Request: ${event.request.method} ${event.url.pathname}`);
-	console.log(`User-Agent: ${event.request.headers.get('user-agent')}`);
-	console.log(`Host: ${event.request.headers.get('host')}`);
-	console.log(`X-Forwarded-For: ${event.request.headers.get('x-forwarded-for')}`);
-
-	const response = await resolve(event);
-
-	console.log(`Response Status: ${response.status}`);
-	const headersObj: Record<string, string> = {};
-	response.headers.forEach((value, key) => {
-		headersObj[key] = value;
-	});
-	console.log(`Response Headers:`, headersObj);
-
-	return response;
+	// Skip verbose logging in production to avoid performance overhead
+	if (dev) {
+		console.log(`[DEBUG] ${event.request.method} ${event.url.pathname}`);
+	}
+	return resolve(event);
 };
 
 // Security headers middleware
@@ -114,17 +103,23 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 const rateLimiting: Handle = async ({ event, resolve }) => {
 	// Only apply to API routes
 	if (event.url.pathname.startsWith('/api/')) {
-		// Get client identifier (IP in production, would need proper implementation)
-		const _clientId = event.getClientAddress();
+		try {
+			// Get client identifier (IP in production, would need proper implementation)
+			// Note: getClientAddress() may throw in some contexts
+			const _clientId = event.getClientAddress?.() || 'unknown';
 
-		// TODO: Implement actual rate limiting with Redis/Upstash
-		// For now, just add rate limit headers
-		const response = await resolve(event);
-		response.headers.set('X-RateLimit-Limit', '100');
-		response.headers.set('X-RateLimit-Remaining', '99');
-		response.headers.set('X-RateLimit-Reset', new Date(Date.now() + 60000).toISOString());
+			// TODO: Implement actual rate limiting with Redis/Upstash
+			// For now, just add rate limit headers
+			const response = await resolve(event);
+			response.headers.set('X-RateLimit-Limit', '100');
+			response.headers.set('X-RateLimit-Remaining', '99');
+			response.headers.set('X-RateLimit-Reset', new Date(Date.now() + 60000).toISOString());
 
-		return response;
+			return response;
+		} catch (error) {
+			console.error('[Rate Limiting] Error:', error);
+			return resolve(event);
+		}
 	}
 
 	return resolve(event);
@@ -154,11 +149,25 @@ const performanceMonitoring: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
-// Combine all middleware - DEBUG FIRST to verify function invocation
-export const handle = sequence(
+// Combine all middleware with error handling wrapper
+const combinedHandlers = sequence(
 	debugLogging,
 	securityHeaders,
 	rateLimiting,
 	requestSanitization,
 	performanceMonitoring
 );
+
+// Global error handler to prevent function crashes
+export const handle: Handle = async ({ event, resolve }) => {
+	try {
+		return await combinedHandlers({ event, resolve });
+	} catch (error) {
+		console.error('[hooks.server.ts] Unhandled error:', error);
+		// Return a basic response instead of crashing
+		return new Response('Internal Server Error', {
+			status: 500,
+			headers: { 'Content-Type': 'text/plain' }
+		});
+	}
+};

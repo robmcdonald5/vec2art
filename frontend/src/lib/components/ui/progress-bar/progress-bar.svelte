@@ -33,7 +33,7 @@
 	};
 
 	const clampedValue = $derived(Math.max(0, Math.min(100, value)));
-	const progressId = id || 'progress-bar';
+	const progressId = $derived(id || 'progress-bar');
 </script>
 
 <div class="w-full {className}">
